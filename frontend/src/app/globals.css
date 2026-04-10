@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f5f0e8;
+  color: #2c2416;
+}
+
+.prose-reader {
+  font-family: Georgia, Cambria, "Times New Roman", serif;
+  font-size: 1.125rem;
+  line-height: 1.9;
+  max-width: 68ch;
+}
+
+.highlighted-sentence {
+  background-color: #fde68a;
+  border-radius: 2px;
+  transition: background-color 0.3s;
+}

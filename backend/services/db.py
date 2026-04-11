@@ -11,10 +11,25 @@ import json
 import os
 import aiosqlite
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "books.db")
+# DB file location. In local dev, defaults to backend/books.db (relative to
+# this file). In production (e.g. Railway), set DB_PATH to a path inside a
+# persistent volume so the file survives container redeploys — otherwise
+# every redeploy starts with an empty database. See README "Deployment".
+DB_PATH = os.environ.get(
+    "DB_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "books.db"),
+)
 
 
 async def init_db() -> None:
+    # Make sure the parent directory exists. Important on first run after
+    # mounting a Railway volume at e.g. /app/data — the mount point exists
+    # but no books.db file does yet, and SQLite needs the directory to be
+    # present before it can create the file.
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS books (

@@ -199,3 +199,39 @@ async def test_delete_audiobook():
 
 async def test_delete_audiobook_nonexistent_does_not_raise():
     await delete_audiobook(99999)  # should not raise
+
+
+# ── DB_PATH env var + parent directory handling ──────────────────────────────
+
+def test_db_path_honors_env_var(monkeypatch, tmp_path):
+    """Setting DB_PATH env var before module import should override the default."""
+    custom_path = str(tmp_path / "custom" / "books.db")
+    monkeypatch.setenv("DB_PATH", custom_path)
+    # Reload the module so it picks up the env var
+    import importlib
+    import services.db as db_module
+    importlib.reload(db_module)
+    try:
+        assert db_module.DB_PATH == custom_path
+    finally:
+        # Reload again so subsequent tests get a clean state
+        monkeypatch.delenv("DB_PATH", raising=False)
+        importlib.reload(db_module)
+
+
+async def test_init_db_creates_parent_directory(monkeypatch, tmp_path):
+    """init_db() should create the parent directory if it doesn't exist —
+    important for first-run after mounting a Railway volume at a fresh path."""
+    nested_path = str(tmp_path / "data" / "subdir" / "books.db")
+    monkeypatch.setattr(db_module, "DB_PATH", nested_path)
+
+    # Parent directory does NOT exist before init_db runs
+    assert not os.path.exists(os.path.dirname(nested_path))
+
+    await init_db()
+
+    # Parent dir exists, file exists, schema is in place
+    assert os.path.exists(nested_path)
+    # Sanity-check the schema by running a real query
+    user = await get_or_create_user(google_id="x", email="a@b.com", name="A", picture="")
+    assert user["id"] is not None

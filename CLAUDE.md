@@ -37,6 +37,22 @@
 - Third-party library behaviour
 - Things already covered by existing tests
 
+## Branching and PR workflow
+
+**Never commit directly to `main`.** All changes must go through a PR.
+
+1. Create a feature branch: `git checkout -b feat/description` (or `fix/`, `chore/`)
+2. Make commits on the branch
+3. Run the full test suite before pushing
+4. Push the branch and open a PR: `gh pr create`
+5. CI must pass before merging
+
+Branch naming convention:
+- `feat/` — new feature
+- `fix/` — bug fix
+- `chore/` — tooling, CI, deps
+- `test/` — tests only
+
 ## Code style
 
 - No speculative abstractions — only add complexity the task actually requires

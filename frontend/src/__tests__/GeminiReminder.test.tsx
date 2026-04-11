@@ -39,8 +39,9 @@ function ReminderHarness({ initialHasKey = true }: HarnessProps) {
     <div>
       {geminiReminderVisible && (
         <div role="alert" data-testid="gemini-banner">
-          AI features are using the app&apos;s shared quota.{" "}
+          AI features require your own Gemini API key.{" "}
           <a href="/profile">Add your free Gemini API key</a>
+          {" "}to enable them.
           <button
             onClick={() => setGeminiReminderVisible(false)}
             aria-label="Dismiss"

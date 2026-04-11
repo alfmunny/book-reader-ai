@@ -49,6 +49,35 @@ test("continue-reading: reopening a book restores the last-read chapter", async 
   await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 30), { exact: false })).toBeVisible({ timeout: 5000 });
 });
 
+test("shows Gemini reminder banner when translate fails without a key", async ({ page }) => {
+  // Override the default mocks from fixtures.ts:
+  //   - user has no Gemini key
+  //   - translate returns 400 like the real backend now does
+  await page.route("**/api/user/me", (route) =>
+    route.fulfill({
+      json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false },
+    })
+  );
+  await page.route("**/api/ai/translate", (route) =>
+    route.fulfill({
+      status: 400,
+      json: { detail: "Gemini API key required. Please add it in your profile." },
+    })
+  );
+
+  await page.goto("/reader/1342");
+
+  // Wait for chapters to render before toggling translation
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+
+  // Click the Translate toggle — triggers the translation effect
+  await page.getByRole("button", { name: /Translate/ }).first().click();
+
+  // Banner must appear because notifyAIUsed() now runs in the catch handler
+  await expect(page.getByText(/AI features require your own Gemini API key/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Add your free Gemini API key/ })).toBeVisible();
+});
+
 test("home page shows Continue Reading badge with chapter number", async ({ page }) => {
   // Seed a recent book with lastChapter = 4
   await page.goto("/");

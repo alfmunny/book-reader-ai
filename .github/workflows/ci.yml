@@ -279,5 +279,11 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v5
         with:
-          context: backend
+          # Match Railway's default build context (repo root). The Dockerfile
+          # at backend/Dockerfile uses COPY backend/... paths because the
+          # build context is the repo root, not backend/. Building with
+          # context: backend instead would silently work for the wrong reason
+          # and let real Railway-breaking changes pass CI.
+          context: .
+          file: backend/Dockerfile
           push: false

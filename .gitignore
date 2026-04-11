@@ -1,6 +1,7 @@
 # Backend
 backend/.env
 backend/.env.*
+!backend/.env.example
 backend/__pycache__/
 backend/**/__pycache__/
 backend/**/*.pyc
@@ -18,6 +19,7 @@ frontend/.next/
 frontend/out/
 frontend/.env.local
 frontend/.env.*
+!frontend/.env.example
 frontend/tsconfig.tsbuildinfo
 frontend/coverage/
 frontend/playwright-report/

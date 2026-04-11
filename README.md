@@ -129,13 +129,17 @@ See `backend/.env.example` and `frontend/.env.example` for the full list of envi
 
 1. **New Project → Deploy from GitHub → select this repo**
 2. Railway reads `railway.json` automatically (Dockerfile build, health check at `/api/health`).
-3. **Add environment variables** from `backend/.env.example`:
+3. **Attach a persistent volume** so the SQLite file survives redeploys. In the Railway service settings:
+   - Click **Volumes → Add Volume**
+   - **Mount path:** `/app/data`
+   - Size: 1 GB is plenty for this app
+4. **Add environment variables** from `backend/.env.example`:
+   - `DB_PATH` — `/app/data/books.db` ← **must be inside the volume mount path** from step 3
    - `JWT_SECRET` — `openssl rand -hex 32`
    - `GOOGLE_CLIENT_ID` — from Google Cloud Console OAuth credentials
    - `FRONTEND_URL` — `https://<your-vercel-url>` (after the frontend is deployed)
    - `ENCRYPTION_KEY` — optional, derived from `JWT_SECRET` if unset
    - `YOUTUBE_API_KEY` — optional, only for the "find related videos" feature
-4. **⚠ Data persistence** (important — see "known limitation" below).
 
 ### Frontend — Vercel
 
@@ -147,15 +151,11 @@ See `backend/.env.example` and `frontend/.env.example` for the full list of envi
    - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — same OAuth credentials as the backend
 4. **Google OAuth setup**: in Google Cloud Console, add the Vercel domain to **Authorized JavaScript origins** and add `https://<your-vercel-url>/api/auth/callback/google` to **Authorized redirect URIs**.
 
-### Known limitation: SQLite data persistence on Railway
+### Notes on data persistence
 
-By default, Railway containers have an **ephemeral filesystem** — every redeploy wipes the SQLite file at `/app/books.db`. This means:
+The backend reads `DB_PATH` from the environment and falls back to `backend/books.db` for local development. **In production you must point this at a path inside a persistent volume** — Railway containers have an ephemeral filesystem, and any file outside a mounted volume gets wiped on every redeploy.
 
-- Cached book text and translations are lost
-- User accounts and encrypted Gemini keys are lost
-- Audiobook → LibriVox links are lost
-
-The minimum fix is to attach a Railway **volume** mounted at `/app` (or wherever the SQLite file lives), so the file survives redeploys. The longer-term fix is to migrate to managed Postgres (Railway, Neon, Supabase). Both are tracked as future work.
+The Railway setup steps above (volume at `/app/data` + `DB_PATH=/app/data/books.db`) are the minimum viable fix. The longer-term option is to migrate to managed Postgres (Railway Postgres, Neon, Supabase), which removes the volume entirely.
 
 ---
 
@@ -202,6 +202,7 @@ book-reader-ai/
 | `JWT_SECRET` | Yes | Secret for signing backend JWTs (32+ chars). Generate with `openssl rand -hex 32`. |
 | `GOOGLE_CLIENT_ID` | Yes | OAuth client ID for verifying Google ID tokens |
 | `FRONTEND_URL` | Prod only | Frontend origin added to CORS allow-list |
+| `DB_PATH` | Prod | SQLite file path. **On Railway must point inside a mounted volume** (e.g. `/app/data/books.db`), otherwise data is lost on every redeploy. |
 | `ENCRYPTION_KEY` | Prod recommended | Fernet key for encrypting stored Gemini keys (derived from JWT_SECRET if unset) |
 | `YOUTUBE_API_KEY` | Optional | Enables the "find related videos" feature |
 

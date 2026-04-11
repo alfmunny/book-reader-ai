@@ -70,6 +70,13 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
 
+      - name: Upload E2E results summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: frontend/e2e-results.json
+
       - name: Upload Playwright report on failure
         uses: actions/upload-artifact@v4
         if: failure()
@@ -78,12 +85,41 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 7
 
-      - name: Upload E2E results summary
-        uses: actions/upload-artifact@v4
+      # Retries are kept at 2 to absorb genuine infra blips (cold dev server,
+      # network timeouts, etc.), but a flake that recovers on retry is almost
+      # always a real bug — an ambiguous selector, a race, or timing drift.
+      # Fail the job so flakes can't silently ship to main via auto-merge.
+      - name: Fail if any E2E test was flaky
         if: always()
-        with:
-          name: e2e-results
-          path: frontend/e2e-results.json
+        run: |
+          node -e '
+            const fs = require("fs");
+            let r;
+            try { r = JSON.parse(fs.readFileSync("e2e-results.json", "utf8")); }
+            catch (e) { console.error("Could not read e2e-results.json:", e.message); process.exit(0); }
+            const flaky = (r.stats && r.stats.flaky) || 0;
+            if (flaky === 0) { console.log("✓ No flakes detected."); process.exit(0); }
+            console.error(`::error::${flaky} E2E test(s) were flaky. Flakes must be fixed before merging.`);
+            // Walk the suite tree to print flaky test titles
+            const flakyTitles = [];
+            const walk = (suite, path = "") => {
+              for (const spec of (suite.specs || [])) {
+                for (const t of (spec.tests || [])) {
+                  const statuses = (t.results || []).map(x => x.status);
+                  const hadFail = statuses.includes("failed") || statuses.includes("timedOut");
+                  const hadPass = statuses.includes("passed");
+                  if (hadFail && hadPass) flakyTitles.push(`${path}${spec.title}`);
+                }
+              }
+              for (const sub of (suite.suites || [])) walk(sub, path + (suite.title ? suite.title + " > " : ""));
+            };
+            for (const suite of (r.suites || [])) walk(suite);
+            if (flakyTitles.length) {
+              console.error("Flaky tests:");
+              for (const t of flakyTitles) console.error("  - " + t);
+            }
+            process.exit(1);
+          '
 
   test-backend:
     name: Backend tests (pytest)

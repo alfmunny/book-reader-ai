@@ -8,6 +8,9 @@ backend/*.pyc
 backend/.venv/
 backend/venv/
 backend/books.db
+backend/.coverage
+backend/coverage.xml
+backend/htmlcov/
 
 # Frontend
 frontend/node_modules/
@@ -16,9 +19,13 @@ frontend/out/
 frontend/.env.local
 frontend/.env.*
 frontend/tsconfig.tsbuildinfo
+frontend/coverage/
 
 # Tauri
 src-tauri/target/
+
+# Claude Code local settings
+.claude/
 
 # General
 .DS_Store

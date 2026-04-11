@@ -1,0 +1,41 @@
+# Build context is the repo root (Railway default). Patterns are
+# matched from the repo root, NOT relative to backend/Dockerfile.
+# Goal: keep the build context small and exclude anything that
+# shouldn't end up in the backend image.
+
+# Frontend / Tauri / non-backend trees we never need in the backend image
+frontend/
+src-tauri/
+e2e/
+playwright-report/
+test-results/
+node_modules/
+
+# Local IDE / Claude Code settings
+.claude/
+.vscode/
+.idea/
+
+# Git metadata is huge and not needed at runtime
+.git/
+.github/
+
+# Backend cache, virtualenvs, secrets, runtime data
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/**/*.pyc
+backend/.venv/
+backend/venv/
+backend/books.db
+backend/.coverage
+backend/coverage.xml
+backend/htmlcov/
+backend/tests/
+
+# Top-level build artifacts
+*.db
+.DS_Store

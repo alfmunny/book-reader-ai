@@ -1,18 +1,25 @@
 # Backend
 backend/.env
+backend/.env.*
 backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
 backend/*.pyc
 backend/.venv/
 backend/venv/
+backend/books.db
 
 # Frontend
 frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/.env.local
+frontend/.env.*
+frontend/tsconfig.tsbuildinfo
 
 # Tauri
 src-tauri/target/
 
 # General
 .DS_Store
+*.db

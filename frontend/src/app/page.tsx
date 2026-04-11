@@ -4,6 +4,7 @@ import { searchBooks, getCachedBooks, BookMeta } from "@/lib/api";
 import { getRecentBooks, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const FEATURED = [
   { query: "Faust", lang: "de" },
@@ -26,6 +27,7 @@ function timeAgo(ms: number): string {
 
 export default function Home() {
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [query, setQuery] = useState("");
   const [lang, setLang] = useState("");
@@ -77,13 +79,29 @@ export default function Home() {
           <h1 className="text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
           <p className="text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
         </div>
-        <button
-          onClick={() => router.push("/settings")}
-          title="Settings"
-          className="w-9 h-9 flex items-center justify-center rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-900 transition-colors text-lg"
-        >
-          ⚙
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/settings")}
+            title="Settings"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-900 transition-colors text-lg"
+          >
+            ⚙
+          </button>
+          <button
+            onClick={() => router.push("/profile")}
+            title={session?.backendUser?.name ?? "Profile"}
+            className="w-9 h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+          >
+            {session?.backendUser?.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
+                {session?.backendUser?.name?.[0] ?? "?"}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-10">

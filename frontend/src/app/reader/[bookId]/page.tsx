@@ -1,24 +1,31 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getBookChapters, translateText, BookMeta, BookChapter } from "@/lib/api";
+import { useSession } from "next-auth/react";
+import { getBookChapters, translateText, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, BookImage, Audiobook } from "@/lib/api";
 import { recordRecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import PronunciationRecorder from "@/components/PronunciationRecorder";
 import TranslationView from "@/components/TranslationView";
+import AudiobookPlayer from "@/components/AudiobookPlayer";
+import AudiobookSearch from "@/components/AudiobookSearch";
+import SentenceReader from "@/components/SentenceReader";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
 const metaCache = new Map<string, BookMeta>();
+const imagesCache = new Map<string, BookImage[]>();
 
 export default function ReaderPage() {
   const { bookId } = useParams<{ bookId: string }>();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const [meta, setMeta] = useState<BookMeta | null>(metaCache.get(bookId) ?? null);
   const [chapters, setChapters] = useState<BookChapter[]>(chaptersCache.get(bookId) ?? []);
+  const [bookImages, setBookImages] = useState<BookImage[]>(imagesCache.get(bookId) ?? []);
   const [chapterIndex, setChapterIndex] = useState(0);
   const [loading, setLoading] = useState(!chaptersCache.has(bookId));
   const [error, setError] = useState("");
@@ -26,6 +33,15 @@ export default function ReaderPage() {
   const [selectedText, setSelectedText] = useState("");
   const [showRecorder, setShowRecorder] = useState(false);
   const [spokenText, setSpokenText] = useState("");
+
+  // Audiobook
+  const [audiobookEnabled, setAudiobookEnabled] = useState(true);
+  const [audiobook, setAudiobook] = useState<Audiobook | null>(null);
+  const [showAudioSearch, setShowAudioSearch] = useState(false);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
+  const seekAudioRef = useRef<(t: number) => void>(() => {});
 
   // Sidebar (insight chat) — hidden by default, resizable
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -58,11 +74,29 @@ export default function ReaderPage() {
     document.addEventListener("mouseup", onUp);
   }
 
-  // Settings-seeded defaults (read once on mount)
-  const [defaultInsightLang, setDefaultInsightLang] = useState("en");
+  // Settings-seeded default for translation (insight lang is read directly in InsightChat)
+
+
+  // Gemini key reminder — fetch live status so we don't rely on the stale session JWT
+  const [hasGeminiKey, setHasGeminiKey] = useState(true); // optimistic: assume key exists until confirmed otherwise
+  const [geminiReminderVisible, setGeminiReminderVisible] = useState(false);
+  const geminiReminderShown = useRef(false);
+
+  useEffect(() => {
+    if (!session?.backendToken) return;
+    getMe().then((me) => setHasGeminiKey(me.hasGeminiKey)).catch(() => {});
+  }, [session?.backendToken]);
+
+  function notifyAIUsed() {
+    if (!hasGeminiKey && !geminiReminderShown.current) {
+      geminiReminderShown.current = true;
+      setGeminiReminderVisible(true);
+    }
+  }
 
   // Translation state
   const translationCache = useRef(new Map<string, string[]>());
+  const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("inline");
@@ -72,8 +106,8 @@ export default function ReaderPage() {
   // Read settings on mount
   useEffect(() => {
     const s = getSettings();
-    setDefaultInsightLang(s.insightLang);
     setTranslationLang(s.translationLang);
+    setAudiobookEnabled(s.audiobookEnabled);
   }, []);
 
   useEffect(() => {
@@ -83,13 +117,22 @@ export default function ReaderPage() {
       .then((data) => {
         chaptersCache.set(bookId, data.chapters);
         metaCache.set(bookId, data.meta);
+        imagesCache.set(bookId, data.images ?? []);
         setChapters(data.chapters);
         setMeta(data.meta);
+        setBookImages(data.images ?? []);
         setChapterIndex(0);
         recordRecentBook(data.meta);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
+  }, [bookId]);
+
+  // Load saved audiobook for this book
+  useEffect(() => {
+    if (!bookId) return;
+    setAudiobook(null);
+    getAudiobook(Number(bookId)).then(setAudiobook).catch(() => {});
   }, [bookId]);
 
   const bookLanguage = meta?.languages[0] || "en";
@@ -102,19 +145,30 @@ export default function ReaderPage() {
       return;
     }
     const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
+    currentChapterKey.current = cacheKey;
+
     if (translationCache.current.has(cacheKey)) {
       setTranslatedParagraphs(translationCache.current.get(cacheKey)!);
       return;
     }
     setTranslationLoading(true);
     setTranslatedParagraphs([]);
-    translateText(current.text, bookLanguage, translationLang)
+    translateText(current.text, bookLanguage, translationLang, Number(bookId), chapterIndex)
       .then((r) => {
+        // Always cache so the user gets instant results if they navigate back
+        if (!r.cached) notifyAIUsed();
         translationCache.current.set(cacheKey, r.paragraphs);
-        setTranslatedParagraphs(r.paragraphs);
+        // Only update the UI if the user is still on this chapter
+        if (currentChapterKey.current === cacheKey) {
+          setTranslatedParagraphs(r.paragraphs);
+        }
       })
-      .catch(() => {})
-      .finally(() => setTranslationLoading(false));
+      .catch((e) => console.error("Translation failed:", e))
+      .finally(() => {
+        if (currentChapterKey.current === cacheKey) {
+          setTranslationLoading(false);
+        }
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, chapterIndex, bookId]);
 
@@ -127,6 +181,8 @@ export default function ReaderPage() {
     setChapterIndex(index);
     setSelectedText("");
     setTranslatedParagraphs([]);
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
     document.getElementById("reader-scroll")?.scrollTo(0, 0);
   }
 
@@ -149,6 +205,29 @@ export default function ReaderPage() {
 
   return (
     <div className="h-screen bg-parchment flex flex-col overflow-hidden">
+      {/* ── Gemini key reminder banner ───────────────────────────────────── */}
+      {geminiReminderVisible && (
+        <div className="shrink-0 bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-4 text-sm text-amber-800">
+          <span>
+            AI features are using the app&apos;s shared quota.{" "}
+            <button
+              onClick={() => { window.open("/profile", "_blank"); }}
+              className="underline font-medium hover:text-amber-900"
+            >
+              Add your free Gemini API key
+            </button>{" "}
+            to use your own quota instead.
+          </span>
+          <button
+            onClick={() => setGeminiReminderVisible(false)}
+            className="shrink-0 text-amber-500 hover:text-amber-700 text-lg leading-none"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur shrink-0">
         {/* Row 1: nav + title + chapter selector + chat toggle */}
@@ -202,6 +281,22 @@ export default function ReaderPage() {
             )}
           </div>
 
+          {/* Profile */}
+          <button
+            onClick={() => router.push("/profile")}
+            title={session?.backendUser?.name ?? "Profile"}
+            className="shrink-0 w-8 h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors"
+          >
+            {session?.backendUser?.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
+                {session?.backendUser?.name?.[0] ?? "?"}
+              </span>
+            )}
+          </button>
+
           {/* Insight chat toggle */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
@@ -218,6 +313,21 @@ export default function ReaderPage() {
             </svg>
             Insight
           </button>
+
+          {/* Audiobook toggle — only shown when feature is enabled in settings */}
+          {audiobookEnabled && (
+            <button
+              onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
+              title={audiobook ? "Audiobook linked" : "Find audiobook"}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                audiobook
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              🎧 {audiobook ? "Audio" : "Find Audio"}
+            </button>
+          )}
         </div>
 
         {/* Row 2: Translation toolbar */}
@@ -318,9 +428,26 @@ export default function ReaderPage() {
               </>
             ) : (
               <>
-                <div className="prose-reader mx-auto whitespace-pre-wrap text-ink">
-                  {current?.text ?? ""}
-                </div>
+                <SentenceReader
+                  text={current?.text ?? ""}
+                  duration={audioDuration}
+                  currentTime={audioCurrentTime}
+                  isPlaying={audioIsPlaying}
+                  images={bookImages}
+                  onSegmentClick={(_startTime, segText) => {
+                    synthesizeSpeech(segText, bookLanguage).then((url) => {
+                      const audio = new Audio(url);
+                      audio.onended = () => URL.revokeObjectURL(url);
+                      audio.play().catch(() => URL.revokeObjectURL(url));
+                    }).catch(() => {
+                      // Fallback to Web Speech API
+                      window.speechSynthesis.cancel();
+                      const utter = new SpeechSynthesisUtterance(segText);
+                      utter.lang = bookLanguage;
+                      window.speechSynthesis.speak(utter);
+                    });
+                  }}
+                />
                 <div className="max-w-prose mx-auto mt-10 flex justify-between">
                   <button
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
@@ -339,6 +466,26 @@ export default function ReaderPage() {
               </>
             )}
           </div>
+
+          {/* Audiobook player */}
+          {audiobookEnabled && audiobook && (
+            <AudiobookPlayer
+              audiobook={audiobook}
+              chapterIndex={chapterIndex}
+              onChapterChange={goToChapter}
+              onUnlink={async () => {
+                await deleteAudiobook(Number(bookId)).catch(() => {});
+                setAudiobook(null);
+                setAudioDuration(0);
+                setAudioCurrentTime(0);
+                setAudioIsPlaying(false);
+              }}
+              onTimeUpdate={setAudioCurrentTime}
+              onDurationChange={setAudioDuration}
+              onPlayStateChange={setAudioIsPlaying}
+              seekRef={seekAudioRef}
+            />
+          )}
 
           {/* TTS + Recorder */}
           <div className="border-t border-amber-200 shrink-0">
@@ -385,16 +532,33 @@ export default function ReaderPage() {
         >
           {/* Keep mounted so chat history persists across open/close */}
           <InsightChat
+            bookId={bookId}
+            isVisible={sidebarOpen}
             chapterText={current?.text ?? ""}
+            chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
             selectedText={selectedText}
             bookTitle={meta?.title ?? ""}
             author={meta?.authors[0] ?? ""}
             bookLanguage={bookLanguage}
-            defaultInsightLang={defaultInsightLang}
             spokenText={spokenText}
+            onAIUsed={notifyAIUsed}
           />
         </div>
       </div>
+
+      {/* Audiobook search modal */}
+      {audiobookEnabled && showAudioSearch && (
+        <AudiobookSearch
+          bookId={Number(bookId)}
+          defaultTitle={meta?.title ?? ""}
+          defaultAuthor={meta?.authors[0] ?? ""}
+          onLinked={(ab) => {
+            setAudiobook(ab);
+            setShowAudioSearch(false);
+          }}
+          onClose={() => setShowAudioSearch(false)}
+        />
+      )}
     </div>
   );
 }

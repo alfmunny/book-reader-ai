@@ -9,6 +9,7 @@ import {
   findVideos,
   VideoResult,
 } from "@/lib/api";
+import { getSettings } from "@/lib/settings";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -37,31 +38,35 @@ interface Message {
 
 interface Props {
   bookId: string;
+  isVisible: boolean;       // true when the sidebar is open — gates insight fetching
   chapterText: string;
   chapterTitle: string;
   selectedText: string;
   bookTitle: string;
   author: string;
   bookLanguage: string;
-  defaultInsightLang: string;
   spokenText?: string;
+  onAIUsed?: () => void;    // called whenever an AI (non-cached) call is made
 }
 
 export default function InsightChat({
   bookId,
+  isVisible,
   chapterText,
   chapterTitle,
   selectedText,
   bookTitle,
   author,
   bookLanguage,
-  defaultInsightLang,
   spokenText = "",
+  onAIUsed,
 }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
 
   // ── Chat ─────────────────────────────────────────────────────────────
-  const [lang, setLang] = useState(defaultInsightLang);
+  // Read language from settings at first render (lazy init avoids the
+  // "parent state not yet updated" race where useState(prop) captures "en").
+  const [lang, setLang] = useState(() => getSettings().insightLang);
   // Use a ref so effects that shouldn't re-run on lang-change can still read current value
   const langRef = useRef(lang);
   langRef.current = lang;
@@ -120,10 +125,15 @@ export default function InsightChat({
   }, [messages, bookId]);
 
   // ── 3. Chapter first-visit: add divider + fetch insight ──────────────
+  // Only runs when the sidebar is visible (isVisible = true).
+  // Including isVisible in deps means the effect re-evaluates when the
+  // sidebar opens — if the current chapter was skipped while it was closed,
+  // visitedKeys won't have its key yet, so the fetch fires immediately.
   useEffect(() => {
+    if (!isVisible) return;                          // ← gate: don't fetch while hidden
     if (!chapterText || !bookTitle || !bookId) return;
     const key = chapterText.slice(0, 100);
-    if (visitedKeys.current.has(key)) return;
+    if (visitedKeys.current.has(key)) return;        // already fetched for this chapter
     visitedKeys.current.add(key);
 
     autoScrollRef.current = true;
@@ -133,6 +143,7 @@ export default function InsightChat({
     ]);
     setChatLoading(true);
 
+    onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
       .then((r) => setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]))
       .catch((e) =>
@@ -140,13 +151,14 @@ export default function InsightChat({
       )
       .finally(() => setChatLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterText, chapterTitle, bookTitle, bookId, author]);
+  }, [chapterText, chapterTitle, bookTitle, bookId, author, isVisible]);
 
   // ── 4. Manual refresh (append new insight) ────────────────────────────
   useEffect(() => {
     if (refreshTick === 0 || !chapterText || !bookTitle) return;
     autoScrollRef.current = true;
     setChatLoading(true);
+    onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
       .then((r) => setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]))
       .catch((e) =>
@@ -208,6 +220,7 @@ export default function InsightChat({
     const passage = parts.join("\n\n---\n\n");
 
     try {
+      onAIUsed?.();
       const r = await askQuestion(text, passage, bookTitle, author, langRef.current);
       setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
     } catch (e: any) {
@@ -227,6 +240,7 @@ export default function InsightChat({
     if (!spoken.trim() || !selectedText) return;
     setPronLoading(true);
     setPronFeedback("");
+    onAIUsed?.();
     try {
       const r = await checkPronunciation(selectedText, spoken, bookLanguage);
       setPronFeedback(r.feedback);
@@ -249,6 +263,7 @@ export default function InsightChat({
     setVideoError("");
     setVideos([]);
     setVideoQuery("");
+    onAIUsed?.();
     try {
       const r = await findVideos(text, bookTitle, author);
       setVideos(r.videos);

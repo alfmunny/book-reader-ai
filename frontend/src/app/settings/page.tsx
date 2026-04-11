@@ -15,14 +15,14 @@ const LANGUAGES = [
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [settings, setSettings] = useState<AppSettings>({ insightLang: "en", translationLang: "en" });
+  const [settings, setSettings] = useState<AppSettings>({ insightLang: "en", translationLang: "en", audiobookEnabled: true });
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setSettings(getSettings());
   }, []);
 
-  function update(key: keyof AppSettings, value: string) {
+  function update(key: keyof AppSettings, value: string | boolean) {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
   }
@@ -90,6 +90,49 @@ export default function SettingsPage() {
                 Target language when the translation panel is enabled.
               </p>
             </div>
+          </div>
+
+          <button
+            onClick={save}
+            className={`w-full rounded-lg py-2.5 text-sm font-medium transition-colors ${
+              saved
+                ? "bg-green-600 text-white"
+                : "bg-amber-700 text-white hover:bg-amber-800"
+            }`}
+          >
+            {saved ? "Saved!" : "Save settings"}
+          </button>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-amber-200 p-6 space-y-4">
+          <div>
+            <h2 className="font-serif font-semibold text-ink text-lg">Audio</h2>
+            <p className="text-sm text-amber-700 mt-1">
+              When disabled, sentence clicks use Chrome&apos;s built-in Google TTS instead.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-ink">LibriVox audiobook linking</p>
+              <p className="text-xs text-amber-500 mt-0.5">
+                Search and sync public-domain audiobooks from LibriVox
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={settings.audiobookEnabled}
+              onClick={() => update("audiobookEnabled", !settings.audiobookEnabled)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 ${
+                settings.audiobookEnabled ? "bg-amber-700" : "bg-amber-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transition-transform ${
+                  settings.audiobookEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
 
           <button

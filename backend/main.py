@@ -7,6 +7,9 @@ load_dotenv()
 
 from routers.books import router as books_router
 from routers.ai import router as ai_router
+from routers.audiobooks import router as audiobooks_router
+from routers.auth import router as auth_router
+from routers.user import router as user_router
 from services.db import init_db
 
 
@@ -18,6 +21,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Book Reader AI", version="1.0.0", lifespan=lifespan)
 
+import os
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -26,6 +33,7 @@ app.add_middleware(
         "http://localhost:3001",
         "http://127.0.0.1:3001",
         "tauri://localhost",
+        *([FRONTEND_URL] if FRONTEND_URL else []),
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -46,8 +54,11 @@ class PrivateNetworkMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(PrivateNetworkMiddleware)
 
+app.include_router(auth_router, prefix="/api")
+app.include_router(user_router, prefix="/api")
 app.include_router(books_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
+app.include_router(audiobooks_router, prefix="/api")
 
 
 @app.get("/api/health")

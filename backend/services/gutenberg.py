@@ -49,6 +49,44 @@ async def get_book_text(book_id: int) -> str:
     raise ValueError(f"Could not fetch text for book {book_id}. Last error: {last_error}")
 
 
+async def get_book_images(book_id: int) -> list[dict]:
+    """
+    Fetch the Gutenberg HTML version and extract all illustration images
+    in document order.  Returns [{url, caption}, ...].
+    Returns [] if the HTML page is unavailable or has no images.
+    """
+    html_url = f"https://www.gutenberg.org/cache/epub/{book_id}/pg{book_id}-images.html"
+    base_url = f"https://www.gutenberg.org/cache/epub/{book_id}/"
+    try:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.get(html_url)
+            if resp.status_code != 200:
+                return []
+        soup = BeautifulSoup(resp.text, "html.parser")
+        images = []
+        for img in soup.find_all("img"):
+            src = img.get("src", "")
+            if not src:
+                continue
+            # Make absolute
+            if src.startswith("http"):
+                abs_url = src
+            else:
+                abs_url = base_url + src.lstrip("./")
+            # Caption: try alt, then nearest figcaption / p.caption sibling
+            caption = img.get("alt", "").strip()
+            if not caption:
+                parent = img.find_parent(["figure", "div"])
+                if parent:
+                    cap_el = parent.find(["figcaption", "p"])
+                    if cap_el:
+                        caption = cap_el.get_text(" ", strip=True)
+            images.append({"url": abs_url, "caption": caption})
+        return images
+    except Exception:
+        return []
+
+
 def _format_book_meta(book: dict) -> dict:
     formats = book.get("formats", {})
     cover = formats.get("image/jpeg", "")

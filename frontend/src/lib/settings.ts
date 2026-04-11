@@ -1,11 +1,13 @@
 export interface AppSettings {
   insightLang: string;
   translationLang: string;
+  audiobookEnabled: boolean;
 }
 
 const DEFAULTS: AppSettings = {
   insightLang: "en",
   translationLang: "en",
+  audiobookEnabled: true,
 };
 
 const KEY = "book-reader-settings";

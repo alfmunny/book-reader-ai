@@ -121,36 +121,41 @@ Tests run automatically on every push and pull request via GitHub Actions.
 
 ## Deployment
 
-The app is deployed on **Vercel** (frontend) + **Railway** (backend). Every push to `main` triggers a re-deploy.
+The app is deployed on **Vercel** (frontend) + **Railway** (backend). Every push to `main` triggers an auto-deploy on both platforms — no GitHub Actions wiring required, both connect natively to the GitHub repo.
+
+See `backend/.env.example` and `frontend/.env.example` for the full list of environment variables and how to generate each one.
 
 ### Backend — Railway
 
-1. New Project → Deploy from GitHub → select this repo
-2. Set the root to `/` (Railway reads `railway.json` automatically)
-3. Add environment variables:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_CLIENT_ID=<your-oauth-client-id>
-JWT_SECRET=<random-32+-chars>
-ENCRYPTION_KEY=<generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())">
-FRONTEND_URL=https://<your-vercel-url>
-```
+1. **New Project → Deploy from GitHub → select this repo**
+2. Railway reads `railway.json` automatically (Dockerfile build, health check at `/api/health`).
+3. **Add environment variables** from `backend/.env.example`:
+   - `JWT_SECRET` — `openssl rand -hex 32`
+   - `GOOGLE_CLIENT_ID` — from Google Cloud Console OAuth credentials
+   - `FRONTEND_URL` — `https://<your-vercel-url>` (after the frontend is deployed)
+   - `ENCRYPTION_KEY` — optional, derived from `JWT_SECRET` if unset
+   - `YOUTUBE_API_KEY` — optional, only for the "find related videos" feature
+4. **⚠ Data persistence** (important — see "known limitation" below).
 
 ### Frontend — Vercel
 
-1. New Project → Import from GitHub → select this repo
+1. **New Project → Import from GitHub → select this repo**
 2. Set **Root Directory** to `frontend`
-3. Add environment variables:
+3. **Add environment variables** from `frontend/.env.example`:
+   - `NEXT_PUBLIC_API_URL` — `https://<your-railway-url>/api`
+   - `AUTH_SECRET` — `openssl rand -base64 32`
+   - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` — same OAuth credentials as the backend
+4. **Google OAuth setup**: in Google Cloud Console, add the Vercel domain to **Authorized JavaScript origins** and add `https://<your-vercel-url>/api/auth/callback/google` to **Authorized redirect URIs**.
 
-```env
-NEXT_PUBLIC_API_URL=https://<your-railway-url>/api
-AUTH_GOOGLE_ID=<your-oauth-client-id>
-AUTH_GOOGLE_SECRET=<your-oauth-client-secret>
-AUTH_SECRET=<random-string>
-```
+### Known limitation: SQLite data persistence on Railway
 
-4. In your Google OAuth app, add the Vercel domain to authorised origins and redirect URIs.
+By default, Railway containers have an **ephemeral filesystem** — every redeploy wipes the SQLite file at `/app/books.db`. This means:
+
+- Cached book text and translations are lost
+- User accounts and encrypted Gemini keys are lost
+- Audiobook → LibriVox links are lost
+
+The minimum fix is to attach a Railway **volume** mounted at `/app` (or wherever the SQLite file lives), so the file survives redeploys. The longer-term fix is to migrate to managed Postgres (Railway, Neon, Supabase). Both are tracked as future work.
 
 ---
 
@@ -194,20 +199,20 @@ book-reader-ai/
 
 | Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Yes* | Claude API key (* not needed if all users have Gemini keys) |
+| `JWT_SECRET` | Yes | Secret for signing backend JWTs (32+ chars). Generate with `openssl rand -hex 32`. |
 | `GOOGLE_CLIENT_ID` | Yes | OAuth client ID for verifying Google ID tokens |
-| `JWT_SECRET` | Yes | Secret for signing backend JWTs (32+ chars) |
-| `ENCRYPTION_KEY` | Prod only | Fernet key for encrypting stored Gemini keys |
 | `FRONTEND_URL` | Prod only | Frontend origin added to CORS allow-list |
+| `ENCRYPTION_KEY` | Prod recommended | Fernet key for encrypting stored Gemini keys (derived from JWT_SECRET if unset) |
+| `YOUTUBE_API_KEY` | Optional | Enables the "find related videos" feature |
 
 ### Frontend
 
 | Variable | Required | Description |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL |
-| `AUTH_GOOGLE_ID` | Yes | Google OAuth client ID |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL (include `/api` suffix) |
+| `AUTH_SECRET` | Yes | NextAuth signing secret. Generate with `openssl rand -base64 32`. |
+| `AUTH_GOOGLE_ID` | Yes | Google OAuth client ID (same as backend) |
 | `AUTH_GOOGLE_SECRET` | Yes | Google OAuth client secret |
-| `AUTH_SECRET` | Yes | NextAuth signing secret |
 
 ---
 

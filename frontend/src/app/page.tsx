@@ -116,7 +116,7 @@ export default function Home() {
                   key={book.id}
                   book={book}
                   onClick={() => openBook(book.id)}
-                  badge={timeAgo(book.lastRead)}
+                  badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
                 />
               ))}
             </div>

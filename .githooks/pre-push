@@ -19,6 +19,28 @@ if [ "$CURRENT_BRANCH" = "$PROTECTED" ]; then
   exit 1
 fi
 
+# Auto-merge race guard: if this branch already has a PR that auto-merged,
+# pushing more commits would silently orphan them on a dead branch. Refuse
+# the push and point the developer at cherry-picking onto a fresh branch.
+if command -v gh >/dev/null 2>&1; then
+  PR_STATE="$(gh pr list --head "$CURRENT_BRANCH" --state all --json state -q '.[0].state' 2>/dev/null || true)"
+  if [ "$PR_STATE" = "MERGED" ]; then
+    echo "✗ The PR for branch '$CURRENT_BRANCH' is already MERGED."
+    echo "  Pushing more commits here orphans them on a closed branch."
+    echo ""
+    echo "  Move your new work to a fresh branch:"
+    echo "    git log -1 --format=%H                    # copy this SHA"
+    echo "    git checkout main && git pull"
+    echo "    git checkout -b fix/descriptive-name"
+    echo "    git cherry-pick <sha>"
+    echo "    git push -u origin fix/descriptive-name"
+    echo "    gh pr create"
+    echo ""
+    echo "  To bypass in an emergency: git push --no-verify"
+    exit 1
+  fi
+fi
+
 ROOT="$(git rev-parse --show-toplevel)"
 
 echo "▶ Running frontend tests…"

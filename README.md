@@ -157,6 +157,19 @@ The backend reads `DB_PATH` from the environment and falls back to `backend/book
 
 The Railway setup steps above (volume at `/app/data` + `DB_PATH=/app/data/books.db`) are the minimum viable fix. The longer-term option is to migrate to managed Postgres (Railway Postgres, Neon, Supabase), which removes the volume entirely.
 
+### Post-deploy smoke test
+
+`.github/workflows/smoke-test.yml` polls the live backend health endpoint and the live frontend `/login` page after every push to `main` (and every 6 hours on a schedule). It catches the class of bug that only fails inside the real container — port expansion, missing env vars, volume mount problems — that unit tests and the Docker build CI cannot reach.
+
+Add the deployment URLs as **repository variables** (Settings → Secrets and variables → Actions → **Variables** tab — these are public URLs, not secrets):
+
+| Variable | Example value |
+|---|---|
+| `BACKEND_URL` | `https://book-reader-ai-backend.up.railway.app` |
+| `FRONTEND_URL` | `https://book-reader-ai.vercel.app` |
+
+The workflow gracefully skips each check if its variable is unset, so the workflow won't break `main` if you haven't wired the URLs up yet.
+
 ---
 
 ## Project structure

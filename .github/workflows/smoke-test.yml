@@ -1,0 +1,95 @@
+name: Smoke test (post-deploy)
+
+# Runs after every push to main, after Railway and Vercel have had time
+# to redeploy. Polls the live backend health endpoint and the live
+# frontend login page to verify the deploy actually came up — catches
+# the class of bug that only fails inside the real container, which
+# unit tests and the Docker build CI cannot reach.
+#
+# Required repository variables (Settings → Secrets and variables →
+# Actions → Variables tab — these are public URLs, not secrets):
+#
+#   BACKEND_URL   e.g. https://book-reader-ai-backend.up.railway.app
+#   FRONTEND_URL  e.g. https://book-reader-ai.vercel.app
+#
+# The workflow gracefully skips each check if its variable is unset, so
+# it won't break main if you haven't wired the URLs up yet.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Every 6 hours, catch any silent outage between deploys.
+    - cron: "0 */6 * * *"
+
+jobs:
+  smoke-backend:
+    name: Backend health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll backend /api/health
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::warning::BACKEND_URL repository variable is not set — skipping backend smoke test."
+            echo "Add it under Settings → Secrets and variables → Actions → Variables."
+            exit 0
+          fi
+
+          URL="${BACKEND_URL%/}/api/health"
+          echo "Polling $URL for up to 5 minutes…"
+          deadline=$((SECONDS + 300))
+          attempt=0
+          while [ $SECONDS -lt $deadline ]; do
+            attempt=$((attempt + 1))
+            status=$(curl -sS -o /tmp/body -w "%{http_code}" "$URL" || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "✓ Backend health check passed (attempt $attempt)"
+              cat /tmp/body
+              echo ""
+              exit 0
+            fi
+            echo "  attempt $attempt: HTTP $status — retrying in 10s"
+            sleep 10
+          done
+
+          echo "::error::Backend smoke test failed after 5 minutes — last status: $status"
+          echo "Last response body:"
+          cat /tmp/body 2>/dev/null || echo "(no body)"
+          exit 1
+
+  smoke-frontend:
+    name: Frontend availability
+    runs-on: ubuntu-latest
+    steps:
+      - name: Poll frontend /login
+        env:
+          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        run: |
+          if [ -z "$FRONTEND_URL" ]; then
+            echo "::warning::FRONTEND_URL repository variable is not set — skipping frontend smoke test."
+            echo "Add it under Settings → Secrets and variables → Actions → Variables."
+            exit 0
+          fi
+
+          # /login is the only public route — every other route triggers
+          # a 307 redirect to /login under the auth middleware.
+          URL="${FRONTEND_URL%/}/login"
+          echo "Polling $URL for up to 5 minutes…"
+          deadline=$((SECONDS + 300))
+          attempt=0
+          while [ $SECONDS -lt $deadline ]; do
+            attempt=$((attempt + 1))
+            status=$(curl -sS -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            if [ "$status" = "200" ]; then
+              echo "✓ Frontend /login responded 200 (attempt $attempt)"
+              exit 0
+            fi
+            echo "  attempt $attempt: HTTP $status — retrying in 10s"
+            sleep 10
+          done
+
+          echo "::error::Frontend smoke test failed after 5 minutes — last status: $status"
+          exit 1

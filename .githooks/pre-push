@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Runs the full test suite before every push.
+# To skip in an emergency: git push --no-verify
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+echo "▶ Running frontend tests…"
+cd "$ROOT/frontend" && npm test -- --no-coverage --ci
+
+echo "▶ Running backend tests…"
+cd "$ROOT/backend" && pytest --tb=short -q
+
+echo "✓ All tests passed."

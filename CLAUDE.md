@@ -7,6 +7,11 @@
 - New behaviour → write a test that would have failed before the change
 - Bug fix → write a test that reproduces the bug, then fix it
 - Never mark a task done until the relevant tests pass
+- After completing a feature or bug fix, run the **full** test suite and confirm it passes before committing:
+  ```
+  cd frontend && npm test -- --no-coverage --ci
+  cd backend && pytest --tb=short -q
+  ```
 
 ### Frontend (Jest + React Testing Library)
 - Test files live in `frontend/src/__tests__/`

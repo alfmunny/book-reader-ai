@@ -10,6 +10,9 @@ jobs:
   test-frontend:
     name: Frontend tests (Jest)
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
     defaults:
       run:
         working-directory: frontend
@@ -23,11 +26,24 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      - run: npm test -- --no-coverage --ci
+      - run: npm test -- --ci --reporters=default --reporters=jest-junit
+        env:
+          JEST_JUNIT_OUTPUT_FILE: jest-results.xml
+
+      - name: Publish frontend test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Frontend (Jest)
+          path: frontend/jest-results.xml
+          reporter: jest-junit
 
   test-backend:
     name: Backend tests (pytest)
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
     defaults:
       run:
         working-directory: backend
@@ -41,10 +57,18 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - run: pip install -r requirements.txt
-      - run: pytest --tb=short
+      - run: pytest --tb=short --junitxml=pytest-results.xml
         env:
           JWT_SECRET: ci-test-secret
           ANTHROPIC_API_KEY: dummy-for-tests
+
+      - name: Publish backend test results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend (pytest)
+          path: backend/pytest-results.xml
+          reporter: java-junit
 
   docker-build:
     name: Verify Docker build

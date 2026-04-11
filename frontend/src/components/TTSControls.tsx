@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { synthesizeSpeech } from "@/lib/api";
+import { getSettings } from "@/lib/settings";
 
 interface Props {
   text: string;
@@ -46,20 +47,19 @@ export default function TTSControls({ text, language }: Props) {
     setStatus("loading");
 
     try {
-      // Pass signal so the fetch is cancelled when stop is clicked
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"}/ai/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language, rate }),
-        signal: abort.signal,
-      });
-      if (!res.ok) throw new Error("TTS failed");
-      const blob = await res.blob();
+      // Use the shared synthesizeSpeech helper so auth header and the
+      // user's TTS-provider preference are both honoured. Pass the
+      // AbortSignal so clicking Stop cancels the in-flight request
+      // (important for cost control on Gemini TTS).
+      const provider = getSettings().ttsProvider;
+      const url = await synthesizeSpeech(text, language, rate, provider, abort.signal);
 
       // Bail out if stop was pressed while we were fetching
-      if (gen !== genRef.current) return;
+      if (gen !== genRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
 
-      const url = URL.createObjectURL(blob);
       blobUrlRef.current = url;
       const audio = new Audio(url);
       audioRef.current = audio;
@@ -71,7 +71,9 @@ export default function TTSControls({ text, language }: Props) {
     } catch (e: unknown) {
       if (gen !== genRef.current) return;
       if (e instanceof Error && e.name === "AbortError") return;
-      // Fallback to Web Speech API
+      // Fallback to the browser's Web Speech API. This is intentionally
+      // a "last resort" — quality is poor and provider preference can't
+      // be honoured. Most failures here are network/auth issues.
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = language;
       utter.rate = rate;

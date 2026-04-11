@@ -202,9 +202,35 @@ test("synthesizeSpeech includes Authorization header when token is set", async (
   expect(headers.Authorization).toBe("Bearer my-jwt");
 });
 
+test("synthesizeSpeech forwards an AbortSignal to fetch", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  const abort = new AbortController();
+  await synthesizeSpeech("Hello", "en", 1.0, "auto", abort.signal);
+  const opts = (global.fetch as jest.Mock).mock.calls[0][1];
+  expect(opts.signal).toBe(abort.signal);
+});
+
 test("synthesizeSpeech throws on non-ok response", async () => {
-  global.fetch = jest.fn().mockResolvedValue({ ok: false });
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    statusText: "Bad Request",
+    json: jest.fn().mockResolvedValue({}),
+  });
   await expect(synthesizeSpeech("Hello", "en")).rejects.toThrow("TTS failed");
+});
+
+test("synthesizeSpeech surfaces backend error detail", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    statusText: "Bad Request",
+    json: jest.fn().mockResolvedValue({ detail: "Gemini API key required. Please add it in your profile." }),
+  });
+  await expect(synthesizeSpeech("Hello", "en", 1.0, "google"))
+    .rejects.toThrow(/Gemini API key required/);
 });
 
 // ── Audiobooks ────────────────────────────────────────────────────────────────

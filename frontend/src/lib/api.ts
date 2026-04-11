@@ -111,7 +111,8 @@ export async function synthesizeSpeech(
   text: string,
   language: string,
   rate = 1.0,
-  provider: "auto" | "edge" | "google" = "auto"
+  provider: "auto" | "edge" | "google" = "auto",
+  signal?: AbortSignal
 ): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -121,8 +122,14 @@ export async function synthesizeSpeech(
     method: "POST",
     headers,
     body: JSON.stringify({ text, language, rate, provider }),
+    signal,
   });
-  if (!res.ok) throw new Error("TTS failed");
+  if (!res.ok) {
+    // Surface the backend's error detail when available so users see e.g.
+    // "Gemini API key required" instead of a generic "TTS failed".
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "TTS failed");
+  }
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }

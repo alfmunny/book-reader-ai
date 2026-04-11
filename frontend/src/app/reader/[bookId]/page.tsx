@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, translateText, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, BookImage, Audiobook } from "@/lib/api";
-import { recordRecentBook } from "@/lib/recentBooks";
+import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
@@ -26,7 +26,7 @@ export default function ReaderPage() {
   const [meta, setMeta] = useState<BookMeta | null>(metaCache.get(bookId) ?? null);
   const [chapters, setChapters] = useState<BookChapter[]>(chaptersCache.get(bookId) ?? []);
   const [bookImages, setBookImages] = useState<BookImage[]>(imagesCache.get(bookId) ?? []);
-  const [chapterIndex, setChapterIndex] = useState(0);
+  const [chapterIndex, setChapterIndex] = useState(() => getLastChapter(Number(bookId)));
   const [loading, setLoading] = useState(!chaptersCache.has(bookId));
   const [error, setError] = useState("");
 
@@ -121,8 +121,9 @@ export default function ReaderPage() {
         setChapters(data.chapters);
         setMeta(data.meta);
         setBookImages(data.images ?? []);
-        setChapterIndex(0);
-        recordRecentBook(data.meta);
+        const savedChapter = getLastChapter(Number(bookId));
+        setChapterIndex(Math.min(savedChapter, data.chapters.length - 1));
+        recordRecentBook(data.meta, savedChapter);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -179,6 +180,7 @@ export default function ReaderPage() {
 
   function goToChapter(index: number) {
     setChapterIndex(index);
+    saveLastChapter(Number(bookId), index);
     setSelectedText("");
     setTranslatedParagraphs([]);
     setAudioCurrentTime(0);

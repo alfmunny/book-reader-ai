@@ -26,7 +26,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - run: npm ci
-      - run: npm test -- --ci --reporters=default --reporters=jest-junit
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --ci --reporters=default --reporters=jest-junit
         env:
           JEST_JUNIT_OUTPUT_FILE: jest-results.xml
 
@@ -37,6 +39,30 @@ jobs:
           name: Frontend (Jest)
           path: frontend/jest-results.xml
           reporter: jest-junit
+
+      - name: Upload frontend coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+
+      - name: Frontend coverage summary
+        if: always()
+        run: |
+          echo "## Frontend Coverage" >> $GITHUB_STEP_SUMMARY
+          npx istanbul-lib-coverage 2>/dev/null || true
+          # Extract summary from Jest output already printed above
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat coverage/coverage-summary.json 2>/dev/null | node -e "
+            const d = require('fs').readFileSync('/dev/stdin','utf8');
+            const j = JSON.parse(d).total;
+            console.log('Statements : ' + j.statements.pct + '%');
+            console.log('Branches   : ' + j.branches.pct + '%');
+            console.log('Functions  : ' + j.functions.pct + '%');
+            console.log('Lines      : ' + j.lines.pct + '%');
+          " 2>/dev/null || echo "Coverage report unavailable" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   test-backend:
     name: Backend tests (pytest)
@@ -57,7 +83,9 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - run: pip install -r requirements.txt
-      - run: pytest --tb=short --junitxml=pytest-results.xml
+
+      - name: Run tests with coverage
+        run: pytest --tb=short --junitxml=pytest-results.xml
         env:
           JWT_SECRET: ci-test-secret
           ANTHROPIC_API_KEY: dummy-for-tests
@@ -69,6 +97,31 @@ jobs:
           name: Backend (pytest)
           path: backend/pytest-results.xml
           reporter: java-junit
+
+      - name: Upload backend coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+
+      - name: Backend coverage summary
+        if: always()
+        run: |
+          echo "## Backend Coverage" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          python - <<'EOF'
+          import xml.etree.ElementTree as ET, os
+          try:
+              tree = ET.parse("coverage.xml")
+              root = tree.getroot()
+              rate = lambda a: f"{float(root.get(a, 0)) * 100:.1f}%"
+              print(f"Lines      : {rate('line-rate')}")
+              print(f"Branches   : {rate('branch-rate')}")
+          except Exception as e:
+              print(f"Coverage report unavailable: {e}")
+          EOF
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   docker-build:
     name: Verify Docker build

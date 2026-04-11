@@ -13,3 +13,4 @@ edge-tts==6.1.10
 google-genai>=1.0.0
 python-jose[cryptography]==3.3.0
 cryptography>=42.0.0
+respx

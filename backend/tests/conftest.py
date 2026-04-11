@@ -1,0 +1,57 @@
+"""
+Shared fixtures for router/integration tests.
+
+Provides:
+  - `client`  — AsyncClient pointed at a fresh test app with a temp DB
+  - `auth_headers` — Bearer token for a pre-created test user
+"""
+
+import pytest
+import services.db as db_module
+from services.db import init_db, get_or_create_user, get_user_by_id
+from services.auth import create_jwt, get_current_user
+from main import app
+from httpx import AsyncClient, ASGITransport
+
+
+TEST_USER = {
+    "google_id": "test-google-id",
+    "email": "test@example.com",
+    "name": "Test User",
+    "picture": "",
+}
+
+
+@pytest.fixture
+async def tmp_db(monkeypatch, tmp_path):
+    path = str(tmp_path / "test.db")
+    monkeypatch.setattr(db_module, "DB_PATH", path)
+    await init_db()
+    return path
+
+
+@pytest.fixture
+async def test_user(tmp_db):
+    return await get_or_create_user(**TEST_USER)
+
+
+@pytest.fixture
+async def client(test_user):
+    """
+    AsyncClient with auth dependency overridden to return test_user.
+    The real DB is already initialised by the test_user fixture.
+    """
+    async def _override():
+        # Re-fetch on every request so tests that mutate the user (e.g. set gemini key) see fresh data
+        return await get_user_by_id(test_user["id"])
+
+    app.dependency_overrides[get_current_user] = _override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers(test_user):
+    token = create_jwt(test_user["id"], test_user["email"])
+    return {"Authorization": f"Bearer {token}"}

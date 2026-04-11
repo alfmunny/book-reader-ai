@@ -78,6 +78,13 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 7
 
+      - name: Upload E2E results summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: frontend/e2e-results.json
+
   test-backend:
     name: Backend tests (pytest)
     runs-on: ubuntu-latest
@@ -134,9 +141,9 @@ jobs:
 
   coverage-comment:
     name: Post coverage comment
-    needs: [test-frontend, test-backend]
+    needs: [test-frontend, test-backend, test-e2e]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && always()
     permissions:
       pull-requests: write
     steps:
@@ -150,24 +157,58 @@ jobs:
           name: backend-coverage-summary
           path: backend-summary
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-results
+          path: e2e-summary
+
       - uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
 
+            // ── Unit coverage (Jest) ────────────────────────────────────────
             const fe = JSON.parse(fs.readFileSync('frontend-summary/coverage-summary.json', 'utf8')).total;
+
+            // ── Unit coverage (pytest) ──────────────────────────────────────
             const [beLines, beBranches] = fs.readFileSync('backend-summary/coverage-numbers.txt', 'utf8').trim().split('\n');
+
+            // ── E2E results (Playwright) ────────────────────────────────────
+            let e2eLine = 'E2E results unavailable';
+            try {
+              const e2e = JSON.parse(fs.readFileSync('e2e-summary/e2e-results.json', 'utf8'));
+              const s = e2e.stats || {};
+              const passed = s.expected ?? 0;
+              const failed = s.unexpected ?? 0;
+              const flaky = s.flaky ?? 0;
+              const skipped = s.skipped ?? 0;
+              const total = passed + failed + flaky + skipped;
+              const icon = failed > 0 ? '❌' : flaky > 0 ? '⚠️' : '✅';
+              e2eLine = `${icon} **${passed} / ${total}** passed`;
+              if (failed > 0) e2eLine += ` · ${failed} failed`;
+              if (flaky > 0) e2eLine += ` · ${flaky} flaky`;
+              if (skipped > 0) e2eLine += ` · ${skipped} skipped`;
+              if (s.duration) e2eLine += ` · ${(s.duration / 1000).toFixed(1)}s`;
+            } catch (e) {
+              core.warning(`Could not parse E2E results: ${e.message}`);
+            }
 
             const pct = (v) => `${v}%`;
             const body = [
               '## Coverage Report',
               '',
+              '### Unit test coverage',
+              '',
               '| | Statements | Branches | Functions | Lines |',
               '|---|---|---|---|---|',
-              `| **Frontend** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`,
-              `| **Backend**  | — | ${beLines}% (lines) / ${beBranches}% (branches) | — | — |`,
+              `| **Frontend (Jest)** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`,
+              `| **Backend (pytest)** | — | ${beBranches}% | — | ${beLines}% |`,
               '',
-              '_Updated on every push to this PR._',
+              '### E2E user flows (Playwright)',
+              '',
+              e2eLine,
+              '',
+              '_Updated on every push to this PR. E2E tests verify real user flows in a browser — they complement unit coverage rather than overlap with it._',
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({

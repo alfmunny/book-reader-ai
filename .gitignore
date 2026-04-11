@@ -22,6 +22,7 @@ frontend/tsconfig.tsbuildinfo
 frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
+frontend/e2e-results.json
 
 # Tauri
 src-tauri/target/

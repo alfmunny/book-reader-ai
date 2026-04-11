@@ -27,6 +27,13 @@
 - Use `pytest-asyncio` for async route/service tests
 - Mock external HTTP calls (Anthropic, Gemini, Google) — never hit real APIs in tests
 
+### E2E (Playwright)
+- Test files live in `frontend/e2e/`
+- Run with: `cd frontend && npm run test:e2e` (or `:ui` for interactive mode)
+- Dev server is started automatically by Playwright with `PLAYWRIGHT_TEST=1` to bypass auth middleware
+- Backend is mocked via `page.route()` — see `frontend/e2e/fixtures.ts` for shared API stubs
+- Use E2E for full user flows (navigation, persistence across reloads) where unit tests fall short
+
 ### What to test
 - Happy path: the feature works as intended
 - Edge cases that caused or could cause bugs (empty input, missing data, race conditions)

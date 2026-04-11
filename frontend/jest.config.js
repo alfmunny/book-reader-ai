@@ -18,6 +18,7 @@ const customConfig = {
     "!src/__tests__/**",
     "!src/app/layout.tsx",
   ],
+  testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/e2e/", "<rootDir>/.next/"],
   coverageReporters: ["text", "lcov", "json-summary"],
   coverageDirectory: "coverage",
 };

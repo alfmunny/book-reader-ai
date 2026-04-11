@@ -23,4 +23,8 @@ ENV PORT=8000
 
 EXPOSE $PORT
 
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+# Exec form with explicit `sh -c` so $PORT gets expanded by the shell.
+# Plain shell-form CMD also works in vanilla Docker, but some hosts
+# (Railway in particular) sometimes exec the CMD directly without a shell,
+# causing the literal string "$PORT" to be passed to uvicorn.
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]

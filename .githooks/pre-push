@@ -10,6 +10,11 @@ echo "▶ Running frontend tests…"
 cd "$ROOT/frontend" && npm test -- --no-coverage --ci
 
 echo "▶ Running backend tests…"
-cd "$ROOT/backend" && pytest --tb=short -q
+cd "$ROOT/backend"
+# Activate venv if present, otherwise fall back to system pytest
+if [ -f venv/bin/activate ]; then
+  source venv/bin/activate
+fi
+pytest --tb=short -q
 
 echo "✓ All tests passed."

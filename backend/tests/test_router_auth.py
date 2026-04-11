@@ -1,0 +1,59 @@
+"""
+Tests for routers/auth.py  — Google OAuth login endpoint.
+"""
+
+import pytest
+from unittest.mock import AsyncMock, patch
+
+
+FAKE_GOOGLE_INFO = {
+    "sub": "google-123",
+    "email": "user@example.com",
+    "name": "Test User",
+    "picture": "https://pic.example.com/a.jpg",
+}
+
+
+async def test_google_login_returns_token_and_user(client):
+    with patch("routers.auth.verify_google_id_token", new_callable=AsyncMock, return_value=FAKE_GOOGLE_INFO):
+        resp = await client.post("/api/auth/google", json={"id_token": "valid-token"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "token" in data
+    assert data["user"]["email"] == "user@example.com"
+    assert data["user"]["name"] == "Test User"
+    assert "hasGeminiKey" in data["user"]
+
+
+async def test_google_login_invalid_token_returns_401(client):
+    with patch(
+        "routers.auth.verify_google_id_token",
+        new_callable=AsyncMock,
+        side_effect=ValueError("bad token"),
+    ):
+        resp = await client.post("/api/auth/google", json={"id_token": "bad-token"})
+
+    assert resp.status_code == 401
+    assert "bad token" in resp.json()["detail"]
+
+
+async def test_google_login_creates_user_in_db(client, tmp_db):
+    with patch("routers.auth.verify_google_id_token", new_callable=AsyncMock, return_value=FAKE_GOOGLE_INFO):
+        resp = await client.post("/api/auth/google", json={"id_token": "valid-token"})
+
+    assert resp.status_code == 200
+    # Second login with same google_id should return same user
+    with patch("routers.auth.verify_google_id_token", new_callable=AsyncMock, return_value=FAKE_GOOGLE_INFO):
+        resp2 = await client.post("/api/auth/google", json={"id_token": "valid-token"})
+
+    assert resp2.json()["user"]["id"] == resp.json()["user"]["id"]
+
+
+async def test_google_login_missing_optional_fields(client):
+    minimal_info = {"sub": "google-456"}
+    with patch("routers.auth.verify_google_id_token", new_callable=AsyncMock, return_value=minimal_info):
+        resp = await client.post("/api/auth/google", json={"id_token": "token"})
+
+    assert resp.status_code == 200
+    assert resp.json()["user"]["email"] == ""

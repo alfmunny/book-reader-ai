@@ -158,3 +158,117 @@ async def test_tts_returns_audio_bytes(client):
     assert resp.status_code == 200
     assert resp.content == fake_audio
     assert resp.headers["content-type"] == "audio/mpeg"
+
+
+# ── Videos ────────────────────────────────────────────────────────────────────
+
+async def test_videos_returns_results(client):
+    fake_videos = [{"id": "abc", "title": "Faust Film", "url": "https://youtube.com/watch?v=abc"}]
+    with patch("routers.ai.claude_youtube", new_callable=AsyncMock, return_value="Faust opera film"), \
+         patch("routers.ai.search_videos", new_callable=AsyncMock, return_value=fake_videos):
+        resp = await client.post("/api/ai/videos", json={
+            "passage": "Faust sells his soul.",
+            "book_title": "Faust",
+            "author": "Goethe",
+        })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["query"] == "Faust opera film"
+    assert len(data["videos"]) == 1
+
+
+async def test_videos_uses_gemini_when_key_set(client, test_user):
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-gemini-key"))
+
+    with patch("routers.ai.gemini") as mock_gemini, \
+         patch("routers.ai.search_videos", new_callable=AsyncMock, return_value=[]):
+        mock_gemini.suggest_youtube_query = AsyncMock(return_value="Faust opera")
+        resp = await client.post("/api/ai/videos", json={
+            "passage": "text", "book_title": "Faust", "author": "Goethe",
+        })
+
+    assert resp.status_code == 200
+    mock_gemini.suggest_youtube_query.assert_called_once()
+
+
+# ── Error paths ───────────────────────────────────────────────────────────────
+
+async def test_insight_error_returns_500(client):
+    with patch("routers.ai.claude_insight", new_callable=AsyncMock, side_effect=RuntimeError("AI down")):
+        resp = await client.post("/api/ai/insight", json={
+            "chapter_text": "text", "book_title": "Book", "author": "Author",
+        })
+    assert resp.status_code == 500
+    assert "AI down" in resp.json()["detail"]
+
+
+async def test_qa_error_returns_500(client):
+    with patch("routers.ai.claude_qa", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
+        resp = await client.post("/api/ai/qa", json={
+            "question": "?", "passage": "text", "book_title": "Book", "author": "Author",
+        })
+    assert resp.status_code == 500
+
+
+async def test_pronunciation_error_returns_500(client):
+    with patch("routers.ai.claude_pronunciation", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
+        resp = await client.post("/api/ai/pronunciation", json={
+            "original_text": "Hello", "spoken_text": "Helo",
+        })
+    assert resp.status_code == 500
+
+
+async def test_translate_error_returns_500(client):
+    with patch("routers.ai.claude_translate", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
+        resp = await client.post("/api/ai/translate", json={
+            "text": "text", "source_language": "de", "target_language": "en",
+        })
+    assert resp.status_code == 500
+
+
+async def test_tts_error_returns_500(client):
+    with patch("routers.ai.synthesize", new_callable=AsyncMock, side_effect=RuntimeError("TTS fail")):
+        resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en", "rate": 1.0})
+    assert resp.status_code == 500
+
+
+async def test_videos_error_returns_500(client):
+    with patch("routers.ai.claude_youtube", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
+        resp = await client.post("/api/ai/videos", json={
+            "passage": "text", "book_title": "Book", "author": "Author",
+        })
+    assert resp.status_code == 500
+
+
+# ── Gemini paths for QA and pronunciation ─────────────────────────────────────
+
+async def test_qa_uses_gemini_when_key_set(client, test_user):
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-gemini-key"))
+
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.answer_question = AsyncMock(return_value="Gemini answer")
+        resp = await client.post("/api/ai/qa", json={
+            "question": "?", "passage": "text", "book_title": "Book", "author": "Author",
+        })
+
+    assert resp.status_code == 200
+    mock_gemini.answer_question.assert_called_once()
+
+
+async def test_pronunciation_uses_gemini_when_key_set(client, test_user):
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-gemini-key"))
+
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.check_pronunciation = AsyncMock(return_value="Gemini feedback")
+        resp = await client.post("/api/ai/pronunciation", json={
+            "original_text": "Hello", "spoken_text": "Helo",
+        })
+
+    assert resp.status_code == 200
+    mock_gemini.check_pronunciation.assert_called_once()

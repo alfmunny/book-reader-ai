@@ -40,29 +40,12 @@ jobs:
           path: frontend/jest-results.xml
           reporter: jest-junit
 
-      - name: Upload frontend coverage report
+      - name: Upload coverage summary
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: frontend-coverage
-          path: frontend/coverage/lcov.info
-
-      - name: Frontend coverage summary
-        if: always()
-        run: |
-          echo "## Frontend Coverage" >> $GITHUB_STEP_SUMMARY
-          npx istanbul-lib-coverage 2>/dev/null || true
-          # Extract summary from Jest output already printed above
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat coverage/coverage-summary.json 2>/dev/null | node -e "
-            const d = require('fs').readFileSync('/dev/stdin','utf8');
-            const j = JSON.parse(d).total;
-            console.log('Statements : ' + j.statements.pct + '%');
-            console.log('Branches   : ' + j.branches.pct + '%');
-            console.log('Functions  : ' + j.functions.pct + '%');
-            console.log('Lines      : ' + j.lines.pct + '%');
-          " 2>/dev/null || echo "Coverage report unavailable" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          name: frontend-coverage-summary
+          path: frontend/coverage/coverage-summary.json
 
   test-backend:
     name: Backend tests (pytest)
@@ -98,30 +81,86 @@ jobs:
           path: backend/pytest-results.xml
           reporter: java-junit
 
-      - name: Upload backend coverage report
+      - name: Extract coverage numbers
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+          tree = ET.parse("coverage.xml")
+          root = tree.getroot()
+          lines = float(root.get("line-rate", 0)) * 100
+          branches = float(root.get("branch-rate", 0)) * 100
+          with open("coverage-numbers.txt", "w") as f:
+              f.write(f"{lines:.1f}\n{branches:.1f}\n")
+          EOF
+
+      - name: Upload coverage summary
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-coverage
-          path: backend/coverage.xml
+          name: backend-coverage-summary
+          path: backend/coverage-numbers.txt
 
-      - name: Backend coverage summary
-        if: always()
-        run: |
-          echo "## Backend Coverage" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          python - <<'EOF'
-          import xml.etree.ElementTree as ET, os
-          try:
-              tree = ET.parse("coverage.xml")
-              root = tree.getroot()
-              rate = lambda a: f"{float(root.get(a, 0)) * 100:.1f}%"
-              print(f"Lines      : {rate('line-rate')}")
-              print(f"Branches   : {rate('branch-rate')}")
-          except Exception as e:
-              print(f"Coverage report unavailable: {e}")
-          EOF
-          echo '```' >> $GITHUB_STEP_SUMMARY
+  coverage-comment:
+    name: Post coverage comment
+    needs: [test-frontend, test-backend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage-summary
+          path: frontend-summary
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage-summary
+          path: backend-summary
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const fe = JSON.parse(fs.readFileSync('frontend-summary/coverage-summary.json', 'utf8')).total;
+            const [beLines, beBranches] = fs.readFileSync('backend-summary/coverage-numbers.txt', 'utf8').trim().split('\n');
+
+            const pct = (v) => `${v}%`;
+            const body = [
+              '## Coverage Report',
+              '',
+              '| | Statements | Branches | Functions | Lines |',
+              '|---|---|---|---|---|',
+              `| **Frontend** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`,
+              `| **Backend**  | — | ${beLines}% (lines) / ${beBranches}% (branches) | — | — |`,
+              '',
+              '_Updated on every push to this PR._',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes('## Coverage Report'));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
 
   docker-build:
     name: Verify Docker build

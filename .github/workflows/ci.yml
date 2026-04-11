@@ -47,6 +47,22 @@ jobs:
           name: frontend-coverage-summary
           path: frontend/coverage/coverage-summary.json
 
+      # `next dev` is lenient about TypeScript errors and skips the strict
+      # type-check that `next build` runs. Without this step, things like
+      # "regex flag requires es2018+" or stale imports only fail when Vercel
+      # tries to build, after the PR has already merged. Run the same
+      # invocation Vercel runs so we catch it before merge instead.
+      - name: Verify Next.js production build
+        if: always()
+        run: npm run build
+        env:
+          # next-auth v5 validates config at module load. Provide throwaway
+          # values so the build can boot the auth() factory without crashing.
+          AUTH_SECRET: ci-build-dummy-secret-do-not-use-in-prod
+          AUTH_GOOGLE_ID: ci-build-dummy-id
+          AUTH_GOOGLE_SECRET: ci-build-dummy-secret
+          NEXT_PUBLIC_API_URL: http://stub.test/api
+
   test-e2e:
     name: Frontend E2E (Playwright)
     runs-on: ubuntu-latest

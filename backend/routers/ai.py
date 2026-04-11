@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -64,6 +66,9 @@ class TTSRequest(BaseModel):
     text: str
     language: str = "en"
     rate: float = 1.0
+    # "auto" → resolves to "google" when the user has a Gemini key,
+    #          otherwise falls back to "edge".
+    provider: Literal["auto", "edge", "google"] = "auto"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -144,9 +149,39 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
 
 @router.post("/tts")
 async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
-    """Synthesize text to MP3 using Microsoft Edge neural TTS."""
+    """
+    Synthesize text to speech.
+
+    The chosen provider is one of:
+      - "edge"   Microsoft Edge TTS — free, no API key, MP3 output
+      - "google" Google Gemini TTS — uses the user's Gemini key, WAV output
+      - "auto"   (default) → google if the user has a Gemini key, else edge
+    """
+    # Resolve "auto" to a concrete backend
+    raw_key = user.get("gemini_key")
+    decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+
+    if req.provider == "auto":
+        chosen = "google" if decrypted_key else "edge"
+    else:
+        chosen = req.provider
+
+    if chosen == "google" and not decrypted_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Google TTS requires a Gemini API key. Please add one in your profile.",
+        )
+
     try:
-        audio = await synthesize(req.text, req.language, req.rate)
-        return Response(content=audio, media_type="audio/mpeg")
+        audio, content_type = await synthesize(
+            req.text,
+            req.language,
+            req.rate,
+            provider=chosen,
+            gemini_key=decrypted_key,
+        )
+        return Response(content=audio, media_type=content_type)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

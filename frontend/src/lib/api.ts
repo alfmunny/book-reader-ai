@@ -98,19 +98,29 @@ export function checkPronunciation(
 }
 
 /**
- * Synthesize text via the backend Edge TTS service.
+ * Synthesize text via the backend TTS service.
  * Returns a blob URL that can be passed to new Audio(url).play().
  * The URL should be revoked with URL.revokeObjectURL() when done.
+ *
+ * The `provider` field selects the backend ("auto" lets the server pick
+ * Google Gemini TTS if the user has a Gemini key, else falls back to
+ * Microsoft Edge TTS). Authorization is required, so the call goes
+ * through `request`-style headers.
  */
 export async function synthesizeSpeech(
   text: string,
   language: string,
-  rate = 1.0
+  rate = 1.0,
+  provider: "auto" | "edge" | "google" = "auto"
 ): Promise<string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
+  };
   const res = await fetch(`${BASE}/ai/tts`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, language, rate }),
+    headers,
+    body: JSON.stringify({ text, language, rate, provider }),
   });
   if (!res.ok) throw new Error("TTS failed");
   const blob = await res.blob();

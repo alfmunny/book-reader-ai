@@ -81,15 +81,8 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push("/settings")}
-            title="Settings"
-            className="w-9 h-9 flex items-center justify-center rounded-lg border border-amber-200 text-amber-600 hover:bg-amber-50 hover:text-amber-900 transition-colors text-lg"
-          >
-            ⚙
-          </button>
-          <button
             onClick={() => router.push("/profile")}
-            title={session?.backendUser?.name ?? "Profile"}
+            title={session?.backendUser?.name ?? "Profile & Settings"}
             className="w-9 h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
           >
             {session?.backendUser?.picture ? (

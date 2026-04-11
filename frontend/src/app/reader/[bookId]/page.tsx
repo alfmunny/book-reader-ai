@@ -83,7 +83,10 @@ export default function ReaderPage() {
   const geminiReminderShown = useRef(false);
 
   useEffect(() => {
-    if (!session?.backendToken) return;
+    // Fetch live Gemini-key status. When the session has no token yet (initial
+    // render before hydration, or E2E with auth bypass) the backend will 401
+    // and we silently keep the optimistic default. Once session?.backendToken
+    // changes, the effect re-runs and picks up the real answer.
     getMe().then((me) => setHasGeminiKey(me.hasGeminiKey)).catch(() => {});
   }, [session?.backendToken]);
 
@@ -164,7 +167,13 @@ export default function ReaderPage() {
           setTranslatedParagraphs(r.paragraphs);
         }
       })
-      .catch((e) => console.error("Translation failed:", e))
+      .catch((e) => {
+        // Backend returns 400 "Gemini API key required" when the user has no key.
+        // notifyAIUsed() is guarded by !hasGeminiKey, so it's a no-op for users
+        // who do have a key (in which case the error is some real Gemini failure).
+        console.error("Translation failed:", e);
+        notifyAIUsed();
+      })
       .finally(() => {
         if (currentChapterKey.current === cacheKey) {
           setTranslationLoading(false);
@@ -211,14 +220,14 @@ export default function ReaderPage() {
       {geminiReminderVisible && (
         <div className="shrink-0 bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-4 text-sm text-amber-800">
           <span>
-            AI features are using the app&apos;s shared quota.{" "}
+            AI features require your own Gemini API key.{" "}
             <button
               onClick={() => { window.open("/profile", "_blank"); }}
               className="underline font-medium hover:text-amber-900"
             >
               Add your free Gemini API key
             </button>{" "}
-            to use your own quota instead.
+            to enable them.
           </span>
           <button
             onClick={() => setGeminiReminderVisible(false)}

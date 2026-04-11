@@ -20,6 +20,8 @@ frontend/.env.local
 frontend/.env.*
 frontend/tsconfig.tsbuildinfo
 frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
 
 # Tauri
 src-tauri/target/

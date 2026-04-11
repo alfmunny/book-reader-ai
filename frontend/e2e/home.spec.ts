@@ -30,14 +30,19 @@ test("search for Faust returns result and displays it", async ({ page }) => {
 
 test("quick search pill triggers search", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Pride and Prejudice" }).first().click();
-  await expect(page.getByText("Jane Austen").first()).toBeVisible();
+  // Use Faust — not in the cached library, so clicking the pill really does
+  // trigger a search (instead of matching a pre-existing BookCard).
+  await page.getByRole("button", { name: "Faust" }).click();
+  // Mocked search returns Goethe as the author
+  await expect(page.getByText(/Goethe/)).toBeVisible();
 });
 
 test("clicking a book navigates to reader page", async ({ page }) => {
   await page.goto("/");
-  // Click first book card in the library
-  await page.getByText("Pride and Prejudice").first().click();
+  // Scope to buttons that contain the author text — BookCards wrap both
+  // title and author, while quick-search pills only contain the title.
+  // This avoids ambiguity between the "Pride and Prejudice" pill and card.
+  await page.getByRole("button").filter({ hasText: "Jane Austen" }).first().click();
   await page.waitForURL(/\/reader\/1342/);
   expect(page.url()).toContain("/reader/1342");
 });

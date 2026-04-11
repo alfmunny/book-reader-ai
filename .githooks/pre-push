@@ -21,12 +21,29 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel)"
 
-echo "▶ Running frontend tests…"
+echo "▶ Running frontend unit tests (Jest)…"
 cd "$ROOT/frontend" && npm test -- --no-coverage --ci
 
-echo "▶ Running backend tests…"
+# Run E2E only if Playwright browsers are installed. This is intentional:
+# we don't want to force every contributor to install ~100 MB of browsers
+# on their first push. If E2E files changed, skipping is risky, so warn.
+if [ -d "$HOME/Library/Caches/ms-playwright" ] || [ -d "$HOME/.cache/ms-playwright" ]; then
+  echo "▶ Running frontend E2E tests (Playwright)…"
+  # Strip ambient env vars that should come from playwright.config.ts so a
+  # missing var in CI can't be hidden by a local .env.local on your machine.
+  env -u AUTH_SECRET -u AUTH_GOOGLE_ID -u AUTH_GOOGLE_SECRET -u NEXT_PUBLIC_API_URL \
+    npm run test:e2e
+else
+  echo "⚠ Skipping E2E — Playwright browsers not installed. Run 'cd frontend && npx playwright install chromium'"
+  # Hard-fail if the push touches E2E-related files
+  if git diff --cached --name-only HEAD origin/HEAD 2>/dev/null | grep -qE "^frontend/(e2e/|playwright\.config|src/middleware\.ts|src/auth\.ts)"; then
+    echo "✗ E2E-related files changed but Playwright is not installed — install it first."
+    exit 1
+  fi
+fi
+
+echo "▶ Running backend tests (pytest)…"
 cd "$ROOT/backend"
-# Activate venv if present, otherwise fall back to system pytest
 if [ -f venv/bin/activate ]; then
   source venv/bin/activate
 fi

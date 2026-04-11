@@ -34,6 +34,20 @@
 - Backend is mocked via `page.route()` — see `frontend/e2e/fixtures.ts` for shared API stubs
 - Use E2E for full user flows (navigation, persistence across reloads) where unit tests fall short
 
+### Tests must not depend on ambient state
+
+Tests must be reproducible on any machine with only the committed code. **Do not rely on:**
+
+- `.env.local` or other untracked env files — declare every env var the test needs explicitly (e.g. in `playwright.config.ts` `webServer.env`, or in `conftest.py` `monkeypatch`).
+- Uncommitted source files — if you write a test that patches `module.attribute`, first verify `module` is at its committed state with `git status`.
+- Long-lived local DBs / caches — use fresh temp directories per test run.
+
+**Verification trick:** run the test suite in a stripped environment to simulate CI:
+```bash
+env -i HOME=$HOME PATH=$PATH npm run test:e2e
+```
+If it passes there, it will pass in CI. This caught the `MissingSecret` E2E bug the moment it was introduced.
+
 ### What to test
 - Happy path: the feature works as intended
 - Edge cases that caused or could cause bugs (empty input, missing data, race conditions)

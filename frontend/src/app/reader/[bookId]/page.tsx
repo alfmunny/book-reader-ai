@@ -102,7 +102,7 @@ export default function ReaderPage() {
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
-  const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("inline");
+  const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   const [translationLoading, setTranslationLoading] = useState(false);
 

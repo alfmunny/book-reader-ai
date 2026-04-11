@@ -28,9 +28,19 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "PLAYWRIGHT_TEST=1 NEXT_PUBLIC_API_URL=http://stub.test/api npm run dev -- --port 3100",
+    command: "npm run dev -- --port 3100",
     url: "http://localhost:3100",
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      PLAYWRIGHT_TEST: "1",
+      NEXT_PUBLIC_API_URL: "http://stub.test/api",
+      // NextAuth v5 requires a secret at module load even if we never call auth().
+      // This is a throwaway value used only to boot the dev server for E2E.
+      AUTH_SECRET: "e2e-test-secret-do-not-use-in-prod",
+      // Dummy OAuth values so the provider config validates.
+      AUTH_GOOGLE_ID: "e2e-dummy-id",
+      AUTH_GOOGLE_SECRET: "e2e-dummy-secret",
+    },
   },
 });

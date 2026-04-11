@@ -1,13 +1,23 @@
+export type TTSProvider = "auto" | "edge" | "google";
+
 export interface AppSettings {
   insightLang: string;
   translationLang: string;
   audiobookEnabled: boolean;
+  /**
+   * Which TTS backend to use for sentence-clicked audio.
+   * - "auto"   → Google Gemini TTS if a Gemini key is set, else Edge
+   * - "edge"   → always use Microsoft Edge TTS (free, no key)
+   * - "google" → always use Google Gemini TTS (requires Gemini key)
+   */
+  ttsProvider: TTSProvider;
 }
 
 const DEFAULTS: AppSettings = {
   insightLang: "en",
   translationLang: "en",
   audiobookEnabled: true,
+  ttsProvider: "auto",
 };
 
 const KEY = "book-reader-settings";

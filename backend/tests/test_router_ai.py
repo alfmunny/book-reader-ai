@@ -168,10 +168,14 @@ async def test_pronunciation_with_key_returns_feedback(client, test_user):
 
 # ── TTS ───────────────────────────────────────────────────────────────────────
 
-async def test_tts_returns_audio_bytes(client):
-    """TTS uses edge-tts and does not require a Gemini key."""
+async def test_tts_auto_without_key_uses_edge(client):
+    """auto + no Gemini key → routes to edge backend (MP3)."""
     fake_audio = b"FAKE_MP3_BYTES"
-    with patch("routers.ai.synthesize", new_callable=AsyncMock, return_value=fake_audio):
+    with patch(
+        "routers.ai.synthesize",
+        new_callable=AsyncMock,
+        return_value=(fake_audio, "audio/mpeg"),
+    ) as mock_synth:
         resp = await client.post("/api/ai/tts", json={
             "text": "Hello",
             "language": "en",
@@ -180,6 +184,76 @@ async def test_tts_returns_audio_bytes(client):
     assert resp.status_code == 200
     assert resp.content == fake_audio
     assert resp.headers["content-type"] == "audio/mpeg"
+    assert mock_synth.call_args.kwargs["provider"] == "edge"
+    assert mock_synth.call_args.kwargs["gemini_key"] is None
+
+
+async def test_tts_auto_with_key_uses_google(client, test_user):
+    """auto + user has Gemini key → routes to google backend (WAV)."""
+    await _set_key(test_user)
+    fake_audio = b"FAKE_WAV_BYTES"
+    with patch(
+        "routers.ai.synthesize",
+        new_callable=AsyncMock,
+        return_value=(fake_audio, "audio/wav"),
+    ) as mock_synth:
+        resp = await client.post("/api/ai/tts", json={
+            "text": "Hello",
+            "language": "en",
+            "rate": 1.0,
+        })
+    assert resp.status_code == 200
+    assert resp.content == fake_audio
+    assert resp.headers["content-type"] == "audio/wav"
+    assert mock_synth.call_args.kwargs["provider"] == "google"
+    assert mock_synth.call_args.kwargs["gemini_key"] == "my-gemini-key"
+
+
+async def test_tts_explicit_edge_works_without_key(client):
+    fake_audio = b"FAKE_MP3"
+    with patch(
+        "routers.ai.synthesize",
+        new_callable=AsyncMock,
+        return_value=(fake_audio, "audio/mpeg"),
+    ) as mock_synth:
+        resp = await client.post("/api/ai/tts", json={
+            "text": "Hello",
+            "language": "en",
+            "rate": 1.0,
+            "provider": "edge",
+        })
+    assert resp.status_code == 200
+    assert mock_synth.call_args.kwargs["provider"] == "edge"
+
+
+async def test_tts_explicit_google_without_key_returns_400(client):
+    resp = await client.post("/api/ai/tts", json={
+        "text": "Hello",
+        "language": "en",
+        "rate": 1.0,
+        "provider": "google",
+    })
+    assert resp.status_code == 400
+    assert "Gemini API key" in resp.json()["detail"]
+
+
+async def test_tts_explicit_google_with_key(client, test_user):
+    await _set_key(test_user)
+    fake_audio = b"FAKE_WAV"
+    with patch(
+        "routers.ai.synthesize",
+        new_callable=AsyncMock,
+        return_value=(fake_audio, "audio/wav"),
+    ) as mock_synth:
+        resp = await client.post("/api/ai/tts", json={
+            "text": "Hello",
+            "language": "en",
+            "rate": 1.0,
+            "provider": "google",
+        })
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "audio/wav"
+    assert mock_synth.call_args.kwargs["provider"] == "google"
 
 
 # ── Videos ────────────────────────────────────────────────────────────────────

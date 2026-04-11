@@ -168,6 +168,40 @@ test("synthesizeSpeech returns a blob URL", async () => {
   expect(url).toBe("blob:fake-url");
 });
 
+test("synthesizeSpeech defaults provider to 'auto'", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  await synthesizeSpeech("Hello", "en");
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body.provider).toBe("auto");
+});
+
+test("synthesizeSpeech sends explicit provider value", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  await synthesizeSpeech("Hello", "en", 1.0, "google");
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body.provider).toBe("google");
+});
+
+test("synthesizeSpeech includes Authorization header when token is set", async () => {
+  setAuthToken("my-jwt");
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  await synthesizeSpeech("Hello", "en", 1.0, "google");
+  const headers = (global.fetch as jest.Mock).mock.calls[0][1].headers;
+  expect(headers.Authorization).toBe("Bearer my-jwt");
+});
+
 test("synthesizeSpeech throws on non-ok response", async () => {
   global.fetch = jest.fn().mockResolvedValue({ ok: false });
   await expect(synthesizeSpeech("Hello", "en")).rejects.toThrow("TTS failed");

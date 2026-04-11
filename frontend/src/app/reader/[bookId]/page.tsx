@@ -446,7 +446,7 @@ export default function ReaderPage() {
                   isPlaying={audioIsPlaying}
                   images={bookImages}
                   onSegmentClick={(_startTime, segText) => {
-                    synthesizeSpeech(segText, bookLanguage).then((url) => {
+                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsProvider).then((url) => {
                       const audio = new Audio(url);
                       audio.onended = () => URL.revokeObjectURL(url);
                       audio.play().catch(() => URL.revokeObjectURL(url));

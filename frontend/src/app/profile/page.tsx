@@ -3,53 +3,93 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveGeminiKey, deleteGeminiKey, getMe } from "@/lib/api";
+import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "de", label: "Deutsch" },
+  { code: "fr", label: "Français" },
+  { code: "es", label: "Español" },
+  { code: "it", label: "Italiano" },
+  { code: "zh", label: "中文" },
+  { code: "ja", label: "日本語" },
+];
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const router = useRouter();
   const user = session?.backendUser;
 
+  // ── Gemini key state ───────────────────────────────────────────────────────
   const [keyInput, setKeyInput] = useState("");
   const [hasKey, setHasKey] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [removing, setRemoving] = useState(false);
-  const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [savingKey, setSavingKey] = useState(false);
+  const [removingKey, setRemovingKey] = useState(false);
+  const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
-  // Fetch live state from backend (session JWT is stale after key changes)
+  // ── Preferences state ──────────────────────────────────────────────────────
+  const [settings, setSettings] = useState<AppSettings>({
+    insightLang: "en",
+    translationLang: "en",
+    audiobookEnabled: true,
+    ttsProvider: "auto",
+  });
+  const [prefsSaved, setPrefsSaved] = useState(false);
+
+  // Fetch live key status from backend (session JWT can be stale after key changes)
   useEffect(() => {
-    if (!session?.backendToken) return;
     getMe().then((me) => setHasKey(me.hasGeminiKey)).catch(() => {});
   }, [session?.backendToken]);
 
+  useEffect(() => {
+    setSettings(getSettings());
+  }, []);
+
+  function updatePref<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+    setPrefsSaved(false);
+  }
+
+  function savePreferences() {
+    saveSettings(settings);
+    setPrefsSaved(true);
+    setTimeout(() => setPrefsSaved(false), 2000);
+  }
+
   async function handleSaveKey() {
     if (!keyInput.trim()) return;
-    setSaving(true);
-    setMessage(null);
+    setSavingKey(true);
+    setKeyMessage(null);
     try {
       await saveGeminiKey(keyInput.trim());
       setKeyInput("");
       setHasKey(true);
-      setMessage({ text: "Gemini API key saved. AI features now use your key.", ok: true });
+      setKeyMessage({ text: "Gemini API key saved. AI features now use your key.", ok: true });
     } catch (e: unknown) {
-      setMessage({ text: e instanceof Error ? e.message : "Failed to save key", ok: false });
+      setKeyMessage({ text: e instanceof Error ? e.message : "Failed to save key", ok: false });
     } finally {
-      setSaving(false);
+      setSavingKey(false);
     }
   }
 
   async function handleRemoveKey() {
-    setRemoving(true);
-    setMessage(null);
+    setRemovingKey(true);
+    setKeyMessage(null);
     try {
       await deleteGeminiKey();
       setHasKey(false);
-      setMessage({ text: "Gemini key removed. AI features will use the app's Claude key.", ok: true });
+      setKeyMessage({ text: "Gemini key removed. AI features will require it again.", ok: true });
     } catch (e: unknown) {
-      setMessage({ text: e instanceof Error ? e.message : "Failed to remove key", ok: false });
+      setKeyMessage({ text: e instanceof Error ? e.message : "Failed to remove key", ok: false });
     } finally {
-      setRemoving(false);
+      setRemovingKey(false);
     }
   }
+
+  // Resolve "auto" → which provider is actually in use, for the helper text
+  const resolvedTTS = settings.ttsProvider === "auto"
+    ? (hasKey ? "google" : "edge")
+    : settings.ttsProvider;
 
   return (
     <div className="min-h-screen bg-parchment">
@@ -61,12 +101,12 @@ export default function ProfilePage() {
         >
           ← Library
         </button>
-        <h1 className="font-serif font-bold text-ink">Profile</h1>
+        <h1 className="font-serif font-bold text-ink">Profile &amp; Settings</h1>
       </header>
 
       <div className="max-w-lg mx-auto px-6 py-10 space-y-8">
-        {/* Account info */}
-        <div className="bg-white rounded-2xl border border-amber-100 p-6">
+        {/* ── Account ─────────────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-amber-100 p-6">
           <h2 className="font-serif text-lg font-semibold text-ink mb-4">Account</h2>
           <div className="flex items-center gap-4">
             {user?.picture && (
@@ -88,10 +128,10 @@ export default function ProfilePage() {
           >
             Sign out
           </button>
-        </div>
+        </section>
 
-        {/* Gemini API key */}
-        <div className="bg-white rounded-2xl border border-amber-100 p-6">
+        {/* ── Gemini API key ──────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-amber-100 p-6">
           <h2 className="font-serif text-lg font-semibold text-ink mb-1">Gemini API Key</h2>
           <p className="text-sm text-stone-500 mb-5">
             Add your own key from{" "}
@@ -103,22 +143,22 @@ export default function ProfilePage() {
             >
               Google AI Studio
             </a>{" "}
-            to use Gemini for translations and insights instead of the app&apos;s Claude key.
-            The free tier is very generous (1M tokens/day).
+            to use Gemini for translations, insights, and high-quality TTS.
+            The free tier is generous (1M tokens/day).
           </p>
 
           {hasKey ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
                 <span>✓</span>
-                <span>Gemini key is active — AI features use your key.</span>
+                <span>Gemini key is active — AI features and Google TTS use your key.</span>
               </div>
               <button
                 onClick={handleRemoveKey}
-                disabled={removing}
+                disabled={removingKey}
                 className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
               >
-                {removing ? "Removing…" : "Remove key"}
+                {removingKey ? "Removing…" : "Remove key"}
               </button>
             </div>
           ) : (
@@ -132,20 +172,152 @@ export default function ProfilePage() {
               />
               <button
                 onClick={handleSaveKey}
-                disabled={saving || !keyInput.trim()}
+                disabled={savingKey || !keyInput.trim()}
                 className="rounded-lg bg-amber-700 text-white px-5 py-2 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
               >
-                {saving ? "Saving…" : "Save key"}
+                {savingKey ? "Saving…" : "Save key"}
               </button>
             </div>
           )}
 
-          {message && (
-            <p className={`mt-3 text-sm ${message.ok ? "text-emerald-700" : "text-red-600"}`}>
-              {message.text}
+          {keyMessage && (
+            <p className={`mt-3 text-sm ${keyMessage.ok ? "text-emerald-700" : "text-red-600"}`}>
+              {keyMessage.text}
             </p>
           )}
-        </div>
+        </section>
+
+        {/* ── Preferences ─────────────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-6">
+          <div>
+            <h2 className="font-serif text-lg font-semibold text-ink">Preferences</h2>
+            <p className="text-sm text-stone-500 mt-1">
+              Defaults applied across the reader. You can still override most of these per-session.
+            </p>
+          </div>
+
+          {/* Insight & chat language */}
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">
+              Insight &amp; chat language
+            </label>
+            <select
+              className="w-full rounded-lg border border-amber-300 px-3 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              value={settings.insightLang}
+              onChange={(e) => updatePref("insightLang", e.target.value)}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-stone-500 mt-1">
+              Language used for chapter insights and follow-up chat responses.
+            </p>
+          </div>
+
+          {/* Translation language */}
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">
+              Translation language
+            </label>
+            <select
+              className="w-full rounded-lg border border-amber-300 px-3 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              value={settings.translationLang}
+              onChange={(e) => updatePref("translationLang", e.target.value)}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-stone-500 mt-1">
+              Target language when the translation panel is enabled.
+            </p>
+          </div>
+
+          {/* TTS provider */}
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">
+              Text-to-speech provider
+            </label>
+            <div className="space-y-2">
+              {([
+                { value: "auto", label: "Auto", hint: "Use Google Gemini TTS if a Gemini key is set, otherwise Microsoft Edge TTS." },
+                { value: "google", label: "Google Gemini", hint: "Higher quality, especially for German and other non-English text. Requires a Gemini API key." },
+                { value: "edge", label: "Microsoft Edge", hint: "Free, no key required. Lower quality for literary text." },
+              ] as const).map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    settings.ttsProvider === opt.value
+                      ? "border-amber-400 bg-amber-50"
+                      : "border-amber-200 bg-white hover:bg-amber-50/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="ttsProvider"
+                    value={opt.value}
+                    checked={settings.ttsProvider === opt.value}
+                    onChange={() => updatePref("ttsProvider", opt.value)}
+                    className="mt-0.5 accent-amber-700"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-ink">{opt.label}</div>
+                    <div className="text-xs text-stone-500 mt-0.5">{opt.hint}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {settings.ttsProvider === "auto" && (
+              <p className="text-xs text-amber-700 mt-2">
+                Currently resolves to{" "}
+                <span className="font-medium">
+                  {resolvedTTS === "google" ? "Google Gemini" : "Microsoft Edge"}
+                </span>
+                {resolvedTTS === "google"
+                  ? " (Gemini key is set)"
+                  : " (no Gemini key — add one above to upgrade)"}
+                .
+              </p>
+            )}
+          </div>
+
+          {/* LibriVox audiobook */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-ink">LibriVox audiobook linking</p>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Search and sync public-domain audiobooks from LibriVox.
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={settings.audiobookEnabled}
+              onClick={() => updatePref("audiobookEnabled", !settings.audiobookEnabled)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 ${
+                settings.audiobookEnabled ? "bg-amber-700" : "bg-amber-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transition-transform ${
+                  settings.audiobookEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Single save button at the bottom of the preferences section */}
+          <button
+            onClick={savePreferences}
+            className={`w-full rounded-lg py-2.5 text-sm font-medium transition-colors ${
+              prefsSaved
+                ? "bg-green-600 text-white"
+                : "bg-amber-700 text-white hover:bg-amber-800"
+            }`}
+          >
+            {prefsSaved ? "Saved!" : "Save preferences"}
+          </button>
+        </section>
       </div>
     </div>
   );

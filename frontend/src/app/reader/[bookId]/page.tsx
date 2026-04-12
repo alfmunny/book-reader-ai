@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -84,15 +84,15 @@ export default function ReaderPage() {
 
   // Gemini key reminder — fetch live status so we don't rely on the stale session JWT
   const [hasGeminiKey, setHasGeminiKey] = useState(true); // optimistic: assume key exists until confirmed otherwise
+  const [isAdmin, setIsAdmin] = useState(false);
   const [geminiReminderVisible, setGeminiReminderVisible] = useState(false);
   const geminiReminderShown = useRef(false);
 
   useEffect(() => {
-    // Fetch live Gemini-key status. When the session has no token yet (initial
-    // render before hydration, or E2E with auth bypass) the backend will 401
-    // and we silently keep the optimistic default. Once session?.backendToken
-    // changes, the effect re-runs and picks up the real answer.
-    getMe().then((me) => setHasGeminiKey(me.hasGeminiKey)).catch(() => {});
+    getMe().then((me) => {
+      setHasGeminiKey(me.hasGeminiKey);
+      setIsAdmin(me.role === "admin");
+    }).catch(() => {});
   }, [session?.backendToken]);
 
   function notifyAIUsed() {
@@ -214,6 +214,19 @@ export default function ReaderPage() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, chapterIndex, bookId]);
+
+  async function handleRetranslate() {
+    const bid = Number(bookId);
+    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
+    // Delete backend cache
+    await deleteTranslationCache(bid, chapterIndex, translationLang).catch(() => {});
+    // Clear frontend caches
+    translationCache.current.delete(cacheKey);
+    setTranslatedParagraphs([]);
+    // Re-trigger by toggling translation off then on
+    setTranslationEnabled(false);
+    setTimeout(() => setTranslationEnabled(true), 50);
+  }
 
   const handleSelection = useCallback(() => {
     const sel = window.getSelection()?.toString().trim() || "";
@@ -424,6 +437,15 @@ export default function ReaderPage() {
 
               {translationLoading && (
                 <span className="text-xs text-amber-500 animate-pulse">Translating…</span>
+              )}
+
+              {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
+                <button
+                  onClick={handleRetranslate}
+                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
+                >
+                  Retranslate
+                </button>
               )}
             </>
           )}

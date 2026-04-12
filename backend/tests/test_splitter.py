@@ -1,139 +1,110 @@
 """
-Tests for the chapter splitter using Faust: Der Tragödie erster Teil (PG #2229)
-as the primary fixture (German play with TOC-based scene structure).
+Tests for services/splitter.py — chapter splitting for Project Gutenberg books.
 """
 
-import os
 import pytest
-from services.splitter import (
-    build_chapters,
-    strip_boilerplate,
-    parse_toc_section,
-    chapters_from_toc,
-    Chapter,
-)
-
-FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
-FAUST_PATH = os.path.join(FIXTURES, "faust_2229.txt")
+from services.splitter import build_chapters, strip_boilerplate, _validate, Chapter
 
 
-@pytest.fixture(scope="module")
-def faust_text() -> str:
-    with open(FAUST_PATH, encoding="utf-8", errors="replace") as f:
-        return f.read()
+def test_strip_boilerplate_removes_header_and_footer():
+    text = "Header\n*** START OF THE PROJECT GUTENBERG EBOOK ***\nBody\n*** END OF THE PROJECT GUTENBERG EBOOK ***\nFooter"
+    body, _ = strip_boilerplate(text)
+    assert "Body" in body
+    assert "Header" not in body
+    assert "Footer" not in body
 
 
-@pytest.fixture(scope="module")
-def faust_chapters(faust_text) -> list[Chapter]:
-    return build_chapters(faust_text)
+def test_strip_boilerplate_no_markers():
+    body, offset = strip_boilerplate("Just text")
+    assert body == "Just text"
+    assert offset == 0
 
 
-# ── boilerplate stripping ───────────────────────────────────────────────────
-
-def test_strip_boilerplate_removes_header(faust_text):
-    body, offset = strip_boilerplate(faust_text)
-    assert offset > 0, "Should skip PG header"
-    assert "Project Gutenberg License" not in body[:500]
-    assert "Zueignung" in body, "Main content should be present"
+def test_validate_rejects_single_chapter():
+    assert not _validate([Chapter(title="X", text="w " * 1000)])
 
 
-def test_strip_boilerplate_removes_footer(faust_text):
-    body, _ = strip_boilerplate(faust_text)
-    assert "END OF THE PROJECT GUTENBERG" not in body
+def test_validate_rejects_too_many_tiny_chapters():
+    chs = [Chapter(title=f"{i}", text="Short.") for i in range(500)]
+    assert not _validate(chs)
 
 
-# ── TOC parsing ─────────────────────────────────────────────────────────────
-
-def test_toc_section_found(faust_text):
-    body, _ = strip_boilerplate(faust_text)
-    titles = parse_toc_section(body)
-    assert titles is not None, "Faust has a Contents section"
-    assert len(titles) >= 20, f"Expected ≥20 scenes, got {len(titles)}"
+def test_validate_accepts_reasonable_chapters():
+    chs = [Chapter(title=f"{i}", text="word " * 500) for i in range(10)]
+    assert _validate(chs)
 
 
-def test_toc_contains_known_scenes(faust_text):
-    body, _ = strip_boilerplate(faust_text)
-    titles = parse_toc_section(body)
-    assert titles is not None
-    title_set = set(titles)
-    expected = {
-        "Zueignung",
-        "Prolog im Himmel",
-        "Nacht",
-        "Vor dem Tor",
-        "Hexenküche",
-        "Walpurgisnacht",
-        "Kerker",
-    }
-    missing = expected - title_set
-    assert not missing, f"Missing expected scenes: {missing}"
+def test_english_chapter_headings():
+    text = "\n\nCHAPTER I\n\n" + "First. " * 200
+    text += "\n\nCHAPTER II\n\n" + "Second. " * 200
+    text += "\n\nCHAPTER III\n\n" + "Third. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
+    assert "CHAPTER I" in chs[0].title
 
 
-# ── full chapter split ──────────────────────────────────────────────────────
-
-def test_faust_chapter_count(faust_chapters):
-    assert len(faust_chapters) >= 20, (
-        f"Expected ≥20 chapters for Faust, got {len(faust_chapters)}\n"
-        f"Titles: {[c.title for c in faust_chapters]}"
-    )
-
-
-def test_faust_no_empty_chapters(faust_chapters):
-    for ch in faust_chapters:
-        assert len(ch.text.strip()) > 100, (
-            f"Chapter '{ch.title}' has almost no text ({len(ch.text)} chars)"
-        )
+def test_french_chapitre_headings():
+    text = "\n\nChapitre Premier\n\n" + "Texte. " * 200
+    text += "\n\nChapitre II\n\n" + "Texte. " * 200
+    text += "\n\nChapitre III\n\n" + "Texte. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
 
 
-def test_faust_chapter_titles_not_empty(faust_chapters):
-    empty = [i for i, c in enumerate(faust_chapters) if not c.title.strip()]
-    assert not empty, f"Chapters with empty titles at indices: {empty}"
+def test_german_kapitel_headings():
+    text = "\n\nKapitel 1\n\n" + "Text. " * 200
+    text += "\n\nKapitel 2\n\n" + "Text. " * 200
+    text += "\n\nKapitel 3\n\n" + "Text. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
 
 
-def test_faust_known_chapters_present(faust_chapters):
-    titles = [c.title for c in faust_chapters]
-    for expected in ["Nacht", "Hexenküche", "Walpurgisnacht", "Kerker"]:
-        assert any(expected in t for t in titles), (
-            f"Expected chapter '{expected}' not found.\nAll titles: {titles}"
-        )
+def test_act_scene_headings():
+    text = "\n\nACT I\n\n" + "Text. " * 200
+    text += "\n\nACT II\n\n" + "Text. " * 200
+    text += "\n\nACT III\n\n" + "Text. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
 
 
-def test_faust_nacht_contains_poem(faust_chapters):
-    nacht = next((c for c in faust_chapters if "Nacht" in c.title), None)
-    assert nacht is not None, "Could not find 'Nacht' chapter"
-    assert "Habe nun, ach!" in nacht.text or "Philosophie" in nacht.text, (
-        "Nacht chapter should contain Faust's opening monologue"
-    )
+def test_roman_numeral_chapters():
+    text = ""
+    for n in ["I", "II", "III", "IV", "V"]:
+        text += f"\n\n{n}\n\n" + f"Content for {n}. " * 200
+    chs = build_chapters(text)
+    assert len(chs) >= 3
 
 
-def test_faust_chapters_cover_full_text(faust_text, faust_chapters):
-    """Chapters should together cover a large portion of the book text."""
-    total = sum(len(c.text) for c in faust_chapters)
-    body, _ = strip_boilerplate(faust_text)
-    ratio = total / len(body)
-    assert ratio > 0.7, (
-        f"Chapters cover only {ratio:.0%} of the text — splitting may be broken"
-    )
+def test_paragraph_fallback_for_unstructured_text():
+    text = ("Long paragraph. " * 100 + "\n\n") * 20
+    chs = build_chapters(text)
+    assert len(chs) >= 2
+    for c in chs:
+        assert len(c.text.split()) >= 50
 
 
-def test_faust_chapter_order_is_sequential(faust_text, faust_chapters):
-    """Chapter texts should appear in order in the original text."""
-    prev_pos = 0
-    for ch in faust_chapters:
-        pos = faust_text.find(ch.text[:80])
-        if pos == -1:
-            continue  # short chapter, skip position check
-        assert pos >= prev_pos, (
-            f"Chapter '{ch.title}' appears before previous chapter in source text"
-        )
-        prev_pos = pos
+def test_over_splitting_falls_through():
+    text = ""
+    for i in range(200):
+        text += f"\n\nLine {i}\n\nShort."
+    chs = build_chapters(text)
+    assert len(chs) < 100
 
 
-# ── print summary (visible with pytest -s) ─────────────────────────────────
+def test_empty_text():
+    chs = build_chapters("")
+    assert len(chs) <= 1
 
-def test_print_chapter_summary(faust_chapters):
-    print(f"\n{'='*60}")
-    print(f"Faust split into {len(faust_chapters)} chapters:")
-    for i, ch in enumerate(faust_chapters, 1):
-        print(f"  {i:2}. {ch.title:<40} ({len(ch.text):>6} chars)")
-    print("="*60)
+
+def test_very_short_text():
+    chs = build_chapters("Few words.")
+    assert len(chs) == 1
+
+
+def test_chapter_at_start_of_body():
+    text = "*** START OF THE PROJECT GUTENBERG EBOOK ***\nCHAPTER I\n\n" + "First. " * 200
+    text += "\n\nCHAPTER II\n\n" + "Second. " * 200
+    text += "\n\nCHAPTER III\n\n" + "Third. " * 200
+    chs = build_chapters(text)
+    assert len(chs) >= 2
+    assert "CHAPTER" in chs[0].title

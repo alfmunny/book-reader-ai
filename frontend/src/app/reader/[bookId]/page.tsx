@@ -423,66 +423,31 @@ export default function ReaderPage() {
                   <div key={i} className={`h-4 bg-amber-200 rounded ${i % 5 === 4 ? "w-2/3" : "w-full"}`} />
                 ))}
               </div>
-            ) : translationEnabled ? (
-              <>
-                <TranslationView
-                  paragraphs={chapterParagraphs}
-                  translations={translatedParagraphs}
-                  displayMode={displayMode}
-                  loading={translationLoading}
-                />
-                <div className={`mt-10 flex justify-between ${displayMode === "parallel" ? "max-w-5xl mx-auto" : "prose-reader mx-auto"}`}>
-                  <button
-                    onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
-                    disabled={chapterIndex === 0}
-                    className="text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
-                  >← Previous</button>
-                  <span className="text-xs text-amber-500 self-center">
-                    {chapterIndex + 1} / {chapters.length}
-                  </span>
-                  <button
-                    onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
-                    disabled={chapterIndex === chapters.length - 1}
-                    className="text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
-                  >Next →</button>
-                </div>
-              </>
             ) : (
               <>
                 <SentenceReader
                   text={current?.text ?? ""}
-                  // SentenceReader's source of truth: prefer the LibriVox audiobook
-                  // if one is linked, otherwise fall back to the TTS Read-button
-                  // playback. Either way the SentenceReader does the same
-                  // sentence segmentation + word-proportion timing math.
                   duration={audiobook ? audioDuration : ttsDuration}
                   currentTime={audiobook ? audioCurrentTime : ttsCurrentTime}
                   isPlaying={audiobook ? audioIsPlaying : ttsIsPlaying}
                   images={bookImages}
-                  // Pass the chunk metadata only when using TTS (not LibriVox).
-                  // SentenceReader uses it for accurate per-chunk timing AND
-                  // for muted/loaded color of segments in unloaded chunks.
                   chunks={!audiobook && ttsChunks.length > 0 ? ttsChunks : undefined}
-                  // Block sentence clicks while TTS is generating to prevent
-                  // accidentally firing one-off snippets that conflict with
-                  // the in-flight chapter generation.
                   disabled={!audiobook && ttsIsLoading}
+                  // Translation props: SentenceReader renders both original
+                  // (highlighted) and translation (when enabled). This ensures
+                  // highlighting works regardless of translation state.
+                  translations={translationEnabled ? translatedParagraphs : undefined}
+                  translationDisplayMode={displayMode}
+                  translationLoading={translationLoading}
                   onSegmentClick={(startTime, segText) => {
-                    // Priority 1: LibriVox audiobook is linked → seek it
                     if (audiobook) {
                       seekAudioRef.current(startTime);
                       return;
                     }
-                    // Priority 2: TTS chapter audio is already loaded → seek
-                    // it to the clicked sentence and play. Reuses the same
-                    // cached audio that the Read button uses.
                     if (ttsDuration > 0) {
                       ttsSeekRef.current(startTime);
                       return;
                     }
-                    // Priority 3: nothing loaded yet → one-off snippet TTS,
-                    // same fallback as before. Doesn't trigger chapter audio
-                    // generation (preserves the lazy-load contract).
                     synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsProvider)
                       .then((url) => {
                         const audio = new Audio(url);
@@ -490,7 +455,6 @@ export default function ReaderPage() {
                         audio.play().catch(() => URL.revokeObjectURL(url));
                       })
                       .catch(() => {
-                        // Web Speech API as final fallback (network or auth failure)
                         window.speechSynthesis.cancel();
                         const utter = new SpeechSynthesisUtterance(segText);
                         utter.lang = bookLanguage;
@@ -498,7 +462,7 @@ export default function ReaderPage() {
                       });
                   }}
                 />
-                <div className="max-w-prose mx-auto mt-10 flex justify-between">
+                <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-5xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}

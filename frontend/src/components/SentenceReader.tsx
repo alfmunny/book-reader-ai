@@ -221,6 +221,16 @@ interface Props {
    * in-flight chapter generation.
    */
   disabled?: boolean;
+  /**
+   * When provided, translations are rendered alongside the original text.
+   * Each entry corresponds to a paragraph in the chapter (same indices as
+   * text.split(/\n\n+/)). Highlighting still works on the original text.
+   */
+  translations?: string[];
+  /** Layout for translation mode. "parallel" = side by side, "inline" = below. */
+  translationDisplayMode?: "parallel" | "inline";
+  /** Show a loading skeleton for translations that haven't arrived yet. */
+  translationLoading?: boolean;
 }
 
 export default function SentenceReader({
@@ -232,7 +242,15 @@ export default function SentenceReader({
   onSegmentClick,
   chunks,
   disabled = false,
+  translations,
+  translationDisplayMode = "parallel",
+  translationLoading = false,
 }: Props) {
+  // Track which internal paragraph index each rendered paragraph corresponds
+  // to, so we can pair it with the right translation entry. We count only
+  // non-illustration paragraphs because TranslationView's paragraphs array
+  // comes from text.split(/\n\n+/) which doesn't include illustration markers.
+  let textParaIdx = -1;
   const paragraphs = useMemo(
     () => parseIntoSegments(text, Math.max(duration, 1), images, chunks),
     [text, duration, images, chunks]
@@ -275,8 +293,11 @@ export default function SentenceReader({
     }
   }, [currentIdx, isPlaying]);
 
+  const hasTranslations = translations && translations.length > 0;
+  const isParallel = hasTranslations && translationDisplayMode === "parallel";
+
   return (
-    <div className="prose-reader mx-auto space-y-4">
+    <div className={isParallel ? "max-w-5xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
       {paragraphs.map((para, pIdx) => {
         // ── Illustration ──
         if (para.illustration) {
@@ -299,16 +320,17 @@ export default function SentenceReader({
           );
         }
 
-        // Helper: pick the className for a segment span based on:
-        //   - whether it's the currently-playing one (active)
-        //   - whether its chunk has finished loading (loaded)
-        //   - whether sentence clicks are blocked (disabled)
+        // Track the text paragraph index (excluding illustrations) so we
+        // can pair with the right entry in translations[].
+        textParaIdx++;
+        const translationText = translations?.[textParaIdx];
+
+        // Helper: pick the className for a segment span
         const segClass = (seg: { flatIdx: number; chunkIdx: number }): string => {
           const active = seg.flatIdx === currentIdx;
           const loaded = isSegmentLoaded(seg);
           if (active) return "bg-amber-300 text-amber-950 cursor-pointer";
           if (disabled) {
-            // Loading state: muted text, no hover, not clickable
             return loaded
               ? "text-stone-500 cursor-default"
               : "text-stone-400/70 cursor-default";
@@ -324,10 +346,11 @@ export default function SentenceReader({
           onSegmentClick(seg.startTime, seg.text);
         };
 
+        // Render the original text (highlighted, clickable)
+        let originalContent: React.ReactNode;
         if (para.isVerse) {
-          // Poetry: each segment on its own line
-          return (
-            <div key={pIdx} className="font-serif text-base text-ink leading-relaxed">
+          originalContent = (
+            <div className="font-serif text-base text-ink leading-relaxed">
               {para.segments.map((seg) => {
                 const active = seg.flatIdx === currentIdx;
                 return (
@@ -345,27 +368,71 @@ export default function SentenceReader({
               })}
             </div>
           );
+        } else {
+          originalContent = (
+            <p className="font-serif text-base text-ink leading-relaxed">
+              {para.segments.map((seg, sIdx) => {
+                const active = seg.flatIdx === currentIdx;
+                return (
+                  <span
+                    key={seg.flatIdx}
+                    ref={active ? (el) => { activeRef.current = el; } : undefined}
+                    data-seg={seg.flatIdx}
+                    onClick={() => handleSegClick(seg)}
+                    className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)}`}
+                  >
+                    {seg.text}
+                    {sIdx < para.segments.length - 1 ? " " : ""}
+                  </span>
+                );
+              })}
+            </p>
+          );
         }
 
-        // Prose: inline sentence spans
+        // ── No translation: render original only ──
+        if (!hasTranslations) {
+          return <div key={pIdx}>{originalContent}</div>;
+        }
+
+        // ── Translation: parallel (side by side) ──
+        if (isParallel) {
+          return (
+            <div key={pIdx} className="grid grid-cols-2 gap-6 py-4 first:pt-0 last:pb-0">
+              {originalContent}
+              <div className="border-l border-amber-200 pl-6">
+                {translationText ? (
+                  <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
+                    {translationText}
+                  </p>
+                ) : translationLoading ? (
+                  <div className="space-y-2 animate-pulse">
+                    {Array.from({ length: 3 }).map((_, j) => (
+                      <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        }
+
+        // ── Translation: inline (below) ──
         return (
-          <p key={pIdx} className="font-serif text-base text-ink leading-relaxed">
-            {para.segments.map((seg, sIdx) => {
-              const active = seg.flatIdx === currentIdx;
-              return (
-                <span
-                  key={seg.flatIdx}
-                  ref={active ? (el) => { activeRef.current = el; } : undefined}
-                  data-seg={seg.flatIdx}
-                  onClick={() => handleSegClick(seg)}
-                  className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)}`}
-                >
-                  {seg.text}
-                  {sIdx < para.segments.length - 1 ? " " : ""}
-                </span>
-              );
-            })}
-          </p>
+          <div key={pIdx}>
+            {originalContent}
+            {translationLoading && textParaIdx === 0 && !translationText && (
+              <div className="mt-1 space-y-1 animate-pulse">
+                <div className="h-3 bg-amber-100 rounded w-full" />
+                <div className="h-3 bg-amber-100 rounded w-5/6" />
+              </div>
+            )}
+            {translationText && (
+              <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+                {translationText}
+              </p>
+            )}
+          </div>
         );
       })}
     </div>

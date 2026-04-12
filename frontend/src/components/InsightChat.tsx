@@ -138,6 +138,7 @@ export default function InsightChat({
   // visitedKeys won't have its key yet, so the fetch fires immediately.
   useEffect(() => {
     if (!isVisible) return;                          // ← gate: don't fetch while hidden
+    if (!hasGeminiKey) return;                        // ← gate: insight requires Gemini
     if (!chapterText || !bookTitle || !bookId) return;
     const key = chapterText.slice(0, 100);
     if (visitedKeys.current.has(key)) return;        // already fetched for this chapter
@@ -162,7 +163,7 @@ export default function InsightChat({
 
   // ── 4. Manual refresh (append new insight) ────────────────────────────
   useEffect(() => {
-    if (refreshTick === 0 || !chapterText || !bookTitle) return;
+    if (refreshTick === 0 || !chapterText || !bookTitle || !hasGeminiKey) return;
     autoScrollRef.current = true;
     setChatLoading(true);
     onAIUsed?.();
@@ -330,12 +331,27 @@ export default function InsightChat({
             </select>
             <button
               onClick={() => setRefreshTick((n) => n + 1)}
-              title="Append a fresh insight"
-              className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-amber-200 text-amber-600 hover:text-amber-900 text-base"
+              title={hasGeminiKey ? "Append a fresh insight" : "Gemini API key required"}
+              disabled={!hasGeminiKey}
+              className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-amber-200 text-amber-600 hover:text-amber-900 disabled:opacity-40 disabled:cursor-not-allowed text-base"
             >
               ↺
             </button>
           </div>
+
+          {/* Gemini key notice — shown at the top of the messages area */}
+          {!hasGeminiKey && (
+            <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
+              Insights and chat require a{" "}
+              <a href="/profile" target="_blank" className="underline font-medium">Gemini API key</a>{" "}
+              (free from Google AI Studio). Add one to unlock chapter insights and Q&amp;A.
+            </div>
+          )}
+          {hasGeminiKey && (
+            <div className="px-3 py-1.5 text-[10px] text-amber-500 border-b border-amber-100 bg-white">
+              Insights powered by your Gemini API key
+            </div>
+          )}
 
           {/* Messages */}
           <div ref={messagesBoxRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">

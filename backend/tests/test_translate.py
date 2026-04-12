@@ -1,7 +1,7 @@
-"""Tests for services/translate.py — paragraph unwrapping and language mapping."""
+"""Tests for services/translate.py — paragraph unwrapping, heading detection, and language mapping."""
 
 import pytest
-from services.translate import _unwrap_paragraph, _normalize_google_lang
+from services.translate import _unwrap_paragraph, _normalize_google_lang, _is_heading
 
 
 class TestUnwrapParagraph:
@@ -71,3 +71,31 @@ class TestNormalizeGoogleLang:
         assert _normalize_google_lang("de") == "de"
         assert _normalize_google_lang("en") == "en"
         assert _normalize_google_lang("fr") == "fr"
+
+
+class TestIsHeading:
+    def test_roman_numeral(self):
+        assert _is_heading("I") is True
+        assert _is_heading("XIV.") is True
+        assert _is_heading("III") is True
+
+    def test_chapter_keyword(self):
+        assert _is_heading("CHAPTER I.") is True
+        assert _is_heading("Chapter XIV") is True
+        assert _is_heading("CHAPITRE II") is True
+        assert _is_heading("KAPITEL 3") is True
+        assert _is_heading("BOOK III") is True
+        assert _is_heading("PART 2") is True
+
+    def test_bare_number(self):
+        assert _is_heading("1") is True
+        assert _is_heading("14.") is True
+
+    def test_prologue_epilogue(self):
+        assert _is_heading("PROLOGUE") is True
+        assert _is_heading("Epilogue") is True
+
+    def test_normal_text_not_heading(self):
+        assert _is_heading("It is a truth universally acknowledged") is False
+        assert _is_heading("I went to the store") is False
+        assert _is_heading("Chapter one of many adventures") is False

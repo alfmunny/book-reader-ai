@@ -167,19 +167,41 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             )
 
         from services.translate import translate_text as do_translate
-        paragraphs = await do_translate(
-            req.text,
-            req.source_language,
-            req.target_language,
-            provider=chosen,
-            gemini_key=decrypted_key,
-        )
+        fallback = False
+
+        try:
+            paragraphs = await do_translate(
+                req.text,
+                req.source_language,
+                req.target_language,
+                provider=chosen,
+                gemini_key=decrypted_key,
+            )
+        except Exception:
+            # Gemini failed (quota exhausted, rate limited, network error).
+            # Fall back to Google Translate if we were using Gemini.
+            if chosen == "gemini":
+                paragraphs = await do_translate(
+                    req.text,
+                    req.source_language,
+                    req.target_language,
+                    provider="google",
+                )
+                chosen = "google"
+                fallback = True
+            else:
+                raise
 
         # Save to shared cache
         if req.book_id is not None and req.chapter_index is not None:
             await save_translation(req.book_id, req.chapter_index, req.target_language, paragraphs)
 
-        return {"paragraphs": paragraphs, "cached": False, "provider": chosen}
+        return {
+            "paragraphs": paragraphs,
+            "cached": False,
+            "provider": chosen,
+            **({"fallback": True} if fallback else {}),
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -233,6 +255,7 @@ async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
                 headers={"X-TTS-Cache": "hit"},
             )
 
+    fallback = False
     try:
         audio, content_type = await synthesize(
             req.text,
@@ -241,10 +264,20 @@ async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
             provider=chosen,
             gemini_key=decrypted_key,
         )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        # Gemini TTS failed — fall back to Edge TTS if we were using Gemini
+        if chosen == "google":
+            audio, content_type = await synthesize(
+                req.text,
+                req.language,
+                req.rate,
+                provider="edge",
+            )
+            chosen = "edge"
+            voice = resolve_voice("edge", req.language)
+            fallback = True
+        else:
+            raise HTTPException(status_code=500, detail="TTS synthesis failed")
 
     # Persist on cache miss so the next request (and the next page reload,
     # and the next session, and the next device) returns instantly.
@@ -253,10 +286,16 @@ async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
             req.book_id, req.chapter_index, chosen, voice, audio, content_type, req.chunk_index
         )
 
+    headers: dict[str, str] = {}
+    if cache_eligible:
+        headers["X-TTS-Cache"] = "miss"
+    if fallback:
+        headers["X-TTS-Fallback"] = "true"
+
     return Response(
         content=audio,
         media_type=content_type,
-        headers={"X-TTS-Cache": "miss"} if cache_eligible else {},
+        headers=headers,
     )
 
 

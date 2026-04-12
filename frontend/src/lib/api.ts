@@ -104,6 +104,14 @@ export function saveTranslationCache(
   });
 }
 
+/** Delete a cached translation (admin). */
+export function deleteTranslationCache(bookId: number, chapterIndex: number, targetLanguage: string) {
+  return request<{ ok: boolean; deleted: number }>(
+    `/admin/translations/${bookId}/${chapterIndex}/${targetLanguage}`,
+    { method: "DELETE" },
+  );
+}
+
 export function askQuestion(
   question: string,
   passage: string,

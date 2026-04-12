@@ -11,6 +11,7 @@ import TranslationView from "@/components/TranslationView";
 import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
+import WordLookup from "@/components/WordLookup";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -28,6 +29,7 @@ export default function ReaderPage() {
   const [error, setError] = useState("");
 
   const [selectedText, setSelectedText] = useState("");
+  const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
 
   // Audiobook
   const [audiobookEnabled, setAudiobookEnabled] = useState(true);
@@ -530,6 +532,12 @@ export default function ReaderPage() {
             className="flex-1 overflow-y-auto px-8 py-8"
             onMouseUp={handleSelection}
             onTouchEnd={handleSelection}
+            onDoubleClick={(e) => {
+              const sel = window.getSelection()?.toString().trim();
+              if (sel && sel.length > 1 && sel.length < 30 && !/\s/.test(sel)) {
+                setLookupWord({ word: sel, x: e.clientX, y: e.clientY });
+              }
+            }}
           >
             {loading ? (
               <div className="max-w-prose mx-auto space-y-3 animate-pulse">
@@ -593,6 +601,15 @@ export default function ReaderPage() {
               </>
             )}
           </div>
+
+          {/* Dictionary lookup popup */}
+          {lookupWord && (
+            <WordLookup
+              word={lookupWord.word}
+              position={{ x: lookupWord.x, y: lookupWord.y }}
+              onClose={() => setLookupWord(null)}
+            />
+          )}
 
           {/* Audiobook player */}
           {audiobookEnabled && audiobook && (

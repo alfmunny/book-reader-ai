@@ -6,7 +6,7 @@ Full CRUD where applicable.
 import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from services.auth import get_current_user
+from services.auth import get_current_user, decrypt_api_key
 from services.db import (
     DB_PATH,
     list_users,
@@ -16,9 +16,12 @@ from services.db import (
     list_cached_books,
     get_cached_book,
     save_book,
+    save_translation,
     delete_chapter_audio_cache,
 )
 from services.gutenberg import get_book_meta, get_book_text
+from services.splitter import build_chapters
+from services.translate import translate_text as do_translate
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -221,6 +224,69 @@ async def delete_translation(
         )
         await db.commit()
         return {"ok": True, "deleted": cursor.rowcount}
+
+
+@router.post("/translations/{book_id}/{chapter_index}/{target_language}/retranslate")
+async def retranslate(
+    book_id: int,
+    chapter_index: int,
+    target_language: str,
+    admin: dict = Depends(_require_admin),
+):
+    """Delete cached translation and re-translate the chapter."""
+    # 1. Get the book text
+    book = await get_cached_book(book_id)
+    if not book or not book.get("text"):
+        raise HTTPException(status_code=404, detail="Book not found in cache")
+
+    chapters = build_chapters(book["text"])
+    if chapter_index < 0 or chapter_index >= len(chapters):
+        raise HTTPException(status_code=400, detail=f"Chapter index {chapter_index} out of range (0–{len(chapters) - 1})")
+
+    chapter_text = chapters[chapter_index].text
+
+    # 2. Delete old cached translation
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM translations WHERE book_id=? AND chapter_index=? AND target_language=?",
+            (book_id, chapter_index, target_language),
+        )
+        await db.commit()
+
+    # 3. Detect source language from book metadata
+    source_language = (book.get("languages") or ["en"])[0]
+
+    # 4. Resolve provider — use admin's Gemini key if available, else Google
+    raw_key = admin.get("gemini_key")
+    decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+    provider = "gemini" if decrypted_key else "google"
+
+    # 5. Translate
+    try:
+        paragraphs = await do_translate(
+            chapter_text,
+            source_language,
+            target_language,
+            provider=provider,
+            gemini_key=decrypted_key,
+        )
+    except Exception:
+        if provider == "gemini":
+            paragraphs = await do_translate(
+                chapter_text, source_language, target_language, provider="google",
+            )
+            provider = "google"
+        else:
+            raise
+
+    # 6. Cache the new translation
+    await save_translation(book_id, chapter_index, target_language, paragraphs)
+
+    return {
+        "ok": True,
+        "provider": provider,
+        "paragraphs_count": len(paragraphs),
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════

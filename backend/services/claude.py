@@ -18,12 +18,6 @@ Answer questions directly and accurately based on the passage context provided.
 If the question goes beyond the passage, draw on your knowledge of the full work.
 Be concise and clear. Use markdown for formatting."""
 
-SYSTEM_PRONUNCIATION = """You are a language and diction coach helping someone practice reading aloud.
-The user will provide their transcribed speech and the original text.
-Identify specific differences, mispronunciations, or missed words.
-Give encouraging, actionable feedback. Be specific about which words to focus on.
-Use markdown for formatting."""
-
 SYSTEM_TRANSLATOR = """You are a skilled literary translator. Translate the provided text preserving literary style, tone, rhythm, and nuance. Keep proper names, cultural references, and poetic structure intact.
 IMPORTANT: Preserve the exact line structure of the input. Each line break (\\n) in the original must produce a line break in the translation. Each blank line between stanzas or paragraphs must be preserved as a blank line. Do NOT merge lines or reflow text.
 Return ONLY the translation — no explanations, no commentary."""
@@ -79,48 +73,6 @@ async def answer_question(
         ],
     )
     return message.content[0].text
-
-
-async def check_pronunciation(
-    original_text: str, spoken_text: str, language: str = "en"
-) -> str:
-    client = get_client()
-    message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=512,
-        system=SYSTEM_PRONUNCIATION,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f"Language: {language}\n\n"
-                    f"Original text:\n---\n{original_text}\n---\n\n"
-                    f"What the reader said (transcribed):\n---\n{spoken_text}\n---\n\n"
-                    "Please provide pronunciation feedback."
-                ),
-            }
-        ],
-    )
-    return message.content[0].text
-
-
-async def suggest_youtube_query(passage: str, book_title: str, author: str) -> str:
-    client = get_client()
-    message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=128,
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    f'Given this passage from "{book_title}" by {author}:\n---\n{passage[:500]}\n---\n\n'
-                    "Suggest a concise YouTube search query (max 8 words) to find a theatrical or film performance. "
-                    "Return ONLY the search query, nothing else."
-                ),
-            }
-        ],
-    )
-    return message.content[0].text.strip()
 
 
 async def translate_chunk(text: str, source_language: str, target_language: str) -> str:

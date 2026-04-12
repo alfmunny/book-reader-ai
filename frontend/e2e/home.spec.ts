@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 test("home page renders header and search input", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Book Reader AI" })).toBeVisible();
-  await expect(page.getByPlaceholder(/Search Project Gutenberg/)).toBeVisible();
+  await expect(page.getByPlaceholder(/Search by title or author/)).toBeVisible();
 });
 
 test("shows cached library from backend", async ({ page }) => {
@@ -22,7 +22,7 @@ test("shows cached library from backend", async ({ page }) => {
 
 test("search for Faust returns result and displays it", async ({ page }) => {
   await page.goto("/");
-  await page.getByPlaceholder(/Search Project Gutenberg/).fill("Faust");
+  await page.getByPlaceholder(/Search by title or author/).fill("Faust");
   await page.getByRole("button", { name: "Search" }).click();
   // Book title appears in search results
   await expect(page.getByText("Faust").first()).toBeVisible();

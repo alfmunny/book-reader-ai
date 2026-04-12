@@ -88,17 +88,6 @@ export function askQuestion(
   });
 }
 
-export function checkPronunciation(
-  original_text: string,
-  spoken_text: string,
-  language = "en"
-) {
-  return request<{ feedback: string }>("/ai/pronunciation", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ original_text, spoken_text, language }),
-  });
-}
 
 /**
  * Synthesize text via the backend TTS service.
@@ -178,11 +167,17 @@ export function deleteAudioCache(bookId: number, chapterIndex: number) {
   );
 }
 
-export function findVideos(passage: string, book_title: string, author: string) {
-  return request<{ query: string; videos: VideoResult[] }>("/ai/videos", {
+export function getReferences(
+  book_title: string,
+  author: string,
+  chapter_title = "",
+  chapter_excerpt = "",
+  response_language = "en"
+) {
+  return request<{ references: string }>("/ai/references", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ passage, book_title, author }),
+    body: JSON.stringify({ book_title, author, chapter_title, chapter_excerpt, response_language }),
   });
 }
 
@@ -195,14 +190,6 @@ export interface BookMeta {
   subjects: string[];
   download_count: number;
   cover: string;
-}
-
-export interface VideoResult {
-  id: string;
-  title: string;
-  channel: string;
-  thumbnail: string;
-  url: string;
 }
 
 // Audiobooks

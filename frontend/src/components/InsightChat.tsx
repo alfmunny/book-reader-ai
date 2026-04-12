@@ -5,9 +5,7 @@ import remarkGfm from "remark-gfm";
 import {
   getInsight,
   askQuestion,
-  checkPronunciation,
-  findVideos,
-  VideoResult,
+  getReferences,
 } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
 
@@ -29,7 +27,7 @@ const INITIAL_DISPLAY = 30; // messages shown on first load
 const LOAD_BATCH = 20;      // messages revealed per "load earlier" click
 const MAX_STORED = 200;     // cap localStorage to last N messages
 
-type Tab = "chat" | "speak" | "video";
+type Tab = "chat" | "references";
 
 interface Message {
   role: "user" | "assistant";
@@ -50,7 +48,6 @@ interface Props {
   bookTitle: string;
   author: string;
   bookLanguage: string;
-  spokenText?: string;
   onAIUsed?: () => void;    // called whenever an AI (non-cached) call is made
 }
 
@@ -65,7 +62,6 @@ export default function InsightChat({
   bookTitle,
   author,
   bookLanguage,
-  spokenText = "",
   onAIUsed,
 }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
@@ -239,51 +235,45 @@ export default function InsightChat({
   }
 
   // ── Speak ─────────────────────────────────────────────────────────────
-  const [manualSpoken, setManualSpoken] = useState("");
-  const [pronFeedback, setPronFeedback] = useState("");
-  const [pronLoading, setPronLoading] = useState(false);
+  // ── References ──────────────────────────────────────────────────────
+  const [refsContent, setRefsContent] = useState("");
+  const [refsLoading, setRefsLoading] = useState(false);
+  const [refsError, setRefsError] = useState("");
+  const refsFetched = useRef(false);
 
-  async function runPronunciation() {
-    const spoken = spokenText || manualSpoken;
-    if (!spoken.trim() || !selectedText) return;
-    setPronLoading(true);
-    setPronFeedback("");
+  async function fetchReferences() {
+    if (!hasGeminiKey || !bookTitle) return;
+    setRefsLoading(true);
+    setRefsError("");
     onAIUsed?.();
     try {
-      const r = await checkPronunciation(selectedText, spoken, bookLanguage);
-      setPronFeedback(r.feedback);
+      const r = await getReferences(
+        bookTitle, author,
+        chapterTitle, chapterText.slice(0, 800),
+        langRef.current
+      );
+      setRefsContent(r.references);
     } catch (e: any) {
-      setPronFeedback(`Error: ${e.message}`);
+      setRefsError(e.message);
     } finally {
-      setPronLoading(false);
+      setRefsLoading(false);
     }
   }
 
-  // ── Video ─────────────────────────────────────────────────────────────
-  const [videos, setVideos] = useState<VideoResult[]>([]);
-  const [videoQuery, setVideoQuery] = useState("");
-  const [videoLoading, setVideoLoading] = useState(false);
-  const [videoError, setVideoError] = useState("");
-
-  async function runVideos() {
-    const text = selectedText || chapterText.slice(0, 400);
-    setVideoLoading(true);
-    setVideoError("");
-    setVideos([]);
-    setVideoQuery("");
-    onAIUsed?.();
-    try {
-      const r = await findVideos(text, bookTitle, author);
-      setVideos(r.videos);
-      setVideoQuery(r.query);
-      if (r.videos.length === 0)
-        setVideoError("No videos found. Configure your YouTube API key.");
-    } catch (e: any) {
-      setVideoError(e.message);
-    } finally {
-      setVideoLoading(false);
+  // Auto-fetch references when the tab is first opened
+  useEffect(() => {
+    if (tab === "references" && !refsFetched.current && hasGeminiKey && bookTitle) {
+      refsFetched.current = true;
+      fetchReferences();
     }
-  }
+  }, [tab, hasGeminiKey, bookTitle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset when book changes
+  useEffect(() => {
+    setRefsContent("");
+    setRefsError("");
+    refsFetched.current = false;
+  }, [bookId]);
 
   // ── Render ────────────────────────────────────────────────────────────
   const displayedMessages = messages.slice(loadedFrom);
@@ -291,8 +281,7 @@ export default function InsightChat({
 
   const tabs: { id: Tab; icon: string; label: string }[] = [
     { id: "chat", icon: "💬", label: "Chat" },
-    { id: "speak", icon: "🎙️", label: "Speak" },
-    { id: "video", icon: "🎬", label: "Video" },
+    { id: "references", icon: "📚", label: "References" },
   ];
 
   return (
@@ -485,67 +474,54 @@ export default function InsightChat({
         </div>
       )}
 
-      {/* ── SPEAK TAB ────────────────────────────────────────────────── */}
-      {tab === "speak" && (
+      {/* ── REFERENCES TAB ──────────────────────────────────────────── */}
+      {tab === "references" && (
         <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-          <div className="rounded bg-amber-50 border border-amber-200 p-2 text-xs font-serif text-amber-900 line-clamp-3">
-            {selectedText
-              ? `"${selectedText.slice(0, 200)}${selectedText.length > 200 ? "…" : ""}"`
-              : "Select text in the reader first"}
-          </div>
-          <textarea
-            className="rounded border border-amber-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
-            rows={3}
-            placeholder={
-              spokenText
-                ? `Recorded: "${spokenText.slice(0, 60)}…"`
-                : "Type what you said, or use the recorder below…"
-            }
-            value={manualSpoken}
-            onChange={(e) => setManualSpoken(e.target.value)}
-          />
-          <button
-            onClick={runPronunciation}
-            disabled={pronLoading || (!spokenText && !manualSpoken) || !selectedText}
-            className="rounded-lg bg-amber-700 py-2 text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-40"
-          >
-            {pronLoading ? "Checking…" : "Check my reading"}
-          </button>
-          {pronFeedback && (
-            <div className="prose prose-sm max-w-none font-serif text-sm">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{pronFeedback}</ReactMarkdown>
+          {!hasGeminiKey && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+              References require a{" "}
+              <a href="/profile" target="_blank" className="underline font-medium">Gemini API key</a>{" "}
+              (free from Google AI Studio).
             </div>
           )}
-        </div>
-      )}
 
-      {/* ── VIDEO TAB ────────────────────────────────────────────────── */}
-      {tab === "video" && (
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-          <button
-            onClick={runVideos}
-            disabled={videoLoading}
-            className="rounded-lg bg-amber-700 py-2 text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-40"
-          >
-            {videoLoading ? "Searching…" : "Find performances for this chapter"}
-          </button>
-          {videoQuery && <p className="text-xs text-amber-600">Search: &ldquo;{videoQuery}&rdquo;</p>}
-          {videoError && <p className="text-red-500 text-xs">{videoError}</p>}
-          {videos.map((v) => (
-            <a
-              key={v.id}
-              href={v.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex gap-2 rounded-lg border border-amber-200 bg-white p-2 hover:bg-amber-50"
+          {hasGeminiKey && !refsContent && !refsLoading && !refsError && (
+            <button
+              onClick={fetchReferences}
+              className="rounded-lg bg-amber-700 py-2 text-white text-sm font-medium hover:bg-amber-800"
             >
-              <img src={v.thumbnail} alt={v.title} className="w-24 h-14 object-cover rounded shrink-0" />
-              <div className="flex flex-col justify-center min-w-0">
-                <p className="text-xs font-medium text-ink line-clamp-2">{v.title}</p>
-                <p className="text-xs text-amber-700 mt-0.5">{v.channel}</p>
-              </div>
-            </a>
-          ))}
+              Find references for this book
+            </button>
+          )}
+
+          {refsLoading && (
+            <div className="flex items-center gap-2 text-sm text-amber-700">
+              <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+              Finding references…
+            </div>
+          )}
+
+          {refsError && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {refsError}
+              <button onClick={fetchReferences} className="ml-2 underline">Retry</button>
+            </div>
+          )}
+
+          {refsContent && (
+            <div className="prose prose-sm max-w-none font-serif text-sm">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{refsContent}</ReactMarkdown>
+            </div>
+          )}
+
+          {refsContent && (
+            <button
+              onClick={() => { setRefsContent(""); fetchReferences(); }}
+              className="text-xs text-amber-600 hover:text-amber-900 self-start"
+            >
+              ↻ Refresh references
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -12,7 +12,6 @@ from services.db import (
     delete_chapter_audio_cache,
 )
 from services import gemini
-from services.youtube import search_videos
 from services.tts import synthesize, resolve_voice, chunk_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -48,16 +47,12 @@ class QARequest(BaseModel):
     response_language: str = "en"
 
 
-class PronunciationRequest(BaseModel):
-    original_text: str
-    spoken_text: str
-    language: str = "en"
-
-
-class VideoRequest(BaseModel):
-    passage: str
+class ReferencesRequest(BaseModel):
     book_title: str
     author: str
+    chapter_title: str = ""
+    chapter_excerpt: str = ""
+    response_language: str = "en"
 
 
 class TranslateRequest(BaseModel):
@@ -116,27 +111,27 @@ async def qa(req: QARequest, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/pronunciation")
-async def pronunciation(req: PronunciationRequest, user: dict = Depends(get_current_user)):
+@router.post("/references")
+async def references(req: ReferencesRequest, user: dict = Depends(get_current_user)):
+    """Generate AI-curated references, related readings, and video links for a book."""
     key = _require_gemini_key(user)
     try:
-        result = await gemini.check_pronunciation(
-            key, req.original_text, req.spoken_text, req.language
+        excerpt = req.chapter_excerpt[:800] if req.chapter_excerpt else ""
+        prompt = (
+            f'Book: "{req.book_title}" by {req.author}\n'
+            + (f'Chapter: {req.chapter_title}\nExcerpt:\n---\n{excerpt}\n---\n\n' if excerpt else "\n")
+            + "Suggest 5-8 curated references for someone reading this book. Include:\n"
+            "- Related books or essays worth reading\n"
+            "- Notable film or theater adaptations (with year)\n"
+            "- YouTube videos or lectures about this work\n"
+            "- Historical or cultural context articles\n"
+            "- Academic analyses or literary criticism\n\n"
+            "Format as a markdown list with brief descriptions. Include links where you're confident they exist."
         )
-        return {"feedback": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/videos")
-async def videos(req: VideoRequest, user: dict = Depends(get_current_user)):
-    key = _require_gemini_key(user)
-    try:
-        query = await gemini.suggest_youtube_query(
-            key, req.passage, req.book_title, req.author
+        result = await gemini.answer_question(
+            key, prompt, excerpt or "N/A", req.book_title, req.author, req.response_language
         )
-        results = await search_videos(query)
-        return {"query": query, "videos": results}
+        return {"references": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -20,10 +20,27 @@ Provider = Literal["gemini", "google"]
 
 # ── Google Translate (free, no key) ──────────────────────────────────────────
 
+# Google Translate uses region-specific codes for some languages.
+# Our app uses short ISO codes (zh, pt) but Google expects zh-CN, pt-BR, etc.
+_GOOGLE_LANG_MAP = {
+    "zh": "zh-CN",
+    "pt": "pt-BR",
+    "he": "iw",    # Google still uses the old Hebrew code
+}
+
+
+def _normalize_google_lang(lang: str) -> str:
+    """Convert our language codes to Google Translate's expected format."""
+    return _GOOGLE_LANG_MAP.get(lang, lang)
+
+
 def _google_translate_chunk(text: str, source: str, target: str) -> str:
     """Translate a chunk of text via Google Translate (free, synchronous)."""
     from deep_translator import GoogleTranslator
-    return GoogleTranslator(source=source, target=target).translate(text)
+    return GoogleTranslator(
+        source=_normalize_google_lang(source),
+        target=_normalize_google_lang(target),
+    ).translate(text)
 
 
 async def _google_translate(text: str, source: str, target: str) -> list[str]:

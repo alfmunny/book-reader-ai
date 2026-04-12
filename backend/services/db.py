@@ -22,6 +22,15 @@ DB_PATH = os.environ.get(
 
 
 async def init_db() -> None:
+    """Ensure the database schema is up-to-date by running any pending
+    versioned migrations from backend/migrations/*.sql.
+
+    This replaces the old inline CREATE TABLE + ALTER TABLE + DROP/CREATE
+    soup that previously lived here. All schema definitions now live in
+    numbered SQL files so there's a clear audit trail and SQLite's
+    limitations (can't ALTER primary keys, etc.) are handled per-migration
+    rather than with ad-hoc sqlite_master inspections.
+    """
     # Make sure the parent directory exists. Important on first run after
     # mounting a Railway volume at e.g. /app/data — the mount point exists
     # but no books.db file does yet, and SQLite needs the directory to be
@@ -30,90 +39,11 @@ async def init_db() -> None:
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
 
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS books (
-                id            INTEGER PRIMARY KEY,
-                title         TEXT,
-                authors       TEXT,
-                languages     TEXT,
-                subjects      TEXT,
-                download_count INTEGER DEFAULT 0,
-                cover         TEXT,
-                text          TEXT,
-                cached_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                google_id  TEXT UNIQUE NOT NULL,
-                email      TEXT,
-                name       TEXT,
-                picture    TEXT,
-                gemini_key TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        # Migration: add images column if it doesn't exist yet
-        try:
-            await db.execute("ALTER TABLE books ADD COLUMN images TEXT DEFAULT '[]'")
-            await db.commit()
-        except Exception:
-            pass  # column already exists
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS translations (
-                book_id        INTEGER NOT NULL,
-                chapter_index  INTEGER NOT NULL,
-                target_language TEXT NOT NULL,
-                paragraphs     TEXT NOT NULL,
-                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (book_id, chapter_index, target_language)
-            )
-        """)
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS audiobooks (
-                book_id      INTEGER PRIMARY KEY,
-                librivox_id  TEXT NOT NULL,
-                title        TEXT,
-                authors      TEXT,
-                url_librivox TEXT,
-                url_rss      TEXT,
-                sections     TEXT,
-                saved_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        # Cached per-chunk chapter audio. We store one row per text chunk
-        # (the frontend chunks the chapter via /api/ai/tts/chunks before
-        # synthesizing) so the cache is finer-grained: replays are free,
-        # partial generation cost is sunk per-chunk on cancel, and the cache
-        # key includes provider+voice so switching voices misses cleanly.
-        #
-        # Migration: SQLite cannot ALTER the primary key on an existing table,
-        # so if the audio_cache table exists with the OLD PK (no chunk_index),
-        # we drop it and recreate. The cache is regeneratable so losing it on
-        # this one-time upgrade is acceptable.
-        async with db.execute(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name='audio_cache'"
-        ) as cursor:
-            row = await cursor.fetchone()
-        if row and "chunk_index" not in row[0]:
-            await db.execute("DROP TABLE audio_cache")
-
-        await db.execute("""
-            CREATE TABLE IF NOT EXISTS audio_cache (
-                book_id       INTEGER NOT NULL,
-                chapter_index INTEGER NOT NULL,
-                chunk_index   INTEGER NOT NULL DEFAULT 0,
-                provider      TEXT NOT NULL,
-                voice         TEXT NOT NULL,
-                content_type  TEXT NOT NULL,
-                audio         BLOB NOT NULL,
-                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
-            )
-        """)
-        await db.commit()
+    from services.migrations import run as run_migrations
+    applied = await run_migrations(DB_PATH)
+    if applied:
+        import logging
+        logging.getLogger(__name__).info("Applied %d migration(s): %s", len(applied), ", ".join(applied))
 
 
 async def get_or_create_user(google_id: str, email: str, name: str, picture: str) -> dict:

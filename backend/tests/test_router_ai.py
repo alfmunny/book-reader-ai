@@ -553,13 +553,17 @@ async def test_pronunciation_gemini_error_returns_500(client, test_user):
     assert resp.status_code == 500
 
 
-async def test_translate_gemini_error_returns_500(client, test_user):
+async def test_translate_gemini_error_falls_back_to_google(client, test_user):
+    """When Gemini fails, translation falls back to Google Translate (free)."""
     await _set_key(test_user)
-    with patch("services.translate._gemini_translate", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, side_effect=RuntimeError("quota exhausted")), \
+         patch("services.translate._google_translate", new_callable=AsyncMock, return_value=TRANSLATED):
         resp = await client.post("/api/ai/translate", json={
             "text": "text", "source_language": "de", "target_language": "en",
         })
-    assert resp.status_code == 500
+    assert resp.status_code == 200
+    assert resp.json()["provider"] == "google"
+    assert resp.json()["fallback"] is True
 
 
 async def test_tts_error_returns_500(client):

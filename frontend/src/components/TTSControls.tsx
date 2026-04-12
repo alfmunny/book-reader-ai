@@ -245,12 +245,22 @@ export default function TTSControls({
           preview: chunkText.replace(/\s+/g, " ").trim().slice(0, 60),
         });
 
-        const url = await synthesizeSpeech(chunkText, language, 1.0, provider, {
-          bookId,
-          chapterIndex,
-          chunkIndex: i,
-          signal: abort.signal,
-        });
+        // Retry up to 2 times on failure (network glitches, transient errors)
+        let url = "";
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            url = await synthesizeSpeech(chunkText, language, 1.0, provider, {
+              bookId,
+              chapterIndex,
+              chunkIndex: i,
+              signal: abort.signal,
+            });
+            break;
+          } catch (e) {
+            if (abort.signal.aborted || attempt === 2) throw e;
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
 
         if (myGen !== genRef.current) {
           URL.revokeObjectURL(url);

@@ -44,15 +44,33 @@ def _google_translate_chunk(text: str, source: str, target: str) -> str:
     ).translate(text)
 
 
+def _is_verse(text: str) -> bool:
+    """Detect verse/poetry/drama by checking line length distribution.
+
+    Gutenberg prose wraps at ~65-75 chars, producing lines that are
+    mostly long with a short final line. Verse lines are consistently
+    short (under ~55 chars). We check that most lines (not just the
+    average) are short — this avoids false positives from prose
+    paragraphs that happen to have few lines.
+    """
+    lines = [l for l in text.split("\n") if l.strip()]
+    if len(lines) < 3:
+        return False
+    # Count lines shorter than typical prose wrap width
+    short = sum(1 for l in lines if len(l.strip()) < 55)
+    return short / len(lines) > 0.7
+
+
 def _unwrap_paragraph(text: str) -> str:
     """Join hard-wrapped lines within a paragraph into flowing text.
 
     Gutenberg texts wrap at ~70 chars, inserting \\n mid-sentence.
     Google Translate treats each line independently, so we must unwrap
-    before translating.  Preserves intentional breaks (e.g. verse or
-    dialogue) by only joining when the previous line doesn't end with
-    punctuation that suggests a deliberate break.
+    before translating.  Skips verse/poetry/drama where line breaks
+    are intentional.
     """
+    if _is_verse(text):
+        return text
     return re.sub(r"(?<![.!?:;\"'\u201d])\n(?!\n)", " ", text)
 
 

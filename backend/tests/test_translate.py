@@ -1,7 +1,7 @@
 """Tests for services/translate.py — paragraph unwrapping, heading detection, and language mapping."""
 
 import pytest
-from services.translate import _unwrap_paragraph, _normalize_google_lang, _is_heading
+from services.translate import _unwrap_paragraph, _is_verse, _normalize_google_lang, _is_heading
 
 
 class TestUnwrapParagraph:
@@ -55,6 +55,29 @@ class TestUnwrapParagraph:
 
     def test_no_newlines(self):
         assert _unwrap_paragraph("Just one line.") == "Just one line."
+
+    def test_verse_not_unwrapped(self):
+        verse = "Ihr naht euch wieder,\nschwankende Gestalten,\nDie früh sich einst\ndem trüben Blick gezeigt.\nVersuch ich wohl,\neuch diesmal festzuhalten?"
+        assert _unwrap_paragraph(verse) == verse
+
+
+class TestIsVerse:
+    def test_short_lines_are_verse(self):
+        text = "Ihr naht euch wieder,\nschwankende Gestalten,\nDie früh sich einst\ndem trüben Blick gezeigt.\nVersuch ich wohl,\neuch diesmal festzuhalten?"
+        assert _is_verse(text) is True
+
+    def test_long_lines_are_prose(self):
+        text = ("I am by birth a Genevese, and my family is one of the most distinguished\n"
+                "of that republic. My ancestors had been for many years counsellors and\n"
+                "syndics; and my father had filled several public situations with honour\n"
+                "and reputation.")
+        assert _is_verse(text) is False
+
+    def test_single_line_is_not_verse(self):
+        assert _is_verse("Just one line.") is False
+
+    def test_two_lines_is_not_verse(self):
+        assert _is_verse("Line one.\nLine two.") is False
 
 
 class TestNormalizeGoogleLang:

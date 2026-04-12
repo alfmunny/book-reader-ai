@@ -52,29 +52,38 @@ async def run(db_path: str) -> list[str]:
                 already.add(row[0])
 
         # Bootstrap for existing databases that predate the migration system.
-        # If `schema_migrations` is empty but the `books` table already exists,
-        # this is an existing DB that had its schema created by the old inline
-        # init_db(). Mark all migrations up to and including the current schema
-        # as already applied so we don't try to re-run them (especially the
-        # ALTER TABLE that would fail with "duplicate column").
-        if not already:
-            async with db.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='books'"
-            ) as cursor:
-                existing_books = await cursor.fetchone()
-            if existing_books:
-                bootstrap_versions = [
-                    "001_initial_schema",
-                    "002_add_book_images",
-                    "003_create_audio_cache",
-                ]
-                for v in bootstrap_versions:
-                    await db.execute(
-                        "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)",
-                        (v,),
-                    )
-                await db.commit()
-                already.update(bootstrap_versions)
+        # Each bootstrap version is only marked as applied if the feature it
+        # would create ALREADY EXISTS in the DB. This handles both:
+        #   - A pre-migration-system DB (all features exist, nothing tracked)
+        #   - A partial-run (001 applied, crashed on 002 — but the feature
+        #     was already present from the old init_db)
+        # Without this, non-idempotent SQL like ALTER TABLE ADD COLUMN would
+        # crash with "duplicate column" on startup.
+        bootstrap_checks = [
+            # (version, SQL to check if the feature exists — returns a row if yes)
+            ("001_initial_schema",
+             "SELECT name FROM sqlite_master WHERE type='table' AND name='books'"),
+            ("002_add_book_images",
+             "SELECT 1 FROM pragma_table_info('books') WHERE name='images'"),
+            ("003_create_audio_cache",
+             "SELECT name FROM sqlite_master WHERE type='table' AND name='audio_cache'"),
+        ]
+        bootstrapped: list[str] = []
+        for version, check_sql in bootstrap_checks:
+            if version in already:
+                continue
+            async with db.execute(check_sql) as cursor:
+                if await cursor.fetchone():
+                    bootstrapped.append(version)
+
+        if bootstrapped:
+            for v in bootstrapped:
+                await db.execute(
+                    "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)",
+                    (v,),
+                )
+            await db.commit()
+            already.update(bootstrapped)
 
         # Find all .sql migration files, sorted by name.
         if not os.path.isdir(_MIGRATIONS_DIR):

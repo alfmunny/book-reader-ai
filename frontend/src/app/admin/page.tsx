@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [translations, setTranslations] = useState<TranslationEntry[]>([]);
   const [importId, setImportId] = useState("");
   const [importing, setImporting] = useState(false);
+  const [retranslating, setRetranslating] = useState<string | null>(null);
 
   useEffect(() => {
     getMe().then((me) => {
@@ -89,6 +90,21 @@ export default function AdminPage() {
       alert(e instanceof Error ? e.message : "Import failed");
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function handleRetranslate(t: TranslationEntry) {
+    const key = `${t.book_id}:${t.chapter_index}:${t.target_language}`;
+    if (!confirm(`Retranslate Book ${t.book_id}, Ch. ${t.chapter_index + 1} → ${t.target_language}?\nThis will delete the cached version and generate a fresh translation.`)) return;
+    setRetranslating(key);
+    try {
+      const res = await adminFetch(`/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/retranslate`, { method: "POST" });
+      alert(`Retranslated via ${res.provider}: ${res.paragraphs_count} paragraphs`);
+      await loadAll();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Retranslation failed");
+    } finally {
+      setRetranslating(null);
     }
   }
 
@@ -246,6 +262,12 @@ export default function AdminPage() {
                   <div className="text-sm text-ink">Book {t.book_id}, Ch. {t.chapter_index + 1} → {t.target_language}</div>
                   <div className="text-xs text-stone-400">{(t.size_chars / 1000).toFixed(1)}K chars</div>
                 </div>
+                <button
+                  onClick={() => handleRetranslate(t)}
+                  disabled={retranslating === `${t.book_id}:${t.chapter_index}:${t.target_language}`}
+                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50">
+                  {retranslating === `${t.book_id}:${t.chapter_index}:${t.target_language}` ? "Translating…" : "Retranslate"}
+                </button>
                 <button onClick={() => act(() => adminFetch(`/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}`, { method: "DELETE" }))}
                   className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Delete</button>
               </div>

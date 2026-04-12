@@ -100,7 +100,7 @@ test("Your Library shows chapter badge from recent-read data", async ({ page }) 
   });
   await page.reload();
 
-  // The merged "Your Library" section shows the chapter badge
+  // The "Your Library" tab is visible and active
   await expect(page.getByText("Your Library")).toBeVisible();
   // Badge format: "Ch. 5 · just now" (1-indexed display)
   await expect(page.getByText(/Ch\. 5/)).toBeVisible();

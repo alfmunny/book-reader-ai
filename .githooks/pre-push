@@ -43,12 +43,28 @@ fi
 
 ROOT="$(git rev-parse --show-toplevel)"
 
-echo "▶ Running frontend tests…"
+# Note: cd is safe inside this shell script — the "bare-repo" security
+# check only applies to Claude Code's Bash tool, not to hook scripts
+# which run in the user's own shell.
+
+echo "▶ Running frontend unit tests (Jest)…"
 cd "$ROOT/frontend" && npm test -- --no-coverage --ci
 
-echo "▶ Running backend tests…"
+# Run E2E if Playwright browsers are installed. Catches selector
+# mismatches, placeholder changes, and other UI regressions that
+# Jest can't see. Skips gracefully if browsers aren't installed.
+PLAYWRIGHT_CACHE="$HOME/Library/Caches/ms-playwright"
+[ ! -d "$PLAYWRIGHT_CACHE" ] && PLAYWRIGHT_CACHE="$HOME/.cache/ms-playwright"
+if [ -d "$PLAYWRIGHT_CACHE" ]; then
+  echo "▶ Running frontend E2E tests (Playwright)…"
+  env -u AUTH_SECRET -u AUTH_GOOGLE_ID -u AUTH_GOOGLE_SECRET -u NEXT_PUBLIC_API_URL \
+    npm run test:e2e
+else
+  echo "⚠ Skipping E2E — Playwright browsers not installed. Run: npx playwright install chromium"
+fi
+
+echo "▶ Running backend tests (pytest)…"
 cd "$ROOT/backend"
-# Activate venv if present, otherwise fall back to system pytest
 if [ -f venv/bin/activate ]; then
   source venv/bin/activate
 fi

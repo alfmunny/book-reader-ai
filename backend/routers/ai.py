@@ -136,6 +136,34 @@ async def references(req: ReferencesRequest, user: dict = Depends(get_current_us
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/translate/cache")
+async def translate_cache(
+    book_id: int,
+    chapter_index: int,
+    target_language: str,
+    _user: dict = Depends(get_current_user),
+):
+    """Check if a translation is cached. Returns it if yes, 404 if not."""
+    cached = await get_cached_translation(book_id, chapter_index, target_language)
+    if cached:
+        return {"paragraphs": cached, "cached": True}
+    raise HTTPException(status_code=404, detail="Not cached")
+
+
+class SaveTranslationRequest(BaseModel):
+    book_id: int
+    chapter_index: int
+    target_language: str
+    paragraphs: list[str]
+
+
+@router.put("/translate/cache")
+async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depends(get_current_user)):
+    """Save a completed progressive translation to the backend cache."""
+    await save_translation(req.book_id, req.chapter_index, req.target_language, req.paragraphs)
+    return {"ok": True}
+
+
 @router.post("/translate")
 async def translate(req: TranslateRequest, user: dict = Depends(get_current_user)):
     """Translate text with auto-fallback: Gemini if key available, else Google Translate (free)."""

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, translateText, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -144,7 +144,9 @@ export default function ReaderPage() {
 
   const bookLanguage = meta?.languages[0] || "en";
 
-  // Auto-translate when enabled or chapter/lang changes
+  // Auto-translate when enabled or chapter/lang changes.
+  // Splits the chapter into batches and translates progressively so
+  // paragraphs appear one batch at a time instead of all-or-nothing.
   useEffect(() => {
     const current = chapters[chapterIndex];
     if (!translationEnabled || !current?.text) {
@@ -158,30 +160,58 @@ export default function ReaderPage() {
       setTranslatedParagraphs(translationCache.current.get(cacheKey)!);
       return;
     }
+
+    let cancelled = false;
     setTranslationLoading(true);
     setTranslatedParagraphs([]);
-    translateText(current.text, bookLanguage, translationLang, Number(bookId), chapterIndex)
-      .then((r) => {
-        // Always cache so the user gets instant results if they navigate back
-        if (!r.cached) notifyAIUsed();
-        translationCache.current.set(cacheKey, r.paragraphs);
-        // Only update the UI if the user is still on this chapter
-        if (currentChapterKey.current === cacheKey) {
-          setTranslatedParagraphs(r.paragraphs);
+
+    const bid = Number(bookId);
+
+    (async () => {
+      // 1. Quick cache check — returns instantly if backend has it
+      const cached = await getTranslationCache(bid, chapterIndex, translationLang);
+      if (cancelled || currentChapterKey.current !== cacheKey) return;
+      if (cached) {
+        translationCache.current.set(cacheKey, cached);
+        setTranslatedParagraphs(cached);
+        setTranslationLoading(false);
+        return;
+      }
+
+      // 2. No cache — translate progressively in batches of ~3 paragraphs.
+      //    Each batch appears as soon as it's done.
+      const BATCH_SIZE = 3;
+      const paragraphs = current.text.split(/\n\n+/).filter((p: string) => p.trim());
+      const batches: string[][] = [];
+      for (let i = 0; i < paragraphs.length; i += BATCH_SIZE) {
+        batches.push(paragraphs.slice(i, i + BATCH_SIZE));
+      }
+
+      const accumulated: string[] = [];
+      for (const batch of batches) {
+        if (cancelled || currentChapterKey.current !== cacheKey) return;
+        try {
+          const r = await translateText(batch.join("\n\n"), bookLanguage, translationLang);
+          accumulated.push(...r.paragraphs);
+          if (!cancelled && currentChapterKey.current === cacheKey) {
+            setTranslatedParagraphs([...accumulated]);
+          }
+          notifyAIUsed();
+        } catch (e) {
+          console.error("Translation batch failed:", e);
+          notifyAIUsed();
+          break;
         }
-      })
-      .catch((e) => {
-        // Backend returns 400 "Gemini API key required" when the user has no key.
-        // notifyAIUsed() is guarded by !hasGeminiKey, so it's a no-op for users
-        // who do have a key (in which case the error is some real Gemini failure).
-        console.error("Translation failed:", e);
-        notifyAIUsed();
-      })
-      .finally(() => {
-        if (currentChapterKey.current === cacheKey) {
-          setTranslationLoading(false);
-        }
-      });
+      }
+      if (!cancelled && currentChapterKey.current === cacheKey) {
+        translationCache.current.set(cacheKey, accumulated);
+        setTranslationLoading(false);
+        // Save to backend cache for next visit (fire-and-forget)
+        saveTranslationCache(bid, chapterIndex, translationLang, accumulated).catch(() => {});
+      }
+    })();
+
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, chapterIndex, bookId]);
 

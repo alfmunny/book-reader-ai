@@ -94,6 +94,33 @@ async def test_translate_without_book_id_skips_cache(client, test_user):
     assert resp.json()["cached"] is False
 
 
+# ── Translation cache endpoints ───────────────────────────────────────────────
+
+async def test_translate_cache_get_returns_cached(client):
+    """GET /translate/cache returns cached translation."""
+    await save_translation(1, 0, "en", TRANSLATED)
+    resp = await client.get("/api/ai/translate/cache?book_id=1&chapter_index=0&target_language=en")
+    assert resp.status_code == 200
+    assert resp.json()["paragraphs"] == TRANSLATED
+    assert resp.json()["cached"] is True
+
+
+async def test_translate_cache_get_returns_404_when_missing(client):
+    resp = await client.get("/api/ai/translate/cache?book_id=999&chapter_index=0&target_language=en")
+    assert resp.status_code == 404
+
+
+async def test_translate_cache_put_saves(client):
+    """PUT /translate/cache saves paragraphs for later retrieval."""
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 2, "chapter_index": 1, "target_language": "fr",
+        "paragraphs": ["Bonjour"],
+    })
+    assert resp.status_code == 200
+    cached = await get_cached_translation(2, 1, "fr")
+    assert cached == ["Bonjour"]
+
+
 # ── Insight ───────────────────────────────────────────────────────────────────
 
 async def test_insight_without_key_returns_400(client):

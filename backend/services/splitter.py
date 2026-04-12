@@ -101,6 +101,15 @@ def strip_boilerplate(text: str) -> tuple[str, int]:
     return text[offset:end], offset
 
 
+def _clean_title(title: str) -> str:
+    """Remove Gutenberg bracket artifacts from chapter titles."""
+    # Strip trailing brackets/parens that aren't balanced (e.g. "Chapter I.]")
+    title = re.sub(r'[\]\)}>]+\s*$', '', title)
+    # Strip leading brackets that aren't balanced
+    title = re.sub(r'^[\[\({<]+', '', title)
+    return title.strip()
+
+
 def _validate(chapters: list[Chapter]) -> bool:
     """Return True if the chapter list looks reasonable."""
     if len(chapters) < 2:
@@ -152,7 +161,7 @@ def _chapters_from_keywords(body: str, offset: int, full_text: str) -> list[Chap
     for i, (title, start) in enumerate(entries):
         end = entries[i + 1][1] if i + 1 < len(entries) else len(full_text)
         text = full_text[start:end].strip()
-        chapters.append(Chapter(title=title, text=text))
+        chapters.append(Chapter(title=_clean_title(title), text=text))
 
     return _merge_tiny_first(chapters)
 
@@ -179,7 +188,7 @@ def _chapters_from_roman(body: str, offset: int, full_text: str) -> list[Chapter
     for i, (title, start) in enumerate(entries):
         end = entries[i + 1][1] if i + 1 < len(entries) else len(full_text)
         text = full_text[start:end].strip()
-        chapters.append(Chapter(title=title, text=text))
+        chapters.append(Chapter(title=_clean_title(title), text=text))
 
     return _merge_tiny_first(chapters)
 
@@ -227,7 +236,7 @@ def _chapters_from_toc(body: str, offset: int, full_text: str) -> list[Chapter]:
         end = positions[i + 1][1] if i + 1 < len(positions) else len(full_text)
         text = full_text[start:end].strip()
         if len(text) > 150:
-            chapters.append(Chapter(title=title, text=text))
+            chapters.append(Chapter(title=_clean_title(title), text=text))
 
     return _merge_tiny_first(chapters)
 
@@ -249,7 +258,7 @@ def _chapters_from_paragraphs(body: str) -> list[Chapter]:
         w = len(stripped.split())
         if word_count + w > WORDS_PER_SECTION and word_count > 0:
             chapters.append(Chapter(
-                title=section_title,
+                title=_clean_title(section_title),
                 text="\n\n".join(current),
             ))
             current = []
@@ -261,7 +270,7 @@ def _chapters_from_paragraphs(body: str) -> list[Chapter]:
         word_count += w
 
     if current:
-        chapters.append(Chapter(title=section_title, text="\n\n".join(current)))
+        chapters.append(Chapter(title=_clean_title(section_title), text="\n\n".join(current)))
     return [c for c in chapters if c.text.strip()]
 
 

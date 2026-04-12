@@ -3,7 +3,7 @@ Tests for services/splitter.py — chapter splitting for Project Gutenberg books
 """
 
 import pytest
-from services.splitter import build_chapters, strip_boilerplate, _validate, Chapter
+from services.splitter import build_chapters, strip_boilerplate, _validate, _clean_title, Chapter
 
 
 def test_strip_boilerplate_removes_header_and_footer():
@@ -108,3 +108,19 @@ def test_chapter_at_start_of_body():
     chs = build_chapters(text)
     assert len(chs) >= 2
     assert "CHAPTER" in chs[0].title
+
+
+def test_clean_title_strips_trailing_bracket():
+    assert _clean_title("Chapter I.]") == "Chapter I."
+
+
+def test_clean_title_strips_trailing_parens():
+    assert _clean_title("CHAPTER II.)") == "CHAPTER II."
+
+
+def test_clean_title_no_change_on_clean_title():
+    assert _clean_title("CHAPTER III") == "CHAPTER III"
+
+
+def test_clean_title_strips_leading_bracket():
+    assert _clean_title("[Chapter IV") == "Chapter IV"

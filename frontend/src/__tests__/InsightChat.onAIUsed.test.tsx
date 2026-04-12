@@ -21,6 +21,8 @@ jest.mock("@/lib/api", () => ({
 
 const defaultProps = {
   bookId: "1342",
+  userId: 1,
+  hasGeminiKey: true,
   isVisible: true,
   chapterText: "It is a truth universally acknowledged.",
   chapterTitle: "Chapter I",

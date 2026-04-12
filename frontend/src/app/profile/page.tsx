@@ -23,6 +23,7 @@ export default function ProfilePage() {
   // ── Gemini key state ───────────────────────────────────────────────────────
   const [keyInput, setKeyInput] = useState("");
   const [hasKey, setHasKey] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
@@ -38,7 +39,10 @@ export default function ProfilePage() {
 
   // Fetch live key status from backend (session JWT can be stale after key changes)
   useEffect(() => {
-    getMe().then((me) => setHasKey(me.hasGeminiKey)).catch(() => {});
+    getMe().then((me) => {
+      setHasKey(me.hasGeminiKey);
+      setIsAdmin(me.role === "admin");
+    }).catch(() => {});
   }, [session?.backendToken]);
 
   useEffect(() => {
@@ -122,12 +126,22 @@ export default function ProfilePage() {
               <p className="text-sm text-stone-500">{user?.email}</p>
             </div>
           </div>
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="mt-6 text-sm text-red-600 hover:text-red-800"
-          >
-            Sign out
-          </button>
+          <div className="mt-6 flex items-center gap-4">
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="text-sm text-red-600 hover:text-red-800"
+            >
+              Sign out
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => router.push("/admin")}
+                className="text-sm text-amber-700 hover:text-amber-900 underline"
+              >
+                Admin Panel
+              </button>
+            )}
+          </div>
         </section>
 
         {/* ── Gemini API key ──────────────────────────────────────────────── */}

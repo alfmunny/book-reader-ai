@@ -148,7 +148,7 @@ async def test_partial_bootstrap_marks_missing_versions(tmp_db):
         await db.execute("""
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, google_id TEXT UNIQUE NOT NULL,
-                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT, role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -205,7 +205,7 @@ async def test_partially_migrated_db_applies_only_new(tmp_db):
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 google_id TEXT UNIQUE NOT NULL,
-                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT, role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -244,7 +244,7 @@ async def test_existing_db_bootstrap_marks_old_migrations_done(tmp_db):
         await db.execute("""
             CREATE TABLE users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, google_id TEXT UNIQUE NOT NULL,
-                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT, role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -270,7 +270,7 @@ async def test_existing_db_bootstrap_marks_old_migrations_done(tmp_db):
         await db.commit()
 
     applied = await run_migrations(tmp_db)
-    # Bootstrap should have marked all 3 as done
+    # Bootstrap should have marked all 4 as done (DB has all features)
     assert applied == []
 
     # Verify schema_migrations contains the bootstrapped versions
@@ -280,6 +280,7 @@ async def test_existing_db_bootstrap_marks_old_migrations_done(tmp_db):
     assert "001_initial_schema" in versions
     assert "002_add_book_images" in versions
     assert "003_create_audio_cache" in versions
+    assert "004_user_roles_and_approval" in versions
 
 
 async def test_bootstrap_does_not_trigger_on_fresh_db(tmp_db):

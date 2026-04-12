@@ -56,6 +56,25 @@ def _unwrap_paragraph(text: str) -> str:
     return re.sub(r"(?<![.!?:;\"'\u201d])\n(?!\n)", " ", text)
 
 
+_HEADING_RE = re.compile(
+    r'^(?:'
+    r'(?:CHAPTER|CHAPITRE|KAPITEL|BOOK|PART|ACT|SCENE|PROLOGUE?|EPILOGUE?)'
+    r'[\s.:\-]*'
+    r'(?:[IVXLCDM]+|[0-9]+)?'
+    r'[.\s]*'
+    r'|[IVXLCDM]+\.?\s*'  # bare roman numeral like "I" or "XIV."
+    r'|[0-9]+\.?\s*'      # bare number like "1" or "14."
+    r')$',
+    re.IGNORECASE,
+)
+
+
+def _is_heading(text: str) -> bool:
+    """Return True if text looks like a chapter heading (not worth translating)."""
+    stripped = text.strip()
+    return bool(_HEADING_RE.match(stripped))
+
+
 async def _google_translate(text: str, source: str, target: str) -> list[str]:
     """Split text into paragraphs and translate each via Google Translate."""
     paragraphs = [p for p in text.split("\n\n") if p.strip()]
@@ -68,6 +87,11 @@ async def _google_translate(text: str, source: str, target: str) -> list[str]:
     results = []
     for para in paragraphs:
         unwrapped = _unwrap_paragraph(para)
+        # Skip chapter headings — translating "I" or "Chapter XIV" produces
+        # nonsense like "我" (Chinese for the pronoun "I").
+        if _is_heading(unwrapped):
+            results.append(unwrapped)
+            continue
         translated = await loop.run_in_executor(
             None, _google_translate_chunk, unwrapped, source, target
         )

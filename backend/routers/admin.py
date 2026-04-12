@@ -289,6 +289,57 @@ async def retranslate(
     }
 
 
+class BulkRetranslateRequest(BaseModel):
+    target_language: str
+
+
+@router.post("/translations/{book_id}/retranslate-all")
+async def retranslate_all(
+    book_id: int,
+    req: BulkRetranslateRequest,
+    admin: dict = Depends(_require_admin),
+):
+    """Delete and retranslate ALL chapters of a book for a target language."""
+    book = await get_cached_book(book_id)
+    if not book or not book.get("text"):
+        raise HTTPException(status_code=404, detail="Book not found in cache")
+
+    chapters = build_chapters(book["text"])
+    source_language = (book.get("languages") or ["en"])[0]
+
+    raw_key = admin.get("gemini_key")
+    decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+    provider = "gemini" if decrypted_key else "google"
+
+    # Delete all existing translations for this language
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM translations WHERE book_id=? AND target_language=?",
+            (book_id, req.target_language),
+        )
+        await db.commit()
+
+    results = []
+    for i, ch in enumerate(chapters):
+        try:
+            paragraphs = await do_translate(
+                ch.text, source_language, req.target_language,
+                provider=provider, gemini_key=decrypted_key,
+            )
+        except Exception:
+            if provider == "gemini":
+                paragraphs = await do_translate(
+                    ch.text, source_language, req.target_language, provider="google",
+                )
+            else:
+                results.append({"chapter": i, "status": "failed"})
+                continue
+        await save_translation(book_id, i, req.target_language, paragraphs)
+        results.append({"chapter": i, "status": "ok", "paragraphs": len(paragraphs)})
+
+    return {"ok": True, "chapters": len(results), "results": results}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STATS
 # ══════════════════════════════════════════════════════════════════════════════

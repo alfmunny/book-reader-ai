@@ -45,6 +45,7 @@ export default function AdminPage() {
   const [importId, setImportId] = useState("");
   const [importing, setImporting] = useState(false);
   const [retranslating, setRetranslating] = useState<string | null>(null);
+  const [bulkRetranslating, setBulkRetranslating] = useState(false);
 
   useEffect(() => {
     getMe().then((me) => {
@@ -255,6 +256,43 @@ export default function AdminPage() {
 
         {/* ── Translations Tab ── */}
         {tab === "translations" && (
+          <div className="space-y-4">
+            {/* Bulk retranslate — pick a book that has translations */}
+            {translations.length > 0 && (
+              <div className="flex items-center gap-2">
+                <select id="bulk-book" className="text-sm rounded border border-amber-300 px-2 py-1.5">
+                  {[...new Set(translations.map(t => t.book_id))].map(bid => (
+                    <option key={bid} value={bid}>Book {bid}</option>
+                  ))}
+                </select>
+                <select id="bulk-lang" className="text-sm rounded border border-amber-300 px-2 py-1.5">
+                  {[...new Set(translations.map(t => t.target_language))].map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
+                <button
+                  disabled={bulkRetranslating}
+                  onClick={async () => {
+                    const bid = (document.getElementById("bulk-book") as HTMLSelectElement)?.value;
+                    const lang = (document.getElementById("bulk-lang") as HTMLSelectElement)?.value;
+                    if (!bid || !lang || !confirm(`Retranslate ALL chapters of book ${bid} → ${lang}?`)) return;
+                    setBulkRetranslating(true);
+                    try {
+                      const res = await adminFetch(`/admin/translations/${bid}/retranslate-all`, {
+                        method: "POST", body: JSON.stringify({ target_language: lang }),
+                      });
+                      alert(`Retranslated ${res.chapters} chapters`);
+                      await loadAll();
+                    } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
+                    finally { setBulkRetranslating(false); }
+                  }}
+                  className="text-sm px-3 py-1.5 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50"
+                >
+                  {bulkRetranslating ? "Retranslating all…" : "Retranslate All"}
+                </button>
+              </div>
+            )}
+
           <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
             {translations.map((t, i) => (
               <div key={i} className="px-4 py-3 flex items-center gap-3">
@@ -273,6 +311,7 @@ export default function AdminPage() {
               </div>
             ))}
             {translations.length === 0 && <div className="px-4 py-8 text-center text-amber-600 text-sm">No translations cached.</div>}
+          </div>
           </div>
         )}
       </div>

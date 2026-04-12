@@ -534,13 +534,15 @@ export default function ReaderPage() {
         </div>
       </header>
 
-      {/* Reading progress bar */}
-      <div className="h-0.5 bg-amber-100">
-        <div
-          className="h-full bg-amber-600 transition-all duration-150"
-          style={{ width: `${scrollProgress}%` }}
-        />
-      </div>
+      {/* Reading progress bar — combines chapter position + scroll within chapter */}
+      {chapters.length > 0 && (
+        <div className="h-0.5 bg-amber-100" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
+          <div
+            className="h-full bg-amber-600 transition-all duration-150"
+            style={{ width: `${((chapterIndex + scrollProgress / 100) / chapters.length) * 100}%` }}
+          />
+        </div>
+      )}
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
@@ -609,7 +611,7 @@ export default function ReaderPage() {
                     className="text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
                   >← Previous chapter</button>
                   <span className="text-xs text-amber-500 self-center">
-                    {chapterIndex + 1} / {chapters.length}
+                    {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
                   </span>
                   <button
                     onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}

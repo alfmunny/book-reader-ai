@@ -99,11 +99,25 @@ def strip_boilerplate(text: str) -> tuple[str, int]:
     offset = start_m.end() if start_m else 0
     end = end_m.start() if end_m else len(text)
     body = text[offset:end]
-    # Remove single-line [Illustration] and [Illustration: short desc] tags.
-    # Multi-line illustration blocks (which can wrap chapter headings) are
-    # left alone — only the short inline markers are noise.
+    # Strip illustration markup but preserve any text content inside.
+    # Single-line [Illustration] or [Illustration: short desc] → remove entirely
     body = re.sub(r'\[Illustration(?:: [^\]\n]{0,80})?\]', '', body)
+    # Multi-line [Illustration: ...\n...\n] → keep inner text, strip markers.
+    # This preserves chapter headings that are wrapped in illustration blocks
+    # (e.g. [Illustration: ·TITLE·\n\nChapter I.])
+    body = re.sub(r'\[Illustration:[^\]]*\]', _strip_illustration_markers, body, flags=re.DOTALL)
+    # Remove [_Copyright ..._]] artifacts from illustrated editions
+    body = re.sub(r'\[_Copyright[^\]]*\]\]?', '', body)
     return body, offset
+
+
+def _strip_illustration_markers(m: re.Match) -> str:
+    """Replace multi-line [Illustration: content] with just the content."""
+    inner = m.group(0)
+    # Remove [Illustration: prefix and trailing ]
+    inner = re.sub(r'^\[Illustration:\s*', '', inner)
+    inner = re.sub(r'\]$', '', inner)
+    return inner.strip()
 
 
 def _clean_title(title: str) -> str:
@@ -283,20 +297,27 @@ def _chapters_from_paragraphs(body: str) -> list[Chapter]:
 
 def build_chapters(raw_text: str) -> list[Chapter]:
     raw_text = raw_text.replace('\r\n', '\n').replace('\r', '\n')
-    body, offset = strip_boilerplate(raw_text)
+    body, _offset = strip_boilerplate(raw_text)
+
+    # All strategies operate on the cleaned body text (boilerplate and
+    # illustration markup removed). We pass offset=0 and body as the
+    # full_text so positions from regex matches in body map correctly.
+    # (Previously we passed raw_text with an offset, but strip_boilerplate
+    # now modifies the text — removing illustration blocks — so positions
+    # in body no longer correspond to positions in raw_text.)
 
     # Strategy 1: Keyword headings (CHAPTER, Chapitre, Kapitel, ACT, ...)
-    chapters = _chapters_from_keywords(body, offset, raw_text)
+    chapters = _chapters_from_keywords(body, 0, body)
     if _validate(chapters):
         return chapters
 
     # Strategy 2: Roman numeral headings (I, II, III, ...)
-    chapters = _chapters_from_roman(body, offset, raw_text)
+    chapters = _chapters_from_roman(body, 0, body)
     if _validate(chapters):
         return chapters
 
     # Strategy 3: TOC-based splitting
-    chapters = _chapters_from_toc(body, offset, raw_text)
+    chapters = _chapters_from_toc(body, 0, body)
     if _validate(chapters):
         return chapters
 

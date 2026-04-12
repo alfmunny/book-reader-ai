@@ -246,8 +246,7 @@ export default function TTSControls({
         });
 
         // Retry up to 2 times on failure (network glitches, transient errors)
-        let url: string;
-        let lastErr: Error | null = null;
+        let url = "";
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             url = await synthesizeSpeech(chunkText, language, 1.0, provider, {
@@ -256,15 +255,12 @@ export default function TTSControls({
               chunkIndex: i,
               signal: abort.signal,
             });
-            lastErr = null;
             break;
           } catch (e) {
-            lastErr = e instanceof Error ? e : new Error("TTS failed");
-            if (abort.signal.aborted) throw lastErr;
-            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+            if (abort.signal.aborted || attempt === 2) throw e;
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
           }
         }
-        if (lastErr) throw lastErr;
 
         if (myGen !== genRef.current) {
           URL.revokeObjectURL(url);

@@ -33,6 +33,11 @@ export function getCachedBooks() {
   return request<BookMeta[]>("/books/cached");
 }
 
+export function getPopularBooks(language = "") {
+  const params = language ? `?language=${language}` : "";
+  return request<BookMeta[]>(`/books/popular${params}`);
+}
+
 export function getBookMeta(id: number) {
   return request<BookMeta>(`/books/${id}`);
 }

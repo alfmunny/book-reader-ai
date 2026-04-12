@@ -155,7 +155,15 @@ export default function Home() {
 
         {/* ── Discover Books (Search) ────────────────────────────────── */}
         <section>
-          <h2 className="font-serif font-semibold text-ink text-lg mb-1">Discover Books</h2>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-serif font-semibold text-ink text-lg">Discover Books</h2>
+            <button
+              onClick={() => router.push("/popular")}
+              className="text-sm text-amber-700 hover:text-amber-900 underline"
+            >
+              Browse 100 Popular Classics →
+            </button>
+          </div>
           <p className="text-sm text-amber-700 mb-3">
             Search 70,000+ free public domain classics from Project Gutenberg
           </p>

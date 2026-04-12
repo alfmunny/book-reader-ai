@@ -78,7 +78,7 @@ test("shows Gemini reminder banner when translate fails without a key", async ({
   await expect(page.getByRole("button", { name: /Add your free Gemini API key/ })).toBeVisible();
 });
 
-test("home page shows Continue Reading badge with chapter number", async ({ page }) => {
+test("Your Library shows chapter badge from recent-read data", async ({ page }) => {
   // Seed a recent book with lastChapter = 4
   await page.goto("/");
   await page.evaluate(() => {
@@ -101,7 +101,8 @@ test("home page shows Continue Reading badge with chapter number", async ({ page
   });
   await page.reload();
 
-  await expect(page.getByText("Continue Reading")).toBeVisible();
+  // The merged "Your Library" section shows the chapter badge
+  await expect(page.getByText("Your Library")).toBeVisible();
   // Badge format: "Ch. 5 · just now" (1-indexed display)
   await expect(page.getByText(/Ch\. 5/)).toBeVisible();
 });

@@ -355,7 +355,7 @@ export default function SentenceReader({
               {originalContent}
               <div className="border-l border-amber-200 pl-6">
                 {translationText ? (
-                  <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
+                  <p className="font-serif text-base text-amber-800 leading-relaxed italic">
                     {translationText}
                   </p>
                 ) : translationLoading ? (
@@ -381,7 +381,7 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+              <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3">
                 {translationText}
               </p>
             )}

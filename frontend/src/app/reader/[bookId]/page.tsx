@@ -196,10 +196,8 @@ export default function ReaderPage() {
           if (!cancelled && currentChapterKey.current === cacheKey) {
             setTranslatedParagraphs([...accumulated]);
           }
-          notifyAIUsed();
         } catch (e) {
           console.error("Translation batch failed:", e);
-          notifyAIUsed();
           break;
         }
       }

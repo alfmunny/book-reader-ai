@@ -49,33 +49,32 @@ test("continue-reading: reopening a book restores the last-read chapter", async 
   await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 30), { exact: false })).toBeVisible({ timeout: 5000 });
 });
 
-test("shows Gemini reminder banner when translate fails without a key", async ({ page }) => {
-  // Override the default mocks from fixtures.ts:
-  //   - user has no Gemini key
-  //   - translate returns 400 like the real backend now does
+test("translation does not show Gemini reminder (uses free Google Translate)", async ({ page }) => {
+  // User has no Gemini key — translation should still work via Google
+  // Translate free fallback and should NOT show the Gemini reminder.
   await page.route("**/api/user/me", (route) =>
     route.fulfill({
-      json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false },
+      json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false, role: "user", approved: true },
     })
   );
+  // Cache check returns 404 (not cached)
+  await page.route("**/api/ai/translate/cache*", (route) =>
+    route.fulfill({ status: 404, json: { detail: "Not cached" } })
+  );
+  // Translation succeeds via Google Translate
   await page.route("**/api/ai/translate", (route) =>
-    route.fulfill({
-      status: 400,
-      json: { detail: "Gemini API key required. Please add it in your profile." },
-    })
+    route.fulfill({ json: { paragraphs: ["Translated text."], cached: false } })
   );
 
   await page.goto("/reader/1342");
-
-  // Wait for chapters to render before toggling translation
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
 
-  // Click the Translate toggle — triggers the translation effect
   await page.getByRole("button", { name: /Translate/ }).first().click();
 
-  // Banner must appear because notifyAIUsed() now runs in the catch handler
-  await expect(page.getByText(/AI features require your own Gemini API key/)).toBeVisible();
-  await expect(page.getByRole("button", { name: /Add your free Gemini API key/ })).toBeVisible();
+  // Translation should appear
+  await expect(page.getByText("Translated text.")).toBeVisible();
+  // Gemini reminder should NOT appear
+  await expect(page.getByText(/AI features require your own Gemini API key/)).not.toBeVisible();
 });
 
 test("Your Library shows chapter badge from recent-read data", async ({ page }) => {

@@ -34,6 +34,8 @@ export default function ProfilePage() {
     translationLang: "en",
     audiobookEnabled: true,
     ttsProvider: "auto",
+    fontSize: "base",
+    theme: "light",
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 

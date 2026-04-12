@@ -277,6 +277,25 @@ export default function ReaderPage() {
     if (sel.length > 10) setSelectedText(sel);
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Skip if user is typing in an input/select/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "ArrowLeft" && chapterIndex > 0) {
+        e.preventDefault();
+        goToChapter(chapterIndex - 1);
+      } else if (e.key === "ArrowRight" && chapterIndex < chapters.length - 1) {
+        e.preventDefault();
+        goToChapter(chapterIndex + 1);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
+
   function goToChapter(index: number) {
     setChapterIndex(index);
     saveLastChapter(Number(bookId), index);

@@ -89,7 +89,7 @@ TOC_HEADING_RE = re.compile(
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 def strip_boilerplate(text: str) -> tuple[str, int]:
-    """Remove PG header/footer, return (body, offset_of_body_in_original)."""
+    """Remove PG header/footer and illustration tags, return (body, offset_of_body_in_original)."""
     start_m = re.search(
         r'\*{3}\s*START OF THE PROJECT GUTENBERG[^\n]*\n', text, re.IGNORECASE
     )
@@ -98,7 +98,12 @@ def strip_boilerplate(text: str) -> tuple[str, int]:
     )
     offset = start_m.end() if start_m else 0
     end = end_m.start() if end_m else len(text)
-    return text[offset:end], offset
+    body = text[offset:end]
+    # Remove single-line [Illustration] and [Illustration: short desc] tags.
+    # Multi-line illustration blocks (which can wrap chapter headings) are
+    # left alone — only the short inline markers are noise.
+    body = re.sub(r'\[Illustration(?:: [^\]\n]{0,80})?\]', '', body)
+    return body, offset
 
 
 def _clean_title(title: str) -> str:

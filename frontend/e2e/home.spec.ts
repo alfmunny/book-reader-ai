@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
 test("home page renders header and search input", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Book Reader AI" })).toBeVisible();
+  // With no library books, auto-switches to Discover tab which has the search
   await expect(page.getByPlaceholder(/Search by title or author/)).toBeVisible();
 });
 
@@ -24,19 +25,21 @@ test("Your Library shows books from localStorage recentBooks", async ({ page }) 
   }, MOCK_BOOK);
   await page.reload();
 
+  // Library tab is active and shows the book
   await expect(page.getByText("Your Library")).toBeVisible();
   await expect(page.getByText("Pride and Prejudice").first()).toBeVisible();
   await expect(page.getByText(/Ch\. 3/)).toBeVisible(); // badge with chapter
 });
 
-test("Your Library is hidden when no recent books", async ({ page }) => {
+test("empty library shows message and discover button", async ({ page }) => {
   await page.goto("/");
-  // No recent books in localStorage → library section should not appear
-  await expect(page.getByText("Your Library")).not.toBeVisible();
+  // No recent books → auto-switches to Discover tab
+  await expect(page.getByPlaceholder(/Search by title or author/)).toBeVisible();
 });
 
 test("search for Faust returns result and displays it", async ({ page }) => {
   await page.goto("/");
+  // No library → already on Discover tab
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
   await page.getByRole("button", { name: "Search" }).click();
   await expect(page.getByText("Faust").first()).toBeVisible();
@@ -44,6 +47,7 @@ test("search for Faust returns result and displays it", async ({ page }) => {
 
 test("quick search pill triggers search", async ({ page }) => {
   await page.goto("/");
+  // No library → already on Discover tab
   await page.getByRole("button", { name: "Faust" }).click();
   await expect(page.getByText(/Goethe/)).toBeVisible();
 });

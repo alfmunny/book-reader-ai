@@ -74,6 +74,36 @@ export function translateText(
   });
 }
 
+/** Check if a translation is already cached. Returns paragraphs or null. */
+export async function getTranslationCache(
+  bookId: number,
+  chapterIndex: number,
+  targetLanguage: string,
+): Promise<string[] | null> {
+  try {
+    const data = await request<{ paragraphs: string[] }>(
+      `/ai/translate/cache?book_id=${bookId}&chapter_index=${chapterIndex}&target_language=${targetLanguage}`
+    );
+    return data.paragraphs;
+  } catch {
+    return null;
+  }
+}
+
+/** Save a completed progressive translation to the backend cache. */
+export function saveTranslationCache(
+  bookId: number,
+  chapterIndex: number,
+  targetLanguage: string,
+  paragraphs: string[],
+) {
+  return request<{ ok: boolean }>("/ai/translate/cache", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ book_id: bookId, chapter_index: chapterIndex, target_language: targetLanguage, paragraphs }),
+  });
+}
+
 export function askQuestion(
   question: string,
   passage: string,

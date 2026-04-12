@@ -12,6 +12,8 @@ import {
   getBookChapters,
   getInsight,
   translateText,
+  getTranslationCache,
+  saveTranslationCache,
   askQuestion,
   synthesizeSpeech,
   getTtsChunks,
@@ -136,6 +138,32 @@ test("translateText sends correct body", async () => {
   expect(body.target_language).toBe("en");
   expect(body.book_id).toBe(1342);
   expect(body.chapter_index).toBe(0);
+});
+
+test("getTranslationCache returns paragraphs on hit", async () => {
+  mockFetch({ paragraphs: ["Translated"], cached: true });
+  const result = await getTranslationCache(1342, 0, "en");
+  expect(result).toEqual(["Translated"]);
+  const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+  expect(url).toContain("/ai/translate/cache");
+  expect(url).toContain("book_id=1342");
+});
+
+test("getTranslationCache returns null on miss", async () => {
+  mockFetch({ detail: "Not cached" }, false);
+  const result = await getTranslationCache(999, 0, "en");
+  expect(result).toBeNull();
+});
+
+test("saveTranslationCache sends PUT", async () => {
+  mockFetch({ ok: true });
+  await saveTranslationCache(1342, 0, "en", ["Hello"]);
+  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(url).toContain("/ai/translate/cache");
+  expect(opts.method).toBe("PUT");
+  const body = JSON.parse(opts.body);
+  expect(body.book_id).toBe(1342);
+  expect(body.paragraphs).toEqual(["Hello"]);
 });
 
 test("askQuestion sends POST to /ai/qa", async () => {

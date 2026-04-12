@@ -1,39 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-// Direct API calls (admin endpoints)
-const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  picture: string;
-  role: string;
-  approved: number;
-  created_at: string;
-}
-
-interface Stats {
-  users_total: number;
-  users_approved: number;
-  users_pending: number;
-  books_cached: number;
-  audio_chunks_cached: number;
-  audio_cache_mb: number;
-}
-
 import { getMe, getAuthToken } from "@/lib/api";
+
+const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 async function adminFetch(path: string, options?: RequestInit) {
   const token = getAuthToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options?.headers as Record<string, string> || {}),
-  };
-  const res = await fetch(`${BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers as Record<string, string> || {}),
+    },
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || "Request failed");
@@ -41,171 +22,237 @@ async function adminFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
+type Tab = "users" | "books" | "audio" | "translations";
+
+interface User { id: number; email: string; name: string; picture: string; role: string; approved: number; created_at: string; }
+interface Book { id: number; title: string; authors: string[]; languages: string[]; download_count: number; text_length?: number; cached_at?: string; }
+interface AudioEntry { book_id: number; chapter_index: number; provider: string; voice: string; chunks: number; size_mb: number; created_at: string; }
+interface TranslationEntry { book_id: number; chapter_index: number; target_language: string; size_chars: number; created_at: string; }
+interface Stats { users_total: number; users_approved: number; users_pending: number; books_cached: number; audio_chunks_cached: number; audio_cache_mb: number; translations_cached: number; }
+
 export default function AdminPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [tab, setTab] = useState<Tab>("users");
+  const [myId, setMyId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [myId, setMyId] = useState<number | null>(null);
+
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [books, setBooks] = useState<Book[]>([]);
+  const [audio, setAudio] = useState<AudioEntry[]>([]);
+  const [translations, setTranslations] = useState<TranslationEntry[]>([]);
+  const [importId, setImportId] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
-    // Store the auth token globally for adminFetch
-    import("@/lib/api").then((api) => {
-      // The token is set by Providers/TokenSync — we need to read it
-      // We'll use getMe to verify we're admin, then fetch admin data
-    });
-
-    Promise.all([
-      getMe().then((me) => {
-        setMyId(me.id);
-        if (me.role !== "admin") {
-          router.push("/");
-          return;
-        }
-      }),
-      adminFetch("/admin/users").then(setUsers).catch((e) => setError(e.message)),
-      adminFetch("/admin/stats").then(setStats).catch(() => {}),
-    ]).finally(() => setLoading(false));
+    getMe().then((me) => {
+      setMyId(me.id);
+      if (me.role !== "admin") { router.push("/"); return; }
+    }).catch(() => router.push("/"));
+    loadAll();
   }, [router]);
 
-  async function toggleApproval(userId: number, currentlyApproved: boolean) {
+  async function loadAll() {
+    setLoading(true);
+    setError("");
     try {
-      await adminFetch(`/admin/users/${userId}/approve`, {
-        method: "PUT",
-        body: JSON.stringify({ approved: !currentlyApproved }),
-      });
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, approved: currentlyApproved ? 0 : 1 } : u))
-      );
+      const [s, u, b, a, t] = await Promise.all([
+        adminFetch("/admin/stats"),
+        adminFetch("/admin/users"),
+        adminFetch("/admin/books"),
+        adminFetch("/admin/audio"),
+        adminFetch("/admin/translations"),
+      ]);
+      setStats(s); setUsers(u); setBooks(b); setAudio(a); setTranslations(t);
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed");
+      setError(e instanceof Error ? e.message : "Failed to load admin data");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function removeUser(userId: number, name: string) {
-    if (!confirm(`Remove user "${name}"? This cannot be undone.`)) return;
+  async function act(fn: () => Promise<unknown>) {
+    try { await fn(); await loadAll(); } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
+  }
+
+  async function handleImport() {
+    const id = parseInt(importId);
+    if (!id || id <= 0) return;
+    setImporting(true);
     try {
-      await adminFetch(`/admin/users/${userId}`, { method: "DELETE" });
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      const res = await adminFetch("/admin/books/import", { method: "POST", body: JSON.stringify({ book_id: id }) });
+      alert(res.status === "already_cached" ? `"${res.title}" is already cached.` : `Imported "${res.title}" (${res.text_length?.toLocaleString()} chars)`);
+      setImportId("");
+      await loadAll();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed");
+      alert(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-parchment flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const TABS: { key: Tab; label: string; count?: number }[] = [
+    { key: "users", label: "Users", count: stats?.users_total },
+    { key: "books", label: "Books", count: stats?.books_cached },
+    { key: "audio", label: "Audio Cache", count: stats?.audio_chunks_cached },
+    { key: "translations", label: "Translations", count: stats?.translations_cached },
+  ];
+
+  if (loading) return (
+    <div className="min-h-screen bg-parchment flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-6 py-4 flex items-center gap-4">
-        <button
-          onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm"
-        >
-          ← Library
-        </button>
+        <button onClick={() => router.push("/")} className="text-amber-700 hover:text-amber-900 text-sm">← Library</button>
         <h1 className="font-serif font-bold text-ink text-xl">Admin Panel</h1>
+        <button onClick={loadAll} className="ml-auto text-sm text-amber-600 hover:text-amber-900">↻ Refresh</button>
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
+      <div className="max-w-5xl mx-auto px-6 py-6">
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm mb-4">{error}</div>}
 
-        {/* Stats cards */}
+        {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl border border-amber-200 p-4 text-center">
-              <div className="text-2xl font-bold text-ink">{stats.users_approved}</div>
-              <div className="text-xs text-amber-600">Approved Users</div>
-            </div>
-            <div className="bg-white rounded-xl border border-amber-200 p-4 text-center">
-              <div className="text-2xl font-bold text-amber-600">{stats.users_pending}</div>
-              <div className="text-xs text-amber-600">Pending Approval</div>
-            </div>
-            <div className="bg-white rounded-xl border border-amber-200 p-4 text-center">
-              <div className="text-2xl font-bold text-ink">{stats.books_cached}</div>
-              <div className="text-xs text-amber-600">Books Cached</div>
-            </div>
-            <div className="bg-white rounded-xl border border-amber-200 p-4 text-center">
-              <div className="text-2xl font-bold text-ink">{stats.audio_chunks_cached}</div>
-              <div className="text-xs text-amber-600">Audio Chunks</div>
-            </div>
-            <div className="bg-white rounded-xl border border-amber-200 p-4 text-center">
-              <div className="text-2xl font-bold text-ink">{stats.audio_cache_mb} MB</div>
-              <div className="text-xs text-amber-600">Audio Cache Size</div>
-            </div>
-          </div>
-        )}
-
-        {/* Users table */}
-        <section className="bg-white rounded-2xl border border-amber-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-amber-200">
-            <h2 className="font-serif font-semibold text-ink text-lg">Users</h2>
-          </div>
-          <div className="divide-y divide-amber-100">
-            {users.map((user) => (
-              <div key={user.id} className="px-6 py-4 flex items-center gap-4">
-                {user.picture ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.picture} alt="" className="w-10 h-10 rounded-full" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold">
-                    {user.name?.[0] ?? "?"}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-ink truncate">{user.name}</span>
-                    {user.role === "admin" && (
-                      <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">admin</span>
-                    )}
-                    {!user.approved && (
-                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">pending</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-stone-500 truncate">{user.email}</p>
-                </div>
-                <div className="flex gap-2">
-                  {user.id !== myId && (
-                    <>
-                      <button
-                        onClick={() => toggleApproval(user.id, !!user.approved)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border font-medium ${
-                          user.approved
-                            ? "border-orange-300 text-orange-700 hover:bg-orange-50"
-                            : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                        }`}
-                      >
-                        {user.approved ? "Revoke" : "Approve"}
-                      </button>
-                      <button
-                        onClick={() => removeUser(user.id, user.name)}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
-                      >
-                        Remove
-                      </button>
-                    </>
-                  )}
-                  {user.id === myId && (
-                    <span className="text-xs text-stone-400">You</span>
-                  )}
-                </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              { label: "Users", value: `${stats.users_approved} / ${stats.users_total}` },
+              { label: "Pending", value: stats.users_pending, highlight: stats.users_pending > 0 },
+              { label: "Books", value: stats.books_cached },
+              { label: "Audio", value: `${stats.audio_cache_mb} MB` },
+            ].map(({ label, value, highlight }) => (
+              <div key={label} className={`rounded-xl border p-3 text-center ${highlight ? "border-orange-300 bg-orange-50" : "border-amber-200 bg-white"}`}>
+                <div className={`text-lg font-bold ${highlight ? "text-orange-700" : "text-ink"}`}>{value}</div>
+                <div className="text-xs text-amber-600">{label}</div>
               </div>
             ))}
-            {users.length === 0 && (
-              <div className="px-6 py-8 text-center text-amber-700">No users yet.</div>
-            )}
           </div>
-        </section>
+        )}
+
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-amber-200 mb-4">
+          {TABS.map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                tab === key ? "border-amber-700 text-amber-900" : "border-transparent text-amber-600 hover:text-amber-800"
+              }`}
+            >
+              {label} {count !== undefined && <span className="text-xs opacity-60">({count})</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Users Tab ── */}
+        {tab === "users" && (
+          <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+            {users.map((u) => (
+              <div key={u.id} className="px-4 py-3 flex items-center gap-3">
+                {u.picture ? <img src={u.picture} alt="" className="w-8 h-8 rounded-full" /> :
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-sm font-bold">{u.name?.[0]}</div>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-ink text-sm truncate">{u.name}</span>
+                    {u.role === "admin" && <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">admin</span>}
+                    {!u.approved && <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">pending</span>}
+                  </div>
+                  <p className="text-xs text-stone-400 truncate">{u.email}</p>
+                </div>
+                {u.id !== myId && (
+                  <div className="flex gap-1">
+                    <button onClick={() => act(() => adminFetch(`/admin/users/${u.id}/approve`, { method: "PUT", body: JSON.stringify({ approved: !u.approved }) }))}
+                      className={`text-xs px-2 py-1 rounded border ${u.approved ? "border-orange-200 text-orange-600" : "border-emerald-200 text-emerald-600"}`}>
+                      {u.approved ? "Revoke" : "Approve"}
+                    </button>
+                    <button onClick={() => { if (confirm(`Delete "${u.name}"?`)) act(() => adminFetch(`/admin/users/${u.id}`, { method: "DELETE" })); }}
+                      className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Del</button>
+                  </div>
+                )}
+                {u.id === myId && <span className="text-xs text-stone-300">You</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Books Tab ── */}
+        {tab === "books" && (
+          <div className="space-y-4">
+            {/* Import */}
+            <div className="flex gap-2">
+              <input
+                placeholder="Gutenberg Book ID (e.g. 2229)"
+                value={importId}
+                onChange={(e) => setImportId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleImport()}
+                className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+              />
+              <button onClick={handleImport} disabled={importing || !importId.trim()}
+                className="rounded-lg bg-amber-700 text-white px-4 py-2 text-sm hover:bg-amber-800 disabled:opacity-50">
+                {importing ? "Importing…" : "Import Book"}
+              </button>
+            </div>
+
+            {/* Book list */}
+            <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+              {books.map((b) => (
+                <div key={b.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-ink text-sm truncate">{b.title}</div>
+                    <div className="text-xs text-stone-400">
+                      ID: {b.id} · {b.languages?.join(", ")} · {((b.text_length || 0) / 1000).toFixed(0)}K chars
+                      {b.authors?.length ? ` · ${b.authors.join(", ")}` : ""}
+                    </div>
+                  </div>
+                  <button onClick={() => router.push(`/reader/${b.id}`)} className="text-xs text-amber-600 hover:text-amber-800">Open</button>
+                  <button onClick={() => { if (confirm(`Delete "${b.title}" and all its audio/translations?`)) act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" })); }}
+                    className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Delete</button>
+                </div>
+              ))}
+              {books.length === 0 && <div className="px-4 py-8 text-center text-amber-600 text-sm">No books cached.</div>}
+            </div>
+          </div>
+        )}
+
+        {/* ── Audio Tab ── */}
+        {tab === "audio" && (
+          <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+            {audio.map((a, i) => (
+              <div key={i} className="px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-ink">Book {a.book_id}, Ch. {a.chapter_index + 1}</div>
+                  <div className="text-xs text-stone-400">
+                    {a.provider}/{a.voice} · {a.chunks} chunks · {a.size_mb} MB
+                  </div>
+                </div>
+                <button onClick={() => act(() => adminFetch(`/admin/audio/${a.book_id}/${a.chapter_index}`, { method: "DELETE" }))}
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Delete</button>
+              </div>
+            ))}
+            {audio.length === 0 && <div className="px-4 py-8 text-center text-amber-600 text-sm">No audio cached.</div>}
+          </div>
+        )}
+
+        {/* ── Translations Tab ── */}
+        {tab === "translations" && (
+          <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+            {translations.map((t, i) => (
+              <div key={i} className="px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-ink">Book {t.book_id}, Ch. {t.chapter_index + 1} → {t.target_language}</div>
+                  <div className="text-xs text-stone-400">{(t.size_chars / 1000).toFixed(1)}K chars</div>
+                </div>
+                <button onClick={() => act(() => adminFetch(`/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}`, { method: "DELETE" }))}
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Delete</button>
+              </div>
+            ))}
+            {translations.length === 0 && <div className="px-4 py-8 text-center text-amber-600 text-sm">No translations cached.</div>}
+          </div>
+        )}
       </div>
     </main>
   );

@@ -13,11 +13,9 @@ import {
   getInsight,
   translateText,
   askQuestion,
-  checkPronunciation,
   synthesizeSpeech,
   getTtsChunks,
   deleteAudioCache,
-  findVideos,
   searchAudiobooks,
   getAudiobook,
   saveAudiobook,
@@ -144,18 +142,6 @@ test("askQuestion sends POST to /ai/qa", async () => {
   mockFetch({ answer: "42" });
   const result = await askQuestion("What?", "passage", "Book", "Author");
   expect(result.answer).toBe("42");
-});
-
-test("checkPronunciation sends POST to /ai/pronunciation", async () => {
-  mockFetch({ feedback: "Good!" });
-  const result = await checkPronunciation("Hello", "Helo");
-  expect(result.feedback).toBe("Good!");
-});
-
-test("findVideos sends POST to /ai/videos", async () => {
-  mockFetch({ query: "Faust opera", videos: [] });
-  const result = await findVideos("passage", "Faust", "Goethe");
-  expect(result.query).toBe("Faust opera");
 });
 
 // ── TTS ───────────────────────────────────────────────────────────────────────

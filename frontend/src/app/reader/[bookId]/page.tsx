@@ -7,7 +7,6 @@ import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentB
 import { getSettings } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
-import PronunciationRecorder from "@/components/PronunciationRecorder";
 import TranslationView from "@/components/TranslationView";
 import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
@@ -29,8 +28,6 @@ export default function ReaderPage() {
   const [error, setError] = useState("");
 
   const [selectedText, setSelectedText] = useState("");
-  const [showRecorder, setShowRecorder] = useState(false);
-  const [spokenText, setSpokenText] = useState("");
 
   // Audiobook
   const [audiobookEnabled, setAudiobookEnabled] = useState(true);
@@ -514,22 +511,6 @@ export default function ReaderPage() {
                 ttsSeekRef.current = seekFn;
               }}
             />
-            <div className="px-3 pb-3">
-              <button
-                onClick={() => setShowRecorder((v) => !v)}
-                className="text-xs text-amber-700 underline"
-              >
-                {showRecorder ? "Hide pronunciation practice" : "Practice reading aloud"}
-              </button>
-              {showRecorder && (
-                <div className="mt-2">
-                  <PronunciationRecorder
-                    language={bookLanguage}
-                    onResult={(t) => setSpokenText(t)}
-                  />
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -566,7 +547,6 @@ export default function ReaderPage() {
             bookTitle={meta?.title ?? ""}
             author={meta?.authors[0] ?? ""}
             bookLanguage={bookLanguage}
-            spokenText={spokenText}
             onAIUsed={notifyAIUsed}
           />
         </div>

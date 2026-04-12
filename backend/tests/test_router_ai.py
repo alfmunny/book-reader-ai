@@ -145,29 +145,6 @@ async def test_qa_with_key_returns_answer(client, test_user):
 
 # ── Pronunciation ─────────────────────────────────────────────────────────────
 
-async def test_pronunciation_without_key_returns_400(client):
-    resp = await client.post("/api/ai/pronunciation", json={
-        "original_text": "Hello world",
-        "spoken_text": "Helo world",
-    })
-    assert resp.status_code == 400
-
-
-async def test_pronunciation_with_key_returns_feedback(client, test_user):
-    await _set_key(test_user)
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.check_pronunciation = AsyncMock(return_value="Good job!")
-        resp = await client.post("/api/ai/pronunciation", json={
-            "original_text": "Hello world",
-            "spoken_text": "Helo world",
-            "language": "en",
-        })
-    assert resp.status_code == 200
-    assert resp.json()["feedback"] == "Good job!"
-
-
-# ── TTS ───────────────────────────────────────────────────────────────────────
-
 async def test_tts_auto_without_key_uses_edge(client):
     """auto + no Gemini key → routes to edge backend (MP3)."""
     fake_audio = b"FAKE_MP3_BYTES"
@@ -494,34 +471,6 @@ async def test_tts_cache_keyed_by_provider(client, test_user):
 
 # ── Videos ────────────────────────────────────────────────────────────────────
 
-async def test_videos_without_key_returns_400(client):
-    resp = await client.post("/api/ai/videos", json={
-        "passage": "Faust sells his soul.",
-        "book_title": "Faust",
-        "author": "Goethe",
-    })
-    assert resp.status_code == 400
-
-
-async def test_videos_with_key_returns_results(client, test_user):
-    await _set_key(test_user)
-    fake_videos = [{"id": "abc", "title": "Faust Film", "url": "https://youtube.com/watch?v=abc"}]
-    with patch("routers.ai.gemini") as mock_gemini, \
-         patch("routers.ai.search_videos", new_callable=AsyncMock, return_value=fake_videos):
-        mock_gemini.suggest_youtube_query = AsyncMock(return_value="Faust opera film")
-        resp = await client.post("/api/ai/videos", json={
-            "passage": "Faust sells his soul.",
-            "book_title": "Faust",
-            "author": "Goethe",
-        })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["query"] == "Faust opera film"
-    assert len(data["videos"]) == 1
-
-
-# ── Error paths (upstream Gemini failure → 500) ───────────────────────────────
-
 async def test_insight_gemini_error_returns_500(client, test_user):
     await _set_key(test_user)
     with patch("routers.ai.gemini") as mock_gemini:
@@ -539,16 +488,6 @@ async def test_qa_gemini_error_returns_500(client, test_user):
         mock_gemini.answer_question = AsyncMock(side_effect=RuntimeError("fail"))
         resp = await client.post("/api/ai/qa", json={
             "question": "?", "passage": "text", "book_title": "Book", "author": "Author",
-        })
-    assert resp.status_code == 500
-
-
-async def test_pronunciation_gemini_error_returns_500(client, test_user):
-    await _set_key(test_user)
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.check_pronunciation = AsyncMock(side_effect=RuntimeError("fail"))
-        resp = await client.post("/api/ai/pronunciation", json={
-            "original_text": "Hello", "spoken_text": "Helo",
         })
     assert resp.status_code == 500
 
@@ -571,12 +510,3 @@ async def test_tts_error_returns_500(client):
         resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en", "rate": 1.0})
     assert resp.status_code == 500
 
-
-async def test_videos_gemini_error_returns_500(client, test_user):
-    await _set_key(test_user)
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.suggest_youtube_query = AsyncMock(side_effect=RuntimeError("fail"))
-        resp = await client.post("/api/ai/videos", json={
-            "passage": "text", "book_title": "Book", "author": "Author",
-        })
-    assert resp.status_code == 500

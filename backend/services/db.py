@@ -47,7 +47,11 @@ async def init_db() -> None:
 
 
 async def get_or_create_user(google_id: str, email: str, name: str, picture: str) -> dict:
-    """Return existing user or create a new one. Returns the user dict."""
+    """Return existing user or create a new one.
+
+    First user ever → role='admin', approved=1 (auto-admin).
+    Subsequent users → role='user', approved=0 (pending approval).
+    """
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
@@ -55,16 +59,23 @@ async def get_or_create_user(google_id: str, email: str, name: str, picture: str
         ) as cursor:
             row = await cursor.fetchone()
         if row:
-            # Update name/picture in case they changed
             await db.execute(
                 "UPDATE users SET email=?, name=?, picture=? WHERE google_id=?",
                 (email, name, picture, google_id),
             )
             await db.commit()
             return dict(row)
+
+        # New user — check if this is the very first user (auto-admin)
+        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
+            count = (await cursor.fetchone())[0]
+        is_first = count == 0
+
         await db.execute(
-            "INSERT INTO users (google_id, email, name, picture) VALUES (?,?,?,?)",
-            (google_id, email, name, picture),
+            "INSERT INTO users (google_id, email, name, picture, role, approved) VALUES (?,?,?,?,?,?)",
+            (google_id, email, name, picture,
+             "admin" if is_first else "user",
+             1 if is_first else 0),
         )
         await db.commit()
         async with db.execute(
@@ -82,6 +93,40 @@ async def get_user_by_id(user_id: int) -> dict | None:
         ) as cursor:
             row = await cursor.fetchone()
     return dict(row) if row else None
+
+
+async def list_users() -> list[dict]:
+    """Return all users (for the admin panel)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, email, name, picture, role, approved, created_at FROM users ORDER BY created_at"
+        ) as cursor:
+            return [dict(row) async for row in cursor]
+
+
+async def set_user_approved(user_id: int, approved: bool) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET approved = ? WHERE id = ?",
+            (1 if approved else 0, user_id),
+        )
+        await db.commit()
+
+
+async def set_user_role(user_id: int, role: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET role = ? WHERE id = ?",
+            (role, user_id),
+        )
+        await db.commit()
+
+
+async def delete_user(user_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        await db.commit()
 
 
 async def set_user_gemini_key(user_id: int, encrypted_key: str | None) -> None:

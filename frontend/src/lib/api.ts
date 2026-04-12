@@ -5,6 +5,9 @@ let _authToken: string | null = null;
 export function setAuthToken(token: string | null) {
   _authToken = token;
 }
+export function getAuthToken(): string | null {
+  return _authToken;
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
@@ -244,6 +247,8 @@ export function getMe() {
     name: string;
     picture: string;
     hasGeminiKey: boolean;
+    role: string;
+    approved: boolean;
   }>("/user/me");
 }
 

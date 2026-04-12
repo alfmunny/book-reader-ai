@@ -14,6 +14,8 @@ async def me(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "picture": user["picture"],
         "hasGeminiKey": bool(user.get("gemini_key")),
+        "role": user.get("role", "user"),
+        "approved": bool(user.get("approved", 0)),
     }
 
 

@@ -17,7 +17,10 @@ RAW_BOOK = {
     "languages": ["en"],
     "subjects": ["Fiction", "Love stories", "England -- Fiction"],
     "download_count": 50000,
-    "formats": {"image/jpeg": "https://covers.example.com/1342.jpg"},
+    "formats": {
+        "image/jpeg": "https://covers.example.com/1342.jpg",
+        "text/plain; charset=utf-8": "https://www.gutenberg.org/ebooks/1342.txt.utf-8",
+    },
 }
 
 

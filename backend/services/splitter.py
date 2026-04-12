@@ -231,9 +231,11 @@ def _chapters_from_toc(body: str, offset: int, full_text: str) -> list[Chapter]:
     if len(titles) < 3:
         return []
 
-    # Find the position after the TOC
+    # Find the position after the TOC. Start searching a few chars back
+    # so that the first title (which may start right after the TOC with
+    # no \n{2,} prefix) can be found.
     toc_end_pos = m.end() + (block_end.end() if block_end else 3000)
-    search_from = offset + toc_end_pos
+    search_from = max(0, offset + toc_end_pos - 2)
 
     # Locate each title in the actual text
     positions: list[tuple[str, int]] = []
@@ -244,6 +246,13 @@ def _chapters_from_toc(body: str, offset: int, full_text: str) -> list[Chapter]:
             re.IGNORECASE,
         )
         found = pattern.search(full_text, search_from)
+        if not found:
+            # Try without \n{2,} prefix (first title right after TOC)
+            pattern2 = re.compile(
+                r'(?:^|\n)[ \t]*' + escaped + r'[.!?]?[ \t]*\n',
+                re.IGNORECASE,
+            )
+            found = pattern2.search(full_text, search_from)
         if found:
             positions.append((title, found.start()))
 

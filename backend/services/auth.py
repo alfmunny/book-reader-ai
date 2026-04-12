@@ -84,7 +84,11 @@ async def verify_google_id_token(id_token: str) -> dict:
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 
 async def get_current_user(request: Request) -> dict:
-    """Dependency: extract and validate Bearer JWT, return user dict from DB."""
+    """Dependency: extract and validate Bearer JWT, return user dict from DB.
+
+    Blocks unapproved users with 403 on all endpoints except /api/user/me
+    (which the frontend needs to check approval status and show the pending page).
+    """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
@@ -94,4 +98,8 @@ async def get_current_user(request: Request) -> dict:
     user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    # Block unapproved users — except on /user/me so the frontend can
+    # detect pending status and redirect to the approval-pending page.
+    if not user.get("approved") and not request.url.path.endswith("/user/me"):
+        raise HTTPException(status_code=403, detail="Account pending approval")
     return user

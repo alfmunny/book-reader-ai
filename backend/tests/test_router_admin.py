@@ -4,6 +4,7 @@ import json
 import pytest
 from unittest.mock import patch, AsyncMock
 import services.db as db_module
+import routers.admin as admin_module
 from services.db import init_db, get_or_create_user, get_user_by_id, save_book, save_translation
 from services.auth import get_current_user
 from main import app
@@ -35,6 +36,8 @@ BOOK_TEXT = "CHAPTER I\n\nErster Absatz des ersten Kapitels.\n\nZweiter Absatz.\
 async def admin_db(monkeypatch, tmp_path):
     path = str(tmp_path / "admin-test.db")
     monkeypatch.setattr(db_module, "DB_PATH", path)
+    # admin.py imports DB_PATH as a local binding — patch it too
+    monkeypatch.setattr(admin_module, "DB_PATH", path)
     await init_db()
     return path
 

@@ -104,16 +104,34 @@ async def _google_translate(text: str, source: str, target: str) -> list[str]:
     loop = asyncio.get_event_loop()
     results = []
     for para in paragraphs:
-        unwrapped = _unwrap_paragraph(para)
         # Skip chapter headings — translating "I" or "Chapter XIV" produces
         # nonsense like "我" (Chinese for the pronoun "I").
-        if _is_heading(unwrapped):
-            results.append(unwrapped)
+        if _is_heading(para):
+            results.append(para)
             continue
-        translated = await loop.run_in_executor(
-            None, _google_translate_chunk, unwrapped, source, target
-        )
-        results.append(translated)
+
+        if _is_verse(para):
+            # Verse: translate line by line to preserve the line structure.
+            # Google Translate merges lines if sent together.
+            lines = para.split("\n")
+            translated_lines = []
+            for line in lines:
+                stripped = line.strip()
+                if not stripped:
+                    translated_lines.append("")
+                    continue
+                t = await loop.run_in_executor(
+                    None, _google_translate_chunk, stripped, source, target
+                )
+                translated_lines.append(t)
+            results.append("\n".join(translated_lines))
+        else:
+            # Prose: unwrap Gutenberg hard wraps, translate as a block.
+            unwrapped = _unwrap_paragraph(para)
+            translated = await loop.run_in_executor(
+                None, _google_translate_chunk, unwrapped, source, target
+            )
+            results.append(translated)
 
     return results
 

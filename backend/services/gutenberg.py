@@ -21,8 +21,12 @@ async def search_books(query: str, language: str = "", page: int = 1) -> dict:
                 data = resp.json()
             results = []
             for book in data.get("results", []):
-                results.append(_format_book_meta(book))
-            return {"count": data.get("count", 0), "books": results}
+                meta = _format_book_meta(book)
+                # Only include books that have a plain text version available.
+                # Audio-only, image-only, or non-text books are filtered out.
+                if meta["has_text"]:
+                    results.append(meta)
+            return {"count": len(results), "books": results}
         except httpx.TimeoutException as e:
             last_error = e
             if attempt == 0:
@@ -55,6 +59,25 @@ async def get_book_meta(book_id: int) -> dict:
 
 
 async def get_book_text(book_id: int) -> str:
+    """Download the plain-text version of a Gutenberg book.
+
+    Strategy:
+    1. Ask the Gutendex API for the book's text/plain URL (most reliable)
+    2. Fall back to well-known URL patterns if the API doesn't provide one
+    """
+    # Try the API-provided text URL first (most reliable)
+    try:
+        meta = await get_book_meta(book_id)
+        api_url = meta.get("text_url", "")
+        if api_url:
+            async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+                resp = await client.get(api_url)
+                if resp.status_code == 200:
+                    return resp.text.replace('\r\n', '\n').replace('\r', '\n')
+    except Exception:
+        pass  # fall through to the pattern-based approach
+
+    # Fallback: try well-known Gutenberg URL patterns
     urls = [
         f"https://www.gutenberg.org/files/{book_id}/{book_id}-0.txt",
         f"https://www.gutenberg.org/files/{book_id}/{book_id}.txt",
@@ -66,7 +89,6 @@ async def get_book_text(book_id: int) -> str:
             try:
                 resp = await client.get(url)
                 if resp.status_code == 200:
-                    # Normalize line endings so regex patterns work consistently
                     return resp.text.replace('\r\n', '\n').replace('\r', '\n')
                 last_error = f"HTTP {resp.status_code} for {url}"
             except Exception as e:
@@ -113,9 +135,19 @@ async def get_book_images(book_id: int) -> list[dict]:
         return []
 
 
+def _get_text_url(formats: dict) -> str:
+    """Extract the plain-text download URL from Gutendex formats, or ''."""
+    # Gutendex uses MIME keys like "text/plain; charset=utf-8" or "text/plain"
+    for key, url in formats.items():
+        if key.startswith("text/plain"):
+            return url
+    return ""
+
+
 def _format_book_meta(book: dict) -> dict:
     formats = book.get("formats", {})
     cover = formats.get("image/jpeg", "")
+    text_url = _get_text_url(formats)
     return {
         "id": book["id"],
         "title": book.get("title", "Unknown"),
@@ -124,4 +156,6 @@ def _format_book_meta(book: dict) -> dict:
         "subjects": book.get("subjects", [])[:5],
         "download_count": book.get("download_count", 0),
         "cover": cover,
+        "has_text": bool(text_url),
+        "text_url": text_url,
     }

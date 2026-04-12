@@ -2,17 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+/* ── Theme: Light (default parchment) ── */
+body, [data-theme="light"] {
   background-color: #f5f0e8;
   color: #2c2416;
 }
 
+/* ── Theme: Dark ── */
+[data-theme="dark"] {
+  background-color: #1a1a2e;
+  color: #e0dcd4;
+}
+[data-theme="dark"] .bg-parchment { background-color: #1a1a2e; }
+[data-theme="dark"] .bg-white { background-color: #252540; }
+[data-theme="dark"] .bg-white\/60 { background-color: rgba(37, 37, 64, 0.6); }
+[data-theme="dark"] .bg-white\/40 { background-color: rgba(37, 37, 64, 0.4); }
+[data-theme="dark"] .text-ink { color: #e0dcd4; }
+[data-theme="dark"] .text-amber-700 { color: #d4a853; }
+[data-theme="dark"] .text-amber-800 { color: #c4983e; }
+[data-theme="dark"] .text-amber-600 { color: #ddb862; }
+[data-theme="dark"] .text-amber-500 { color: #e6c872; }
+[data-theme="dark"] .border-amber-200 { border-color: #3d3d5c; }
+[data-theme="dark"] .border-amber-300 { border-color: #4a4a6a; }
+[data-theme="dark"] .divide-amber-100 > * + * { border-color: #3d3d5c; }
+[data-theme="dark"] .bg-amber-100 { background-color: #2e2e4a; }
+[data-theme="dark"] .bg-amber-50 { background-color: #252540; }
+[data-theme="dark"] .bg-amber-700 { background-color: #b8860b; }
+[data-theme="dark"] .hover\:bg-amber-100:hover { background-color: #2e2e4a; }
+[data-theme="dark"] .hover\:bg-amber-50:hover { background-color: #252540; }
+[data-theme="dark"] .highlighted-sentence { background-color: #5c4a1e; }
+[data-theme="dark"] input, [data-theme="dark"] select {
+  background-color: #252540;
+  color: #e0dcd4;
+  border-color: #4a4a6a;
+}
+
+/* ── Theme: Sepia ── */
+[data-theme="sepia"] {
+  background-color: #f4ecd8;
+  color: #5b4636;
+}
+[data-theme="sepia"] .bg-parchment { background-color: #f4ecd8; }
+[data-theme="sepia"] .bg-white { background-color: #faf6ee; }
+[data-theme="sepia"] .bg-white\/60 { background-color: rgba(250, 246, 238, 0.6); }
+[data-theme="sepia"] .text-ink { color: #5b4636; }
+
+/* ── Prose reader ── */
 .prose-reader {
   font-family: Georgia, Cambria, "Times New Roman", serif;
   font-size: 1.125rem;
   line-height: 1.9;
   max-width: 68ch;
 }
+
+/* Font size variants */
+[data-font-size="sm"] .prose-reader,
+[data-font-size="sm"] .font-serif { font-size: 0.938rem; }
+[data-font-size="base"] .prose-reader,
+[data-font-size="base"] .font-serif { font-size: 1.125rem; }
+[data-font-size="lg"] .prose-reader,
+[data-font-size="lg"] .font-serif { font-size: 1.313rem; }
+[data-font-size="xl"] .prose-reader,
+[data-font-size="xl"] .font-serif { font-size: 1.5rem; }
 
 .highlighted-sentence {
   background-color: #fde68a;

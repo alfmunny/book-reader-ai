@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
-import { getSettings } from "@/lib/settings";
+import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
@@ -111,12 +111,56 @@ export default function ReaderPage() {
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   const [translationLoading, setTranslationLoading] = useState(false);
 
+  // Reader display settings
+  const [fontSize, setFontSize] = useState<FontSize>("base");
+  const [theme, setTheme] = useState<Theme>("light");
+  const [scrollProgress, setScrollProgress] = useState(0);
+
   // Read settings on mount
   useEffect(() => {
     const s = getSettings();
     setTranslationLang(s.translationLang);
     setAudiobookEnabled(s.audiobookEnabled);
+    setFontSize(s.fontSize);
+    setTheme(s.theme);
   }, []);
+
+  // Apply theme and font size to the document
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-font-size", fontSize);
+    return () => {
+      document.documentElement.removeAttribute("data-theme");
+      document.documentElement.removeAttribute("data-font-size");
+    };
+  }, [theme, fontSize]);
+
+  // Track scroll progress
+  useEffect(() => {
+    const el = document.getElementById("reader-scroll");
+    if (!el) return;
+    function onScroll() {
+      const { scrollTop, scrollHeight, clientHeight } = el!;
+      const progress = scrollHeight <= clientHeight ? 100 : Math.round((scrollTop / (scrollHeight - clientHeight)) * 100);
+      setScrollProgress(progress);
+    }
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [loading, chapterIndex]);
+
+  function cycleFontSize() {
+    const sizes: FontSize[] = ["sm", "base", "lg", "xl"];
+    const next = sizes[(sizes.indexOf(fontSize) + 1) % sizes.length];
+    setFontSize(next);
+    saveSettings({ fontSize: next });
+  }
+
+  function cycleTheme() {
+    const themes: Theme[] = ["light", "sepia", "dark"];
+    const next = themes[(themes.indexOf(theme) + 1) % themes.length];
+    setTheme(next);
+    saveSettings({ theme: next });
+  }
 
   useEffect(() => {
     if (!bookId || chaptersCache.has(bookId)) return;
@@ -336,6 +380,25 @@ export default function ReaderPage() {
             )}
           </div>
 
+          {/* Font size */}
+          <button
+            onClick={cycleFontSize}
+            title={`Font size: ${fontSize}`}
+            className="shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors"
+          >
+            {fontSize === "sm" ? "A" : fontSize === "base" ? "A" : fontSize === "lg" ? "A" : "A"}
+            <span className="text-[8px] align-super">{fontSize === "sm" ? "-" : fontSize === "base" ? "" : fontSize === "lg" ? "+" : "++"}</span>
+          </button>
+
+          {/* Theme */}
+          <button
+            onClick={cycleTheme}
+            title={`Theme: ${theme}`}
+            className="shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors flex items-center justify-center"
+          >
+            {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
+          </button>
+
           {/* Profile */}
           <button
             onClick={() => router.push("/profile")}
@@ -449,6 +512,14 @@ export default function ReaderPage() {
           )}
         </div>
       </header>
+
+      {/* Reading progress bar */}
+      <div className="h-0.5 bg-amber-100">
+        <div
+          className="h-full bg-amber-600 transition-all duration-150"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">

@@ -13,6 +13,7 @@ Public API: translate_text(text, source, target, provider, gemini_key)
 """
 
 import asyncio
+import re
 from typing import Literal
 
 Provider = Literal["gemini", "google"]
@@ -43,6 +44,18 @@ def _google_translate_chunk(text: str, source: str, target: str) -> str:
     ).translate(text)
 
 
+def _unwrap_paragraph(text: str) -> str:
+    """Join hard-wrapped lines within a paragraph into flowing text.
+
+    Gutenberg texts wrap at ~70 chars, inserting \\n mid-sentence.
+    Google Translate treats each line independently, so we must unwrap
+    before translating.  Preserves intentional breaks (e.g. verse or
+    dialogue) by only joining when the previous line doesn't end with
+    punctuation that suggests a deliberate break.
+    """
+    return re.sub(r"(?<![.!?:;\"'\u201d])\n(?!\n)", " ", text)
+
+
 async def _google_translate(text: str, source: str, target: str) -> list[str]:
     """Split text into paragraphs and translate each via Google Translate."""
     paragraphs = [p for p in text.split("\n\n") if p.strip()]
@@ -54,8 +67,9 @@ async def _google_translate(text: str, source: str, target: str) -> list[str]:
     loop = asyncio.get_event_loop()
     results = []
     for para in paragraphs:
+        unwrapped = _unwrap_paragraph(para)
         translated = await loop.run_in_executor(
-            None, _google_translate_chunk, para, source, target
+            None, _google_translate_chunk, unwrapped, source, target
         )
         results.append(translated)
 

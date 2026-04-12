@@ -1,5 +1,11 @@
 "use client";
 
+/** Join Gutenberg hard wraps (single \n mid-sentence) into flowing text.
+ *  Keeps intentional breaks after sentence-ending punctuation. */
+function unwrap(text: string): string {
+  return text.replace(/(?<![.!?:;\"'\u201d])\n(?!\n)/g, " ");
+}
+
 interface Props {
   paragraphs: string[];
   translations: string[];
@@ -13,10 +19,10 @@ export default function TranslationView({ paragraphs, translations, displayMode,
       <div className="max-w-5xl mx-auto divide-y divide-amber-100">
         {paragraphs.map((para, i) => (
           <div key={i} className="grid grid-cols-2 gap-6 py-4 first:pt-0 last:pb-0">
-            <p className="font-serif text-base text-ink leading-relaxed whitespace-pre-wrap">{para}</p>
+            <p className="font-serif text-base text-ink leading-relaxed">{unwrap(para)}</p>
             <div className="border-l border-amber-200 pl-6">
               {translations[i] ? (
-                <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
+                <p className="font-serif text-base text-amber-800 leading-relaxed italic">
                   {translations[i]}
                 </p>
               ) : loading ? (
@@ -38,7 +44,7 @@ export default function TranslationView({ paragraphs, translations, displayMode,
     <div className="prose-reader mx-auto space-y-6">
       {paragraphs.map((para, i) => (
         <div key={i}>
-          <p className="font-serif text-base text-ink leading-relaxed whitespace-pre-wrap">{para}</p>
+          <p className="font-serif text-base text-ink leading-relaxed">{unwrap(para)}</p>
           {loading && i === 0 && !translations.length && (
             <div className="mt-1 space-y-1 animate-pulse">
               <div className="h-3 bg-amber-100 rounded w-full" />
@@ -46,7 +52,7 @@ export default function TranslationView({ paragraphs, translations, displayMode,
             </div>
           )}
           {translations[i] && (
-            <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+            <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3">
               {translations[i]}
             </p>
           )}

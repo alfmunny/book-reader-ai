@@ -46,23 +46,25 @@ async def test_translate_cache_hit_works_without_key(client):
     mock_gemini.translate_text.assert_not_called()
 
 
-async def test_translate_cache_miss_without_key_returns_400(client):
-    resp = await client.post("/api/ai/translate", json={
-        "text": CHAPTER_TEXT,
-        "source_language": "de",
-        "target_language": "en",
-        "book_id": 1342,
-        "chapter_index": 0,
-    })
-    assert resp.status_code == 400
-    assert "Gemini" in resp.json()["detail"]
+async def test_translate_cache_miss_without_key_uses_google_free(client):
+    """Without a Gemini key, translation falls back to Google Translate (free)."""
+    with patch("services.translate._google_translate", new_callable=AsyncMock, return_value=TRANSLATED):
+        resp = await client.post("/api/ai/translate", json={
+            "text": CHAPTER_TEXT,
+            "source_language": "de",
+            "target_language": "en",
+            "book_id": 1342,
+            "chapter_index": 0,
+        })
+    assert resp.status_code == 200
+    assert resp.json()["provider"] == "google"
+    assert resp.json()["paragraphs"] == TRANSLATED
 
 
-async def test_translate_cache_miss_with_key_uses_gemini_and_stores(client, test_user):
+async def test_translate_cache_miss_with_key_uses_gemini(client, test_user):
     await _set_key(test_user)
 
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.translate_text = AsyncMock(return_value=TRANSLATED)
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, return_value=TRANSLATED):
         resp = await client.post("/api/ai/translate", json={
             "text": CHAPTER_TEXT,
             "source_language": "de",
@@ -73,18 +75,16 @@ async def test_translate_cache_miss_with_key_uses_gemini_and_stores(client, test
 
     assert resp.status_code == 200
     assert resp.json()["cached"] is False
+    assert resp.json()["provider"] == "gemini"
     assert resp.json()["paragraphs"] == TRANSLATED
-    mock_gemini.translate_text.assert_called_once()
 
-    # Result should now be in the DB
     cached = await get_cached_translation(1342, 0, "en")
     assert cached == TRANSLATED
 
 
 async def test_translate_without_book_id_skips_cache(client, test_user):
     await _set_key(test_user)
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.translate_text = AsyncMock(return_value=TRANSLATED)
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, return_value=TRANSLATED):
         resp = await client.post("/api/ai/translate", json={
             "text": CHAPTER_TEXT,
             "source_language": "de",
@@ -555,8 +555,7 @@ async def test_pronunciation_gemini_error_returns_500(client, test_user):
 
 async def test_translate_gemini_error_returns_500(client, test_user):
     await _set_key(test_user)
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.translate_text = AsyncMock(side_effect=RuntimeError("fail"))
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
         resp = await client.post("/api/ai/translate", json={
             "text": "text", "source_language": "de", "target_language": "en",
         })

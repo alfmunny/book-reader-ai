@@ -66,6 +66,8 @@ class TranslateRequest(BaseModel):
     target_language: str = "en"
     book_id: int | None = None
     chapter_index: int | None = None
+    # "auto" → Gemini if user has a key, else Google Translate (free).
+    provider: Literal["auto", "gemini", "google"] = "auto"
 
 
 class TTSRequest(BaseModel):
@@ -141,23 +143,43 @@ async def videos(req: VideoRequest, user: dict = Depends(get_current_user)):
 
 @router.post("/translate")
 async def translate(req: TranslateRequest, user: dict = Depends(get_current_user)):
+    """Translate text with auto-fallback: Gemini if key available, else Google Translate (free)."""
     try:
-        # Check shared DB cache first — cache hits don't need a Gemini key
+        # Check shared DB cache first — cache hits don't need any key
         if req.book_id is not None and req.chapter_index is not None:
             cached = await get_cached_translation(req.book_id, req.chapter_index, req.target_language)
             if cached:
                 return {"paragraphs": cached, "cached": True}
 
-        key = _require_gemini_key(user)
-        paragraphs = await gemini.translate_text(
-            key, req.text, req.source_language, req.target_language
+        # Resolve "auto" to a concrete provider
+        raw_key = user.get("gemini_key")
+        decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+
+        if req.provider == "auto":
+            chosen = "gemini" if decrypted_key else "google"
+        else:
+            chosen = req.provider
+
+        if chosen == "gemini" and not decrypted_key:
+            raise HTTPException(
+                status_code=400,
+                detail="Gemini translation requires a Gemini API key. Please add one in your profile, or use Google Translate (free).",
+            )
+
+        from services.translate import translate_text as do_translate
+        paragraphs = await do_translate(
+            req.text,
+            req.source_language,
+            req.target_language,
+            provider=chosen,
+            gemini_key=decrypted_key,
         )
 
         # Save to shared cache
         if req.book_id is not None and req.chapter_index is not None:
             await save_translation(req.book_id, req.chapter_index, req.target_language, paragraphs)
 
-        return {"paragraphs": paragraphs, "cached": False}
+        return {"paragraphs": paragraphs, "cached": False, "provider": chosen}
     except HTTPException:
         raise
     except Exception as e:

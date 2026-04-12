@@ -111,3 +111,29 @@ async def test_retranslate_non_admin_forbidden(admin_db, admin_user):
     app.dependency_overrides.clear()
 
     assert res.status_code == 403
+
+
+async def test_unapproved_user_blocked_on_api(admin_db, admin_user):
+    """An unapproved (pending) user gets 403 on regular API endpoints but can access /user/me."""
+    from services.auth import create_jwt
+    # Create a pending (unapproved) user
+    user2 = await get_or_create_user(
+        google_id="pending-user", email="pending@example.com", name="Pending", picture=""
+    )
+    # user2 is NOT approved (second user is pending by default)
+    token = create_jwt(user2["id"], user2["email"])
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Use real auth (no dependency override) so the approval check runs
+    app.dependency_overrides.clear()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        # Auth-protected API calls should be blocked
+        res = await c.post("/api/ai/translate", headers=headers,
+                           json={"text": "hello", "source_language": "en", "target_language": "de"})
+        assert res.status_code == 403
+        assert "pending" in res.json()["detail"].lower()
+
+        # /user/me should still work (so frontend can detect pending status)
+        res = await c.get("/api/user/me", headers=headers)
+        assert res.status_code == 200
+        assert res.json()["approved"] is False

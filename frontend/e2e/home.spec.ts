@@ -25,8 +25,8 @@ test("Your Library shows books from localStorage recentBooks", async ({ page }) 
   }, MOCK_BOOK);
   await page.reload();
 
-  // Library tab is active and shows the book
-  await expect(page.getByText("Your Library")).toBeVisible();
+  // Click the Library tab to ensure it's active
+  await page.getByRole("button", { name: "Your Library" }).click();
   await expect(page.getByText("Pride and Prejudice").first()).toBeVisible();
   await expect(page.getByText(/Ch\. 3/)).toBeVisible(); // badge with chapter
 });

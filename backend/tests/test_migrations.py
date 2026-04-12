@@ -129,6 +129,62 @@ async def test_running_twice_does_not_duplicate_schema_migrations(tmp_db):
     assert count == migration_count
 
 
+# ── Partial bootstrap (001 applied, 002/003 missing) ─────────────────────────
+
+async def test_partial_bootstrap_marks_missing_versions(tmp_db):
+    """If a previous startup applied 001 but crashed on 002 (e.g. duplicate
+    column error), the DB has 001 recorded but not 002/003. The bootstrap
+    must fire for the missing versions even though `already` is not empty."""
+    # Simulate: existing DB with all tables + images column + audio_cache,
+    # but schema_migrations only has 001.
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.execute("INSERT INTO schema_migrations (version) VALUES ('001_initial_schema')")
+        await db.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, images TEXT)")
+        await db.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, google_id TEXT UNIQUE NOT NULL,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE translations (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                target_language TEXT NOT NULL, paragraphs TEXT NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, target_language)
+            )
+        """)
+        await db.execute("CREATE TABLE audiobooks (book_id INTEGER PRIMARY KEY, librivox_id TEXT NOT NULL)")
+        await db.execute("""
+            CREATE TABLE audio_cache (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                chunk_index INTEGER NOT NULL DEFAULT 0,
+                provider TEXT NOT NULL, voice TEXT NOT NULL,
+                content_type TEXT NOT NULL, audio BLOB NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
+            )
+        """)
+        await db.commit()
+
+    # This should NOT crash — the bootstrap should detect the missing 002/003
+    # and mark them as applied before the migration loop tries to execute them.
+    applied = await run_migrations(tmp_db)
+    assert applied == []  # nothing NEW applied (bootstrap marked them, not the loop)
+
+    # All three should now be in schema_migrations
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT version FROM schema_migrations ORDER BY version") as cursor:
+            versions = [row[0] async for row in cursor]
+    assert "001_initial_schema" in versions
+    assert "002_add_book_images" in versions
+    assert "003_create_audio_cache" in versions
+
+
 # ── Partially-migrated DB: only new migrations applied ───────────────────────
 
 async def test_partially_migrated_db_applies_only_new(tmp_db):

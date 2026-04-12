@@ -245,12 +245,26 @@ export default function TTSControls({
           preview: chunkText.replace(/\s+/g, " ").trim().slice(0, 60),
         });
 
-        const url = await synthesizeSpeech(chunkText, language, 1.0, provider, {
-          bookId,
-          chapterIndex,
-          chunkIndex: i,
-          signal: abort.signal,
-        });
+        // Retry up to 2 times on failure (network glitches, transient errors)
+        let url: string;
+        let lastErr: Error | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            url = await synthesizeSpeech(chunkText, language, 1.0, provider, {
+              bookId,
+              chapterIndex,
+              chunkIndex: i,
+              signal: abort.signal,
+            });
+            lastErr = null;
+            break;
+          } catch (e) {
+            lastErr = e instanceof Error ? e : new Error("TTS failed");
+            if (abort.signal.aborted) throw lastErr;
+            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          }
+        }
+        if (lastErr) throw lastErr;
 
         if (myGen !== genRef.current) {
           URL.revokeObjectURL(url);

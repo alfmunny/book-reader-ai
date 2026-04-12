@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, translateText, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, BookImage, Audiobook } from "@/lib/api";
+import { getBookChapters, translateText, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -16,7 +16,6 @@ import SentenceReader from "@/components/SentenceReader";
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
 const metaCache = new Map<string, BookMeta>();
-const imagesCache = new Map<string, BookImage[]>();
 
 export default function ReaderPage() {
   const { bookId } = useParams<{ bookId: string }>();
@@ -25,7 +24,6 @@ export default function ReaderPage() {
 
   const [meta, setMeta] = useState<BookMeta | null>(metaCache.get(bookId) ?? null);
   const [chapters, setChapters] = useState<BookChapter[]>(chaptersCache.get(bookId) ?? []);
-  const [bookImages, setBookImages] = useState<BookImage[]>(imagesCache.get(bookId) ?? []);
   const [chapterIndex, setChapterIndex] = useState(() => getLastChapter(Number(bookId)));
   const [loading, setLoading] = useState(!chaptersCache.has(bookId));
   const [error, setError] = useState("");
@@ -130,10 +128,8 @@ export default function ReaderPage() {
       .then((data) => {
         chaptersCache.set(bookId, data.chapters);
         metaCache.set(bookId, data.meta);
-        imagesCache.set(bookId, data.images ?? []);
         setChapters(data.chapters);
         setMeta(data.meta);
-        setBookImages(data.images ?? []);
         const savedChapter = getLastChapter(Number(bookId));
         setChapterIndex(Math.min(savedChapter, data.chapters.length - 1));
         recordRecentBook(data.meta, savedChapter);
@@ -430,7 +426,6 @@ export default function ReaderPage() {
                   duration={audiobook ? audioDuration : ttsDuration}
                   currentTime={audiobook ? audioCurrentTime : ttsCurrentTime}
                   isPlaying={audiobook ? audioIsPlaying : ttsIsPlaying}
-                  images={bookImages}
                   chunks={!audiobook && ttsChunks.length > 0 ? ttsChunks : undefined}
                   disabled={!audiobook && ttsIsLoading}
                   // Translation props: SentenceReader renders both original

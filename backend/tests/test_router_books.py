@@ -75,7 +75,6 @@ async def test_book_chapters_fetches_and_caches(client):
     with (
         patch("routers.books.get_book_meta", new_callable=AsyncMock, return_value=MOCK_META),
         patch("routers.books.get_book_text", new_callable=AsyncMock, return_value=text),
-        patch("routers.books.get_book_images", new_callable=AsyncMock, return_value=[]),
     ):
         resp = await client.get("/api/books/1342/chapters")
     assert resp.status_code == 200

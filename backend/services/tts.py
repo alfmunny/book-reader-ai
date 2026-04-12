@@ -138,9 +138,125 @@ def _pcm_to_wav(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1, bi
     return header + pcm_data
 
 
+# Gemini TTS has an output cap of roughly ~30 seconds of audio per call.
+# When the input text is longer than that, the model stops generating speech
+# but the response still contains silent PCM padding to fill its output
+# buffer. The result is a long WAV with 30s of speech and 5+ minutes of
+# silence — useless for chapter-length text. To work around this we chunk
+# the input by paragraph/line, synthesize each chunk separately, trim the
+# trailing silence from each chunk's PCM, and concatenate.
+GEMINI_TTS_CHUNK_CHARS = 400
+
+
+def _chunk_text_for_tts(text: str, max_chars: int = GEMINI_TTS_CHUNK_CHARS) -> list[str]:
+    """Split text into chunks of at most max_chars, respecting paragraph and line boundaries.
+
+    Strategy: prefer to keep paragraphs whole. If a single paragraph is too
+    long, split it on line breaks. Empty chunks are dropped.
+    """
+    paragraphs = [p for p in text.split("\n\n") if p.strip()]
+    chunks: list[str] = []
+    current: list[str] = []
+    current_len = 0
+
+    def flush_current():
+        nonlocal current, current_len
+        if current:
+            chunks.append("\n\n".join(current))
+            current = []
+            current_len = 0
+
+    for para in paragraphs:
+        para_len = len(para)
+
+        # Paragraph fits inside the current chunk
+        if current_len + para_len + 2 <= max_chars:
+            current.append(para)
+            current_len += para_len + 2
+            continue
+
+        # Current chunk has stuff, flush it before handling this paragraph
+        flush_current()
+
+        # Single paragraph is small enough on its own
+        if para_len <= max_chars:
+            current.append(para)
+            current_len = para_len
+            continue
+
+        # Single paragraph is too long → split on line breaks
+        line_buf: list[str] = []
+        line_buf_len = 0
+        for line in para.split("\n"):
+            line_with_break = len(line) + 1
+            if line_buf_len + line_with_break > max_chars and line_buf:
+                chunks.append("\n".join(line_buf))
+                line_buf = []
+                line_buf_len = 0
+            line_buf.append(line)
+            line_buf_len += line_with_break
+        if line_buf:
+            chunks.append("\n".join(line_buf))
+
+    flush_current()
+    return chunks
+
+
+def _trim_trailing_silence(
+    pcm: bytes,
+    sample_rate: int = 24000,
+    rms_threshold: float = 200.0,
+    tail_ms: int = 250,
+) -> bytes:
+    """Trim trailing silence from raw 16-bit mono PCM.
+
+    Walks 100 ms windows from the end of the buffer toward the start, finds
+    the last window whose RMS is above `rms_threshold`, and keeps everything
+    up to that window plus a small `tail_ms` cushion. Internal pauses are
+    preserved (we only cut from the very end).
+
+    `rms_threshold=200` is well below normal speech (typically RMS 1000–8000
+    for Gemini's voices) but well above the silence floor (~5–15 RMS).
+    """
+    if not pcm:
+        return pcm
+    n_samples = len(pcm) // 2  # 16-bit = 2 bytes/sample
+    if n_samples == 0:
+        return pcm
+
+    window = max(1, sample_rate // 10)  # 100 ms
+    samples = struct.unpack(f"<{n_samples}h", pcm)
+
+    # Walk windows from the end
+    last_loud_end = 0
+    i = n_samples - window
+    while i >= 0:
+        chunk = samples[i : i + window]
+        # RMS — avoid sqrt for speed; threshold the squared value
+        sq_sum = sum(s * s for s in chunk)
+        rms_sq = sq_sum / len(chunk)
+        if rms_sq > rms_threshold * rms_threshold:
+            last_loud_end = i + window
+            break
+        i -= window
+
+    if last_loud_end == 0:
+        # All silent — return unchanged so the caller can decide what to do
+        return pcm
+
+    keep_samples = min(n_samples, last_loud_end + (sample_rate * tail_ms // 1000))
+    return pcm[: keep_samples * 2]
+
+
 async def _gemini_synthesize(text: str, language: str, api_key: str) -> tuple[bytes, str]:
     """
-    Synthesize via Google Gemini TTS. Returns (wav_bytes, content_type).
+    Synthesize a single chunk via Google Gemini TTS. Returns (wav_bytes, content_type).
+
+    Gemini's TTS preview model has an output cap (~30 sec of audio per call)
+    and pads truncated outputs with silence. The CALLER is responsible for
+    splitting longer text into chunks and concatenating the results — see
+    `_chunk_text_for_tts`. We trim the per-chunk trailing silence here so
+    callers don't have to worry about the padding.
 
     Note: Gemini TTS does not support a rate parameter — playback speed is
     a client-side concern (audio.playbackRate on the <audio> element).
@@ -165,11 +281,33 @@ async def _gemini_synthesize(text: str, language: str, api_key: str) -> tuple[by
         ),
     )
 
-    pcm_data = response.candidates[0].content.parts[0].inline_data.data
-    return _pcm_to_wav(pcm_data, sample_rate=24000), "audio/wav"
+    pcm = response.candidates[0].content.parts[0].inline_data.data
+    trimmed = _trim_trailing_silence(pcm)
+    return _pcm_to_wav(trimmed, sample_rate=24000), "audio/wav"
 
 
 # ── Public dispatch ──────────────────────────────────────────────────────────
+
+def chunk_text(text: str, max_chars: int = GEMINI_TTS_CHUNK_CHARS) -> list[str]:
+    """Public wrapper around _chunk_text_for_tts so the router can expose it.
+
+    The frontend calls this via POST /api/ai/tts/chunks before fetching audio,
+    and uses the resulting list to drive per-chunk progress UI and per-chunk
+    audio caching.
+    """
+    return _chunk_text_for_tts(text, max_chars=max_chars)
+
+
+def resolve_voice(provider: Provider, language: str) -> str:
+    """Return the concrete voice name a synthesize() call would use.
+
+    Exposed so the router can use (provider, voice) as part of the audio cache key —
+    switching from one voice to another should miss the cache and re-generate.
+    """
+    if provider == "google":
+        return _pick_gemini_voice(language)
+    return _pick_edge_voice(language)
+
 
 async def synthesize(
     text: str,

@@ -7,13 +7,20 @@ import { BookImage } from "@/lib/api";
 interface Segment {
   text: string;
   flatIdx: number;
-  startTime: number; // estimated, seconds
+  startTime: number;  // estimated, seconds
+  chunkIdx: number;   // which chunk this segment belongs to (-1 if no chunks given)
 }
 
 interface Paragraph {
   segments: Segment[];
   isVerse: boolean;      // true = poetry (newlines between lines), false = prose
   illustration: BookImage | null; // non-null = render as image, not text
+}
+
+/** Optional chunk metadata for accurate timing + per-chunk visual coloring. */
+export interface ChunkInfo {
+  text: string;
+  duration: number;  // 0 if not yet loaded; positive once the chunk's audio loads
 }
 
 // Common abbreviations that should not trigger a sentence split
@@ -61,7 +68,12 @@ function isVerse(lines: string[]): boolean {
 /** Match a [Illustration...] marker and extract the caption. */
 const ILLUS_RE = /^\[Illustration(?::\s*(.+?))?\s*\]$/is;
 
-function parseIntoSegments(text: string, duration: number, images: BookImage[]): Paragraph[] {
+function parseIntoSegments(
+  text: string,
+  duration: number,
+  images: BookImage[],
+  chunks?: ChunkInfo[],
+): Paragraph[] {
   // Step 1: collect all segment texts and classify paragraphs
   const rawParas = text.split(/\n\n+/);
   const paraData: { texts: string[]; isVerse: boolean; illustrationIdx: number | null }[] = [];
@@ -100,14 +112,68 @@ function parseIntoSegments(text: string, duration: number, images: BookImage[]):
     }
   }
 
-  // Step 2: build time map (word-proportion estimate)
+  // Step 2a: figure out which chunk each segment belongs to (when chunks present)
+  // The chunker splits the chapter at paragraph boundaries; the segmenter
+  // splits at sentences/lines. So a segment never spans chunk boundaries —
+  // we just walk both lists in chapter order and assign.
+  const segmentChunkIdx: number[] = new Array(allTexts.length).fill(-1);
+  if (chunks && chunks.length > 0) {
+    let chunkIdx = 0;
+    let cursor = 0;            // index into the current chunk's text
+    for (let s = 0; s < allTexts.length; s++) {
+      const seg = allTexts[s];
+      // Find this segment within the remaining chunk text
+      while (chunkIdx < chunks.length) {
+        const chunkText = chunks[chunkIdx].text;
+        const pos = chunkText.indexOf(seg, cursor);
+        if (pos >= 0) {
+          segmentChunkIdx[s] = chunkIdx;
+          cursor = pos + seg.length;
+          break;
+        }
+        // Not in this chunk — move to the next
+        chunkIdx++;
+        cursor = 0;
+      }
+      // Out of chunks → leave -1 (won't get a startTime, won't be coloured-as-loaded)
+    }
+  }
+
+  // Step 2b: build time map.
+  // Two paths:
+  //   a) chunks given → distribute segments within each chunk by word count,
+  //      using the chunk's MEASURED duration. This is much more accurate
+  //      than linear interpolation across the whole chapter because it
+  //      accounts for varying speech rate per chunk.
+  //   b) no chunks → fall back to linear word-proportion across `duration`.
   const wordCounts = allTexts.map((s) => Math.max(1, s.split(/\s+/).filter(Boolean).length));
-  const totalWords = wordCounts.reduce((a, b) => a + b, 0) || 1;
-  const startTimes: number[] = [];
-  let elapsed = 0;
-  for (const wc of wordCounts) {
-    startTimes.push((elapsed / totalWords) * duration);
-    elapsed += wc;
+  const startTimes: number[] = new Array(allTexts.length).fill(0);
+
+  if (chunks && chunks.length > 0) {
+    let chunkStartTime = 0;
+    for (let ci = 0; ci < chunks.length; ci++) {
+      const chunk = chunks[ci];
+      // Indices of segments in this chunk
+      const segIndices: number[] = [];
+      for (let s = 0; s < allTexts.length; s++) {
+        if (segmentChunkIdx[s] === ci) segIndices.push(s);
+      }
+      const chunkWords = segIndices.reduce((sum, idx) => sum + wordCounts[idx], 0) || 1;
+      let elapsed = 0;
+      for (const idx of segIndices) {
+        startTimes[idx] = chunkStartTime + (elapsed / chunkWords) * chunk.duration;
+        elapsed += wordCounts[idx];
+      }
+      chunkStartTime += chunk.duration;
+    }
+  } else {
+    // Linear fallback (used by the LibriVox audiobook path)
+    const totalWords = wordCounts.reduce((a, b) => a + b, 0) || 1;
+    let elapsed = 0;
+    for (let i = 0; i < allTexts.length; i++) {
+      startTimes[i] = (elapsed / totalWords) * duration;
+      elapsed += wordCounts[i];
+    }
   }
 
   // Step 3: map back to paragraph structure
@@ -120,11 +186,15 @@ function parseIntoSegments(text: string, duration: number, images: BookImage[]):
     return {
       isVerse: verse,
       illustration: null,
-      segments: texts.map((text) => ({
-        text,
-        flatIdx: flat,
-        startTime: startTimes[flat++],
-      })),
+      segments: texts.map((text) => {
+        const here = flat++;
+        return {
+          text,
+          flatIdx: here,
+          startTime: startTimes[here],
+          chunkIdx: segmentChunkIdx[here],
+        };
+      }),
     };
   });
 }
@@ -138,6 +208,19 @@ interface Props {
   isPlaying: boolean;
   images?: BookImage[];
   onSegmentClick: (startTime: number, text: string) => void;
+  /**
+   * Per-chunk metadata for chunked TTS playback. When provided, segment
+   * timings are computed per-chunk (much more accurate than linear), and
+   * segments in not-yet-loaded chunks (duration === 0) are visually muted.
+   */
+  chunks?: ChunkInfo[];
+  /**
+   * When true, sentence clicks are ignored and segments are visually
+   * deemphasized. Used while TTS audio is generating, so the user can't
+   * accidentally trigger a one-off snippet that conflicts with the
+   * in-flight chapter generation.
+   */
+  disabled?: boolean;
 }
 
 export default function SentenceReader({
@@ -147,11 +230,26 @@ export default function SentenceReader({
   isPlaying,
   images = [],
   onSegmentClick,
+  chunks,
+  disabled = false,
 }: Props) {
   const paragraphs = useMemo(
-    () => parseIntoSegments(text, Math.max(duration, 1), images),
-    [text, duration, images]
+    () => parseIntoSegments(text, Math.max(duration, 1), images, chunks),
+    [text, duration, images, chunks]
   );
+
+  // For coloring: which chunk indices have actually loaded (duration > 0)
+  const loadedChunkIndices = useMemo(() => {
+    if (!chunks) return null;
+    const set = new Set<number>();
+    chunks.forEach((c, i) => { if (c.duration > 0) set.add(i); });
+    return set;
+  }, [chunks]);
+
+  function isSegmentLoaded(seg: { chunkIdx: number }): boolean {
+    if (loadedChunkIndices === null) return true;  // no chunks given → always rendered normally
+    return seg.chunkIdx >= 0 && loadedChunkIndices.has(seg.chunkIdx);
+  }
 
   const allSegments = useMemo(
     () => paragraphs.flatMap((p) => p.segments),
@@ -201,6 +299,31 @@ export default function SentenceReader({
           );
         }
 
+        // Helper: pick the className for a segment span based on:
+        //   - whether it's the currently-playing one (active)
+        //   - whether its chunk has finished loading (loaded)
+        //   - whether sentence clicks are blocked (disabled)
+        const segClass = (seg: { flatIdx: number; chunkIdx: number }): string => {
+          const active = seg.flatIdx === currentIdx;
+          const loaded = isSegmentLoaded(seg);
+          if (active) return "bg-amber-300 text-amber-950 cursor-pointer";
+          if (disabled) {
+            // Loading state: muted text, no hover, not clickable
+            return loaded
+              ? "text-stone-500 cursor-default"
+              : "text-stone-400/70 cursor-default";
+          }
+          return loaded
+            ? "cursor-pointer hover:bg-amber-100"
+            : "text-stone-400 cursor-default";
+        };
+
+        const handleSegClick = (seg: { startTime: number; text: string; chunkIdx: number }) => {
+          if (disabled) return;
+          if (!isSegmentLoaded(seg)) return;
+          onSegmentClick(seg.startTime, seg.text);
+        };
+
         if (para.isVerse) {
           // Poetry: each segment on its own line
           return (
@@ -212,12 +335,8 @@ export default function SentenceReader({
                     <span
                       ref={active ? (el) => { activeRef.current = el; } : undefined}
                       data-seg={seg.flatIdx}
-                      onClick={() => onSegmentClick(seg.startTime, seg.text)}
-                      className={`cursor-pointer rounded px-0.5 -mx-0.5 transition-colors duration-150 ${
-                        active
-                          ? "bg-amber-300 text-amber-950"
-                          : "hover:bg-amber-100"
-                      }`}
+                      onClick={() => handleSegClick(seg)}
+                      className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)}`}
                     >
                       {seg.text}
                     </span>
@@ -238,12 +357,8 @@ export default function SentenceReader({
                   key={seg.flatIdx}
                   ref={active ? (el) => { activeRef.current = el; } : undefined}
                   data-seg={seg.flatIdx}
-                  onClick={() => onSegmentClick(seg.startTime, seg.text)}
-                  className={`cursor-pointer rounded px-0.5 -mx-0.5 transition-colors duration-150 ${
-                    active
-                      ? "bg-amber-300 text-amber-950"
-                      : "hover:bg-amber-100"
-                  }`}
+                  onClick={() => handleSegClick(seg)}
+                  className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)}`}
                 >
                   {seg.text}
                   {sIdx < para.segments.length - 1 ? " " : ""}

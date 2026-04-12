@@ -4,10 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 from services.auth import get_current_user, decrypt_api_key
-from services.db import get_cached_translation, save_translation
+from services.db import (
+    get_cached_translation,
+    save_translation,
+    get_cached_audio,
+    save_audio,
+    delete_chapter_audio_cache,
+)
 from services import gemini
 from services.youtube import search_videos
-from services.tts import synthesize
+from services.tts import synthesize, resolve_voice, chunk_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -69,6 +75,17 @@ class TTSRequest(BaseModel):
     # "auto" → resolves to "google" when the user has a Gemini key,
     #          otherwise falls back to "edge".
     provider: Literal["auto", "edge", "google"] = "auto"
+    # Optional cache keys. When book_id + chapter_index are present, the
+    # response is served from / written to the persistent audio cache.
+    # Snippet calls (sentence clicks, ad-hoc TTS) omit them and bypass.
+    # chunk_index defaults to 0 — chunked clients pass it explicitly.
+    book_id: int | None = None
+    chapter_index: int | None = None
+    chunk_index: int = 0
+
+
+class ChunkTextRequest(BaseModel):
+    text: str
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -156,6 +173,12 @@ async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
       - "edge"   Microsoft Edge TTS — free, no API key, MP3 output
       - "google" Google Gemini TTS — uses the user's Gemini key, WAV output
       - "auto"   (default) → google if the user has a Gemini key, else edge
+
+    When `book_id` and `chapter_index` are both provided, the response is
+    served from / written to a persistent audio cache keyed by
+    (book, chapter, provider, voice). Without those fields the call is
+    treated as a one-off snippet and never touches the cache (used for
+    sentence-click playback).
     """
     # Resolve "auto" to a concrete backend
     raw_key = user.get("gemini_key")
@@ -172,6 +195,22 @@ async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
             detail="Google TTS requires a Gemini API key. Please add one in your profile.",
         )
 
+    # Cache lookup — only when this is a real chapter request, not a snippet.
+    cache_eligible = req.book_id is not None and req.chapter_index is not None
+    voice = resolve_voice(chosen, req.language)
+
+    if cache_eligible:
+        cached = await get_cached_audio(
+            req.book_id, req.chapter_index, chosen, voice, req.chunk_index
+        )
+        if cached is not None:
+            audio, content_type = cached
+            return Response(
+                content=audio,
+                media_type=content_type,
+                headers={"X-TTS-Cache": "hit"},
+            )
+
     try:
         audio, content_type = await synthesize(
             req.text,
@@ -180,8 +219,48 @@ async def tts(req: TTSRequest, user: dict = Depends(get_current_user)):
             provider=chosen,
             gemini_key=decrypted_key,
         )
-        return Response(content=audio, media_type=content_type)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Persist on cache miss so the next request (and the next page reload,
+    # and the next session, and the next device) returns instantly.
+    if cache_eligible:
+        await save_audio(
+            req.book_id, req.chapter_index, chosen, voice, audio, content_type, req.chunk_index
+        )
+
+    return Response(
+        content=audio,
+        media_type=content_type,
+        headers={"X-TTS-Cache": "miss"} if cache_eligible else {},
+    )
+
+
+@router.delete("/tts/cache")
+async def delete_tts_cache(
+    book_id: int,
+    chapter_index: int,
+    _user: dict = Depends(get_current_user),
+):
+    """Delete all cached audio chunks for a chapter (any provider/voice).
+
+    Used by the Regenerate button — the next call to /api/ai/tts will be a
+    cache miss and will hit the TTS provider fresh.
+    """
+    deleted = await delete_chapter_audio_cache(book_id, chapter_index)
+    return {"deleted": deleted}
+
+
+@router.post("/tts/chunks")
+async def tts_chunks(req: ChunkTextRequest, _user: dict = Depends(get_current_user)):
+    """Return the chunk list the backend would feed to the TTS provider.
+
+    The frontend calls this once per chapter before fetching audio, so it
+    can drive a per-chunk progress UI and key the audio cache by chunk_index.
+    Single source of truth — the frontend never has to replicate the
+    chunking algorithm in TypeScript.
+    """
+    chunks = chunk_text(req.text)
+    return {"chunks": chunks}

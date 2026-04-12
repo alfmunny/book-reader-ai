@@ -107,22 +107,36 @@ export function checkPronunciation(
  * Microsoft Edge TTS). Authorization is required, so the call goes
  * through `request`-style headers.
  */
+export interface SynthesizeOptions {
+  /** Backend caches the result when both bookId and chapterIndex are present. */
+  bookId?: number;
+  chapterIndex?: number;
+  /** Index of this chunk within the chapter (used as part of the cache key). */
+  chunkIndex?: number;
+  signal?: AbortSignal;
+}
+
 export async function synthesizeSpeech(
   text: string,
   language: string,
   rate = 1.0,
   provider: "auto" | "edge" | "google" = "auto",
-  signal?: AbortSignal
+  options: SynthesizeOptions = {}
 ): Promise<string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
   };
+  const body: Record<string, unknown> = { text, language, rate, provider };
+  if (options.bookId !== undefined) body.book_id = options.bookId;
+  if (options.chapterIndex !== undefined) body.chapter_index = options.chapterIndex;
+  if (options.chunkIndex !== undefined) body.chunk_index = options.chunkIndex;
+
   const res = await fetch(`${BASE}/ai/tts`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ text, language, rate, provider }),
-    signal,
+    body: JSON.stringify(body),
+    signal: options.signal,
   });
   if (!res.ok) {
     // Surface the backend's error detail when available so users see e.g.
@@ -132,6 +146,33 @@ export async function synthesizeSpeech(
   }
   const blob = await res.blob();
   return URL.createObjectURL(blob);
+}
+
+/**
+ * Ask the backend how it would chunk the given text. The frontend calls this
+ * once per chapter, then fetches one audio file per chunk via synthesizeSpeech
+ * — this way the chunking algorithm has exactly one implementation (Python)
+ * and the frontend can show per-chunk progress without replicating it.
+ */
+export async function getTtsChunks(text: string): Promise<string[]> {
+  const data = await request<{ chunks: string[] }>("/ai/tts/chunks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  return data.chunks;
+}
+
+/**
+ * Delete all cached audio chunks for a chapter, across providers and voices.
+ * Used by the Regenerate button so the next ▶ Read triggers a fresh
+ * generation pass instead of returning cached audio.
+ */
+export function deleteAudioCache(bookId: number, chapterIndex: number) {
+  return request<{ deleted: number }>(
+    `/ai/tts/cache?book_id=${bookId}&chapter_index=${chapterIndex}`,
+    { method: "DELETE" }
+  );
 }
 
 export function findVideos(passage: string, book_title: string, author: string) {

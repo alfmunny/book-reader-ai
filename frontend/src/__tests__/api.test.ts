@@ -15,6 +15,8 @@ import {
   askQuestion,
   checkPronunciation,
   synthesizeSpeech,
+  getTtsChunks,
+  deleteAudioCache,
   findVideos,
   searchAudiobooks,
   getAudiobook,
@@ -209,9 +211,65 @@ test("synthesizeSpeech forwards an AbortSignal to fetch", async () => {
     blob: jest.fn().mockResolvedValue(new Blob(["x"])),
   });
   const abort = new AbortController();
-  await synthesizeSpeech("Hello", "en", 1.0, "auto", abort.signal);
+  await synthesizeSpeech("Hello", "en", 1.0, "auto", { signal: abort.signal });
   const opts = (global.fetch as jest.Mock).mock.calls[0][1];
   expect(opts.signal).toBe(abort.signal);
+});
+
+test("synthesizeSpeech includes chunk_index when provided", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  await synthesizeSpeech("Hello", "en", 1.0, "auto", { bookId: 1, chapterIndex: 2, chunkIndex: 5 });
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body.chunk_index).toBe(5);
+});
+
+test("getTtsChunks calls /ai/tts/chunks and returns the chunk list", async () => {
+  mockFetch({ chunks: ["first chunk", "second chunk", "third chunk"] });
+  const chunks = await getTtsChunks("the full chapter text");
+  expect(chunks).toEqual(["first chunk", "second chunk", "third chunk"]);
+  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(url).toContain("/ai/tts/chunks");
+  expect(opts.method).toBe("POST");
+  expect(JSON.parse(opts.body).text).toBe("the full chapter text");
+});
+
+test("deleteAudioCache sends DELETE with book_id and chapter_index", async () => {
+  mockFetch({ deleted: 5 });
+  const result = await deleteAudioCache(1342, 3);
+  expect(result.deleted).toBe(5);
+  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(url).toContain("/ai/tts/cache");
+  expect(url).toContain("book_id=1342");
+  expect(url).toContain("chapter_index=3");
+  expect(opts.method).toBe("DELETE");
+});
+
+test("synthesizeSpeech includes book_id and chapter_index when provided", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  await synthesizeSpeech("Hello", "en", 1.0, "auto", { bookId: 1342, chapterIndex: 3 });
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body.book_id).toBe(1342);
+  expect(body.chapter_index).toBe(3);
+});
+
+test("synthesizeSpeech omits book_id when not provided", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
+  });
+  await synthesizeSpeech("Hello", "en");
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body.book_id).toBeUndefined();
+  expect(body.chapter_index).toBeUndefined();
 });
 
 test("synthesizeSpeech throws on non-ok response", async () => {

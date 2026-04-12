@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { searchBooks, getCachedBooks, BookMeta } from "@/lib/api";
+import { searchBooks, BookMeta } from "@/lib/api";
 import { getRecentBooks, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import { useRouter } from "next/navigation";
@@ -37,19 +37,15 @@ export default function Home() {
   const [searchedQuery, setSearchedQuery] = useState(""); // tracks what was searched (for "no results" message)
 
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
-  const [cachedBooks, setCachedBooks] = useState<BookMeta[]>([]);
-  const [cachedLoading, setCachedLoading] = useState(true);
 
   // Race-condition guard: drop responses from stale searches
   const searchGenRef = useRef(0);
 
-  // Load recent books from localStorage and cached books from backend on mount
+  // Load recent books from localStorage on mount. These are books the user
+  // has actually opened — NOT the full server cache (which includes 100+
+  // seeded books the user has never touched).
   useEffect(() => {
     setRecentBooks(getRecentBooks());
-    getCachedBooks()
-      .then(setCachedBooks)
-      .catch(() => {})
-      .finally(() => setCachedLoading(false));
   }, []);
 
   async function handleSearch(q = query, l = lang) {
@@ -76,20 +72,8 @@ export default function Home() {
     router.push(`/reader/${id}`);
   }
 
-  // Merge cached books (server-side) with recent-read info (client-side localStorage).
-  // Recent books carry lastChapter + lastRead timestamps; cached books are the
-  // canonical server list. We enhance cached books with the recent info and
-  // sort so recently-read books appear first.
-  const recentMap = new Map(recentBooks.map((b) => [b.id, b]));
-  const libraryBooks = [...cachedBooks]
-    .sort((a, b) => {
-      const ra = recentMap.get(a.id)?.lastRead ?? 0;
-      const rb = recentMap.get(b.id)?.lastRead ?? 0;
-      return rb - ra; // most recently read first
-    });
-
-  const showLibrary = libraryBooks.length > 0;
-  const showEmpty = !showLibrary && !cachedLoading && searchResults.length === 0;
+  const showLibrary = recentBooks.length > 0;
+  const showEmpty = !showLibrary && searchResults.length === 0;
 
   return (
     <main className="min-h-screen bg-parchment">
@@ -119,38 +103,23 @@ export default function Home() {
 
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-10">
 
-        {/* ── Your Library (merged: server-cached books + client-side read progress) ── */}
+        {/* ── Your Library (books the user has actually opened) ── */}
         {showLibrary && (
           <section>
             <h2 className="font-serif font-semibold text-ink text-lg mb-3">
               Your Library
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {libraryBooks.map((book) => {
-                const recent = recentMap.get(book.id);
-                return (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    onClick={() => openBook(book.id)}
-                    badge={recent ? `Ch. ${recent.lastChapter + 1} · ${timeAgo(recent.lastRead)}` : undefined}
-                  />
-                );
-              })}
+              {recentBooks.map((book) => (
+                <BookCard
+                  key={book.id}
+                  book={book}
+                  onClick={() => openBook(book.id)}
+                  badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
+                />
+              ))}
             </div>
           </section>
-        )}
-
-        {cachedLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
-                <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
-                <div className="h-3 bg-amber-100 rounded w-3/4 mb-1" />
-                <div className="h-3 bg-amber-100 rounded w-1/2" />
-              </div>
-            ))}
-          </div>
         )}
 
         {/* ── Discover Books (Search) ────────────────────────────────── */}

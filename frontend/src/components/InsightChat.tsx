@@ -21,7 +21,10 @@ export const LANGUAGES = [
   { code: "ja", label: "日本語" },
 ];
 
-const HISTORY_KEY = (id: string) => `chat-history:${id}`;
+// Chat history is scoped per user + book so different users on the same
+// browser don't see each other's conversations. The userId comes from
+// the backend session (passed as a prop).
+const HISTORY_KEY = (userId: number | string, bookId: string) => `chat-history:${userId}:${bookId}`;
 const INITIAL_DISPLAY = 30; // messages shown on first load
 const LOAD_BATCH = 20;      // messages revealed per "load earlier" click
 const MAX_STORED = 200;     // cap localStorage to last N messages
@@ -38,6 +41,8 @@ interface Message {
 
 interface Props {
   bookId: string;
+  userId: number | null;    // current user's ID — scopes chat history per user
+  hasGeminiKey: boolean;    // whether the user has a Gemini key — shows early reminder if not
   isVisible: boolean;       // true when the sidebar is open — gates insight fetching
   chapterText: string;
   chapterTitle: string;
@@ -51,6 +56,8 @@ interface Props {
 
 export default function InsightChat({
   bookId,
+  userId,
+  hasGeminiKey,
   isVisible,
   chapterText,
   chapterTitle,
@@ -96,7 +103,7 @@ export default function InsightChat({
     setChatLoading(false);
 
     try {
-      const raw = localStorage.getItem(HISTORY_KEY(bookId));
+      const raw = localStorage.getItem(HISTORY_KEY(userId ?? "anon", bookId));
       if (raw) {
         const stored: Message[] = JSON.parse(raw);
         setMessages(stored);
@@ -120,7 +127,7 @@ export default function InsightChat({
     try {
       const toStore = messages.slice(-MAX_STORED);
       if (toStore.length > 0)
-        localStorage.setItem(HISTORY_KEY(bookId), JSON.stringify(toStore));
+        localStorage.setItem(HISTORY_KEY(userId ?? "anon", bookId), JSON.stringify(toStore));
     } catch {} // ignore quota errors
   }, [messages, bookId]);
 
@@ -422,13 +429,25 @@ export default function InsightChat({
               </div>
             )}
 
+            {/* Early Gemini key reminder — shown before the user even types */}
+            {!hasGeminiKey && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2 text-xs text-amber-800">
+                Chat requires a{" "}
+                <a href="/profile" target="_blank" className="underline font-medium">
+                  Gemini API key
+                </a>{" "}
+                (free from Google AI Studio). Add one in your profile to start chatting.
+              </div>
+            )}
+
             <div className="flex gap-2 items-end">
               <textarea
                 className="flex-1 rounded-xl border border-amber-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none font-serif leading-snug"
                 rows={2}
-                placeholder="Ask about this chapter…"
+                placeholder={hasGeminiKey ? "Ask about this chapter…" : "Gemini API key required to chat"}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                disabled={!hasGeminiKey}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -438,14 +457,14 @@ export default function InsightChat({
               />
               <button
                 onClick={sendMessage}
-                disabled={chatLoading || !input.trim()}
+                disabled={chatLoading || !input.trim() || !hasGeminiKey}
                 className="rounded-xl bg-amber-700 p-2.5 text-white text-base hover:bg-amber-800 disabled:opacity-40 shrink-0"
                 title="Send (Enter)"
               >
                 ↑
               </button>
             </div>
-            <p className="text-xs text-amber-400 mt-1.5">Enter · Shift+Enter for newline</p>
+            {hasGeminiKey && <p className="text-xs text-amber-400 mt-1.5">Enter · Shift+Enter for newline</p>}
           </div>
         </div>
       )}

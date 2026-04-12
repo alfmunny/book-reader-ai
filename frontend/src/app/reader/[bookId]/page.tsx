@@ -557,6 +557,8 @@ export default function ReaderPage() {
           {/* Keep mounted so chat history persists across open/close */}
           <InsightChat
             bookId={bookId}
+            userId={session?.backendUser?.id ?? null}
+            hasGeminiKey={hasGeminiKey}
             isVisible={sidebarOpen}
             chapterText={current?.text ?? ""}
             chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}

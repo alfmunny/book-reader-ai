@@ -110,6 +110,14 @@ def test_chapter_at_start_of_body():
     assert "CHAPTER" in chs[0].title
 
 
+def test_strip_boilerplate_removes_illustration_tags():
+    text = "*** START OF THE PROJECT GUTENBERG EBOOK ***\n[Illustration: cover]\n\nCHAPTER I\n\n[Illustration]\n\nSome text.\n*** END OF THE PROJECT GUTENBERG EBOOK ***"
+    body, _ = strip_boilerplate(text)
+    assert "[Illustration" not in body
+    assert "Some text." in body
+    assert "CHAPTER I" in body
+
+
 def test_clean_title_strips_trailing_bracket():
     assert _clean_title("Chapter I.]") == "Chapter I."
 

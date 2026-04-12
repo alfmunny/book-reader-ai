@@ -22,7 +22,7 @@ export default function TranslationView({ paragraphs, translations, displayMode,
             <p className="font-serif text-base text-ink leading-relaxed">{unwrap(para)}</p>
             <div className="border-l border-amber-200 pl-6">
               {translations[i] ? (
-                <p className="font-serif text-base text-amber-800 leading-relaxed italic">
+                <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
                   {translations[i]}
                 </p>
               ) : loading ? (
@@ -52,7 +52,7 @@ export default function TranslationView({ paragraphs, translations, displayMode,
             </div>
           )}
           {translations[i] && (
-            <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3">
+            <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
               {translations[i]}
             </p>
           )}

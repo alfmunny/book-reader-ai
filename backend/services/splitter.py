@@ -318,17 +318,39 @@ def build_chapters(raw_text: str) -> list[Chapter]:
     # Strategy 1: Keyword headings (CHAPTER, Chapitre, Kapitel, ACT, ...)
     chapters = _chapters_from_keywords(body, 0, body)
     if _validate(chapters):
-        return chapters
+        return _strip_heading_from_text(chapters)
 
     # Strategy 2: Roman numeral headings (I, II, III, ...)
     chapters = _chapters_from_roman(body, 0, body)
     if _validate(chapters):
-        return chapters
+        return _strip_heading_from_text(chapters)
 
     # Strategy 3: TOC-based splitting
     chapters = _chapters_from_toc(body, 0, body)
     if _validate(chapters):
-        return chapters
+        return _strip_heading_from_text(chapters)
 
     # Strategy 4: Paragraph-based fallback
     return _chapters_from_paragraphs(body)
+
+
+def _strip_heading_from_text(chapters: list[Chapter]) -> list[Chapter]:
+    """Remove the chapter heading line from the start of each chapter's text.
+
+    The chapter title is already stored in chapter.title, so having it
+    repeated at the start of the text is redundant and wastes space in
+    the reader UI.
+    """
+    result = []
+    for ch in chapters:
+        text = ch.text.strip()
+        # The text often starts with the heading followed by newlines.
+        # Remove the first line if it matches the title (case-insensitive).
+        first_line_end = text.find("\n")
+        if first_line_end > 0:
+            first_line = text[:first_line_end].strip()
+            # Match if the first line is the title (with optional trailing punctuation)
+            if first_line.lower().rstrip(".])?!") == ch.title.lower().rstrip(".])?!"):
+                text = text[first_line_end:].lstrip("\n")
+        result.append(Chapter(title=ch.title, text=text))
+    return result

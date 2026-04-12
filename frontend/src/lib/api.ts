@@ -35,17 +35,12 @@ export function getBookMeta(id: number) {
 }
 
 export function getBookChapters(id: number) {
-  return request<{ book_id: number; meta: BookMeta; chapters: BookChapter[]; images: BookImage[] }>(`/books/${id}/chapters`);
+  return request<{ book_id: number; meta: BookMeta; chapters: BookChapter[] }>(`/books/${id}/chapters`);
 }
 
 export interface BookChapter {
   title: string;
   text: string;
-}
-
-export interface BookImage {
-  url: string;
-  caption: string;
 }
 
 // AI

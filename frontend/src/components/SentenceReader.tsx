@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useMemo, useRef } from "react";
-import { BookImage } from "@/lib/api";
 
 // ── Text parsing ────────────────────────────────────────────────────────────
 
@@ -14,7 +13,6 @@ interface Segment {
 interface Paragraph {
   segments: Segment[];
   isVerse: boolean;      // true = poetry (newlines between lines), false = prose
-  illustration: BookImage | null; // non-null = render as image, not text
 }
 
 /** Optional chunk metadata for accurate timing + per-chunk visual coloring. */
@@ -65,49 +63,34 @@ function isVerse(lines: string[]): boolean {
   return !lines.some((l) => l.length > 60);
 }
 
-/** Match a [Illustration...] marker and extract the caption. */
-const ILLUS_RE = /^\[Illustration(?::\s*(.+?))?\s*\]$/is;
-
 function parseIntoSegments(
   text: string,
   duration: number,
-  images: BookImage[],
   chunks?: ChunkInfo[],
 ): Paragraph[] {
   // Step 1: collect all segment texts and classify paragraphs
   const rawParas = text.split(/\n\n+/);
-  const paraData: { texts: string[]; isVerse: boolean; illustrationIdx: number | null }[] = [];
+  const paraData: { texts: string[]; isVerse: boolean }[] = [];
   const allTexts: string[] = [];
-  let illustrationCount = 0;
 
   for (const raw of rawParas) {
     const trimmed = raw.trim();
     if (!trimmed) continue;
 
-    // Detect illustration marker
-    const illusMatch = trimmed.match(ILLUS_RE);
-    if (illusMatch) {
-      paraData.push({ texts: [], isVerse: false, illustrationIdx: illustrationCount++ });
-      continue;
-    }
-
     if (trimmed.includes("\n")) {
       const lines = trimmed.split("\n").map((l) => l.trim()).filter(Boolean);
       if (isVerse(lines)) {
-        // Real poetry — each line is its own segment
-        paraData.push({ texts: lines, isVerse: true, illustrationIdx: null });
+        paraData.push({ texts: lines, isVerse: true });
         allTexts.push(...lines);
       } else {
-        // Soft-wrapped prose — join lines then split into sentences
         const joined = lines.join(" ");
         const sents = splitSentences(joined);
-        paraData.push({ texts: sents, isVerse: false, illustrationIdx: null });
+        paraData.push({ texts: sents, isVerse: false });
         allTexts.push(...sents);
       }
     } else {
-      // Single-line paragraph — split into sentences
       const sents = splitSentences(trimmed);
-      paraData.push({ texts: sents, isVerse: false, illustrationIdx: null });
+      paraData.push({ texts: sents, isVerse: false });
       allTexts.push(...sents);
     }
   }
@@ -178,25 +161,18 @@ function parseIntoSegments(
 
   // Step 3: map back to paragraph structure
   let flat = 0;
-  return paraData.map(({ texts, isVerse: verse, illustrationIdx }) => {
-    if (illustrationIdx !== null) {
-      const img = images[illustrationIdx] ?? null;
-      return { isVerse: false, illustration: img, segments: [] };
-    }
-    return {
-      isVerse: verse,
-      illustration: null,
-      segments: texts.map((text) => {
-        const here = flat++;
-        return {
-          text,
-          flatIdx: here,
-          startTime: startTimes[here],
-          chunkIdx: segmentChunkIdx[here],
-        };
-      }),
-    };
-  });
+  return paraData.map(({ texts, isVerse: verse }) => ({
+    isVerse: verse,
+    segments: texts.map((text) => {
+      const here = flat++;
+      return {
+        text,
+        flatIdx: here,
+        startTime: startTimes[here],
+        chunkIdx: segmentChunkIdx[here],
+      };
+    }),
+  }));
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -206,7 +182,6 @@ interface Props {
   duration: number;      // audio duration in seconds (0 = no audio linked)
   currentTime: number;   // audio currentTime in seconds
   isPlaying: boolean;
-  images?: BookImage[];
   onSegmentClick: (startTime: number, text: string) => void;
   /**
    * Per-chunk metadata for chunked TTS playback. When provided, segment
@@ -238,7 +213,6 @@ export default function SentenceReader({
   duration,
   currentTime,
   isPlaying,
-  images = [],
   onSegmentClick,
   chunks,
   disabled = false,
@@ -252,8 +226,8 @@ export default function SentenceReader({
   // comes from text.split(/\n\n+/) which doesn't include illustration markers.
   let textParaIdx = -1;
   const paragraphs = useMemo(
-    () => parseIntoSegments(text, Math.max(duration, 1), images, chunks),
-    [text, duration, images, chunks]
+    () => parseIntoSegments(text, Math.max(duration, 1), chunks),
+    [text, duration, chunks]
   );
 
   // For coloring: which chunk indices have actually loaded (duration > 0)
@@ -299,28 +273,7 @@ export default function SentenceReader({
   return (
     <div className={isParallel ? "max-w-5xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
       {paragraphs.map((para, pIdx) => {
-        // ── Illustration ──
-        if (para.illustration) {
-          const { url, caption } = para.illustration;
-          return (
-            <figure key={pIdx} className="my-6 flex flex-col items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={caption}
-                className="max-w-full rounded shadow-sm"
-                loading="lazy"
-              />
-              {caption && (
-                <figcaption className="text-center text-sm text-stone-500 italic">
-                  {caption}
-                </figcaption>
-              )}
-            </figure>
-          );
-        }
-
-        // Track the text paragraph index (excluding illustrations) so we
+        // Track the text paragraph index so we
         // can pair with the right entry in translations[].
         textParaIdx++;
         const translationText = translations?.[textParaIdx];

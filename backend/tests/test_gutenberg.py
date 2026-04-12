@@ -7,7 +7,7 @@ All HTTP calls are mocked with respx.
 import pytest
 import respx
 import httpx
-from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_images, _format_book_meta
+from services.gutenberg import search_books, get_book_meta, get_book_text, _format_book_meta
 
 
 RAW_BOOK = {
@@ -154,42 +154,3 @@ async def test_get_book_text_normalizes_line_endings():
     assert result == "Line1\nLine2\nLine3"
 
 
-# ── get_book_images ───────────────────────────────────────────────────────────
-
-async def test_get_book_images_parses_html():
-    html = """<html><body>
-        <figure>
-            <img src="images/cover.jpg" alt="Cover illustration">
-            <figcaption>The cover</figcaption>
-        </figure>
-    </body></html>"""
-
-    with respx.mock:
-        respx.get("https://www.gutenberg.org/cache/epub/1342/pg1342-images.html").mock(
-            return_value=httpx.Response(200, text=html)
-        )
-        result = await get_book_images(1342)
-
-    assert len(result) == 1
-    assert "cover.jpg" in result[0]["url"]
-    assert result[0]["caption"] == "Cover illustration"
-
-
-async def test_get_book_images_returns_empty_on_404():
-    with respx.mock:
-        respx.get("https://www.gutenberg.org/cache/epub/1342/pg1342-images.html").mock(
-            return_value=httpx.Response(404)
-        )
-        result = await get_book_images(1342)
-
-    assert result == []
-
-
-async def test_get_book_images_returns_empty_on_error():
-    with respx.mock:
-        respx.get("https://www.gutenberg.org/cache/epub/1342/pg1342-images.html").mock(
-            side_effect=httpx.ConnectError("connection refused")
-        )
-        result = await get_book_images(1342)
-
-    assert result == []

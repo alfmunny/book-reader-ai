@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchBooks, getCachedBooks, BookMeta } from "@/lib/api";
 import { getRecentBooks, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
@@ -34,10 +34,14 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState<BookMeta[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [searchedQuery, setSearchedQuery] = useState(""); // tracks what was searched (for "no results" message)
 
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
   const [cachedBooks, setCachedBooks] = useState<BookMeta[]>([]);
   const [cachedLoading, setCachedLoading] = useState(true);
+
+  // Race-condition guard: drop responses from stale searches
+  const searchGenRef = useRef(0);
 
   // Load recent books from localStorage and cached books from backend on mount
   useEffect(() => {
@@ -50,16 +54,21 @@ export default function Home() {
 
   async function handleSearch(q = query, l = lang) {
     if (!q.trim()) return;
+    const myGen = ++searchGenRef.current;
     setSearching(true);
     setSearchError("");
     setSearchResults([]);
+    setSearchedQuery(q.trim());
     try {
       const data = await searchBooks(q, l);
+      // Drop the result if a newer search was triggered while we were waiting
+      if (myGen !== searchGenRef.current) return;
       setSearchResults(data.books);
     } catch (e: any) {
+      if (myGen !== searchGenRef.current) return;
       setSearchError(e.message);
     } finally {
-      setSearching(false);
+      if (myGen === searchGenRef.current) setSearching(false);
     }
   }
 
@@ -149,16 +158,17 @@ export default function Home() {
           </div>
         )}
 
-        {/* ── Search ────────────────────────────────────────────────── */}
+        {/* ── Discover Books (Search) ────────────────────────────────── */}
         <section>
-          {(showRecent || showLibrary) && (
-            <h2 className="font-serif font-semibold text-ink text-lg mb-3">Discover Books</h2>
-          )}
+          <h2 className="font-serif font-semibold text-ink text-lg mb-1">Discover Books</h2>
+          <p className="text-sm text-amber-700 mb-3">
+            Search 70,000+ free public domain classics from Project Gutenberg
+          </p>
 
           <div className="flex gap-2 mb-3">
             <input
-              className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-              placeholder="Search Project Gutenberg (e.g. Faust, Hamlet, Moby Dick)..."
+              className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 text-base"
+              placeholder="Search by title or author..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -176,11 +186,14 @@ export default function Home() {
               <option value="es">Spanish</option>
             </select>
             <button
-              className="rounded-lg bg-amber-700 px-5 py-2 text-white font-medium hover:bg-amber-800 disabled:opacity-50"
+              className="rounded-lg bg-amber-700 px-5 py-2.5 text-white font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center gap-2"
               onClick={() => handleSearch()}
               disabled={searching}
             >
-              {searching ? "…" : "Search"}
+              {searching && (
+                <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              )}
+              {searching ? "Searching" : "Search"}
             </button>
           </div>
 
@@ -189,27 +202,55 @@ export default function Home() {
             {FEATURED.map((f) => (
               <button
                 key={f.query}
-                className="text-xs rounded-full border border-amber-300 px-3 py-1 text-amber-800 hover:bg-amber-100"
+                className="text-xs rounded-full border border-amber-300 px-3 py-1 text-amber-800 hover:bg-amber-100 transition-colors"
                 onClick={() => { setQuery(f.query); setLang(f.lang); handleSearch(f.query, f.lang); }}
+                disabled={searching}
               >
                 {f.query}
               </button>
             ))}
           </div>
 
-          {searchError && <p className="text-red-600 mb-4 text-sm">{searchError}</p>}
+          {/* Error message */}
+          {searchError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
+              {searchError}
+            </div>
+          )}
 
-          {searchResults.length > 0 && (
+          {/* Loading skeletons — visible while search is in flight */}
+          {searching && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
+                  <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
+                  <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
+                  <div className="h-3 bg-amber-100 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Search results */}
+          {!searching && searchResults.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {searchResults.map((book) => (
                 <BookCard key={book.id} book={book} onClick={() => openBook(book.id)} />
               ))}
             </div>
           )}
+
+          {/* No results message — only after a completed search with 0 results */}
+          {!searching && searchedQuery && searchResults.length === 0 && !searchError && (
+            <div className="text-center py-10 text-amber-700">
+              <p className="text-lg font-serif mb-1">No books found for &ldquo;{searchedQuery}&rdquo;</p>
+              <p className="text-sm text-amber-600">Try a different title, author, or language filter.</p>
+            </div>
+          )}
         </section>
 
-        {showEmpty && (
-          <p className="text-center py-16 text-amber-700 font-serif text-lg">
+        {showEmpty && !searchedQuery && (
+          <p className="text-center py-10 text-amber-700 font-serif text-lg">
             Search for a classic to begin reading
           </p>
         )}

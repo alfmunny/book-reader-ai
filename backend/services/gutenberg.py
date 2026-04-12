@@ -7,17 +7,43 @@ GUTENBERG_BASE = "https://www.gutenberg.org"
 
 
 async def search_books(query: str, language: str = "", page: int = 1) -> dict:
+    """Search Gutendex with one automatic retry on timeout/server-error."""
     params = {"search": query, "page": page}
     if language:
         params["languages"] = language
-    async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-        resp = await client.get(GUTENBERG_SEARCH, params=params)
-        resp.raise_for_status()
-        data = resp.json()
-    results = []
-    for book in data.get("results", []):
-        results.append(_format_book_meta(book))
-    return {"count": data.get("count", 0), "books": results}
+
+    last_error: Exception | None = None
+    for attempt in range(2):  # 1 initial + 1 retry
+        try:
+            async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+                resp = await client.get(GUTENBERG_SEARCH, params=params)
+                resp.raise_for_status()
+                data = resp.json()
+            results = []
+            for book in data.get("results", []):
+                results.append(_format_book_meta(book))
+            return {"count": data.get("count", 0), "books": results}
+        except httpx.TimeoutException as e:
+            last_error = e
+            if attempt == 0:
+                import asyncio
+                await asyncio.sleep(2)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code >= 500 and attempt == 0:
+                last_error = e
+                import asyncio
+                await asyncio.sleep(2)
+            else:
+                raise ValueError(f"Gutenberg search failed: {e.response.status_code}")
+        except httpx.ConnectError as e:
+            last_error = e
+            if attempt == 0:
+                import asyncio
+                await asyncio.sleep(2)
+
+    if isinstance(last_error, httpx.TimeoutException):
+        raise ValueError("Gutenberg search timed out. Please try again.")
+    raise ValueError(f"Gutenberg search failed: {last_error}")
 
 
 async def get_book_meta(book_id: int) -> dict:

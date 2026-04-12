@@ -83,6 +83,36 @@ async def init_db() -> None:
                 saved_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # Cached per-chunk chapter audio. We store one row per text chunk
+        # (the frontend chunks the chapter via /api/ai/tts/chunks before
+        # synthesizing) so the cache is finer-grained: replays are free,
+        # partial generation cost is sunk per-chunk on cancel, and the cache
+        # key includes provider+voice so switching voices misses cleanly.
+        #
+        # Migration: SQLite cannot ALTER the primary key on an existing table,
+        # so if the audio_cache table exists with the OLD PK (no chunk_index),
+        # we drop it and recreate. The cache is regeneratable so losing it on
+        # this one-time upgrade is acceptable.
+        async with db.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='audio_cache'"
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row and "chunk_index" not in row[0]:
+            await db.execute("DROP TABLE audio_cache")
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS audio_cache (
+                book_id       INTEGER NOT NULL,
+                chapter_index INTEGER NOT NULL,
+                chunk_index   INTEGER NOT NULL DEFAULT 0,
+                provider      TEXT NOT NULL,
+                voice         TEXT NOT NULL,
+                content_type  TEXT NOT NULL,
+                audio         BLOB NOT NULL,
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
+            )
+        """)
         await db.commit()
 
 
@@ -153,6 +183,67 @@ async def save_translation(book_id: int, chapter_index: int, target_language: st
             (book_id, chapter_index, target_language, json.dumps(paragraphs)),
         )
         await db.commit()
+
+
+# ── Audio cache (whole-chapter TTS output) ────────────────────────────────────
+
+async def get_cached_audio(
+    book_id: int,
+    chapter_index: int,
+    provider: str,
+    voice: str,
+    chunk_index: int = 0,
+) -> tuple[bytes, str] | None:
+    """Return (audio_bytes, content_type) for a cached chunk, or None on miss."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """
+            SELECT audio, content_type FROM audio_cache
+            WHERE book_id=? AND chapter_index=? AND chunk_index=? AND provider=? AND voice=?
+            """,
+            (book_id, chapter_index, chunk_index, provider, voice),
+        ) as cursor:
+            row = await cursor.fetchone()
+    if not row:
+        return None
+    return row[0], row[1]
+
+
+async def save_audio(
+    book_id: int,
+    chapter_index: int,
+    provider: str,
+    voice: str,
+    audio: bytes,
+    content_type: str,
+    chunk_index: int = 0,
+) -> None:
+    """Insert or replace one cached audio chunk."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT OR REPLACE INTO audio_cache
+                (book_id, chapter_index, chunk_index, provider, voice, content_type, audio)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (book_id, chapter_index, chunk_index, provider, voice, content_type, audio),
+        )
+        await db.commit()
+
+
+async def delete_chapter_audio_cache(book_id: int, chapter_index: int) -> int:
+    """Delete all cached audio chunks for one chapter (across all providers/voices).
+
+    Returns the number of rows deleted. Used by the Regenerate button to
+    force a fresh TTS generation pass on the next Read click.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM audio_cache WHERE book_id=? AND chapter_index=?",
+            (book_id, chapter_index),
+        )
+        await db.commit()
+        return cursor.rowcount
 
 
 async def get_cached_book(book_id: int) -> dict | None:

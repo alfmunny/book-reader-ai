@@ -18,11 +18,13 @@ class SaveRequest(BaseModel):
 
 @router.get("/{book_id}")
 async def get(book_id: int):
-    """Return the saved audiobook for a Gutenberg book (or 404)."""
-    ab = await get_audiobook(book_id)
-    if ab is None:
-        raise HTTPException(status_code=404, detail="No audiobook linked")
-    return ab
+    """Return the saved audiobook for a Gutenberg book, or null if none.
+
+    We return 200+null (rather than 404) so the frontend can fetch this on
+    every reader page load without producing red 404s in the browser console
+    — "no audiobook linked" is a perfectly normal state, not an error.
+    """
+    return await get_audiobook(book_id)
 
 
 @router.get("/{book_id}/search")

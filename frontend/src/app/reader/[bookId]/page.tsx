@@ -43,6 +43,16 @@ export default function ReaderPage() {
   const [audioIsPlaying, setAudioIsPlaying] = useState(false);
   const seekAudioRef = useRef<(t: number) => void>(() => {});
 
+  // TTS Read-button playback state — fed by TTSControls via callback props.
+  // When no LibriVox audiobook is linked, these drive the SentenceReader's
+  // sentence highlighting and click-to-seek.
+  const [ttsCurrentTime, setTtsCurrentTime] = useState(0);
+  const [ttsDuration, setTtsDuration] = useState(0);
+  const [ttsIsPlaying, setTtsIsPlaying] = useState(false);
+  const [ttsIsLoading, setTtsIsLoading] = useState(false);
+  const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
+  const ttsSeekRef = useRef<(t: number) => void>(() => {});
+
   // Sidebar (insight chat) — hidden by default, resizable
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(320);
@@ -441,22 +451,51 @@ export default function ReaderPage() {
               <>
                 <SentenceReader
                   text={current?.text ?? ""}
-                  duration={audioDuration}
-                  currentTime={audioCurrentTime}
-                  isPlaying={audioIsPlaying}
+                  // SentenceReader's source of truth: prefer the LibriVox audiobook
+                  // if one is linked, otherwise fall back to the TTS Read-button
+                  // playback. Either way the SentenceReader does the same
+                  // sentence segmentation + word-proportion timing math.
+                  duration={audiobook ? audioDuration : ttsDuration}
+                  currentTime={audiobook ? audioCurrentTime : ttsCurrentTime}
+                  isPlaying={audiobook ? audioIsPlaying : ttsIsPlaying}
                   images={bookImages}
-                  onSegmentClick={(_startTime, segText) => {
-                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsProvider).then((url) => {
-                      const audio = new Audio(url);
-                      audio.onended = () => URL.revokeObjectURL(url);
-                      audio.play().catch(() => URL.revokeObjectURL(url));
-                    }).catch(() => {
-                      // Fallback to Web Speech API
-                      window.speechSynthesis.cancel();
-                      const utter = new SpeechSynthesisUtterance(segText);
-                      utter.lang = bookLanguage;
-                      window.speechSynthesis.speak(utter);
-                    });
+                  // Pass the chunk metadata only when using TTS (not LibriVox).
+                  // SentenceReader uses it for accurate per-chunk timing AND
+                  // for muted/loaded color of segments in unloaded chunks.
+                  chunks={!audiobook && ttsChunks.length > 0 ? ttsChunks : undefined}
+                  // Block sentence clicks while TTS is generating to prevent
+                  // accidentally firing one-off snippets that conflict with
+                  // the in-flight chapter generation.
+                  disabled={!audiobook && ttsIsLoading}
+                  onSegmentClick={(startTime, segText) => {
+                    // Priority 1: LibriVox audiobook is linked → seek it
+                    if (audiobook) {
+                      seekAudioRef.current(startTime);
+                      return;
+                    }
+                    // Priority 2: TTS chapter audio is already loaded → seek
+                    // it to the clicked sentence and play. Reuses the same
+                    // cached audio that the Read button uses.
+                    if (ttsDuration > 0) {
+                      ttsSeekRef.current(startTime);
+                      return;
+                    }
+                    // Priority 3: nothing loaded yet → one-off snippet TTS,
+                    // same fallback as before. Doesn't trigger chapter audio
+                    // generation (preserves the lazy-load contract).
+                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsProvider)
+                      .then((url) => {
+                        const audio = new Audio(url);
+                        audio.onended = () => URL.revokeObjectURL(url);
+                        audio.play().catch(() => URL.revokeObjectURL(url));
+                      })
+                      .catch(() => {
+                        // Web Speech API as final fallback (network or auth failure)
+                        window.speechSynthesis.cancel();
+                        const utter = new SpeechSynthesisUtterance(segText);
+                        utter.lang = bookLanguage;
+                        window.speechSynthesis.speak(utter);
+                      });
                   }}
                 />
                 <div className="max-w-prose mx-auto mt-10 flex justify-between">
@@ -500,7 +539,22 @@ export default function ReaderPage() {
 
           {/* TTS + Recorder */}
           <div className="border-t border-amber-200 shrink-0">
-            <TTSControls text={current?.text ?? ""} language={bookLanguage} />
+            <TTSControls
+              text={current?.text ?? ""}
+              language={bookLanguage}
+              bookId={Number(bookId)}
+              chapterIndex={chapterIndex}
+              onPlaybackUpdate={(currentTime, duration, isPlaying) => {
+                setTtsCurrentTime(currentTime);
+                setTtsDuration(duration);
+                setTtsIsPlaying(isPlaying);
+              }}
+              onLoadingChange={setTtsIsLoading}
+              onChunksUpdate={setTtsChunks}
+              onSeekRegister={(seekFn) => {
+                ttsSeekRef.current = seekFn;
+              }}
+            />
             <div className="px-3 pb-3">
               <button
                 onClick={() => setShowRecorder((v) => !v)}

@@ -16,9 +16,12 @@ AUDIOBOOK = {
 }
 
 
-async def test_get_audiobook_404_when_not_linked(client):
+async def test_get_audiobook_returns_null_when_not_linked(client):
+    """No audiobook linked → 200 with null body (not 404), so the reader
+    page can call this on every load without producing console noise."""
     resp = await client.get("/api/audiobooks/2229")
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    assert resp.json() is None
 
 
 async def test_get_audiobook_returns_saved(client):
@@ -45,7 +48,8 @@ async def test_delete_audiobook(client):
     assert resp.json()["ok"] is True
 
     get_resp = await client.get("/api/audiobooks/2229")
-    assert get_resp.status_code == 404
+    assert get_resp.status_code == 200
+    assert get_resp.json() is None
 
 
 async def test_search_audiobooks(client):

@@ -82,7 +82,7 @@ export default function ProfilePage() {
     try {
       await deleteGeminiKey();
       setHasKey(false);
-      setKeyMessage({ text: "Gemini key removed. AI features will require it again.", ok: true });
+      setKeyMessage({ text: "Gemini key removed. Translations and TTS will use free services; insights require a key.", ok: true });
     } catch (e: unknown) {
       setKeyMessage({ text: e instanceof Error ? e.message : "Failed to remove key", ok: false });
     } finally {
@@ -157,15 +157,17 @@ export default function ProfilePage() {
             >
               Google AI Studio
             </a>{" "}
-            to use Gemini for translations, insights, and high-quality TTS.
-            The free tier is generous (1M tokens/day).
+            for higher-quality translations, insights, chat, and TTS.
+            Without a key, translations use Google Translate and TTS uses
+            Microsoft Edge voices (both free). The Gemini free tier is
+            generous (1M tokens/day).
           </p>
 
           {hasKey ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
                 <span>✓</span>
-                <span>Gemini key is active — AI features and Google TTS use your key.</span>
+                <span>Gemini key is active — translations, TTS, and insights use Gemini.</span>
               </div>
               <button
                 onClick={handleRemoveKey}

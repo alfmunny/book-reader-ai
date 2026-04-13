@@ -171,12 +171,15 @@ async def test_partial_bootstrap_marks_missing_versions(tmp_db):
         """)
         await db.commit()
 
-    # This should NOT crash — the bootstrap should detect the missing 002/003
+    # This should NOT crash — the bootstrap should detect the missing 002/003/004
     # and mark them as applied before the migration loop tries to execute them.
+    # Newer migrations (005+) that add new columns will actually run.
     applied = await run_migrations(tmp_db)
-    assert applied == []  # nothing NEW applied (bootstrap marked them, not the loop)
+    assert "002_add_book_images" not in applied
+    assert "003_create_audio_cache" not in applied
+    assert "004_user_roles_and_approval" not in applied
 
-    # All three should now be in schema_migrations
+    # All bootstrapped versions should be in schema_migrations
     async with aiosqlite.connect(tmp_db) as db:
         async with db.execute("SELECT version FROM schema_migrations ORDER BY version") as cursor:
             versions = [row[0] async for row in cursor]
@@ -270,8 +273,12 @@ async def test_existing_db_bootstrap_marks_old_migrations_done(tmp_db):
         await db.commit()
 
     applied = await run_migrations(tmp_db)
-    # Bootstrap should have marked all 4 as done (DB has all features)
-    assert applied == []
+    # Bootstrap should have marked first 4 as done (DB has all features).
+    # Newer migrations (005+) that add new columns will actually run.
+    assert "001_initial_schema" not in applied
+    assert "002_add_book_images" not in applied
+    assert "003_create_audio_cache" not in applied
+    assert "004_user_roles_and_approval" not in applied
 
     # Verify schema_migrations contains the bootstrapped versions
     async with aiosqlite.connect(tmp_db) as db:

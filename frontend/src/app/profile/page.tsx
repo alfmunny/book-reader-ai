@@ -34,6 +34,7 @@ export default function ProfilePage() {
     translationLang: "en",
     audiobookEnabled: true,
     ttsProvider: "auto",
+    translationProvider: "auto",
     fontSize: "base",
     theme: "light",
   });
@@ -298,6 +299,42 @@ export default function ProfilePage() {
                 .
               </p>
             )}
+          </div>
+
+          {/* Translation provider */}
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1.5">
+              Translation provider
+            </label>
+            <div className="space-y-2">
+              {([
+                { value: "auto", label: "Auto", hint: "Use Gemini if a key is set, otherwise Google Translate (free)." },
+                { value: "google", label: "Google Translate", hint: "Free, no API key required. Good enough for casual reading." },
+                { value: "gemini", label: "Gemini", hint: "Best quality for literary text — preserves style, tone, and poetic structure. Requires a Gemini API key." },
+              ] as const).map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    settings.translationProvider === opt.value
+                      ? "border-amber-400 bg-amber-50"
+                      : "border-amber-200 bg-white hover:bg-amber-50/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="translationProvider"
+                    value={opt.value}
+                    checked={settings.translationProvider === opt.value}
+                    onChange={() => updatePref("translationProvider", opt.value)}
+                    className="mt-0.5 accent-amber-700"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-ink">{opt.label}</div>
+                    <div className="text-xs text-stone-500 mt-0.5">{opt.hint}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* LibriVox audiobook */}

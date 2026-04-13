@@ -381,7 +381,7 @@ export default function InsightChat({
               if (msg.role === "user") {
                 return (
                   <div key={i} className="flex flex-col items-end gap-1.5">
-                    <div className="bg-amber-700 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] text-sm leading-relaxed">
+                    <div className="bg-amber-700 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] text-sm leading-relaxed shadow-sm">
                       {msg.content}
                     </div>
                     {msg.context && (
@@ -396,20 +396,24 @@ export default function InsightChat({
                 );
               }
 
-              // Assistant message
+              // Assistant message — styled as a subtle card
               return (
-                <div key={i} className="prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:text-sm prose-p:text-ink prose-p:leading-relaxed prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed max-w-none font-serif text-sm text-ink">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                <div key={i} className="bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] shadow-sm">
+                  <div className="prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:text-sm prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-relaxed prose-p:my-1.5 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-sm text-ink">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                  </div>
                 </div>
               );
             })}
 
             {/* Typing indicator */}
             {chatLoading && messages.length > 0 && (
-              <div className="space-y-2 animate-pulse">
-                <div className="h-3 bg-amber-100 rounded w-3/4" />
-                <div className="h-3 bg-amber-100 rounded w-full" />
-                <div className="h-3 bg-amber-100 rounded w-5/6" />
+              <div className="bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[70%] shadow-sm">
+                <div className="space-y-2 animate-pulse">
+                  <div className="h-3 bg-amber-200/60 rounded w-full" />
+                  <div className="h-3 bg-amber-200/60 rounded w-5/6" />
+                  <div className="h-3 bg-amber-200/60 rounded w-3/4" />
+                </div>
               </div>
             )}
 

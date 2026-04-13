@@ -19,6 +19,7 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_DAYS = 30
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID", "")
 
 # Fernet key must be 32 url-safe base64-encoded bytes.
 # In dev we derive one from the JWT_SECRET; in prod set ENCRYPTION_KEY explicitly.
@@ -79,6 +80,68 @@ async def verify_google_id_token(id_token: str) -> dict:
     if GOOGLE_CLIENT_ID and data.get("aud") != GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=401, detail="Token audience mismatch")
     return data
+
+
+# ── Apple ID token verification ──────────────────────────────────────────────
+
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+_apple_jwks_cache: dict | None = None
+
+
+async def _get_apple_jwks() -> dict:
+    global _apple_jwks_cache
+    if _apple_jwks_cache is not None:
+        return _apple_jwks_cache
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(APPLE_JWKS_URL)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=503, detail="Could not fetch Apple public keys")
+    _apple_jwks_cache = resp.json()
+    return _apple_jwks_cache
+
+
+async def verify_apple_id_token(id_token: str) -> dict:
+    """
+    Verify an Apple ID token using Apple's JWKS public keys.
+    Returns the decoded payload (sub, email, ...).
+    """
+    from jose import jwk as jose_jwk
+    from jose.utils import base64url_decode
+    import json as _json
+
+    jwks = await _get_apple_jwks()
+
+    # Decode header to find the right key
+    header_segment = id_token.split(".")[0]
+    try:
+        header = _json.loads(base64url_decode(header_segment.encode()))
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Apple ID token format")
+
+    kid = header.get("kid")
+    key_data = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+    if key_data is None:
+        # Key not in cache — try refreshing once
+        global _apple_jwks_cache
+        _apple_jwks_cache = None
+        jwks = await _get_apple_jwks()
+        key_data = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+    if key_data is None:
+        raise HTTPException(status_code=401, detail="Apple signing key not found")
+
+    public_key = jose_jwk.construct(key_data)
+    try:
+        payload = jwt.decode(
+            id_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=APPLE_CLIENT_ID if APPLE_CLIENT_ID else None,
+            issuer="https://appleid.apple.com",
+            options={"verify_aud": bool(APPLE_CLIENT_ID)},
+        )
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Apple ID token: {e}")
+    return payload
 
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────

@@ -129,6 +129,58 @@ async def get_or_create_user_github(github_id: str, email: str, name: str, pictu
         return dict(row)
 
 
+async def get_or_create_user_apple(apple_id: str, email: str, name: str) -> dict:
+    """Return existing user (by apple_id or email) or create a new one for Apple OAuth.
+
+    Apple only returns name/email on the first login; subsequent logins only
+    provide the subject (apple_id). We therefore only update name/email when
+    they are non-empty.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        # Try finding by apple_id first
+        async with db.execute("SELECT * FROM users WHERE apple_id = ?", (apple_id,)) as cursor:
+            row = await cursor.fetchone()
+        if row:
+            if email or name:
+                await db.execute(
+                    "UPDATE users SET email=COALESCE(NULLIF(?,''), email), name=COALESCE(NULLIF(?,''), name) WHERE apple_id=?",
+                    (email, name, apple_id),
+                )
+                await db.commit()
+            async with db.execute("SELECT * FROM users WHERE apple_id = ?", (apple_id,)) as cursor:
+                row = await cursor.fetchone()
+            return dict(row)
+
+        # Try linking to existing account by email
+        if email:
+            async with db.execute("SELECT * FROM users WHERE email = ?", (email,)) as cursor:
+                row = await cursor.fetchone()
+            if row:
+                await db.execute(
+                    "UPDATE users SET apple_id=? WHERE id=?",
+                    (apple_id, row["id"]),
+                )
+                await db.commit()
+                return dict(row)
+
+        # New user
+        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
+            count = (await cursor.fetchone())[0]
+        is_first = count == 0
+
+        await db.execute(
+            "INSERT INTO users (google_id, apple_id, email, name, role, approved) VALUES (?,?,?,?,?,?)",
+            (f"apple:{apple_id}", apple_id, email, name,
+             "admin" if is_first else "user",
+             1 if is_first else 0),
+        )
+        await db.commit()
+        async with db.execute("SELECT * FROM users WHERE apple_id = ?", (apple_id,)) as cursor:
+            row = await cursor.fetchone()
+        return dict(row)
+
+
 async def get_user_by_id(user_id: int) -> dict | None:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.auth import verify_google_id_token, create_jwt
-from services.db import get_or_create_user, get_or_create_user_github
+from services.auth import verify_google_id_token, verify_apple_id_token, create_jwt
+from services.db import get_or_create_user, get_or_create_user_github, get_or_create_user_apple
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,5 +60,30 @@ async def github_login(req: GitHubAuthRequest):
         email=req.email,
         name=req.name,
         picture=req.picture,
+    )
+    return _user_response(user)
+
+
+class AppleAuthRequest(BaseModel):
+    id_token: str
+    name: str = ""
+
+
+@router.post("/apple")
+async def apple_login(req: AppleAuthRequest):
+    """Exchange an Apple ID token for our own backend JWT."""
+    try:
+        payload = await verify_apple_id_token(req.id_token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    apple_id = payload.get("sub", "")
+    if not apple_id:
+        raise HTTPException(status_code=401, detail="Apple ID token missing sub claim")
+
+    user = await get_or_create_user_apple(
+        apple_id=apple_id,
+        email=payload.get("email", ""),
+        name=req.name,
     )
     return _user_response(user)

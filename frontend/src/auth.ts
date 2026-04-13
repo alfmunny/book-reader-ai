@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
+import Apple from "next-auth/providers/apple";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -13,6 +14,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID ?? process.env.AUTH_GITHUB_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET ?? process.env.AUTH_GITHUB_SECRET,
+    }),
+    Apple({
+      clientId: process.env.AUTH_APPLE_ID ?? "",
+      clientSecret: process.env.AUTH_APPLE_SECRET ?? "",
     }),
   ],
   pages: {
@@ -41,6 +46,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 name: ghProfile?.name ?? ghProfile?.login ?? "",
                 picture: ghProfile?.avatar_url ?? "",
               }),
+            });
+          } else if (account.provider === "apple" && account.id_token) {
+            const appleProfile = profile as { name?: { firstName?: string; lastName?: string } } | undefined;
+            const name = [appleProfile?.name?.firstName, appleProfile?.name?.lastName]
+              .filter(Boolean)
+              .join(" ");
+            res = await fetch(`${API}/auth/apple`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id_token: account.id_token, name }),
             });
           } else {
             return token;

@@ -66,11 +66,12 @@ export function translateText(
   target_language: string,
   book_id?: number,
   chapter_index?: number,
+  provider: "auto" | "gemini" | "google" = "auto",
 ) {
-  return request<{ paragraphs: string[]; cached: boolean }>("/ai/translate", {
+  return request<{ paragraphs: string[]; cached: boolean; provider?: string; fallback?: boolean }>("/ai/translate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, source_language, target_language, book_id, chapter_index }),
+    body: JSON.stringify({ text, source_language, target_language, book_id, chapter_index, provider }),
   });
 }
 

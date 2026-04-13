@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
-import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
+import { getSettings, saveSettings, FontSize, Theme, TranslationProvider } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
@@ -109,9 +109,11 @@ export default function ReaderPage() {
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
+  const [translationProvider, setTranslationProvider] = useState<TranslationProvider>("auto");
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   const [translationLoading, setTranslationLoading] = useState(false);
+  const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
 
   // Reader display settings
   const [fontSize, setFontSize] = useState<FontSize>("base");
@@ -122,6 +124,7 @@ export default function ReaderPage() {
   useEffect(() => {
     const s = getSettings();
     setTranslationLang(s.translationLang);
+    setTranslationProvider(s.translationProvider);
     setAudiobookEnabled(s.audiobookEnabled);
     setFontSize(s.fontSize);
     setTheme(s.theme);
@@ -204,12 +207,14 @@ export default function ReaderPage() {
 
     if (translationCache.current.has(cacheKey)) {
       setTranslatedParagraphs(translationCache.current.get(cacheKey)!);
+      setTranslationUsedProvider("cached");
       return;
     }
 
     let cancelled = false;
     setTranslationLoading(true);
     setTranslatedParagraphs([]);
+    setTranslationUsedProvider("");
 
     const bid = Number(bookId);
 
@@ -220,6 +225,7 @@ export default function ReaderPage() {
       if (cached) {
         translationCache.current.set(cacheKey, cached);
         setTranslatedParagraphs(cached);
+        setTranslationUsedProvider("cached");
         setTranslationLoading(false);
         return;
       }
@@ -234,13 +240,17 @@ export default function ReaderPage() {
       }
 
       const accumulated: string[] = [];
+      let usedProvider = "";
       for (const batch of batches) {
         if (cancelled || currentChapterKey.current !== cacheKey) return;
         try {
-          const r = await translateText(batch.join("\n\n"), bookLanguage, translationLang);
+          const r = await translateText(batch.join("\n\n"), bookLanguage, translationLang, undefined, undefined, translationProvider);
           accumulated.push(...r.paragraphs);
+          if (r.provider) usedProvider = r.provider;
+          if (r.fallback) usedProvider += " (fallback)";
           if (!cancelled && currentChapterKey.current === cacheKey) {
             setTranslatedParagraphs([...accumulated]);
+            setTranslationUsedProvider(usedProvider);
           }
         } catch (e) {
           console.error("Translation batch failed:", e);
@@ -257,7 +267,7 @@ export default function ReaderPage() {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId]);
+  }, [translationEnabled, translationLang, translationProvider, chapterIndex, bookId]);
 
   async function handleRetranslate() {
     const bid = Number(bookId);
@@ -517,8 +527,31 @@ export default function ReaderPage() {
                 </button>
               </div>
 
+              {/* Provider selector */}
+              <select
+                className="text-xs rounded border border-amber-300 px-2 py-1 text-ink bg-white"
+                value={translationProvider}
+                onChange={(e) => {
+                  const v = e.target.value as TranslationProvider;
+                  setTranslationProvider(v);
+                  saveSettings({ translationProvider: v });
+                  // Clear cache so re-translation uses the new provider
+                  translationCache.current.clear();
+                }}
+              >
+                <option value="auto">Auto</option>
+                <option value="google">Google (free)</option>
+                <option value="gemini">Gemini (key)</option>
+              </select>
+
               {translationLoading && (
                 <span className="text-xs text-amber-500 animate-pulse">Translating…</span>
+              )}
+
+              {!translationLoading && translationUsedProvider && (
+                <span className="text-[10px] text-amber-400">
+                  via {translationUsedProvider}
+                </span>
               )}
 
               {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (

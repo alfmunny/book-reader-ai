@@ -1,4 +1,5 @@
 export type TTSProvider = "auto" | "edge" | "google";
+export type TranslationProvider = "auto" | "gemini" | "google";
 export type FontSize = "sm" | "base" | "lg" | "xl";
 export type Theme = "light" | "dark" | "sepia";
 
@@ -7,6 +8,7 @@ export interface AppSettings {
   translationLang: string;
   audiobookEnabled: boolean;
   ttsProvider: TTSProvider;
+  translationProvider: TranslationProvider;
   fontSize: FontSize;
   theme: Theme;
 }
@@ -16,6 +18,7 @@ const DEFAULTS: AppSettings = {
   translationLang: "en",
   audiobookEnabled: true,
   ttsProvider: "auto",
+  translationProvider: "auto",
   fontSize: "base",
   theme: "light",
 };

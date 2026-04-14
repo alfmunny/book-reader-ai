@@ -601,6 +601,12 @@ export default function ReaderPage() {
               </div>
             ) : (
               <>
+                {/* Chapter heading — shown at top of every chapter, scrolls with content */}
+                {current?.title && (
+                  <h2 className="prose-reader mx-auto mb-8 text-center font-serif font-semibold text-lg text-ink/80" data-testid="reader-chapter-heading">
+                    {current.title}
+                  </h2>
+                )}
                 <SentenceReader
                   text={current?.text ?? ""}
                   duration={audiobook ? audioDuration : ttsDuration}

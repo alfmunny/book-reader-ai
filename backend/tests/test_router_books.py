@@ -93,3 +93,101 @@ async def test_search_delegates_to_gutenberg(client):
         resp = await client.get("/api/books/search?q=austen")
     assert resp.status_code == 200
     assert resp.json()["count"] == 1
+
+
+# ── Import stream (SSE) ──────────────────────────────────────────────────────
+
+def _parse_sse(body: str) -> list[dict]:
+    """Parse an SSE response body into (event, data) dicts."""
+    import json
+    events = []
+    for block in body.strip().split("\n\n"):
+        event = None
+        data = None
+        for line in block.splitlines():
+            if line.startswith("event:"):
+                event = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                data = json.loads(line.removeprefix("data:").strip())
+        if event:
+            events.append({"event": event, **data})
+    return events
+
+
+async def test_import_stream_cached_book_skips_fetch(client):
+    """Book already in cache → streams stages for splitting, no fetch."""
+    # A short text with two chapter keywords so the splitter finds them
+    text = ("CHAPTER I\n\n" + ("Lorem ipsum dolor sit amet. " * 30)
+            + "\n\nCHAPTER II\n\n" + ("Consectetur adipiscing elit. " * 30))
+    await save_book(1342, MOCK_META, text)
+
+    # target_language = source language → translation stage should be skipped
+    resp = await client.get("/api/books/1342/import-stream?target_language=en")
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+
+    stages = [e["stage"] for e in events if e["event"] == "stage"]
+    assert "fetching" in stages
+    assert "splitting" in stages
+    # "translating" is skipped because target == source
+    assert "translating" not in stages
+
+    done = [e for e in events if e["event"] == "done"]
+    assert len(done) == 1
+    assert done[0]["book_id"] == 1342
+
+
+async def test_import_stream_translates_chapters(client):
+    text = ("CHAPTER I\n\n" + ("Erster Absatz. " * 40)
+            + "\n\nCHAPTER II\n\n" + ("Zweiter Absatz. " * 40))
+    meta = {**MOCK_META, "languages": ["de"]}
+    await save_book(1342, meta, text)
+
+    with patch(
+        "routers.books.translate_text",
+        new_callable=AsyncMock,
+        return_value=["Translated paragraph."],
+    ) as mock_translate:
+        resp = await client.get("/api/books/1342/import-stream?target_language=en")
+
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    stages = [e["stage"] for e in events if e["event"] == "stage"]
+    assert "translating" in stages
+    # translate_text should have been called at least once (per chapter)
+    assert mock_translate.await_count >= 1
+
+
+async def test_import_stream_skips_already_translated(client):
+    """Chapters with existing translation cache are reported as cached."""
+    from services.db import save_translation
+    text = ("CHAPTER I\n\n" + ("Erster. " * 40)
+            + "\n\nCHAPTER II\n\n" + ("Zweiter. " * 40))
+    meta = {**MOCK_META, "languages": ["de"]}
+    await save_book(1342, meta, text)
+    # Pre-seed chapter 0 translation
+    await save_translation(1342, 0, "en", ["Already done."])
+
+    with patch("routers.books.translate_text",
+               new_callable=AsyncMock, return_value=["x"]) as mock_translate:
+        resp = await client.get("/api/books/1342/import-stream?target_language=en")
+
+    events = _parse_sse(resp.text)
+    translating = [e for e in events
+                   if e["event"] == "progress" and e.get("stage") == "translating"]
+    cached_count = sum(1 for e in translating if e.get("cached"))
+    assert cached_count >= 1
+    # Only chapter 1 should have been actually translated (0 was cached)
+    assert mock_translate.await_count <= 1
+
+
+async def test_import_stream_done_event_on_uncached_book(client):
+    """A book not in cache → fetching stage + done event."""
+    text = ("CHAPTER I\n\n" + ("Word " * 50) + "\n\nCHAPTER II\n\n" + ("Word " * 50))
+    with patch("routers.books._fetch_and_cache",
+               new_callable=AsyncMock, return_value=(MOCK_META, text)):
+        resp = await client.get("/api/books/1342/import-stream")
+
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    assert any(e["event"] == "done" for e in events)

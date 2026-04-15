@@ -51,6 +51,83 @@ export interface BookChapter {
   text: string;
 }
 
+/** An event streamed from GET /books/:id/import-stream. */
+export interface ImportEvent {
+  event: "stage" | "meta" | "chapters" | "progress" | "done" | "error";
+  stage?: "fetching" | "splitting" | "translating" | "tts";
+  message?: string;
+  progress?: number;
+  total?: number;
+  current?: number;
+  title?: string;
+  cached?: boolean;
+  skipped?: boolean;
+  error?: string;
+  book_id?: number;
+  source_language?: string;
+  titles?: string[];
+  provider?: string;
+  voice?: string;
+}
+
+/**
+ * Start the interactive book import stream. Uses fetch() with a streaming
+ * response body so the Bearer token works (EventSource can't set headers).
+ * Returns an async iterator of ImportEvent objects.
+ */
+export async function* importBookStream(
+  bookId: number,
+  targetLanguage: string,
+  generateTts: boolean,
+  signal?: AbortSignal,
+): AsyncGenerator<ImportEvent> {
+  const params = new URLSearchParams({
+    target_language: targetLanguage,
+    generate_tts: generateTts ? "true" : "false",
+  });
+  const headers: Record<string, string> = {
+    Accept: "text/event-stream",
+    ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
+  };
+  const res = await fetch(`${BASE}/books/${bookId}/import-stream?${params}`, {
+    headers,
+    signal,
+  });
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Import stream failed");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are separated by blank lines.
+    let sepIdx: number;
+    while ((sepIdx = buffer.indexOf("\n\n")) >= 0) {
+      const frame = buffer.slice(0, sepIdx);
+      buffer = buffer.slice(sepIdx + 2);
+      let event = "";
+      let data = "";
+      for (const line of frame.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data = line.slice(5).trim();
+      }
+      if (!event) continue;
+      try {
+        yield { event: event as ImportEvent["event"], ...JSON.parse(data) };
+      } catch {
+        // malformed frame — skip
+      }
+    }
+  }
+}
+
 // AI
 export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en") {
   return request<{ insight: string }>("/ai/insight", {

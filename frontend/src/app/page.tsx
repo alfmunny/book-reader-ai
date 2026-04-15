@@ -105,7 +105,16 @@ export default function Home() {
   }
 
   function openBook(id: number) {
-    router.push(`/reader/${id}`);
+    // Books already in the user's library skip the import page — they've
+    // been opened before, so the translations/TTS are likely already cached
+    // or intentionally skipped. First-time opens go through /import to let
+    // the user pre-generate translations (and optionally audio).
+    const inLibrary = recentBooks.some((b) => b.id === id);
+    if (inLibrary) {
+      router.push(`/reader/${id}`);
+    } else {
+      router.push(`/import/${id}?next=/reader/${id}`);
+    }
   }
 
   return (

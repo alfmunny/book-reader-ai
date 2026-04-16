@@ -259,3 +259,97 @@ async def test_unapproved_user_blocked_on_api(admin_db, admin_user):
         res = await c.get("/api/user/me", headers=headers)
         assert res.status_code == 200
         assert res.json()["approved"] is False
+
+
+# ── Seed popular books SSE ──────────────────────────────────────────────────
+
+def _parse_sse(body: str) -> list[dict]:
+    import json as _json
+    events = []
+    for block in body.strip().split("\n\n"):
+        event = None
+        data = None
+        for line in block.splitlines():
+            if line.startswith("event:"):
+                event = line.removeprefix("event:").strip()
+            elif line.startswith("data:"):
+                data = _json.loads(line.removeprefix("data:").strip())
+        if event and data is not None:
+            events.append({"event": event, **data})
+    return events
+
+
+async def test_seed_popular_stream_skips_already_cached(admin_client, admin_db, monkeypatch, tmp_path):
+    """A manifest entry whose book is already in the DB is reported as cached,
+    not re-downloaded."""
+    import json as _json
+    # Write a tiny manifest with one book that's already saved
+    manifest = [{
+        "id": 100, "title": "Test Book",
+        "authors": ["Author"], "languages": ["en"],
+        "download_count": 100, "cover": "",
+    }]
+    manifest_path = tmp_path / "popular_books.json"
+    manifest_path.write_text(_json.dumps(manifest))
+    # Point the router at our temp manifest
+    import os as _os
+    original_join = _os.path.join
+    def _fake_join(*parts):
+        joined = original_join(*parts)
+        if joined.endswith("popular_books.json"):
+            return str(manifest_path)
+        return joined
+    monkeypatch.setattr(_os.path, "join", _fake_join)
+
+    # The book is already cached
+    await save_book(100, manifest[0], "Some text")
+
+    # get_book_meta / get_book_text should never be called
+    with patch("routers.admin.get_book_meta") as m_meta, \
+         patch("routers.admin.get_book_text") as m_text:
+        res = await admin_client.get("/api/admin/books/seed-popular-stream")
+
+    assert res.status_code == 200
+    events = _parse_sse(res.text)
+    start = next(e for e in events if e["event"] == "start")
+    assert start["already_cached"] == 1
+    assert start["to_download"] == 0
+    m_meta.assert_not_called()
+    m_text.assert_not_called()
+
+
+async def test_seed_popular_stream_downloads_missing_books(admin_client, admin_db, monkeypatch, tmp_path):
+    """A manifest entry whose book isn't cached triggers download + save."""
+    import json as _json
+    manifest = [{
+        "id": 101, "title": "New Book",
+        "authors": ["Author"], "languages": ["en"],
+        "download_count": 50, "cover": "",
+    }]
+    manifest_path = tmp_path / "popular_books.json"
+    manifest_path.write_text(_json.dumps(manifest))
+    import os as _os
+    original_join = _os.path.join
+    def _fake_join(*parts):
+        joined = original_join(*parts)
+        if joined.endswith("popular_books.json"):
+            return str(manifest_path)
+        return joined
+    monkeypatch.setattr(_os.path, "join", _fake_join)
+
+    meta_mock = AsyncMock(return_value={**manifest[0], "subjects": []})
+    text_mock = AsyncMock(return_value="Book text " * 50)
+    with patch("routers.admin.get_book_meta", meta_mock), \
+         patch("routers.admin.get_book_text", text_mock):
+        res = await admin_client.get("/api/admin/books/seed-popular-stream")
+
+    assert res.status_code == 200
+    events = _parse_sse(res.text)
+    done = next(e for e in events if e["event"] == "done")
+    assert done["downloaded"] == 1
+    assert done["failed"] == 0
+    # Verify it actually landed in the DB
+    from services.db import get_cached_book
+    cached = await get_cached_book(101)
+    assert cached is not None
+    assert cached["title"] == "New Book"

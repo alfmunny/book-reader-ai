@@ -127,6 +127,114 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
     return {"ok": True}
 
 
+@router.get("/books/seed-popular-stream")
+async def seed_popular_stream(_admin: dict = Depends(_require_admin)):
+    """Download every book listed in popular_books.json into the DB.
+
+    Streams progress via Server-Sent Events so the admin can see live status
+    (which book is currently downloading, how many done vs total). Idempotent:
+    books already in the DB are skipped. Safe to run on Railway — no API
+    rate limits to worry about (Gutenberg is permissive).
+    """
+    import asyncio
+    import json as _json
+    import logging
+    import os as _os
+    from fastapi.responses import StreamingResponse
+
+    log = logging.getLogger(__name__)
+
+    manifest_path = _os.path.join(
+        _os.path.dirname(__file__), "..", "popular_books.json",
+    )
+    if not _os.path.isfile(manifest_path):
+        raise HTTPException(status_code=404, detail="popular_books.json not found")
+
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest: list[dict] = _json.load(f)
+
+    def _sse(event: str, data: dict) -> str:
+        return f"event: {event}\ndata: {_json.dumps(data)}\n\n"
+
+    async def generator():
+        try:
+            # Compute which books still need fetching
+            todo: list[dict] = []
+            already = 0
+            for book in manifest:
+                existing = await get_cached_book(book["id"])
+                if existing and existing.get("text"):
+                    already += 1
+                else:
+                    todo.append(book)
+
+            yield _sse("start", {
+                "total": len(manifest),
+                "to_download": len(todo),
+                "already_cached": already,
+            })
+
+            downloaded = 0
+            failed = 0
+
+            for i, book in enumerate(todo, 1):
+                yield _sse("progress", {
+                    "current": i,
+                    "total": len(todo),
+                    "book_id": book["id"],
+                    "title": book.get("title", ""),
+                    "status": "downloading",
+                })
+                try:
+                    meta = await get_book_meta(book["id"])
+                    text = await get_book_text(book["id"])
+                    await save_book(book["id"], meta, text)
+                    downloaded += 1
+                    yield _sse("progress", {
+                        "current": i,
+                        "total": len(todo),
+                        "book_id": book["id"],
+                        "title": meta.get("title", book.get("title", "")),
+                        "status": "done",
+                        "chars": len(text),
+                    })
+                except Exception as e:
+                    failed += 1
+                    log.exception("Seed failed for book %s", book["id"])
+                    yield _sse("progress", {
+                        "current": i,
+                        "total": len(todo),
+                        "book_id": book["id"],
+                        "title": book.get("title", ""),
+                        "status": "failed",
+                        "error": str(e)[:200],
+                    })
+                # Brief pause to be polite to Gutenberg
+                await asyncio.sleep(0.3)
+
+            yield _sse("done", {
+                "downloaded": downloaded,
+                "failed": failed,
+                "already_cached": already,
+                "total": len(manifest),
+            })
+
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            log.exception("Seed stream crashed")
+            yield _sse("error", {"message": str(e)})
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # AUDIO CACHE
 # ══════════════════════════════════════════════════════════════════════════════

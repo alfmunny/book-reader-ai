@@ -28,7 +28,7 @@ WORDS_PER_SECTION = 2000
 # Note: some real books have 100+ chapters (Count of Monte Cristo: 117,
 # Les Misérables: 365). We set a high limit and rely on MIN_AVG_WORDS
 # to catch actual over-splitting.
-MAX_CHAPTERS = 400
+MAX_CHAPTERS = 500
 
 # Minimum average words per chapter. If the average is below this after
 # splitting, the strategy is too aggressive.
@@ -168,10 +168,33 @@ def _skip_toc_region(body: str) -> int:
 def _chapters_from_keywords(body: str, offset: int, full_text: str) -> list[Chapter]:
     toc_skip = _skip_toc_region(body)
     entries: list[tuple[str, int]] = []
+    # Track the most recent top-level BOOK/PART/ACT heading — used as a prefix
+    # for the chapter titles that follow it. Long novels (War and Peace has
+    # 15 books × ~25 chapters) are split into nested BOOK → CHAPTER sections,
+    # so "CHAPTER I" appears many times. Prefixing with the current BOOK
+    # disambiguates them in the UI and preserves the structure.
+    current_book = ""
+    BOOK_KEYWORDS = ("BOOK", "LIVRE", "LIBRO", "BUCH", "PART", "PARTIE", "TEIL")
     for m in KEYWORD_RE.finditer(body):
         if m.start() < toc_skip:
             continue  # skip TOC entries
-        entries.append((m.group(1).strip(), offset + m.start()))
+        raw_title = m.group(1)
+        # Reject indented matches — these are TOC entries in complex books.
+        # Real chapter headings are almost always typeset at column 0.
+        # Two or more leading spaces/tabs is a very strong TOC signal.
+        stripped_prefix = raw_title[:4]
+        if stripped_prefix.startswith("  ") or stripped_prefix.startswith("\t"):
+            continue
+        title = raw_title.strip()
+        upper_title = title.upper()
+        if upper_title.startswith(BOOK_KEYWORDS):
+            # Treat BOOK markers as section labels, not as chapters — remember
+            # them for prefixing, but don't create an entry for them.
+            current_book = title
+            continue
+        if current_book:
+            title = f"{current_book} — {title}"
+        entries.append((title, offset + m.start()))
 
     if len(entries) < 2:
         return []
@@ -300,6 +323,173 @@ def _chapters_from_paragraphs(body: str) -> list[Chapter]:
     if current:
         chapters.append(Chapter(title=_clean_title(section_title), text="\n\n".join(current)))
     return [c for c in chapters if c.text.strip()]
+
+
+# ── HTML-based splitter ──────────────────────────────────────────────────
+
+def build_chapters_from_html(html: str) -> list[Chapter]:
+    """Split a Gutenberg HTML edition into chapters.
+
+    Gutenberg HTML wraps each chapter in `<div class="chapter">` with
+    anchor IDs like `link2HCH0001` (regular chapters) or `link2H_4_0001`
+    (book/part section dividers). This is a MUCH more reliable signal than
+    regex on plain text, especially for complex hierarchical works like
+    War and Peace (15 books × ~25 chapters).
+
+    Strategy:
+      1. Parse the HTML with lxml
+      2. Find every `<div class="chapter">` block
+      3. For each chapter: extract the first heading (<h2> or <h3>) as title,
+         extract visible text from the rest as the body (paragraph breaks
+         preserved).
+      4. When a div is a "section" (id starts with `link2H_4_`), remember it
+         as the current book/part label and prefix following chapter titles.
+      5. Skip boilerplate divs (pg-boilerplate, cover, etc.)
+
+    Returns [] on parse failure — caller falls back to the text-based splitter.
+    """
+    try:
+        from lxml import html as lxml_html
+    except ImportError:
+        return []
+
+    try:
+        root = lxml_html.fromstring(html)
+    except Exception:
+        return []
+
+    # Collect every element with class="chapter" in document order.
+    chapter_divs = root.xpath("//*[contains(@class, 'chapter')]")
+    if not chapter_divs:
+        return []
+
+    chapters: list[Chapter] = []
+    current_book = ""
+
+    for div in chapter_divs:
+        classes = (div.get("class") or "").split()
+        if "pg-boilerplate" in classes:
+            continue
+
+        # Extract title: first heading inside the block
+        title_elems = div.xpath(".//h1 | .//h2 | .//h3")
+        title = ""
+        if title_elems:
+            title = _html_text(title_elems[0])
+
+        # Extract body text from all children except the title heading
+        body_text = _html_body_text(div, skip_first_heading=True)
+        word_count = len(body_text.split())
+
+        # Section divider detection. Gutenberg uses a flat structure where
+        # "BOOK ONE: 1805", "PART I", etc. are sibling divs with class="chapter"
+        # and almost no body text (just the heading).
+        is_section = _looks_like_book_heading(title) or (word_count < 50 and bool(title))
+
+        # Skip meta/frontmatter headings entirely — they aren't real chapters
+        # and shouldn't prefix the chapters that follow either.
+        if _is_meta_heading(title):
+            continue
+
+        if is_section:
+            # Remember as current book label; skip creating a chapter for it.
+            if title:
+                current_book = title
+            continue
+
+        if not body_text.strip() or not title:
+            continue
+
+        full_title = f"{current_book} — {title}" if current_book else title
+        chapters.append(Chapter(title=_clean_title(full_title), text=body_text.strip()))
+
+    return _merge_tiny_first(chapters)
+
+
+_BOOK_HEADING_RE = re.compile(
+    r'^\s*(?:BOOK|LIVRE|LIBRO|BUCH|PART|PARTIE|TEIL|VOLUME|VOL\.|BAND)\s',
+    re.IGNORECASE,
+)
+
+
+def _looks_like_book_heading(title: str) -> bool:
+    """True if the heading opens a book/part/volume section rather than a chapter."""
+    return bool(_BOOK_HEADING_RE.match(title or ""))
+
+
+# Headings that are neither chapters nor book sections — just navigation
+# pages that we should ignore entirely (not use as prefix for later chapters).
+_META_HEADINGS = {
+    "contents", "table of contents", "index", "colophon",
+    "inhaltsverzeichnis", "inhalt", "sommaire", "índice",
+}
+
+
+def _is_meta_heading(title: str) -> bool:
+    return (title or "").strip().lower() in _META_HEADINGS
+
+
+def _html_text(elem) -> str:
+    """Return the visible text inside a single element (no descendants' block structure)."""
+    return " ".join(elem.itertext()).strip()
+
+
+def _html_body_text(elem, *, skip_first_heading: bool = False) -> str:
+    """Extract readable text from an HTML element, preserving paragraph breaks.
+
+    Each `<p>` becomes one paragraph separated by blank lines. `<br>` becomes
+    a single newline. Inline tags are flattened. The first `<h1>/<h2>/<h3>`
+    is skipped when `skip_first_heading=True` (since the caller already used
+    it as the chapter title).
+    """
+    parts: list[str] = []
+    skipped_heading = not skip_first_heading
+
+    for child in elem.iterchildren():
+        tag = child.tag if isinstance(child.tag, str) else ""
+        if tag in ("h1", "h2", "h3") and not skipped_heading:
+            skipped_heading = True
+            continue
+        if tag == "div" and "chapter" in (child.get("class") or ""):
+            # Nested chapter div (seen in book-section wrappers) — skip
+            continue
+        if tag == "p":
+            text = _html_inline_text(child)
+            if text.strip():
+                parts.append(text.strip())
+        elif tag in ("blockquote",):
+            nested = _html_body_text(child, skip_first_heading=False)
+            if nested.strip():
+                parts.append(nested.strip())
+        elif tag in ("pre",):
+            parts.append(child.text_content().rstrip())
+        elif tag == "hr":
+            continue
+        else:
+            # Fall-through: if it's another container (section, div) recurse
+            text = _html_body_text(child, skip_first_heading=False)
+            if text.strip():
+                parts.append(text.strip())
+
+    return "\n\n".join(parts)
+
+
+def _html_inline_text(elem) -> str:
+    """Flatten a <p> (or similar) to plain text, turning <br> into newlines."""
+    chunks: list[str] = []
+    if elem.text:
+        chunks.append(elem.text)
+    for child in elem.iterchildren():
+        tag = child.tag if isinstance(child.tag, str) else ""
+        if tag == "br":
+            chunks.append("\n")
+        else:
+            inner = _html_inline_text(child)
+            if inner:
+                chunks.append(inner)
+        if child.tail:
+            chunks.append(child.tail)
+    return "".join(chunks)
 
 
 # ── Public API ───────────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ const LANGUAGES = [
   { code: "en", label: "English" },
   { code: "de", label: "Deutsch" },
   { code: "fr", label: "Français" },
+  { code: "ja", label: "日本語" },
 ];
 
 function timeAgo(ms: number): string {
@@ -226,6 +227,7 @@ export default function Home() {
                   <option value="en">English</option>
                   <option value="de">German</option>
                   <option value="fr">French</option>
+                  <option value="ja">Japanese</option>
                   <option value="it">Italian</option>
                   <option value="es">Spanish</option>
                 </select>

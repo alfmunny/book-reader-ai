@@ -56,6 +56,44 @@ async def get_book_meta(book_id: int) -> dict:
     return _format_book_meta(book)
 
 
+async def get_book_html(book_id: int) -> str | None:
+    """Download the HTML edition of a Gutenberg book, if available.
+
+    Returns None if the book has no HTML format. HTML editions have explicit
+    `<div class="chapter">` markup which is much more reliable than regex on
+    plain text (see services.splitter.build_chapters_from_html).
+    """
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            resp = await client.get(f"{GUTENBERG_SEARCH}/{book_id}")
+            resp.raise_for_status()
+            formats = resp.json().get("formats", {})
+    except Exception:
+        return None
+
+    html_url = ""
+    for key, url in formats.items():
+        if key.startswith("text/html") and "images" in url:
+            html_url = url
+            break
+    if not html_url:
+        for key, url in formats.items():
+            if key.startswith("text/html"):
+                html_url = url
+                break
+    if not html_url:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+            resp = await client.get(html_url)
+            if resp.status_code == 200:
+                return resp.text
+    except Exception:
+        return None
+    return None
+
+
 async def get_book_text(book_id: int) -> str:
     """Download the plain-text version of a Gutenberg book.
 

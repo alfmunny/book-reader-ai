@@ -143,10 +143,16 @@ async def translate_cache(
     target_language: str,
     _user: dict = Depends(get_current_user),
 ):
-    """Check if a translation is cached. Returns it if yes, 404 if not."""
-    cached = await get_cached_translation(book_id, chapter_index, target_language)
+    """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""
+    from services.db import get_cached_translation_with_meta
+    cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if cached:
-        return {"paragraphs": cached, "cached": True}
+        return {
+            "paragraphs": cached["paragraphs"],
+            "provider": cached["provider"],
+            "model": cached["model"],
+            "cached": True,
+        }
     raise HTTPException(status_code=404, detail="Not cached")
 
 
@@ -155,12 +161,17 @@ class SaveTranslationRequest(BaseModel):
     chapter_index: int
     target_language: str
     paragraphs: list[str]
+    provider: str | None = None
+    model: str | None = None
 
 
 @router.put("/translate/cache")
 async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depends(get_current_user)):
     """Save a completed progressive translation to the backend cache."""
-    await save_translation(req.book_id, req.chapter_index, req.target_language, req.paragraphs)
+    await save_translation(
+        req.book_id, req.chapter_index, req.target_language, req.paragraphs,
+        provider=req.provider, model=req.model,
+    )
     return {"ok": True}
 
 
@@ -215,9 +226,12 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             else:
                 raise
 
-        # Save to shared cache
+        # Save to shared cache, tagged with provider so the reader can show origin
         if req.book_id is not None and req.chapter_index is not None:
-            await save_translation(req.book_id, req.chapter_index, req.target_language, paragraphs)
+            await save_translation(
+                req.book_id, req.chapter_index, req.target_language, paragraphs,
+                provider=chosen,
+            )
 
         return {
             "paragraphs": paragraphs,

@@ -244,16 +244,58 @@ async def get_cached_translation(book_id: int, chapter_index: int, target_langua
     return json.loads(row[0]) if row else None
 
 
-async def save_translation(book_id: int, chapter_index: int, target_language: str, paragraphs: list[str]) -> None:
+async def get_cached_translation_with_meta(
+    book_id: int, chapter_index: int, target_language: str,
+) -> dict | None:
+    """Like get_cached_translation, but also returns provider/model metadata."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT paragraphs, provider, model FROM translations
+               WHERE book_id=? AND chapter_index=? AND target_language=?""",
+            (book_id, chapter_index, target_language),
+        ) as cursor:
+            row = await cursor.fetchone()
+    if not row:
+        return None
+    return {
+        "paragraphs": json.loads(row["paragraphs"]),
+        "provider": row["provider"],
+        "model": row["model"],
+    }
+
+
+async def save_translation(
+    book_id: int,
+    chapter_index: int,
+    target_language: str,
+    paragraphs: list[str],
+    *,
+    provider: str | None = None,
+    model: str | None = None,
+) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
-            INSERT OR REPLACE INTO translations (book_id, chapter_index, target_language, paragraphs)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO translations
+              (book_id, chapter_index, target_language, paragraphs, provider, model)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (book_id, chapter_index, target_language, json.dumps(paragraphs)),
+            (book_id, chapter_index, target_language,
+             json.dumps(paragraphs), provider, model),
         )
         await db.commit()
+
+
+async def count_translations_for_book(book_id: int, target_language: str) -> int:
+    """Count how many chapters of a book have a translation cached."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id=? AND target_language=?",
+            (book_id, target_language),
+        ) as cursor:
+            row = await cursor.fetchone()
+    return row[0] if row else 0
 
 
 # ── Audio cache (whole-chapter TTS output) ────────────────────────────────────

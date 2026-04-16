@@ -7,6 +7,7 @@ import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user, decrypt_api_key
+from services.bulk_translate import manager as bulk_manager, plan_work, group_chapters_for_batch
 from services.db import (
     DB_PATH,
     list_users,
@@ -375,3 +376,140 @@ async def stats(_admin: dict = Depends(_require_admin)):
         "audio_cache_mb": round(audio_bytes / (1024 * 1024), 1),
         "translations_cached": translation_count,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BULK TRANSLATION JOB
+# ══════════════════════════════════════════════════════════════════════════════
+
+class StartBulkTranslateRequest(BaseModel):
+    target_language: str
+    dry_run: bool = False
+    rpm: int = 12
+    rpd: int = 1400
+    book_ids: list[int] | None = None
+
+
+@router.post("/bulk-translate/plan")
+async def bulk_translate_plan(
+    req: StartBulkTranslateRequest,
+    _admin: dict = Depends(_require_admin),
+):
+    """Dry-inspect: compute what a real run would do, without calling any API."""
+    plans = await plan_work(req.target_language, book_ids=req.book_ids)
+    total_chapters = sum(len(p.chapters) for p in plans)
+
+    # Estimate batches (upper bound on requests)
+    total_batches = 0
+    total_words = 0
+    for p in plans:
+        batches = group_chapters_for_batch(p.chapters)
+        total_batches += len(batches)
+        total_words += sum(len(c.chapter_text.split()) for c in p.chapters)
+
+    return {
+        "total_books": len(plans),
+        "total_chapters": total_chapters,
+        "total_batches": total_batches,
+        "total_words": total_words,
+        "books": [
+            {
+                "id": p.book_id,
+                "title": p.book_title,
+                "source_language": p.source_language,
+                "chapters_to_translate": len(p.chapters),
+            }
+            for p in plans
+        ],
+        # Rough time estimate at RPM and RPD limits
+        "estimated_minutes_at_rpm": round(total_batches / max(1, req.rpm), 1),
+        "estimated_days_at_rpd": round(total_batches / max(1, req.rpd), 2),
+    }
+
+
+@router.post("/bulk-translate/start")
+async def bulk_translate_start(
+    req: StartBulkTranslateRequest,
+    admin: dict = Depends(_require_admin),
+):
+    """Kick off a background translation job using the admin's Gemini key.
+
+    If dry_run=True, the first batch is translated for quality preview and
+    nothing is saved to the DB.
+    """
+    raw_key = admin.get("gemini_key")
+    if not raw_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Bulk translation requires a Gemini API key on the admin account",
+        )
+    api_key = decrypt_api_key(raw_key)
+
+    try:
+        state = await bulk_manager().start(
+            target_language=req.target_language,
+            api_key=api_key,
+            rpm=req.rpm,
+            rpd=req.rpd,
+            dry_run=req.dry_run,
+            book_ids=req.book_ids,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    return {"id": state.id, "status": state.status, "dry_run": state.dry_run}
+
+
+@router.post("/bulk-translate/stop")
+async def bulk_translate_stop(_admin: dict = Depends(_require_admin)):
+    await bulk_manager().stop()
+    return {"ok": True}
+
+
+@router.get("/bulk-translate/status")
+async def bulk_translate_status(_admin: dict = Depends(_require_admin)):
+    """Return the most recent job's live state + running flag."""
+    state = await bulk_manager().status()
+    running = bulk_manager().is_running()
+    if not state:
+        return {"running": False, "state": None}
+    return {
+        "running": running,
+        "state": {
+            "id": state.id,
+            "status": state.status,
+            "target_language": state.target_language,
+            "provider": state.provider,
+            "model": state.model,
+            "dry_run": state.dry_run,
+            "total_chapters": state.total_chapters,
+            "completed_chapters": state.completed_chapters,
+            "failed_chapters": state.failed_chapters,
+            "skipped_chapters": state.skipped_chapters,
+            "requests_made": state.requests_made,
+            "current_book_id": state.current_book_id,
+            "current_book_title": state.current_book_title,
+            "current_chapter_index": state.current_chapter_index,
+            "last_error": state.last_error,
+            "started_at": state.started_at,
+            "ended_at": state.ended_at,
+        },
+        "preview": bulk_manager().preview(),
+    }
+
+
+@router.get("/bulk-translate/history")
+async def bulk_translate_history(_admin: dict = Depends(_require_admin)):
+    """List past and current bulk-translate runs, newest first."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT id, status, target_language, provider, model, dry_run,
+                      total_chapters, completed_chapters, failed_chapters,
+                      started_at, ended_at
+               FROM bulk_translation_jobs ORDER BY id DESC LIMIT 50"""
+        ) as cursor:
+            rows = [dict(row) async for row in cursor]
+    for r in rows:
+        r["dry_run"] = bool(r["dry_run"])
+    return rows

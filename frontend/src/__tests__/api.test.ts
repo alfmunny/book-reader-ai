@@ -14,6 +14,7 @@ import {
   translateText,
   getTranslationCache,
   saveTranslationCache,
+  getBookTranslationStatus,
   askQuestion,
   synthesizeSpeech,
   getTtsChunks,
@@ -140,10 +141,11 @@ test("translateText sends correct body", async () => {
   expect(body.chapter_index).toBe(0);
 });
 
-test("getTranslationCache returns paragraphs on hit", async () => {
-  mockFetch({ paragraphs: ["Translated"], cached: true });
+test("getTranslationCache returns paragraphs + provider on hit", async () => {
+  mockFetch({ paragraphs: ["Translated"], provider: "gemini", model: "flash", cached: true });
   const result = await getTranslationCache(1342, 0, "en");
-  expect(result).toEqual(["Translated"]);
+  expect(result?.paragraphs).toEqual(["Translated"]);
+  expect(result?.provider).toBe("gemini");
   const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
   expect(url).toContain("/ai/translate/cache");
   expect(url).toContain("book_id=1342");
@@ -164,6 +166,19 @@ test("saveTranslationCache sends PUT", async () => {
   const body = JSON.parse(opts.body);
   expect(body.book_id).toBe(1342);
   expect(body.paragraphs).toEqual(["Hello"]);
+});
+
+test("getBookTranslationStatus builds the correct URL and parses the response", async () => {
+  mockFetch({
+    book_id: 1342, target_language: "zh",
+    total_chapters: 10, translated_chapters: 3, bulk_active: true,
+  });
+  const result = await getBookTranslationStatus(1342, "zh");
+  expect(result.translated_chapters).toBe(3);
+  expect(result.bulk_active).toBe(true);
+  const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+  expect(url).toContain("/books/1342/translation-status");
+  expect(url).toContain("target_language=zh");
 });
 
 test("askQuestion sends POST to /ai/qa", async () => {

@@ -66,6 +66,41 @@ async def popular_books(language: str = ""):
     return _popular_cache
 
 
+@router.get("/{book_id}/translation-status")
+async def translation_status(book_id: int, target_language: str):
+    """Return how many chapters of a book have a cached translation.
+
+    Used by the reader to show a 'bulk translation in progress' banner when
+    the admin is running a background job. Cheap — just counts DB rows.
+    """
+    from services.db import count_translations_for_book
+    from services.bulk_translate import manager as bulk_manager
+
+    cached = await get_cached_book(book_id)
+    total_chapters = 0
+    if cached and cached.get("text"):
+        total_chapters = len(build_chapters(cached["text"]))
+
+    cached_translations = await count_translations_for_book(book_id, target_language)
+
+    # Is a bulk job currently touching this book?
+    bulk_active = False
+    bulk_state = await bulk_manager().status()
+    if bulk_state and bulk_state.status == "running":
+        bulk_active = (
+            bulk_state.current_book_id == book_id
+            and bulk_state.target_language == target_language
+        )
+
+    return {
+        "book_id": book_id,
+        "target_language": target_language,
+        "total_chapters": total_chapters,
+        "translated_chapters": cached_translations,
+        "bulk_active": bulk_active,
+    }
+
+
 @router.get("/{book_id}")
 async def book_meta(book_id: int):
     cached = await get_cached_book(book_id)

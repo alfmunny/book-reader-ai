@@ -128,66 +128,6 @@ export async function* importBookStream(
   }
 }
 
-/** Event streamed from GET /admin/books/seed-popular-stream. */
-export interface SeedPopularEvent {
-  event: "start" | "progress" | "done" | "error";
-  total?: number;
-  current?: number;
-  to_download?: number;
-  already_cached?: number;
-  downloaded?: number;
-  failed?: number;
-  book_id?: number;
-  title?: string;
-  chars?: number;
-  status?: "downloading" | "done" | "failed";
-  error?: string;
-  message?: string;
-}
-
-/** Stream the seed-popular-books admin job via fetch() (Bearer auth). */
-export async function* seedPopularStream(
-  signal?: AbortSignal,
-): AsyncGenerator<SeedPopularEvent> {
-  const headers: Record<string, string> = {
-    Accept: "text/event-stream",
-    ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
-  };
-  const res = await fetch(`${BASE}/admin/books/seed-popular-stream`, {
-    headers,
-    signal,
-  });
-  if (!res.ok || !res.body) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Seed stream failed");
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let sepIdx: number;
-    while ((sepIdx = buffer.indexOf("\n\n")) >= 0) {
-      const frame = buffer.slice(0, sepIdx);
-      buffer = buffer.slice(sepIdx + 2);
-      let event = "";
-      let data = "";
-      for (const line of frame.split("\n")) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) data = line.slice(5).trim();
-      }
-      if (!event) continue;
-      try {
-        yield { event: event as SeedPopularEvent["event"], ...JSON.parse(data) };
-      } catch {
-        // skip malformed frames
-      }
-    }
-  }
-}
-
 // AI
 export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en") {
   return request<{ insight: string }>("/ai/insight", {

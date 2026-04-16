@@ -218,7 +218,7 @@ export default function AdminPage() {
             </div>
 
             {/* Bulk seed from popular_books.json — works on Railway without CLI */}
-            <SeedPopularButton onComplete={loadAll} />
+            <SeedPopularButton adminFetch={adminFetch} onComplete={loadAll} />
 
             {/* Book list */}
             <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">

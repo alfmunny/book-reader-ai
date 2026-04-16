@@ -116,3 +116,94 @@ async def test_translate_text_chunks_large_input():
     # Should have been called more than once (two chunks of 3+3 paragraphs)
     assert m.call_count >= 2
     assert len(result) == 6
+
+
+# ── translate_chapters_batch ─────────────────────────────────────────────────
+
+def _mock_gemini_response(text: str):
+    """Build a Gemini-style response object whose .text returns `text`."""
+    class _Resp:
+        pass
+    r = _Resp()
+    r.text = text
+    return r
+
+
+def _patch_gemini_generate(return_text: str):
+    """Patch the underlying google-genai client used by translate_chapters_batch."""
+    async_mock = AsyncMock(return_value=_mock_gemini_response(return_text))
+
+    class _Models:
+        generate_content = async_mock
+
+    class _Aio:
+        models = _Models()
+
+    class _Client:
+        aio = _Aio()
+
+    return patch("services.gemini._client", return_value=_Client()), async_mock
+
+
+async def test_translate_chapters_batch_parses_multiple_chapters():
+    """The function should extract each <chapter> block and return a dict by index."""
+    response = """<chapter index="0">
+First chapter translated.
+
+Second paragraph of chapter 0.
+</chapter>
+
+<chapter index="1">
+Chapter 1 text.
+</chapter>"""
+    patcher, mock = _patch_gemini_generate(response)
+    with patcher:
+        result = await gemini.translate_chapters_batch(
+            "key",
+            [(0, "Chapter 0 original"), (1, "Chapter 1 original")],
+            "en", "zh",
+        )
+    assert set(result.keys()) == {0, 1}
+    assert len(result[0]) == 2
+    assert result[0][0].startswith("First chapter")
+    assert result[1][0] == "Chapter 1 text."
+
+
+async def test_translate_chapters_batch_preserves_index_attribute():
+    """Non-sequential indices (e.g. 5 and 9) must round-trip correctly."""
+    response = '<chapter index="5">Five.</chapter>\n<chapter index="9">Nine.</chapter>'
+    patcher, _ = _patch_gemini_generate(response)
+    with patcher:
+        result = await gemini.translate_chapters_batch(
+            "key", [(5, "A"), (9, "B")], "en", "zh",
+        )
+    assert set(result.keys()) == {5, 9}
+
+
+async def test_translate_chapters_batch_empty_input():
+    """Empty input short-circuits, no API call."""
+    result = await gemini.translate_chapters_batch("key", [], "en", "zh")
+    assert result == {}
+
+
+async def test_translate_chapters_batch_includes_prior_context():
+    """prior_context text appears in the prompt (for cross-batch consistency)."""
+    patcher, mock = _patch_gemini_generate('<chapter index="0">x</chapter>')
+    with patcher:
+        await gemini.translate_chapters_batch(
+            "key", [(0, "New chapter")], "en", "zh",
+            prior_context="[previously translated content]",
+        )
+    called_prompt = mock.call_args.kwargs["contents"]
+    assert "[previously translated content]" in called_prompt
+    assert "<context>" in called_prompt
+
+
+async def test_translate_chapters_batch_raises_on_unparseable_response():
+    """If the model returns no <chapter> tags, we raise so caller can fall back."""
+    patcher, _ = _patch_gemini_generate("Just some text with no tags.")
+    with patcher:
+        with pytest.raises(ValueError, match="no <chapter> blocks"):
+            await gemini.translate_chapters_batch(
+                "key", [(0, "text")], "en", "zh",
+            )

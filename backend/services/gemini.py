@@ -3,10 +3,13 @@ Gemini-backed equivalents of the Claude AI functions.
 Uses google-genai (new SDK) with the user's own API key.
 """
 import asyncio
+import re
 from google import genai
 from google.genai import types
 
 MODEL = "gemini-3.1-flash-lite-preview"
+# Used by the bulk translator. Higher-quality literary model.
+TRANSLATOR_MODEL = "gemini-3.1-flash"
 
 
 def _client(api_key: str) -> genai.Client:
@@ -108,6 +111,108 @@ async def suggest_youtube_query(api_key: str, passage: str, book_title: str, aut
 async def translate_chunk(api_key: str, text: str, source_language: str, target_language: str) -> str:
     prompt = f"Translate from {source_language} to {target_language}:\n\n{text}"
     return await _generate(api_key, SYSTEM_TRANSLATOR, prompt, 8192)
+
+
+# ── Batched literary translation ─────────────────────────────────────────────
+
+SYSTEM_LITERARY_TRANSLATOR = """You are an award-winning literary translator. \
+Translate each chapter from {source} to {target} preserving:
+- Literary style, tone, voice, and rhythm
+- Character names, place names, and cultural references — KEEP THESE CONSISTENT across chapters
+- Paragraph structure (each paragraph in the original is one paragraph in the output)
+- Verse line breaks (if the source uses short lines for poetry/drama, preserve them)
+
+Output format — CRITICAL:
+Wrap each chapter's translation in <chapter index="N"> ... </chapter> tags using the
+same `index` attribute you saw in the input. Do not add commentary, titles, or numbering.
+Do NOT re-translate or comment on material provided as <context>...</context>.
+Only translate content inside <chapter> tags."""
+
+
+# Parses <chapter index="N">content</chapter> blocks from the model output.
+_CHAPTER_BLOCK_RE = re.compile(
+    r'<chapter\s+index\s*=\s*["\']?(\d+)["\']?\s*>(.*?)</chapter>',
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+async def translate_chapters_batch(
+    api_key: str,
+    chapters: list[tuple[int, str]],  # list of (chapter_index, chapter_text)
+    source_language: str,
+    target_language: str,
+    *,
+    prior_context: str = "",   # already-translated text to anchor consistency
+    model: str = TRANSLATOR_MODEL,
+    max_output_tokens: int = 8192,
+) -> dict[int, list[str]]:
+    """Translate multiple chapters in a single API call.
+
+    Each chapter is sent inside a `<chapter index="N">` tag. The model
+    returns the same structure with translated content. Output is parsed
+    back into a `{chapter_index: [paragraph, paragraph, ...]}` dict.
+
+    The `prior_context` argument lets callers anchor the model for
+    cross-batch consistency (character/place names, style). It should be
+    a plain text snippet of previously-translated material.
+
+    Raises ValueError if the response can't be parsed into at least one
+    chapter block — callers can fall back to per-chapter translation.
+    """
+    if not chapters:
+        return {}
+
+    system = SYSTEM_LITERARY_TRANSLATOR.format(
+        source=source_language, target=target_language,
+    )
+
+    # Build the user prompt
+    parts: list[str] = []
+    if prior_context.strip():
+        parts.append(
+            "<context>\nThese chapters have already been translated — use the "
+            "same naming conventions and style. Do not re-translate.\n\n"
+            f"{prior_context.strip()}\n</context>"
+        )
+    for idx, text in chapters:
+        parts.append(f'<chapter index="{idx}">\n{text.strip()}\n</chapter>')
+    parts.append(
+        "Translate the content inside each <chapter> tag. Output each "
+        "translation wrapped in the same <chapter> tags with the matching "
+        "index attribute. No extra commentary."
+    )
+
+    prompt = "\n\n".join(parts)
+
+    client = _client(api_key)
+    config = types.GenerateContentConfig(
+        system_instruction=system,
+        max_output_tokens=max_output_tokens,
+    )
+    response = await client.aio.models.generate_content(
+        model=model, contents=prompt, config=config,
+    )
+    try:
+        raw = response.text or ""
+    except ValueError:
+        raw = ""
+
+    # Parse <chapter> blocks out of the response
+    matches = _CHAPTER_BLOCK_RE.findall(raw)
+    if not matches:
+        raise ValueError("Gemini response contained no <chapter> blocks")
+
+    result: dict[int, list[str]] = {}
+    for idx_str, body in matches:
+        idx = int(idx_str)
+        paragraphs = [
+            p.strip("\n").rstrip()
+            for p in body.split("\n\n")
+            if p.strip()
+        ]
+        if paragraphs:
+            result[idx] = paragraphs
+    return result
 
 
 async def translate_text(

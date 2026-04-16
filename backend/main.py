@@ -17,7 +17,26 @@ from services.db import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    await _resume_bulk_translation_if_needed()
     yield
+
+
+async def _resume_bulk_translation_if_needed() -> None:
+    """If a bulk translation job was `running` when the server stopped, it
+    was interrupted by a restart (e.g. Railway redeploy). Mark it as
+    `interrupted` and let the admin manually kick it off again (we can't
+    auto-restart without the admin's decrypted Gemini key in memory)."""
+    import logging
+    log = logging.getLogger(__name__)
+    try:
+        from services.bulk_translate import load_latest_job, update_job
+        state = await load_latest_job()
+        if state and state.status == "running":
+            log.info("Marking interrupted bulk job #%d as paused for resume by admin", state.id)
+            await update_job(state.id, status="paused",
+                             last_error="Interrupted by server restart")
+    except Exception as e:
+        log.warning("Bulk job resume check failed: %s", e)
 
 
 app = FastAPI(title="Book Reader AI", version="1.0.0", lifespan=lifespan)

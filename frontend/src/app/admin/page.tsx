@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMe, getAuthToken } from "@/lib/api";
+import BulkTranslateTab from "@/components/BulkTranslateTab";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -22,7 +23,7 @@ async function adminFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
-type Tab = "users" | "books" | "audio" | "translations";
+type Tab = "users" | "books" | "audio" | "translations" | "bulk";
 
 interface User { id: number; email: string; name: string; picture: string; role: string; approved: number; created_at: string; }
 interface Book { id: number; title: string; authors: string[]; languages: string[]; download_count: number; text_length?: number; cached_at?: string; }
@@ -114,6 +115,7 @@ export default function AdminPage() {
     { key: "books", label: "Books", count: stats?.books_cached },
     { key: "audio", label: "Audio Cache", count: stats?.audio_chunks_cached },
     { key: "translations", label: "Translations", count: stats?.translations_cached },
+    { key: "bulk", label: "Bulk Translate" },
   ];
 
   if (loading) return (
@@ -314,6 +316,9 @@ export default function AdminPage() {
           </div>
           </div>
         )}
+
+        {/* ── Bulk Translate Tab ── */}
+        {tab === "bulk" && <BulkTranslateTab adminFetch={adminFetch} />}
       </div>
     </main>
   );

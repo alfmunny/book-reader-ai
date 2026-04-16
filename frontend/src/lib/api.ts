@@ -152,20 +152,38 @@ export function translateText(
   });
 }
 
-/** Check if a translation is already cached. Returns paragraphs or null. */
+/** Check if a translation is already cached. Returns {paragraphs, provider, model} or null. */
 export async function getTranslationCache(
   bookId: number,
   chapterIndex: number,
   targetLanguage: string,
-): Promise<string[] | null> {
+): Promise<{ paragraphs: string[]; provider?: string; model?: string } | null> {
   try {
-    const data = await request<{ paragraphs: string[] }>(
+    const data = await request<{ paragraphs: string[]; provider?: string; model?: string }>(
       `/ai/translate/cache?book_id=${bookId}&chapter_index=${chapterIndex}&target_language=${targetLanguage}`
     );
-    return data.paragraphs;
+    return data;
   } catch {
     return null;
   }
+}
+
+/** Lightweight public endpoint — how many chapters of a book are translated? */
+export interface TranslationStatus {
+  book_id: number;
+  target_language: string;
+  total_chapters: number;
+  translated_chapters: number;
+  bulk_active: boolean;
+}
+
+export function getBookTranslationStatus(
+  bookId: number,
+  targetLanguage: string,
+): Promise<TranslationStatus> {
+  return request<TranslationStatus>(
+    `/books/${bookId}/translation-status?target_language=${targetLanguage}`,
+  );
 }
 
 /** Save a completed progressive translation to the backend cache. */

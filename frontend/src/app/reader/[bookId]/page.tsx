@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, TranslationProvider } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -114,6 +114,7 @@ export default function ReaderPage() {
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
+  const [bookTranslationStatus, setBookTranslationStatus] = useState<TranslationStatus | null>(null);
 
   // Reader display settings
   const [fontSize, setFontSize] = useState<FontSize>("base");
@@ -223,9 +224,14 @@ export default function ReaderPage() {
       const cached = await getTranslationCache(bid, chapterIndex, translationLang);
       if (cancelled || currentChapterKey.current !== cacheKey) return;
       if (cached) {
-        translationCache.current.set(cacheKey, cached);
-        setTranslatedParagraphs(cached);
-        setTranslationUsedProvider("cached");
+        translationCache.current.set(cacheKey, cached.paragraphs);
+        setTranslatedParagraphs(cached.paragraphs);
+        // Show the actual source of the cached translation so the user knows
+        // whether it came from Gemini (high quality) or Google Translate (free).
+        const providerLabel = cached.provider
+          ? (cached.model ? `${cached.provider} (${cached.model})` : cached.provider)
+          : "cached";
+        setTranslationUsedProvider(providerLabel);
         setTranslationLoading(false);
         return;
       }
@@ -268,6 +274,25 @@ export default function ReaderPage() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, translationProvider, chapterIndex, bookId]);
+
+  // Poll book-level translation status when translation is enabled — shows
+  // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
+  useEffect(() => {
+    if (!translationEnabled || !bookId) {
+      setBookTranslationStatus(null);
+      return;
+    }
+    let cancelled = false;
+    async function fetchStatus() {
+      try {
+        const status = await getBookTranslationStatus(Number(bookId), translationLang);
+        if (!cancelled) setBookTranslationStatus(status);
+      } catch { /* ignore */ }
+    }
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [translationEnabled, translationLang, bookId]);
 
   async function handleRetranslate() {
     const bid = Number(bookId);
@@ -566,6 +591,19 @@ export default function ReaderPage() {
           )}
         </div>
       </header>
+
+      {/* Bulk translation banner — visible when a background job is translating this book */}
+      {translationEnabled && bookTranslationStatus && bookTranslationStatus.bulk_active && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between">
+          <span>
+            <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-2" />
+            Bulk translation in progress —{" "}
+            <strong>{bookTranslationStatus.translated_chapters} / {bookTranslationStatus.total_chapters}</strong>{" "}
+            chapters ready for this book.
+          </span>
+          <span className="text-amber-500">Polls every 15s</span>
+        </div>
+      )}
 
       {/* Reading progress bar — combines chapter position + scroll within chapter */}
       {chapters.length > 0 && (

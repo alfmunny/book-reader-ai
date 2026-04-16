@@ -10,6 +10,9 @@ pytest-asyncio==0.23.6
 edge-tts>=7.2.0
 deep-translator>=1.11.0
 google-genai>=1.0.0
+# HTML parser used by services.splitter.build_chapters_from_html to split
+# Gutenberg's HTML editions reliably (<div class="chapter"> blocks).
+lxml>=5.0.0
 python-jose[cryptography]==3.3.0
 cryptography>=42.0.0
 respx

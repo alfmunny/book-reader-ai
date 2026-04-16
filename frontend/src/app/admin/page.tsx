@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMe, getAuthToken } from "@/lib/api";
 import BulkTranslateTab from "@/components/BulkTranslateTab";
+import SeedPopularButton from "@/components/SeedPopularButton";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -215,6 +216,9 @@ export default function AdminPage() {
                 {importing ? "Importing…" : "Import Book"}
               </button>
             </div>
+
+            {/* Bulk seed from popular_books.json — works on Railway without CLI */}
+            <SeedPopularButton onComplete={loadAll} />
 
             {/* Book list */}
             <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">

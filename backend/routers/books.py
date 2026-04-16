@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from services.gutenberg import search_books, get_book_meta, get_book_text
+from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_html
 from services.db import (
     get_cached_book,
     save_book,
@@ -16,7 +16,7 @@ from services.db import (
     get_cached_audio,
     save_audio,
 )
-from services.splitter import build_chapters
+from services.splitter import build_chapters, build_chapters_from_html
 from services.translate import translate_text
 from services.tts import synthesize, chunk_text, EDGE_VOICE_MAP, _pick_edge_voice
 from services.auth import get_current_user, decrypt_api_key
@@ -117,6 +117,11 @@ async def book_chapters(book_id: int):
     """
     Return book split into chapters.
     Serves from local DB if cached, otherwise fetches from Gutenberg and caches.
+
+    Splitting strategy:
+      1. Try Gutenberg's HTML edition (<div class="chapter"> is semantically
+         clean — much better for hierarchical books like War and Peace).
+      2. Fall back to regex-based splitting on the plain text otherwise.
     """
     cached = await get_cached_book(book_id)
 
@@ -130,12 +135,43 @@ async def book_chapters(book_id: int):
             msg = str(e) or type(e).__name__
             raise HTTPException(status_code=404, detail=msg)
 
-    chapters = build_chapters(text)
+    chapters = await _split_with_html_preference(book_id, text)
     return {
         "book_id": book_id,
         "meta": meta,
         "chapters": [{"title": c.title, "text": c.text} for c in chapters],
     }
+
+
+# In-memory cache of chapter splits — keyed by book_id. Populated on first
+# chapter-list request after a server restart; every subsequent request is
+# instant. Saves ~5s per request from the HTML fetch.
+_chapter_cache: dict[int, list] = {}
+
+
+async def _split_with_html_preference(book_id: int, text: str):
+    """Split a book, preferring HTML-based structure over regex-on-text.
+
+    Gutenberg HTML has explicit `<div class="chapter">` markup that survives
+    hierarchical structures (BOOK → CHAPTER nesting) gracefully. Only falls
+    back to the text splitter when HTML isn't available or doesn't parse.
+    """
+    if book_id in _chapter_cache:
+        return _chapter_cache[book_id]
+
+    try:
+        html = await get_book_html(book_id)
+        if html:
+            chapters = build_chapters_from_html(html)
+            if len(chapters) >= 2:
+                _chapter_cache[book_id] = chapters
+                return chapters
+    except Exception:
+        logger.exception("HTML split failed for book %s, falling back to text", book_id)
+
+    chapters = build_chapters(text)
+    _chapter_cache[book_id] = chapters
+    return chapters
 
 
 async def _fetch_and_cache(book_id: int) -> tuple[dict, str]:

@@ -410,6 +410,16 @@
     "cover": "https://www.gutenberg.org/cache/epub/77700/pg77700.cover.medium.jpg"
   },
   {
+    "id": 26296,
+    "title": "Les mille et une nuits, tome premier",
+    "authors": [],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 19180,
+    "cover": "https://www.gutenberg.org/cache/epub/26296/pg26296.cover.medium.jpg"
+  },
+  {
     "id": 24746,
     "title": "Reise in die Aequinoctial-Gegenden des neuen Continents. Band 2.",
     "authors": [
@@ -445,6 +455,30 @@
     ],
     "download_count": 11158,
     "cover": "https://www.gutenberg.org/cache/epub/24571/pg24571.cover.medium.jpg"
+  },
+  {
+    "id": 2650,
+    "title": "Du côté de chez Swann",
+    "authors": [
+      "Proust, Marcel"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 9067,
+    "cover": "https://www.gutenberg.org/cache/epub/2650/pg2650.cover.medium.jpg"
+  },
+  {
+    "id": 62215,
+    "title": "Le Fantôme de l'Opéra",
+    "authors": [
+      "Leroux, Gaston"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 9043,
+    "cover": "https://www.gutenberg.org/cache/epub/62215/pg62215.cover.medium.jpg"
   },
   {
     "id": 20050,
@@ -484,6 +518,18 @@
     "cover": "https://www.gutenberg.org/cache/epub/19636/pg19636.cover.medium.jpg"
   },
   {
+    "id": 20973,
+    "title": "Le tour du monde en quatre-vingts jours",
+    "authors": [
+      "Verne, Jules"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 7257,
+    "cover": "https://www.gutenberg.org/cache/epub/20973/pg20973.cover.medium.jpg"
+  },
+  {
     "id": 35312,
     "title": "Aus dem Leben eines Taugenichts: Novelle",
     "authors": [
@@ -494,6 +540,43 @@
     ],
     "download_count": 7215,
     "cover": "https://www.gutenberg.org/cache/epub/35312/pg35312.cover.medium.jpg"
+  },
+  {
+    "id": 17989,
+    "title": "Le comte de Monte-Cristo, Tome I",
+    "authors": [
+      "Dumas, Alexandre",
+      "Maquet, Auguste"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 7186,
+    "cover": "https://www.gutenberg.org/cache/epub/17989/pg17989.cover.medium.jpg"
+  },
+  {
+    "id": 32854,
+    "title": "Arsène Lupin, gentleman-cambrioleur",
+    "authors": [
+      "Leblanc, Maurice"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 6641,
+    "cover": "https://www.gutenberg.org/cache/epub/32854/pg32854.cover.medium.jpg"
+  },
+  {
+    "id": 19919,
+    "title": "Maman Léo: Les Habits Noirs Tome V",
+    "authors": [
+      "Féval, Paul"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 6613,
+    "cover": "https://www.gutenberg.org/cache/epub/19919/pg19919.cover.medium.jpg"
   },
   {
     "id": 3221,
@@ -507,6 +590,43 @@
     ],
     "download_count": 6382,
     "cover": "https://www.gutenberg.org/cache/epub/3221/pg3221.cover.medium.jpg"
+  },
+  {
+    "id": 17489,
+    "title": "Les misérables Tome I: Fantine",
+    "authors": [
+      "Hugo, Victor"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 6308,
+    "cover": "https://www.gutenberg.org/cache/epub/17489/pg17489.cover.medium.jpg"
+  },
+  {
+    "id": 13951,
+    "title": "Les trois mousquetaires",
+    "authors": [
+      "Dumas, Alexandre",
+      "Maquet, Auguste"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 6079,
+    "cover": "https://www.gutenberg.org/cache/epub/13951/pg13951.cover.medium.jpg"
+  },
+  {
+    "id": 18143,
+    "title": "Roméo et Juliette: Tragédie",
+    "authors": [
+      "Shakespeare, William"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 6038,
+    "cover": "https://www.gutenberg.org/cache/epub/18143/pg18143.cover.medium.jpg"
   },
   {
     "id": 22367,
@@ -545,6 +665,18 @@
     "cover": "https://www.gutenberg.org/cache/epub/21798/pg21798.cover.medium.jpg"
   },
   {
+    "id": 28718,
+    "title": "Les crimes de l'amour: Précédé d'un avant-propos, suivi des idées sur les romans, de l'auteur des crimes de l'amour à Villeterque, d'une notice bio-bibliographique du marquis de Sade: l'homme et ses écrits et du discours prononcé par le marquis de Sade à la section des piques.",
+    "authors": [
+      "Sade, marquis de"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 5506,
+    "cover": "https://www.gutenberg.org/cache/epub/28718/pg28718.cover.medium.jpg"
+  },
+  {
     "id": 56156,
     "title": "Venus im Pelz",
     "authors": [
@@ -557,6 +689,42 @@
     "cover": "https://www.gutenberg.org/cache/epub/56156/pg56156.cover.medium.jpg"
   },
   {
+    "id": 4791,
+    "title": "Voyage au Centre de la Terre",
+    "authors": [
+      "Verne, Jules"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 4669,
+    "cover": "https://www.gutenberg.org/cache/epub/4791/pg4791.cover.medium.jpg"
+  },
+  {
+    "id": 14287,
+    "title": "L'île mystérieuse",
+    "authors": [
+      "Verne, Jules"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 4549,
+    "cover": "https://www.gutenberg.org/cache/epub/14287/pg14287.cover.medium.jpg"
+  },
+  {
+    "id": 35018,
+    "title": "雲形紋章",
+    "authors": [
+      "Falkner, John Meade"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 4470,
+    "cover": "https://www.gutenberg.org/cache/epub/35018/pg35018.cover.medium.jpg"
+  },
+  {
     "id": 49501,
     "title": "Anzeiger für Kunde der deutschen Vorzeit (Jg. 26, 1879): Neue Folge",
     "authors": [
@@ -567,6 +735,18 @@
     ],
     "download_count": 4464,
     "cover": "https://www.gutenberg.org/cache/epub/49501/pg49501.cover.medium.jpg"
+  },
+  {
+    "id": 5097,
+    "title": "Vingt mille Lieues Sous Les Mers — Complete",
+    "authors": [
+      "Verne, Jules"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 4461,
+    "cover": "https://www.gutenberg.org/cache/epub/5097/pg5097.cover.medium.jpg"
   },
   {
     "id": 2229,
@@ -617,6 +797,66 @@
     "cover": "https://www.gutenberg.org/cache/epub/75007/pg75007.cover.medium.jpg"
   },
   {
+    "id": 23520,
+    "title": "Mon oncle et mon curé; Le voeu de Nadia",
+    "authors": [
+      "La Brète, Jean de"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3861,
+    "cover": "https://www.gutenberg.org/cache/epub/23520/pg23520.cover.medium.jpg"
+  },
+  {
+    "id": 25575,
+    "title": "Mémoires d'Outre-Tombe, Tome 4",
+    "authors": [
+      "Chateaubriand, François-René, vicomte de"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3812,
+    "cover": "https://www.gutenberg.org/cache/epub/25575/pg25575.cover.medium.jpg"
+  },
+  {
+    "id": 25335,
+    "title": "Robert Burns. Vol. 1, La Vie",
+    "authors": [
+      "Angellier, Auguste"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3804,
+    "cover": "https://www.gutenberg.org/cache/epub/25335/pg25335.cover.medium.jpg"
+  },
+  {
+    "id": 20971,
+    "title": "Fables de La Fontaine, livre premier",
+    "authors": [
+      "La Fontaine, Jean de"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3758,
+    "cover": "https://www.gutenberg.org/cache/epub/20971/pg20971.cover.medium.jpg"
+  },
+  {
+    "id": 78027,
+    "title": "Les enchantements de la forêt",
+    "authors": [
+      "Theuriet, André"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3755,
+    "cover": "https://www.gutenberg.org/cache/epub/78027/pg78027.cover.medium.jpg"
+  },
+  {
     "id": 21158,
     "title": "Sammlung deutscher Gedichte 001",
     "authors": [
@@ -639,6 +879,18 @@
     ],
     "download_count": 3643,
     "cover": "https://www.gutenberg.org/cache/epub/58804/pg58804.cover.medium.jpg"
+  },
+  {
+    "id": 24850,
+    "title": "Lourdes",
+    "authors": [
+      "Zola, Émile"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3614,
+    "cover": "https://www.gutenberg.org/cache/epub/24850/pg24850.cover.medium.jpg"
   },
   {
     "id": 22160,
@@ -677,6 +929,42 @@
     "cover": "https://www.gutenberg.org/cache/epub/68400/pg68400.cover.medium.jpg"
   },
   {
+    "id": 24766,
+    "title": "Étude Médico-Légale: Psychopathia Sexualis: avec recherches spéciales sur l'inversion sexuelle",
+    "authors": [
+      "Krafft-Ebing, R. von (Richard)"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3490,
+    "cover": "https://www.gutenberg.org/cache/epub/24766/pg24766.cover.medium.jpg"
+  },
+  {
+    "id": 17518,
+    "title": "Les misérables Tome IV: L'idylle rue Plumet et l'épopée rue Saint-Denis",
+    "authors": [
+      "Hugo, Victor"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3480,
+    "cover": "https://www.gutenberg.org/cache/epub/17518/pg17518.cover.medium.jpg"
+  },
+  {
+    "id": 45150,
+    "title": "Dictionnaire érotique moderne",
+    "authors": [
+      "Delvau, Alfred"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3433,
+    "cover": "https://www.gutenberg.org/cache/epub/45150/pg45150.cover.medium.jpg"
+  },
+  {
     "id": 21000,
     "title": "Faust: Eine Tragödie [erster Teil]",
     "authors": [
@@ -689,6 +977,18 @@
     "cover": "https://www.gutenberg.org/cache/epub/21000/pg21000.cover.medium.jpg"
   },
   {
+    "id": 29049,
+    "title": "Histoire amoureuse des Gaules; suivie des Romans historico-satiriques du XVIIe siècle, Tome I",
+    "authors": [
+      "Bussy, Roger de Rabutin, comte de"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3414,
+    "cover": "https://www.gutenberg.org/cache/epub/29049/pg29049.cover.medium.jpg"
+  },
+  {
     "id": 21801,
     "title": "Briefe an eine Freundin",
     "authors": [
@@ -699,6 +999,54 @@
     ],
     "download_count": 3364,
     "cover": "https://www.gutenberg.org/cache/epub/21801/pg21801.cover.medium.jpg"
+  },
+  {
+    "id": 15113,
+    "title": "Vie de Jésus",
+    "authors": [
+      "Renan, Ernest"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3298,
+    "cover": "https://www.gutenberg.org/cache/epub/15113/pg15113.cover.medium.jpg"
+  },
+  {
+    "id": 27573,
+    "title": "Esprit des lois: livres I à V, précédés d'une introduction de l'éditeur",
+    "authors": [
+      "Montesquieu, Charles de Secondat, baron de"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3244,
+    "cover": "https://www.gutenberg.org/cache/epub/27573/pg27573.cover.medium.jpg"
+  },
+  {
+    "id": 78064,
+    "title": "Lucifer : $b roman moderne",
+    "authors": [
+      "Magre, Maurice"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3224,
+    "cover": "https://www.gutenberg.org/cache/epub/78064/pg78064.cover.medium.jpg"
+  },
+  {
+    "id": 2419,
+    "title": "La dame aux camélias",
+    "authors": [
+      "Dumas, Alexandre"
+    ],
+    "languages": [
+      "fr"
+    ],
+    "download_count": 3142,
+    "cover": "https://www.gutenberg.org/cache/epub/2419/pg2419.cover.medium.jpg"
   },
   {
     "id": 66452,
@@ -796,342 +1144,6 @@
     "cover": "https://www.gutenberg.org/files/23393/c001.jpg"
   },
   {
-    "id": 26296,
-    "title": "Les mille et une nuits, tome premier",
-    "authors": [],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 19180,
-    "cover": "https://www.gutenberg.org/cache/epub/26296/pg26296.cover.medium.jpg"
-  },
-  {
-    "id": 2650,
-    "title": "Du côté de chez Swann",
-    "authors": [
-      "Proust, Marcel"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 9067,
-    "cover": "https://www.gutenberg.org/cache/epub/2650/pg2650.cover.medium.jpg"
-  },
-  {
-    "id": 62215,
-    "title": "Le Fantôme de l'Opéra",
-    "authors": [
-      "Leroux, Gaston"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 9043,
-    "cover": "https://www.gutenberg.org/cache/epub/62215/pg62215.cover.medium.jpg"
-  },
-  {
-    "id": 20973,
-    "title": "Le tour du monde en quatre-vingts jours",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 7257,
-    "cover": "https://www.gutenberg.org/cache/epub/20973/pg20973.cover.medium.jpg"
-  },
-  {
-    "id": 17989,
-    "title": "Le comte de Monte-Cristo, Tome I",
-    "authors": [
-      "Dumas, Alexandre",
-      "Maquet, Auguste"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 7186,
-    "cover": "https://www.gutenberg.org/cache/epub/17989/pg17989.cover.medium.jpg"
-  },
-  {
-    "id": 32854,
-    "title": "Arsène Lupin, gentleman-cambrioleur",
-    "authors": [
-      "Leblanc, Maurice"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6641,
-    "cover": "https://www.gutenberg.org/cache/epub/32854/pg32854.cover.medium.jpg"
-  },
-  {
-    "id": 19919,
-    "title": "Maman Léo: Les Habits Noirs Tome V",
-    "authors": [
-      "Féval, Paul"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6613,
-    "cover": "https://www.gutenberg.org/cache/epub/19919/pg19919.cover.medium.jpg"
-  },
-  {
-    "id": 17489,
-    "title": "Les misérables Tome I: Fantine",
-    "authors": [
-      "Hugo, Victor"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6308,
-    "cover": "https://www.gutenberg.org/cache/epub/17489/pg17489.cover.medium.jpg"
-  },
-  {
-    "id": 13951,
-    "title": "Les trois mousquetaires",
-    "authors": [
-      "Dumas, Alexandre",
-      "Maquet, Auguste"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6079,
-    "cover": "https://www.gutenberg.org/cache/epub/13951/pg13951.cover.medium.jpg"
-  },
-  {
-    "id": 18143,
-    "title": "Roméo et Juliette: Tragédie",
-    "authors": [
-      "Shakespeare, William"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6038,
-    "cover": "https://www.gutenberg.org/cache/epub/18143/pg18143.cover.medium.jpg"
-  },
-  {
-    "id": 28718,
-    "title": "Les crimes de l'amour: Précédé d'un avant-propos, suivi des idées sur les romans, de l'auteur des crimes de l'amour à Villeterque, d'une notice bio-bibliographique du marquis de Sade: l'homme et ses écrits et du discours prononcé par le marquis de Sade à la section des piques.",
-    "authors": [
-      "Sade, marquis de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 5506,
-    "cover": "https://www.gutenberg.org/cache/epub/28718/pg28718.cover.medium.jpg"
-  },
-  {
-    "id": 4791,
-    "title": "Voyage au Centre de la Terre",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 4669,
-    "cover": "https://www.gutenberg.org/cache/epub/4791/pg4791.cover.medium.jpg"
-  },
-  {
-    "id": 14287,
-    "title": "L'île mystérieuse",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 4549,
-    "cover": "https://www.gutenberg.org/cache/epub/14287/pg14287.cover.medium.jpg"
-  },
-  {
-    "id": 5097,
-    "title": "Vingt mille Lieues Sous Les Mers — Complete",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 4461,
-    "cover": "https://www.gutenberg.org/cache/epub/5097/pg5097.cover.medium.jpg"
-  },
-  {
-    "id": 23520,
-    "title": "Mon oncle et mon curé; Le voeu de Nadia",
-    "authors": [
-      "La Brète, Jean de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3861,
-    "cover": "https://www.gutenberg.org/cache/epub/23520/pg23520.cover.medium.jpg"
-  },
-  {
-    "id": 25575,
-    "title": "Mémoires d'Outre-Tombe, Tome 4",
-    "authors": [
-      "Chateaubriand, François-René, vicomte de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3812,
-    "cover": "https://www.gutenberg.org/cache/epub/25575/pg25575.cover.medium.jpg"
-  },
-  {
-    "id": 25335,
-    "title": "Robert Burns. Vol. 1, La Vie",
-    "authors": [
-      "Angellier, Auguste"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3804,
-    "cover": "https://www.gutenberg.org/cache/epub/25335/pg25335.cover.medium.jpg"
-  },
-  {
-    "id": 20971,
-    "title": "Fables de La Fontaine, livre premier",
-    "authors": [
-      "La Fontaine, Jean de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3758,
-    "cover": "https://www.gutenberg.org/cache/epub/20971/pg20971.cover.medium.jpg"
-  },
-  {
-    "id": 78027,
-    "title": "Les enchantements de la forêt",
-    "authors": [
-      "Theuriet, André"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3755,
-    "cover": "https://www.gutenberg.org/cache/epub/78027/pg78027.cover.medium.jpg"
-  },
-  {
-    "id": 24850,
-    "title": "Lourdes",
-    "authors": [
-      "Zola, Émile"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3614,
-    "cover": "https://www.gutenberg.org/cache/epub/24850/pg24850.cover.medium.jpg"
-  },
-  {
-    "id": 24766,
-    "title": "Étude Médico-Légale: Psychopathia Sexualis: avec recherches spéciales sur l'inversion sexuelle",
-    "authors": [
-      "Krafft-Ebing, R. von (Richard)"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3490,
-    "cover": "https://www.gutenberg.org/cache/epub/24766/pg24766.cover.medium.jpg"
-  },
-  {
-    "id": 17518,
-    "title": "Les misérables Tome IV: L'idylle rue Plumet et l'épopée rue Saint-Denis",
-    "authors": [
-      "Hugo, Victor"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3480,
-    "cover": "https://www.gutenberg.org/cache/epub/17518/pg17518.cover.medium.jpg"
-  },
-  {
-    "id": 45150,
-    "title": "Dictionnaire érotique moderne",
-    "authors": [
-      "Delvau, Alfred"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3433,
-    "cover": "https://www.gutenberg.org/cache/epub/45150/pg45150.cover.medium.jpg"
-  },
-  {
-    "id": 29049,
-    "title": "Histoire amoureuse des Gaules; suivie des Romans historico-satiriques du XVIIe siècle, Tome I",
-    "authors": [
-      "Bussy, Roger de Rabutin, comte de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3414,
-    "cover": "https://www.gutenberg.org/cache/epub/29049/pg29049.cover.medium.jpg"
-  },
-  {
-    "id": 15113,
-    "title": "Vie de Jésus",
-    "authors": [
-      "Renan, Ernest"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3298,
-    "cover": "https://www.gutenberg.org/cache/epub/15113/pg15113.cover.medium.jpg"
-  },
-  {
-    "id": 27573,
-    "title": "Esprit des lois: livres I à V, précédés d'une introduction de l'éditeur",
-    "authors": [
-      "Montesquieu, Charles de Secondat, baron de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3244,
-    "cover": "https://www.gutenberg.org/cache/epub/27573/pg27573.cover.medium.jpg"
-  },
-  {
-    "id": 78064,
-    "title": "Lucifer : $b roman moderne",
-    "authors": [
-      "Magre, Maurice"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3224,
-    "cover": "https://www.gutenberg.org/cache/epub/78064/pg78064.cover.medium.jpg"
-  },
-  {
-    "id": 2419,
-    "title": "La dame aux camélias",
-    "authors": [
-      "Dumas, Alexandre"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3142,
-    "cover": "https://www.gutenberg.org/cache/epub/2419/pg2419.cover.medium.jpg"
-  },
-  {
     "id": 14155,
     "title": "Madame Bovary",
     "authors": [
@@ -1190,5 +1202,257 @@
     ],
     "download_count": 2674,
     "cover": "https://www.gutenberg.org/cache/epub/38674/pg38674.cover.medium.jpg"
+  },
+  {
+    "id": 41325,
+    "title": "幽霊書店",
+    "authors": [
+      "Morley, Christopher"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 2149,
+    "cover": "https://www.gutenberg.org/cache/epub/41325/pg41325.cover.medium.jpg"
+  },
+  {
+    "id": 20683,
+    "title": "奥の細道",
+    "authors": [
+      "Matsuo, Bashō"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 1138,
+    "cover": "https://www.gutenberg.org/cache/epub/20683/pg20683.cover.medium.jpg"
+  },
+  {
+    "id": 34158,
+    "title": "入れかわった男",
+    "authors": [
+      "Oppenheim, E. Phillips (Edward Phillips)"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 1066,
+    "cover": "https://www.gutenberg.org/cache/epub/34158/pg34158.cover.medium.jpg"
+  },
+  {
+    "id": 36459,
+    "title": "羹",
+    "authors": [
+      "Tanizaki, Jun'ichiro"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 961,
+    "cover": "https://www.gutenberg.org/cache/epub/36459/pg36459.cover.medium.jpg"
+  },
+  {
+    "id": 35327,
+    "title": "あめりか物語",
+    "authors": [
+      "Nagai, Kafu"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 881,
+    "cover": "https://www.gutenberg.org/cache/epub/35327/pg35327.cover.medium.jpg"
+  },
+  {
+    "id": 32978,
+    "title": "下宿人",
+    "authors": [
+      "Lowndes, Marie Belloc"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 862,
+    "cover": "https://www.gutenberg.org/cache/epub/32978/pg32978.cover.medium.jpg"
+  },
+  {
+    "id": 31617,
+    "title": "刺靑",
+    "authors": [
+      "Tanizaki, Jun'ichiro"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 761,
+    "cover": "https://www.gutenberg.org/cache/epub/31617/pg31617.cover.medium.jpg"
+  },
+  {
+    "id": 1982,
+    "title": "羅生門",
+    "authors": [
+      "Akutagawa, Ryūnosuke"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 750,
+    "cover": "https://www.gutenberg.org/cache/epub/1982/pg1982.cover.medium.jpg"
+  },
+  {
+    "id": 31757,
+    "title": "お目出たき人",
+    "authors": [
+      "Mushanokoji, Saneatsu"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 681,
+    "cover": "https://www.gutenberg.org/cache/epub/31757/pg31757.cover.medium.jpg"
+  },
+  {
+    "id": 32941,
+    "title": "何處へ",
+    "authors": [
+      "Masamune, Hakuchō"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 656,
+    "cover": "https://www.gutenberg.org/cache/epub/32941/pg32941.cover.medium.jpg"
+  },
+  {
+    "id": 33307,
+    "title": "友情",
+    "authors": [
+      "Mushanokoji, Saneatsu"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 653,
+    "cover": "https://www.gutenberg.org/cache/epub/33307/pg33307.cover.medium.jpg"
+  },
+  {
+    "id": 34636,
+    "title": "腕くらべ",
+    "authors": [
+      "Nagai, Kafu"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 646,
+    "cover": "https://www.gutenberg.org/cache/epub/34636/pg34636.cover.medium.jpg"
+  },
+  {
+    "id": 36358,
+    "title": "火星の記憶",
+    "authors": [
+      "Jones, Raymond F."
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 567,
+    "cover": "https://www.gutenberg.org/cache/epub/36358/pg36358.cover.medium.jpg"
+  },
+  {
+    "id": 39287,
+    "title": "苦悶の欄",
+    "authors": [
+      "Biggers, Earl Derr"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 542,
+    "cover": "https://www.gutenberg.org/cache/epub/39287/pg39287.cover.medium.jpg"
+  },
+  {
+    "id": 34084,
+    "title": "法螺男爵旅土産",
+    "authors": [
+      "Sasaki, Kuni"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 515,
+    "cover": "https://www.gutenberg.org/cache/epub/34084/pg34084.cover.medium.jpg"
+  },
+  {
+    "id": 38697,
+    "title": "殉情詩集",
+    "authors": [
+      "Sato, Haruo"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 479,
+    "cover": "https://www.gutenberg.org/cache/epub/38697/pg38697.cover.medium.jpg"
+  },
+  {
+    "id": 36976,
+    "title": "裁判",
+    "authors": [
+      "Rice, Elmer"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 453,
+    "cover": "https://www.gutenberg.org/cache/epub/36976/pg36976.cover.medium.jpg"
+  },
+  {
+    "id": 34013,
+    "title": "血笑記",
+    "authors": [
+      "Andreyev, Leonid"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 445,
+    "cover": "https://www.gutenberg.org/cache/epub/34013/pg34013.cover.medium.jpg"
+  },
+  {
+    "id": 2592,
+    "title": "マルチン・ルターの小信仰問答書",
+    "authors": [
+      "Luther, Martin"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 418,
+    "cover": "https://www.gutenberg.org/cache/epub/2592/pg2592.cover.medium.jpg"
+  },
+  {
+    "id": 37605,
+    "title": "惡魔",
+    "authors": [
+      "Tanizaki, Jun'ichiro"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 414,
+    "cover": "https://www.gutenberg.org/cache/epub/37605/pg37605.cover.medium.jpg"
+  },
+  {
+    "id": 37626,
+    "title": "續惡魔",
+    "authors": [
+      "Tanizaki, Jun'ichiro"
+    ],
+    "languages": [
+      "ja"
+    ],
+    "download_count": 396,
+    "cover": "https://www.gutenberg.org/cache/epub/37626/pg37626.cover.medium.jpg"
   }
 ]

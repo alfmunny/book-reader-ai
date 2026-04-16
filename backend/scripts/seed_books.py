@@ -170,14 +170,21 @@ def main():
                         help=f"Comma-separated language codes (default: {','.join(DEFAULT_LANGUAGES)})")
     parser.add_argument("--dry-run", action="store_true",
                         help="Just list the books without downloading")
+    parser.add_argument("--append", action="store_true",
+                        help="Merge into the existing popular_books.json (keep old entries, "
+                             "add new ones by ID). Default behaviour replaces the manifest.")
     args = parser.parse_args()
 
     languages = [l.strip() for l in args.languages.split(",")]
     books = asyncio.run(seed(languages, args.count, args.dry_run))
 
+    # In dry-run mode, don't touch the manifest file
+    if args.dry_run:
+        return
+
     # Write a JSON manifest for the frontend "Popular Books" page
     manifest_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "popular_books.json")
-    manifest = [
+    new_entries = [
         {
             "id": b["id"],
             "title": b["title"],
@@ -188,6 +195,19 @@ def main():
         }
         for b in books
     ]
+
+    if args.append and os.path.isfile(manifest_path):
+        with open(manifest_path, encoding="utf-8") as f:
+            existing = json.load(f)
+        by_id: dict[int, dict] = {b["id"]: b for b in existing}
+        for entry in new_entries:
+            by_id[entry["id"]] = entry   # overwrite if duplicate ID
+        manifest = list(by_id.values())
+        # Keep popularity ordering across the merged set
+        manifest.sort(key=lambda x: x.get("download_count", 0), reverse=True)
+    else:
+        manifest = new_entries
+
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
     print(f"Manifest written to {manifest_path} ({len(manifest)} books)")

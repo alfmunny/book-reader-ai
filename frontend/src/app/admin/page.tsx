@@ -1,13 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMe, getAuthToken } from "@/lib/api";
+import { getMe, getAuthToken, awaitSession } from "@/lib/api";
 import BulkTranslateTab from "@/components/BulkTranslateTab";
 import SeedPopularButton from "@/components/SeedPopularButton";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 async function adminFetch(path: string, options?: RequestInit) {
+  // Wait for NextAuth to finish hydrating before firing — on F5 the session
+  // isn't ready yet and this would race with a null token otherwise.
+  await awaitSession();
   const token = getAuthToken();
   const res = await fetch(`${BASE}${path}`, {
     ...options,

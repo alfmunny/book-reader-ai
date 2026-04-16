@@ -119,26 +119,43 @@ class SeedPopularManager:
                 state.current_book_id = book["id"]
                 state.current_book_title = book.get("title", "")
 
-                try:
-                    meta = await get_book_meta(book["id"])
-                    text = await get_book_text(book["id"])
-                    await save_book(book["id"], meta, text)
-                    state.downloaded += 1
-                    _append_log(state, {
-                        "event": "downloaded",
-                        "book_id": book["id"],
-                        "title": meta.get("title", book.get("title", "")),
-                        "chars": len(text),
-                    })
-                except Exception as e:
+                # Retry each book up to 3 times with exponential backoff.
+                # Transient 502/503/network errors from Gutenberg are the
+                # most common cause of "not all books seeded".
+                success = False
+                last_err: Exception | None = None
+                for attempt in range(3):
+                    try:
+                        meta = await get_book_meta(book["id"])
+                        text = await get_book_text(book["id"])
+                        await save_book(book["id"], meta, text)
+                        state.downloaded += 1
+                        _append_log(state, {
+                            "event": "downloaded",
+                            "book_id": book["id"],
+                            "title": meta.get("title", book.get("title", "")),
+                            "chars": len(text),
+                            "attempts": attempt + 1,
+                        })
+                        success = True
+                        break
+                    except Exception as e:
+                        last_err = e
+                        if attempt < 2 and not stop_event.is_set():
+                            await asyncio.sleep(2.0 * (attempt + 1))   # 2s, 4s
+
+                if not success:
                     state.failed += 1
-                    state.last_error = f"{book.get('id')}: {e}"
-                    logger.exception("Seed failed for book %s", book["id"])
+                    state.last_error = f"{book.get('id')}: {last_err}"
+                    logger.exception(
+                        "Seed failed for book %s after retries", book["id"],
+                        exc_info=last_err,
+                    )
                     _append_log(state, {
                         "event": "failed",
                         "book_id": book["id"],
                         "title": book.get("title", ""),
-                        "error": str(e)[:200],
+                        "error": str(last_err)[:200] if last_err else "unknown",
                     })
 
                 # Be polite to Gutenberg

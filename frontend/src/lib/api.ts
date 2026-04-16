@@ -1,15 +1,56 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-// Set by Providers → TokenSync on session change
+// ── Auth token + session-settled gate ──────────────────────────────────────
+//
+// The auth token is injected by Providers → TokenSync once NextAuth finishes
+// hydrating. On a page refresh there's a brief window where the session is
+// still "loading" and the token hasn't arrived. Previously that window
+// caused API calls to fire without a Bearer header, which the backend
+// rejected as 401 — pages like /admin or /reader then redirected to home
+// in their .catch handlers, making refresh look like a logout bug.
+//
+// Now we gate `request()` on the session being settled: TokenSync calls
+// `markSessionSettled()` once `useSession()` reports a non-loading status,
+// and every outbound request waits for that signal. If the session settles
+// to "authenticated", the token is set first and the request goes through
+// normally. If it settles to "unauthenticated", requests fail with a 401
+// exactly once, not a redirect-to-home race.
+
 let _authToken: string | null = null;
+let _sessionSettled = false;
+const _settledWaiters: Array<() => void> = [];
+
 export function setAuthToken(token: string | null) {
   _authToken = token;
 }
+
+/** Called by Providers/TokenSync when NextAuth's session status is no longer
+ *  "loading" — i.e. we know whether the user is authenticated or not. */
+export function markSessionSettled() {
+  if (_sessionSettled) return;
+  _sessionSettled = true;
+  const waiters = [..._settledWaiters];
+  _settledWaiters.length = 0;
+  waiters.forEach((r) => r());
+}
+
+/** Await the session being settled. Useful for pages that do their own
+ *  direct fetch() and need to make sure the Bearer token has arrived from
+ *  NextAuth before firing the request. */
+export function awaitSession(): Promise<void> {
+  if (_sessionSettled) return Promise.resolve();
+  return new Promise<void>((resolve) => _settledWaiters.push(resolve));
+}
+
 export function getAuthToken(): string | null {
   return _authToken;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Wait for NextAuth to finish hydrating before firing the request. Without
+  // this, refreshing a protected page races the token setup and the backend
+  // returns 401 before the token is available.
+  await awaitSession();
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
     ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
@@ -81,6 +122,7 @@ export async function* importBookStream(
   generateTts: boolean,
   signal?: AbortSignal,
 ): AsyncGenerator<ImportEvent> {
+  await awaitSession();
   const params = new URLSearchParams({
     target_language: targetLanguage,
     generate_tts: generateTts ? "true" : "false",
@@ -249,6 +291,7 @@ export async function synthesizeSpeech(
   provider: "auto" | "edge" | "google" = "auto",
   options: SynthesizeOptions = {}
 ): Promise<string> {
+  await awaitSession();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),

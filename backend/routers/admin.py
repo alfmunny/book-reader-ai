@@ -388,6 +388,7 @@ class StartBulkTranslateRequest(BaseModel):
     rpm: int = 12
     rpd: int = 1400
     book_ids: list[int] | None = None
+    model: str | None = None  # override the default Gemini model if specified
 
 
 @router.post("/bulk-translate/plan")
@@ -446,7 +447,7 @@ async def bulk_translate_start(
     api_key = decrypt_api_key(raw_key)
 
     try:
-        state = await bulk_manager().start(
+        kwargs: dict = dict(
             target_language=req.target_language,
             api_key=api_key,
             rpm=req.rpm,
@@ -454,6 +455,9 @@ async def bulk_translate_start(
             dry_run=req.dry_run,
             book_ids=req.book_ids,
         )
+        if req.model:
+            kwargs["model"] = req.model
+        state = await bulk_manager().start(**kwargs)
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
 

@@ -8,8 +8,11 @@ from google import genai
 from google.genai import types
 
 MODEL = "gemini-3.1-flash-lite-preview"
-# Used by the bulk translator. Higher-quality literary model.
-TRANSLATOR_MODEL = "gemini-3.1-flash"
+# Model used by the bulk translator. Defaults to the same model that powers
+# the rest of the app (known to work with the user's key). Admins can override
+# this through the bulk-translate start request if they want to try a
+# higher-quality model.
+TRANSLATOR_MODEL = MODEL
 
 
 def _client(api_key: str) -> genai.Client:

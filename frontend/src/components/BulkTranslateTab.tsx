@@ -69,8 +69,52 @@ const LANGUAGES = [
   { code: "ja", label: "Japanese (ja)" },
 ];
 
+// Known Gemini models with free-tier hints + quality trade-offs.
+// "Default" leaves it unset so the backend uses its compiled-in default
+// (currently the same model powering chat/insight). These are suggestions —
+// the admin can type any model the API accepts in the custom field.
+interface ModelOption {
+  value: string;
+  label: string;
+  note: string;
+}
+
+const MODEL_OPTIONS: ModelOption[] = [
+  {
+    value: "",
+    label: "Default (server-side)",
+    note: "Same model used for chat and insights — known to work with your key.",
+  },
+  {
+    value: "gemini-2.5-pro",
+    label: "gemini-2.5-pro",
+    note: "Highest quality, 64K output tokens per request. Free-tier RPM is low (~2), best for overnight runs with fewer, bigger batches.",
+  },
+  {
+    value: "gemini-2.5-flash",
+    label: "gemini-2.5-flash",
+    note: "Strong literary quality, 8K output tokens per request. Free-tier has higher RPM than Pro — good balance for bulk work.",
+  },
+  {
+    value: "gemini-2.5-flash-lite",
+    label: "gemini-2.5-flash-lite",
+    note: "Cheapest and fastest. Lower quality — fine for quick drafts or less demanding target languages.",
+  },
+  {
+    value: "gemini-2.0-flash",
+    label: "gemini-2.0-flash",
+    note: "Previous generation — widely available, stable quality, generous free-tier limits.",
+  },
+  {
+    value: "gemini-2.0-flash-lite",
+    label: "gemini-2.0-flash-lite",
+    note: "Lightest model in the 2.0 line. Use if you're hitting rate limits with heavier models.",
+  },
+];
+
 export default function BulkTranslateTab({ adminFetch }: { adminFetch: FetchFn }) {
   const [targetLang, setTargetLang] = useState("zh");
+  const [model, setModel] = useState("");  // empty = use server default
   const [rpm, setRpm] = useState(12);
   const [rpd, setRpd] = useState(1400);
 
@@ -138,6 +182,7 @@ export default function BulkTranslateTab({ adminFetch }: { adminFetch: FetchFn }
         method: "POST",
         body: JSON.stringify({
           target_language: targetLang, rpm, rpd, dry_run: dryRun,
+          ...(model ? { model } : {}),
         }),
       });
       await refreshStatus();
@@ -291,6 +336,59 @@ export default function BulkTranslateTab({ adminFetch }: { adminFetch: FetchFn }
               onChange={(e) => setRpd(Number(e.target.value))}
               className="w-full rounded border border-amber-300 px-2 py-1.5 text-sm bg-white"
             />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs text-stone-600 mb-1">Model</label>
+          <div className="space-y-2">
+            {MODEL_OPTIONS.map((opt) => (
+              <label
+                key={opt.value || "default"}
+                className={`flex items-start gap-3 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                  model === opt.value
+                    ? "border-amber-400 bg-amber-50"
+                    : "border-amber-200 bg-white hover:bg-amber-50/50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="bulk-model"
+                  value={opt.value}
+                  checked={model === opt.value}
+                  onChange={() => setModel(opt.value)}
+                  className="mt-0.5 accent-amber-700"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-ink font-mono">
+                    {opt.label}
+                  </div>
+                  <div className="text-xs text-stone-500 mt-0.5">{opt.note}</div>
+                </div>
+              </label>
+            ))}
+            <label className="flex items-start gap-3 p-2.5 rounded-lg border border-amber-200 bg-white">
+              <input
+                type="radio"
+                name="bulk-model"
+                checked={!!model && !MODEL_OPTIONS.some((o) => o.value === model)}
+                onChange={() => setModel("gemini-2.5-flash")}
+                className="mt-0.5 accent-amber-700"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-ink mb-1">Custom</div>
+                <input
+                  type="text"
+                  value={MODEL_OPTIONS.some((o) => o.value === model) ? "" : model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="e.g. gemini-exp-1206"
+                  className="w-full rounded border border-amber-300 px-2 py-1 text-sm bg-white font-mono"
+                />
+                <p className="text-[11px] text-stone-500 mt-1">
+                  Anything the API accepts. If you see 404, the model isn&apos;t available for your key.
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 

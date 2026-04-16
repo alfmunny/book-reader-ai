@@ -279,11 +279,17 @@ def _parse_sse(body: str) -> list[dict]:
     return events
 
 
-async def test_seed_popular_stream_skips_already_cached(admin_client, admin_db, monkeypatch, tmp_path):
-    """A manifest entry whose book is already in the DB is reported as cached,
-    not re-downloaded."""
+async def test_seed_popular_skips_already_cached(admin_client, admin_db, monkeypatch, tmp_path):
+    """A manifest entry whose book is already in the DB is counted as cached,
+    not re-downloaded. Verifies the polling-based seed job."""
     import json as _json
-    # Write a tiny manifest with one book that's already saved
+    import asyncio
+    from services.seed_popular import manager as seed_manager, SeedPopularManager
+
+    # Fresh manager so tests don't share state
+    monkeypatch.setattr("services.seed_popular._manager", SeedPopularManager())
+    monkeypatch.setattr("routers.admin.bulk_manager", bulk_manager := __import__("services.bulk_translate").bulk_translate.manager)  # unchanged
+
     manifest = [{
         "id": 100, "title": "Test Book",
         "authors": ["Author"], "languages": ["en"],
@@ -291,7 +297,6 @@ async def test_seed_popular_stream_skips_already_cached(admin_client, admin_db, 
     }]
     manifest_path = tmp_path / "popular_books.json"
     manifest_path.write_text(_json.dumps(manifest))
-    # Point the router at our temp manifest
     import os as _os
     original_join = _os.path.join
     def _fake_join(*parts):
@@ -301,26 +306,34 @@ async def test_seed_popular_stream_skips_already_cached(admin_client, admin_db, 
         return joined
     monkeypatch.setattr(_os.path, "join", _fake_join)
 
-    # The book is already cached
     await save_book(100, manifest[0], "Some text")
 
-    # get_book_meta / get_book_text should never be called
-    with patch("routers.admin.get_book_meta") as m_meta, \
-         patch("routers.admin.get_book_text") as m_text:
-        res = await admin_client.get("/api/admin/books/seed-popular-stream")
+    with patch("services.seed_popular.get_book_meta") as m_meta, \
+         patch("services.seed_popular.get_book_text") as m_text:
+        res = await admin_client.post("/api/admin/books/seed-popular/start")
+        assert res.status_code == 200
 
-    assert res.status_code == 200
-    events = _parse_sse(res.text)
-    start = next(e for e in events if e["event"] == "start")
-    assert start["already_cached"] == 1
-    assert start["to_download"] == 0
-    m_meta.assert_not_called()
-    m_text.assert_not_called()
+        # Wait for the background task to complete
+        mgr = __import__("services.seed_popular", fromlist=["manager"]).manager()
+        while mgr.is_running():
+            await asyncio.sleep(0.01)
+
+        status = await admin_client.get("/api/admin/books/seed-popular/status")
+        body = status.json()
+        assert body["state"]["status"] == "completed"
+        assert body["state"]["already_cached"] == 1
+        assert body["state"]["total"] == 0
+        m_meta.assert_not_called()
+        m_text.assert_not_called()
 
 
-async def test_seed_popular_stream_downloads_missing_books(admin_client, admin_db, monkeypatch, tmp_path):
+async def test_seed_popular_downloads_missing_books(admin_client, admin_db, monkeypatch, tmp_path):
     """A manifest entry whose book isn't cached triggers download + save."""
     import json as _json
+    import asyncio
+    from services.seed_popular import SeedPopularManager
+    monkeypatch.setattr("services.seed_popular._manager", SeedPopularManager())
+
     manifest = [{
         "id": 101, "title": "New Book",
         "authors": ["Author"], "languages": ["en"],
@@ -339,17 +352,60 @@ async def test_seed_popular_stream_downloads_missing_books(admin_client, admin_d
 
     meta_mock = AsyncMock(return_value={**manifest[0], "subjects": []})
     text_mock = AsyncMock(return_value="Book text " * 50)
-    with patch("routers.admin.get_book_meta", meta_mock), \
-         patch("routers.admin.get_book_text", text_mock):
-        res = await admin_client.get("/api/admin/books/seed-popular-stream")
+    with patch("services.seed_popular.get_book_meta", meta_mock), \
+         patch("services.seed_popular.get_book_text", text_mock):
+        res = await admin_client.post("/api/admin/books/seed-popular/start")
+        assert res.status_code == 200
 
-    assert res.status_code == 200
-    events = _parse_sse(res.text)
-    done = next(e for e in events if e["event"] == "done")
-    assert done["downloaded"] == 1
-    assert done["failed"] == 0
-    # Verify it actually landed in the DB
+        mgr = __import__("services.seed_popular", fromlist=["manager"]).manager()
+        while mgr.is_running():
+            await asyncio.sleep(0.01)
+
+        status = await admin_client.get("/api/admin/books/seed-popular/status")
+        body = status.json()
+        assert body["state"]["status"] == "completed"
+        assert body["state"]["downloaded"] == 1
+        assert body["state"]["failed"] == 0
+
     from services.db import get_cached_book
     cached = await get_cached_book(101)
     assert cached is not None
     assert cached["title"] == "New Book"
+
+
+async def test_seed_popular_refuses_concurrent_start(admin_client, admin_db, monkeypatch, tmp_path):
+    """Second start while one is running returns 409."""
+    import json as _json
+    import asyncio
+    from services.seed_popular import SeedPopularManager
+    monkeypatch.setattr("services.seed_popular._manager", SeedPopularManager())
+
+    manifest = [{"id": 102, "title": "X", "authors": [], "languages": ["en"],
+                 "download_count": 1, "cover": ""}]
+    manifest_path = tmp_path / "popular_books.json"
+    manifest_path.write_text(_json.dumps(manifest))
+    import os as _os
+    original_join = _os.path.join
+    monkeypatch.setattr(
+        _os.path, "join",
+        lambda *p: str(manifest_path) if original_join(*p).endswith("popular_books.json") else original_join(*p),
+    )
+
+    # Make the job slow by mocking get_book_meta to sleep
+    async def slow_meta(book_id):
+        await asyncio.sleep(1)
+        return {"id": book_id, "title": "X", "authors": [], "languages": ["en"],
+                "subjects": [], "download_count": 1, "cover": ""}
+    async def fake_text(book_id):
+        return "text"
+
+    with patch("services.seed_popular.get_book_meta", slow_meta), \
+         patch("services.seed_popular.get_book_text", fake_text):
+        res1 = await admin_client.post("/api/admin/books/seed-popular/start")
+        assert res1.status_code == 200
+
+        res2 = await admin_client.post("/api/admin/books/seed-popular/start")
+        assert res2.status_code == 409
+
+        # Clean up — stop the job
+        await admin_client.post("/api/admin/books/seed-popular/stop")

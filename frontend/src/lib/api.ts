@@ -1,15 +1,56 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-// Set by Providers → TokenSync on session change
+// ── Auth token + session-settled gate ──────────────────────────────────────
+//
+// The auth token is injected by Providers → TokenSync once NextAuth finishes
+// hydrating. On a page refresh there's a brief window where the session is
+// still "loading" and the token hasn't arrived. Previously that window
+// caused API calls to fire without a Bearer header, which the backend
+// rejected as 401 — pages like /admin or /reader then redirected to home
+// in their .catch handlers, making refresh look like a logout bug.
+//
+// Now we gate `request()` on the session being settled: TokenSync calls
+// `markSessionSettled()` once `useSession()` reports a non-loading status,
+// and every outbound request waits for that signal. If the session settles
+// to "authenticated", the token is set first and the request goes through
+// normally. If it settles to "unauthenticated", requests fail with a 401
+// exactly once, not a redirect-to-home race.
+
 let _authToken: string | null = null;
+let _sessionSettled = false;
+const _settledWaiters: Array<() => void> = [];
+
 export function setAuthToken(token: string | null) {
   _authToken = token;
 }
+
+/** Called by Providers/TokenSync when NextAuth's session status is no longer
+ *  "loading" — i.e. we know whether the user is authenticated or not. */
+export function markSessionSettled() {
+  if (_sessionSettled) return;
+  _sessionSettled = true;
+  const waiters = [..._settledWaiters];
+  _settledWaiters.length = 0;
+  waiters.forEach((r) => r());
+}
+
+/** Await the session being settled. Useful for pages that do their own
+ *  direct fetch() and need to make sure the Bearer token has arrived from
+ *  NextAuth before firing the request. */
+export function awaitSession(): Promise<void> {
+  if (_sessionSettled) return Promise.resolve();
+  return new Promise<void>((resolve) => _settledWaiters.push(resolve));
+}
+
 export function getAuthToken(): string | null {
   return _authToken;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Wait for NextAuth to finish hydrating before firing the request. Without
+  // this, refreshing a protected page races the token setup and the backend
+  // returns 401 before the token is available.
+  await awaitSession();
   const headers: Record<string, string> = {
     ...(options?.headers as Record<string, string>),
     ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
@@ -81,6 +122,7 @@ export async function* importBookStream(
   generateTts: boolean,
   signal?: AbortSignal,
 ): AsyncGenerator<ImportEvent> {
+  await awaitSession();
   const params = new URLSearchParams({
     target_language: targetLanguage,
     generate_tts: generateTts ? "true" : "false",
@@ -123,66 +165,6 @@ export async function* importBookStream(
         yield { event: event as ImportEvent["event"], ...JSON.parse(data) };
       } catch {
         // malformed frame — skip
-      }
-    }
-  }
-}
-
-/** Event streamed from GET /admin/books/seed-popular-stream. */
-export interface SeedPopularEvent {
-  event: "start" | "progress" | "done" | "error";
-  total?: number;
-  current?: number;
-  to_download?: number;
-  already_cached?: number;
-  downloaded?: number;
-  failed?: number;
-  book_id?: number;
-  title?: string;
-  chars?: number;
-  status?: "downloading" | "done" | "failed";
-  error?: string;
-  message?: string;
-}
-
-/** Stream the seed-popular-books admin job via fetch() (Bearer auth). */
-export async function* seedPopularStream(
-  signal?: AbortSignal,
-): AsyncGenerator<SeedPopularEvent> {
-  const headers: Record<string, string> = {
-    Accept: "text/event-stream",
-    ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
-  };
-  const res = await fetch(`${BASE}/admin/books/seed-popular-stream`, {
-    headers,
-    signal,
-  });
-  if (!res.ok || !res.body) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Seed stream failed");
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let sepIdx: number;
-    while ((sepIdx = buffer.indexOf("\n\n")) >= 0) {
-      const frame = buffer.slice(0, sepIdx);
-      buffer = buffer.slice(sepIdx + 2);
-      let event = "";
-      let data = "";
-      for (const line of frame.split("\n")) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) data = line.slice(5).trim();
-      }
-      if (!event) continue;
-      try {
-        yield { event: event as SeedPopularEvent["event"], ...JSON.parse(data) };
-      } catch {
-        // skip malformed frames
       }
     }
   }
@@ -309,6 +291,7 @@ export async function synthesizeSpeech(
   provider: "auto" | "edge" | "google" = "auto",
   options: SynthesizeOptions = {}
 ): Promise<string> {
+  await awaitSession();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),

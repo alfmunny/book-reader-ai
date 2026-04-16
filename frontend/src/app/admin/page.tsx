@@ -60,8 +60,12 @@ export default function AdminPage() {
     loadAll();
   }, [router]);
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll({ silent = false }: { silent?: boolean } = {}) {
+    // Show the full-page spinner only on initial load. Background refreshes
+    // (triggered by finishing a job, an act, etc.) should update data in
+    // place without swapping the entire UI for a spinner — that flash looked
+    // like the admin page was reloading itself.
+    if (!silent) setLoading(true);
     setError("");
     try {
       const [s, u, b, a, t] = await Promise.all([
@@ -75,12 +79,12 @@ export default function AdminPage() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load admin data");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   async function act(fn: () => Promise<unknown>) {
-    try { await fn(); await loadAll(); } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
+    try { await fn(); await loadAll({ silent: true }); } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
   }
 
   async function handleImport() {
@@ -91,7 +95,7 @@ export default function AdminPage() {
       const res = await adminFetch("/admin/books/import", { method: "POST", body: JSON.stringify({ book_id: id }) });
       alert(res.status === "already_cached" ? `"${res.title}" is already cached.` : `Imported "${res.title}" (${res.text_length?.toLocaleString()} chars)`);
       setImportId("");
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Import failed");
     } finally {
@@ -106,7 +110,7 @@ export default function AdminPage() {
     try {
       const res = await adminFetch(`/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/retranslate`, { method: "POST" });
       alert(`Retranslated via ${res.provider}: ${res.paragraphs_count} paragraphs`);
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Retranslation failed");
     } finally {
@@ -133,7 +137,7 @@ export default function AdminPage() {
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-6 py-4 flex items-center gap-4">
         <button onClick={() => router.push("/")} className="text-amber-700 hover:text-amber-900 text-sm">← Library</button>
         <h1 className="font-serif font-bold text-ink text-xl">Admin Panel</h1>
-        <button onClick={loadAll} className="ml-auto text-sm text-amber-600 hover:text-amber-900">↻ Refresh</button>
+        <button onClick={() => loadAll()} className="ml-auto text-sm text-amber-600 hover:text-amber-900">↻ Refresh</button>
       </header>
 
       <div className="max-w-5xl mx-auto px-6 py-6">
@@ -221,7 +225,7 @@ export default function AdminPage() {
             </div>
 
             {/* Bulk seed from popular_books.json — works on Railway without CLI */}
-            <SeedPopularButton adminFetch={adminFetch} onComplete={loadAll} />
+            <SeedPopularButton adminFetch={adminFetch} onComplete={() => loadAll({ silent: true })} />
 
             {/* Book list */}
             <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
@@ -291,7 +295,7 @@ export default function AdminPage() {
                         method: "POST", body: JSON.stringify({ target_language: lang }),
                       });
                       alert(`Retranslated ${res.chapters} chapters`);
-                      await loadAll();
+                      await loadAll({ silent: true });
                     } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
                     finally { setBulkRetranslating(false); }
                   }}

@@ -27,10 +27,14 @@ async function adminFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
-type Tab = "users" | "books" | "audio" | "translations" | "bulk";
+type Tab = "users" | "books" | "audio" | "bulk";
 
 interface User { id: number; email: string; name: string; picture: string; role: string; approved: number; created_at: string; }
-interface Book { id: number; title: string; authors: string[]; languages: string[]; download_count: number; text_length?: number; cached_at?: string; }
+interface Book {
+  id: number; title: string; authors: string[]; languages: string[];
+  download_count: number; text_length?: number; cached_at?: string;
+  translations?: Record<string, number>;
+}
 interface AudioEntry { book_id: number; chapter_index: number; provider: string; voice: string; chunks: number; size_mb: number; created_at: string; }
 interface TranslationEntry { book_id: number; chapter_index: number; target_language: string; size_chars: number; created_at: string; }
 interface Stats { users_total: number; users_approved: number; users_pending: number; books_cached: number; audio_chunks_cached: number; audio_cache_mb: number; translations_cached: number; }
@@ -50,7 +54,11 @@ export default function AdminPage() {
   const [importId, setImportId] = useState("");
   const [importing, setImporting] = useState(false);
   const [retranslating, setRetranslating] = useState<string | null>(null);
-  const [bulkRetranslating, setBulkRetranslating] = useState(false);
+  const [bulkRetranslating, setBulkRetranslating] = useState<string | null>(null);
+  // Expansion state: one book expanded at a time; inside a book, one language
+  // can be further expanded to show per-chapter rows.
+  const [expandedBookId, setExpandedBookId] = useState<number | null>(null);
+  const [expandedLang, setExpandedLang] = useState<string | null>(null);
 
   useEffect(() => {
     getMe().then((me) => {
@@ -120,9 +128,13 @@ export default function AdminPage() {
 
   const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: "users", label: "Users", count: stats?.users_total },
-    { key: "books", label: "Books", count: stats?.books_cached },
+    {
+      key: "books",
+      label: "Books",
+      count: stats?.books_cached,
+      // Translation info now lives inside each book row
+    },
     { key: "audio", label: "Audio Cache", count: stats?.audio_chunks_cached },
-    { key: "translations", label: "Translations", count: stats?.translations_cached },
     { key: "bulk", label: "Bulk Translate" },
   ];
 
@@ -227,22 +239,164 @@ export default function AdminPage() {
             {/* Bulk seed from popular_books.json — works on Railway without CLI */}
             <SeedPopularButton adminFetch={adminFetch} onComplete={() => loadAll({ silent: true })} />
 
-            {/* Book list */}
+            {/* Book list — each row expands to show translation summary +
+                per-chapter actions. The separate Translations tab used to
+                hold this info; it's now inline so admins can see everything
+                about one book in one place. */}
             <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
-              {books.map((b) => (
-                <div key={b.id} className="px-4 py-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-ink text-sm truncate">{b.title}</div>
-                    <div className="text-xs text-stone-400">
-                      ID: {b.id} · {b.languages?.join(", ")} · {((b.text_length || 0) / 1000).toFixed(0)}K chars
-                      {b.authors?.length ? ` · ${b.authors.join(", ")}` : ""}
+              {books.map((b) => {
+                const isExpanded = expandedBookId === b.id;
+                const translatedLangs = Object.keys(b.translations || {});
+
+                return (
+                  <div key={b.id}>
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          setExpandedBookId(isExpanded ? null : b.id);
+                          setExpandedLang(null);
+                        }}
+                        className="text-stone-400 hover:text-amber-700 text-sm w-4 text-center"
+                        title={isExpanded ? "Collapse" : "Expand"}
+                      >
+                        {isExpanded ? "▼" : "▶"}
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-ink text-sm truncate">{b.title}</div>
+                        <div className="text-xs text-stone-400">
+                          ID: {b.id} · {b.languages?.join(", ")} · {((b.text_length || 0) / 1000).toFixed(0)}K chars
+                          {b.authors?.length ? ` · ${b.authors.join(", ")}` : ""}
+                        </div>
+                      </div>
+
+                      {/* Translation chips — compact summary, visible without expanding */}
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {translatedLangs.length === 0 ? (
+                          <span className="text-[10px] text-stone-300">no translations</span>
+                        ) : (
+                          translatedLangs.map((lang) => (
+                            <span
+                              key={lang}
+                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700"
+                              title={`${b.translations![lang]} chapters translated to ${lang}`}
+                            >
+                              {lang} · {b.translations![lang]}
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      <button onClick={() => router.push(`/reader/${b.id}`)} className="text-xs text-amber-600 hover:text-amber-800 shrink-0">Open</button>
+                      <button
+                        onClick={() => { if (confirm(`Delete "${b.title}" and all its audio/translations?`)) act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" })); }}
+                        className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 shrink-0"
+                      >Delete</button>
                     </div>
+
+                    {/* Expanded translation panel */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 pt-1 bg-amber-50/40 border-t border-amber-100">
+                        {translatedLangs.length === 0 ? (
+                          <p className="text-xs text-stone-500 italic">
+                            No translations cached yet. Run a bulk translation job or open the book to trigger on-demand translation.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {translatedLangs.map((lang) => {
+                              const count = b.translations![lang];
+                              const bulkKey = `${b.id}:${lang}`;
+                              const isLangExpanded = expandedLang === bulkKey;
+                              const chapterRows = translations.filter(
+                                (t) => t.book_id === b.id && t.target_language === lang,
+                              );
+
+                              return (
+                                <div key={lang} className="bg-white rounded-lg border border-amber-200 overflow-hidden">
+                                  <div className="px-3 py-2 flex items-center gap-2">
+                                    <button
+                                      onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
+                                      className="text-xs text-stone-400 hover:text-amber-700 w-4 text-center"
+                                    >
+                                      {isLangExpanded ? "▼" : "▶"}
+                                    </button>
+                                    <span className="text-sm font-medium text-ink">{lang}</span>
+                                    <span className="text-xs text-stone-500">· {count} chapter{count === 1 ? "" : "s"} cached</span>
+
+                                    <button
+                                      disabled={bulkRetranslating === bulkKey}
+                                      onClick={async () => {
+                                        if (!confirm(`Retranslate ALL ${count} chapters of "${b.title}" → ${lang}? This deletes the current cache and regenerates.`)) return;
+                                        setBulkRetranslating(bulkKey);
+                                        try {
+                                          const res = await adminFetch(`/admin/translations/${b.id}/retranslate-all`, {
+                                            method: "POST", body: JSON.stringify({ target_language: lang }),
+                                          });
+                                          alert(`Retranslated ${res.chapters} chapters of "${b.title}" → ${lang}`);
+                                          await loadAll({ silent: true });
+                                        } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
+                                        finally { setBulkRetranslating(null); }
+                                      }}
+                                      className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                                    >
+                                      {bulkRetranslating === bulkKey ? "Retranslating…" : "Retranslate all"}
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (!confirm(`Delete all ${count} cached ${lang} translations for "${b.title}"?`)) return;
+                                        act(() => adminFetch(`/admin/translations/${b.id}`, { method: "DELETE" }));
+                                      }}
+                                      className="text-xs px-2 py-1 rounded border border-red-200 text-red-500"
+                                    >
+                                      Delete all
+                                    </button>
+                                  </div>
+
+                                  {/* Per-chapter drill-down */}
+                                  {isLangExpanded && (
+                                    <div className="border-t border-amber-100 divide-y divide-amber-50 max-h-80 overflow-y-auto">
+                                      {chapterRows.length === 0 ? (
+                                        <p className="text-xs text-stone-400 px-3 py-2">
+                                          (Chapter-level details load from the translations list — reload if empty.)
+                                        </p>
+                                      ) : (
+                                        chapterRows
+                                          .sort((a, b) => a.chapter_index - b.chapter_index)
+                                          .map((t) => {
+                                            const rowKey = `${t.book_id}:${t.chapter_index}:${t.target_language}`;
+                                            return (
+                                              <div key={rowKey} className="px-3 py-1.5 flex items-center gap-2 text-xs">
+                                                <span className="text-stone-500 w-16">Ch. {t.chapter_index + 1}</span>
+                                                <span className="text-stone-400 flex-1">{(t.size_chars / 1000).toFixed(1)}K chars</span>
+                                                <button
+                                                  onClick={() => handleRetranslate(t)}
+                                                  disabled={retranslating === rowKey}
+                                                  className="px-2 py-0.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                                                >
+                                                  {retranslating === rowKey ? "…" : "Retranslate"}
+                                                </button>
+                                                <button
+                                                  onClick={() => act(() => adminFetch(`/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}`, { method: "DELETE" }))}
+                                                  className="px-2 py-0.5 rounded border border-red-200 text-red-500"
+                                                >
+                                                  Delete
+                                                </button>
+                                              </div>
+                                            );
+                                          })
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <button onClick={() => router.push(`/reader/${b.id}`)} className="text-xs text-amber-600 hover:text-amber-800">Open</button>
-                  <button onClick={() => { if (confirm(`Delete "${b.title}" and all its audio/translations?`)) act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" })); }}
-                    className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Delete</button>
-                </div>
-              ))}
+                );
+              })}
               {books.length === 0 && <div className="px-4 py-8 text-center text-amber-600 text-sm">No books cached.</div>}
             </div>
           </div>
@@ -267,66 +421,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── Translations Tab ── */}
-        {tab === "translations" && (
-          <div className="space-y-4">
-            {/* Bulk retranslate — pick a book that has translations */}
-            {translations.length > 0 && (
-              <div className="flex items-center gap-2">
-                <select id="bulk-book" className="text-sm rounded border border-amber-300 px-2 py-1.5">
-                  {[...new Set(translations.map(t => t.book_id))].map(bid => (
-                    <option key={bid} value={bid}>Book {bid}</option>
-                  ))}
-                </select>
-                <select id="bulk-lang" className="text-sm rounded border border-amber-300 px-2 py-1.5">
-                  {[...new Set(translations.map(t => t.target_language))].map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-                <button
-                  disabled={bulkRetranslating}
-                  onClick={async () => {
-                    const bid = (document.getElementById("bulk-book") as HTMLSelectElement)?.value;
-                    const lang = (document.getElementById("bulk-lang") as HTMLSelectElement)?.value;
-                    if (!bid || !lang || !confirm(`Retranslate ALL chapters of book ${bid} → ${lang}?`)) return;
-                    setBulkRetranslating(true);
-                    try {
-                      const res = await adminFetch(`/admin/translations/${bid}/retranslate-all`, {
-                        method: "POST", body: JSON.stringify({ target_language: lang }),
-                      });
-                      alert(`Retranslated ${res.chapters} chapters`);
-                      await loadAll({ silent: true });
-                    } catch (e: unknown) { alert(e instanceof Error ? e.message : "Failed"); }
-                    finally { setBulkRetranslating(false); }
-                  }}
-                  className="text-sm px-3 py-1.5 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50"
-                >
-                  {bulkRetranslating ? "Retranslating all…" : "Retranslate All"}
-                </button>
-              </div>
-            )}
-
-          <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
-            {translations.map((t, i) => (
-              <div key={i} className="px-4 py-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-ink">Book {t.book_id}, Ch. {t.chapter_index + 1} → {t.target_language}</div>
-                  <div className="text-xs text-stone-400">{(t.size_chars / 1000).toFixed(1)}K chars</div>
-                </div>
-                <button
-                  onClick={() => handleRetranslate(t)}
-                  disabled={retranslating === `${t.book_id}:${t.chapter_index}:${t.target_language}`}
-                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50">
-                  {retranslating === `${t.book_id}:${t.chapter_index}:${t.target_language}` ? "Translating…" : "Retranslate"}
-                </button>
-                <button onClick={() => act(() => adminFetch(`/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}`, { method: "DELETE" }))}
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500">Delete</button>
-              </div>
-            ))}
-            {translations.length === 0 && <div className="px-4 py-8 text-center text-amber-600 text-sm">No translations cached.</div>}
-          </div>
-          </div>
-        )}
+        {/* Translations tab removed — info is now consolidated into the Books tab */}
 
         {/* ── Bulk Translate Tab ── */}
         {tab === "bulk" && <BulkTranslateTab adminFetch={adminFetch} />}

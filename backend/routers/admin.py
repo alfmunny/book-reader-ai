@@ -81,9 +81,26 @@ async def remove_user(user_id: int, admin: dict = Depends(_require_admin)):
 
 @router.get("/books")
 async def get_books(_admin: dict = Depends(_require_admin)):
-    """List all cached books with metadata + text length."""
+    """List all cached books, with text size + translation counts per language.
+
+    The `translations` field is a map of `target_language → chapters_cached`
+    so the admin UI can show per-language summaries like "zh (22 chapters)"
+    directly on the book row.
+    """
     books = await list_cached_books()
-    # Enrich with text size
+
+    # One grouped query for all translations instead of N queries per book.
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """SELECT book_id, target_language, COUNT(*) AS n
+               FROM translations
+               GROUP BY book_id, target_language"""
+        ) as cursor:
+            rows = await cursor.fetchall()
+    by_book: dict[int, dict[str, int]] = {}
+    for book_id, lang, n in rows:
+        by_book.setdefault(book_id, {})[lang] = n
+
     result = []
     for b in books:
         full = await get_cached_book(b["id"])
@@ -91,6 +108,7 @@ async def get_books(_admin: dict = Depends(_require_admin)):
         result.append({
             **b,
             "text_length": text_len,
+            "translations": by_book.get(b["id"], {}),
         })
     return result
 

@@ -135,6 +135,21 @@ async def test_get_books(admin_client, admin_db):
     books = res.json()
     assert len(books) >= 1
     assert books[0]["text_length"] > 0
+    # New: translations field (empty when none cached)
+    assert books[0]["translations"] == {}
+
+
+async def test_get_books_includes_translation_counts(admin_client, admin_db):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "en", ["a"])
+    await save_translation(100, 1, "en", ["b"])
+    await save_translation(100, 0, "zh", ["中"])
+
+    res = await admin_client.get("/api/admin/books")
+    assert res.status_code == 200
+    books = res.json()
+    book = next(b for b in books if b["id"] == 100)
+    assert book["translations"] == {"en": 2, "zh": 1}
 
 
 async def test_delete_book(admin_client, admin_db):

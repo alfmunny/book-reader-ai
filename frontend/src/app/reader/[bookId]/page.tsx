@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, getChapterQueueStatus, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, TranslationProvider } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -195,8 +195,19 @@ export default function ReaderPage() {
   const bookLanguage = meta?.languages[0] || "en";
 
   // Auto-translate when enabled or chapter/lang changes.
-  // Splits the chapter into batches and translates progressively so
-  // paragraphs appear one batch at a time instead of all-or-nothing.
+  //
+  // Queue-only flow (no on-demand Gemini calls from the reader):
+  //   1. Check the in-memory cache → instant hit.
+  //   2. POST /books/{id}/chapters/{idx}/translation. Backend returns
+  //      either the cached paragraphs (status=ready) or queue status
+  //      (pending / running). Reader-initiated enqueues get priority=10
+  //      so they jump ahead of admin auto-enqueues.
+  //   3. While the queue is working, show the "queued · position N"
+  //      state and poll every 3s until status=ready.
+  //
+  // This replaces the previous per-paragraph translate loop — admins
+  // stop double-spending tokens and all translation work flows through
+  // the single queue (same model chain, same rate limits).
   useEffect(() => {
     const current = chapters[chapterIndex];
     if (!translationEnabled || !current?.text) {
@@ -219,101 +230,81 @@ export default function ReaderPage() {
 
     const bid = Number(bookId);
 
+    function showCached(res: { paragraphs?: string[]; provider?: string; model?: string }) {
+      if (!res.paragraphs) return;
+      translationCache.current.set(cacheKey, res.paragraphs);
+      setTranslatedParagraphs(res.paragraphs);
+      const providerLabel = res.provider
+        ? (res.model ? `${res.provider} (${res.model})` : res.provider)
+        : "cached";
+      setTranslationUsedProvider(providerLabel);
+      setTranslationLoading(false);
+    }
+
     (async () => {
-      // 1. Quick cache check — returns instantly if backend has it
-      const cached = await getTranslationCache(bid, chapterIndex, translationLang);
+      // 1. Request the translation — returns cached OR queue status.
+      let res;
+      try {
+        res = await requestChapterTranslation(bid, chapterIndex, translationLang);
+      } catch (e) {
+        console.error("Failed to request chapter translation:", e);
+        if (!cancelled && currentChapterKey.current === cacheKey) {
+          setTranslationUsedProvider("error · check admin queue");
+          setTranslationLoading(false);
+        }
+        return;
+      }
       if (cancelled || currentChapterKey.current !== cacheKey) return;
-      if (cached) {
-        translationCache.current.set(cacheKey, cached.paragraphs);
-        setTranslatedParagraphs(cached.paragraphs);
-        // Show the actual source of the cached translation so the user knows
-        // whether it came from Gemini (high quality) or Google Translate (free).
-        const providerLabel = cached.provider
-          ? (cached.model ? `${cached.provider} (${cached.model})` : cached.provider)
-          : "cached";
-        setTranslationUsedProvider(providerLabel);
-        setTranslationLoading(false);
+
+      if (res.status === "ready") {
+        showCached(res);
         return;
       }
 
-      // 2. No cache — before firing fresh API calls, check if the queue
-      //    worker is already scheduled to translate this chapter. If so,
-      //    wait for it (poll cache) instead of duplicating the call.
-      try {
-        const q = await getChapterQueueStatus(bid, chapterIndex, translationLang);
-        if (q.queued) {
-          setTranslationUsedProvider(
-            q.status === "running"
-              ? "queued · translating now"
-              : `queued · position ${q.position ?? "?"}`,
-          );
-          // Poll for cache landing, up to ~90s. Background worker advances
-          // ~1 batch/6s typically; if it's further out, fall through to
-          // on-demand translate rather than blocking the reader forever.
-          const POLL_MS = 3000;
-          const MAX_POLLS = 30;
-          for (let i = 0; i < MAX_POLLS; i++) {
-            await new Promise((r) => setTimeout(r, POLL_MS));
-            if (cancelled || currentChapterKey.current !== cacheKey) return;
-            const latest = await getTranslationCache(bid, chapterIndex, translationLang);
-            if (latest) {
-              translationCache.current.set(cacheKey, latest.paragraphs);
-              setTranslatedParagraphs(latest.paragraphs);
-              const providerLabel = latest.provider
-                ? (latest.model ? `${latest.provider} (${latest.model})` : latest.provider)
-                : "queue · cached";
-              setTranslationUsedProvider(providerLabel);
-              setTranslationLoading(false);
-              return;
-            }
-          }
-          // Timeout — fall through to on-demand translate below.
-          setTranslationUsedProvider("queue timeout · translating now");
-        }
-      } catch {
-        // If the queue-status lookup fails, just do on-demand as before.
-      }
+      // 2. Queued / running — show status banner and poll every 3s.
+      //    No hard timeout: as long as the chapter is actually being
+      //    processed, we keep waiting. The user can toggle translate off
+      //    if they want to stop.
+      setTranslationUsedProvider(
+        res.status === "running"
+          ? "queue · translating now"
+          : `queue · position ${res.position ?? "?"}`,
+      );
 
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-      // 3. Still nothing cached — translate progressively in batches of ~3
-      //    paragraphs. Each batch appears as soon as it's done.
-      const BATCH_SIZE = 3;
-      const paragraphs = current.text.split(/\n\n+/).filter((p: string) => p.trim());
-      const batches: string[][] = [];
-      for (let i = 0; i < paragraphs.length; i += BATCH_SIZE) {
-        batches.push(paragraphs.slice(i, i + BATCH_SIZE));
-      }
-
-      const accumulated: string[] = [];
-      let usedProvider = "";
-      for (const batch of batches) {
+      const POLL_MS = 3000;
+      while (!cancelled && currentChapterKey.current === cacheKey) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
         if (cancelled || currentChapterKey.current !== cacheKey) return;
+        let tick;
         try {
-          const r = await translateText(batch.join("\n\n"), bookLanguage, translationLang, undefined, undefined, translationProvider);
-          accumulated.push(...r.paragraphs);
-          if (r.provider) usedProvider = r.provider;
-          if (r.fallback) usedProvider += " (fallback)";
-          if (!cancelled && currentChapterKey.current === cacheKey) {
-            setTranslatedParagraphs([...accumulated]);
-            setTranslationUsedProvider(usedProvider);
-          }
-        } catch (e) {
-          console.error("Translation batch failed:", e);
-          break;
+          tick = await requestChapterTranslation(bid, chapterIndex, translationLang);
+        } catch {
+          continue; // transient error — try again next tick
         }
-      }
-      if (!cancelled && currentChapterKey.current === cacheKey) {
-        translationCache.current.set(cacheKey, accumulated);
-        setTranslationLoading(false);
-        // Save to backend cache for next visit (fire-and-forget)
-        saveTranslationCache(bid, chapterIndex, translationLang, accumulated).catch(() => {});
+        if (cancelled || currentChapterKey.current !== cacheKey) return;
+
+        if (tick.status === "ready") {
+          showCached(tick);
+          return;
+        }
+        if (tick.status === "failed") {
+          setTranslationUsedProvider(
+            `queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`,
+          );
+          setTranslationLoading(false);
+          return;
+        }
+        setTranslationUsedProvider(
+          tick.status === "running"
+            ? "queue · translating now"
+            : `queue · position ${tick.position ?? "?"}`,
+        );
       }
     })();
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, translationProvider, chapterIndex, bookId]);
+  }, [translationEnabled, translationLang, chapterIndex, bookId]);
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").

@@ -49,21 +49,24 @@ test("continue-reading: reopening a book restores the last-read chapter", async 
   await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 30), { exact: false })).toBeVisible({ timeout: 5000 });
 });
 
-test("translation does not show Gemini reminder (uses free Google Translate)", async ({ page }) => {
-  // User has no Gemini key — translation should still work via Google
-  // Translate free fallback and should NOT show the Gemini reminder.
+test("translation does not show Gemini reminder (queue returns ready)", async ({ page }) => {
+  // User has no Gemini key — translation still works via the queue
+  // (admin's key). No Gemini reminder should show.
   await page.route("**/api/user/me", (route) =>
     route.fulfill({
       json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false, role: "user", approved: true },
     })
   );
-  // Cache check returns 404 (not cached)
-  await page.route("**/api/ai/translate/cache*", (route) =>
-    route.fulfill({ status: 404, json: { detail: "Not cached" } })
-  );
-  // Translation succeeds via Google Translate
-  await page.route("**/api/ai/translate", (route) =>
-    route.fulfill({ json: { paragraphs: ["Translated text."], cached: false } })
+  // Unified queue-aware translate endpoint returns ready+paragraphs.
+  await page.route("**/api/books/*/chapters/*/translation", (route) =>
+    route.fulfill({
+      json: {
+        status: "ready",
+        paragraphs: ["Translated text."],
+        provider: "gemini",
+        model: "gemini-2.5-flash",
+      },
+    })
   );
 
   await page.goto("/reader/1342");

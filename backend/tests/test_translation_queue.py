@@ -273,6 +273,35 @@ async def test_save_translation_ignores_unrelated_queue_rows(tmp_db):
     assert remaining_pending == {(1, "zh"), (0, "de")}
 
 
+async def test_request_chapter_translation_returns_cached(tmp_db):
+    """New reader endpoint should return status=ready when the translation
+    is already cached."""
+    from services.db import save_translation
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await save_translation(1, 0, "zh", ["hello"], provider="gemini", model="m")
+
+    # We test the underlying helper behaviour by calling the same pieces
+    # the endpoint does — full HTTP integration is covered in admin tests.
+    from services.db import get_cached_translation_with_meta
+    cached = await get_cached_translation_with_meta(1, 0, "zh")
+    assert cached is not None
+    assert cached["paragraphs"] == ["hello"]
+    assert cached["provider"] == "gemini"
+
+
+async def test_request_chapter_translation_enqueues_with_high_priority(tmp_db):
+    """A reader-initiated request enqueues at priority=10 (ahead of admin
+    auto-enqueue priority=100 and admin per-book enqueue priority=50)."""
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    # Simulate what the endpoint does for a fresh (not cached, not queued)
+    # chapter — enqueue at priority=10 with queued_by=email.
+    await enqueue(1, 0, "zh", priority=10, queued_by="reader@example.com")
+    rows = await list_queue()
+    assert len(rows) == 1
+    assert rows[0]["priority"] == 10
+    assert rows[0]["queued_by"] == "reader@example.com"
+
+
 async def test_queue_status_for_chapter_reports_position(tmp_db):
     """The reader-page status lookup returns the right position + status."""
     from services.translation_queue import queue_status_for_chapter

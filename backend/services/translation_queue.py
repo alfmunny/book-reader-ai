@@ -146,7 +146,7 @@ async def enqueue(
     priority: int = 100,
     reset_failed: bool = False,
     queued_by: str | None = None,
-) -> None:
+) -> int:
     """Insert (or no-op) a single queue item.
 
     If `reset_failed=True`, an existing row whose status is 'failed' or 'done'
@@ -154,10 +154,14 @@ async def enqueue(
 
     `queued_by` is a free-form label — usually the admin's email. NULL
     means the row was auto-enqueued by save_book and no admin is attributable.
+
+    Returns rowcount from the underlying write (1 if a new row was
+    inserted or an existing row was revived; 0 if the INSERT OR IGNORE
+    path no-op'd because a non-stale row already exists).
     """
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         if reset_failed:
-            await db.execute(
+            cursor = await db.execute(
                 """INSERT INTO translation_queue
                        (book_id, chapter_index, target_language, priority, status, queued_by)
                    VALUES (?, ?, ?, ?, 'pending', ?)
@@ -171,13 +175,14 @@ async def enqueue(
                 (book_id, chapter_index, target_language, priority, queued_by),
             )
         else:
-            await db.execute(
+            cursor = await db.execute(
                 """INSERT OR IGNORE INTO translation_queue
                        (book_id, chapter_index, target_language, priority, queued_by)
                    VALUES (?, ?, ?, ?, ?)""",
                 (book_id, chapter_index, target_language, priority, queued_by),
             )
         await db.commit()
+        return cursor.rowcount
 
 
 async def enqueue_for_book(
@@ -215,13 +220,12 @@ async def enqueue_for_book(
                 continue
             if not reset_failed and await get_cached_translation(book_id, idx, lang):
                 continue
-            await enqueue(
+            inserted += await enqueue(
                 book_id, idx, lang,
                 priority=priority,
                 reset_failed=reset_failed,
                 queued_by=queued_by,
             )
-            inserted += 1
     return inserted
 
 
@@ -356,6 +360,44 @@ async def queue_summary() -> dict:
     for book_id, lang, status, n in rows:
         by_book.setdefault(book_id, {}).setdefault(lang, {})[status] = n
     return {"counts": counts, "by_book": by_book}
+
+
+async def rescan_for_missing_translations() -> int:
+    """Walk every cached book and enqueue (book, lang) pairs that are
+    configured for auto-translation but have untranslated chapters.
+
+    Idempotent — `enqueue_for_book` already skips chapters with existing
+    translations AND skips duplicate pending rows (unique index). Safe to
+    run on every idle tick.
+
+    Returns the number of newly-enqueued rows.
+    """
+    langs = await get_auto_languages()
+    if not langs:
+        return 0
+    # Lazy import to avoid cycle with services.db
+    from services.db import list_cached_books
+    books = await list_cached_books()
+    total = 0
+    for b in books:
+        total += await enqueue_for_book(b["id"], target_languages=langs)
+    return total
+
+
+async def reset_stale_running_rows() -> int:
+    """Any row still marked 'running' when the worker starts is stale —
+    the previous process crashed or was killed mid-batch. Reset them to
+    'pending' so the next claim picks them up. Priority-bumps and
+    attempt counts from prior failures are preserved.
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        cursor = await db.execute(
+            """UPDATE translation_queue
+               SET status='pending', updated_at=CURRENT_TIMESTAMP
+               WHERE status='running'""",
+        )
+        await db.commit()
+        return cursor.rowcount
 
 
 async def mark_queue_row_done(
@@ -543,6 +585,19 @@ class TranslationQueueWorker:
         assert self._stop_event is not None
         stop_event = self._stop_event
 
+        # Startup housekeeping: reset any rows left 'running' from a prior
+        # crash, and rescan the book library so newly-cached books or
+        # newly-configured languages are picked up immediately.
+        try:
+            stale = await reset_stale_running_rows()
+            if stale:
+                self._append_log({"event": "startup_reset_stale", "count": stale})
+            added = await rescan_for_missing_translations()
+            if added:
+                self._append_log({"event": "startup_rescan", "enqueued": added})
+        except Exception:
+            logger.exception("Startup housekeeping failed (non-fatal)")
+
         while not stop_event.is_set():
             try:
                 await self._tick()
@@ -576,6 +631,20 @@ class TranslationQueueWorker:
         # rebuild prior_context per chapter, which loses the cross-batch
         # consistency benefit.
         items = await self._claim_next_batch()
+        if not items:
+            # Before idling, rescan the library for work that's been added
+            # since the last tick — new books via save_book, or new languages
+            # added to auto_translate_languages. This makes "Queue every
+            # book" largely unnecessary: the worker finds missing work on
+            # its own within one idle poll cycle.
+            try:
+                added = await rescan_for_missing_translations()
+                if added:
+                    self._append_log({"event": "rescan_enqueued", "count": added})
+                    items = await self._claim_next_batch()
+            except Exception:
+                logger.exception("Idle rescan failed (non-fatal)")
+
         if not items:
             self._state.idle = True
             self._state.waiting_reason = "queue empty"

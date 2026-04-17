@@ -50,3 +50,19 @@ export function getLastChapter(bookId: number): number {
     return 0;
   }
 }
+
+/** Remove a book from the user's local library list.
+ *
+ * Only touches localStorage — the book stays cached on the backend for
+ * other readers. If the user opens it again from Discover/Search it will
+ * re-appear in the library automatically.
+ */
+export function removeRecentBook(bookId: number) {
+  try {
+    const existing = getRecentBooks();
+    const filtered = existing.filter((b) => b.id !== bookId);
+    if (filtered.length !== existing.length) {
+      localStorage.setItem(KEY, JSON.stringify(filtered));
+    }
+  } catch {}
+}

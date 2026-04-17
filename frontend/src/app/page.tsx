@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { searchBooks, getPopularBooks, getMe, BookMeta } from "@/lib/api";
-import { getRecentBooks, RecentBook } from "@/lib/recentBooks";
+import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -203,6 +203,11 @@ export default function Home() {
                     book={book}
                     onClick={() => openBook(book.id)}
                     badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
+                    onRemove={() => {
+                      if (!confirm(`Remove "${book.title}" from your library?`)) return;
+                      removeRecentBook(book.id);
+                      setRecentBooks(getRecentBooks());
+                    }}
                   />
                 ))}
               </div>

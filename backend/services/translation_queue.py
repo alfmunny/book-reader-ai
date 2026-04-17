@@ -641,27 +641,22 @@ class TranslationQueueWorker:
         assert self._stop_event is not None
         stop_event = self._stop_event
 
-        # Startup housekeeping: reset any rows left 'running' from a prior
-        # crash, and rescan the book library so newly-cached books or
-        # newly-configured languages are picked up immediately. Both
-        # phases are surfaced to the UI via state.startup_phase so the
-        # admin sees what's happening instead of a silent "Starting…".
+        # Startup housekeeping: only reset rows left 'running' from a
+        # prior crash. The worker is now PASSIVE — it does NOT scan the
+        # library to enqueue missing translations. Translation work is
+        # only added to the queue when:
+        #   - a user imports a book with target_language (save_book
+        #     auto-enqueue for configured auto-translate languages)
+        #   - a reader clicks Translate on a chapter (POST /translation)
+        #   - the admin manually enqueues via the queue panel
+        # Admins who want a blanket rescan can still use the "Queue every
+        # book" button in the admin panel.
         try:
             self._state.startup_phase = "reset_stale"
             self._state.startup_progress = "Resetting stale running rows…"
             stale = await reset_stale_running_rows()
             if stale:
                 self._append_log({"event": "startup_reset_stale", "count": stale})
-
-            self._state.startup_phase = "rescan"
-            self._state.startup_progress = "Scanning book library…"
-
-            def _on_progress(i: int, total: int, title: str) -> None:
-                self._state.startup_progress = f"Checking {i}/{total}: {title}"
-
-            added = await rescan_for_missing_translations(progress=_on_progress)
-            if added:
-                self._append_log({"event": "startup_rescan", "enqueued": added})
         except Exception:
             logger.exception("Startup housekeeping failed (non-fatal)")
         finally:
@@ -701,19 +696,6 @@ class TranslationQueueWorker:
         # rebuild prior_context per chapter, which loses the cross-batch
         # consistency benefit.
         items = await self._claim_next_batch()
-        if not items:
-            # Before idling, rescan the library for work that's been added
-            # since the last tick — new books via save_book, or new languages
-            # added to auto_translate_languages. This makes "Queue every
-            # book" largely unnecessary: the worker finds missing work on
-            # its own within one idle poll cycle.
-            try:
-                added = await rescan_for_missing_translations()
-                if added:
-                    self._append_log({"event": "rescan_enqueued", "count": added})
-                    items = await self._claim_next_batch()
-            except Exception:
-                logger.exception("Idle rescan failed (non-fatal)")
 
         if not items:
             self._state.idle = True

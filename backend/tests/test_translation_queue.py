@@ -190,23 +190,20 @@ async def test_worker_creates_per_model_limiter_with_correct_rates(tmp_db):
     assert (lim.rpm, lim.rpd) == (150, 1000)
 
 
-async def test_rescan_adds_newly_configured_language_without_admin_click(tmp_db):
-    """Admin adds a new target language to auto_translate_languages AFTER
-    books are already saved. The rescan helper should enqueue the missing
-    (book, new_lang) pairs on the next idle tick — no manual
-    'Queue every book' click required."""
+async def test_rescan_helper_enqueues_missing_translations_for_admin_button(tmp_db):
+    """The worker is PASSIVE — it no longer auto-rescans the library on
+    startup or idle. But the helper is still exposed so the admin's
+    'Queue every book' button can manually backfill older books for a
+    newly-added language."""
     from services.translation_queue import rescan_for_missing_translations
-    # Library exists, but no language configured yet.
     await save_book(1, BOOK_META, BOOK_TEXT)
     await save_book(2, BOOK_META, BOOK_TEXT)
     assert len(await list_queue()) == 0
 
-    # Admin picks zh + de as auto-translate languages.
     await set_setting(SETTING_AUTO_LANGS, json.dumps(["zh", "de"]))
 
     added = await rescan_for_missing_translations()
-    # 2 books × 2 langs × 2 chapters = 8 queue rows.
-    assert added == 8
+    assert added == 8  # 2 books × 2 langs × 2 chapters
     all_langs = {r["target_language"] for r in await list_queue()}
     assert all_langs == {"zh", "de"}
 
@@ -221,6 +218,35 @@ async def test_rescan_is_idempotent(tmp_db):
     second = await rescan_for_missing_translations()
     assert first > 0
     assert second == 0
+
+
+async def test_worker_does_not_auto_rescan_library_on_idle(tmp_db):
+    """Worker is passive now — an idle tick must NOT enqueue missing
+    translations on its own. Only explicit triggers (save_book, reader
+    request, admin button) add work to the queue."""
+    from services.auth import encrypt_api_key
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await set_setting(SETTING_AUTO_LANGS, json.dumps(["zh", "de"]))
+    # Library has an untranslated book but the queue is empty — a rescan
+    # would pick these up. We want to verify an idle tick does NOT.
+    async with aiosqlite.connect(tmp_db) as db:
+        # Bypass save_book's auto-enqueue by inserting the book row
+        # directly.
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+                                  download_count, cover, text, images)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (1, "Test", "[]", '["en"]', "[]", 0, "", BOOK_TEXT, "[]"),
+        )
+        await db.commit()
+    assert len(await list_queue()) == 0
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    await w._tick()
+    # No rescan should have happened — queue still empty.
+    assert len(await list_queue()) == 0
 
 
 async def test_reset_stale_running_rows_flips_to_pending(tmp_db):

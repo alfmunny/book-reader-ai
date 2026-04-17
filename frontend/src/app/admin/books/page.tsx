@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
+import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
 
 interface TranslationStat {
   chapters: number;
@@ -58,6 +59,7 @@ export default function BooksPage() {
   // `${book_id}:${chapter_index}:${lang}` so two open books don't share state.
   const [moveInput, setMoveInput] = useState<Record<string, string>>({});
   const [moving, setMoving] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
@@ -241,8 +243,32 @@ export default function BooksPage() {
 
       <SeedPopularButton adminFetch={adminFetch} onComplete={() => load({ silent: true })} />
 
+      {/* Fuzzy filter — matches against title + authors + book ID. Stays
+          client-side since the admin endpoint already returns the full
+          books list. Preserves existing expansion state while typing. */}
+      <div className="flex items-center gap-2">
+        <input
+          type="search"
+          placeholder="Search books by title, author, or ID…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+          aria-label="Filter books"
+        />
+        {searchQuery && (
+          <span className="text-xs text-stone-500">
+            {books.filter((b) =>
+              fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
+            ).length}{" "}
+            / {books.length}
+          </span>
+        )}
+      </div>
+
       <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
-        {books.map((b) => {
+        {books
+          .filter((b) => fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]))
+          .map((b) => {
           const isExpanded = expandedBookId === b.id;
           const translatedLangs = Object.keys(b.translations || {});
           const queuedLangs = Object.keys(b.queue || {});
@@ -531,8 +557,16 @@ export default function BooksPage() {
             </div>
           );
         })}
-        {books.length === 0 && (
+        {books.length === 0 ? (
           <div className="px-4 py-8 text-center text-amber-600 text-sm">No books cached.</div>
+        ) : (
+          books.filter((b) =>
+            fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
+          ).length === 0 && (
+            <div className="px-4 py-8 text-center text-amber-600 text-sm">
+              No books match &ldquo;{searchQuery}&rdquo;.
+            </div>
+          )
         )}
       </div>
     </div>

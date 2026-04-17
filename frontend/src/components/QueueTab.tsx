@@ -134,6 +134,10 @@ export default function QueueTab({ adminFetch }: Props) {
   // the corresponding fetch and false on completion (success or error).
   const [loadingItems, setLoadingItems] = useState(false);
   const [loadingCost, setLoadingCost] = useState(false);
+  // Worker start/stop PUTs can take up to ~20s because the backend waits
+  // for the in-flight batch to wind down gracefully. Without a spinner
+  // the button just looks broken.
+  const [togglingWorker, setTogglingWorker] = useState<"start" | "stop" | null>(null);
   // Track whether the first load has completed — subsequent polls keep
   // prior data visible, but the very first render needs a clear loading
   // indicator so the panels don't pop in one-by-one looking broken.
@@ -292,14 +296,27 @@ export default function QueueTab({ adminFetch }: Props) {
   }
 
   async function startWorker() {
-    await adminFetch("/admin/queue/start", { method: "POST" });
-    await refresh();
+    setTogglingWorker("start");
+    try {
+      await adminFetch("/admin/queue/start", { method: "POST" });
+      refreshCore();
+    } finally {
+      setTogglingWorker(null);
+    }
   }
 
   async function stopWorker() {
     if (!confirm("Stop the translation queue worker? Pending items stay in the queue.")) return;
-    await adminFetch("/admin/queue/stop", { method: "POST" });
-    await refresh();
+    setTogglingWorker("stop");
+    try {
+      // Backend waits up to ~20s for the in-flight batch to finish, so
+      // this PUT can hang for a while. The button shows a spinner +
+      // "Stopping…" during the wait.
+      await adminFetch("/admin/queue/stop", { method: "POST" });
+      refreshCore();
+    } finally {
+      setTogglingWorker(null);
+    }
   }
 
   async function enqueueAll() {
@@ -422,16 +439,32 @@ export default function QueueTab({ adminFetch }: Props) {
           {status?.running ? (
             <button
               onClick={stopWorker}
-              className="text-xs px-3 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+              disabled={togglingWorker !== null}
+              className="text-xs px-3 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              Stop
+              {togglingWorker === "stop" && (
+                <span
+                  className="inline-block border-2 border-red-300 border-t-red-600 rounded-full animate-spin"
+                  style={{ width: 10, height: 10 }}
+                  aria-label="stopping"
+                />
+              )}
+              {togglingWorker === "stop" ? "Stopping…" : "Stop"}
             </button>
           ) : (
             <button
               onClick={startWorker}
-              className="text-xs px-3 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              disabled={togglingWorker !== null}
+              className="text-xs px-3 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 inline-flex items-center gap-1.5"
             >
-              Start
+              {togglingWorker === "start" && (
+                <span
+                  className="inline-block border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin"
+                  style={{ width: 10, height: 10 }}
+                  aria-label="starting"
+                />
+              )}
+              {togglingWorker === "start" ? "Starting…" : "Start"}
             </button>
           )}
         </div>

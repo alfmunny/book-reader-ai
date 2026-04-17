@@ -212,6 +212,10 @@ export async function getTranslationCache(
 
 /** Lightweight public endpoint — how many chapters of a book are translated? */
 export interface TranslationStatus {
+  queue_pending?: number;
+  queue_running?: number;
+  queue_failed?: number;
+  queue_done?: number;
   book_id: number;
   target_language: string;
   total_chapters: number;

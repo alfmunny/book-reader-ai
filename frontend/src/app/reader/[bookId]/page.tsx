@@ -635,18 +635,43 @@ export default function ReaderPage() {
           </div>
         )}
 
-      {/* Bulk translation banner — visible when a background job is translating this book */}
-      {translationEnabled && bookTranslationStatus && bookTranslationStatus.bulk_active && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between">
-          <span>
-            <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse mr-2" />
-            Bulk translation in progress —{" "}
-            <strong>{bookTranslationStatus.translated_chapters} / {bookTranslationStatus.total_chapters}</strong>{" "}
-            chapters ready for this book.
-          </span>
-          <span className="text-amber-500">Polls every 15s</span>
-        </div>
-      )}
+      {/* Book-level translation progress — shown whenever the queue is
+          holding at least one chapter of THIS book in THIS language,
+          even if a legacy bulk job isn't running. Gives the user a
+          whole-book view (e.g. "18/21 chapters ready · 3 processing")
+          in addition to the per-chapter banner above. */}
+      {translationEnabled && bookTranslationStatus && (() => {
+        const s = bookTranslationStatus;
+        const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
+        const anyQueueActivity = queued > 0 || (s.queue_failed ?? 0) > 0;
+        if (!s.bulk_active && !anyQueueActivity) return null;
+        const ready = s.translated_chapters;
+        const total = s.total_chapters;
+        return (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+              <span>
+                <strong>{ready} / {total}</strong> chapters translated
+                {queued > 0 && (
+                  <>
+                    {" · "}
+                    <strong>{queued}</strong> still processing
+                    {s.queue_running ? ` (${s.queue_running} running)` : ""}
+                  </>
+                )}
+                {s.queue_failed ? (
+                  <>
+                    {" · "}
+                    <span className="text-red-600">{s.queue_failed} failed</span>
+                  </>
+                ) : null}
+              </span>
+            </span>
+            <span className="text-amber-500 shrink-0">Polls every 15s</span>
+          </div>
+        );
+      })()}
 
       {/* Reading progress bar — combines chapter position + scroll within chapter */}
       {chapters.length > 0 && (

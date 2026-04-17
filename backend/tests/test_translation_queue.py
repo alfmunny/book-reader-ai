@@ -323,8 +323,7 @@ async def test_default_chain_applied_when_no_setting(tmp_db):
     a sensible chain out of the box."""
     from services.translation_queue import get_model_chain
     chain = await get_model_chain()
-    assert chain[0] == "gemini-3.1-pro-preview"
-    assert "gemini-2.5-pro" in chain
+    assert chain[0] == "gemini-2.5-flash"
     assert "gemini-2.0-flash" in chain
 
 

@@ -118,16 +118,11 @@ export function isRecommended(model: string): boolean {
   return hit?.recommended ?? false;
 }
 
-// Suggested default chain — recommended models in quality order. The worker
-// tries them in order and advances on 429/quota. Starts frontier (3.1-pro)
-// and descends to the highest-RPD model as a catch-all.
-//   3.1-pro  → 250/day  at top quality
-//   2.5-pro  → 1K/day  near-frontier
-//   2.5-flash → 10K/day strong literary
-//   2.0-flash → unlimited safety net
+// Suggested default chain — matches the "Balanced" preset. Strong literary
+// quality without the frontier pricing, cascades to unlimited-RPD 2.0-flash
+// as a safety net. Admins who want Premium or Budget can one-click switch
+// via the preset buttons in the Queue tab.
 export const DEFAULT_CHAIN: string[] = [
-  "gemini-3.1-pro-preview",
-  "gemini-2.5-pro",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
 ];
@@ -165,7 +160,7 @@ export const CHAIN_PRESETS: ChainPreset[] = [
     label: "Premium",
     tagline: "Frontier top, graceful degradation",
     description:
-      "Start with 3.1-pro for the most faithful literary rendering; cascade to 2.5-pro, 2.5-flash, then 2.0-flash as daily quotas are spent. The default chain — best overall quality.",
+      "Start with 3.1-pro for the most faithful literary rendering; cascade to 2.5-pro, 2.5-flash, then 2.0-flash as daily quotas are spent. Expensive but produces the best output.",
     chain: [
       "gemini-3.1-pro-preview",
       "gemini-2.5-pro",

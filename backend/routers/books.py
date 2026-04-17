@@ -269,6 +269,28 @@ async def import_stream(
                 and len(chapters) > 0
             )
             if should_translate:
+                # Enqueue this book for the user's target language BEFORE the
+                # inline stream runs. Rationale: if the user closes their tab
+                # or the connection drops, the background worker picks up
+                # whatever chapters the stream didn't finish. The save_translation
+                # -> mark-queue-row-done hook clears rows as the inline stream
+                # completes them, so there's no double work in the happy path.
+                try:
+                    from services.translation_queue import enqueue_for_book, worker
+                    queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
+                    added = await enqueue_for_book(
+                        book_id,
+                        target_languages=[target_language],
+                        queued_by=queued_by,
+                    )
+                    if added:
+                        worker().wake()
+                except Exception:
+                    logger.warning(
+                        "Failed to pre-enqueue user import for book %s → %s",
+                        book_id, target_language, exc_info=True,
+                    )
+
                 # Resolve provider: prefer Gemini if user has a key, else Google (free)
                 provider = "gemini" if decrypted_key else "google"
                 yield _sse("stage", {

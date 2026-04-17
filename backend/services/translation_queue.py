@@ -48,6 +48,7 @@ from services.db import (
     save_translation,
 )
 from services.gemini import translate_chapters_batch, TRANSLATOR_MODEL
+from services.model_limits import limits_for
 from services.rate_limiter import AsyncRateLimiter
 from services.splitter import build_chapters
 
@@ -59,7 +60,8 @@ SETTING_AUTO_LANGS = "auto_translate_languages"  # JSON array of lang codes
 SETTING_ENABLED = "queue_enabled"            # "1" or "0"
 SETTING_RPM = "queue_rpm"
 SETTING_RPD = "queue_rpd"
-SETTING_MODEL = "queue_model"
+SETTING_MODEL = "queue_model"                # legacy single-model, kept for compat
+SETTING_MODEL_CHAIN = "queue_model_chain"    # JSON list; tried in order on quota
 SETTING_MAX_OUTPUT_TOKENS = "queue_max_output_tokens"  # per-request budget
 
 DEFAULT_RPM = 12
@@ -74,6 +76,44 @@ RETRY_BACKOFF = (1.0, 5.0, 20.0, 60.0, 300.0)
 # rest of the queue is exhausted, but they no longer block other books.
 FAIL_PRIORITY_BUMP = 1000
 DEFAULT_PRIORITY = 100
+
+
+# ── Fallback chain helpers ───────────────────────────────────────────────────
+
+async def get_model_chain() -> list[str]:
+    """Return the ordered list of models to try on quota exhaustion.
+
+    Falls back to the legacy single-model setting, then to the server default.
+    An empty-string entry means "use TRANSLATOR_MODEL".
+    """
+    raw = await get_setting(SETTING_MODEL_CHAIN)
+    if raw:
+        try:
+            val = json.loads(raw)
+            if isinstance(val, list) and val:
+                return [str(m) for m in val]
+        except json.JSONDecodeError:
+            pass
+    legacy = await get_setting(SETTING_MODEL)
+    return [legacy if legacy is not None else ""]
+
+
+def is_quota_error(exc: BaseException) -> bool:
+    """Heuristic: did Gemini refuse this call because the key is over quota?
+
+    True → chain advances to next model.
+    False (e.g. 503 overloaded, malformed response) → stays on current
+    model and lets the outer retry loop back off.
+    """
+    msg = str(exc).lower()
+    return (
+        "429" in msg
+        or "resource_exhausted" in msg
+        or "resource exhausted" in msg
+        or "quota" in msg
+        or "rate limit" in msg
+        or "ratelimit" in msg
+    )
 
 
 # ── Queue row helpers ────────────────────────────────────────────────────────
@@ -293,6 +333,7 @@ class WorkerState:
     current_book_title: str = ""
     current_target_language: str = ""
     current_batch_size: int = 0
+    current_model: str = ""          # which model is actually being used right now
     last_completed_at: Optional[str] = None
     last_error: str = ""
     started_at: Optional[str] = None
@@ -316,7 +357,9 @@ class TranslationQueueWorker:
         self._stop_event: asyncio.Event | None = None
         self._wake_event: asyncio.Event = asyncio.Event()
         self._state = WorkerState()
-        self._limiter: AsyncRateLimiter | None = None
+        # One limiter per model in the chain — each model has its own
+        # rolling-window RPM and persisted RPD counter.
+        self._limiters: dict[str, AsyncRateLimiter] = {}
 
     # ── Lifecycle ───────────────────────────────────────────────────────
 
@@ -497,35 +540,24 @@ class TranslationQueueWorker:
         if not works:
             return
 
-        # Per-request output token budget. Different models have very different
-        # caps (gemini-2.5-pro: ~64K, flash models: ~8K), so we read it from
-        # the admin settings — populated by the UI when the admin picks a
-        # model. The budget drives both batch grouping here and the
-        # max_output_tokens we pass to the Gemini call.
-        max_tok_raw = await get_setting(SETTING_MAX_OUTPUT_TOKENS)
-        max_output_tokens = int(max_tok_raw) if max_tok_raw else DEFAULT_MAX_OUTPUT_TOKENS
+        # Per-batch output budget — use the LARGEST budget any model in
+        # the chain supports so we don't under-pack when a big model like
+        # 2.5-pro is primary. If the fallback model has a tighter budget,
+        # the Gemini call on that model will truncate; we accept that
+        # tradeoff (the call still returns the chapters it managed).
+        chain = await get_model_chain()
+        max_output_tokens = max(
+            (limits_for(m)["max_output_tokens"] for m in chain),
+            default=DEFAULT_MAX_OUTPUT_TOKENS,
+        )
 
         batches = group_chapters_for_batch(works, max_output_tokens=max_output_tokens)
         rows_by_idx = {r.chapter_index: r for r in items}
-        model = (await get_setting(SETTING_MODEL)) or TRANSLATOR_MODEL
 
         self._state.current_book_id = book_id
         self._state.current_book_title = title
         self._state.current_target_language = target_language
         self._state.current_batch_size = len(works)
-
-        # Read current rate-limit settings every batch so admins can tune
-        # RPM/RPD (or switch models which pins different limits) and have
-        # the change take effect immediately — no restart needed. Mutating
-        # the existing limiter preserves the rolling-window history so we
-        # never exceed the new cap right after a change.
-        rpm = int((await get_setting(SETTING_RPM)) or DEFAULT_RPM)
-        rpd = int((await get_setting(SETTING_RPD)) or DEFAULT_RPD)
-        if self._limiter is None:
-            self._limiter = AsyncRateLimiter(rpm=rpm, rpd=rpd, provider="gemini")
-        else:
-            self._limiter.rpm = rpm
-            self._limiter.rpd = rpd
 
         for batch in batches:
             chapters = [(c.chapter_index, c.chapter_text) for c in batch]
@@ -534,7 +566,7 @@ class TranslationQueueWorker:
                 source_language=source,
                 target_language=target_language,
                 api_key=api_key,
-                model=model,
+                chain=chain,
                 max_output_tokens=max_output_tokens,
             )
             for c in batch:
@@ -543,9 +575,12 @@ class TranslationQueueWorker:
                 if paragraphs is None:
                     await self._bump_attempt(row, "no translation returned")
                     continue
+                # Record the model that actually translated this chapter —
+                # may differ from the primary if the chain advanced.
                 await save_translation(
                     book_id, c.chapter_index, target_language, paragraphs,
-                    provider="gemini", model=model,
+                    provider="gemini",
+                    model=self._state.current_model or None,
                 )
                 await self._mark_done([row])
                 self._state.chapters_done += 1
@@ -558,6 +593,71 @@ class TranslationQueueWorker:
                 })
             self._state.last_completed_at = datetime.now(timezone.utc).isoformat()
 
+    async def _ensure_limiter(self, model: str) -> AsyncRateLimiter:
+        """Get (or lazily create) the limiter for this model, applying
+        the latest per-model RPM/RPD each time so config changes are live."""
+        lim = limits_for(model)
+        if model not in self._limiters:
+            self._limiters[model] = AsyncRateLimiter(
+                rpm=lim["rpm"], rpd=lim["rpd"], provider="gemini", model=model,
+            )
+        else:
+            self._limiters[model].rpm = lim["rpm"]
+            self._limiters[model].rpd = lim["rpd"]
+        return self._limiters[model]
+
+    async def _call_api_with_chain(
+        self,
+        *,
+        chain: list[str],
+        chapters: list[tuple[int, str]],
+        api_key: str,
+        source_language: str,
+        target_language: str,
+        max_output_tokens: int,
+    ) -> dict[int, list[str]]:
+        """Walk the chain: first model with quota + that doesn't 429 wins.
+
+        Non-quota errors (503, malformed response) propagate to the outer
+        retry loop so they get exponential backoff on the CURRENT model.
+        Only quota errors / already-exhausted models advance the chain —
+        those won't get better within this batch so there's no point waiting.
+        """
+        last_err: Exception | None = None
+        for model in chain:
+            limiter = await self._ensure_limiter(model)
+            remaining = await limiter.daily_remaining()
+            if remaining <= 0:
+                self._append_log({
+                    "event": "chain_skip_exhausted",
+                    "model": model or "default",
+                })
+                continue
+            try:
+                self._state.waiting_reason = f"rate limiter ({model or 'default'})"
+                await limiter.acquire()
+                self._state.waiting_reason = f"translating via {model or 'default'}"
+                self._state.current_model = model or TRANSLATOR_MODEL
+                self._state.requests_made += 1
+                return await translate_chapters_batch(
+                    api_key, chapters, source_language, target_language,
+                    model=model or TRANSLATOR_MODEL,
+                    max_output_tokens=max_output_tokens,
+                )
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                if is_quota_error(e):
+                    self._append_log({
+                        "event": "chain_advance",
+                        "from": model or "default",
+                        "reason": str(e)[:160],
+                    })
+                    continue
+                raise  # transient / other error — bubble up to retry loop
+        if last_err:
+            raise last_err
+        raise RuntimeError("all models in chain are at their daily cap")
+
     async def _translate_with_retry(
         self,
         *,
@@ -565,7 +665,7 @@ class TranslationQueueWorker:
         source_language: str,
         target_language: str,
         api_key: str,
-        model: str,
+        chain: list[str],
         max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     ) -> dict[int, list[str]]:
         last_err: Exception | None = None
@@ -576,8 +676,6 @@ class TranslationQueueWorker:
             if self._stop_event and self._stop_event.is_set():
                 break
             if delay:
-                # Surface the upcoming retry so the UI can show "Retrying in Ns"
-                # instead of a scary red "Last error" banner.
                 self._state.waiting_reason = f"retry backoff {delay:.0f}s"
                 self._state.retry_delay_seconds = delay
                 from datetime import datetime as _dt, timezone as _tz, timedelta as _td
@@ -586,29 +684,24 @@ class TranslationQueueWorker:
                 ).isoformat()
                 await asyncio.sleep(delay)
             try:
-                assert self._limiter is not None
-                self._state.waiting_reason = "rate limiter"
-                await self._limiter.acquire()
-                self._state.waiting_reason = "translating"
                 self._state.retry_attempt = attempt + 1
-                self._state.requests_made += 1
-                result = await translate_chapters_batch(
-                    api_key, chapters, source_language, target_language,
-                    model=model, max_output_tokens=max_output_tokens,
+                result = await self._call_api_with_chain(
+                    chain=chain,
+                    chapters=chapters,
+                    api_key=api_key,
+                    source_language=source_language,
+                    target_language=target_language,
+                    max_output_tokens=max_output_tokens,
                 )
                 # Success — clear retry state.
                 self._state.retry_attempt = 0
                 self._state.retry_delay_seconds = 0.0
                 self._state.retry_next_at = None
                 self._state.retry_reason = ""
-                # Don't stomp last_error (admin may want to see prior failures
-                # in history); just note success implicitly.
                 return result
             except Exception as e:  # noqa: BLE001
                 last_err = e
                 summary = str(e)[:200]
-                # Mark as a transient retry. Only elevate to last_error once
-                # retries are exhausted (below).
                 self._state.retry_attempt = attempt + 1
                 self._state.retry_reason = summary
                 self._append_log({
@@ -621,7 +714,6 @@ class TranslationQueueWorker:
                     "Queue batch translate failed (attempt %d/%d): %s",
                     attempt + 1, total_attempts, e,
                 )
-        # All retries exhausted — now it's a real error.
         if last_err:
             self._state.last_error = str(last_err)[:500]
             self._state.retry_attempt = 0

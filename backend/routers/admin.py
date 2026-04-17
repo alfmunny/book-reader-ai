@@ -32,8 +32,10 @@ from services.translation_queue import (
     SETTING_ENABLED,
     SETTING_MAX_OUTPUT_TOKENS,
     SETTING_MODEL,
+    SETTING_MODEL_CHAIN,
     SETTING_RPD,
     SETTING_RPM,
+    get_model_chain,
     clear_queue,
     delete_queue_for_book,
     delete_queue_item,
@@ -676,6 +678,7 @@ async def queue_status(_admin: dict = Depends(_require_admin)):
             "current_book_title": s.current_book_title,
             "current_target_language": s.current_target_language,
             "current_batch_size": s.current_batch_size,
+            "current_model": s.current_model,
             "last_completed_at": s.last_completed_at,
             "last_error": s.last_error,
             "started_at": s.started_at,
@@ -715,6 +718,7 @@ async def queue_get_settings(_admin: dict = Depends(_require_admin)):
     rpd = await get_setting(SETTING_RPD)
     model = await get_setting(SETTING_MODEL)
     max_tok = await get_setting(SETTING_MAX_OUTPUT_TOKENS)
+    chain = await get_model_chain()
     return {
         "enabled": enabled != "0",
         "has_api_key": bool(key),
@@ -722,6 +726,7 @@ async def queue_get_settings(_admin: dict = Depends(_require_admin)):
         "rpm": int(rpm) if rpm else None,
         "rpd": int(rpd) if rpd else None,
         "model": model or None,
+        "model_chain": chain,
         "max_output_tokens": int(max_tok) if max_tok else None,
     }
 
@@ -733,6 +738,7 @@ class QueueSettingsRequest(BaseModel):
     rpm: int | None = None
     rpd: int | None = None
     model: str | None = None
+    model_chain: list[str] | None = None
     max_output_tokens: int | None = None
 
 
@@ -759,6 +765,12 @@ async def queue_set_settings(
         await set_setting(SETTING_RPD, str(req.rpd))
     if req.model is not None:
         await set_setting(SETTING_MODEL, req.model)
+    if req.model_chain is not None:
+        # Keep the legacy single-model setting in sync with the chain head
+        # so any code path still reading SETTING_MODEL stays consistent.
+        await set_setting(SETTING_MODEL_CHAIN, json.dumps(req.model_chain))
+        if req.model_chain:
+            await set_setting(SETTING_MODEL, req.model_chain[0])
     if req.max_output_tokens is not None:
         await set_setting(SETTING_MAX_OUTPUT_TOKENS, str(req.max_output_tokens))
     queue_worker().wake()

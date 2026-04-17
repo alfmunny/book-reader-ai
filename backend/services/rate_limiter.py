@@ -55,6 +55,10 @@ class AsyncRateLimiter:
         rpm: int = 15,
         rpd: int = 1500,
         provider: str = "gemini",
+        # Per-model RPD tracking — each model in a fallback chain gets its
+        # own daily counter. Default "" keeps backward compat with callers
+        # that never cared which model they were hitting.
+        model: str = "",
         # clock injection makes the tests deterministic
         time_fn: Optional[Callable[[], float]] = None,
         sleep_fn: Optional[Callable[[float], "asyncio.Future[None]"]] = None,
@@ -64,6 +68,7 @@ class AsyncRateLimiter:
         self.rpm = rpm
         self.rpd = rpd
         self.provider = provider
+        self.model = model
         self._time = time_fn or (lambda: asyncio.get_event_loop().time())
         self._sleep = sleep_fn or asyncio.sleep
         self._rpm_window: deque[float] = deque()
@@ -114,8 +119,9 @@ class AsyncRateLimiter:
     async def _daily_count(self) -> int:
         async with aiosqlite.connect(db_module.DB_PATH) as db:
             async with db.execute(
-                "SELECT requests FROM rate_limiter_usage WHERE provider=? AND date=?",
-                (self.provider, _utc_today()),
+                "SELECT requests FROM rate_limiter_usage "
+                "WHERE provider=? AND model=? AND date=?",
+                (self.provider, self.model, _utc_today()),
             ) as cursor:
                 row = await cursor.fetchone()
         return row[0] if row else 0
@@ -128,10 +134,11 @@ class AsyncRateLimiter:
         async with aiosqlite.connect(db_module.DB_PATH) as db:
             await db.execute(
                 """
-                INSERT INTO rate_limiter_usage (provider, date, requests)
-                VALUES (?, ?, 1)
-                ON CONFLICT(provider, date) DO UPDATE SET requests = requests + 1
+                INSERT INTO rate_limiter_usage (provider, model, date, requests)
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT(provider, model, date)
+                   DO UPDATE SET requests = requests + 1
                 """,
-                (self.provider, _utc_today()),
+                (self.provider, self.model, _utc_today()),
             )
             await db.commit()

@@ -506,7 +506,13 @@ async def queue_status_for_chapter(
             (row["priority"], row["priority"], row["id"]),
         ) as cursor:
             (ahead,) = await cursor.fetchone()
+    # worker_running lets the reader UI tell the user whether the queue
+    # will actually process their chapter (admin may have stopped the
+    # worker). Without this, "queued · position N" looks identical to
+    # "stuck forever".
+    worker_running = _worker.is_running() if _worker else False
     return {
+        "worker_running": worker_running,
         "queued": row["status"] in ("pending", "running"),
         "status": row["status"],
         "position": (ahead + 1) if row["status"] == "pending" else 0,

@@ -260,6 +260,9 @@ export interface ChapterTranslationResponse {
   model?: string;
   position?: number | null;
   attempts?: number;
+  // True when the queue worker is actually running. Reader shows a
+  // distinct "worker offline" message when queued but !worker_running.
+  worker_running?: boolean;
 }
 
 export function requestChapterTranslation(

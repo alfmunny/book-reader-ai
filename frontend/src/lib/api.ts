@@ -228,6 +228,28 @@ export function getBookTranslationStatus(
   );
 }
 
+/** Is a specific chapter queued for background translation?
+ * Returned by the reader page before it fires an on-demand translate —
+ * if the chapter is already pending/running, we wait for the worker
+ * instead of duplicating the call.
+ */
+export interface ChapterQueueStatus {
+  queued: boolean;
+  status: "pending" | "running" | "done" | "failed" | "skipped" | null;
+  position: number | null; // 1-based position among pending rows
+  attempts: number;
+}
+
+export function getChapterQueueStatus(
+  bookId: number,
+  chapterIndex: number,
+  targetLanguage: string,
+): Promise<ChapterQueueStatus> {
+  return request<ChapterQueueStatus>(
+    `/books/${bookId}/chapters/${chapterIndex}/queue-status?target_language=${encodeURIComponent(targetLanguage)}`,
+  );
+}
+
 /** Save a completed progressive translation to the backend cache. */
 export function saveTranslationCache(
   bookId: number,

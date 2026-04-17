@@ -358,6 +358,69 @@ async def queue_summary() -> dict:
     return {"counts": counts, "by_book": by_book}
 
 
+async def mark_queue_row_done(
+    book_id: int, chapter_index: int, target_language: str,
+) -> int:
+    """Mark any pending/running row for this (book, chapter, lang) as done.
+
+    Called from save_translation so that when a translation lands from ANY
+    source — reader on-demand, bulk job, manual retranslate, queue worker
+    itself — any queued duplicate is retired immediately and the worker
+    doesn't waste a claim-then-skip tick on it.
+
+    Returns the number of rows updated (usually 0 or 1).
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        cursor = await db.execute(
+            """UPDATE translation_queue
+               SET status='done', updated_at=CURRENT_TIMESTAMP
+               WHERE book_id=? AND chapter_index=? AND target_language=?
+                 AND status IN ('pending', 'running')""",
+            (book_id, chapter_index, target_language),
+        )
+        await db.commit()
+        return cursor.rowcount
+
+
+async def queue_status_for_chapter(
+    book_id: int, chapter_index: int, target_language: str,
+) -> dict:
+    """User-facing view of one chapter's queue state.
+
+    Used by the reader page to decide whether to fire an on-demand
+    translate (not queued) or wait for the background worker (queued).
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT id, status, priority, attempts FROM translation_queue
+               WHERE book_id=? AND chapter_index=? AND target_language=?""",
+            (book_id, chapter_index, target_language),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if not row:
+            return {
+                "queued": False, "status": None,
+                "position": None, "attempts": 0,
+            }
+        # Rough position: how many pending rows are ahead of this one in the
+        # (priority, id) ordering the worker uses.
+        async with db.execute(
+            """SELECT COUNT(*) FROM translation_queue
+               WHERE status='pending' AND (
+                  priority < ? OR (priority = ? AND id < ?)
+               )""",
+            (row["priority"], row["priority"], row["id"]),
+        ) as cursor:
+            (ahead,) = await cursor.fetchone()
+    return {
+        "queued": row["status"] in ("pending", "running"),
+        "status": row["status"],
+        "position": (ahead + 1) if row["status"] == "pending" else 0,
+        "attempts": row["attempts"],
+    }
+
+
 async def clear_queue(status: str | None = None) -> int:
     """Delete ALL queue rows, or only rows matching a specific status.
 

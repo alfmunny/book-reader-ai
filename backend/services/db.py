@@ -286,6 +286,20 @@ async def save_translation(
         )
         await db.commit()
 
+    # Self-cleaning queue: any pending/running row for this (book, chapter,
+    # lang) gets marked 'done' so the worker doesn't claim and skip-cache
+    # later. Works for all save paths: reader on-demand, bulk job, manual
+    # retranslate, and even the worker's own save (no-op in that case).
+    # Lazy import for cycle safety; non-fatal on error.
+    try:
+        from services.translation_queue import mark_queue_row_done
+        await mark_queue_row_done(book_id, chapter_index, target_language)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Queue cleanup after save_translation failed", exc_info=True,
+        )
+
 
 async def count_translations_for_book(book_id: int, target_language: str) -> int:
     """Count how many chapters of a book have a translation cached."""

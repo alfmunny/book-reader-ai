@@ -26,7 +26,7 @@ class _Limits(TypedDict):
 # descending to highest-RPD model as a catch-all safety net. Overridable
 # via the Queue settings UI.
 DEFAULT_CHAIN: list[str] = [
-    "gemini-3.1-pro",
+    "gemini-3.1-pro-preview",
     "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-2.0-flash",
@@ -50,11 +50,11 @@ MODEL_LIMITS: dict[str, _Limits] = {
         "input_usd_per_m": 0.10, "output_usd_per_m": 0.40,
     },
     # Frontier 3.1 family
-    "gemini-3.1-pro": {
+    "gemini-3.1-pro-preview": {
         "rpm": 25, "rpd": 250, "max_output_tokens": 60000,
         "input_usd_per_m": 1.25, "output_usd_per_m": 10.00,
     },
-    "gemini-3.1-flash-lite": {
+    "gemini-3.1-flash-lite-preview": {
         "rpm": 4000, "rpd": 150000, "max_output_tokens": 7500,
         "input_usd_per_m": 0.10, "output_usd_per_m": 0.40,
     },

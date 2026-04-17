@@ -27,6 +27,7 @@ import {
   saveGeminiKey,
   deleteGeminiKey,
   retryChapterTranslation,
+  enqueueBookTranslation,
 } from "@/lib/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -392,6 +393,19 @@ test("retryChapterTranslation POSTs to the explicit retry URL", async () => {
   await retryChapterTranslation(1342, 5, "zh");
   const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
   expect(url).toContain("/books/1342/chapters/5/translation/retry");
+  expect(opts.method).toBe("POST");
+  expect(JSON.parse(opts.body).target_language).toBe("zh");
+});
+
+test("enqueueBookTranslation POSTs to /books/{id}/translations/enqueue-all", async () => {
+  // Reader-side whole-book translate button. Body shape mirrors the
+  // per-chapter translation endpoint so the backend can reuse the
+  // RequestTranslationBody pydantic model.
+  mockFetch({ ok: true, enqueued: 3 });
+  const res = await enqueueBookTranslation(1342, "zh");
+  expect(res.enqueued).toBe(3);
+  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(url).toContain("/books/1342/translations/enqueue-all");
   expect(opts.method).toBe("POST");
   expect(JSON.parse(opts.body).target_language).toBe("zh");
 });

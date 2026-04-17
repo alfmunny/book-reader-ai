@@ -218,6 +218,34 @@ async def request_chapter_translation(
     }
 
 
+@router.post("/{book_id}/translations/enqueue-all")
+async def enqueue_all_chapters(
+    book_id: int,
+    req: RequestTranslationBody,
+    user: dict = Depends(get_current_user),
+):
+    """Queue every not-yet-translated chapter of a book for one language.
+
+    Reader-side counterpart to the admin panel's per-book + Translate
+    button. Accepts any authenticated user; queued items use
+    priority=20 — above auto-enqueue (100) and admin per-book (50) so
+    the user who clicked is served ahead of background rescans, but
+    below the active reader's priority=10 so the chapter they're
+    currently staring at still wins.
+    """
+    from services.translation_queue import enqueue_for_book, worker
+
+    queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
+    enqueued = await enqueue_for_book(
+        book_id,
+        target_languages=[req.target_language],
+        priority=20,
+        queued_by=queued_by,
+    )
+    worker().wake()
+    return {"ok": True, "enqueued": enqueued}
+
+
 @router.post("/{book_id}/chapters/{chapter_index}/translation/retry")
 async def retry_chapter_translation(
     book_id: int,

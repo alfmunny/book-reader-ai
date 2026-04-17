@@ -299,6 +299,20 @@ export function retryChapterTranslation(
   );
 }
 
+export function enqueueBookTranslation(
+  bookId: number,
+  targetLanguage: string,
+): Promise<{ ok: boolean; enqueued: number }> {
+  return request<{ ok: boolean; enqueued: number }>(
+    `/books/${bookId}/translations/enqueue-all`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_language: targetLanguage }),
+    },
+  );
+}
+
 /** Save a completed progressive translation to the backend cache. */
 export function saveTranslationCache(
   bookId: number,

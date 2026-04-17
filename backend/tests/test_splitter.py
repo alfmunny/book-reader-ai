@@ -303,6 +303,54 @@ def test_build_chapters_from_html_splits_dramatic_speakers():
     assert "ZWEITER SCHÜLER" not in burger
 
 
+def test_build_chapters_from_html_folds_centered_subtitle_into_title():
+    """Faust ch. 25 encodes 'Walpurgisnachtstraum' in <h2> and the rest
+    of the title ('oder / Oberons und Titanias goldne Hochzeit /
+    Intermezzo') in a <p class="center"> immediately after. Without
+    folding, the body opens with an orphan 'oder' line."""
+    body_padding = "<br>".join("Word" for _ in range(200))
+    html = (
+        '<div class="chapter">'
+        '<h2>Walpurgisnachtstraum</h2>'
+        '<p class="center">oder<br>Oberons und Titanias goldne Hochzeit<br>Intermezzo</p>'
+        f'<p>THEATERMEISTER.<br>{body_padding}</p>'
+        '</div>'
+    )
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    ch = chapters[0]
+    # Subtitle is part of the title.
+    assert "Walpurgisnachtstraum" in ch.title
+    assert "Oberons und Titanias goldne Hochzeit" in ch.title
+    assert "Intermezzo" in ch.title
+    # Body no longer starts with a centered "oder …" paragraph.
+    paragraphs = [p for p in ch.text.split("\n\n") if p.strip()]
+    assert paragraphs
+    first = paragraphs[0]
+    assert not first.startswith("oder"), first
+    assert "Oberons und Titanias" not in first
+    assert first.startswith("THEATERMEISTER")
+
+
+def test_build_chapters_from_html_keeps_regular_first_paragraph():
+    """Regression guard: for chapters where the first <p> is ordinary
+    stage direction (not a centered subtitle), it must stay in the body."""
+    body_padding = "<br>".join("Word" for _ in range(200))
+    html = (
+        '<div class="chapter">'
+        '<h2>Studierzimmer</h2>'
+        '<p>Faust mit dem Pudel hereintretend.</p>'
+        f'<p>FAUST.<br>{body_padding}</p>'
+        '</div>'
+    )
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    # Title is just the heading — stage direction stays in body.
+    assert chapters[0].title == "Studierzimmer"
+    paragraphs = [p for p in chapters[0].text.split("\n\n") if p.strip()]
+    assert paragraphs[0].startswith("Faust mit dem Pudel")
+
+
 def test_build_chapters_from_html_splits_multi_speaker_cue():
     """Faust's Walpurgisnacht packs an IRRLICHT solo AND a 3-way choral
     stanza into one <p>: the cue for the choral piece is

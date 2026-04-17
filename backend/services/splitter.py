@@ -374,11 +374,38 @@ def build_chapters_from_html(html: str) -> list[Chapter]:
         # Extract title: first heading inside the block
         title_elems = div.xpath(".//h1 | .//h2 | .//h3")
         title = ""
+        title_elem = None
         if title_elems:
-            title = _html_text(title_elems[0])
+            title_elem = title_elems[0]
+            title = _html_text(title_elem)
+
+        # Subtitle: a `<p class="center">` immediately following the
+        # chapter heading is a semantic subtitle (Faust ch. 25 splits
+        # "Walpurgisnachtstraum" into an <h2> and a centered <p> for
+        # "oder / Oberons und Titanias goldne Hochzeit / Intermezzo").
+        # Fold it into the title so the body doesn't open with an
+        # orphaned "oder" line.
+        subtitle_elem = None
+        if title_elem is not None:
+            nxt = title_elem.getnext()
+            if (
+                nxt is not None
+                and isinstance(nxt.tag, str)
+                and nxt.tag == "p"
+                and "center" in (nxt.get("class") or "").split()
+            ):
+                subtitle_text = " ".join(
+                    line for line in _html_inline_text(nxt).splitlines() if line.strip()
+                ).strip()
+                if subtitle_text:
+                    title = f"{title} — {subtitle_text}" if title else subtitle_text
+                    subtitle_elem = nxt
 
         # Extract body text from all children except the title heading
-        body_text = _html_body_text(div, skip_first_heading=True)
+        # (and the subtitle paragraph, if any).
+        body_text = _html_body_text(
+            div, skip_first_heading=True, skip_elems=(subtitle_elem,) if subtitle_elem is not None else (),
+        )
         word_count = len(body_text.split())
 
         # Section divider detection. Gutenberg uses a flat structure where
@@ -437,19 +464,28 @@ def _html_text(elem) -> str:
     return " ".join(elem.itertext()).strip()
 
 
-def _html_body_text(elem, *, skip_first_heading: bool = False) -> str:
+def _html_body_text(
+    elem,
+    *,
+    skip_first_heading: bool = False,
+    skip_elems: tuple = (),
+) -> str:
     """Extract readable text from an HTML element, preserving paragraph breaks.
 
     Each `<p>` becomes one paragraph separated by blank lines. `<br>` becomes
     a single newline. Inline tags are flattened. The first `<h1>/<h2>/<h3>`
     is skipped when `skip_first_heading=True` (since the caller already used
-    it as the chapter title).
+    it as the chapter title). `skip_elems` lets the caller exclude specific
+    elements (e.g. a subtitle `<p>` already folded into the title).
     """
     parts: list[str] = []
     skipped_heading = not skip_first_heading
+    skip_set = {id(e) for e in skip_elems}
 
     for child in elem.iterchildren():
         tag = child.tag if isinstance(child.tag, str) else ""
+        if id(child) in skip_set:
+            continue
         if tag in ("h1", "h2", "h3") and not skipped_heading:
             skipped_heading = True
             continue

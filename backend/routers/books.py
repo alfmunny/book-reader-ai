@@ -86,7 +86,11 @@ async def translation_status(book_id: int, target_language: str):
     cached = await get_cached_book(book_id)
     total_chapters = 0
     if cached and cached.get("text"):
-        total_chapters = len(build_chapters(cached["text"]))
+        # Use the shared resolver so total_chapters matches what the reader
+        # displays (and what the queue worker processes).
+        from services.book_chapters import split_with_html_preference
+        chapters = await split_with_html_preference(book_id, cached["text"])
+        total_chapters = len(chapters)
 
     cached_translations = await count_translations_for_book(book_id, target_language)
 
@@ -248,43 +252,13 @@ async def book_chapters(book_id: int):
             msg = str(e) or type(e).__name__
             raise HTTPException(status_code=404, detail=msg)
 
-    chapters = await _split_with_html_preference(book_id, text)
+    from services.book_chapters import split_with_html_preference
+    chapters = await split_with_html_preference(book_id, text)
     return {
         "book_id": book_id,
         "meta": meta,
         "chapters": [{"title": c.title, "text": c.text} for c in chapters],
     }
-
-
-# In-memory cache of chapter splits — keyed by book_id. Populated on first
-# chapter-list request after a server restart; every subsequent request is
-# instant. Saves ~5s per request from the HTML fetch.
-_chapter_cache: dict[int, list] = {}
-
-
-async def _split_with_html_preference(book_id: int, text: str):
-    """Split a book, preferring HTML-based structure over regex-on-text.
-
-    Gutenberg HTML has explicit `<div class="chapter">` markup that survives
-    hierarchical structures (BOOK → CHAPTER nesting) gracefully. Only falls
-    back to the text splitter when HTML isn't available or doesn't parse.
-    """
-    if book_id in _chapter_cache:
-        return _chapter_cache[book_id]
-
-    try:
-        html = await get_book_html(book_id)
-        if html:
-            chapters = build_chapters_from_html(html)
-            if len(chapters) >= 2:
-                _chapter_cache[book_id] = chapters
-                return chapters
-    except Exception:
-        logger.exception("HTML split failed for book %s, falling back to text", book_id)
-
-    chapters = build_chapters(text)
-    _chapter_cache[book_id] = chapters
-    return chapters
 
 
 async def _fetch_and_cache(book_id: int) -> tuple[dict, str]:

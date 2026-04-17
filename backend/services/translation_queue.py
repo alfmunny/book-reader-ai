@@ -214,10 +214,12 @@ async def enqueue_for_book(
     if not book or not book.get("text"):
         return 0
     source = (book.get("languages") or [None])[0]
-    # build_chapters is CPU-heavy (regex passes over the full book text).
-    # Offload to a worker thread so the event loop stays responsive while
-    # startup housekeeping churns through the whole library.
-    chapters = await asyncio.to_thread(build_chapters, book["text"])
+    # Use the SAME splitter resolver the reader uses (HTML-preferring with
+    # text fallback). Without this, the reader showed Faust chapter 7
+    # with chapter 8's translation — different splitters produced
+    # different chapter indexing.
+    from services.book_chapters import split_with_html_preference
+    chapters = await split_with_html_preference(book_id, book["text"])
 
     inserted = 0
     for lang in target_languages:
@@ -801,7 +803,10 @@ class TranslationQueueWorker:
             mark_handled(items)
             return
         source = (book.get("languages") or ["en"])[0]
-        all_chapters = await asyncio.to_thread(build_chapters, book["text"])
+        # Match the reader's splitter exactly so chapter_index alignment
+        # stays consistent between the UI and the worker.
+        from services.book_chapters import split_with_html_preference
+        all_chapters = await split_with_html_preference(book_id, book["text"])
 
         works: list[ChapterWork] = []
         title = book.get("title") or str(book_id)

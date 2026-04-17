@@ -88,6 +88,18 @@ interface Props {
   adminFetch: AdminFetch;
 }
 
+// Small inline spinner — used next to section headers so a long-running
+// fetch spins just that panel rather than freezing the whole tab.
+function Spinner({ size = 12 }: { size?: number }) {
+  return (
+    <span
+      className="inline-block border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin align-middle"
+      style={{ width: size, height: size }}
+      aria-label="loading"
+    />
+  );
+}
+
 // SQLite returns "YYYY-MM-DD HH:MM:SS" in UTC. Render as a compact relative
 // age (e.g. "3m ago", "2h ago") — admins scan rows fastest that way.
 function relTime(ts: string | null | undefined): string {
@@ -113,6 +125,11 @@ export default function QueueTab({ adminFetch }: Props) {
   const [itemFilter, setItemFilter] = useState<"pending" | "running" | "failed" | "all">("pending");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // Per-section loading flags so a slow fetch spins only its own panel
+  // instead of freezing the whole tab. Each is set true at the start of
+  // the corresponding fetch and false on completion (success or error).
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [loadingCost, setLoadingCost] = useState(false);
   // Track whether the first load has completed — subsequent polls keep
   // prior data visible, but the very first render needs a clear loading
   // indicator so the panels don't pop in one-by-one looking broken.
@@ -162,6 +179,7 @@ export default function QueueTab({ adminFetch }: Props) {
   }
 
   async function refreshItems(filter: string = itemFilter) {
+    setLoadingItems(true);
     try {
       const its = await adminFetch(
         `/admin/queue/items?limit=100${
@@ -172,6 +190,8 @@ export default function QueueTab({ adminFetch }: Props) {
       setInitialLoaded(true);
     } catch {
       /* leave existing items visible if this poll fails */
+    } finally {
+      setLoadingItems(false);
     }
   }
 
@@ -179,11 +199,14 @@ export default function QueueTab({ adminFetch }: Props) {
     // Cost estimate is the slowest endpoint (scans the queue + books
     // text-length). Poll at a lazier cadence so it doesn't drag the
     // other panels or block the tab from reacting to user clicks.
+    setLoadingCost(true);
     try {
       const cst = await adminFetch("/admin/queue/cost-estimate");
       setCost(cst);
     } catch {
       /* best-effort */
+    } finally {
+      setLoadingCost(false);
     }
   }
 
@@ -560,9 +583,16 @@ export default function QueueTab({ adminFetch }: Props) {
                     );
                   }}
                   disabled={saving || chain.length === 0}
-                  className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
+                  className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
-                  Save chain
+                  {saving && (
+                    <span
+                      className="inline-block border-2 border-white/60 border-t-white rounded-full animate-spin"
+                      style={{ width: 10, height: 10 }}
+                      aria-label="saving"
+                    />
+                  )}
+                  {saving ? "Saving…" : "Save chain"}
                 </button>
               </div>
             </div>
@@ -773,7 +803,14 @@ export default function QueueTab({ adminFetch }: Props) {
       </div>
 
       {/* Cost analysis — back-of-envelope estimate of draining the pending queue
-          across each model. Helps decide whether to route through pro vs flash. */}
+          across each model. Helps decide whether to route through pro vs flash.
+          Shows its own spinner (not full-tab) because this is the slowest fetch. */}
+      {loadingCost && !cost && (
+        <div className="bg-white rounded-xl border border-amber-200 p-4 flex items-center gap-2 text-sm text-stone-500">
+          <Spinner />
+          Computing cost estimate…
+        </div>
+      )}
       {cost && cost.pending_items > 0 && (() => {
         const books = Math.max(1, cost.pending_books);
         // Map the model rows by name so we can highlight what's in the
@@ -786,7 +823,10 @@ export default function QueueTab({ adminFetch }: Props) {
         return (
           <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-3">
             <div className="flex items-baseline justify-between flex-wrap gap-2">
-              <h3 className="font-medium text-ink">Cost estimate (to drain queue)</h3>
+              <h3 className="font-medium text-ink flex items-center gap-2">
+                Cost estimate (to drain queue)
+                {loadingCost && <Spinner />}
+              </h3>
               <span className="text-[11px] text-stone-500">
                 {cost.pending_items} pending across {cost.pending_books} book
                 {cost.pending_books === 1 ? "" : "s"} ·{" "}
@@ -888,14 +928,18 @@ export default function QueueTab({ adminFetch }: Props) {
       {/* Queue items */}
       <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">
         <div className="px-4 py-2 border-b border-amber-100 flex items-center gap-2 text-sm">
-          <span className="font-medium">Items</span>
+          <span className="font-medium flex items-center gap-1.5">
+            Items
+            {loadingItems && <Spinner />}
+          </span>
           {(["pending", "running", "failed", "all"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setItemFilter(f)}
+              disabled={loadingItems && itemFilter !== f}
               className={`text-xs px-2 py-0.5 rounded ${
                 itemFilter === f ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
-              }`}
+              } disabled:opacity-40`}
             >
               {f}
             </button>
@@ -911,8 +955,9 @@ export default function QueueTab({ adminFetch }: Props) {
           </button>
         </div>
         {items.length === 0 ? (
-          <div className="px-4 py-8 text-center text-stone-400 text-sm">
-            No items in this view.
+          <div className="px-4 py-8 text-center text-stone-400 text-sm flex items-center justify-center gap-2">
+            {loadingItems && <Spinner />}
+            <span>{loadingItems ? "Loading items…" : "No items in this view."}</span>
           </div>
         ) : (
           <ul className="divide-y divide-amber-50 max-h-96 overflow-y-auto">

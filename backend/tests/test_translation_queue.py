@@ -190,6 +190,54 @@ async def test_worker_creates_per_model_limiter_with_correct_rates(tmp_db):
     assert (lim.rpm, lim.rpd) == (150, 1000)
 
 
+async def test_rescan_adds_newly_configured_language_without_admin_click(tmp_db):
+    """Admin adds a new target language to auto_translate_languages AFTER
+    books are already saved. The rescan helper should enqueue the missing
+    (book, new_lang) pairs on the next idle tick — no manual
+    'Queue every book' click required."""
+    from services.translation_queue import rescan_for_missing_translations
+    # Library exists, but no language configured yet.
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await save_book(2, BOOK_META, BOOK_TEXT)
+    assert len(await list_queue()) == 0
+
+    # Admin picks zh + de as auto-translate languages.
+    await set_setting(SETTING_AUTO_LANGS, json.dumps(["zh", "de"]))
+
+    added = await rescan_for_missing_translations()
+    # 2 books × 2 langs × 2 chapters = 8 queue rows.
+    assert added == 8
+    all_langs = {r["target_language"] for r in await list_queue()}
+    assert all_langs == {"zh", "de"}
+
+
+async def test_rescan_is_idempotent(tmp_db):
+    """Calling rescan twice shouldn't stack duplicate rows — relies on the
+    unique (book, chapter, lang) index."""
+    from services.translation_queue import rescan_for_missing_translations
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await set_setting(SETTING_AUTO_LANGS, json.dumps(["zh"]))
+    first = await rescan_for_missing_translations()
+    second = await rescan_for_missing_translations()
+    assert first > 0
+    assert second == 0
+
+
+async def test_reset_stale_running_rows_flips_to_pending(tmp_db):
+    """A process crash can leave rows stuck in 'running'. Startup cleanup
+    resets them so the next claim picks them up."""
+    from services.translation_queue import reset_stale_running_rows
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("UPDATE translation_queue SET status='running'")
+        await db.commit()
+    n = await reset_stale_running_rows()
+    assert n == 1
+    pending = await list_queue(status="pending")
+    assert len(pending) == 1
+
+
 async def test_save_translation_auto_clears_pending_queue_row(tmp_db):
     """save_translation must mark any matching pending/running queue row as
     done so the worker doesn't claim+skip it later."""

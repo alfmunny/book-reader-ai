@@ -484,6 +484,97 @@ async def test_admin_retry_failed_by_book_and_lang(admin_client, admin_db):
     assert by_key[(200, 0, "zh")]["status"] == "failed"
 
 
+# The short BOOK_TEXT above collapses to a single chapter under the
+# splitter's minimum-length heuristic. Move tests need ≥2 real chapters
+# so the "new_chapter_index" range check has room to exercise both
+# success and out-of-range paths.
+MOVE_BOOK_TEXT = (
+    "CHAPTER I\n\n" + ("Paragraph one. " * 40) + "\n\n"
+    + ("Paragraph two. " * 40) + "\n\n"
+    + "CHAPTER II\n\n" + ("Paragraph three. " * 40) + "\n\n"
+    + ("Paragraph four. " * 40) + "\n\n"
+    + "CHAPTER III\n\n" + ("Paragraph five. " * 40) + "\n\n"
+    + ("Paragraph six. " * 40)
+)
+
+
+async def test_move_translation_shifts_chapter_index(admin_client, admin_db):
+    """POST /admin/translations/{id}/{idx}/{lang}/move reassigns an existing
+    cached translation to a different chapter_index without retranslating.
+    Used to rescue stale translations after a splitter change."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 1, "en", ["Old chapter 2 text."])
+    res = await admin_client.post(
+        "/api/admin/translations/100/1/en/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 200, res.text
+    assert res.json() == {"ok": True, "from": 1, "to": 0}
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "en") == ["Old chapter 2 text."]
+    assert await get_cached_translation(100, 1, "en") is None
+
+
+async def test_move_translation_rejects_when_target_occupied(admin_client, admin_db):
+    """Target collision returns 409 so the admin can't silently overwrite
+    a translation they meant to keep."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 0, "en", ["First."])
+    await save_translation(100, 1, "en", ["Second."])
+    res = await admin_client.post(
+        "/api/admin/translations/100/1/en/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 409
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "en") == ["First."]
+    assert await get_cached_translation(100, 1, "en") == ["Second."]
+
+
+async def test_move_translation_rejects_out_of_range(admin_client, admin_db):
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 0, "en", ["First."])
+    res = await admin_client.post(
+        "/api/admin/translations/100/0/en/move",
+        json={"new_chapter_index": 99},
+    )
+    assert res.status_code == 400
+
+
+async def test_move_translation_404_when_source_missing(admin_client, admin_db):
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    res = await admin_client.post(
+        "/api/admin/translations/100/0/en/move",
+        json={"new_chapter_index": 1},
+    )
+    assert res.status_code == 404
+
+
+async def test_move_translation_clears_queue_at_destination(admin_client, admin_db):
+    """If a queue row exists at the destination (pending/failed/whatever),
+    it would later cause the worker to translate over the moved row.
+    The move must clean it up."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 1, "en", ["From slot 1."])
+    await _seed_failed(100, 0, "en")
+
+    res = await admin_client.post(
+        "/api/admin/translations/100/1/en/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM translation_queue "
+            "WHERE book_id=100 AND chapter_index=0 AND target_language='en'",
+        ) as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0
+
+
 async def test_admin_retry_failed_without_filters_retries_all(admin_client, admin_db):
     await _seed_failed(100, 0, "zh")
     await _seed_failed(200, 0, "fr")

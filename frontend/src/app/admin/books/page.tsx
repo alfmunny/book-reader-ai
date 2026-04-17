@@ -54,6 +54,10 @@ export default function BooksPage() {
   const [retranslating, setRetranslating] = useState<string | null>(null);
   const [bulkRetranslating, setBulkRetranslating] = useState<string | null>(null);
   const [retryingFailed, setRetryingFailed] = useState<string | null>(null);
+  // Per-row input for "Move to chapter N" action — keyed by
+  // `${book_id}:${chapter_index}:${lang}` so two open books don't share state.
+  const [moveInput, setMoveInput] = useState<Record<string, string>>({});
+  const [moving, setMoving] = useState<string | null>(null);
 
   const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
@@ -146,6 +150,44 @@ export default function BooksPage() {
       alert(e instanceof Error ? e.message : "Enqueue failed");
     } finally {
       setQueueingLangFor(null);
+    }
+  }
+
+  async function handleMove(t: TranslationEntry, rawInput: string) {
+    // User types a 1-based chapter number to match the visible "Ch. N"
+    // label; convert to 0-based for the backend.
+    const parsed = parseInt(rawInput.trim(), 10);
+    if (isNaN(parsed) || parsed < 1) {
+      alert("Enter a chapter number (1-based, e.g. 6).");
+      return;
+    }
+    const newIdx = parsed - 1;
+    if (newIdx === t.chapter_index) {
+      alert("Target chapter is the same as the source.");
+      return;
+    }
+    const rowKey = `${t.book_id}:${t.chapter_index}:${t.target_language}`;
+    if (
+      !confirm(
+        `Reassign translation from Ch. ${t.chapter_index + 1} to Ch. ${parsed} for ${t.target_language}?\nNo tokens are used — this only moves the existing cached paragraphs.`,
+      )
+    )
+      return;
+    setMoving(rowKey);
+    try {
+      await adminFetch(
+        `/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/move`,
+        {
+          method: "POST",
+          body: JSON.stringify({ new_chapter_index: newIdx }),
+        },
+      );
+      setMoveInput({ ...moveInput, [rowKey]: "" });
+      await load({ silent: true });
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Move failed");
+    } finally {
+      setMoving(null);
     }
   }
 
@@ -427,6 +469,32 @@ export default function BooksPage() {
                                           <span className="text-stone-400 flex-1">
                                             {(t.size_chars / 1000).toFixed(1)}K chars
                                           </span>
+                                          {/* Move-to: reassign the cached translation
+                                              to a different chapter index without
+                                              burning tokens. Used to fix splitter-
+                                              realignment cases where paragraphs are
+                                              correct but the chapter_index is wrong. */}
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            placeholder="→Ch"
+                                            value={moveInput[rowKey] ?? ""}
+                                            onChange={(e) =>
+                                              setMoveInput({ ...moveInput, [rowKey]: e.target.value })
+                                            }
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter") handleMove(t, moveInput[rowKey] ?? "");
+                                            }}
+                                            className="w-14 rounded border border-amber-300 px-1 py-0.5 text-xs"
+                                            title="Reassign this translation to another chapter number (1-based)"
+                                          />
+                                          <button
+                                            onClick={() => handleMove(t, moveInput[rowKey] ?? "")}
+                                            disabled={moving === rowKey || !(moveInput[rowKey] ?? "").trim()}
+                                            className="px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50"
+                                          >
+                                            {moving === rowKey ? "…" : "Move"}
+                                          </button>
                                           <button
                                             onClick={() => handleRetranslate(t)}
                                             disabled={retranslating === rowKey}

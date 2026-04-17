@@ -33,6 +33,7 @@ from services.translation_queue import (
     SETTING_MODEL,
     SETTING_RPD,
     SETTING_RPM,
+    clear_queue,
     delete_queue_for_book,
     delete_queue_item,
     enqueue_for_book,
@@ -790,6 +791,20 @@ async def queue_delete_item(
     item_id: int, _admin: dict = Depends(_require_admin),
 ):
     deleted = await delete_queue_item(item_id)
+    return {"ok": True, "deleted": deleted}
+
+
+@router.delete("/queue")
+async def queue_clear(
+    status: str | None = None,
+    _admin: dict = Depends(_require_admin),
+):
+    """Delete every queue row (optionally filtered by status).
+
+    ?status=failed  → wipe just the failed rows (safe to retry clean).
+    No filter       → clear the entire queue (admin confirms in the UI).
+    """
+    deleted = await clear_queue(status)
     return {"ok": True, "deleted": deleted}
 
 

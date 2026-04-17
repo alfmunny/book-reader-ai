@@ -8,6 +8,7 @@ import aiosqlite
 import services.db as db_module
 from services.db import init_db, save_book, get_cached_translation, set_setting
 from services.translation_queue import (
+    clear_queue,
     enqueue,
     enqueue_for_book,
     list_queue,
@@ -104,6 +105,28 @@ async def test_queue_summary_counts(tmp_db):
     assert summary["counts"].get("pending") == 2
     assert 7 in summary["by_book"]
     assert summary["by_book"][7]["zh"]["pending"] == 2
+
+
+async def test_clear_queue_all_and_by_status(tmp_db):
+    """clear_queue() wipes everything; clear_queue(status='failed') only wipes failed rows."""
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    await enqueue(2, 0, "de")
+    # Mark one as failed so we can test status filtering.
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='failed' WHERE book_id=2",
+        )
+        await db.commit()
+
+    removed = await clear_queue(status="failed")
+    assert removed == 1
+    remaining = await list_queue()
+    assert [(i["book_id"], i["chapter_index"]) for i in remaining] == [(1, 0), (1, 1)]
+
+    removed_all = await clear_queue()
+    assert removed_all == 2
+    assert await list_queue() == []
 
 
 async def test_worker_idles_without_api_key(tmp_db):

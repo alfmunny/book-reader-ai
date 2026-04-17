@@ -159,6 +159,21 @@ export default function QueueTab({ adminFetch }: Props) {
     await refresh();
   }
 
+  async function clearAll() {
+    const scope = itemFilter === "all" ? "ALL" : itemFilter;
+    if (!confirm(`Delete ${scope} queue items? This is irreversible (but you can re-enqueue via the Books tab).`)) return;
+    try {
+      const path = itemFilter === "all"
+        ? "/admin/queue"
+        : `/admin/queue?status=${itemFilter}`;
+      const res = await adminFetch(path, { method: "DELETE" });
+      alert(`Deleted ${res.deleted} queue item(s).`);
+      await refresh();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Clear failed");
+    }
+  }
+
   const s = status?.state;
   const counts = status?.counts || {};
   const totalPending = counts.pending || 0;
@@ -463,6 +478,14 @@ export default function QueueTab({ adminFetch }: Props) {
             </button>
           ))}
           <span className="ml-auto text-xs text-stone-500">{items.length} shown</span>
+          <button
+            onClick={clearAll}
+            disabled={items.length === 0}
+            className="text-xs px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
+            title={itemFilter === "all" ? "Clear entire queue" : `Clear all ${itemFilter}`}
+          >
+            {itemFilter === "all" ? "Clear queue" : `Clear ${itemFilter}`}
+          </button>
         </div>
         {items.length === 0 ? (
           <div className="px-4 py-8 text-center text-stone-400 text-sm">

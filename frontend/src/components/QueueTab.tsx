@@ -37,6 +37,11 @@ interface WorkerState {
   chapters_done: number;
   chapters_failed: number;
   waiting_reason: string;
+  retry_attempt?: number;
+  retry_max?: number;
+  retry_delay_seconds?: number;
+  retry_next_at?: string | null;
+  retry_reason?: string;
   log: WorkerLog[];
 }
 
@@ -231,7 +236,25 @@ export default function QueueTab({ adminFetch }: Props) {
           )}
         </div>
 
-        {s?.last_error && (
+        {/* Retry banner — amber, appears while the worker is backing off
+            between attempts. Shows the upcoming attempt number + error so
+            the admin knows this is transient, not a hard failure. */}
+        {s?.retry_attempt && s.retry_attempt > 0 && s.retry_max ? (
+          <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+            <div className="font-medium">
+              Retrying · attempt {s.retry_attempt}/{s.retry_max}
+              {s.retry_delay_seconds && s.retry_delay_seconds > 0
+                ? ` · backing off ${Math.round(s.retry_delay_seconds)}s`
+                : ""}
+            </div>
+            {s.retry_reason && (
+              <div className="text-amber-600 truncate">{s.retry_reason}</div>
+            )}
+          </div>
+        ) : null}
+
+        {/* Hard error — only shown once retries are exhausted. */}
+        {s?.last_error && !(s.retry_attempt && s.retry_attempt > 0) && (
           <div className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 truncate">
             Last error: {s.last_error}
           </div>

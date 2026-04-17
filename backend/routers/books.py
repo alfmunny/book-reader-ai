@@ -218,6 +218,40 @@ async def request_chapter_translation(
     }
 
 
+@router.post("/{book_id}/chapters/{chapter_index}/translation/retry")
+async def retry_chapter_translation(
+    book_id: int,
+    chapter_index: int,
+    req: RequestTranslationBody,
+    user: dict = Depends(get_current_user),
+):
+    """Re-queue a single chapter whose queue row is in 'failed' state.
+
+    Distinct from `request_chapter_translation` because that endpoint uses
+    INSERT OR IGNORE — a failed row would stay failed forever. Retry is an
+    explicit action: admin or reader clicks a button. Resets the queue row
+    to pending + attempts=0 and bumps priority to 10 (reader-initiated).
+    """
+    from services.translation_queue import enqueue, queue_status_for_chapter, worker
+
+    queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
+    await enqueue(
+        book_id, chapter_index, req.target_language,
+        priority=10,
+        reset_failed=True,
+        queued_by=queued_by,
+    )
+    worker().wake()
+    fresh = await queue_status_for_chapter(
+        book_id, chapter_index, req.target_language,
+    )
+    return {
+        "status": fresh["status"],
+        "position": fresh["position"],
+        "attempts": 0,
+    }
+
+
 @router.get("/{book_id}")
 async def book_meta(book_id: int):
     cached = await get_cached_book(book_id)

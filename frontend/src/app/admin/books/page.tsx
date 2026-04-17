@@ -53,6 +53,7 @@ export default function BooksPage() {
   const [queueingLangFor, setQueueingLangFor] = useState<string | null>(null);
   const [retranslating, setRetranslating] = useState<string | null>(null);
   const [bulkRetranslating, setBulkRetranslating] = useState<string | null>(null);
+  const [retryingFailed, setRetryingFailed] = useState<string | null>(null);
 
   const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
@@ -145,6 +146,24 @@ export default function BooksPage() {
       alert(e instanceof Error ? e.message : "Enqueue failed");
     } finally {
       setQueueingLangFor(null);
+    }
+  }
+
+  async function retryFailedForLang(book: Book, lang: string, failedCount: number) {
+    const key = `${book.id}:${lang}`;
+    if (!confirm(`Retry ${failedCount} failed chapter(s) of "${book.title}" → ${lang}?`)) return;
+    setRetryingFailed(key);
+    try {
+      const res = await adminFetch("/admin/queue/retry-failed", {
+        method: "POST",
+        body: JSON.stringify({ book_id: book.id, target_language: lang }),
+      });
+      alert(`Re-queued ${res.updated} failed chapter(s) of "${book.title}" → ${lang}.`);
+      await load({ silent: true });
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Retry failed");
+    } finally {
+      setRetryingFailed(null);
     }
   }
 
@@ -242,19 +261,31 @@ export default function BooksPage() {
                             : pending > 0
                               ? "bg-stone-50 border-stone-200 text-stone-600"
                               : "bg-amber-50 border-amber-200 text-amber-700";
+                      const retryKey = `${b.id}:${lang}`;
                       return (
-                        <span
-                          key={lang}
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full border ${tone}`}
-                          title={pieces.join(" · ")}
-                        >
-                          {lang} · {count}
-                          {pending + running + failed > 0 && (
-                            <span className="ml-1 opacity-70">
-                              {running > 0 && `▶${running}`}
-                              {pending > 0 && `⏳${pending}`}
-                              {failed > 0 && `!${failed}`}
-                            </span>
+                        <span key={lang} className="inline-flex items-center gap-0.5">
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full border ${tone}`}
+                            title={pieces.join(" · ")}
+                          >
+                            {lang} · {count}
+                            {pending + running + failed > 0 && (
+                              <span className="ml-1 opacity-70">
+                                {running > 0 && `▶${running}`}
+                                {pending > 0 && `⏳${pending}`}
+                                {failed > 0 && `!${failed}`}
+                              </span>
+                            )}
+                          </span>
+                          {failed > 0 && (
+                            <button
+                              onClick={() => retryFailedForLang(b, lang, failed)}
+                              disabled={retryingFailed === retryKey}
+                              title={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
+                              className="text-[10px] px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {retryingFailed === retryKey ? "…" : "↻"}
+                            </button>
                           )}
                         </span>
                       );

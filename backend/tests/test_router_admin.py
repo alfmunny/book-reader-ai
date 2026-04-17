@@ -431,3 +431,70 @@ async def test_seed_popular_refuses_concurrent_start(admin_client, admin_db, mon
 
         # Clean up — stop the job
         await admin_client.post("/api/admin/books/seed-popular/stop")
+
+
+# ── Retry-failed bulk endpoint ───────────────────────────────────────────────
+
+async def _seed_failed(book_id: int, chapter_index: int, target_language: str):
+    """Helper: insert a failed queue row for retry-failed tests."""
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority,
+                    status, attempts, last_error)
+               VALUES (?, ?, ?, ?, 'failed', 3, 'boom')""",
+            (book_id, chapter_index, target_language, 100),
+        )
+        await conn.commit()
+
+
+async def test_admin_retry_failed_by_book_and_lang(admin_client, admin_db):
+    """POST /admin/queue/retry-failed with {book_id, target_language}
+    revives only failed rows matching both filters — other failed rows
+    stay failed."""
+    await _seed_failed(100, 0, "zh")
+    await _seed_failed(100, 1, "zh")
+    await _seed_failed(100, 0, "fr")   # different language
+    await _seed_failed(200, 0, "zh")   # different book
+
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"book_id": 100, "target_language": "zh"},
+    )
+    assert res.status_code == 200
+    assert res.json()["updated"] == 2
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT book_id, chapter_index, target_language, status, attempts "
+            "FROM translation_queue ORDER BY book_id, chapter_index, target_language",
+        ) as cursor:
+            rows = [dict(r) for r in await cursor.fetchall()]
+
+    by_key = {
+        (r["book_id"], r["chapter_index"], r["target_language"]): r for r in rows
+    }
+    # Matched rows reset.
+    assert by_key[(100, 0, "zh")]["status"] == "pending"
+    assert by_key[(100, 0, "zh")]["attempts"] == 0
+    assert by_key[(100, 1, "zh")]["status"] == "pending"
+    # Non-matching stay failed.
+    assert by_key[(100, 0, "fr")]["status"] == "failed"
+    assert by_key[(200, 0, "zh")]["status"] == "failed"
+
+
+async def test_admin_retry_failed_without_filters_retries_all(admin_client, admin_db):
+    await _seed_failed(100, 0, "zh")
+    await _seed_failed(200, 0, "fr")
+
+    res = await admin_client.post("/api/admin/queue/retry-failed", json={})
+    assert res.status_code == 200
+    assert res.json()["updated"] == 2
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE status='failed'",
+        ) as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0

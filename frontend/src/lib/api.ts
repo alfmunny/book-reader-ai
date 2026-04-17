@@ -284,6 +284,21 @@ export function requestChapterTranslation(
   );
 }
 
+export function retryChapterTranslation(
+  bookId: number,
+  chapterIndex: number,
+  targetLanguage: string,
+): Promise<ChapterTranslationResponse> {
+  return request<ChapterTranslationResponse>(
+    `/books/${bookId}/chapters/${chapterIndex}/translation/retry`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_language: targetLanguage }),
+    },
+  );
+}
+
 /** Save a completed progressive translation to the backend cache. */
 export function saveTranslationCache(
   bookId: number,

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -338,6 +338,25 @@ export default function ReaderPage() {
     setTimeout(() => setTranslationEnabled(true), 50);
   }
 
+  async function handleRetryFailed() {
+    // Different from handleRetranslate: there is no cached translation to
+    // delete (the chapter failed), we just need to revive the failed queue
+    // row so the worker picks it up again. Clearing frontend state + the
+    // toggle dance re-starts polling once the row is pending.
+    const bid = Number(bookId);
+    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
+    try {
+      await retryChapterTranslation(bid, chapterIndex, translationLang);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Retry failed");
+      return;
+    }
+    translationCache.current.delete(cacheKey);
+    setTranslatedParagraphs([]);
+    setTranslationEnabled(false);
+    setTimeout(() => setTranslationEnabled(true), 50);
+  }
+
   const handleSelection = useCallback(() => {
     const sel = window.getSelection()?.toString().trim() || "";
     if (sel.length > 10) setSelectedText(sel);
@@ -611,6 +630,21 @@ export default function ReaderPage() {
                   Retranslate
                 </button>
               )}
+
+              {/* Any user can retry their own failed chapter — the queue row
+                  is in 'failed' state, a fresh request is idempotent, and
+                  priority=10 means the worker picks it up ahead of background
+                  auto-enqueued items. */}
+              {!translationLoading &&
+                translationUsedProvider.startsWith("queue failed") && (
+                  <button
+                    onClick={handleRetryFailed}
+                    className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 ml-auto"
+                    title="Re-queue this chapter for the background worker"
+                  >
+                    Retry
+                  </button>
+                )}
             </>
           )}
         </div>

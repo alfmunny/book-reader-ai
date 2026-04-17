@@ -191,3 +191,72 @@ async def test_import_stream_done_event_on_uncached_book(client):
     assert resp.status_code == 200
     events = _parse_sse(resp.text)
     assert any(e["event"] == "done" for e in events)
+
+
+# ── Retry-failed-chapter endpoint ────────────────────────────────────────────
+
+async def test_retry_chapter_translation_revives_failed_row(client):
+    """POST /chapters/{idx}/translation/retry resets a 'failed' queue row
+    to 'pending' with attempts=0 so the worker picks it up again. Without
+    this endpoint the reader's normal translation request (INSERT OR IGNORE)
+    would leave the row failed forever."""
+    import aiosqlite
+    import services.db as db_module
+
+    await save_book(1342, MOCK_META, "text")
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority,
+                    status, attempts, last_error)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (1342, 0, "zh", 100, "failed", 3, "boom"),
+        )
+        await conn.commit()
+
+    resp = await client.post(
+        "/api/books/1342/chapters/0/translation/retry",
+        json={"target_language": "zh"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "pending"
+    assert data["attempts"] == 0
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT status, attempts, last_error, priority "
+            "FROM translation_queue WHERE book_id=1342 AND chapter_index=0 AND target_language='zh'",
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row["status"] == "pending"
+    assert row["attempts"] == 0
+    assert row["last_error"] is None
+    # Reader-initiated retry uses priority=10 (matches request_chapter_translation)
+    assert row["priority"] == 10
+
+
+async def test_retry_chapter_translation_inserts_if_no_row(client):
+    """If no queue row exists yet (e.g. failed row was deleted), retry
+    still succeeds and creates a pending row."""
+    import aiosqlite
+    import services.db as db_module
+
+    await save_book(1342, MOCK_META, "text")
+    resp = await client.post(
+        "/api/books/1342/chapters/2/translation/retry",
+        json={"target_language": "fr"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "pending"
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT status, priority FROM translation_queue "
+            "WHERE book_id=1342 AND chapter_index=2 AND target_language='fr'",
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row["status"] == "pending"
+    assert row["priority"] == 10

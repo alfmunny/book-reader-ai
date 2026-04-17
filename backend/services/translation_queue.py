@@ -272,6 +272,13 @@ class WorkerState:
     chapters_done: int = 0
     chapters_failed: int = 0
     waiting_reason: str = ""
+    # Live retry state — distinguishes "transiently backing off" from
+    # "permanently failed" in the UI. Cleared on a successful call.
+    retry_attempt: int = 0          # 1-based; 0 means "not currently retrying"
+    retry_max: int = 0              # total attempts allowed (retries + 1)
+    retry_delay_seconds: float = 0.0
+    retry_next_at: Optional[str] = None  # ISO-8601 UTC timestamp
+    retry_reason: str = ""          # short transient error, e.g. "503 UNAVAILABLE"
     log: list[dict] = field(default_factory=list)
 
 
@@ -517,28 +524,63 @@ class TranslationQueueWorker:
         model: str,
     ) -> dict[int, list[str]]:
         last_err: Exception | None = None
-        for attempt, delay in enumerate([0.0, *RETRY_BACKOFF]):
+        delays = [0.0, *RETRY_BACKOFF]
+        total_attempts = len(delays)
+        self._state.retry_max = total_attempts
+        for attempt, delay in enumerate(delays):
             if self._stop_event and self._stop_event.is_set():
                 break
             if delay:
+                # Surface the upcoming retry so the UI can show "Retrying in Ns"
+                # instead of a scary red "Last error" banner.
                 self._state.waiting_reason = f"retry backoff {delay:.0f}s"
+                self._state.retry_delay_seconds = delay
+                from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+                self._state.retry_next_at = (
+                    _dt.now(_tz.utc) + _td(seconds=delay)
+                ).isoformat()
                 await asyncio.sleep(delay)
             try:
                 assert self._limiter is not None
                 self._state.waiting_reason = "rate limiter"
                 await self._limiter.acquire()
                 self._state.waiting_reason = "translating"
+                self._state.retry_attempt = attempt + 1
                 self._state.requests_made += 1
-                return await translate_chapters_batch(
+                result = await translate_chapters_batch(
                     api_key, chapters, source_language, target_language, model=model,
                 )
+                # Success — clear retry state.
+                self._state.retry_attempt = 0
+                self._state.retry_delay_seconds = 0.0
+                self._state.retry_next_at = None
+                self._state.retry_reason = ""
+                # Don't stomp last_error (admin may want to see prior failures
+                # in history); just note success implicitly.
+                return result
             except Exception as e:  # noqa: BLE001
                 last_err = e
-                self._state.last_error = str(e)[:500]
+                summary = str(e)[:200]
+                # Mark as a transient retry. Only elevate to last_error once
+                # retries are exhausted (below).
+                self._state.retry_attempt = attempt + 1
+                self._state.retry_reason = summary
+                self._append_log({
+                    "event": "retry",
+                    "attempt": attempt + 1,
+                    "max": total_attempts,
+                    "error": summary,
+                })
                 logger.warning(
-                    "Queue batch translate failed (attempt %d): %s", attempt + 1, e,
+                    "Queue batch translate failed (attempt %d/%d): %s",
+                    attempt + 1, total_attempts, e,
                 )
+        # All retries exhausted — now it's a real error.
         if last_err:
+            self._state.last_error = str(last_err)[:500]
+            self._state.retry_attempt = 0
+            self._state.retry_delay_seconds = 0.0
+            self._state.retry_next_at = None
             logger.error("Queue batch failed permanently: %s", last_err)
         return {}
 

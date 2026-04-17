@@ -155,6 +155,41 @@ async def test_worker_idles_when_disabled(tmp_db):
     assert w._state.enabled is False
 
 
+async def test_worker_exposes_retry_state_on_transient_error(tmp_db, monkeypatch):
+    """A transient 503 must surface as retry_attempt/retry_reason, not last_error.
+    Only after retries are exhausted does it become last_error."""
+    from services.auth import encrypt_api_key
+    import services.translation_queue as tq
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    # Fail every attempt — don't waste time sleeping in the test.
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0, 0.0))
+
+    async def always_503(*args, **kwargs):
+        raise RuntimeError("503 UNAVAILABLE. model overloaded")
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=always_503):
+        with patch.object(
+            __import__("services.translation_queue", fromlist=["AsyncRateLimiter"]).AsyncRateLimiter,
+            "acquire",
+            new=AsyncMock(return_value=None),
+        ):
+            await w._tick()
+
+    # After exhaustion: last_error set, retry_attempt cleared back to 0.
+    assert "503" in w._state.last_error
+    assert w._state.retry_attempt == 0
+    # The log must record each retry so the admin can see the timeline.
+    retry_events = [e for e in w._state.log if e.get("event") == "retry"]
+    assert len(retry_events) >= 1
+    assert "503" in retry_events[-1]["error"]
+
+
 async def test_worker_skips_already_cached_chapter(tmp_db):
     """If a translation lands between enqueue and claim, the worker must
     NOT re-translate — that would waste tokens on work already done."""

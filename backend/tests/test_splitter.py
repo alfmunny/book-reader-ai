@@ -351,6 +351,38 @@ def test_build_chapters_from_html_keeps_regular_first_paragraph():
     assert paragraphs[0].startswith("Faust mit dem Pudel")
 
 
+def test_html_inline_text_normalises_crlf_between_verse_lines():
+    """Gutenberg HTML ships with Windows-style `\\r\\n` line endings, so
+    after converting `<br>` to `\\n` the verse lines end up separated by
+    `\\n\\r\\n`. Without stripping `\\r`, the reader's whitespace-pre-wrap
+    rendered the `\\r` as a second segment break (or the `\\n` was lost
+    in CSS collapse in non-pre mode), gluing verse lines together."""
+    from services.splitter import build_chapters_from_html
+
+    padding = "<br>".join("Word" for _ in range(200))
+    # <br> followed by \r\n + indentation in the HTML source
+    html = (
+        '<div class="chapter">'
+        '<h2>Hexenküche</h2>'
+        '<p>\r\n'
+        'FAUST.<br>\r\n'
+        '    Line one,<br>\r\n'
+        '    Line two,<br>\r\n'
+        '    Line three.\r\n'
+        '</p>'
+        f'<p>{padding}</p>'
+        '</div>'
+    )
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    paragraphs = [p for p in chapters[0].text.split("\n\n") if p.strip()]
+    first = paragraphs[0]
+    # After the splitter there must be NO carriage returns between
+    # verse lines — just single `\n`.
+    assert "\r" not in first, repr(first)
+    assert first == "FAUST.\nLine one,\nLine two,\nLine three."
+
+
 def test_build_chapters_from_html_splits_multi_speaker_cue():
     """Faust's Walpurgisnacht packs an IRRLICHT solo AND a 3-way choral
     stanza into one <p>: the cue for the choral piece is

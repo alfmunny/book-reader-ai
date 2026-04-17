@@ -139,3 +139,62 @@ describe("inline mode", () => {
     expect(container.querySelector(".animate-pulse")).not.toBeInTheDocument();
   });
 });
+
+// ── Verse / prose rendering ─────────────────────────────────────────────────
+//
+// Faust's dramatic verse (lines ≤ 60 chars, each ending a metrical unit)
+// was being glued by the old `unwrap` that replaced `\n` between verse
+// lines with a space. Regression tests for both the verse path and the
+// prose path live here.
+
+describe("source text rendering", () => {
+  const VERSE = [
+    "FAUST.",
+    "O Liebe, leihe mir den schnellsten deiner Flügel,",
+    "Und führe mich in ihr Gefild!",
+  ].join("\n");
+
+  // Matches Gutenberg's 72–80 char plain-text wrap. Multiple lines
+  // exceed the 60-char verse threshold, so this paragraph is classified
+  // as prose and its mid-sentence breaks are joined.
+  const PROSE_HARDWRAPPED = [
+    "Call me Ishmael. Some years ago—never mind how long precisely—having",
+    "little or no money in my purse, and nothing particular to interest me",
+    "on shore, I thought I would sail about a little and see the watery",
+    "part of the world.",
+  ].join("\n");
+
+  it("preserves verse line breaks on the source side", () => {
+    const { container } = render(
+      <TranslationView
+        paragraphs={[VERSE]}
+        translations={["stub"]}
+        displayMode="parallel"
+        loading={false}
+      />,
+    );
+    const sourceP = container.querySelector("p.whitespace-pre-wrap");
+    expect(sourceP).not.toBeNull();
+    // The \n's must survive into the rendered text so CSS pre-wrap
+    // turns them into line breaks.
+    expect(sourceP!.textContent).toContain("FAUST.\nO Liebe");
+    expect(sourceP!.textContent).toContain("Flügel,\nUnd führe");
+  });
+
+  it("joins prose hard-wraps into flowing text", () => {
+    const { container } = render(
+      <TranslationView
+        paragraphs={[PROSE_HARDWRAPPED]}
+        translations={["stub"]}
+        displayMode="parallel"
+        loading={false}
+      />,
+    );
+    const sourceP = container.querySelector("p.whitespace-pre-wrap");
+    expect(sourceP).not.toBeNull();
+    // Every mid-sentence \n (not right after a sentence-ending char)
+    // should have been collapsed to a space.
+    expect(sourceP!.textContent).not.toContain("\n");
+    expect(sourceP!.textContent).toContain("how long precisely");
+  });
+});

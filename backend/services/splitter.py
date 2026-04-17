@@ -590,11 +590,12 @@ def _html_inline_text(elem) -> str:
         if child.tail:
             chunks.append(child.tail)
     text = "".join(chunks)
-    # Collapse any sequence containing a newline (and surrounding spaces/tabs)
-    # to a single newline. Preserves stanza-internal line breaks while
-    # removing the indentation artifacts that would otherwise look like
-    # paragraph boundaries to the reader's paragraph-splitter.
-    text = re.sub(r"[ \t]*\n[ \t\n]*", "\n", text)
+    # Collapse any sequence containing a newline (and surrounding
+    # whitespace, incl. `\r` from Windows-style HTML source line
+    # endings) to a single newline. Preserves stanza-internal line
+    # breaks while removing indentation artifacts that would otherwise
+    # leave `\n\r\n` between verses (reader then renders them glued).
+    text = re.sub(r"[ \t\r]*\n[ \t\r\n]*", "\n", text)
     return text.strip()
 
 

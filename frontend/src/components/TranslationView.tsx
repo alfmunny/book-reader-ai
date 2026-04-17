@@ -1,9 +1,29 @@
 "use client";
 
-/** Join Gutenberg hard wraps (single \n mid-sentence) into flowing text.
- *  Keeps intentional breaks after sentence-ending punctuation. */
-function unwrap(text: string): string {
-  return text.replace(/(?<![.!?:;\"'\u201d])\n(?!\n)/g, " ");
+/**
+ * Per-paragraph text preparation for the reader's left column.
+ *
+ * Two different line-break semantics in our data:
+ *  - HTML-sourced chapters (Faust etc.): `\n` is an intentional verse
+ *    break from `<br>`. Must be preserved visually.
+ *  - Plain-text-sourced chapters: `\n` is Gutenberg's 72–80 char hard
+ *    wrap in the middle of prose. Must be joined back so the line
+ *    flows naturally.
+ *
+ * Classify per paragraph using the same heuristic as SentenceReader:
+ * a multi-line paragraph where EVERY line is ≤ 60 chars looks like
+ * verse (dramatic metre rarely exceeds 60). Anything longer is prose,
+ * and `\n` mid-sentence is joined with a space — except after
+ * sentence-ending punctuation where the break was clearly intentional.
+ */
+function renderSource(text: string): string {
+  const lines = text.split("\n");
+  if (lines.length >= 2 && lines.every((l) => l.trim().length <= 60)) {
+    // Verse: keep the `\n` so pre-wrap renders line breaks.
+    return text;
+  }
+  // Prose: join mid-sentence hard-wraps.
+  return text.replace(/(?<![.!?:;"'\u201d])\n(?!\n)/g, " ");
 }
 
 interface Props {
@@ -19,7 +39,9 @@ export default function TranslationView({ paragraphs, translations, displayMode,
       <div className="max-w-5xl mx-auto divide-y divide-amber-100">
         {paragraphs.map((para, i) => (
           <div key={i} className="grid grid-cols-2 gap-6 py-4 first:pt-0 last:pb-0">
-            <p className="font-serif text-base text-ink leading-relaxed">{unwrap(para)}</p>
+            <p className="font-serif text-base text-ink leading-relaxed whitespace-pre-wrap">
+              {renderSource(para)}
+            </p>
             <div className="border-l border-amber-200 pl-6">
               {translations[i] ? (
                 <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
@@ -44,7 +66,9 @@ export default function TranslationView({ paragraphs, translations, displayMode,
     <div className="prose-reader mx-auto space-y-6">
       {paragraphs.map((para, i) => (
         <div key={i}>
-          <p className="font-serif text-base text-ink leading-relaxed">{unwrap(para)}</p>
+          <p className="font-serif text-base text-ink leading-relaxed whitespace-pre-wrap">
+            {renderSource(para)}
+          </p>
           {loading && i === 0 && !translations.length && (
             <div className="mt-1 space-y-1 animate-pulse">
               <div className="h-3 bg-amber-100 rounded w-full" />

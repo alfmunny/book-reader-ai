@@ -77,6 +77,8 @@ async def run(db_path: str) -> list[str]:
              "SELECT 1 FROM pragma_table_info('translations') WHERE name='provider'"),
             ("008_translation_queue",
              "SELECT name FROM sqlite_master WHERE type='table' AND name='translation_queue'"),
+            ("009_queue_queued_by",
+             "SELECT 1 FROM pragma_table_info('translation_queue') WHERE name='queued_by'"),
         ]
         bootstrapped: list[str] = []
         for version, check_sql in bootstrap_checks:

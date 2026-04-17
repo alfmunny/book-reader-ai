@@ -60,12 +60,20 @@ SETTING_ENABLED = "queue_enabled"            # "1" or "0"
 SETTING_RPM = "queue_rpm"
 SETTING_RPD = "queue_rpd"
 SETTING_MODEL = "queue_model"
+SETTING_MAX_OUTPUT_TOKENS = "queue_max_output_tokens"  # per-request budget
 
 DEFAULT_RPM = 12
 DEFAULT_RPD = 1400
 IDLE_POLL_SECONDS = 10.0
 MAX_ATTEMPTS = 5
 RETRY_BACKOFF = (1.0, 5.0, 20.0, 60.0, 300.0)
+
+# Every time a batch fails, the rows' priority is bumped by this much so the
+# worker moves on to other (book, language) groups instead of spinning on
+# the same bad one. Rows stay pending and will be retried later when the
+# rest of the queue is exhausted, but they no longer block other books.
+FAIL_PRIORITY_BUMP = 1000
+DEFAULT_PRIORITY = 100
 
 
 # ── Queue row helpers ────────────────────────────────────────────────────────
@@ -89,32 +97,37 @@ async def enqueue(
     *,
     priority: int = 100,
     reset_failed: bool = False,
+    queued_by: str | None = None,
 ) -> None:
     """Insert (or no-op) a single queue item.
 
     If `reset_failed=True`, an existing row whose status is 'failed' or 'done'
     will be revived to 'pending' (used when the admin clicks "Retranslate").
+
+    `queued_by` is a free-form label — usually the admin's email. NULL
+    means the row was auto-enqueued by save_book and no admin is attributable.
     """
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         if reset_failed:
             await db.execute(
                 """INSERT INTO translation_queue
-                       (book_id, chapter_index, target_language, priority, status)
-                   VALUES (?, ?, ?, ?, 'pending')
+                       (book_id, chapter_index, target_language, priority, status, queued_by)
+                   VALUES (?, ?, ?, ?, 'pending', ?)
                    ON CONFLICT(book_id, chapter_index, target_language) DO UPDATE
                      SET status='pending',
                          attempts=0,
                          last_error=NULL,
                          priority=MIN(priority, excluded.priority),
+                         queued_by=COALESCE(excluded.queued_by, queued_by),
                          updated_at=CURRENT_TIMESTAMP""",
-                (book_id, chapter_index, target_language, priority),
+                (book_id, chapter_index, target_language, priority, queued_by),
             )
         else:
             await db.execute(
                 """INSERT OR IGNORE INTO translation_queue
-                       (book_id, chapter_index, target_language, priority)
-                   VALUES (?, ?, ?, ?)""",
-                (book_id, chapter_index, target_language, priority),
+                       (book_id, chapter_index, target_language, priority, queued_by)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (book_id, chapter_index, target_language, priority, queued_by),
             )
         await db.commit()
 
@@ -125,6 +138,7 @@ async def enqueue_for_book(
     target_languages: list[str] | None = None,
     priority: int = 100,
     reset_failed: bool = False,
+    queued_by: str | None = None,
 ) -> int:
     """Enqueue every chapter of `book_id` for each target language.
 
@@ -153,7 +167,12 @@ async def enqueue_for_book(
                 continue
             if not reset_failed and await get_cached_translation(book_id, idx, lang):
                 continue
-            await enqueue(book_id, idx, lang, priority=priority, reset_failed=reset_failed)
+            await enqueue(
+                book_id, idx, lang,
+                priority=priority,
+                reset_failed=reset_failed,
+                queued_by=queued_by,
+            )
             inserted += 1
     return inserted
 
@@ -175,18 +194,27 @@ async def list_queue(
     book_id: int | None = None,
     limit: int = 200,
 ) -> list[dict]:
+    """Return queue rows joined with the book title.
+
+    The book_title field lets the admin UI show "Moby Dick · ch 14 → zh"
+    instead of raw IDs. LEFT JOIN so orphan rows (book deleted but queue
+    entry remains) still come back with book_title=None.
+    """
     where = []
     params: list = []
     if status:
-        where.append("status = ?")
+        where.append("q.status = ?")
         params.append(status)
     if book_id is not None:
-        where.append("book_id = ?")
+        where.append("q.book_id = ?")
         params.append(book_id)
-    sql = "SELECT * FROM translation_queue"
+    sql = (
+        "SELECT q.*, b.title AS book_title FROM translation_queue q "
+        "LEFT JOIN books b ON b.id = q.book_id"
+    )
     if where:
         sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY (status='running') DESC, priority ASC, id ASC LIMIT ?"
+    sql += " ORDER BY (q.status='running') DESC, q.priority ASC, q.id ASC LIMIT ?"
     params.append(limit)
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -469,8 +497,15 @@ class TranslationQueueWorker:
         if not works:
             return
 
-        # Group into output-token-bounded batches. Usually 1 batch.
-        batches = group_chapters_for_batch(works, max_output_tokens=DEFAULT_MAX_OUTPUT_TOKENS)
+        # Per-request output token budget. Different models have very different
+        # caps (gemini-2.5-pro: ~64K, flash models: ~8K), so we read it from
+        # the admin settings — populated by the UI when the admin picks a
+        # model. The budget drives both batch grouping here and the
+        # max_output_tokens we pass to the Gemini call.
+        max_tok_raw = await get_setting(SETTING_MAX_OUTPUT_TOKENS)
+        max_output_tokens = int(max_tok_raw) if max_tok_raw else DEFAULT_MAX_OUTPUT_TOKENS
+
+        batches = group_chapters_for_batch(works, max_output_tokens=max_output_tokens)
         rows_by_idx = {r.chapter_index: r for r in items}
         model = (await get_setting(SETTING_MODEL)) or TRANSLATOR_MODEL
 
@@ -479,10 +514,18 @@ class TranslationQueueWorker:
         self._state.current_target_language = target_language
         self._state.current_batch_size = len(works)
 
+        # Read current rate-limit settings every batch so admins can tune
+        # RPM/RPD (or switch models which pins different limits) and have
+        # the change take effect immediately — no restart needed. Mutating
+        # the existing limiter preserves the rolling-window history so we
+        # never exceed the new cap right after a change.
+        rpm = int((await get_setting(SETTING_RPM)) or DEFAULT_RPM)
+        rpd = int((await get_setting(SETTING_RPD)) or DEFAULT_RPD)
         if self._limiter is None:
-            rpm = int((await get_setting(SETTING_RPM)) or DEFAULT_RPM)
-            rpd = int((await get_setting(SETTING_RPD)) or DEFAULT_RPD)
             self._limiter = AsyncRateLimiter(rpm=rpm, rpd=rpd, provider="gemini")
+        else:
+            self._limiter.rpm = rpm
+            self._limiter.rpd = rpd
 
         for batch in batches:
             chapters = [(c.chapter_index, c.chapter_text) for c in batch]
@@ -492,6 +535,7 @@ class TranslationQueueWorker:
                 target_language=target_language,
                 api_key=api_key,
                 model=model,
+                max_output_tokens=max_output_tokens,
             )
             for c in batch:
                 row = rows_by_idx[c.chapter_index]
@@ -522,6 +566,7 @@ class TranslationQueueWorker:
         target_language: str,
         api_key: str,
         model: str,
+        max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
     ) -> dict[int, list[str]]:
         last_err: Exception | None = None
         delays = [0.0, *RETRY_BACKOFF]
@@ -548,7 +593,8 @@ class TranslationQueueWorker:
                 self._state.retry_attempt = attempt + 1
                 self._state.requests_made += 1
                 result = await translate_chapters_batch(
-                    api_key, chapters, source_language, target_language, model=model,
+                    api_key, chapters, source_language, target_language,
+                    model=model, max_output_tokens=max_output_tokens,
                 )
                 # Success — clear retry state.
                 self._state.retry_attempt = 0
@@ -615,13 +661,17 @@ class TranslationQueueWorker:
     async def _bump_attempt(self, row: QueueRow, error: str) -> None:
         new_attempts = row.attempts + 1
         new_status = "failed" if new_attempts >= MAX_ATTEMPTS else "pending"
+        # Push the row to the back of the queue so the worker moves on to
+        # other books instead of spinning on this one. If the admin retries
+        # via the UI, priority is reset — see queue_retry_item.
+        new_priority = row.priority + FAIL_PRIORITY_BUMP
         async with aiosqlite.connect(db_module.DB_PATH) as db:
             await db.execute(
                 """UPDATE translation_queue
-                   SET attempts=?, status=?, last_error=?,
+                   SET attempts=?, status=?, last_error=?, priority=?,
                        updated_at=CURRENT_TIMESTAMP
                    WHERE id=?""",
-                (new_attempts, new_status, error, row.id),
+                (new_attempts, new_status, error, new_priority, row.id),
             )
             await db.commit()
         if new_status == "failed":

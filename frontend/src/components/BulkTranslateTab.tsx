@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { GEMINI_MODEL_OPTIONS } from "@/lib/geminiModels";
 
 type FetchFn = (path: string, options?: RequestInit) => Promise<any>;
 
@@ -69,48 +70,7 @@ const LANGUAGES = [
   { code: "ja", label: "Japanese (ja)" },
 ];
 
-// Known Gemini models with free-tier hints + quality trade-offs.
-// "Default" leaves it unset so the backend uses its compiled-in default
-// (currently the same model powering chat/insight). These are suggestions —
-// the admin can type any model the API accepts in the custom field.
-interface ModelOption {
-  value: string;
-  label: string;
-  note: string;
-}
-
-const MODEL_OPTIONS: ModelOption[] = [
-  {
-    value: "",
-    label: "Default (server-side)",
-    note: "Same model used for chat and insights — known to work with your key.",
-  },
-  {
-    value: "gemini-2.5-pro",
-    label: "gemini-2.5-pro",
-    note: "Highest quality, 64K output tokens per request. Free-tier RPM is low (~2), best for overnight runs with fewer, bigger batches.",
-  },
-  {
-    value: "gemini-2.5-flash",
-    label: "gemini-2.5-flash",
-    note: "Strong literary quality, 8K output tokens per request. Free-tier has higher RPM than Pro — good balance for bulk work.",
-  },
-  {
-    value: "gemini-2.5-flash-lite",
-    label: "gemini-2.5-flash-lite",
-    note: "Cheapest and fastest. Lower quality — fine for quick drafts or less demanding target languages.",
-  },
-  {
-    value: "gemini-2.0-flash",
-    label: "gemini-2.0-flash",
-    note: "Previous generation — widely available, stable quality, generous free-tier limits.",
-  },
-  {
-    value: "gemini-2.0-flash-lite",
-    label: "gemini-2.0-flash-lite",
-    note: "Lightest model in the 2.0 line. Use if you're hitting rate limits with heavier models.",
-  },
-];
+const MODEL_OPTIONS = GEMINI_MODEL_OPTIONS;
 
 export default function BulkTranslateTab({ adminFetch }: { adminFetch: FetchFn }) {
   const [targetLang, setTargetLang] = useState("zh");

@@ -422,6 +422,23 @@ class TranslationQueueWorker:
             if not text.strip():
                 await self._mark_done([row])
                 continue
+            # Defensive: skip re-translating if a cached translation already
+            # landed between enqueue and now (e.g. the reader triggered an
+            # on-demand translation, or a bulk job ran). No sense spending
+            # Gemini tokens on work that's already done.
+            existing = await get_cached_translation(
+                book_id, row.chapter_index, target_language,
+            )
+            if existing:
+                await self._mark_done([row])
+                self._append_log({
+                    "event": "skipped_cached",
+                    "book_id": book_id,
+                    "title": title,
+                    "lang": target_language,
+                    "chapter": row.chapter_index,
+                })
+                continue
             works.append(ChapterWork(
                 book_id=book_id, book_title=title, source_language=source,
                 chapter_index=row.chapter_index, chapter_text=text,

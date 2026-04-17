@@ -132,6 +132,51 @@ async def test_worker_idles_when_disabled(tmp_db):
     assert w._state.enabled is False
 
 
+async def test_worker_skips_already_cached_chapter(tmp_db):
+    """If a translation lands between enqueue and claim, the worker must
+    NOT re-translate — that would waste tokens on work already done."""
+    from services.auth import encrypt_api_key
+    from services.db import save_translation
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    # Enqueue both chapters, but pretend chapter 0 got translated by another
+    # path (e.g. reader on-demand call) before the worker gets to it.
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    await save_translation(1, 0, "zh", ["already done"])
+
+    called_with: list = []
+
+    async def fake_translate(api_key, chapters, src, tgt, *, prior_context="", model=None):
+        called_with.append(chapters)
+        return {idx: [f"new-{idx}"] for idx, _ in chapters}
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch(
+        "services.translation_queue.translate_chapters_batch",
+        side_effect=fake_translate,
+    ):
+        with patch.object(
+            __import__("services.translation_queue", fromlist=["AsyncRateLimiter"]).AsyncRateLimiter,
+            "acquire",
+            new=AsyncMock(return_value=None),
+        ):
+            await w._tick()
+
+    # Only chapter 1 should have been sent to Gemini
+    assert len(called_with) == 1
+    sent_chapter_indices = [idx for idx, _ in called_with[0]]
+    assert sent_chapter_indices == [1]
+    # Cached translation for chapter 0 is untouched
+    existing = await get_cached_translation(1, 0, "zh")
+    assert existing == ["already done"]
+    # Both queue items are marked done (chapter 0 skipped, chapter 1 translated)
+    done = await list_queue(status="done")
+    assert len(done) == 2
+
+
 async def test_worker_processes_batch(tmp_db):
     """With a (faked) API key and translator mocked, the worker translates and marks items done."""
     from services.auth import encrypt_api_key

@@ -213,6 +213,10 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
         await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))
         await db.commit()
+    # Invalidate the in-memory chapter split so a future import of the same
+    # id doesn't accidentally reuse stale chapter boundaries.
+    from services.book_chapters import clear_cache as clear_chapter_cache
+    clear_chapter_cache(book_id)
     return {"ok": True}
 
 
@@ -381,7 +385,8 @@ async def retranslate(
     if not book or not book.get("text"):
         raise HTTPException(status_code=404, detail="Book not found in cache")
 
-    chapters = build_chapters(book["text"])
+    from services.book_chapters import split_with_html_preference
+    chapters = await split_with_html_preference(book_id, book["text"])
     if chapter_index < 0 or chapter_index >= len(chapters):
         raise HTTPException(status_code=400, detail=f"Chapter index {chapter_index} out of range (0–{len(chapters) - 1})")
 
@@ -446,7 +451,8 @@ async def retranslate_all(
     if not book or not book.get("text"):
         raise HTTPException(status_code=404, detail="Book not found in cache")
 
-    chapters = build_chapters(book["text"])
+    from services.book_chapters import split_with_html_preference
+    chapters = await split_with_html_preference(book_id, book["text"])
     source_language = (book.get("languages") or ["en"])[0]
 
     raw_key = admin.get("gemini_key")

@@ -41,6 +41,16 @@ BOOK_TEXT = (
 async def tmp_db(monkeypatch, tmp_path):
     path = str(tmp_path / "queue-test.db")
     monkeypatch.setattr(db_module, "DB_PATH", path)
+    # Tests use book_ids that happen to be real Gutenberg IDs. Without
+    # this patch, split_with_html_preference would hit the network and
+    # use real Gutenberg HTML — producing a different chapter count
+    # than the 2-chapter BOOK_TEXT fixture. Force the plain-text
+    # fallback for all queue tests.
+    async def _no_html(_book_id):
+        return None
+    monkeypatch.setattr("services.book_chapters.get_book_html", _no_html)
+    from services.book_chapters import clear_cache as _clear_cache
+    _clear_cache()
     await init_db()
     return path
 
@@ -587,7 +597,8 @@ async def test_process_batch_does_not_leak_running_rows_on_exception(tmp_db, mon
 
     w = TranslationQueueWorker()
     w._stop_event = __import__("asyncio").Event()
-    with patch("services.translation_queue.build_chapters", side_effect=kaboom):
+    # Patch the real splitter that split_with_html_preference falls back to.
+    with patch("services.book_chapters.build_chapters", side_effect=kaboom):
         with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
             await w._tick()
 

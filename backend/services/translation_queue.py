@@ -288,26 +288,32 @@ async def estimate_queue_cost(models: list[str] | None = None) -> dict:
     a quick comparison table.
     """
     async with aiosqlite.connect(db_module.DB_PATH) as db:
-        # Pull chapter-text lengths for every pending (book, chapter) pair,
-        # joined against the books table. We only need text_length proxy —
-        # use LENGTH(text) which is charcount for TEXT columns.
+        # Two-step to avoid LENGTH(b.text) running per-row on a potentially
+        # 4000+ row queue: first get pending counts per book, then fetch
+        # one LENGTH per distinct book (typically <200). This turns what
+        # was a 5s scan into a sub-100ms lookup.
         async with db.execute(
-            """SELECT q.book_id, q.chapter_index, LENGTH(b.text) AS total_chars
-               FROM translation_queue q
-               LEFT JOIN books b ON b.id = q.book_id
-               WHERE q.status='pending'"""
+            """SELECT book_id, COUNT(*) AS n
+               FROM translation_queue
+               WHERE status='pending'
+               GROUP BY book_id"""
         ) as cursor:
-            rows = await cursor.fetchall()
+            book_counts = await cursor.fetchall()
 
-    # Group by book to compute per-chapter share (book_total_chars / n_chapters)
-    # — we don't know each chapter's actual length without re-running the
-    # splitter, so approximate by equal share.
-    by_book: dict[int, dict] = {}
-    for book_id, _chap_idx, total_chars in rows:
-        if total_chars is None:
-            continue
-        entry = by_book.setdefault(book_id, {"total_chars": total_chars, "count": 0})
-        entry["count"] += 1
+        by_book: dict[int, dict] = {}
+        if book_counts:
+            ids = [b[0] for b in book_counts]
+            placeholders = ",".join("?" for _ in ids)
+            async with db.execute(
+                f"SELECT id, LENGTH(text) FROM books WHERE id IN ({placeholders})",
+                ids,
+            ) as cursor:
+                text_lengths = dict(await cursor.fetchall())
+            for book_id, count in book_counts:
+                total_chars = text_lengths.get(book_id)
+                if total_chars is None:
+                    continue
+                by_book[book_id] = {"total_chars": total_chars, "count": count}
 
     # Total chars of pending work across all books.
     total_chars = 0

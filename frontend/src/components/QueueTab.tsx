@@ -130,22 +130,19 @@ export default function QueueTab({ adminFetch }: Props) {
   // aren't overwritten by a later poll.
   const chainInitedRef = useRef(false);
 
-  async function refresh() {
+  // Split the previously-monolithic refresh so each panel reacts to the
+  // change that actually affects it. Before this, clicking a filter pill
+  // waited on the slowest fetch (cost-estimate, which can take seconds on
+  // a 4K-row queue) before the items list updated — felt laggy.
+  async function refreshCore() {
+    // Status + settings + (cost) — re-fetched on a 3s tick.
     try {
-      const [st, cfg, its, cst] = await Promise.all([
+      const [st, cfg] = await Promise.all([
         adminFetch("/admin/queue/status"),
         adminFetch("/admin/queue/settings"),
-        adminFetch(
-          `/admin/queue/items?limit=100${
-            itemFilter === "all" ? "" : `&status=${itemFilter}`
-          }`,
-        ),
-        adminFetch("/admin/queue/cost-estimate"),
       ]);
       setStatus(st);
       setSettings(cfg);
-      setItems(its);
-      setCost(cst);
       setInitialLoaded(true);
       if (langs === "") setLangs((cfg.auto_translate_languages || []).join(", "));
       if (!chainInitedRef.current) {
@@ -164,12 +161,64 @@ export default function QueueTab({ adminFetch }: Props) {
     }
   }
 
+  async function refreshItems(filter: string = itemFilter) {
+    try {
+      const its = await adminFetch(
+        `/admin/queue/items?limit=100${
+          filter === "all" ? "" : `&status=${filter}`
+        }`,
+      );
+      setItems(its);
+      setInitialLoaded(true);
+    } catch {
+      /* leave existing items visible if this poll fails */
+    }
+  }
+
+  async function refreshCost() {
+    // Cost estimate is the slowest endpoint (scans the queue + books
+    // text-length). Poll at a lazier cadence so it doesn't drag the
+    // other panels or block the tab from reacting to user clicks.
+    try {
+      const cst = await adminFetch("/admin/queue/cost-estimate");
+      setCost(cst);
+    } catch {
+      /* best-effort */
+    }
+  }
+
+  // Single entry point for places that previously called refresh() —
+  // kicks all three in parallel without waiting.
+  function refresh() {
+    refreshCore();
+    refreshItems();
+    refreshCost();
+  }
+
   useEffect(() => {
-    refresh();
-    pollRef.current = setInterval(refresh, 3000);
+    refreshCore();
+    refreshItems();
+    refreshCost();
+    // Core (status/settings) + items poll every 3s.
+    const fastPoll = setInterval(() => {
+      refreshCore();
+      refreshItems();
+    }, 3000);
+    // Cost is heavier — poll on a 30s cadence to avoid blocking the UI.
+    const slowPoll = setInterval(refreshCost, 30000);
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      clearInterval(fastPoll);
+      clearInterval(slowPoll);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Filter pills: fire ONLY the items fetch, not the whole tab. Previously
+  // clicking a filter triggered refresh() which waited on 4 parallel
+  // fetches — visibly laggy.
+  useEffect(() => {
+    if (!chainInitedRef.current) return; // initial load handles it
+    refreshItems(itemFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemFilter]);
 
@@ -184,23 +233,19 @@ export default function QueueTab({ adminFetch }: Props) {
         method: "PUT",
         body: JSON.stringify(patch),
       });
-      // Mark saved the moment the PUT succeeds — don't wait for refresh.
-      // If a periodic-poll or post-save refresh 500s, we'd otherwise
-      // misattribute that as a save failure.
       setLastSaved({ key: label, at: Date.now() });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
       setSaving(false);
       return;
     }
-    // Refresh is best-effort — a transient 500 here shouldn't mask a
-    // successful save. The next 3s poll will pick up fresh state.
-    try {
-      await refresh();
-    } catch {
-      /* swallow — periodic poll will recover */
-    }
+    // Re-enable the button immediately — the PUT already succeeded.
+    // Waiting for refresh() makes the UI feel laggy when the post-save
+    // poll is hitting the slow cost-estimate endpoint.
     setSaving(false);
+    // Fire-and-forget refresh so the "Active chain" display picks up the
+    // new saved state on the next tick.
+    refreshCore();
   }
 
   function wasJustSaved(label: string): boolean {

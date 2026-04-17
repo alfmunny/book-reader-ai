@@ -1,6 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { GEMINI_MODEL_OPTIONS, rateForModel } from "@/lib/geminiModels";
+import {
+  GEMINI_MODEL_OPTIONS,
+  DEFAULT_CHAIN,
+  labelForModel,
+  isRecommended,
+  rateForModel,
+} from "@/lib/geminiModels";
 
 type AdminFetch = (path: string, options?: RequestInit) => Promise<any>;
 
@@ -11,6 +17,7 @@ interface QueueSettings {
   rpm: number | null;
   rpd: number | null;
   model: string | null;
+  model_chain: string[];
   max_output_tokens: number | null;
 }
 
@@ -31,6 +38,7 @@ interface WorkerState {
   current_book_title: string;
   current_target_language: string;
   current_batch_size: number;
+  current_model?: string;
   last_completed_at: string | null;
   last_error: string;
   started_at: string | null;
@@ -95,10 +103,13 @@ export default function QueueTab({ adminFetch }: Props) {
   // Form state — mirrors settings but editable.
   const [langs, setLangs] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("");
-  // Track once we've initialised model from server so the user's edit
-  // isn't overwritten by a later poll.
-  const modelInitedRef = useRef(false);
+  // Ordered chain of models. The worker tries each in order, advancing
+  // to the next on 429 / quota. Empty slot = not used.
+  const [chain, setChain] = useState<string[]>(DEFAULT_CHAIN);
+  const [customModel, setCustomModel] = useState("");
+  // Track once we've initialised from server so the user's edits
+  // aren't overwritten by a later poll.
+  const chainInitedRef = useRef(false);
 
   async function refresh() {
     try {
@@ -115,9 +126,16 @@ export default function QueueTab({ adminFetch }: Props) {
       setSettings(cfg);
       setItems(its);
       if (langs === "") setLangs((cfg.auto_translate_languages || []).join(", "));
-      if (!modelInitedRef.current) {
-        setModel(cfg.model || "");
-        modelInitedRef.current = true;
+      if (!chainInitedRef.current) {
+        const serverChain = (cfg as QueueSettings).model_chain;
+        setChain(
+          Array.isArray(serverChain) && serverChain.length > 0
+            ? serverChain
+            : cfg.model
+              ? [cfg.model]
+              : DEFAULT_CHAIN,
+        );
+        chainInitedRef.current = true;
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load queue");
@@ -229,7 +247,9 @@ export default function QueueTab({ adminFetch }: Props) {
               {status?.running
                 ? s?.idle
                   ? `Idle — ${s.waiting_reason || "nothing to do"}`
-                  : `Translating ${s?.current_book_title || "…"} → ${s?.current_target_language}`
+                  : `Translating ${s?.current_book_title || "…"} → ${s?.current_target_language}${
+                      s?.current_model ? ` · via ${s.current_model}` : ""
+                    }`
                 : "Worker stopped"}
             </div>
             <div className="text-xs text-stone-500">
@@ -391,94 +411,179 @@ export default function QueueTab({ adminFetch }: Props) {
           <div className="space-y-1 sm:col-span-2">
             <div className="flex items-center justify-between">
               <label className="text-xs text-stone-600">
-                Model — rate limits auto-apply from the selection below
+                Model chain — tried in order. On 429/quota the worker falls to the next.
               </label>
               <button
                 onClick={() => {
-                  const { rpm, rpd, maxOutputTokens } = rateForModel(model);
+                  // Save chain; primary's rate limits become the active
+                  // ones for legacy fields so bulk-translate etc. see them.
+                  const primary = chain[0] ?? "";
+                  const { rpm, rpd, maxOutputTokens } = rateForModel(primary);
                   saveSettings({
-                    model,
+                    model_chain: chain,
+                    model: primary,
                     rpm,
                     rpd,
                     max_output_tokens: maxOutputTokens,
                   });
                 }}
-                disabled={saving}
+                disabled={saving || chain.length === 0}
                 className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
               >
-                Save model & rate
+                Save chain
               </button>
             </div>
 
-            {/* Current-applied summary so the admin sees what's live now */}
-            <div className="text-[11px] text-stone-500">
-              Active: <span className="font-mono">{settings?.model || "default"}</span>
-              {settings?.rpm || settings?.rpd ? (
-                <> · {settings.rpm ?? "?"} rpm · {settings.rpd ?? "?"} rpd</>
+            {/* Live summary — show the configured chain and what the
+                worker is actually using at the moment. */}
+            <div className="text-[11px] text-stone-500 leading-relaxed">
+              Active chain:{" "}
+              {(settings?.model_chain ?? [])
+                .map((m, i) => `${i + 1}. ${labelForModel(m)}`)
+                .join("  →  ") || <em>not saved yet</em>}
+              {s?.current_model ? (
+                <div>
+                  Currently using:{" "}
+                  <span className="font-mono text-emerald-700">{s.current_model}</span>
+                </div>
               ) : null}
-              {settings?.max_output_tokens
-                ? ` · batch ≤ ${settings.max_output_tokens.toLocaleString()} tokens`
-                : null}
             </div>
 
-            <div className="space-y-1.5 mt-1">
-              {GEMINI_MODEL_OPTIONS.map((opt) => (
-                <label
-                  key={opt.value || "default"}
-                  className={`flex items-start gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
-                    model === opt.value
-                      ? "border-amber-400 bg-amber-50"
-                      : "border-amber-200 bg-white hover:bg-amber-50/50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="queue-model"
-                    value={opt.value}
-                    checked={model === opt.value}
-                    onChange={() => setModel(opt.value)}
-                    className="mt-0.5 accent-amber-700"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <div className="text-sm font-medium text-ink font-mono">
-                        {opt.label}
-                      </div>
-                      <div className="text-[11px] text-stone-500 shrink-0">
-                        {opt.rpm} rpm · {opt.rpd} rpd · ≤
-                        {opt.maxOutputTokens.toLocaleString()} tok/batch
-                      </div>
+            {/* Configured chain — reorder / remove */}
+            <div className="mt-2 space-y-1.5">
+              {chain.map((m, idx) => {
+                const opt = GEMINI_MODEL_OPTIONS.find((o) => o.value === m);
+                const recommended = isRecommended(m);
+                return (
+                  <div
+                    key={`${m}-${idx}`}
+                    className={`flex items-start gap-2 p-2 rounded-lg border ${
+                      idx === 0
+                        ? "border-amber-400 bg-amber-50"
+                        : "border-amber-200 bg-white"
+                    }`}
+                  >
+                    <div className="text-xs text-stone-500 font-mono w-6 shrink-0 pt-0.5">
+                      {idx + 1}.
                     </div>
-                    <div className="text-xs text-stone-500 mt-0.5">{opt.note}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-ink font-mono">
+                          {labelForModel(m)}
+                        </span>
+                        {!recommended && (
+                          <span
+                            className="text-[10px] px-1 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200"
+                            title="Drops literary nuance — use only as a last-resort fallback"
+                          >
+                            not recommended for literature
+                          </span>
+                        )}
+                        {opt ? (
+                          <span className="text-[11px] text-stone-500">
+                            {opt.rpm} rpm · {opt.rpd} rpd · ≤
+                            {opt.maxOutputTokens.toLocaleString()} tok
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-stone-400">
+                            custom — conservative defaults
+                          </span>
+                        )}
+                      </div>
+                      {opt?.note && (
+                        <div className="text-xs text-stone-500 mt-0.5">{opt.note}</div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-0.5 shrink-0">
+                      <button
+                        onClick={() => {
+                          if (idx === 0) return;
+                          const copy = [...chain];
+                          [copy[idx - 1], copy[idx]] = [copy[idx], copy[idx - 1]];
+                          setChain(copy);
+                        }}
+                        disabled={idx === 0}
+                        className="text-xs px-1 text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        title="Move up"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (idx === chain.length - 1) return;
+                          const copy = [...chain];
+                          [copy[idx], copy[idx + 1]] = [copy[idx + 1], copy[idx]];
+                          setChain(copy);
+                        }}
+                        disabled={idx === chain.length - 1}
+                        className="text-xs px-1 text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        title="Move down"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setChain(chain.filter((_, i) => i !== idx))}
+                      className="text-xs px-1.5 rounded border border-red-200 text-red-500 shrink-0 self-start"
+                      title="Remove from chain"
+                    >
+                      ×
+                    </button>
                   </div>
-                </label>
-              ))}
-              <label className="flex items-start gap-3 p-2 rounded-lg border border-amber-200 bg-white">
-                <input
-                  type="radio"
-                  name="queue-model"
-                  checked={
-                    !!model && !GEMINI_MODEL_OPTIONS.some((o) => o.value === model)
-                  }
-                  onChange={() => setModel("gemini-2.5-flash")}
-                  className="mt-0.5 accent-amber-700"
-                />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-ink mb-1">Custom</div>
-                  <input
-                    type="text"
-                    value={
-                      GEMINI_MODEL_OPTIONS.some((o) => o.value === model) ? "" : model
-                    }
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="e.g. gemini-exp-1206"
-                    className="w-full rounded border border-amber-300 px-2 py-1 text-sm bg-white font-mono"
-                  />
-                  <p className="text-[11px] text-stone-500 mt-1">
-                    Anything the API accepts. Uses conservative defaults (10 rpm · 500 rpd); override via API if you&apos;re on a paid tier.
-                  </p>
+                );
+              })}
+              {chain.length === 0 && (
+                <div className="text-xs text-stone-400 italic">
+                  Chain is empty — add a model below.
                 </div>
-              </label>
+              )}
+            </div>
+
+            {/* Add to chain — recommended first, then not-recommended */}
+            <div className="mt-3">
+              <div className="text-xs text-stone-600 mb-1">Add to chain:</div>
+              <div className="flex flex-wrap gap-1.5">
+                {GEMINI_MODEL_OPTIONS
+                  .filter((o) => !chain.includes(o.value))
+                  .map((opt) => (
+                    <button
+                      key={opt.value || "default"}
+                      onClick={() => setChain([...chain, opt.value])}
+                      className={`text-xs px-2 py-1 rounded border font-mono ${
+                        opt.recommended
+                          ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                          : "border-stone-200 text-stone-500 hover:bg-stone-50"
+                      }`}
+                      title={opt.note}
+                    >
+                      + {opt.label}
+                      {!opt.recommended && (
+                        <span className="ml-1 text-[10px] text-orange-600">
+                          (not recommended)
+                        </span>
+                      )}
+                    </button>
+                  ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                  placeholder="Custom model (e.g. gemini-exp-1206)"
+                  className="flex-1 rounded border border-amber-300 px-2 py-1 text-xs font-mono"
+                />
+                <button
+                  onClick={() => {
+                    if (!customModel.trim() || chain.includes(customModel.trim())) return;
+                    setChain([...chain, customModel.trim()]);
+                    setCustomModel("");
+                  }}
+                  disabled={!customModel.trim()}
+                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 disabled:opacity-40"
+                >
+                  + Add custom
+                </button>
+              </div>
             </div>
           </div>
         </div>

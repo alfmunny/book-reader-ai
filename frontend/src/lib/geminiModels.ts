@@ -2,69 +2,72 @@ export interface ModelOption {
   value: string;
   label: string;
   note: string;
-  // Conservative free-tier rate limits. Google's published tiers shift
-  // around, so these are rounded down to a safe floor. Admins on a paid
-  // tier can bump them via the (advanced) API, but for the common free-key
-  // case these keep us inside the quota without constant 429s.
   rpm: number;
   rpd: number;
-  // Per-request output token budget. 2.5-pro can emit ~64K in one call, so
-  // it pays to pack many chapters per batch; flash models cap at 8K and
-  // need tighter batches. The worker uses this to size greedy batches so
-  // we neither waste context (too few chapters) nor truncate (too many).
   maxOutputTokens: number;
+  // `true` = acceptable for literary translation (preserves register,
+  // handles metaphor/register). `false` = lite/preview models that drop
+  // nuance — still selectable as a last-ditch fallback, but visually
+  // de-emphasised in the chain picker.
+  recommended: boolean;
 }
 
 // Used by QueueTab and BulkTranslateTab. Picking a model auto-applies the
 // matching RPM/RPD to the queue settings so admins don't have to guess.
 export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
   {
-    value: "",
-    label: "Default (gemini-3.1-flash-lite-preview)",
-    note: "Same model used for chat and insights — known to work with your key. Fast and cheap; fine for most translations.",
-    rpm: 12,
-    rpd: 1400,
-    maxOutputTokens: 7500,
-  },
-  {
     value: "gemini-2.5-pro",
     label: "gemini-2.5-pro",
-    note: "Highest quality, 64K output tokens — packs many chapters per batch, offsetting the tiny free-tier RPM. Best for overnight runs.",
+    note: "Highest quality — 64K output tokens packs many chapters per batch, offsetting the tiny free-tier RPM. Reserve for books you care most about.",
     rpm: 2,
     rpd: 50,
     maxOutputTokens: 60000,
+    recommended: true,
   },
   {
     value: "gemini-2.5-flash",
     label: "gemini-2.5-flash",
-    note: "Strong literary quality, 8K output tokens. Moderate free-tier limits — good balance of quality and throughput.",
+    note: "Near-Pro literary quality. Good balance for bulk work — fastest 'recommended' tier model at 10 rpm.",
     rpm: 10,
     rpd: 250,
     maxOutputTokens: 7500,
-  },
-  {
-    value: "gemini-2.5-flash-lite",
-    label: "gemini-2.5-flash-lite",
-    note: "Cheapest and fastest in the 2.5 line. Lower quality — fine for quick drafts or less demanding target languages.",
-    rpm: 15,
-    rpd: 1000,
-    maxOutputTokens: 7500,
+    recommended: true,
   },
   {
     value: "gemini-2.0-flash",
     label: "gemini-2.0-flash",
-    note: "Previous generation — widely available, stable quality, generous free-tier limits.",
+    note: "Previous generation, still solid for prose. Generous free-tier — a useful fallback when 2.5 models are exhausted.",
     rpm: 15,
     rpd: 1500,
     maxOutputTokens: 7500,
+    recommended: true,
+  },
+  {
+    value: "gemini-2.5-flash-lite",
+    label: "gemini-2.5-flash-lite",
+    note: "Drops nuance on dialogue and metaphor. Usable only as a last-ditch fallback.",
+    rpm: 15,
+    rpd: 1000,
+    maxOutputTokens: 7500,
+    recommended: false,
   },
   {
     value: "gemini-2.0-flash-lite",
     label: "gemini-2.0-flash-lite",
-    note: "Lightest model in the 2.0 line. Highest free-tier RPM — use if you're hitting 429 with heavier models.",
+    note: "Lowest quality in the 2.0 line. Not recommended for literature.",
     rpm: 30,
     rpd: 1500,
     maxOutputTokens: 7500,
+    recommended: false,
+  },
+  {
+    value: "",
+    label: "Default (gemini-3.1-flash-lite-preview)",
+    note: "Server default — a lite/preview model. Same one used for chat and insights. Not recommended for literary work; kept for backward compat.",
+    rpm: 12,
+    rpd: 1400,
+    maxOutputTokens: 7500,
+    recommended: false,
   },
 ];
 
@@ -86,3 +89,21 @@ export function rateForModel(model: string): {
     ? { rpm: hit.rpm, rpd: hit.rpd, maxOutputTokens: hit.maxOutputTokens }
     : CUSTOM_MODEL_RATE;
 }
+
+export function labelForModel(model: string): string {
+  const hit = GEMINI_MODEL_OPTIONS.find((o) => o.value === model);
+  return hit?.label || model || "default";
+}
+
+export function isRecommended(model: string): boolean {
+  const hit = GEMINI_MODEL_OPTIONS.find((o) => o.value === model);
+  return hit?.recommended ?? false;
+}
+
+// Suggested default chain — all three "Tier 1" models in quality order.
+// The worker will try them in this order and advance to the next on 429.
+export const DEFAULT_CHAIN: string[] = [
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+];

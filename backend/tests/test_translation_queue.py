@@ -133,16 +133,18 @@ async def test_list_queue_includes_book_title(tmp_db):
     assert by_book[999]["book_title"] is None
 
 
-async def test_worker_passes_model_max_output_tokens_setting(tmp_db):
-    """SETTING_MAX_OUTPUT_TOKENS must drive both batch grouping and the
-    max_output_tokens the Gemini call receives — this is how picking a big
-    model like 2.5-pro lets us pack many chapters per batch."""
+async def test_worker_uses_model_specific_output_budget(tmp_db):
+    """The batch output-token cap passed to Gemini should come from the
+    largest-budget model in the chain — gemini-2.5-pro's 60K lets us pack
+    many chapters into one request even when smaller flash fallbacks exist."""
     from services.auth import encrypt_api_key
     from services.rate_limiter import AsyncRateLimiter
-    from services.translation_queue import SETTING_MAX_OUTPUT_TOKENS
     await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
     await set_setting(SETTING_ENABLED, "1")
-    await set_setting(SETTING_MAX_OUTPUT_TOKENS, "60000")
+    await set_setting(
+        "queue_model_chain",
+        json.dumps(["gemini-2.5-pro", "gemini-2.5-flash"]),
+    )
     await save_book(1, BOOK_META, BOOK_TEXT)
     await enqueue(1, 0, "zh")
 
@@ -157,19 +159,21 @@ async def test_worker_passes_model_max_output_tokens_setting(tmp_db):
     with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
         with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
             await w._tick()
+    # 2.5-pro's 60000 wins across the chain.
     assert captured.get("max_output_tokens") == 60000
 
 
-async def test_worker_reconfigures_limiter_on_rate_setting_change(tmp_db):
-    """Changing RPM/RPD in app_settings must propagate to the live limiter
-    without restarting the worker — otherwise auto-rate-by-model wouldn't
-    take effect for pending items."""
+async def test_worker_creates_per_model_limiter_with_correct_rates(tmp_db):
+    """Each model in the chain gets its own limiter loaded with the
+    MODEL_LIMITS table values — not from SETTING_RPM/RPD anymore."""
     from services.auth import encrypt_api_key
     from services.rate_limiter import AsyncRateLimiter
     await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
     await set_setting(SETTING_ENABLED, "1")
-    await set_setting("queue_rpm", "15")
-    await set_setting("queue_rpd", "1500")
+    await set_setting(
+        "queue_model_chain",
+        json.dumps(["gemini-2.5-pro"]),
+    )
     await save_book(1, BOOK_META, BOOK_TEXT)
     await enqueue(1, 0, "zh")
 
@@ -181,17 +185,9 @@ async def test_worker_reconfigures_limiter_on_rate_setting_change(tmp_db):
     with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
         with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
             await w._tick()
-    assert w._limiter is not None
-    assert (w._limiter.rpm, w._limiter.rpd) == (15, 1500)
-
-    # Admin "saves" a new model that pins different limits.
-    await set_setting("queue_rpm", "2")
-    await set_setting("queue_rpd", "50")
-    await enqueue(1, 1, "zh")
-    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
-        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
-            await w._tick()
-    assert (w._limiter.rpm, w._limiter.rpd) == (2, 50)
+    lim = w._limiters.get("gemini-2.5-pro")
+    assert lim is not None
+    assert (lim.rpm, lim.rpd) == (2, 50)
 
 
 async def test_clear_queue_all_and_by_status(tmp_db):
@@ -240,6 +236,136 @@ async def test_worker_idles_when_disabled(tmp_db):
     await w._tick()
     assert w._state.idle is True
     assert w._state.enabled is False
+
+
+async def test_chain_advances_on_quota_error(tmp_db, monkeypatch):
+    """On a 429 / quota error, the worker should advance to the next model
+    in the chain instead of retrying the same one."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.translation_queue as tq
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await set_setting(
+        "queue_model_chain",
+        json.dumps(["gemini-2.5-pro", "gemini-2.5-flash"]),
+    )
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0, 0.0))
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    models_called: list[str] = []
+
+    async def fake_translate(api_key, chapters, src, tgt, *, model=None, **kwargs):
+        models_called.append(model or "")
+        if model == "gemini-2.5-pro":
+            raise RuntimeError("429 RESOURCE_EXHAUSTED: per-day quota exceeded")
+        return {idx: ["ok"] for idx, _ in chapters}
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    # Pro got called and errored, flash got called and succeeded.
+    assert models_called == ["gemini-2.5-pro", "gemini-2.5-flash"]
+    # Chain advance should be in the log for admin visibility.
+    advances = [e for e in w._state.log if e.get("event") == "chain_advance"]
+    assert len(advances) == 1
+    assert advances[0]["from"] == "gemini-2.5-pro"
+
+
+async def test_chain_skips_models_already_at_daily_cap(tmp_db, monkeypatch):
+    """If a model's RPD is already spent today, the chain should skip it
+    without ever calling translate_chapters_batch — no point attempting."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.translation_queue as tq
+    from services.model_limits import MODEL_LIMITS
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await set_setting(
+        "queue_model_chain",
+        json.dumps(["gemini-2.5-pro", "gemini-2.5-flash"]),
+    )
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0, 0.0))
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    # Pre-fill rate_limiter_usage to make pro already-exhausted for today.
+    import aiosqlite
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    pro_cap = MODEL_LIMITS["gemini-2.5-pro"]["rpd"]
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO rate_limiter_usage (provider, model, date, requests) VALUES (?, ?, ?, ?)",
+            ("gemini", "gemini-2.5-pro", today, pro_cap),
+        )
+        await db.commit()
+
+    models_called: list[str] = []
+
+    async def fake_translate(api_key, chapters, src, tgt, *, model=None, **kwargs):
+        models_called.append(model or "")
+        return {idx: ["ok"] for idx, _ in chapters}
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    # Pro should be skipped without a call.
+    assert models_called == ["gemini-2.5-flash"]
+    skips = [e for e in w._state.log if e.get("event") == "chain_skip_exhausted"]
+    assert len(skips) == 1
+    assert skips[0]["model"] == "gemini-2.5-pro"
+
+
+async def test_non_quota_error_stays_on_current_model(tmp_db, monkeypatch):
+    """A 503 'model overloaded' is transient for THIS model, not a quota
+    issue. The chain should NOT advance — the outer retry loop backs off."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.translation_queue as tq
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await set_setting(
+        "queue_model_chain",
+        json.dumps(["gemini-2.5-pro", "gemini-2.5-flash"]),
+    )
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0, 0.0))
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    models_called: list[str] = []
+
+    async def fake_translate(api_key, chapters, src, tgt, *, model=None, **kwargs):
+        models_called.append(model or "")
+        raise RuntimeError("503 UNAVAILABLE: model overloaded")
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    # Every retry call used PRIMARY (pro), never advanced to flash.
+    assert all(m == "gemini-2.5-pro" for m in models_called)
+    assert "gemini-2.5-flash" not in models_called
+    # No chain_advance log.
+    assert not any(e.get("event") == "chain_advance" for e in w._state.log)
+
+
+async def test_is_quota_error_classifier():
+    from services.translation_queue import is_quota_error
+    assert is_quota_error(RuntimeError("429 RESOURCE_EXHAUSTED"))
+    assert is_quota_error(RuntimeError("quota exceeded"))
+    assert is_quota_error(RuntimeError("Rate limit hit"))
+    assert not is_quota_error(RuntimeError("503 UNAVAILABLE"))
+    assert not is_quota_error(RuntimeError("response had no <chapter> blocks"))
 
 
 async def test_failing_batch_bumps_priority_so_worker_moves_on(tmp_db, monkeypatch):

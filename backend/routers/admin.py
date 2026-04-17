@@ -488,6 +488,95 @@ async def retranslate_all(
     return {"ok": True, "chapters": len(results), "results": results}
 
 
+class MoveTranslationRequest(BaseModel):
+    new_chapter_index: int
+
+
+@router.post("/translations/{book_id}/{chapter_index}/{target_language}/move")
+async def move_translation(
+    book_id: int,
+    chapter_index: int,
+    target_language: str,
+    req: MoveTranslationRequest,
+    _admin: dict = Depends(_require_admin),
+):
+    """Reassign a cached translation to a different chapter_index.
+
+    Use case: when the splitter indices change (PR #107 HTML/text
+    realignment), existing cached translations are at the wrong slot.
+    Rather than burn tokens re-translating, admins can shift each cached
+    translation to the chapter_index that now matches the source content.
+
+    Rejects with 409 if the target slot already has a translation —
+    the admin must delete it first. Rejects with 400 on out-of-range
+    indices. Clears any pending/failed queue row at the destination so
+    the worker doesn't later overwrite the moved translation.
+    """
+    book = await get_cached_book(book_id)
+    if not book or not book.get("text"):
+        raise HTTPException(status_code=404, detail="Book not found in cache")
+
+    from services.book_chapters import split_with_html_preference
+    chapters = await split_with_html_preference(book_id, book["text"])
+    new_idx = req.new_chapter_index
+    if new_idx < 0 or new_idx >= len(chapters):
+        raise HTTPException(
+            status_code=400,
+            detail=f"new_chapter_index {new_idx} out of range (0-{len(chapters) - 1})",
+        )
+    if new_idx == chapter_index:
+        raise HTTPException(
+            status_code=400, detail="new_chapter_index is the same as the source",
+        )
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Source exists?
+        async with db.execute(
+            "SELECT 1 FROM translations "
+            "WHERE book_id=? AND chapter_index=? AND target_language=?",
+            (book_id, chapter_index, target_language),
+        ) as cursor:
+            if await cursor.fetchone() is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"No translation at chapter {chapter_index} "
+                        f"for book {book_id} / {target_language}"
+                    ),
+                )
+        # Target slot must be empty — safer than silently overwriting.
+        async with db.execute(
+            "SELECT 1 FROM translations "
+            "WHERE book_id=? AND chapter_index=? AND target_language=?",
+            (book_id, new_idx, target_language),
+        ) as cursor:
+            if await cursor.fetchone() is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Chapter {new_idx} already has a {target_language} translation. "
+                        "Delete it first, then retry the move."
+                    ),
+                )
+        await db.execute(
+            "UPDATE translations "
+            "SET chapter_index=? "
+            "WHERE book_id=? AND chapter_index=? AND target_language=?",
+            (new_idx, book_id, chapter_index, target_language),
+        )
+        # A queue row at the destination (pending/running/failed) would
+        # let the worker later translate over the top. Clear it — the
+        # move means we're asserting this chapter is now done.
+        await db.execute(
+            "DELETE FROM translation_queue "
+            "WHERE book_id=? AND chapter_index=? AND target_language=?",
+            (book_id, new_idx, target_language),
+        )
+        await db.commit()
+
+    return {"ok": True, "from": chapter_index, "to": new_idx}
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STATS
 # ══════════════════════════════════════════════════════════════════════════════

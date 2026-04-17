@@ -224,6 +224,47 @@ def test_looks_like_book_heading():
     assert _looks_like_book_heading("Chapter 42") is False
 
 
+def test_build_chapters_from_html_preserves_verse_stanzas():
+    """Gutenberg verse HTML: each stanza is a <p> with <br>-separated lines.
+    The extractor must produce one paragraph per stanza with lines joined by
+    single \\n (not \\n\\n). Regression for Faust book 2229 where every verse
+    line was becoming its own paragraph because formatting whitespace after
+    each <br> was leaving a blank-line artifact."""
+    # Enough stanzas to exceed the 50-word threshold that marks a div as a
+    # section divider. Matches Gutenberg's actual Faust Zueignung markup.
+    stanza1 = """<p>
+    Ihr naht euch wieder, schwankende Gestalten,<br>
+    Die früh sich einst dem trüben Blick gezeigt.<br>
+    Versuch ich wohl, euch diesmal festzuhalten?<br>
+    Fühl ich mein Herz noch jenem Wahn geneigt?<br>
+    Ihr drängt euch zu! nun gut, so mögt ihr walten,<br>
+    Wie ihr aus Dunst und Nebel um mich steigt;<br>
+    Mein Busen fühlt sich jugendlich erschüttert<br>
+    Vom Zauberhauch, der euren Zug umwittert.
+    </p>"""
+    stanza2 = """<p>
+    Ihr bringt mit euch die Bilder froher Tage,<br>
+    Und manche liebe Schatten steigen auf;<br>
+    Gleich einer alten, halbverklungnen Sage<br>
+    Kommt erste Lieb und Freundschaft mit herauf;<br>
+    Der Schmerz wird neu, es wiederholt die Klage<br>
+    Des Lebens labyrinthisch irren Lauf,<br>
+    Und nennt die Guten, die, um schöne Stunden<br>
+    Vom Glück getäuscht, vor mir hinweggeschwunden.
+    </p>"""
+    html = f'<div class="chapter"><h2>Zueignung</h2>{stanza1}{stanza2}</div>'
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    text = chapters[0].text
+    stanzas = [p for p in text.split("\n\n") if p.strip()]
+    # Exactly two stanza-paragraphs, not one-per-line.
+    assert len(stanzas) == 2, f"Expected 2 stanzas, got {len(stanzas)}: {stanzas!r}"
+    # Each stanza retains its internal \n-separated lines.
+    for s in stanzas:
+        lines = [l for l in s.split("\n") if l.strip()]
+        assert len(lines) == 8, f"Expected 8 lines in stanza, got {len(lines)}: {s!r}"
+
+
 def test_build_chapters_from_html_handles_malformed_html():
     # lxml is lenient — should not raise, just return best effort
     html = "<div class='chapter'><h2>A</h2><p>x</p></unclosed>"

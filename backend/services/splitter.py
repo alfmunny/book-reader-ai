@@ -475,7 +475,26 @@ def _html_body_text(elem, *, skip_first_heading: bool = False) -> str:
 
 
 def _html_inline_text(elem) -> str:
-    """Flatten a <p> (or similar) to plain text, turning <br> into newlines."""
+    """Flatten a <p> (or similar) to plain text, turning <br> into newlines.
+
+    Gutenberg HTML for verse indents each line after `<br>` so the raw text
+    for a stanza like::
+
+        <p>
+        Line 1<br>
+        Line 2<br>
+        Line 3
+        </p>
+
+    contains sequences of `\\n` (from <br>) + indentation whitespace + `\\n`
+    (from source formatting). Without cleanup, that leaves `\\n\\n` between
+    every line — and downstream `split('\\n\\n')` turns each verse line
+    into its own paragraph, flattening stanzas.
+
+    We collapse any run of whitespace-containing newlines back to a single
+    `\\n` so stanzas stay intact.
+    """
+    import re
     chunks: list[str] = []
     if elem.text:
         chunks.append(elem.text)
@@ -489,7 +508,13 @@ def _html_inline_text(elem) -> str:
                 chunks.append(inner)
         if child.tail:
             chunks.append(child.tail)
-    return "".join(chunks)
+    text = "".join(chunks)
+    # Collapse any sequence containing a newline (and surrounding spaces/tabs)
+    # to a single newline. Preserves stanza-internal line breaks while
+    # removing the indentation artifacts that would otherwise look like
+    # paragraph boundaries to the reader's paragraph-splitter.
+    text = re.sub(r"[ \t]*\n[ \t\n]*", "\n", text)
+    return text.strip()
 
 
 # ── Public API ───────────────────────────────────────────────────────────

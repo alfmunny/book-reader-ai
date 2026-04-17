@@ -66,9 +66,41 @@ export default function AdminPage() {
   // can be further expanded to show per-chapter rows.
   const [expandedBookId, setExpandedBookId] = useState<number | null>(null);
   const [expandedLang, setExpandedLang] = useState<string | null>(null);
-  // One text input per-book, keyed by book id, for "Queue a new language"
+  // Per-book queue dropdown: track the currently-picked language in the
+  // row-level select. Actual enqueue fires when admin clicks "+ Translate".
   const [newLangInput, setNewLangInput] = useState<Record<number, string>>({});
   const [queueingLangFor, setQueueingLangFor] = useState<string | null>(null);
+
+  // Fixed set of target languages for the quick-queue dropdown. Keep small
+  // and opinionated so admins don't hunt through a long list.
+  const QUEUE_LANG_OPTIONS = [
+    { code: "zh", label: "Chinese (zh)" },
+    { code: "en", label: "English (en)" },
+    { code: "de", label: "German (de)" },
+    { code: "fr", label: "French (fr)" },
+  ] as const;
+
+  async function queueLanguageForBook(book: Book, lang: string) {
+    if (!lang) return;
+    const key = `${book.id}:${lang}`;
+    setQueueingLangFor(key);
+    try {
+      const res = await adminFetch("/admin/queue/enqueue-book", {
+        method: "POST",
+        body: JSON.stringify({
+          book_id: book.id,
+          target_languages: [lang],
+          priority: 50, // higher than auto-enqueue default 100 — jumps the line
+        }),
+      });
+      alert(`Queued ${res.enqueued} chapter(s) of "${book.title}" → ${lang}.`);
+      await loadAll({ silent: true });
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Enqueue failed");
+    } finally {
+      setQueueingLangFor(null);
+    }
+  }
 
   useEffect(() => {
     getMe().then((me) => {
@@ -338,7 +370,40 @@ export default function AdminPage() {
                         )}
                       </div>
 
-                      <button onClick={() => router.push(`/reader/${b.id}`)} className="text-xs text-amber-600 hover:text-amber-800 shrink-0">Open</button>
+                      <button
+                        onClick={() => router.push(`/reader/${b.id}`)}
+                        className="text-xs text-amber-600 hover:text-amber-800 shrink-0"
+                      >
+                        Open
+                      </button>
+
+                      {/* Quick-queue: dropdown + one-click Translate. Fixed
+                          set of languages (zh/en/de/fr) for speed. Admins
+                          who need an unusual code can still use the admin
+                          API endpoint directly. */}
+                      <select
+                        value={newLangInput[b.id] ?? "zh"}
+                        onChange={(e) =>
+                          setNewLangInput({ ...newLangInput, [b.id]: e.target.value })
+                        }
+                        className="text-xs rounded border border-amber-300 px-1.5 py-0.5 shrink-0 bg-white"
+                        title="Pick a language to queue for translation"
+                      >
+                        {QUEUE_LANG_OPTIONS.map((o) => (
+                          <option key={o.code} value={o.code}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => queueLanguageForBook(b, newLangInput[b.id] ?? "zh")}
+                        disabled={queueingLangFor?.startsWith(`${b.id}:`)}
+                        className="text-xs px-2 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0 disabled:opacity-50"
+                        title="Queue this book for translation into the selected language"
+                      >
+                        {queueingLangFor?.startsWith(`${b.id}:`) ? "Queueing…" : "+ Translate"}
+                      </button>
+
                       <button
                         onClick={() => { if (confirm(`Delete "${b.title}" and all its audio/translations?`)) act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" })); }}
                         className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 shrink-0"
@@ -348,59 +413,10 @@ export default function AdminPage() {
                     {/* Expanded translation panel */}
                     {isExpanded && (
                       <div className="px-4 pb-4 pt-1 bg-amber-50/40 border-t border-amber-100">
-                        {/* Queue a new language for this book — short-circuits
-                            "add to auto_translate_languages + wait for rescan"
-                            when the admin wants just one book in one language. */}
-                        <div className="mb-3 flex items-center gap-2 text-xs">
-                          <span className="text-stone-500">Queue a language for this book:</span>
-                          <input
-                            placeholder="e.g. ja, fr, zh"
-                            value={newLangInput[b.id] ?? ""}
-                            onChange={(e) => setNewLangInput({ ...newLangInput, [b.id]: e.target.value })}
-                            onKeyDown={async (e) => {
-                              if (e.key === "Enter") (e.currentTarget.nextSibling as HTMLButtonElement | null)?.click();
-                            }}
-                            className="flex-1 max-w-[160px] rounded border border-amber-300 px-2 py-0.5 font-mono"
-                          />
-                          <button
-                            onClick={async () => {
-                              const raw = (newLangInput[b.id] ?? "").trim().toLowerCase();
-                              if (!raw) return;
-                              const key = `${b.id}:${raw}`;
-                              setQueueingLangFor(key);
-                              try {
-                                const res = await adminFetch("/admin/queue/enqueue-book", {
-                                  method: "POST",
-                                  body: JSON.stringify({
-                                    book_id: b.id,
-                                    target_languages: [raw],
-                                    // higher than auto-enqueue default of 100
-                                    // so this specific request jumps the line.
-                                    priority: 50,
-                                  }),
-                                });
-                                alert(`Queued ${res.enqueued} chapter(s) of "${b.title}" → ${raw}.`);
-                                setNewLangInput({ ...newLangInput, [b.id]: "" });
-                                await loadAll({ silent: true });
-                              } catch (e: unknown) {
-                                alert(e instanceof Error ? e.message : "Enqueue failed");
-                              } finally {
-                                setQueueingLangFor(null);
-                              }
-                            }}
-                            disabled={queueingLangFor === `${b.id}:${(newLangInput[b.id] ?? "").trim().toLowerCase()}`}
-                            className="text-xs px-2 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
-                          >
-                            {queueingLangFor?.startsWith(`${b.id}:`) ? "Queueing…" : "Queue"}
-                          </button>
-                          <span className="text-[10px] text-stone-400">
-                            (worker processes according to the configured chain)
-                          </span>
-                        </div>
-
                         {translatedLangs.length === 0 ? (
                           <p className="text-xs text-stone-500 italic">
-                            No translations cached yet. Use the input above to queue a language, or wait for the auto-translate languages to cover this book.
+                            No translations cached yet. Use the + Translate
+                            button above to queue a language.
                           </p>
                         ) : (
                           <div className="space-y-2">

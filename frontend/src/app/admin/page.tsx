@@ -66,6 +66,9 @@ export default function AdminPage() {
   // can be further expanded to show per-chapter rows.
   const [expandedBookId, setExpandedBookId] = useState<number | null>(null);
   const [expandedLang, setExpandedLang] = useState<string | null>(null);
+  // One text input per-book, keyed by book id, for "Queue a new language"
+  const [newLangInput, setNewLangInput] = useState<Record<number, string>>({});
+  const [queueingLangFor, setQueueingLangFor] = useState<string | null>(null);
 
   useEffect(() => {
     getMe().then((me) => {
@@ -345,9 +348,59 @@ export default function AdminPage() {
                     {/* Expanded translation panel */}
                     {isExpanded && (
                       <div className="px-4 pb-4 pt-1 bg-amber-50/40 border-t border-amber-100">
+                        {/* Queue a new language for this book — short-circuits
+                            "add to auto_translate_languages + wait for rescan"
+                            when the admin wants just one book in one language. */}
+                        <div className="mb-3 flex items-center gap-2 text-xs">
+                          <span className="text-stone-500">Queue a language for this book:</span>
+                          <input
+                            placeholder="e.g. ja, fr, zh"
+                            value={newLangInput[b.id] ?? ""}
+                            onChange={(e) => setNewLangInput({ ...newLangInput, [b.id]: e.target.value })}
+                            onKeyDown={async (e) => {
+                              if (e.key === "Enter") (e.currentTarget.nextSibling as HTMLButtonElement | null)?.click();
+                            }}
+                            className="flex-1 max-w-[160px] rounded border border-amber-300 px-2 py-0.5 font-mono"
+                          />
+                          <button
+                            onClick={async () => {
+                              const raw = (newLangInput[b.id] ?? "").trim().toLowerCase();
+                              if (!raw) return;
+                              const key = `${b.id}:${raw}`;
+                              setQueueingLangFor(key);
+                              try {
+                                const res = await adminFetch("/admin/queue/enqueue-book", {
+                                  method: "POST",
+                                  body: JSON.stringify({
+                                    book_id: b.id,
+                                    target_languages: [raw],
+                                    // higher than auto-enqueue default of 100
+                                    // so this specific request jumps the line.
+                                    priority: 50,
+                                  }),
+                                });
+                                alert(`Queued ${res.enqueued} chapter(s) of "${b.title}" → ${raw}.`);
+                                setNewLangInput({ ...newLangInput, [b.id]: "" });
+                                await loadAll({ silent: true });
+                              } catch (e: unknown) {
+                                alert(e instanceof Error ? e.message : "Enqueue failed");
+                              } finally {
+                                setQueueingLangFor(null);
+                              }
+                            }}
+                            disabled={queueingLangFor === `${b.id}:${(newLangInput[b.id] ?? "").trim().toLowerCase()}`}
+                            className="text-xs px-2 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
+                          >
+                            {queueingLangFor?.startsWith(`${b.id}:`) ? "Queueing…" : "Queue"}
+                          </button>
+                          <span className="text-[10px] text-stone-400">
+                            (worker processes according to the configured chain)
+                          </span>
+                        </div>
+
                         {translatedLangs.length === 0 ? (
                           <p className="text-xs text-stone-500 italic">
-                            No translations cached yet. Run a bulk translation job or open the book to trigger on-demand translation.
+                            No translations cached yet. Use the input above to queue a language, or wait for the auto-translate languages to cover this book.
                           </p>
                         ) : (
                           <div className="space-y-2">

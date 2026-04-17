@@ -5,6 +5,7 @@
 import {
   getRecentBooks,
   recordRecentBook,
+  removeRecentBook,
   saveLastChapter,
   getLastChapter,
   RecentBook,
@@ -113,5 +114,27 @@ test("getRecentBooks returns empty array when localStorage is empty", () => {
 
 test("getRecentBooks returns empty array when localStorage contains invalid JSON", () => {
   localStorage.setItem("recent_books", "not-json");
+  expect(getRecentBooks()).toEqual([]);
+});
+
+// ── removeRecentBook ─────────────────────────────────────────────────────────
+
+test("removeRecentBook drops the matching book from the list", () => {
+  recordRecentBook({ ...BOOK, id: 1, title: "A" });
+  recordRecentBook({ ...BOOK, id: 2, title: "B" });
+  recordRecentBook({ ...BOOK, id: 3, title: "C" });
+  removeRecentBook(2);
+  const books = getRecentBooks();
+  expect(books.map((b: RecentBook) => b.id).sort()).toEqual([1, 3]);
+});
+
+test("removeRecentBook is a no-op for an unknown book id", () => {
+  recordRecentBook({ ...BOOK, id: 1 });
+  removeRecentBook(9999);
+  expect(getRecentBooks()).toHaveLength(1);
+});
+
+test("removeRecentBook does not throw on empty library", () => {
+  expect(() => removeRecentBook(1)).not.toThrow();
   expect(getRecentBooks()).toEqual([]);
 });

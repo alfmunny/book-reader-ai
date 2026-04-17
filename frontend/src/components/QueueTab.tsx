@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { GEMINI_MODEL_OPTIONS } from "@/lib/geminiModels";
 
 type AdminFetch = (path: string, options?: RequestInit) => Promise<any>;
 
@@ -370,21 +371,68 @@ export default function QueueTab({ adminFetch }: Props) {
           </div>
 
           <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs text-stone-600">Model (optional override)</label>
-            <div className="flex gap-2">
-              <input
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"
-                placeholder="gemini-3.1-flash-lite-preview"
-              />
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-stone-600">Model</label>
               <button
                 onClick={() => saveSettings({ model })}
                 disabled={saving}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50"
+                className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
               >
-                Save
+                Save model
               </button>
+            </div>
+            <div className="space-y-1.5">
+              {GEMINI_MODEL_OPTIONS.map((opt) => (
+                <label
+                  key={opt.value || "default"}
+                  className={`flex items-start gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                    model === opt.value
+                      ? "border-amber-400 bg-amber-50"
+                      : "border-amber-200 bg-white hover:bg-amber-50/50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="queue-model"
+                    value={opt.value}
+                    checked={model === opt.value}
+                    onChange={() => setModel(opt.value)}
+                    className="mt-0.5 accent-amber-700"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-ink font-mono">
+                      {opt.label}
+                    </div>
+                    <div className="text-xs text-stone-500 mt-0.5">{opt.note}</div>
+                  </div>
+                </label>
+              ))}
+              <label className="flex items-start gap-3 p-2 rounded-lg border border-amber-200 bg-white">
+                <input
+                  type="radio"
+                  name="queue-model"
+                  checked={
+                    !!model && !GEMINI_MODEL_OPTIONS.some((o) => o.value === model)
+                  }
+                  onChange={() => setModel("gemini-2.5-flash")}
+                  className="mt-0.5 accent-amber-700"
+                />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-ink mb-1">Custom</div>
+                  <input
+                    type="text"
+                    value={
+                      GEMINI_MODEL_OPTIONS.some((o) => o.value === model) ? "" : model
+                    }
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="e.g. gemini-exp-1206"
+                    className="w-full rounded border border-amber-300 px-2 py-1 text-sm bg-white font-mono"
+                  />
+                  <p className="text-[11px] text-stone-500 mt-1">
+                    Anything the API accepts. If you see 404, the model isn&apos;t available for your key.
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
         </div>

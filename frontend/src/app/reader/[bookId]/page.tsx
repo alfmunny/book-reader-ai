@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
-import { getSettings, saveSettings, FontSize, Theme, TranslationProvider } from "@/lib/settings";
+import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
@@ -109,7 +109,7 @@ export default function ReaderPage() {
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
-  const [translationProvider, setTranslationProvider] = useState<TranslationProvider>("auto");
+  // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   const [translationLoading, setTranslationLoading] = useState(false);
@@ -125,7 +125,7 @@ export default function ReaderPage() {
   useEffect(() => {
     const s = getSettings();
     setTranslationLang(s.translationLang);
-    setTranslationProvider(s.translationProvider);
+    // translationProvider setting is retained for back-compat but no longer read here.
     setAudiobookEnabled(s.audiobookEnabled);
     setFontSize(s.fontSize);
     setTheme(s.theme);
@@ -265,11 +265,15 @@ export default function ReaderPage() {
       //    No hard timeout: as long as the chapter is actually being
       //    processed, we keep waiting. The user can toggle translate off
       //    if they want to stop.
-      setTranslationUsedProvider(
-        res.status === "running"
-          ? "queue · translating now"
-          : `queue · position ${res.position ?? "?"}`,
-      );
+      function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
+        if (r.status === "running") return "queue · translating now";
+        // Pending: distinguish "worker is processing, wait your turn"
+        // from "worker is offline — this will never complete without admin action".
+        if (r.worker_running === false) return "queue · worker is offline";
+        return `queue · position ${r.position ?? "?"}`;
+      }
+
+      setTranslationUsedProvider(describeStatus(res));
 
       const POLL_MS = 3000;
       while (!cancelled && currentChapterKey.current === cacheKey) {
@@ -294,11 +298,7 @@ export default function ReaderPage() {
           setTranslationLoading(false);
           return;
         }
-        setTranslationUsedProvider(
-          tick.status === "running"
-            ? "queue · translating now"
-            : `queue · position ${tick.position ?? "?"}`,
-        );
+        setTranslationUsedProvider(describeStatus(tick));
       }
     })();
 
@@ -583,32 +583,25 @@ export default function ReaderPage() {
                 </button>
               </div>
 
-              {/* Provider selector */}
-              <select
-                className="text-xs rounded border border-amber-300 px-2 py-1 text-ink bg-white"
-                value={translationProvider}
-                onChange={(e) => {
-                  const v = e.target.value as TranslationProvider;
-                  setTranslationProvider(v);
-                  saveSettings({ translationProvider: v });
-                  // Clear cache so re-translation uses the new provider
-                  translationCache.current.clear();
-                }}
-              >
-                <option value="auto">Auto</option>
-                <option value="google">Google (free)</option>
-                <option value="gemini">Gemini (key)</option>
-              </select>
+              {/* Provider dropdown removed — all translations now flow
+                  through the queue worker which uses the admin's
+                  configured model chain. Users no longer choose their
+                  own Gemini vs. Google provider. */}
 
-              {translationLoading && (
-                <span className="text-xs text-amber-500 animate-pulse">Translating…</span>
-              )}
-
-              {!translationLoading && translationUsedProvider && (
+              {/* Show the translation status text whether we're loading or
+                  done. While queued this surfaces "queue · position N" /
+                  "queue · translating now" so the user sees progress
+                  instead of an opaque "Translating…". When complete it
+                  shows the provider/model that produced the result. */}
+              {translationLoading ? (
+                <span className="text-xs text-amber-600 animate-pulse">
+                  {translationUsedProvider || "Translating…"}
+                </span>
+              ) : translationUsedProvider ? (
                 <span className="text-[10px] text-amber-400">
                   via {translationUsedProvider}
                 </span>
-              )}
+              ) : null}
 
               {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                 <button
@@ -622,6 +615,25 @@ export default function ReaderPage() {
           )}
         </div>
       </header>
+
+      {/* Per-chapter queue banner — when THIS chapter is awaiting the
+          background worker. More prominent than the small status line
+          in the toolbar because the user actively cares about it while
+          waiting. Hidden once the translation lands (translationLoading
+          goes false when translatedParagraphs arrives). */}
+      {translationEnabled &&
+        translationLoading &&
+        translationUsedProvider &&
+        translationUsedProvider.startsWith("queue") && (
+          <div className="bg-sky-50 border-b border-sky-200 px-4 py-2 text-xs text-sky-800 flex items-center gap-2">
+            <span className="inline-block w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" />
+            <span>
+              <strong>Translation queued</strong> — {translationUsedProvider}.
+              The background worker is processing this chapter; translated
+              paragraphs will appear below when ready.
+            </span>
+          </div>
+        )}
 
       {/* Bulk translation banner — visible when a background job is translating this book */}
       {translationEnabled && bookTranslationStatus && bookTranslationStatus.bulk_active && (

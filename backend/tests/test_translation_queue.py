@@ -107,6 +107,93 @@ async def test_queue_summary_counts(tmp_db):
     assert summary["by_book"][7]["zh"]["pending"] == 2
 
 
+async def test_queued_by_tracks_attribution(tmp_db):
+    """Admin-initiated enqueues record the admin label; auto-enqueues from
+    save_book leave queued_by = NULL."""
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    # Auto path (save_book with no languages configured) and manual path
+    # with an attributed user.
+    await enqueue(1, 0, "zh", queued_by="admin@example.com")
+    await enqueue(1, 1, "zh")  # no queued_by → NULL
+    rows = await list_queue()
+    by_idx = {r["chapter_index"]: r for r in rows}
+    assert by_idx[0]["queued_by"] == "admin@example.com"
+    assert by_idx[1]["queued_by"] is None
+
+
+async def test_list_queue_includes_book_title(tmp_db):
+    """Queue items must carry the book title so the admin UI can identify rows."""
+    await save_book(1, {**BOOK_META, "title": "Moby Dick"}, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+    # Orphan row — book never saved.
+    await enqueue(999, 0, "zh")
+    rows = await list_queue()
+    by_book = {r["book_id"]: r for r in rows}
+    assert by_book[1]["book_title"] == "Moby Dick"
+    assert by_book[999]["book_title"] is None
+
+
+async def test_worker_passes_model_max_output_tokens_setting(tmp_db):
+    """SETTING_MAX_OUTPUT_TOKENS must drive both batch grouping and the
+    max_output_tokens the Gemini call receives — this is how picking a big
+    model like 2.5-pro lets us pack many chapters per batch."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    from services.translation_queue import SETTING_MAX_OUTPUT_TOKENS
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await set_setting(SETTING_MAX_OUTPUT_TOKENS, "60000")
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    captured: dict = {}
+
+    async def fake_translate(api_key, chapters, src, tgt, *, model=None, max_output_tokens=None, **kwargs):
+        captured["max_output_tokens"] = max_output_tokens
+        return {idx: ["ok"] for idx, _ in chapters}
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+    assert captured.get("max_output_tokens") == 60000
+
+
+async def test_worker_reconfigures_limiter_on_rate_setting_change(tmp_db):
+    """Changing RPM/RPD in app_settings must propagate to the live limiter
+    without restarting the worker — otherwise auto-rate-by-model wouldn't
+    take effect for pending items."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await set_setting("queue_rpm", "15")
+    await set_setting("queue_rpd", "1500")
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    async def fake_translate(*args, **kwargs):
+        return {0: ["ok"]}
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+    assert w._limiter is not None
+    assert (w._limiter.rpm, w._limiter.rpd) == (15, 1500)
+
+    # Admin "saves" a new model that pins different limits.
+    await set_setting("queue_rpm", "2")
+    await set_setting("queue_rpd", "50")
+    await enqueue(1, 1, "zh")
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+    assert (w._limiter.rpm, w._limiter.rpd) == (2, 50)
+
+
 async def test_clear_queue_all_and_by_status(tmp_db):
     """clear_queue() wipes everything; clear_queue(status='failed') only wipes failed rows."""
     await enqueue(1, 0, "zh")
@@ -155,6 +242,36 @@ async def test_worker_idles_when_disabled(tmp_db):
     assert w._state.enabled is False
 
 
+async def test_failing_batch_bumps_priority_so_worker_moves_on(tmp_db, monkeypatch):
+    """A book that keeps failing must not block other books. The worker
+    should bump failing rows' priority so they drop behind fresh work."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.translation_queue as tq
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0, 0.0))
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh", priority=100)
+
+    async def always_fail(*args, **kwargs):
+        raise RuntimeError("safety blocked")
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=always_fail):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    rows = await list_queue()
+    # Still pending (attempts=1, not yet MAX_ATTEMPTS) but priority bumped
+    # from 100 to 1100 so it's behind anything freshly enqueued at 100.
+    assert len(rows) == 1
+    assert rows[0]["status"] == "pending"
+    assert rows[0]["attempts"] == 1
+    assert rows[0]["priority"] >= 1100
+
+
 async def test_worker_exposes_retry_state_on_transient_error(tmp_db, monkeypatch):
     """A transient 503 must surface as retry_attempt/retry_reason, not last_error.
     Only after retries are exhausted does it become last_error."""
@@ -170,6 +287,9 @@ async def test_worker_exposes_retry_state_on_transient_error(tmp_db, monkeypatch
 
     async def always_503(*args, **kwargs):
         raise RuntimeError("503 UNAVAILABLE. model overloaded")
+
+    # kwargs signature compatibility — translate_chapters_batch now receives
+    # max_output_tokens too.
 
     w = TranslationQueueWorker()
     w._stop_event = __import__("asyncio").Event()
@@ -206,7 +326,7 @@ async def test_worker_skips_already_cached_chapter(tmp_db):
 
     called_with: list = []
 
-    async def fake_translate(api_key, chapters, src, tgt, *, prior_context="", model=None):
+    async def fake_translate(api_key, chapters, src, tgt, *, prior_context="", model=None, **kwargs):
         called_with.append(chapters)
         return {idx: [f"new-{idx}"] for idx, _ in chapters}
 
@@ -245,7 +365,7 @@ async def test_worker_processes_batch(tmp_db):
 
     fake_return = {0: ["翻译段落一", "翻译段落二"], 1: ["翻译章节二"]}
 
-    async def fake_translate(api_key, chapters, src, tgt, *, prior_context="", model=None):
+    async def fake_translate(api_key, chapters, src, tgt, *, prior_context="", model=None, **kwargs):
         return fake_return
 
     w = TranslationQueueWorker()

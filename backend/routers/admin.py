@@ -30,6 +30,7 @@ from services.translation_queue import (
     SETTING_API_KEY,
     SETTING_AUTO_LANGS,
     SETTING_ENABLED,
+    SETTING_MAX_OUTPUT_TOKENS,
     SETTING_MODEL,
     SETTING_RPD,
     SETTING_RPM,
@@ -713,6 +714,7 @@ async def queue_get_settings(_admin: dict = Depends(_require_admin)):
     rpm = await get_setting(SETTING_RPM)
     rpd = await get_setting(SETTING_RPD)
     model = await get_setting(SETTING_MODEL)
+    max_tok = await get_setting(SETTING_MAX_OUTPUT_TOKENS)
     return {
         "enabled": enabled != "0",
         "has_api_key": bool(key),
@@ -720,6 +722,7 @@ async def queue_get_settings(_admin: dict = Depends(_require_admin)):
         "rpm": int(rpm) if rpm else None,
         "rpd": int(rpd) if rpd else None,
         "model": model or None,
+        "max_output_tokens": int(max_tok) if max_tok else None,
     }
 
 
@@ -730,6 +733,7 @@ class QueueSettingsRequest(BaseModel):
     rpm: int | None = None
     rpd: int | None = None
     model: str | None = None
+    max_output_tokens: int | None = None
 
 
 @router.put("/queue/settings")
@@ -755,6 +759,8 @@ async def queue_set_settings(
         await set_setting(SETTING_RPD, str(req.rpd))
     if req.model is not None:
         await set_setting(SETTING_MODEL, req.model)
+    if req.max_output_tokens is not None:
+        await set_setting(SETTING_MAX_OUTPUT_TOKENS, str(req.max_output_tokens))
     queue_worker().wake()
     return {"ok": True}
 
@@ -779,13 +785,14 @@ class EnqueueBookRequest(BaseModel):
 @router.post("/queue/enqueue-book")
 async def queue_enqueue_book(
     req: EnqueueBookRequest,
-    _admin: dict = Depends(_require_admin),
+    admin: dict = Depends(_require_admin),
 ):
     added = await enqueue_for_book(
         req.book_id,
         target_languages=req.target_languages,
         priority=req.priority,
         reset_failed=req.reset_failed,
+        queued_by=admin.get("email") or admin.get("name") or f"admin#{admin.get('id')}",
     )
     queue_worker().wake()
     return {"ok": True, "enqueued": added}
@@ -827,10 +834,13 @@ async def queue_delete_book(
 async def queue_retry_item(
     item_id: int, _admin: dict = Depends(_require_admin),
 ):
+    # Reset priority too — without this, a row that was bumped to the back
+    # on failure would be retried but still sit behind everything else.
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             """UPDATE translation_queue
                SET status='pending', attempts=0, last_error=NULL,
+                   priority=100,
                    updated_at=CURRENT_TIMESTAMP
                WHERE id=?""",
             (item_id,),
@@ -841,7 +851,7 @@ async def queue_retry_item(
 
 
 @router.post("/queue/enqueue-all")
-async def queue_enqueue_all(_admin: dict = Depends(_require_admin)):
+async def queue_enqueue_all(admin: dict = Depends(_require_admin)):
     """Walk every cached book and enqueue missing translations for all
     configured auto-translate languages."""
     langs = await get_auto_languages()
@@ -851,8 +861,9 @@ async def queue_enqueue_all(_admin: dict = Depends(_require_admin)):
             detail="No auto_translate_languages configured in queue settings",
         )
     books = await list_cached_books()
+    by = admin.get("email") or admin.get("name") or f"admin#{admin.get('id')}"
     total = 0
     for b in books:
-        total += await enqueue_for_book(b["id"], target_languages=langs)
+        total += await enqueue_for_book(b["id"], target_languages=langs, queued_by=by)
     queue_worker().wake()
     return {"ok": True, "enqueued": total, "books_scanned": len(books)}

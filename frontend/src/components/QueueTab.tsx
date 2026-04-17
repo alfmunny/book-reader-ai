@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { GEMINI_MODEL_OPTIONS } from "@/lib/geminiModels";
+import { GEMINI_MODEL_OPTIONS, rateForModel } from "@/lib/geminiModels";
 
 type AdminFetch = (path: string, options?: RequestInit) => Promise<any>;
 
@@ -11,6 +11,7 @@ interface QueueSettings {
   rpm: number | null;
   rpd: number | null;
   model: string | null;
+  max_output_tokens: number | null;
 }
 
 interface WorkerLog {
@@ -54,6 +55,7 @@ interface QueueStatus {
 interface QueueItem {
   id: number;
   book_id: number;
+  book_title: string | null;
   chapter_index: number;
   target_language: string;
   status: string;
@@ -61,10 +63,24 @@ interface QueueItem {
   attempts: number;
   last_error: string | null;
   created_at: string;
+  queued_by: string | null;
 }
 
 interface Props {
   adminFetch: AdminFetch;
+}
+
+// SQLite returns "YYYY-MM-DD HH:MM:SS" in UTC. Render as a compact relative
+// age (e.g. "3m ago", "2h ago") — admins scan rows fastest that way.
+function relTime(ts: string | null | undefined): string {
+  if (!ts) return "";
+  const d = new Date(ts.includes("T") ? ts : ts.replace(" ", "T") + "Z");
+  const secs = Math.round((Date.now() - d.getTime()) / 1000);
+  if (secs < 5) return "now";
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
 }
 
 export default function QueueTab({ adminFetch }: Props) {
@@ -79,9 +95,10 @@ export default function QueueTab({ adminFetch }: Props) {
   // Form state — mirrors settings but editable.
   const [langs, setLangs] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [rpm, setRpm] = useState("");
-  const [rpd, setRpd] = useState("");
   const [model, setModel] = useState("");
+  // Track once we've initialised model from server so the user's edit
+  // isn't overwritten by a later poll.
+  const modelInitedRef = useRef(false);
 
   async function refresh() {
     try {
@@ -98,9 +115,10 @@ export default function QueueTab({ adminFetch }: Props) {
       setSettings(cfg);
       setItems(its);
       if (langs === "") setLangs((cfg.auto_translate_languages || []).join(", "));
-      if (rpm === "" && cfg.rpm) setRpm(String(cfg.rpm));
-      if (rpd === "" && cfg.rpd) setRpd(String(cfg.rpd));
-      if (model === "" && cfg.model) setModel(cfg.model);
+      if (!modelInitedRef.current) {
+        setModel(cfg.model || "");
+        modelInitedRef.current = true;
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load queue");
     }
@@ -370,56 +388,40 @@ export default function QueueTab({ adminFetch }: Props) {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs text-stone-600">RPM</label>
-            <div className="flex gap-2">
-              <input
-                value={rpm}
-                onChange={(e) => setRpm(e.target.value)}
-                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"
-                placeholder="12"
-              />
-              <button
-                onClick={() => saveSettings({ rpm: Number(rpm) || 12 })}
-                disabled={saving}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-stone-600">RPD (per-day cap)</label>
-            <div className="flex gap-2">
-              <input
-                value={rpd}
-                onChange={(e) => setRpd(e.target.value)}
-                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"
-                placeholder="1400"
-              />
-              <button
-                onClick={() => saveSettings({ rpd: Number(rpd) || 1400 })}
-                disabled={saving}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-
           <div className="space-y-1 sm:col-span-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs text-stone-600">Model</label>
+              <label className="text-xs text-stone-600">
+                Model — rate limits auto-apply from the selection below
+              </label>
               <button
-                onClick={() => saveSettings({ model })}
+                onClick={() => {
+                  const { rpm, rpd, maxOutputTokens } = rateForModel(model);
+                  saveSettings({
+                    model,
+                    rpm,
+                    rpd,
+                    max_output_tokens: maxOutputTokens,
+                  });
+                }}
                 disabled={saving}
                 className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
               >
-                Save model
+                Save model & rate
               </button>
             </div>
-            <div className="space-y-1.5">
+
+            {/* Current-applied summary so the admin sees what's live now */}
+            <div className="text-[11px] text-stone-500">
+              Active: <span className="font-mono">{settings?.model || "default"}</span>
+              {settings?.rpm || settings?.rpd ? (
+                <> · {settings.rpm ?? "?"} rpm · {settings.rpd ?? "?"} rpd</>
+              ) : null}
+              {settings?.max_output_tokens
+                ? ` · batch ≤ ${settings.max_output_tokens.toLocaleString()} tokens`
+                : null}
+            </div>
+
+            <div className="space-y-1.5 mt-1">
               {GEMINI_MODEL_OPTIONS.map((opt) => (
                 <label
                   key={opt.value || "default"}
@@ -438,8 +440,14 @@ export default function QueueTab({ adminFetch }: Props) {
                     className="mt-0.5 accent-amber-700"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-ink font-mono">
-                      {opt.label}
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-sm font-medium text-ink font-mono">
+                        {opt.label}
+                      </div>
+                      <div className="text-[11px] text-stone-500 shrink-0">
+                        {opt.rpm} rpm · {opt.rpd} rpd · ≤
+                        {opt.maxOutputTokens.toLocaleString()} tok/batch
+                      </div>
                     </div>
                     <div className="text-xs text-stone-500 mt-0.5">{opt.note}</div>
                   </div>
@@ -467,7 +475,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     className="w-full rounded border border-amber-300 px-2 py-1 text-sm bg-white font-mono"
                   />
                   <p className="text-[11px] text-stone-500 mt-1">
-                    Anything the API accepts. If you see 404, the model isn&apos;t available for your key.
+                    Anything the API accepts. Uses conservative defaults (10 rpm · 500 rpd); override via API if you&apos;re on a paid tier.
                   </p>
                 </div>
               </label>
@@ -519,7 +527,7 @@ export default function QueueTab({ adminFetch }: Props) {
             {items.map((it) => (
               <li key={it.id} className="px-4 py-2 flex items-center gap-2 text-xs">
                 <span
-                  className={`px-1.5 py-0.5 rounded text-[10px] ${
+                  className={`px-1.5 py-0.5 rounded text-[10px] shrink-0 ${
                     it.status === "pending"
                       ? "bg-stone-100 text-stone-600"
                       : it.status === "running"
@@ -533,18 +541,37 @@ export default function QueueTab({ adminFetch }: Props) {
                 >
                   {it.status}
                 </span>
-                <span className="text-stone-600 font-mono">
-                  book {it.book_id} · ch {it.chapter_index} → {it.target_language}
+                <span
+                  className="text-ink truncate max-w-[40%]"
+                  title={it.book_title || `book ${it.book_id}`}
+                >
+                  {it.book_title || `book ${it.book_id}`}
+                </span>
+                <span className="text-stone-500 font-mono shrink-0">
+                  · ch {it.chapter_index + 1} → {it.target_language}
+                </span>
+                <span
+                  className="text-stone-400 shrink-0"
+                  title={`Queued ${it.created_at} by ${it.queued_by || "auto (save_book)"}`}
+                >
+                  · {relTime(it.created_at)}
+                  {" by "}
+                  <span className={it.queued_by ? "text-stone-500" : "italic"}>
+                    {it.queued_by || "auto"}
+                  </span>
                 </span>
                 {it.attempts > 0 && (
-                  <span className="text-stone-400">· {it.attempts} attempts</span>
+                  <span className="text-stone-400 shrink-0">· {it.attempts} attempts</span>
                 )}
                 {it.last_error && (
-                  <span className="text-red-500 truncate flex-1" title={it.last_error}>
+                  <span
+                    className="text-red-500 truncate flex-1 min-w-0"
+                    title={it.last_error}
+                  >
                     {it.last_error}
                   </span>
                 )}
-                <div className="ml-auto flex gap-1">
+                <div className="ml-auto flex gap-1 shrink-0">
                   {it.status === "failed" && (
                     <button
                       onClick={() => retry(it)}

@@ -190,6 +190,61 @@ async def test_worker_creates_per_model_limiter_with_correct_rates(tmp_db):
     assert (lim.rpm, lim.rpd) == (150, 1000)
 
 
+async def test_save_translation_auto_clears_pending_queue_row(tmp_db):
+    """save_translation must mark any matching pending/running queue row as
+    done so the worker doesn't claim+skip it later."""
+    from services.db import save_translation
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+    # Sanity: row starts as pending.
+    rows = await list_queue(status="pending")
+    assert len(rows) == 1
+
+    await save_translation(1, 0, "zh", ["done"], provider="gemini")
+
+    # Post-condition: the queue row is now 'done', not pending.
+    pending = await list_queue(status="pending")
+    assert pending == []
+    done = await list_queue(status="done")
+    assert len(done) == 1
+    assert done[0]["book_id"] == 1
+
+
+async def test_save_translation_ignores_unrelated_queue_rows(tmp_db):
+    """A save for (1, 0, zh) must not touch (1, 1, zh) or (1, 0, de)."""
+    from services.db import save_translation
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    await enqueue(1, 0, "de")
+
+    await save_translation(1, 0, "zh", ["x"])
+
+    remaining_pending = {(r["chapter_index"], r["target_language"])
+                         for r in await list_queue(status="pending")}
+    assert remaining_pending == {(1, "zh"), (0, "de")}
+
+
+async def test_queue_status_for_chapter_reports_position(tmp_db):
+    """The reader-page status lookup returns the right position + status."""
+    from services.translation_queue import queue_status_for_chapter
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    # No row yet → not queued.
+    none = await queue_status_for_chapter(1, 0, "zh")
+    assert none == {"queued": False, "status": None, "position": None, "attempts": 0}
+
+    # Enqueue three; (1, 0, zh) is second in line because it's enqueued
+    # second but shares priority 100 with the first row.
+    await enqueue(2, 0, "zh", priority=100)   # id=1, ahead
+    await enqueue(1, 0, "zh", priority=100)   # id=2, ours
+    await enqueue(3, 0, "zh", priority=100)   # id=3, behind
+
+    status = await queue_status_for_chapter(1, 0, "zh")
+    assert status["queued"] is True
+    assert status["status"] == "pending"
+    assert status["position"] == 2
+
+
 async def test_estimate_queue_cost_returns_per_model_breakdown(tmp_db):
     """Cost estimate must give a non-zero USD figure per model when there's
     pending work, and zero when there's none."""
@@ -220,7 +275,7 @@ async def test_default_chain_applied_when_no_setting(tmp_db):
     a sensible chain out of the box."""
     from services.translation_queue import get_model_chain
     chain = await get_model_chain()
-    assert chain[0] == "gemini-3.1-pro"
+    assert chain[0] == "gemini-3.1-pro-preview"
     assert "gemini-2.5-pro" in chain
     assert "gemini-2.0-flash" in chain
 

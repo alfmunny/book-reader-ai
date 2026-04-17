@@ -16,8 +16,8 @@ export interface ModelOption {
 // matching RPM/RPD to the queue settings so admins don't have to guess.
 export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
   {
-    value: "gemini-3.1-pro",
-    label: "gemini-3.1-pro",
+    value: "gemini-3.1-pro-preview",
+    label: "gemini-3.1-pro-preview",
     note: "Frontier quality (3.1 family). Low RPD — reserve for the most important books. Packs up to 60K output tokens per batch.",
     rpm: 25,
     rpd: 250,
@@ -52,8 +52,8 @@ export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
     recommended: true,
   },
   {
-    value: "gemini-3.1-flash-lite",
-    label: "gemini-3.1-flash-lite",
+    value: "gemini-3.1-flash-lite-preview",
+    label: "gemini-3.1-flash-lite-preview",
     note: "Newest lite model — 150K daily requests. Drops nuance on dialogue but very high capacity.",
     rpm: 4000,
     rpd: 150000,
@@ -126,7 +126,7 @@ export function isRecommended(model: string): boolean {
 //   2.5-flash → 10K/day strong literary
 //   2.0-flash → unlimited safety net
 export const DEFAULT_CHAIN: string[] = [
-  "gemini-3.1-pro",
+  "gemini-3.1-pro-preview",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
@@ -167,7 +167,7 @@ export const CHAIN_PRESETS: ChainPreset[] = [
     description:
       "Start with 3.1-pro for the most faithful literary rendering; cascade to 2.5-pro, 2.5-flash, then 2.0-flash as daily quotas are spent. The default chain — best overall quality.",
     chain: [
-      "gemini-3.1-pro",
+      "gemini-3.1-pro-preview",
       "gemini-2.5-pro",
       "gemini-2.5-flash",
       "gemini-2.0-flash",

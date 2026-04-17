@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, translateText, getTranslationCache, saveTranslationCache, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, getChapterQueueStatus, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, TranslationProvider } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -236,8 +236,48 @@ export default function ReaderPage() {
         return;
       }
 
-      // 2. No cache — translate progressively in batches of ~3 paragraphs.
-      //    Each batch appears as soon as it's done.
+      // 2. No cache — before firing fresh API calls, check if the queue
+      //    worker is already scheduled to translate this chapter. If so,
+      //    wait for it (poll cache) instead of duplicating the call.
+      try {
+        const q = await getChapterQueueStatus(bid, chapterIndex, translationLang);
+        if (q.queued) {
+          setTranslationUsedProvider(
+            q.status === "running"
+              ? "queued · translating now"
+              : `queued · position ${q.position ?? "?"}`,
+          );
+          // Poll for cache landing, up to ~90s. Background worker advances
+          // ~1 batch/6s typically; if it's further out, fall through to
+          // on-demand translate rather than blocking the reader forever.
+          const POLL_MS = 3000;
+          const MAX_POLLS = 30;
+          for (let i = 0; i < MAX_POLLS; i++) {
+            await new Promise((r) => setTimeout(r, POLL_MS));
+            if (cancelled || currentChapterKey.current !== cacheKey) return;
+            const latest = await getTranslationCache(bid, chapterIndex, translationLang);
+            if (latest) {
+              translationCache.current.set(cacheKey, latest.paragraphs);
+              setTranslatedParagraphs(latest.paragraphs);
+              const providerLabel = latest.provider
+                ? (latest.model ? `${latest.provider} (${latest.model})` : latest.provider)
+                : "queue · cached";
+              setTranslationUsedProvider(providerLabel);
+              setTranslationLoading(false);
+              return;
+            }
+          }
+          // Timeout — fall through to on-demand translate below.
+          setTranslationUsedProvider("queue timeout · translating now");
+        }
+      } catch {
+        // If the queue-status lookup fails, just do on-demand as before.
+      }
+
+      if (cancelled || currentChapterKey.current !== cacheKey) return;
+
+      // 3. Still nothing cached — translate progressively in batches of ~3
+      //    paragraphs. Each batch appears as soon as it's done.
       const BATCH_SIZE = 3;
       const paragraphs = current.text.split(/\n\n+/).filter((p: string) => p.trim());
       const batches: string[][] = [];

@@ -101,6 +101,23 @@ async def translation_status(book_id: int, target_language: str):
     }
 
 
+@router.get("/{book_id}/chapters/{chapter_index}/queue-status")
+async def chapter_queue_status(
+    book_id: int,
+    chapter_index: int,
+    target_language: str,
+    _user: dict = Depends(get_current_user),
+):
+    """Per-chapter queue lookup for the reader page.
+
+    Any logged-in user can call this — the reader needs it before firing an
+    on-demand translate to avoid duplicating work the background worker is
+    already scheduled to do.
+    """
+    from services.translation_queue import queue_status_for_chapter
+    return await queue_status_for_chapter(book_id, chapter_index, target_language)
+
+
 @router.get("/{book_id}")
 async def book_meta(book_id: int):
     cached = await get_cached_book(book_id)

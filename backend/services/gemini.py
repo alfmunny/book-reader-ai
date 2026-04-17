@@ -200,10 +200,47 @@ async def translate_chapters_batch(
     except ValueError:
         raw = ""
 
+    # Gemini tells us why generation stopped — MAX_TOKENS means we
+    # truncated the output (often mid-chapter, so `</chapter>` is
+    # missing). SAFETY / RECITATION means content was blocked. Other
+    # finish reasons usually mean the response was empty for some
+    # benign reason. We surface the reason in the error so the queue
+    # worker's chain-advance logs point at a concrete problem.
+    finish_reason = ""
+    try:
+        finish_reason = str(response.candidates[0].finish_reason or "")
+    except (AttributeError, IndexError, TypeError):
+        pass
+
     # Parse <chapter> blocks out of the response
     matches = _CHAPTER_BLOCK_RE.findall(raw)
     if not matches:
-        raise ValueError("Gemini response contained no <chapter> blocks")
+        # Fallback: when we sent exactly one chapter and the model
+        # produced non-empty prose without the `<chapter>` wrapping,
+        # trust it — it's almost certainly just that chapter's
+        # translation (common on flash-lite with short inputs). Only
+        # do this when the finish reason is a clean STOP; truncated
+        # output isn't a complete translation.
+        if (
+            len(chapters) == 1
+            and raw.strip()
+            and finish_reason.upper().endswith("STOP")
+        ):
+            idx = chapters[0][0]
+            paragraphs = [p.strip() for p in raw.split("\n\n") if p.strip()]
+            if paragraphs:
+                return {idx: paragraphs}
+
+        # Diagnostic error: include the finish reason and a preview
+        # of the raw output so admins can see whether the model
+        # truncated, was blocked, or simply returned the wrong
+        # format.
+        preview = raw.strip()[:160].replace("\n", "\\n")
+        reason = f" (finish_reason={finish_reason})" if finish_reason else ""
+        raise ValueError(
+            f"Gemini response contained no <chapter> blocks{reason} — "
+            f"raw preview: {preview!r}"
+        )
 
     result: dict[int, list[str]] = {}
     for idx_str, body in matches:

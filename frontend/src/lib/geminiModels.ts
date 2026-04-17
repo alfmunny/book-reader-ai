@@ -131,3 +131,60 @@ export const DEFAULT_CHAIN: string[] = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
 ];
+
+// Named presets that map admin intent ("cheap drafts" / "quality without
+// breaking the bank" / "best money can buy") to a concrete chain. Picking a
+// preset populates the chain picker; admin still saves explicitly.
+export interface ChainPreset {
+  id: "budget" | "balanced" | "premium";
+  label: string;
+  tagline: string;
+  description: string;
+  chain: string[];
+}
+
+export const CHAIN_PRESETS: ChainPreset[] = [
+  {
+    id: "budget",
+    label: "Budget",
+    tagline: "Cheap, unlimited capacity",
+    description:
+      "Flash-class models only. Good for first-pass drafts or non-literary target languages where nuance matters less. Unlimited daily requests — drain a whole library in one run.",
+    chain: ["gemini-2.0-flash", "gemini-2.0-flash-lite"],
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    tagline: "Strong prose, affordable",
+    description:
+      "2.5-flash leads for its near-pro literary quality; 2.0-flash catches overflow. The sweet spot for most libraries — clearly better than lite, a fraction of the pro cost.",
+    chain: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  },
+  {
+    id: "premium",
+    label: "Premium",
+    tagline: "Frontier top, graceful degradation",
+    description:
+      "Start with 3.1-pro for the most faithful literary rendering; cascade to 2.5-pro, 2.5-flash, then 2.0-flash as daily quotas are spent. The default chain — best overall quality.",
+    chain: [
+      "gemini-3.1-pro",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+    ],
+  },
+];
+
+export function presetMatchingChain(
+  chain: readonly string[],
+): ChainPreset["id"] | null {
+  for (const p of CHAIN_PRESETS) {
+    if (
+      p.chain.length === chain.length &&
+      p.chain.every((m, i) => m === chain[i])
+    ) {
+      return p.id;
+    }
+  }
+  return null;
+}

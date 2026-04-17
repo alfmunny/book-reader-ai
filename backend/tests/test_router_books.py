@@ -237,6 +237,42 @@ async def test_retry_chapter_translation_revives_failed_row(client):
     assert row["priority"] == 10
 
 
+async def test_enqueue_all_chapters_for_user(client):
+    """POST /books/{id}/translations/enqueue-all queues every not-yet-
+    translated chapter of the book in the requested language at
+    priority=20 (between admin per-book 50 and reader on-demand 10)."""
+    import aiosqlite
+    import services.db as db_module
+    # Long enough text to split into 2 chapters under the plain-text splitter.
+    text = (
+        "CHAPTER I\n\n" + ("First chapter word. " * 40) + "\n\n"
+        + ("More first chapter text. " * 40) + "\n\n"
+        + "CHAPTER II\n\n" + ("Second chapter word. " * 40) + "\n\n"
+        + ("More second chapter text. " * 40)
+    )
+    await save_book(1342, MOCK_META, text)
+    resp = await client.post(
+        "/api/books/1342/translations/enqueue-all",
+        json={"target_language": "zh"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["enqueued"] >= 1
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT chapter_index, priority, status FROM translation_queue "
+            "WHERE book_id=1342 AND target_language='zh' ORDER BY chapter_index",
+        ) as cursor:
+            rows = [dict(r) for r in await cursor.fetchall()]
+    assert rows
+    for row in rows:
+        assert row["status"] == "pending"
+        assert row["priority"] == 20
+
+
 async def test_retry_chapter_translation_inserts_if_no_row(client):
     """If no queue row exists yet (e.g. failed row was deleted), retry
     still succeeds and creates a pending row."""

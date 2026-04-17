@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -336,6 +336,31 @@ export default function ReaderPage() {
     // Re-trigger by toggling translation off then on
     setTranslationEnabled(false);
     setTimeout(() => setTranslationEnabled(true), 50);
+  }
+
+  const [enqueueingBook, setEnqueueingBook] = useState(false);
+
+  async function handleTranslateWholeBook() {
+    const bid = Number(bookId);
+    setEnqueueingBook(true);
+    try {
+      const res = await enqueueBookTranslation(bid, translationLang);
+      // Refresh whole-book status immediately so the banner updates
+      // without waiting for the 15s poll tick.
+      try {
+        const status = await getBookTranslationStatus(bid, translationLang);
+        setBookTranslationStatus(status);
+      } catch { /* ignore */ }
+      alert(
+        res.enqueued === 0
+          ? `All chapters are already translated or already queued.`
+          : `Queued ${res.enqueued} chapter${res.enqueued === 1 ? "" : "s"} for translation into ${translationLang}.`,
+      );
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to queue book");
+    } finally {
+      setEnqueueingBook(false);
+    }
   }
 
   async function handleRetryFailed() {
@@ -677,13 +702,18 @@ export default function ReaderPage() {
       {translationEnabled && bookTranslationStatus && (() => {
         const s = bookTranslationStatus;
         const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
-        const anyQueueActivity = queued > 0 || (s.queue_failed ?? 0) > 0;
-        if (!s.bulk_active && !anyQueueActivity) return null;
         const ready = s.translated_chapters;
         const total = s.total_chapters;
+        // Chapters that are neither done nor queued — the "nothing is
+        // happening for these" bucket the user can act on via the
+        // Translate-whole-book button.
+        const notStarted = Math.max(
+          0,
+          total - ready - queued - (s.queue_failed ?? 0),
+        );
         return (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2">
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between gap-3 flex-wrap">
+            <span className="flex items-center gap-2 min-w-0">
               <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
               <span>
                 <strong>{ready} / {total}</strong> chapters translated
@@ -700,9 +730,31 @@ export default function ReaderPage() {
                     <span className="text-red-600">{s.queue_failed} failed</span>
                   </>
                 ) : null}
+                {notStarted > 0 && (
+                  <>
+                    {" · "}
+                    <span className="text-stone-500">{notStarted} not started</span>
+                  </>
+                )}
               </span>
             </span>
-            <span className="text-amber-500 shrink-0">Polls every 15s</span>
+            <span className="flex items-center gap-2 shrink-0">
+              {/* Any authenticated user can queue the whole book they're
+                  reading. Priority=20 (above admin auto, below active-
+                  reader on-demand) so the click is honored without
+                  starving whoever is currently waiting on a chapter. */}
+              {notStarted > 0 && (
+                <button
+                  onClick={handleTranslateWholeBook}
+                  disabled={enqueueingBook}
+                  className="text-xs px-3 py-1 rounded-full border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                  title={`Queue the remaining ${notStarted} chapters into ${translationLang}`}
+                >
+                  {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
+                </button>
+              )}
+              <span className="text-amber-500">Polls every 15s</span>
+            </span>
           </div>
         );
       })()}

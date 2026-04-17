@@ -41,6 +41,8 @@ interface WorkerState {
   current_target_language: string;
   current_batch_size: number;
   current_model?: string;
+  startup_phase?: string;
+  startup_progress?: string;
   last_completed_at: string | null;
   last_error: string;
   started_at: string | null;
@@ -468,6 +470,28 @@ export default function QueueTab({ adminFetch }: Props) {
             </button>
           )}
         </div>
+
+        {/* Startup banner — shown while the worker is doing its boot-time
+            housekeeping (stale reset + library rescan). Gives the admin
+            concrete feedback instead of a silent "Starting…" while the
+            splitter chews through 100+ books. */}
+        {s?.startup_phase && s.startup_phase !== "ready" ? (
+          <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded px-2 py-1 flex items-center gap-2">
+            <Spinner />
+            <span>
+              <span className="font-medium">
+                {s.startup_phase === "reset_stale"
+                  ? "Resetting stale rows"
+                  : s.startup_phase === "rescan"
+                    ? "Scanning library"
+                    : s.startup_phase}
+              </span>
+              {s.startup_progress ? (
+                <span className="text-sky-600"> · {s.startup_progress}</span>
+              ) : null}
+            </span>
+          </div>
+        ) : null}
 
         {/* Retry banner — amber, appears while the worker is backing off
             between attempts. Shows the upcoming attempt number + error so

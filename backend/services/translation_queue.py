@@ -30,7 +30,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 
 import aiosqlite
 
@@ -214,7 +214,10 @@ async def enqueue_for_book(
     if not book or not book.get("text"):
         return 0
     source = (book.get("languages") or [None])[0]
-    chapters = build_chapters(book["text"])
+    # build_chapters is CPU-heavy (regex passes over the full book text).
+    # Offload to a worker thread so the event loop stays responsive while
+    # startup housekeeping churns through the whole library.
+    chapters = await asyncio.to_thread(build_chapters, book["text"])
 
     inserted = 0
     for lang in target_languages:
@@ -373,25 +376,62 @@ async def queue_summary() -> dict:
     return {"counts": counts, "by_book": by_book}
 
 
-async def rescan_for_missing_translations() -> int:
+async def rescan_for_missing_translations(
+    progress: "Callable[[int, int, str], None] | None" = None,
+) -> int:
     """Walk every cached book and enqueue (book, lang) pairs that are
     configured for auto-translation but have untranslated chapters.
 
-    Idempotent — `enqueue_for_book` already skips chapters with existing
-    translations AND skips duplicate pending rows (unique index). Safe to
-    run on every idle tick.
+    Skips books that are already FULLY represented in the queue/translations
+    for every configured language — avoids re-running the CPU-heavy
+    splitter during routine restarts.
 
-    Returns the number of newly-enqueued rows.
+    `progress(i, total, title)` is called once per book scanned so the
+    admin UI can show "Checking 12/122: Moby Dick" during the rescan.
     """
     langs = await get_auto_languages()
     if not langs:
         return 0
-    # Lazy import to avoid cycle with services.db
     from services.db import list_cached_books
     books = await list_cached_books()
+    if not books:
+        return 0
+
+    # Pre-fetch (book_id, lang) pairs that are fully represented in
+    # either the translations table or the queue — one query each
+    # instead of per-chapter lookups inside enqueue_for_book.
+    book_ids = [b["id"] for b in books]
+    placeholders = ",".join("?" for _ in book_ids)
+    already_covered: set[tuple[int, str]] = set()
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            f"""SELECT book_id, target_language FROM translations
+                WHERE book_id IN ({placeholders})
+                GROUP BY book_id, target_language""",
+            book_ids,
+        ) as cursor:
+            async for row in cursor:
+                already_covered.add((row[0], row[1]))
+        async with db.execute(
+            f"""SELECT book_id, target_language FROM translation_queue
+                WHERE book_id IN ({placeholders})
+                GROUP BY book_id, target_language""",
+            book_ids,
+        ) as cursor:
+            async for row in cursor:
+                already_covered.add((row[0], row[1]))
+
     total = 0
-    for b in books:
-        total += await enqueue_for_book(b["id"], target_languages=langs)
+    for i, b in enumerate(books):
+        if progress is not None:
+            progress(i + 1, len(books), (b.get("title") or str(b["id"]))[:60])
+        # Only enqueue langs this book hasn't been touched for. If ALL
+        # configured langs are already covered, we skip entirely — no
+        # splitter run. First-start on a fresh DB still processes everything.
+        todo = [lang for lang in langs if (b["id"], lang) not in already_covered]
+        if not todo:
+            continue
+        total += await enqueue_for_book(b["id"], target_languages=todo)
     return total
 
 
@@ -528,6 +568,11 @@ class WorkerState:
     current_target_language: str = ""
     current_batch_size: int = 0
     current_model: str = ""          # which model is actually being used right now
+    # Startup housekeeping visibility: the admin sees which phase the
+    # worker is in while it boots (reset_stale → rescan → ready). Once
+    # 'ready' the worker is processing batches normally.
+    startup_phase: str = ""          # "reset_stale" | "rescan" | "ready"
+    startup_progress: str = ""       # human-readable detail ("Checking 12/122: Moby Dick")
     last_completed_at: Optional[str] = None
     last_error: str = ""
     started_at: Optional[str] = None
@@ -598,16 +643,30 @@ class TranslationQueueWorker:
 
         # Startup housekeeping: reset any rows left 'running' from a prior
         # crash, and rescan the book library so newly-cached books or
-        # newly-configured languages are picked up immediately.
+        # newly-configured languages are picked up immediately. Both
+        # phases are surfaced to the UI via state.startup_phase so the
+        # admin sees what's happening instead of a silent "Starting…".
         try:
+            self._state.startup_phase = "reset_stale"
+            self._state.startup_progress = "Resetting stale running rows…"
             stale = await reset_stale_running_rows()
             if stale:
                 self._append_log({"event": "startup_reset_stale", "count": stale})
-            added = await rescan_for_missing_translations()
+
+            self._state.startup_phase = "rescan"
+            self._state.startup_progress = "Scanning book library…"
+
+            def _on_progress(i: int, total: int, title: str) -> None:
+                self._state.startup_progress = f"Checking {i}/{total}: {title}"
+
+            added = await rescan_for_missing_translations(progress=_on_progress)
             if added:
                 self._append_log({"event": "startup_rescan", "enqueued": added})
         except Exception:
             logger.exception("Startup housekeeping failed (non-fatal)")
+        finally:
+            self._state.startup_phase = "ready"
+            self._state.startup_progress = ""
 
         while not stop_event.is_set():
             try:
@@ -725,7 +784,7 @@ class TranslationQueueWorker:
             await self._mark_skipped(items, reason="book not in cache")
             return
         source = (book.get("languages") or ["en"])[0]
-        all_chapters = build_chapters(book["text"])
+        all_chapters = await asyncio.to_thread(build_chapters, book["text"])
 
         works: list[ChapterWork] = []
         title = book.get("title") or str(book_id)

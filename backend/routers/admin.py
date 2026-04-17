@@ -680,6 +680,8 @@ async def queue_status(_admin: dict = Depends(_require_admin)):
             "current_target_language": s.current_target_language,
             "current_batch_size": s.current_batch_size,
             "current_model": s.current_model,
+            "startup_phase": s.startup_phase,
+            "startup_progress": s.startup_progress,
             "last_completed_at": s.last_completed_at,
             "last_error": s.last_error,
             "started_at": s.started_at,

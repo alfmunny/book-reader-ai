@@ -113,6 +113,10 @@ export default function QueueTab({ adminFetch }: Props) {
   const [itemFilter, setItemFilter] = useState<"pending" | "running" | "failed" | "all">("pending");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  // Track whether the first load has completed — subsequent polls keep
+  // prior data visible, but the very first render needs a clear loading
+  // indicator so the panels don't pop in one-by-one looking broken.
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Form state — mirrors settings but editable.
@@ -142,6 +146,7 @@ export default function QueueTab({ adminFetch }: Props) {
       setSettings(cfg);
       setItems(its);
       setCost(cst);
+      setInitialLoaded(true);
       if (langs === "") setLangs((cfg.auto_translate_languages || []).join(", "));
       if (!chainInitedRef.current) {
         const serverChain = (cfg as QueueSettings).model_chain;
@@ -258,6 +263,44 @@ export default function QueueTab({ adminFetch }: Props) {
   const totalDone = counts.done || 0;
   const totalFailed = counts.failed || 0;
   const totalRunning = counts.running || 0;
+
+  // First load hasn't completed yet — show a skeleton instead of the half-
+  // rendered panels that used to pop in incrementally over a few seconds.
+  if (!initialLoaded && !error) {
+    return (
+      <div className="space-y-3 animate-pulse">
+        <div className="bg-white rounded-xl border border-amber-200 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-stone-300" />
+            <div className="flex-1 space-y-1">
+              <div className="h-3 w-48 bg-stone-200 rounded" />
+              <div className="h-2 w-64 bg-stone-100 rounded" />
+            </div>
+            <div className="h-6 w-16 bg-stone-100 rounded" />
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-3">
+          <div className="h-3 w-32 bg-stone-200 rounded" />
+          <div className="h-8 bg-stone-100 rounded" />
+          <div className="h-8 bg-stone-100 rounded" />
+          <div className="grid grid-cols-3 gap-2">
+            <div className="h-16 bg-stone-100 rounded" />
+            <div className="h-16 bg-stone-100 rounded" />
+            <div className="h-16 bg-stone-100 rounded" />
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-2">
+          <div className="h-3 w-24 bg-stone-200 rounded" />
+          <div className="h-4 w-full bg-stone-100 rounded" />
+          <div className="h-4 w-3/4 bg-stone-100 rounded" />
+          <div className="h-4 w-5/6 bg-stone-100 rounded" />
+        </div>
+        <div className="text-center text-xs text-stone-400">
+          Loading queue…
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

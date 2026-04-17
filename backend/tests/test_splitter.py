@@ -301,3 +301,39 @@ def test_build_chapters_from_html_splits_dramatic_speakers():
     assert any(p.startswith("ZWEITER SCHÜLER") for p in paragraphs), paragraphs
     burger = next(p for p in paragraphs if p.startswith("BÜRGERMÄDCHEN."))
     assert "ZWEITER SCHÜLER" not in burger
+
+
+def test_build_chapters_from_html_splits_multi_speaker_cue():
+    """Faust's Walpurgisnacht packs an IRRLICHT solo AND a 3-way choral
+    stanza into one <p>: the cue for the choral piece is
+    'FAUST, MEPHISTOPHELES, IRRLICHT (im Wechselgesang).' — the commas
+    between names blocked the previous speaker-cue regex and the two
+    stanzas were rendering as one paragraph."""
+    fake_block = """<p>
+    IRRLICHT.<br>
+    Ich merke wohl, Ihr seid der Herr vom Haus,<br>
+    Und will mich gern nach Euch bequemen.<br>
+    Allein bedenkt! der Berg ist heute zaubertoll<br>
+    Und wenn ein Irrlicht Euch die Wege weisen soll<br>
+    So müßt Ihr's so genau nicht nehmen.<br>
+    FAUST, MEPHISTOPHELES, IRRLICHT (im Wechselgesang).<br>
+    In die Traum- und Zaubersphäre<br>
+    Sind wir, scheint es, eingegangen.<br>
+    Führ uns gut und mach dir Ehre<br>
+    Daß wir vorwärts bald gelangen
+    </p>"""
+    padding = "Word " * 200
+    html = (
+        '<div class="chapter"><h2>Walpurgisnacht</h2>'
+        f'{fake_block}<p>{padding}</p></div>'
+    )
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    paragraphs = [p for p in chapters[0].text.split("\n\n") if p.strip()]
+    assert any(p.startswith("IRRLICHT.") for p in paragraphs), paragraphs
+    assert any(
+        p.startswith("FAUST, MEPHISTOPHELES, IRRLICHT") for p in paragraphs
+    ), paragraphs
+    # The solo and the choral stanza must be distinct paragraphs.
+    irrlicht = next(p for p in paragraphs if p.startswith("IRRLICHT."))
+    assert "FAUST, MEPHISTOPHELES" not in irrlicht

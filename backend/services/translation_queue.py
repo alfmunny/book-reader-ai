@@ -777,11 +777,40 @@ class TranslationQueueWorker:
         ]
 
     async def _process_batch(self, items: list[QueueRow], api_key: str) -> None:
+        # Safety net: any row still marked 'running' at the end of this
+        # batch — whether via unhandled exception or logic bug — must be
+        # bumped back to pending/failed. Otherwise rows leak in 'running'
+        # status until the next worker restart. Tracks ids we've already
+        # transitioned so we don't double-bump.
+        handled_ids: set[int] = set()
+
+        def mark_handled(rows: list[QueueRow]) -> None:
+            for r in rows:
+                handled_ids.add(r.id)
+
+        try:
+            await self._process_batch_inner(items, api_key, mark_handled)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("process_batch crashed")
+            self._state.last_error = str(e)[:500]
+            self._append_log({"event": "batch_error", "error": str(e)[:200]})
+            # Rescue any still-running rows so they don't leak.
+            unhandled = [r for r in items if r.id not in handled_ids]
+            for row in unhandled:
+                await self._bump_attempt(row, f"batch crashed: {str(e)[:200]}")
+
+    async def _process_batch_inner(
+        self,
+        items: list[QueueRow],
+        api_key: str,
+        mark_handled,
+    ) -> None:
         book_id = items[0].book_id
         target_language = items[0].target_language
         book = await get_cached_book(book_id)
         if not book or not book.get("text"):
             await self._mark_skipped(items, reason="book not in cache")
+            mark_handled(items)
             return
         source = (book.get("languages") or ["en"])[0]
         all_chapters = await asyncio.to_thread(build_chapters, book["text"])
@@ -791,20 +820,19 @@ class TranslationQueueWorker:
         for row in items:
             if row.chapter_index >= len(all_chapters):
                 await self._mark_failed([row], "chapter index out of range")
+                mark_handled([row])
                 continue
             text = all_chapters[row.chapter_index].text
             if not text.strip():
                 await self._mark_done([row])
+                mark_handled([row])
                 continue
-            # Defensive: skip re-translating if a cached translation already
-            # landed between enqueue and now (e.g. the reader triggered an
-            # on-demand translation, or a bulk job ran). No sense spending
-            # Gemini tokens on work that's already done.
             existing = await get_cached_translation(
                 book_id, row.chapter_index, target_language,
             )
             if existing:
                 await self._mark_done([row])
+                mark_handled([row])
                 self._append_log({
                     "event": "skipped_cached",
                     "book_id": book_id,
@@ -854,6 +882,7 @@ class TranslationQueueWorker:
                 paragraphs = translations.get(c.chapter_index)
                 if paragraphs is None:
                     await self._bump_attempt(row, "no translation returned")
+                    mark_handled([row])
                     continue
                 # Record the model that actually translated this chapter —
                 # may differ from the primary if the chain advanced.
@@ -863,6 +892,7 @@ class TranslationQueueWorker:
                     model=self._state.current_model or None,
                 )
                 await self._mark_done([row])
+                mark_handled([row])
                 self._state.chapters_done += 1
                 self._append_log({
                     "event": "translated",

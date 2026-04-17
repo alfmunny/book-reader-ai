@@ -124,7 +124,7 @@ export default function QueueTab({ adminFetch }: Props) {
   // sees confirmation instead of wondering whether their click did anything.
   // Maps a label ("chain", "api_key", etc.) → timestamp of last save.
   const [lastSaved, setLastSaved] = useState<{ key: string; at: number } | null>(null);
-  const [itemFilter, setItemFilter] = useState<"pending" | "running" | "failed" | "all">("pending");
+  const [itemFilter, setItemFilter] = useState<"pending" | "running" | "done" | "failed" | "all">("pending");
   // Ref mirrors itemFilter so the long-lived poll interval (set up once
   // with empty deps) reads the current filter on every tick instead of
   // the initial "pending" captured in its closure.
@@ -1007,7 +1007,7 @@ export default function QueueTab({ adminFetch }: Props) {
               {loadingItems && <Spinner />}
             </span>
           </span>
-          {(["pending", "running", "failed", "all"] as const).map((f) => (
+          {(["pending", "running", "done", "failed", "all"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setItemFilter(f)}

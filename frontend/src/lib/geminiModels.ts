@@ -16,56 +16,74 @@ export interface ModelOption {
 // matching RPM/RPD to the queue settings so admins don't have to guess.
 export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
   {
+    value: "gemini-3.1-pro",
+    label: "gemini-3.1-pro",
+    note: "Frontier quality (3.1 family). Low RPD — reserve for the most important books. Packs up to 60K output tokens per batch.",
+    rpm: 25,
+    rpd: 250,
+    maxOutputTokens: 60000,
+    recommended: true,
+  },
+  {
     value: "gemini-2.5-pro",
     label: "gemini-2.5-pro",
-    note: "Highest quality — 64K output tokens packs many chapters per batch, offsetting the tiny free-tier RPM. Reserve for books you care most about.",
-    rpm: 2,
-    rpd: 50,
+    note: "Near-frontier quality. Higher RPD than 3.1-pro — good secondary when 3.1-pro is exhausted.",
+    rpm: 150,
+    rpd: 1000,
     maxOutputTokens: 60000,
     recommended: true,
   },
   {
     value: "gemini-2.5-flash",
     label: "gemini-2.5-flash",
-    note: "Near-Pro literary quality. Good balance for bulk work — fastest 'recommended' tier model at 10 rpm.",
-    rpm: 10,
-    rpd: 250,
+    note: "Strong literary quality, 10K daily requests. Sweet spot for bulk work that still needs nuance.",
+    rpm: 1000,
+    rpd: 10000,
     maxOutputTokens: 7500,
     recommended: true,
   },
   {
     value: "gemini-2.0-flash",
     label: "gemini-2.0-flash",
-    note: "Previous generation, still solid for prose. Generous free-tier — a useful fallback when 2.5 models are exhausted.",
-    rpm: 15,
-    rpd: 1500,
+    note: "Solid for prose, unlimited daily requests. Best choice when upstream 2.5/3.1 tiers are spent.",
+    rpm: 2000,
+    rpd: 999999,
     maxOutputTokens: 7500,
     recommended: true,
   },
   {
+    value: "gemini-3.1-flash-lite",
+    label: "gemini-3.1-flash-lite",
+    note: "Newest lite model — 150K daily requests. Drops nuance on dialogue but very high capacity.",
+    rpm: 4000,
+    rpd: 150000,
+    maxOutputTokens: 7500,
+    recommended: false,
+  },
+  {
     value: "gemini-2.5-flash-lite",
     label: "gemini-2.5-flash-lite",
-    note: "Drops nuance on dialogue and metaphor. Usable only as a last-ditch fallback.",
-    rpm: 15,
-    rpd: 1000,
+    note: "Fast & cheap, unlimited daily requests. Usable only as a last-ditch fallback for literature.",
+    rpm: 4000,
+    rpd: 999999,
     maxOutputTokens: 7500,
     recommended: false,
   },
   {
     value: "gemini-2.0-flash-lite",
     label: "gemini-2.0-flash-lite",
-    note: "Lowest quality in the 2.0 line. Not recommended for literature.",
-    rpm: 30,
-    rpd: 1500,
+    note: "Lowest-quality flash-lite. Unlimited daily requests — use as a volume fallback.",
+    rpm: 4000,
+    rpd: 999999,
     maxOutputTokens: 7500,
     recommended: false,
   },
   {
     value: "",
     label: "Default (gemini-3.1-flash-lite-preview)",
-    note: "Server default — a lite/preview model. Same one used for chat and insights. Not recommended for literary work; kept for backward compat.",
-    rpm: 12,
-    rpd: 1400,
+    note: "Server default — same model used for chat/insights. Not recommended for literary work; kept for backward compat.",
+    rpm: 4000,
+    rpd: 150000,
     maxOutputTokens: 7500,
     recommended: false,
   },
@@ -100,9 +118,15 @@ export function isRecommended(model: string): boolean {
   return hit?.recommended ?? false;
 }
 
-// Suggested default chain — all three "Tier 1" models in quality order.
-// The worker will try them in this order and advance to the next on 429.
+// Suggested default chain — recommended models in quality order. The worker
+// tries them in order and advances on 429/quota. Starts frontier (3.1-pro)
+// and descends to the highest-RPD model as a catch-all.
+//   3.1-pro  → 250/day  at top quality
+//   2.5-pro  → 1K/day  near-frontier
+//   2.5-flash → 10K/day strong literary
+//   2.0-flash → unlimited safety net
 export const DEFAULT_CHAIN: string[] = [
+  "gemini-3.1-pro",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
   "gemini-2.0-flash",

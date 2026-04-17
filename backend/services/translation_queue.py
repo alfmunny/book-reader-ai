@@ -48,7 +48,12 @@ from services.db import (
     save_translation,
 )
 from services.gemini import translate_chapters_batch, TRANSLATOR_MODEL
-from services.model_limits import limits_for
+from services.model_limits import (
+    DEFAULT_CHAIN as _DEFAULT_CHAIN,
+    estimate_cost_usd,
+    estimate_tokens_from_chars,
+    limits_for,
+)
 from services.rate_limiter import AsyncRateLimiter
 from services.splitter import build_chapters
 
@@ -83,8 +88,9 @@ DEFAULT_PRIORITY = 100
 async def get_model_chain() -> list[str]:
     """Return the ordered list of models to try on quota exhaustion.
 
-    Falls back to the legacy single-model setting, then to the server default.
-    An empty-string entry means "use TRANSLATOR_MODEL".
+    Falls back to the legacy single-model setting, then to the curated
+    DEFAULT_CHAIN (so first-time admins get a sensible chain without
+    having to configure anything).
     """
     raw = await get_setting(SETTING_MODEL_CHAIN)
     if raw:
@@ -95,7 +101,9 @@ async def get_model_chain() -> list[str]:
         except json.JSONDecodeError:
             pass
     legacy = await get_setting(SETTING_MODEL)
-    return [legacy if legacy is not None else ""]
+    if legacy:
+        return [legacy]
+    return list(_DEFAULT_CHAIN)
 
 
 def is_quota_error(exc: BaseException) -> bool:
@@ -260,6 +268,76 @@ async def list_queue(
         db.row_factory = aiosqlite.Row
         async with db.execute(sql, params) as cursor:
             return [dict(row) async for row in cursor]
+
+
+async def estimate_queue_cost(models: list[str] | None = None) -> dict:
+    """Estimate what it will cost to drain every pending queue item on each model.
+
+    Methodology (deliberately rough — pricing and tokenization vary):
+    - Sum chapter-text chars across all pending queue rows.
+    - Translate that to tokens at CHARS_PER_TOKEN ≈ 3.
+    - Output tokens assumed ~= input tokens (literary translation is
+      roughly 1:1 in char count; CJK targets cancel out against Latin source).
+    - Per-model USD = input_tokens × input_price + output_tokens × output_price.
+
+    Return one row per model plus overall totals so the admin UI can show
+    a quick comparison table.
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        # Pull chapter-text lengths for every pending (book, chapter) pair,
+        # joined against the books table. We only need text_length proxy —
+        # use LENGTH(text) which is charcount for TEXT columns.
+        async with db.execute(
+            """SELECT q.book_id, q.chapter_index, LENGTH(b.text) AS total_chars
+               FROM translation_queue q
+               LEFT JOIN books b ON b.id = q.book_id
+               WHERE q.status='pending'"""
+        ) as cursor:
+            rows = await cursor.fetchall()
+
+    # Group by book to compute per-chapter share (book_total_chars / n_chapters)
+    # — we don't know each chapter's actual length without re-running the
+    # splitter, so approximate by equal share.
+    by_book: dict[int, dict] = {}
+    for book_id, _chap_idx, total_chars in rows:
+        if total_chars is None:
+            continue
+        entry = by_book.setdefault(book_id, {"total_chars": total_chars, "count": 0})
+        entry["count"] += 1
+
+    # Total chars of pending work across all books.
+    total_chars = 0
+    for entry in by_book.values():
+        # Heuristic: assume the pending rows are spread across ~50 chapters
+        # per book on average. That's a bit handwavy but matches typical novels.
+        CHAPTERS_PER_BOOK_GUESS = 50
+        per_chapter = max(1, entry["total_chars"] // CHAPTERS_PER_BOOK_GUESS)
+        total_chars += per_chapter * entry["count"]
+
+    input_tokens = estimate_tokens_from_chars(total_chars)
+    output_tokens = input_tokens  # 1:1 heuristic for translation
+
+    if models is None:
+        models = [""] + [m for m in (await get_model_chain()) if m]
+
+    # De-dupe while preserving order
+    seen = set()
+    models = [m for m in models if not (m in seen or seen.add(m))]
+
+    per_model = []
+    for m in models:
+        cost = estimate_cost_usd(m, input_tokens, output_tokens)
+        per_model.append({
+            "model": m or "default",
+            "usd": round(cost, 4),
+        })
+    return {
+        "pending_items": sum(e["count"] for e in by_book.values()),
+        "pending_books": len(by_book),
+        "estimated_input_tokens": input_tokens,
+        "estimated_output_tokens": output_tokens,
+        "per_model": per_model,
+    }
 
 
 async def queue_summary() -> dict:

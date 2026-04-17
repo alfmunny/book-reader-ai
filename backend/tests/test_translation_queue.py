@@ -187,7 +187,42 @@ async def test_worker_creates_per_model_limiter_with_correct_rates(tmp_db):
             await w._tick()
     lim = w._limiters.get("gemini-2.5-pro")
     assert lim is not None
-    assert (lim.rpm, lim.rpd) == (2, 50)
+    assert (lim.rpm, lim.rpd) == (150, 1000)
+
+
+async def test_estimate_queue_cost_returns_per_model_breakdown(tmp_db):
+    """Cost estimate must give a non-zero USD figure per model when there's
+    pending work, and zero when there's none."""
+    from services.translation_queue import estimate_queue_cost
+    # Empty queue → zero across the board.
+    empty = await estimate_queue_cost()
+    assert empty["pending_items"] == 0
+    assert all(row["usd"] == 0 for row in empty["per_model"])
+
+    # With pending work the pro/flash models should differ in cost.
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    est = await estimate_queue_cost(
+        models=["gemini-2.5-pro", "gemini-2.0-flash"],
+    )
+    assert est["pending_items"] == 2
+    assert est["pending_books"] == 1
+    pro = next(r for r in est["per_model"] if r["model"] == "gemini-2.5-pro")
+    flash = next(r for r in est["per_model"] if r["model"] == "gemini-2.0-flash")
+    # pro is ~12x the price of flash, so estimates must differ markedly.
+    assert pro["usd"] > flash["usd"]
+    assert pro["usd"] > 0
+
+
+async def test_default_chain_applied_when_no_setting(tmp_db):
+    """First-time admin with no queue_model_chain saved should still get
+    a sensible chain out of the box."""
+    from services.translation_queue import get_model_chain
+    chain = await get_model_chain()
+    assert chain[0] == "gemini-3.1-pro"
+    assert "gemini-2.5-pro" in chain
+    assert "gemini-2.0-flash" in chain
 
 
 async def test_clear_queue_all_and_by_status(tmp_db):

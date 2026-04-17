@@ -254,6 +254,75 @@ async def test_translate_chapters_batch_does_not_fallback_when_truncated():
             )
 
 
+async def test_translate_chapters_batch_splits_oversized_single_chapter():
+    """A single chapter whose estimated output exceeds max_output_tokens
+    must be split into paragraph-aligned sub-chunks, each translated
+    via its own API call. Prevents mid-chapter MAX_TOKENS truncation
+    on flash-tier models for long dramatic scenes."""
+    # 6 source paragraphs, 50 words each → ~420 est output tokens total
+    # with our 1.4 words/token heuristic. With max_output_tokens=200
+    # and 10% headroom = 180 target, we expect the splitter to make
+    # 3–4 sub-chunks.
+    words = " ".join(["word"] * 50)
+    source_paragraphs = [f"Source paragraph {i}. {words}" for i in range(6)]
+    source_text = "\n\n".join(source_paragraphs)
+
+    call_count = {"n": 0}
+
+    def fake_response_for(prompt: str) -> str:
+        # Return one <chapter> block per call, with two translated
+        # paragraphs per sub-chunk — enough to verify concatenation order.
+        call_count["n"] += 1
+        n = call_count["n"]
+        return (
+            f'<chapter index="5">\n'
+            f'Chunk {n} translated paragraph A.\n\n'
+            f'Chunk {n} translated paragraph B.\n'
+            f'</chapter>'
+        )
+
+    async def fake_generate(*, model, contents, config):
+        return _mock_gemini_response(fake_response_for(contents))
+
+    class _Models:
+        generate_content = AsyncMock(side_effect=fake_generate)
+
+    class _Aio:
+        models = _Models()
+
+    class _Client:
+        aio = _Aio()
+
+    with patch("services.gemini._client", return_value=_Client()):
+        result = await gemini.translate_chapters_batch(
+            "key", [(5, source_text)], "en", "zh",
+            max_output_tokens=200,
+        )
+
+    # Multiple API calls happened — the chapter was chunked.
+    assert call_count["n"] >= 2
+    # Result aggregates paragraphs from every sub-chunk in order.
+    paragraphs = result[5]
+    assert len(paragraphs) == 2 * call_count["n"]
+    assert paragraphs[0].startswith("Chunk 1")
+    assert paragraphs[-1].startswith(f"Chunk {call_count['n']}")
+
+
+async def test_translate_chapters_batch_under_budget_does_not_split():
+    """Regression guard: normally-sized chapters still go out as a
+    single API call (no accidental over-splitting)."""
+    patcher, mock = _patch_gemini_generate(
+        '<chapter index="0">Only one paragraph.</chapter>',
+    )
+    with patcher:
+        result = await gemini.translate_chapters_batch(
+            "key", [(0, "Short text.")], "en", "zh",
+            max_output_tokens=8192,
+        )
+    assert result == {0: ["Only one paragraph."]}
+    assert mock.await_count == 1
+
+
 async def test_translate_chapters_batch_error_includes_raw_preview():
     """The error message must include a preview of what the model
     actually returned so admins can tell truncation apart from a

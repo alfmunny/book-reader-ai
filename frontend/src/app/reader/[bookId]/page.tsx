@@ -835,7 +835,7 @@ export default function ReaderPage() {
                       });
                   }}
                 />
-                <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-5xl mx-auto" : "prose-reader mx-auto"}`}>
+                <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}

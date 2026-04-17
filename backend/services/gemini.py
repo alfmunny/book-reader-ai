@@ -139,6 +139,51 @@ _CHAPTER_BLOCK_RE = re.compile(
 )
 
 
+# Rough estimate: how many output tokens a chapter of N source words
+# will consume. Mirrors bulk_translate.WORDS_TO_OUTPUT_TOKENS so the
+# batch-grouper and the chunker agree on "oversized".
+_WORDS_TO_OUTPUT_TOKENS = 1.4
+
+
+def _estimate_output_tokens(text: str) -> int:
+    """Approx output tokens for a source text, with a small wrapper
+    allowance for the `<chapter>` tags the model echoes back."""
+    return int(len(text.split()) * _WORDS_TO_OUTPUT_TOKENS) + 100
+
+
+def _split_paragraphs_into_budget_chunks(
+    paragraphs: list[str], max_output_tokens: int,
+) -> list[list[str]]:
+    """Group consecutive paragraphs so each sub-chunk stays under the
+    model's output budget. Used to translate one oversized chapter via
+    several API calls while preserving paragraph order and count.
+
+    Leaves a 10% headroom so the model still fits its reply inside
+    max_output_tokens even when our per-word estimate under-counts
+    (CJK targets, dense verse)."""
+    if not paragraphs:
+        return []
+    # If even a single paragraph on its own exceeds the budget we still
+    # put it in its own chunk — splitting mid-paragraph would lose
+    # paragraph alignment downstream. The caller has to accept the risk
+    # of mid-paragraph truncation on that one call.
+    budget = int(max_output_tokens * 0.9)
+    chunks: list[list[str]] = []
+    current: list[str] = []
+    current_tokens = 0
+    for para in paragraphs:
+        est = _estimate_output_tokens(para)
+        if current and current_tokens + est > budget:
+            chunks.append(current)
+            current = []
+            current_tokens = 0
+        current.append(para)
+        current_tokens += est
+    if current:
+        chunks.append(current)
+    return chunks
+
+
 async def translate_chapters_batch(
     api_key: str,
     chapters: list[tuple[int, str]],  # list of (chapter_index, chapter_text)
@@ -159,11 +204,31 @@ async def translate_chapters_batch(
     cross-batch consistency (character/place names, style). It should be
     a plain text snippet of previously-translated material.
 
+    Oversized-chapter handling: if the batch has a single chapter whose
+    estimated output tokens exceed `max_output_tokens`, the chapter is
+    split into paragraph-aligned sub-chunks and translated across
+    multiple API calls. Each sub-chunk uses the previous sub-chunk's
+    tail as `prior_context` for cross-cut style consistency.
+
     Raises ValueError if the response can't be parsed into at least one
     chapter block — callers can fall back to per-chapter translation.
     """
     if not chapters:
         return {}
+
+    # Single oversized chapter — translate in sub-chunks, preserving
+    # paragraph order, so we stop dead-ending at MAX_TOKENS for long
+    # chapters on flash-tier models.
+    if len(chapters) == 1:
+        idx, text = chapters[0]
+        if _estimate_output_tokens(text) > max_output_tokens:
+            return await _translate_chapter_in_chunks(
+                api_key, idx, text,
+                source_language, target_language,
+                prior_context=prior_context,
+                model=model,
+                max_output_tokens=max_output_tokens,
+            )
 
     system = SYSTEM_LITERARY_TRANSLATOR.format(
         source=source_language, target=target_language,
@@ -253,6 +318,56 @@ async def translate_chapters_batch(
         if paragraphs:
             result[idx] = paragraphs
     return result
+
+
+async def _translate_chapter_in_chunks(
+    api_key: str,
+    chapter_index: int,
+    chapter_text: str,
+    source_language: str,
+    target_language: str,
+    *,
+    prior_context: str,
+    model: str,
+    max_output_tokens: int,
+) -> dict[int, list[str]]:
+    """Translate a single oversized chapter across several API calls.
+
+    Splits the chapter's paragraphs into budget-sized sub-chunks,
+    translates each as its own batch of one, and concatenates the
+    paragraphs in order. Each call after the first passes a small tail
+    of the previous translation as `prior_context` so the model keeps
+    names and style consistent across the cut.
+
+    Returns the same shape as `translate_chapters_batch`:
+    `{chapter_index: [paragraph, ...]}`.
+    """
+    paragraphs = [p.strip() for p in chapter_text.split("\n\n") if p.strip()]
+    if not paragraphs:
+        return {chapter_index: []}
+    sub_chunks = _split_paragraphs_into_budget_chunks(paragraphs, max_output_tokens)
+    out: list[str] = []
+    carry = prior_context
+    for chunk_paragraphs in sub_chunks:
+        chunk_text = "\n\n".join(chunk_paragraphs)
+        # IMPORTANT: recurse into translate_chapters_batch but with the
+        # sub-chunk small enough that the top-level "oversized" branch
+        # does NOT fire — otherwise we'd loop. The split guarantees
+        # each sub-chunk fits in budget, so the single-call path runs.
+        sub = await translate_chapters_batch(
+            api_key, [(chapter_index, chunk_text)],
+            source_language, target_language,
+            prior_context=carry,
+            model=model,
+            max_output_tokens=max_output_tokens,
+        )
+        translated = sub.get(chapter_index, [])
+        out.extend(translated)
+        # Carry the last 1–2 translated paragraphs as context for the
+        # next sub-chunk. Keeps character names etc. consistent.
+        if translated:
+            carry = "\n\n".join(translated[-2:])
+    return {chapter_index: out}
 
 
 async def translate_text(

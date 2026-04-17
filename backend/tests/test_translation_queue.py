@@ -510,6 +510,39 @@ async def test_is_quota_error_classifier():
     assert not is_quota_error(RuntimeError("response had no <chapter> blocks"))
 
 
+async def test_process_batch_does_not_leak_running_rows_on_exception(tmp_db, monkeypatch):
+    """If the splitter or any other step crashes mid-batch, claimed rows
+    must NOT stay in 'running' forever. The inner try/except bumps each
+    un-handled row back to pending/failed so the queue keeps moving
+    without needing a worker restart."""
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.translation_queue as tq
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0))
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+
+    # Force build_chapters to blow up — this runs via asyncio.to_thread
+    # inside _process_batch_inner so the exception propagates back.
+    def kaboom(_text):
+        raise RuntimeError("simulated splitter crash")
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.build_chapters", side_effect=kaboom):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    # No row may be left in 'running' — all must be pending or failed.
+    running = await list_queue(status="running")
+    assert running == []
+    # The batch_error event should be in the log.
+    assert any(e.get("event") == "batch_error" for e in w._state.log)
+
+
 async def test_failing_batch_bumps_priority_so_worker_moves_on(tmp_db, monkeypatch):
     """A book that keeps failing must not block other books. The worker
     should bump failing rows' priority so they drop behind fresh work."""

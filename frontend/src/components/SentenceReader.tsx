@@ -271,7 +271,7 @@ export default function SentenceReader({
   const isParallel = hasTranslations && translationDisplayMode === "parallel";
 
   return (
-    <div className={isParallel ? "max-w-5xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
+    <div className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
       {paragraphs.map((para, pIdx) => {
         // Track the text paragraph index so we
         // can pair with the right entry in translations[].

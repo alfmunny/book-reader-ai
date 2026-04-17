@@ -36,7 +36,7 @@ interface Props {
 export default function TranslationView({ paragraphs, translations, displayMode, loading }: Props) {
   if (displayMode === "parallel") {
     return (
-      <div className="max-w-5xl mx-auto divide-y divide-amber-100">
+      <div className="max-w-7xl mx-auto divide-y divide-amber-100">
         {paragraphs.map((para, i) => (
           <div key={i} className="grid grid-cols-2 gap-6 py-4 first:pt-0 last:pb-0">
             <p className="font-serif text-base text-ink leading-relaxed whitespace-pre-wrap">

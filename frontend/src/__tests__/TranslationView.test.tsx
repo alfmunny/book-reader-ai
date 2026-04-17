@@ -42,6 +42,26 @@ describe("parallel mode", () => {
     TRANSLATIONS.forEach((t) => expect(screen.getByText(t)).toBeInTheDocument());
   });
 
+  it("uses the wide parallel container so source + translation each get ~prose width", () => {
+    // Regression guard: previously the parallel container was
+    // max-w-5xl (1024px) which split into two ~500px columns — the
+    // source column was narrower than the single-column 68ch prose
+    // width. Wider (max-w-7xl, 1280px) gives each column ~620px,
+    // roughly matching single-column prose.
+    const { container } = render(
+      <TranslationView
+        paragraphs={PARAGRAPHS}
+        translations={TRANSLATIONS}
+        displayMode="parallel"
+        loading={false}
+      />,
+    );
+    const outer = container.querySelector("div.grid")?.parentElement;
+    expect(outer).not.toBeNull();
+    expect(outer!.className).toContain("max-w-7xl");
+    expect(outer!.className).not.toContain("max-w-5xl");
+  });
+
   it("renders original and translation in the same row (shared grid cell)", () => {
     const { container } = render(
       <TranslationView

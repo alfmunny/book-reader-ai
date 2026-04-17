@@ -60,6 +60,14 @@ interface QueueStatus {
   counts: Record<string, number>;
 }
 
+interface CostEstimate {
+  pending_items: number;
+  pending_books: number;
+  estimated_input_tokens: number;
+  estimated_output_tokens: number;
+  per_model: { model: string; usd: number }[];
+}
+
 interface QueueItem {
   id: number;
   book_id: number;
@@ -95,6 +103,7 @@ export default function QueueTab({ adminFetch }: Props) {
   const [status, setStatus] = useState<QueueStatus | null>(null);
   const [settings, setSettings] = useState<QueueSettings | null>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
+  const [cost, setCost] = useState<CostEstimate | null>(null);
   const [itemFilter, setItemFilter] = useState<"pending" | "running" | "failed" | "all">("pending");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -113,7 +122,7 @@ export default function QueueTab({ adminFetch }: Props) {
 
   async function refresh() {
     try {
-      const [st, cfg, its] = await Promise.all([
+      const [st, cfg, its, cst] = await Promise.all([
         adminFetch("/admin/queue/status"),
         adminFetch("/admin/queue/settings"),
         adminFetch(
@@ -121,10 +130,12 @@ export default function QueueTab({ adminFetch }: Props) {
             itemFilter === "all" ? "" : `&status=${itemFilter}`
           }`,
         ),
+        adminFetch("/admin/queue/cost-estimate"),
       ]);
       setStatus(st);
       setSettings(cfg);
       setItems(its);
+      setCost(cst);
       if (langs === "") setLangs((cfg.auto_translate_languages || []).join(", "));
       if (!chainInitedRef.current) {
         const serverChain = (cfg as QueueSettings).model_chain;
@@ -597,6 +608,42 @@ export default function QueueTab({ adminFetch }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Cost analysis — back-of-envelope estimate of draining the pending queue
+          across each model. Helps decide whether to route through pro vs flash. */}
+      {cost && cost.pending_items > 0 && (
+        <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-2">
+          <div className="flex items-baseline justify-between">
+            <h3 className="font-medium text-ink">Cost estimate (to drain queue)</h3>
+            <span className="text-[11px] text-stone-500">
+              {cost.pending_items} pending across {cost.pending_books} book
+              {cost.pending_books === 1 ? "" : "s"} ·{" "}
+              ~{(cost.estimated_input_tokens / 1_000_000).toFixed(1)}M in /{" "}
+              ~{(cost.estimated_output_tokens / 1_000_000).toFixed(1)}M out tokens
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {cost.per_model.map((row) => (
+              <div
+                key={row.model}
+                className="rounded-lg border border-amber-100 p-2 text-center"
+              >
+                <div className="text-[11px] text-stone-500 font-mono truncate">
+                  {row.model}
+                </div>
+                <div className="text-sm font-semibold text-ink">
+                  ${row.usd.toFixed(2)}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-stone-400">
+            Rough estimate — assumes ~3 chars/token and 1:1 input-to-output ratio.
+            Actual cost depends on tokenizer, chapter lengths, and batching.
+            Chain advance on 429 means multiple models may contribute.
+          </p>
+        </div>
+      )}
 
       {/* Queue items */}
       <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">

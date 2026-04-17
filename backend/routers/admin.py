@@ -35,6 +35,7 @@ from services.translation_queue import (
     SETTING_MODEL_CHAIN,
     SETTING_RPD,
     SETTING_RPM,
+    estimate_queue_cost,
     get_model_chain,
     clear_queue,
     delete_queue_for_book,
@@ -860,6 +861,16 @@ async def queue_retry_item(
         await db.commit()
     queue_worker().wake()
     return {"ok": True, "updated": cursor.rowcount}
+
+
+@router.get("/queue/cost-estimate")
+async def queue_cost_estimate(_admin: dict = Depends(_require_admin)):
+    """Ballpark USD to drain every pending queue item, per model.
+
+    Intended to help admins decide whether it's worth routing the queue
+    through the frontier models vs. cheaper flash variants.
+    """
+    return await estimate_queue_cost()
 
 
 @router.post("/queue/enqueue-all")

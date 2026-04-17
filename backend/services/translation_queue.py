@@ -1003,7 +1003,7 @@ class TranslationQueueWorker:
         except asyncio.TimeoutError:
             pass
 
-    def _append_log(self, entry: dict, max_len: int = 30) -> None:
+    def _append_log(self, entry: dict, max_len: int = 100) -> None:
         entry["at"] = datetime.now(timezone.utc).isoformat()
         self._state.log.append(entry)
         if len(self._state.log) > max_len:

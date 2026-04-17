@@ -22,12 +22,11 @@ class _Limits(TypedDict):
     output_usd_per_m: float
 
 
-# Curated default chain for first-time admins: frontier quality first, then
-# descending to highest-RPD model as a catch-all safety net. Overridable
-# via the Queue settings UI.
+# Curated default chain for first-time admins: the "Balanced" preset —
+# strong literary quality without the frontier pricing. Overridable via the
+# Queue settings UI; admins who want Premium (3.1-pro leading) or Budget
+# (flash-only) can one-click switch via the preset buttons.
 DEFAULT_CHAIN: list[str] = [
-    "gemini-3.1-pro-preview",
-    "gemini-2.5-pro",
     "gemini-2.5-flash",
     "gemini-2.0-flash",
 ]

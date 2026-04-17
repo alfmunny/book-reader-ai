@@ -106,6 +106,10 @@ export default function QueueTab({ adminFetch }: Props) {
   const [settings, setSettings] = useState<QueueSettings | null>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [cost, setCost] = useState<CostEstimate | null>(null);
+  // Flashes "Saved ✓" briefly after any successful setting save so the admin
+  // sees confirmation instead of wondering whether their click did anything.
+  // Maps a label ("chain", "api_key", etc.) → timestamp of last save.
+  const [lastSaved, setLastSaved] = useState<{ key: string; at: number } | null>(null);
   const [itemFilter, setItemFilter] = useState<"pending" | "running" | "failed" | "all">("pending");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -164,7 +168,10 @@ export default function QueueTab({ adminFetch }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemFilter]);
 
-  async function saveSettings(patch: Record<string, unknown>) {
+  async function saveSettings(
+    patch: Record<string, unknown>,
+    label: string = "settings",
+  ) {
     setSaving(true);
     setError("");
     try {
@@ -172,12 +179,29 @@ export default function QueueTab({ adminFetch }: Props) {
         method: "PUT",
         body: JSON.stringify(patch),
       });
-      await refresh();
+      // Mark saved the moment the PUT succeeds — don't wait for refresh.
+      // If a periodic-poll or post-save refresh 500s, we'd otherwise
+      // misattribute that as a save failure.
+      setLastSaved({ key: label, at: Date.now() });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
       setSaving(false);
+      return;
     }
+    // Refresh is best-effort — a transient 500 here shouldn't mask a
+    // successful save. The next 3s poll will pick up fresh state.
+    try {
+      await refresh();
+    } catch {
+      /* swallow — periodic poll will recover */
+    }
+    setSaving(false);
+  }
+
+  function wasJustSaved(label: string): boolean {
+    return (
+      lastSaved?.key === label && Date.now() - lastSaved.at < 3000
+    );
   }
 
   async function startWorker() {
@@ -316,14 +340,14 @@ export default function QueueTab({ adminFetch }: Props) {
             <summary className="text-xs text-amber-700 cursor-pointer">
               Activity log ({s.log.length})
             </summary>
-            <ul className="mt-1 text-xs space-y-0.5 max-h-40 overflow-y-auto">
+            <ul className="mt-1 text-xs space-y-1 max-h-60 overflow-y-auto">
               {s.log
                 .slice()
                 .reverse()
                 .map((e, i) => (
                   <li
                     key={i}
-                    className={`font-mono truncate ${
+                    className={`font-mono break-words whitespace-pre-wrap leading-snug ${
                       e.event.includes("error") || e.event === "tick_error"
                         ? "text-red-600"
                         : "text-stone-600"
@@ -426,25 +450,33 @@ export default function QueueTab({ adminFetch }: Props) {
               <label className="text-xs text-stone-600">
                 Model chain — tried in order. On 429/quota the worker falls to the next.
               </label>
-              <button
-                onClick={() => {
-                  // Save chain; primary's rate limits become the active
-                  // ones for legacy fields so bulk-translate etc. see them.
-                  const primary = chain[0] ?? "";
-                  const { rpm, rpd, maxOutputTokens } = rateForModel(primary);
-                  saveSettings({
-                    model_chain: chain,
-                    model: primary,
-                    rpm,
-                    rpd,
-                    max_output_tokens: maxOutputTokens,
-                  });
-                }}
-                disabled={saving || chain.length === 0}
-                className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
-              >
-                Save chain
-              </button>
+              <div className="flex items-center gap-2">
+                {wasJustSaved("chain") && (
+                  <span className="text-xs text-emerald-700">Saved ✓</span>
+                )}
+                <button
+                  onClick={() => {
+                    // Save chain; primary's rate limits become the active
+                    // ones for legacy fields so bulk-translate etc. see them.
+                    const primary = chain[0] ?? "";
+                    const { rpm, rpd, maxOutputTokens } = rateForModel(primary);
+                    saveSettings(
+                      {
+                        model_chain: chain,
+                        model: primary,
+                        rpm,
+                        rpd,
+                        max_output_tokens: maxOutputTokens,
+                      },
+                      "chain",
+                    );
+                  }}
+                  disabled={saving || chain.length === 0}
+                  className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50"
+                >
+                  Save chain
+                </button>
+              </div>
             </div>
 
             {/* Live summary — show the configured chain and what the
@@ -654,39 +686,116 @@ export default function QueueTab({ adminFetch }: Props) {
 
       {/* Cost analysis — back-of-envelope estimate of draining the pending queue
           across each model. Helps decide whether to route through pro vs flash. */}
-      {cost && cost.pending_items > 0 && (
-        <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-2">
-          <div className="flex items-baseline justify-between">
-            <h3 className="font-medium text-ink">Cost estimate (to drain queue)</h3>
-            <span className="text-[11px] text-stone-500">
-              {cost.pending_items} pending across {cost.pending_books} book
-              {cost.pending_books === 1 ? "" : "s"} ·{" "}
-              ~{(cost.estimated_input_tokens / 1_000_000).toFixed(1)}M in /{" "}
-              ~{(cost.estimated_output_tokens / 1_000_000).toFixed(1)}M out tokens
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {cost.per_model.map((row) => (
-              <div
-                key={row.model}
-                className="rounded-lg border border-amber-100 p-2 text-center"
-              >
-                <div className="text-[11px] text-stone-500 font-mono truncate">
-                  {row.model}
+      {cost && cost.pending_items > 0 && (() => {
+        const books = Math.max(1, cost.pending_books);
+        // Map the model rows by name so we can highlight what's in the
+        // configured chain vs. the full comparison grid.
+        const byModel: Record<string, number> = Object.fromEntries(
+          cost.per_model.map((r) => [r.model, r.usd]),
+        );
+        // The saved active chain (what the worker is actually going to use).
+        const activeChain = settings?.model_chain ?? [];
+        return (
+          <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-3">
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <h3 className="font-medium text-ink">Cost estimate (to drain queue)</h3>
+              <span className="text-[11px] text-stone-500">
+                {cost.pending_items} pending across {cost.pending_books} book
+                {cost.pending_books === 1 ? "" : "s"} ·{" "}
+                ~{(cost.estimated_input_tokens / 1_000_000).toFixed(1)}M in /{" "}
+                ~{(cost.estimated_output_tokens / 1_000_000).toFixed(1)}M out tokens
+              </span>
+            </div>
+
+            {/* Chain-aware view: if the active chain's primary stays in
+                quota, this is the expected bill. Followed by per-book so
+                admins can reason about cost to translate one more title. */}
+            {activeChain.length > 0 && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                <div className="text-[11px] text-emerald-700 font-medium mb-1">
+                  Active chain · {activeChain.map(labelForModel).join(" → ")}
                 </div>
-                <div className="text-sm font-semibold text-ink">
-                  ${row.usd.toFixed(2)}
+                <div className="flex flex-wrap gap-4 items-baseline">
+                  <div>
+                    <div className="text-[10px] text-stone-500">if primary handles all</div>
+                    <div className="text-lg font-semibold text-emerald-800">
+                      ${(
+                        byModel[activeChain[0]] ??
+                        byModel[activeChain[0] || ""] ??
+                        0
+                      ).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-stone-500">per book (avg)</div>
+                    <div className="text-lg font-semibold text-emerald-800">
+                      ${(
+                        (byModel[activeChain[0]] ??
+                          byModel[activeChain[0] || ""] ??
+                          0) / books
+                      ).toFixed(2)}
+                    </div>
+                  </div>
+                  {activeChain.length > 1 && (
+                    <div>
+                      <div className="text-[10px] text-stone-500">
+                        fallback min · {labelForModel(activeChain[activeChain.length - 1])}
+                      </div>
+                      <div className="text-lg font-semibold text-emerald-800">
+                        ${(
+                          byModel[activeChain[activeChain.length - 1]] ?? 0
+                        ).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Grid: all models, with total + per-book so admins can
+                compare any alternative to their current chain. */}
+            <div>
+              <div className="text-[11px] text-stone-500 mb-1">
+                All models — total / per-book
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {cost.per_model.map((row) => {
+                  const inChain = activeChain.includes(row.model)
+                    || (row.model === "default" && activeChain.includes(""));
+                  return (
+                    <div
+                      key={row.model}
+                      className={`rounded-lg border p-2 text-center ${
+                        inChain
+                          ? "border-emerald-300 bg-emerald-50/40"
+                          : "border-amber-100"
+                      }`}
+                    >
+                      <div className="text-[11px] text-stone-500 font-mono truncate">
+                        {row.model}
+                      </div>
+                      <div className="text-sm font-semibold text-ink">
+                        ${row.usd.toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-stone-400">
+                        ${(row.usd / books).toFixed(3)}/book
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <p className="text-[11px] text-stone-400">
+              Rough estimate — assumes ~3 chars/token and 1:1 input-to-output ratio.
+              Actual cost depends on tokenizer, chapter lengths, and batching.
+              Chain advance on 429/quota means multiple models may contribute — the
+              &quot;fallback min&quot; shows the floor if every batch runs on the cheapest
+              chain member.
+            </p>
           </div>
-          <p className="text-[11px] text-stone-400">
-            Rough estimate — assumes ~3 chars/token and 1:1 input-to-output ratio.
-            Actual cost depends on tokenizer, chapter lengths, and batching.
-            Chain advance on 429 means multiple models may contribute.
-          </p>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Queue items */}
       <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">

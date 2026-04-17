@@ -13,11 +13,11 @@ describe("chain presets", () => {
     ]);
   });
 
-  it("premium preset matches the app-wide DEFAULT_CHAIN", () => {
-    // Keeping the default in sync with the "premium" preset is what makes a
-    // fresh admin see "premium" highlighted without having to save anything.
-    const premium = CHAIN_PRESETS.find((p) => p.id === "premium")!;
-    expect(premium.chain).toEqual(DEFAULT_CHAIN);
+  it("balanced preset matches the app-wide DEFAULT_CHAIN", () => {
+    // Keeping the default in sync with the "balanced" preset is what makes a
+    // fresh admin see "balanced" highlighted without having to save anything.
+    const balanced = CHAIN_PRESETS.find((p) => p.id === "balanced")!;
+    expect(balanced.chain).toEqual(DEFAULT_CHAIN);
   });
 
   it("presetMatchingChain returns the preset id when chain matches exactly", () => {

@@ -21,6 +21,33 @@ DB_PATH = os.environ.get(
 )
 
 
+# ── Global aiosqlite tuning for concurrent writes ────────────────────────────
+#
+# By default sqlite3.connect uses `timeout=5.0` as its busy_timeout. Under the
+# always-on translation queue we have MANY overlapping writers:
+#   - worker writing translations + queue updates + rate_limiter_usage
+#   - admin PUT /queue/settings updating app_settings
+#   - save_book auto-enqueueing
+# A 5s window isn't always enough — admins were seeing
+# "database is locked" 500s on /admin/queue/settings. We monkey-patch
+# aiosqlite.connect to apply a 30-second busy timeout globally, which makes
+# SQLite retry the busy writer instead of failing fast. Combined with WAL
+# mode (set persistently in init_db), this eliminates the contention we
+# actually see in practice.
+
+_BUSY_TIMEOUT_ATTR = "_book_reader_ai_busy_timeout_patched"
+
+if not getattr(aiosqlite.connect, _BUSY_TIMEOUT_ATTR, False):
+    _original_aiosqlite_connect = aiosqlite.connect
+
+    def _aiosqlite_connect_with_busy_timeout(database, **kwargs):
+        kwargs.setdefault("timeout", 30)
+        return _original_aiosqlite_connect(database, **kwargs)
+
+    setattr(_aiosqlite_connect_with_busy_timeout, _BUSY_TIMEOUT_ATTR, True)
+    aiosqlite.connect = _aiosqlite_connect_with_busy_timeout
+
+
 async def init_db() -> None:
     """Ensure the database schema is up-to-date by running any pending
     versioned migrations from backend/migrations/*.sql.
@@ -44,6 +71,19 @@ async def init_db() -> None:
     if applied:
         import logging
         logging.getLogger(__name__).info("Applied %d migration(s): %s", len(applied), ", ".join(applied))
+
+    # Enable WAL journaling — concurrent readers don't block a writer, which
+    # is what our queue worker + admin settings + save_book paths constantly
+    # do. Persists across restarts once set on the file.
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.commit()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Failed to enable WAL mode (non-fatal)", exc_info=True,
+        )
 
 
 async def get_or_create_user(google_id: str, email: str, name: str, picture: str) -> dict:

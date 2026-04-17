@@ -212,6 +212,22 @@ async def queue_summary() -> dict:
     return {"counts": counts, "by_book": by_book}
 
 
+async def clear_queue(status: str | None = None) -> int:
+    """Delete ALL queue rows, or only rows matching a specific status.
+
+    Handy for the admin "Clear queue" / "Clear failed" buttons.
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        if status:
+            cursor = await db.execute(
+                "DELETE FROM translation_queue WHERE status=?", (status,),
+            )
+        else:
+            cursor = await db.execute("DELETE FROM translation_queue")
+        await db.commit()
+        return cursor.rowcount
+
+
 async def delete_queue_item(item_id: int) -> int:
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         cursor = await db.execute(

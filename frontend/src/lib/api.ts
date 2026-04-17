@@ -250,6 +250,33 @@ export function getChapterQueueStatus(
   );
 }
 
+/** Reader-side unified translate endpoint. Returns the cached translation
+ * if available, otherwise enqueues the chapter (high priority) and
+ * returns queue status. Reader polls until status === 'ready'. */
+export interface ChapterTranslationResponse {
+  status: "ready" | "pending" | "running" | "failed" | "skipped";
+  paragraphs?: string[];
+  provider?: string;
+  model?: string;
+  position?: number | null;
+  attempts?: number;
+}
+
+export function requestChapterTranslation(
+  bookId: number,
+  chapterIndex: number,
+  targetLanguage: string,
+): Promise<ChapterTranslationResponse> {
+  return request<ChapterTranslationResponse>(
+    `/books/${bookId}/chapters/${chapterIndex}/translation`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_language: targetLanguage }),
+    },
+  );
+}
+
 /** Save a completed progressive translation to the backend cache. */
 export function saveTranslationCache(
   bookId: number,

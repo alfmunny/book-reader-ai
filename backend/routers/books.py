@@ -6,6 +6,7 @@ from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_html
 from services.db import (
     get_cached_book,
@@ -116,6 +117,79 @@ async def chapter_queue_status(
     """
     from services.translation_queue import queue_status_for_chapter
     return await queue_status_for_chapter(book_id, chapter_index, target_language)
+
+
+class RequestTranslationBody(BaseModel):
+    target_language: str
+
+
+@router.post("/{book_id}/chapters/{chapter_index}/translation")
+async def request_chapter_translation(
+    book_id: int,
+    chapter_index: int,
+    req: RequestTranslationBody,
+    user: dict = Depends(get_current_user),
+):
+    """Unified reader-side translation endpoint.
+
+    Reader page calls this when the user enables Translate for a chapter.
+    Three outcomes, returned in a single response shape:
+
+    - status="ready" → the translation is already cached, paragraphs returned
+    - status="pending" / "running" → already in the queue, reader polls
+    - If not yet queued, this call enqueues it with a high priority
+      (user actively waiting) and returns status="pending" with position.
+
+    This replaces the previous reader-side on-demand translate loop which
+    fired per-paragraph Gemini calls and duplicated work the queue worker
+    was about to do anyway.
+    """
+    from services.db import get_cached_translation_with_meta
+    from services.translation_queue import (
+        enqueue, queue_status_for_chapter, worker,
+    )
+
+    # 1. Already cached?
+    cached = await get_cached_translation_with_meta(
+        book_id, chapter_index, req.target_language,
+    )
+    if cached:
+        return {
+            "status": "ready",
+            "paragraphs": cached["paragraphs"],
+            "provider": cached.get("provider"),
+            "model": cached.get("model"),
+        }
+
+    # 2. Already queued / running?
+    qstatus = await queue_status_for_chapter(
+        book_id, chapter_index, req.target_language,
+    )
+    if qstatus["queued"]:
+        return {
+            "status": qstatus["status"],  # 'pending' or 'running'
+            "position": qstatus["position"],
+            "attempts": qstatus["attempts"],
+        }
+
+    # 3. Not yet queued — enqueue with high priority. Reader-initiated
+    # enqueues jump ahead of admin auto-enqueue (priority=100) and
+    # admin per-book enqueue (priority=50) because a user is watching.
+    queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
+    await enqueue(
+        book_id, chapter_index, req.target_language,
+        priority=10,
+        queued_by=queued_by,
+    )
+    worker().wake()
+    fresh = await queue_status_for_chapter(
+        book_id, chapter_index, req.target_language,
+    )
+    return {
+        "status": fresh["status"],
+        "position": fresh["position"],
+        "attempts": 0,
+    }
 
 
 @router.get("/{book_id}")

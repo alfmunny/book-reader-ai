@@ -28,7 +28,7 @@ class _Limits(TypedDict):
 # (flash-only) can one-click switch via the preset buttons.
 DEFAULT_CHAIN: list[str] = [
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
 ]
 
 

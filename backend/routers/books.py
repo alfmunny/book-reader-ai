@@ -69,12 +69,18 @@ async def popular_books(language: str = ""):
 
 @router.get("/{book_id}/translation-status")
 async def translation_status(book_id: int, target_language: str):
-    """Return how many chapters of a book have a cached translation.
+    """Return book-level translation progress for the reader banner.
 
-    Used by the reader to show a 'bulk translation in progress' banner when
-    the admin is running a background job. Cheap — just counts DB rows.
+    Includes:
+      - total_chapters (as split by the splitter)
+      - translated_chapters (cached in translations table)
+      - queue_pending / queue_running / queue_failed (per-book per-lang
+        counts from the translation_queue table) — lets the reader show
+        "3/21 chapters still processing" during a background run.
+      - bulk_active: legacy one-shot bulk job, kept for back-compat.
     """
-    from services.db import count_translations_for_book
+    import aiosqlite
+    from services.db import count_translations_for_book, DB_PATH
     from services.bulk_translate import manager as bulk_manager
 
     cached = await get_cached_book(book_id)
@@ -83,6 +89,18 @@ async def translation_status(book_id: int, target_language: str):
         total_chapters = len(build_chapters(cached["text"]))
 
     cached_translations = await count_translations_for_book(book_id, target_language)
+
+    # Pull queue stats for this (book, language) in one grouped query.
+    queue_counts: dict[str, int] = {}
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """SELECT status, COUNT(*) FROM translation_queue
+               WHERE book_id=? AND target_language=?
+               GROUP BY status""",
+            (book_id, target_language),
+        ) as cursor:
+            async for row in cursor:
+                queue_counts[row[0]] = row[1]
 
     # Is a bulk job currently touching this book?
     bulk_active = False
@@ -98,6 +116,10 @@ async def translation_status(book_id: int, target_language: str):
         "target_language": target_language,
         "total_chapters": total_chapters,
         "translated_chapters": cached_translations,
+        "queue_pending": queue_counts.get("pending", 0),
+        "queue_running": queue_counts.get("running", 0),
+        "queue_failed": queue_counts.get("failed", 0),
+        "queue_done": queue_counts.get("done", 0),
         "bulk_active": bulk_active,
     }
 

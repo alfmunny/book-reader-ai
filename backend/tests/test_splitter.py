@@ -271,3 +271,33 @@ def test_build_chapters_from_html_handles_malformed_html():
     chapters = build_chapters_from_html(html)
     # Don't assert count — just assert no exception and result is a list
     assert isinstance(chapters, list)
+
+
+def test_build_chapters_from_html_splits_dramatic_speakers():
+    """Faust chapter 5 packs BÜRGERMÄDCHEN + ZWEITER SCHÜLER speeches
+    into a single <p>. The Gemini translator splits them at speaker
+    change, so source paragraph count was off by one — knocking every
+    subsequent row out of alignment. The speaker-cue splitter breaks
+    the source paragraph at every ALL-CAPS speaker cue."""
+    fake_stanza = """<p>
+    BÜRGERMÄDCHEN.<br>
+    Da sieh mir nur die schönen Knaben!<br>
+    Es ist wahrhaftig eine Schmach.<br>
+    Gesellschaft könnten sie die allerbeste haben,<br>
+    Und laufen diesen Mägden nach!<br>
+    ZWEITER SCHÜLER (zum ersten).<br>
+    Nicht so geschwind! dort hinten kommen zwei,<br>
+    Sie sind gar niedlich angezogen,<br>
+    's ist meine Nachbarin dabei;<br>
+    Ich bin dem Mädchen sehr gewogen.
+    </p>"""
+    padding = "Word " * 200
+    html = f'<div class="chapter"><h2>Vor dem Tor</h2>{fake_stanza}<p>{padding}</p></div>'
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    paragraphs = [p for p in chapters[0].text.split("\n\n") if p.strip()]
+    # Both speakers must appear as separate paragraphs.
+    assert any(p.startswith("BÜRGERMÄDCHEN.") for p in paragraphs), paragraphs
+    assert any(p.startswith("ZWEITER SCHÜLER") for p in paragraphs), paragraphs
+    burger = next(p for p in paragraphs if p.startswith("BÜRGERMÄDCHEN."))
+    assert "ZWEITER SCHÜLER" not in burger

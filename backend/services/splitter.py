@@ -401,7 +401,10 @@ def build_chapters_from_html(html: str) -> list[Chapter]:
             continue
 
         full_title = f"{current_book} — {title}" if current_book else title
-        chapters.append(Chapter(title=_clean_title(full_title), text=body_text.strip()))
+        # Split dramatic paragraphs that pack multiple speakers so the
+        # paragraph count stays aligned with translator output.
+        normalised = _split_dramatic_speakers(body_text.strip())
+        chapters.append(Chapter(title=_clean_title(full_title), text=normalised))
 
     return _merge_tiny_first(chapters)
 
@@ -474,6 +477,42 @@ def _html_body_text(elem, *, skip_first_heading: bool = False) -> str:
     return "\n\n".join(parts)
 
 
+# Dramatic speaker cue: an all-caps label that introduces a speaker's
+# lines in plays (BÜRGERMÄDCHEN., ZWEITER SCHÜLER (zum ersten).,
+# ANDRER BÜRGER., …). Used by `_split_dramatic_speakers` to break
+# paragraphs that contain more than one speaker's speech.
+_SPEAKER_CUE_RE = re.compile(
+    r"^[A-ZÄÖÜ][A-ZÄÖÜß\s]{1,}"       # all-caps letters (Latin + German)
+    r"(?:\s*\([^)]{0,60}\))?"          # optional parenthetical stage dir
+    r"\.$"                              # terminated by period
+)
+
+
+def _split_dramatic_speakers(text: str) -> str:
+    """Split paragraphs at dramatic speaker cue lines.
+
+    Gutenberg HTML for plays (Faust et al.) occasionally packs several
+    speakers' speeches into a single <p> — no blank line or tag
+    boundary between them. The translator correctly splits on speaker
+    change, leaving source/translation paragraph counts out of sync.
+    We normalise source-side by splitting at any internal speaker cue
+    so counts match and the reader can pair 1-to-1.
+    """
+    out: list[str] = []
+    for paragraph in text.split("\n\n"):
+        lines = paragraph.split("\n")
+        buf: list[str] = []
+        for line in lines:
+            if buf and _SPEAKER_CUE_RE.match(line.strip()):
+                out.append("\n".join(buf))
+                buf = [line]
+            else:
+                buf.append(line)
+        if buf:
+            out.append("\n".join(buf))
+    return "\n\n".join(out)
+
+
 def _html_inline_text(elem) -> str:
     """Flatten a <p> (or similar) to plain text, turning <br> into newlines.
 
@@ -526,27 +565,33 @@ def build_chapters(raw_text: str) -> list[Chapter]:
     # All strategies operate on the cleaned body text (boilerplate and
     # illustration markup removed). We pass offset=0 and body as the
     # full_text so positions from regex matches in body map correctly.
-    # (Previously we passed raw_text with an offset, but strip_boilerplate
-    # now modifies the text — removing illustration blocks — so positions
-    # in body no longer correspond to positions in raw_text.)
 
     # Strategy 1: Keyword headings (CHAPTER, Chapitre, Kapitel, ACT, ...)
     chapters = _chapters_from_keywords(body, 0, body)
     if _validate(chapters):
-        return _strip_heading_from_text(chapters)
+        return _finalize(chapters)
 
     # Strategy 2: Roman numeral headings (I, II, III, ...)
     chapters = _chapters_from_roman(body, 0, body)
     if _validate(chapters):
-        return _strip_heading_from_text(chapters)
+        return _finalize(chapters)
 
     # Strategy 3: TOC-based splitting
     chapters = _chapters_from_toc(body, 0, body)
     if _validate(chapters):
-        return _strip_heading_from_text(chapters)
+        return _finalize(chapters)
 
     # Strategy 4: Paragraph-based fallback
-    return _chapters_from_paragraphs(body)
+    return _finalize(_chapters_from_paragraphs(body))
+
+
+def _finalize(chapters: list[Chapter]) -> list[Chapter]:
+    """Strip heading + split multi-speaker paragraphs for every chapter."""
+    stripped = _strip_heading_from_text(chapters)
+    return [
+        Chapter(title=ch.title, text=_split_dramatic_speakers(ch.text))
+        for ch in stripped
+    ]
 
 
 def _strip_heading_from_text(chapters: list[Chapter]) -> list[Chapter]:

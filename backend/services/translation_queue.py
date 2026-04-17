@@ -73,7 +73,12 @@ DEFAULT_RPM = 12
 DEFAULT_RPD = 1400
 IDLE_POLL_SECONDS = 10.0
 MAX_ATTEMPTS = 5
-RETRY_BACKOFF = (1.0, 5.0, 20.0, 60.0, 300.0)
+# Short outer-retry backoff. Rationale: the chain already tries every model
+# in order before the outer retry fires, so if we're here ALL models in the
+# chain just failed. Waiting 300s rarely helps — usually a transient burst
+# on Google's side recovers within 10-20s. Admins explicitly asked to
+# "fail faster" so they can see forward progress.
+RETRY_BACKOFF = (1.0, 5.0, 15.0)
 
 # Every time a batch fails, the rows' priority is bumped by this much so the
 # worker moves on to other (book, language) groups instead of spinning on
@@ -832,12 +837,14 @@ class TranslationQueueWorker:
         target_language: str,
         max_output_tokens: int,
     ) -> dict[int, list[str]]:
-        """Walk the chain: first model with quota + that doesn't 429 wins.
+        """Walk the chain: first model that answers successfully wins.
 
-        Non-quota errors (503, malformed response) propagate to the outer
-        retry loop so they get exponential backoff on the CURRENT model.
-        Only quota errors / already-exhausted models advance the chain —
-        those won't get better within this batch so there's no point waiting.
+        Any error from the API advances to the next model — 429, 503,
+        malformed response, network glitch, anything. Rationale: the
+        whole point of a fallback chain is to route around model-level
+        problems without sitting on long backoffs. If ALL models in the
+        chain fail, the exception bubbles up to the outer retry loop,
+        which waits briefly before re-trying the whole chain.
         """
         last_err: Exception | None = None
         for model in chain:
@@ -862,14 +869,14 @@ class TranslationQueueWorker:
                 )
             except Exception as e:  # noqa: BLE001
                 last_err = e
-                if is_quota_error(e):
-                    self._append_log({
-                        "event": "chain_advance",
-                        "from": model or "default",
-                        "reason": str(e)[:160],
-                    })
-                    continue
-                raise  # transient / other error — bubble up to retry loop
+                reason = "quota" if is_quota_error(e) else "error"
+                self._append_log({
+                    "event": "chain_advance",
+                    "from": model or "default",
+                    "reason": reason,
+                    "error": str(e)[:160],
+                })
+                continue
         if last_err:
             raise last_err
         raise RuntimeError("all models in chain are at their daily cap")

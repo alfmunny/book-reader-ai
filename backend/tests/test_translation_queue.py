@@ -461,9 +461,11 @@ async def test_chain_skips_models_already_at_daily_cap(tmp_db, monkeypatch):
     assert skips[0]["model"] == "gemini-2.5-pro"
 
 
-async def test_non_quota_error_stays_on_current_model(tmp_db, monkeypatch):
-    """A 503 'model overloaded' is transient for THIS model, not a quota
-    issue. The chain should NOT advance — the outer retry loop backs off."""
+async def test_503_also_advances_chain_for_fail_fast(tmp_db, monkeypatch):
+    """Historical behaviour waited up to 300s on a 503 before giving up.
+    Admins asked for fail-fast: on ANY API error (not just quota) the
+    chain should advance immediately so a sibling model gets a chance
+    without a long backoff."""
     from services.auth import encrypt_api_key
     from services.rate_limiter import AsyncRateLimiter
     import services.translation_queue as tq
@@ -473,7 +475,7 @@ async def test_non_quota_error_stays_on_current_model(tmp_db, monkeypatch):
         "queue_model_chain",
         json.dumps(["gemini-2.5-pro", "gemini-2.5-flash"]),
     )
-    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0, 0.0))
+    monkeypatch.setattr(tq, "RETRY_BACKOFF", (0.0, 0.0, 0.0))
     await save_book(1, BOOK_META, BOOK_TEXT)
     await enqueue(1, 0, "zh")
 
@@ -481,7 +483,9 @@ async def test_non_quota_error_stays_on_current_model(tmp_db, monkeypatch):
 
     async def fake_translate(api_key, chapters, src, tgt, *, model=None, **kwargs):
         models_called.append(model or "")
-        raise RuntimeError("503 UNAVAILABLE: model overloaded")
+        if model == "gemini-2.5-pro":
+            raise RuntimeError("503 UNAVAILABLE: model overloaded")
+        return {idx: ["ok"] for idx, _ in chapters}
 
     w = TranslationQueueWorker()
     w._stop_event = __import__("asyncio").Event()
@@ -489,11 +493,12 @@ async def test_non_quota_error_stays_on_current_model(tmp_db, monkeypatch):
         with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
             await w._tick()
 
-    # Every retry call used PRIMARY (pro), never advanced to flash.
-    assert all(m == "gemini-2.5-pro" for m in models_called)
-    assert "gemini-2.5-flash" not in models_called
-    # No chain_advance log.
-    assert not any(e.get("event") == "chain_advance" for e in w._state.log)
+    # Pro got called, threw 503, then flash was tried and succeeded.
+    assert models_called == ["gemini-2.5-pro", "gemini-2.5-flash"]
+    advances = [e for e in w._state.log if e.get("event") == "chain_advance"]
+    assert len(advances) == 1
+    assert advances[0]["reason"] == "error"
+    assert "503" in advances[0]["error"]
 
 
 async def test_is_quota_error_classifier():

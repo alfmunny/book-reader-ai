@@ -178,8 +178,14 @@ export default function QueueTab({ adminFetch }: Props) {
     }
   }
 
-  async function refreshItems(filter: string = itemFilter) {
-    setLoadingItems(true);
+  async function refreshItems(
+    filter: string = itemFilter,
+    opts: { silent?: boolean } = {},
+  ) {
+    // The 3s background poll passes silent:true so the spinner doesn't
+    // flicker every few seconds. Initial load + user-initiated filter
+    // changes pass silent:false so the user gets visible feedback.
+    if (!opts.silent) setLoadingItems(true);
     try {
       const its = await adminFetch(
         `/admin/queue/items?limit=100${
@@ -191,7 +197,7 @@ export default function QueueTab({ adminFetch }: Props) {
     } catch {
       /* leave existing items visible if this poll fails */
     } finally {
-      setLoadingItems(false);
+      if (!opts.silent) setLoadingItems(false);
     }
   }
 
@@ -220,12 +226,14 @@ export default function QueueTab({ adminFetch }: Props) {
 
   useEffect(() => {
     refreshCore();
-    refreshItems();
+    refreshItems(); // initial items load — spinner visible
     refreshCost();
-    // Core (status/settings) + items poll every 3s.
+    // Core (status/settings) + items poll every 3s. Items polls are
+    // SILENT so the spinner doesn't flicker every few seconds (which
+    // made the filter pills shift around).
     const fastPoll = setInterval(() => {
       refreshCore();
-      refreshItems();
+      refreshItems(itemFilter, { silent: true });
     }, 3000);
     // Cost is heavier — poll on a 30s cadence to avoid blocking the UI.
     const slowPoll = setInterval(refreshCost, 30000);
@@ -238,7 +246,7 @@ export default function QueueTab({ adminFetch }: Props) {
 
   // Filter pills: fire ONLY the items fetch, not the whole tab. Previously
   // clicking a filter triggered refresh() which waited on 4 parallel
-  // fetches — visibly laggy.
+  // fetches — visibly laggy. Spinner visible for user-initiated clicks.
   useEffect(() => {
     if (!chainInitedRef.current) return; // initial load handles it
     refreshItems(itemFilter);
@@ -928,18 +936,21 @@ export default function QueueTab({ adminFetch }: Props) {
       {/* Queue items */}
       <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">
         <div className="px-4 py-2 border-b border-amber-100 flex items-center gap-2 text-sm">
+          {/* Spinner slot has fixed width even when empty so the header
+              doesn't reflow and shift the filter pills. */}
           <span className="font-medium flex items-center gap-1.5">
             Items
-            {loadingItems && <Spinner />}
+            <span className="inline-block w-3 h-3 align-middle">
+              {loadingItems && <Spinner />}
+            </span>
           </span>
           {(["pending", "running", "failed", "all"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setItemFilter(f)}
-              disabled={loadingItems && itemFilter !== f}
               className={`text-xs px-2 py-0.5 rounded ${
                 itemFilter === f ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
-              } disabled:opacity-40`}
+              }`}
             >
               {f}
             </button>

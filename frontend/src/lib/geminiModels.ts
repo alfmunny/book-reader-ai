@@ -43,18 +43,9 @@ export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
     recommended: true,
   },
   {
-    value: "gemini-2.0-flash",
-    label: "gemini-2.0-flash",
-    note: "Solid for prose, unlimited daily requests. Best choice when upstream 2.5/3.1 tiers are spent.",
-    rpm: 2000,
-    rpd: 999999,
-    maxOutputTokens: 7500,
-    recommended: true,
-  },
-  {
     value: "gemini-3.1-flash-lite-preview",
     label: "gemini-3.1-flash-lite-preview",
-    note: "Newest lite model — 150K daily requests. Drops nuance on dialogue but very high capacity.",
+    note: "Newest lite model — 150K daily requests. Drops nuance on dialogue but very high capacity. Good capacity fallback.",
     rpm: 4000,
     rpd: 150000,
     maxOutputTokens: 7500,
@@ -64,15 +55,6 @@ export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
     value: "gemini-2.5-flash-lite",
     label: "gemini-2.5-flash-lite",
     note: "Fast & cheap, unlimited daily requests. Usable only as a last-ditch fallback for literature.",
-    rpm: 4000,
-    rpd: 999999,
-    maxOutputTokens: 7500,
-    recommended: false,
-  },
-  {
-    value: "gemini-2.0-flash-lite",
-    label: "gemini-2.0-flash-lite",
-    note: "Lowest-quality flash-lite. Unlimited daily requests — use as a volume fallback.",
     rpm: 4000,
     rpd: 999999,
     maxOutputTokens: 7500,
@@ -119,12 +101,13 @@ export function isRecommended(model: string): boolean {
 }
 
 // Suggested default chain — matches the "Balanced" preset. Strong literary
-// quality without the frontier pricing, cascades to unlimited-RPD 2.0-flash
-// as a safety net. Admins who want Premium or Budget can one-click switch
-// via the preset buttons in the Queue tab.
+// quality with a capacity fallback. Admins who want Premium or Budget can
+// one-click switch via the preset buttons in the Queue tab.
+// Note: gemini-2.0-flash and gemini-2.0-flash-lite are deprecated for new
+// accounts (Google returns 404 for those). Defaults now avoid them.
 export const DEFAULT_CHAIN: string[] = [
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
+  "gemini-2.5-flash-lite",
 ];
 
 // Named presets that map admin intent ("cheap drafts" / "quality without
@@ -142,30 +125,30 @@ export const CHAIN_PRESETS: ChainPreset[] = [
   {
     id: "budget",
     label: "Budget",
-    tagline: "Cheap, unlimited capacity",
+    tagline: "Cheap, high capacity",
     description:
-      "Flash-class models only. Good for first-pass drafts or non-literary target languages where nuance matters less. Unlimited daily requests — drain a whole library in one run.",
-    chain: ["gemini-2.0-flash", "gemini-2.0-flash-lite"],
+      "Flash-lite only. Good for first-pass drafts or non-literary target languages where nuance matters less. Very high daily request limits — drain a whole library in one run.",
+    chain: ["gemini-2.5-flash-lite", "gemini-3.1-flash-lite-preview"],
   },
   {
     id: "balanced",
     label: "Balanced",
     tagline: "Strong prose, affordable",
     description:
-      "2.5-flash leads for its near-pro literary quality; 2.0-flash catches overflow. The sweet spot for most libraries — clearly better than lite, a fraction of the pro cost.",
-    chain: ["gemini-2.5-flash", "gemini-2.0-flash"],
+      "2.5-flash leads for its near-pro literary quality; 2.5-flash-lite catches overflow. The sweet spot for most libraries — clearly better than lite-only, a fraction of the pro cost.",
+    chain: ["gemini-2.5-flash", "gemini-2.5-flash-lite"],
   },
   {
     id: "premium",
     label: "Premium",
     tagline: "Frontier top, graceful degradation",
     description:
-      "Start with 3.1-pro for the most faithful literary rendering; cascade to 2.5-pro, 2.5-flash, then 2.0-flash as daily quotas are spent. Expensive but produces the best output.",
+      "Start with 3.1-pro for the most faithful literary rendering; cascade to 2.5-pro, 2.5-flash, then 2.5-flash-lite as daily quotas are spent. Expensive but produces the best output.",
     chain: [
       "gemini-3.1-pro-preview",
       "gemini-2.5-pro",
       "gemini-2.5-flash",
-      "gemini-2.0-flash",
+      "gemini-2.5-flash-lite",
     ],
   },
 ];

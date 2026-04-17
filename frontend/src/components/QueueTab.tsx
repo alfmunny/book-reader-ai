@@ -123,6 +123,10 @@ export default function QueueTab({ adminFetch }: Props) {
   // Maps a label ("chain", "api_key", etc.) → timestamp of last save.
   const [lastSaved, setLastSaved] = useState<{ key: string; at: number } | null>(null);
   const [itemFilter, setItemFilter] = useState<"pending" | "running" | "failed" | "all">("pending");
+  // Ref mirrors itemFilter so the long-lived poll interval (set up once
+  // with empty deps) reads the current filter on every tick instead of
+  // the initial "pending" captured in its closure.
+  const itemFilterRef = useRef(itemFilter);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   // Per-section loading flags so a slow fetch spins only its own panel
@@ -230,10 +234,13 @@ export default function QueueTab({ adminFetch }: Props) {
     refreshCost();
     // Core (status/settings) + items poll every 3s. Items polls are
     // SILENT so the spinner doesn't flicker every few seconds (which
-    // made the filter pills shift around).
+    // made the filter pills shift around). Read the filter via ref so
+    // the interval sees user changes instead of its stale initial
+    // closure — without this the poll overwrote the selected filter
+    // back to "pending" every 3s.
     const fastPoll = setInterval(() => {
       refreshCore();
-      refreshItems(itemFilter, { silent: true });
+      refreshItems(itemFilterRef.current, { silent: true });
     }, 3000);
     // Cost is heavier — poll on a 30s cadence to avoid blocking the UI.
     const slowPoll = setInterval(refreshCost, 30000);
@@ -244,10 +251,9 @@ export default function QueueTab({ adminFetch }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filter pills: fire ONLY the items fetch, not the whole tab. Previously
-  // clicking a filter triggered refresh() which waited on 4 parallel
-  // fetches — visibly laggy. Spinner visible for user-initiated clicks.
+  // Filter pills: keep the ref in sync AND fire a fresh items fetch.
   useEffect(() => {
+    itemFilterRef.current = itemFilter;
     if (!chainInitedRef.current) return; // initial load handles it
     refreshItems(itemFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps

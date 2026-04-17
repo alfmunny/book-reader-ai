@@ -324,7 +324,7 @@ async def test_default_chain_applied_when_no_setting(tmp_db):
     from services.translation_queue import get_model_chain
     chain = await get_model_chain()
     assert chain[0] == "gemini-2.5-flash"
-    assert "gemini-2.0-flash" in chain
+    assert "gemini-2.5-flash-lite" in chain
 
 
 async def test_clear_queue_all_and_by_status(tmp_db):

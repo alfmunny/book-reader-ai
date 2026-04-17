@@ -479,10 +479,16 @@ def _html_body_text(elem, *, skip_first_heading: bool = False) -> str:
 
 # Dramatic speaker cue: an all-caps label that introduces a speaker's
 # lines in plays (BÜRGERMÄDCHEN., ZWEITER SCHÜLER (zum ersten).,
-# ANDRER BÜRGER., …). Used by `_split_dramatic_speakers` to break
-# paragraphs that contain more than one speaker's speech.
+# ANDRER BÜRGER., FAUST, MEPHISTOPHELES, IRRLICHT (im Wechselgesang).
+# , …). Used by `_split_dramatic_speakers` to break paragraphs that
+# contain more than one speaker's speech.
+#
+# The character class includes `,` so Faust's multi-speaker "choral"
+# cues ("FAUST, MEPHISTOPHELES, IRRLICHT …") also break a stanza. Pure
+# prose sentences like "Hello, world." are rejected by the all-caps
+# start + period-terminator constraint.
 _SPEAKER_CUE_RE = re.compile(
-    r"^[A-ZÄÖÜ][A-ZÄÖÜß\s]{1,}"       # all-caps letters (Latin + German)
+    r"^[A-ZÄÖÜ][A-ZÄÖÜß\s,]{1,}"      # all-caps letters (Latin + German), commas between names
     r"(?:\s*\([^)]{0,60}\))?"          # optional parenthetical stage dir
     r"\.$"                              # terminated by period
 )

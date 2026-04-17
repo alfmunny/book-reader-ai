@@ -120,18 +120,31 @@ async def test_translate_text_chunks_large_input():
 
 # ── translate_chapters_batch ─────────────────────────────────────────────────
 
-def _mock_gemini_response(text: str):
-    """Build a Gemini-style response object whose .text returns `text`."""
+def _mock_gemini_response(text: str, finish_reason: str | None = "STOP"):
+    """Build a Gemini-style response object whose .text returns `text`.
+
+    Supplies a minimal `candidates[0].finish_reason` too so the parser
+    can detect MAX_TOKENS truncation / SAFETY blocks the way the real
+    client reports them.
+    """
+    class _Candidate:
+        pass
+
     class _Resp:
         pass
+
+    cand = _Candidate()
+    cand.finish_reason = finish_reason
+
     r = _Resp()
     r.text = text
+    r.candidates = [cand]
     return r
 
 
-def _patch_gemini_generate(return_text: str):
+def _patch_gemini_generate(return_text: str, finish_reason: str | None = "STOP"):
     """Patch the underlying google-genai client used by translate_chapters_batch."""
-    async_mock = AsyncMock(return_value=_mock_gemini_response(return_text))
+    async_mock = AsyncMock(return_value=_mock_gemini_response(return_text, finish_reason))
 
     class _Models:
         generate_content = async_mock
@@ -200,10 +213,59 @@ async def test_translate_chapters_batch_includes_prior_context():
 
 
 async def test_translate_chapters_batch_raises_on_unparseable_response():
-    """If the model returns no <chapter> tags, we raise so caller can fall back."""
+    """If the model returns no <chapter> tags in a multi-chapter batch,
+    we raise so caller can fall back — ambiguous which chapter is which."""
     patcher, _ = _patch_gemini_generate("Just some text with no tags.")
     with patcher:
         with pytest.raises(ValueError, match="no <chapter> blocks"):
             await gemini.translate_chapters_batch(
+                "key", [(0, "text"), (1, "text")], "en", "zh",
+            )
+
+
+async def test_translate_chapters_batch_single_chapter_plain_text_fallback():
+    """Flash-lite sometimes drops the <chapter> wrapping on small inputs.
+    When we sent exactly ONE chapter and Gemini finished cleanly (STOP),
+    treat the whole plain-text response as that chapter's translation
+    instead of failing the batch."""
+    patcher, _ = _patch_gemini_generate(
+        "Erster Absatz der Übersetzung.\n\nZweiter Absatz.",
+        finish_reason="STOP",
+    )
+    with patcher:
+        result = await gemini.translate_chapters_batch(
+            "key", [(7, "One-chapter payload.")], "en", "de",
+        )
+    assert result == {7: ["Erster Absatz der Übersetzung.", "Zweiter Absatz."]}
+
+
+async def test_translate_chapters_batch_does_not_fallback_when_truncated():
+    """If finish_reason=MAX_TOKENS the response is incomplete and we
+    should NOT trust plain text as the translation — the chain advance
+    has to pick it up so a bigger-context model can retry."""
+    patcher, _ = _patch_gemini_generate(
+        "Partial translation that got c",
+        finish_reason="MAX_TOKENS",
+    )
+    with patcher:
+        with pytest.raises(ValueError, match="MAX_TOKENS"):
+            await gemini.translate_chapters_batch(
                 "key", [(0, "text")], "en", "zh",
+            )
+
+
+async def test_translate_chapters_batch_error_includes_raw_preview():
+    """The error message must include a preview of what the model
+    actually returned so admins can tell truncation apart from a
+    format-ignored response without re-running the call with extra
+    logging."""
+    patcher, _ = _patch_gemini_generate(
+        "I am sorry, I cannot translate this content.",
+        finish_reason="STOP",
+    )
+    with patcher:
+        # Multi-chapter batch so the single-chapter fallback doesn't apply.
+        with pytest.raises(ValueError, match="I am sorry"):
+            await gemini.translate_chapters_batch(
+                "key", [(0, "t"), (1, "t")], "en", "zh",
             )

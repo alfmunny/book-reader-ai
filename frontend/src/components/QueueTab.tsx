@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import {
-  GEMINI_MODEL_OPTIONS,
+  CHAIN_PRESETS,
   DEFAULT_CHAIN,
-  labelForModel,
+  GEMINI_MODEL_OPTIONS,
   isRecommended,
+  labelForModel,
+  presetMatchingChain,
   rateForModel,
 } from "@/lib/geminiModels";
 
@@ -458,6 +460,47 @@ export default function QueueTab({ adminFetch }: Props) {
                   <span className="font-mono text-emerald-700">{s.current_model}</span>
                 </div>
               ) : null}
+            </div>
+
+            {/* Preset strip — one-click chains that map admin intent to a
+                concrete model ordering. Clicking applies to form state;
+                admin still saves explicitly via "Save chain". */}
+            <div className="mt-2 rounded-lg border border-amber-100 bg-amber-50/30 p-2">
+              <div className="text-xs text-stone-600 mb-1">
+                Quick presets (click to load a chain):
+              </div>
+              <div className="grid sm:grid-cols-3 gap-2">
+                {CHAIN_PRESETS.map((p) => {
+                  const active = presetMatchingChain(chain) === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setChain([...p.chain])}
+                      className={`text-left p-2 rounded-lg border transition-colors ${
+                        active
+                          ? "border-amber-500 bg-amber-100/60"
+                          : "border-amber-200 bg-white hover:bg-amber-50"
+                      }`}
+                    >
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-medium text-ink">
+                          {p.label}
+                        </span>
+                        {active && (
+                          <span className="text-[10px] text-amber-700">selected</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-amber-700">{p.tagline}</div>
+                      <div className="text-[11px] text-stone-500 mt-1 leading-snug">
+                        {p.description}
+                      </div>
+                      <div className="text-[10px] font-mono text-stone-400 mt-1 truncate">
+                        {p.chain.join(" → ")}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Configured chain — reorder / remove */}

@@ -10,8 +10,8 @@ export interface ModelOption {
 export const GEMINI_MODEL_OPTIONS: ModelOption[] = [
   {
     value: "",
-    label: "Default (server-side)",
-    note: "Same model used for chat and insights — known to work with your key.",
+    label: "Default (gemini-3.1-flash-lite-preview)",
+    note: "Same model used for chat and insights — known to work with your key. Fast and cheap; fine for most translations.",
   },
   {
     value: "gemini-2.5-pro",

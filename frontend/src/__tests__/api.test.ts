@@ -26,6 +26,7 @@ import {
   getMe,
   saveGeminiKey,
   deleteGeminiKey,
+  retryChapterTranslation,
 } from "@/lib/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -379,4 +380,18 @@ test("deleteGeminiKey sends DELETE", async () => {
   mockFetch({ ok: true });
   await deleteGeminiKey();
   expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe("DELETE");
+});
+
+// ── Chapter translation retry ────────────────────────────────────────────────
+
+test("retryChapterTranslation POSTs to the explicit retry URL", async () => {
+  // Distinct from requestChapterTranslation: the normal request uses
+  // INSERT OR IGNORE on the queue, which silently no-ops on failed rows.
+  // Retry hits a separate endpoint that resets the row to pending.
+  mockFetch({ status: "pending", position: 1, attempts: 0 });
+  await retryChapterTranslation(1342, 5, "zh");
+  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(url).toContain("/books/1342/chapters/5/translation/retry");
+  expect(opts.method).toBe("POST");
+  expect(JSON.parse(opts.body).target_language).toBe("zh");
 });

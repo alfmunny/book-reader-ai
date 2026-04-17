@@ -871,6 +871,45 @@ async def queue_retry_item(
     return {"ok": True, "updated": cursor.rowcount}
 
 
+class RetryFailedRequest(BaseModel):
+    book_id: int | None = None
+    target_language: str | None = None
+
+
+@router.post("/queue/retry-failed")
+async def queue_retry_failed(
+    req: RetryFailedRequest,
+    _admin: dict = Depends(_require_admin),
+):
+    """Revive every failed queue row matching the filters.
+
+    Shortcut for the admin books list's "Retry N failed" button when a
+    book/language pair has a stack of failures. Without filters this retries
+    every failed row in the whole queue.
+    """
+    clauses = ["status='failed'"]
+    params: list[int | str] = []
+    if req.book_id is not None:
+        clauses.append("book_id=?")
+        params.append(req.book_id)
+    if req.target_language is not None:
+        clauses.append("target_language=?")
+        params.append(req.target_language)
+    where = " AND ".join(clauses)
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            f"""UPDATE translation_queue
+                   SET status='pending', attempts=0, last_error=NULL,
+                       priority=100,
+                       updated_at=CURRENT_TIMESTAMP
+                   WHERE {where}""",
+            params,
+        )
+        await db.commit()
+    queue_worker().wake()
+    return {"ok": True, "updated": cursor.rowcount}
+
+
 @router.get("/queue/cost-estimate")
 async def queue_cost_estimate(_admin: dict = Depends(_require_admin)):
     """Ballpark USD to drain every pending queue item, per model.

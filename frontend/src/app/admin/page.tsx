@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { getMe, getAuthToken, awaitSession } from "@/lib/api";
 import BulkTranslateTab from "@/components/BulkTranslateTab";
 import SeedPopularButton from "@/components/SeedPopularButton";
+import QueueTab from "@/components/QueueTab";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -27,13 +28,19 @@ async function adminFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
-type Tab = "users" | "books" | "audio" | "bulk";
+type Tab = "users" | "books" | "audio" | "bulk" | "queue";
 
 interface User { id: number; email: string; name: string; picture: string; role: string; approved: number; created_at: string; }
+interface TranslationStat { chapters: number; size_chars: number; }
+type QueueBreakdown = Record<string, Record<string, number>>; // lang → {status → count}
 interface Book {
   id: number; title: string; authors: string[]; languages: string[];
-  download_count: number; text_length?: number; cached_at?: string;
+  download_count: number; text_length?: number; word_count?: number; cached_at?: string;
   translations?: Record<string, number>;
+  translation_stats?: Record<string, TranslationStat>;
+  queue?: QueueBreakdown;
+  active?: boolean;
+  active_language?: string | null;
 }
 interface AudioEntry { book_id: number; chapter_index: number; provider: string; voice: string; chunks: number; size_mb: number; created_at: string; }
 interface TranslationEntry { book_id: number; chapter_index: number; target_language: string; size_chars: number; created_at: string; }
@@ -135,6 +142,7 @@ export default function AdminPage() {
       // Translation info now lives inside each book row
     },
     { key: "audio", label: "Audio Cache", count: stats?.audio_chunks_cached },
+    { key: "queue", label: "Queue" },
     { key: "bulk", label: "Bulk Translate" },
   ];
 
@@ -246,11 +254,15 @@ export default function AdminPage() {
             <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
               {books.map((b) => {
                 const isExpanded = expandedBookId === b.id;
+                // Union of languages that have any translations OR any queue activity,
+                // so chips show in-progress work even before the first chapter lands.
                 const translatedLangs = Object.keys(b.translations || {});
+                const queuedLangs = Object.keys(b.queue || {});
+                const allLangs = Array.from(new Set([...translatedLangs, ...queuedLangs]));
 
                 return (
                   <div key={b.id}>
-                    <div className="px-4 py-3 flex items-center gap-3">
+                    <div className={`px-4 py-3 flex items-center gap-3 ${b.active ? "bg-emerald-50/60" : ""}`}>
                       <button
                         onClick={() => {
                           setExpandedBookId(isExpanded ? null : b.id);
@@ -263,27 +275,63 @@ export default function AdminPage() {
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-ink text-sm truncate">{b.title}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-ink text-sm truncate">{b.title}</span>
+                          {b.active && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse">
+                              translating → {b.active_language}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-stone-400">
-                          ID: {b.id} · {b.languages?.join(", ")} · {((b.text_length || 0) / 1000).toFixed(0)}K chars
+                          ID: {b.id} · {b.languages?.join(", ")}
+                          {" · "}{((b.text_length || 0) / 1000).toFixed(0)}K chars
+                          {b.word_count ? ` · ${b.word_count.toLocaleString()} words` : ""}
                           {b.authors?.length ? ` · ${b.authors.join(", ")}` : ""}
                         </div>
                       </div>
 
                       {/* Translation chips — compact summary, visible without expanding */}
                       <div className="flex flex-wrap gap-1 items-center">
-                        {translatedLangs.length === 0 ? (
+                        {allLangs.length === 0 ? (
                           <span className="text-[10px] text-stone-300">no translations</span>
                         ) : (
-                          translatedLangs.map((lang) => (
-                            <span
-                              key={lang}
-                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700"
-                              title={`${b.translations![lang]} chapters translated to ${lang}`}
-                            >
-                              {lang} · {b.translations![lang]}
-                            </span>
-                          ))
+                          allLangs.map((lang) => {
+                            const count = b.translations?.[lang] || 0;
+                            const q = b.queue?.[lang] || {};
+                            const pending = q.pending || 0;
+                            const running = q.running || 0;
+                            const failed = q.failed || 0;
+                            const pieces: string[] = [];
+                            if (count) pieces.push(`${count} done`);
+                            if (running) pieces.push(`${running} running`);
+                            if (pending) pieces.push(`${pending} pending`);
+                            if (failed) pieces.push(`${failed} failed`);
+                            const tone =
+                              running > 0
+                                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                : failed > 0
+                                  ? "bg-red-50 border-red-200 text-red-700"
+                                  : pending > 0
+                                    ? "bg-stone-50 border-stone-200 text-stone-600"
+                                    : "bg-amber-50 border-amber-200 text-amber-700";
+                            return (
+                              <span
+                                key={lang}
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full border ${tone}`}
+                                title={pieces.join(" · ")}
+                              >
+                                {lang} · {count}
+                                {(pending || running || failed) > 0 && (
+                                  <span className="ml-1 opacity-70">
+                                    {running > 0 && `▶${running}`}
+                                    {pending > 0 && `⏳${pending}`}
+                                    {failed > 0 && `!${failed}`}
+                                  </span>
+                                )}
+                              </span>
+                            );
+                          })
                         )}
                       </div>
 
@@ -422,6 +470,9 @@ export default function AdminPage() {
         )}
 
         {/* Translations tab removed — info is now consolidated into the Books tab */}
+
+        {/* ── Queue Tab ── */}
+        {tab === "queue" && <QueueTab adminFetch={adminFetch} />}
 
         {/* ── Bulk Translate Tab ── */}
         {tab === "bulk" && <BulkTranslateTab adminFetch={adminFetch} />}

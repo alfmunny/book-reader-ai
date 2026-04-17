@@ -379,7 +379,12 @@ async def get_cached_book(book_id: int) -> dict | None:
 
 
 async def save_book(book_id: int, meta: dict, text: str, images: list | None = None) -> None:
-    """Insert or replace a book record (meta + full text + images)."""
+    """Insert or replace a book record (meta + full text + images).
+
+    After saving, the translation queue is auto-seeded with this book's
+    chapters for every configured target language. The worker (if running)
+    will pick them up on its next tick.
+    """
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
@@ -400,6 +405,20 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
             ),
         )
         await db.commit()
+
+    # Auto-enqueue for translation. Lazy-imported to avoid a circular import
+    # (translation_queue → db → translation_queue). Failures are non-fatal:
+    # a book save must never be blocked by queue trouble.
+    try:
+        from services.translation_queue import enqueue_for_book, worker
+        added = await enqueue_for_book(book_id)
+        if added:
+            worker().wake()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Auto-enqueue after save_book(%s) failed", book_id, exc_info=True,
+        )
 
 
 async def get_audiobook(book_id: int) -> dict | None:
@@ -445,6 +464,27 @@ async def delete_audiobook(book_id: int) -> None:
     """Remove the audiobook association for a book."""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM audiobooks WHERE book_id = ?", (book_id,))
+        await db.commit()
+
+
+# ── App settings (key/value config used by the always-on queue, etc.) ────────
+
+async def get_setting(key: str) -> str | None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT value FROM app_settings WHERE key=?", (key,),
+        ) as cursor:
+            row = await cursor.fetchone()
+    return row[0] if row else None
+
+
+async def set_setting(key: str, value: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO app_settings (key, value) VALUES (?, ?)
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
+            (key, value),
+        )
         await db.commit()
 
 

@@ -3,10 +3,11 @@ Admin-only endpoints for managing users, books, audio cache, and translations.
 Full CRUD where applicable.
 """
 
+import json
 import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from services.auth import get_current_user, decrypt_api_key
+from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
 from services.bulk_translate import manager as bulk_manager, plan_work, group_chapters_for_batch
 from services.db import (
     DB_PATH,
@@ -19,10 +20,27 @@ from services.db import (
     save_book,
     save_translation,
     delete_chapter_audio_cache,
+    get_setting,
+    set_setting,
 )
 from services.gutenberg import get_book_meta, get_book_text
 from services.splitter import build_chapters
 from services.translate import translate_text as do_translate
+from services.translation_queue import (
+    SETTING_API_KEY,
+    SETTING_AUTO_LANGS,
+    SETTING_ENABLED,
+    SETTING_MODEL,
+    SETTING_RPD,
+    SETTING_RPM,
+    delete_queue_for_book,
+    delete_queue_item,
+    enqueue_for_book,
+    get_auto_languages,
+    list_queue,
+    queue_summary,
+    worker as queue_worker,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -81,34 +99,82 @@ async def remove_user(user_id: int, admin: dict = Depends(_require_admin)):
 
 @router.get("/books")
 async def get_books(_admin: dict = Depends(_require_admin)):
-    """List all cached books, with text size + translation counts per language.
+    """List all cached books with rich stats for the admin UI.
 
-    The `translations` field is a map of `target_language → chapters_cached`
-    so the admin UI can show per-language summaries like "zh (22 chapters)"
-    directly on the book row.
+    Per-book payload:
+    - `text_length`, `word_count`, `chapter_count` — size stats.
+    - `translations`: map of `target_language → {chapters, size_chars}`.
+    - `queue`: map of `target_language → {pending, running, done, failed, ...}`
+      so the UI can show progress bars / status badges live.
     """
     books = await list_cached_books()
 
-    # One grouped query for all translations instead of N queries per book.
     async with aiosqlite.connect(DB_PATH) as db:
+        # Translation stats grouped per (book, language)
         async with db.execute(
-            """SELECT book_id, target_language, COUNT(*) AS n
+            """SELECT book_id, target_language,
+                      COUNT(*) AS chapters,
+                      SUM(LENGTH(paragraphs)) AS size_chars
                FROM translations
                GROUP BY book_id, target_language"""
         ) as cursor:
-            rows = await cursor.fetchall()
-    by_book: dict[int, dict[str, int]] = {}
-    for book_id, lang, n in rows:
-        by_book.setdefault(book_id, {})[lang] = n
+            trans_rows = await cursor.fetchall()
+
+        # Live queue stats grouped per (book, language, status)
+        async with db.execute(
+            """SELECT book_id, target_language, status, COUNT(*) AS n
+               FROM translation_queue
+               GROUP BY book_id, target_language, status"""
+        ) as cursor:
+            queue_rows = await cursor.fetchall()
+
+    translations: dict[int, dict[str, dict]] = {}
+    for book_id, lang, chapters, size_chars in trans_rows:
+        translations.setdefault(book_id, {})[lang] = {
+            "chapters": chapters,
+            "size_chars": size_chars or 0,
+        }
+
+    queue_by_book: dict[int, dict[str, dict[str, int]]] = {}
+    for book_id, lang, status, n in queue_rows:
+        queue_by_book.setdefault(book_id, {}).setdefault(lang, {})[status] = n
+
+    # Currently active (book, lang) from worker state — used by the UI to
+    # show a "working now" glow on the right row.
+    worker_state = queue_worker().state()
+    current = None
+    if worker_state.current_book_id:
+        current = {
+            "book_id": worker_state.current_book_id,
+            "target_language": worker_state.current_target_language,
+        }
 
     result = []
     for b in books:
         full = await get_cached_book(b["id"])
-        text_len = len(full["text"]) if full and full.get("text") else 0
+        text = full["text"] if full and full.get("text") else ""
+        text_len = len(text)
+        word_count = len(text.split()) if text else 0
+        # Avoid re-splitting chapters on every /admin/books hit — it's
+        # expensive for big books. The translations table gives us an
+        # upper bound; splitting can be done on-demand per book elsewhere.
         result.append({
             **b,
             "text_length": text_len,
-            "translations": by_book.get(b["id"], {}),
+            "word_count": word_count,
+            "translations": {
+                lang: v["chapters"] for lang, v in translations.get(b["id"], {}).items()
+            },
+            "translation_stats": translations.get(b["id"], {}),
+            "queue": queue_by_book.get(b["id"], {}),
+            "active": bool(
+                current and current["book_id"] == b["id"]
+            ),
+            "active_language": (
+                current["target_language"]
+                if current and current["book_id"] == b["id"]
+                else None
+            ),
         })
     return result
 
@@ -587,3 +653,186 @@ async def bulk_translate_history(_admin: dict = Depends(_require_admin)):
     for r in rows:
         r["dry_run"] = bool(r["dry_run"])
     return rows
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ALWAYS-ON TRANSLATION QUEUE
+# ══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/queue/status")
+async def queue_status(_admin: dict = Depends(_require_admin)):
+    """Snapshot of the queue worker + overall queue counts."""
+    w = queue_worker()
+    s = w.state()
+    summary = await queue_summary()
+    return {
+        "running": w.is_running(),
+        "state": {
+            "enabled": s.enabled,
+            "idle": s.idle,
+            "current_book_id": s.current_book_id,
+            "current_book_title": s.current_book_title,
+            "current_target_language": s.current_target_language,
+            "current_batch_size": s.current_batch_size,
+            "last_completed_at": s.last_completed_at,
+            "last_error": s.last_error,
+            "started_at": s.started_at,
+            "requests_made": s.requests_made,
+            "chapters_done": s.chapters_done,
+            "chapters_failed": s.chapters_failed,
+            "waiting_reason": s.waiting_reason,
+            "log": list(s.log),
+        },
+        "counts": summary["counts"],
+    }
+
+
+@router.post("/queue/start")
+async def queue_start(_admin: dict = Depends(_require_admin)):
+    await queue_worker().start()
+    return {"ok": True}
+
+
+@router.post("/queue/stop")
+async def queue_stop(_admin: dict = Depends(_require_admin)):
+    await queue_worker().stop()
+    return {"ok": True}
+
+
+@router.get("/queue/settings")
+async def queue_get_settings(_admin: dict = Depends(_require_admin)):
+    enabled = await get_setting(SETTING_ENABLED)
+    key = await get_setting(SETTING_API_KEY)
+    langs = await get_auto_languages()
+    rpm = await get_setting(SETTING_RPM)
+    rpd = await get_setting(SETTING_RPD)
+    model = await get_setting(SETTING_MODEL)
+    return {
+        "enabled": enabled != "0",
+        "has_api_key": bool(key),
+        "auto_translate_languages": langs,
+        "rpm": int(rpm) if rpm else None,
+        "rpd": int(rpd) if rpd else None,
+        "model": model or None,
+    }
+
+
+class QueueSettingsRequest(BaseModel):
+    enabled: bool | None = None
+    api_key: str | None = None     # plaintext; empty string clears
+    auto_translate_languages: list[str] | None = None
+    rpm: int | None = None
+    rpd: int | None = None
+    model: str | None = None
+
+
+@router.put("/queue/settings")
+async def queue_set_settings(
+    req: QueueSettingsRequest,
+    _admin: dict = Depends(_require_admin),
+):
+    if req.enabled is not None:
+        await set_setting(SETTING_ENABLED, "1" if req.enabled else "0")
+    if req.api_key is not None:
+        if req.api_key == "":
+            await set_setting(SETTING_API_KEY, "")
+        else:
+            await set_setting(SETTING_API_KEY, encrypt_api_key(req.api_key))
+    if req.auto_translate_languages is not None:
+        await set_setting(
+            SETTING_AUTO_LANGS,
+            json.dumps([lang for lang in req.auto_translate_languages if lang]),
+        )
+    if req.rpm is not None:
+        await set_setting(SETTING_RPM, str(req.rpm))
+    if req.rpd is not None:
+        await set_setting(SETTING_RPD, str(req.rpd))
+    if req.model is not None:
+        await set_setting(SETTING_MODEL, req.model)
+    queue_worker().wake()
+    return {"ok": True}
+
+
+@router.get("/queue/items")
+async def queue_items(
+    status: str | None = None,
+    book_id: int | None = None,
+    limit: int = 200,
+    _admin: dict = Depends(_require_admin),
+):
+    return await list_queue(status=status, book_id=book_id, limit=limit)
+
+
+class EnqueueBookRequest(BaseModel):
+    book_id: int
+    target_languages: list[str] | None = None
+    priority: int = 50   # lower than default so admin enqueues jump the line
+    reset_failed: bool = False
+
+
+@router.post("/queue/enqueue-book")
+async def queue_enqueue_book(
+    req: EnqueueBookRequest,
+    _admin: dict = Depends(_require_admin),
+):
+    added = await enqueue_for_book(
+        req.book_id,
+        target_languages=req.target_languages,
+        priority=req.priority,
+        reset_failed=req.reset_failed,
+    )
+    queue_worker().wake()
+    return {"ok": True, "enqueued": added}
+
+
+@router.delete("/queue/items/{item_id}")
+async def queue_delete_item(
+    item_id: int, _admin: dict = Depends(_require_admin),
+):
+    deleted = await delete_queue_item(item_id)
+    return {"ok": True, "deleted": deleted}
+
+
+@router.delete("/queue/book/{book_id}")
+async def queue_delete_book(
+    book_id: int,
+    target_language: str | None = None,
+    _admin: dict = Depends(_require_admin),
+):
+    deleted = await delete_queue_for_book(book_id, target_language=target_language)
+    return {"ok": True, "deleted": deleted}
+
+
+@router.post("/queue/items/{item_id}/retry")
+async def queue_retry_item(
+    item_id: int, _admin: dict = Depends(_require_admin),
+):
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """UPDATE translation_queue
+               SET status='pending', attempts=0, last_error=NULL,
+                   updated_at=CURRENT_TIMESTAMP
+               WHERE id=?""",
+            (item_id,),
+        )
+        await db.commit()
+    queue_worker().wake()
+    return {"ok": True, "updated": cursor.rowcount}
+
+
+@router.post("/queue/enqueue-all")
+async def queue_enqueue_all(_admin: dict = Depends(_require_admin)):
+    """Walk every cached book and enqueue missing translations for all
+    configured auto-translate languages."""
+    langs = await get_auto_languages()
+    if not langs:
+        raise HTTPException(
+            status_code=400,
+            detail="No auto_translate_languages configured in queue settings",
+        )
+    books = await list_cached_books()
+    total = 0
+    for b in books:
+        total += await enqueue_for_book(b["id"], target_languages=langs)
+    queue_worker().wake()
+    return {"ok": True, "enqueued": total, "books_scanned": len(books)}

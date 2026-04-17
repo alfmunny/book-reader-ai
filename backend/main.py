@@ -18,7 +18,32 @@ from services.db import init_db
 async def lifespan(app: FastAPI):
     await init_db()
     await _resume_bulk_translation_if_needed()
-    yield
+    await _start_translation_queue_worker()
+    try:
+        yield
+    finally:
+        await _stop_translation_queue_worker()
+
+
+async def _start_translation_queue_worker() -> None:
+    """Launch the always-on queue worker. It immediately idles if no API key
+    or languages are configured — admins can flip it on from the UI without
+    restarting the backend."""
+    import logging
+    try:
+        from services.translation_queue import worker
+        await worker().start()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to start translation queue worker")
+
+
+async def _stop_translation_queue_worker() -> None:
+    import logging
+    try:
+        from services.translation_queue import worker
+        await worker().stop()
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to stop translation queue worker")
 
 
 async def _resume_bulk_translation_if_needed() -> None:

@@ -275,23 +275,58 @@ async def test_reset_stale_running_rows_flips_to_pending(tmp_db):
 
 
 async def test_save_translation_auto_clears_pending_queue_row(tmp_db):
-    """save_translation must mark any matching pending/running queue row as
-    done so the worker doesn't claim+skip it later."""
+    """save_translation must retire any matching queue row so the worker
+    doesn't claim+skip it later AND so a future re-enqueue isn't blocked
+    by an orphan 'done' row.
+
+    Post PR: rows are DELETED on success (not UPDATE SET status='done').
+    The translations table is the source of truth for what's translated;
+    lingering 'done' queue rows caused INSERT OR IGNORE to silently
+    no-op on future enqueue attempts when the cache later got deleted.
+    """
     from services.db import save_translation
     await save_book(1, BOOK_META, BOOK_TEXT)
     await enqueue(1, 0, "zh")
-    # Sanity: row starts as pending.
     rows = await list_queue(status="pending")
     assert len(rows) == 1
 
     await save_translation(1, 0, "zh", ["done"], provider="gemini")
 
-    # Post-condition: the queue row is now 'done', not pending.
+    # Row is gone — no 'pending', no 'done', nothing.
+    assert await list_queue(status="pending") == []
+    assert await list_queue(status="done") == []
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE book_id=1",
+        ) as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0
+
+
+async def test_enqueue_after_cache_deleted_succeeds(tmp_db):
+    """Regression: if a 'done' row lingers from the old behaviour and
+    the cache is deleted, a fresh enqueue must insert a new pending row
+    (not silently no-op via INSERT OR IGNORE)."""
+    import services.db as db_module
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    # Seed a legacy orphan 'done' row — cache row deliberately absent.
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority, status)
+               VALUES (1, 0, 'zh', 100, 'done')""",
+        )
+        await conn.commit()
+
+    from services.translation_queue import cleanup_orphan_done_rows
+    removed = await cleanup_orphan_done_rows()
+    assert removed == 1
+
+    # Now enqueue succeeds.
+    inserted = await enqueue(1, 0, "zh")
+    assert inserted == 1
     pending = await list_queue(status="pending")
-    assert pending == []
-    done = await list_queue(status="done")
-    assert len(done) == 1
-    assert done[0]["book_id"] == 1
+    assert len(pending) == 1
 
 
 async def test_save_translation_ignores_unrelated_queue_rows(tmp_db):
@@ -717,9 +752,19 @@ async def test_worker_skips_already_cached_chapter(tmp_db):
     # Cached translation for chapter 0 is untouched
     existing = await get_cached_translation(1, 0, "zh")
     assert existing == ["already done"]
-    # Both queue items are marked done (chapter 0 skipped, chapter 1 translated)
-    done = await list_queue(status="done")
-    assert len(done) == 2
+    # Both queue rows are retired — chapter 0 because it was already
+    # cached (skipped), chapter 1 because the worker translated it.
+    # Rows are DELETED on success so no 'done' row lingers to block
+    # a future re-enqueue via INSERT OR IGNORE.
+    import aiosqlite as _aio
+    import services.db as _dbmod
+    async with _aio.connect(_dbmod.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE book_id=1",
+        ) as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0
+    assert await list_queue(status="done") == []
 
 
 async def test_worker_processes_batch(tmp_db):
@@ -748,10 +793,17 @@ async def test_worker_processes_batch(tmp_db):
         ):
             await w._tick()
 
-    # Both chapters should now be cached and queue rows marked done
+    # Both chapters are now cached; queue rows are deleted on success
+    # so no 'done' row lingers to block a future re-enqueue.
     t0 = await get_cached_translation(1, 0, "zh")
     t1 = await get_cached_translation(1, 1, "zh")
     assert t0 == ["翻译段落一", "翻译段落二"]
     assert t1 == ["翻译章节二"]
-    items = await list_queue(status="done")
-    assert len(items) == 2
+    import aiosqlite as _aio
+    import services.db as _dbmod
+    async with _aio.connect(_dbmod.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE book_id=1",
+        ) as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0

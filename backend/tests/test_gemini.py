@@ -323,6 +323,37 @@ async def test_translate_chapters_batch_under_budget_does_not_split():
     assert mock.await_count == 1
 
 
+async def test_translate_chapters_batch_sends_permissive_safety_settings():
+    """Classic literature (Faust) hits default safety filters and comes back
+    with finish_reason=PROHIBITED_CONTENT. The batch call must pass
+    BLOCK_NONE thresholds on the four content categories that actually
+    matter for prose translation so the whole model chain doesn't dead-
+    end on safety blocks."""
+    from google.genai import types as g_types
+
+    patcher, mock = _patch_gemini_generate('<chapter index="0">x</chapter>')
+    with patcher:
+        await gemini.translate_chapters_batch(
+            "key", [(0, "text")], "en", "zh",
+        )
+    config = mock.call_args.kwargs["config"]
+    categories = {str(s.category) for s in config.safety_settings}
+    thresholds = {str(s.threshold) for s in config.safety_settings}
+    # All four literary-relevant categories present.
+    assert any("HARASSMENT" in c for c in categories)
+    assert any("HATE_SPEECH" in c for c in categories)
+    assert any("SEXUALLY_EXPLICIT" in c for c in categories)
+    assert any("DANGEROUS_CONTENT" in c for c in categories)
+    # All thresholds are the permissive BLOCK_NONE — if one slipped back
+    # to default/unset we'd get mid-level blocks on literary content.
+    assert all("BLOCK_NONE" in t for t in thresholds)
+    # Sanity: unrelated harm block category was not configured (we don't
+    # want to accidentally disable civic-integrity filtering for no reason).
+    assert not any("CIVIC_INTEGRITY" in c for c in categories)
+    # Type check: the SDK expects a list of SafetySetting objects.
+    assert all(isinstance(s, g_types.SafetySetting) for s in config.safety_settings)
+
+
 async def test_translate_chapters_batch_error_includes_raw_preview():
     """The error message must include a preview of what the model
     actually returned so admins can tell truncation apart from a

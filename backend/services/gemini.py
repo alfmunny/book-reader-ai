@@ -15,6 +15,35 @@ MODEL = "gemini-3.1-flash-lite-preview"
 TRANSLATOR_MODEL = MODEL
 
 
+# Permissive safety settings for literary translation. Classic books (Faust
+# is the concrete case) routinely trigger default mid-level filters on
+# sexuality / violence / occultism, causing finish_reason=PROHIBITED_CONTENT
+# with no translation returned. The queue worker then burns through the
+# whole fallback chain because every model shares the same safety layer.
+# We push the thresholds to BLOCK_NONE on the four categories that
+# literature commonly trips: harassment, hate speech, sexually explicit,
+# dangerous content. Civic-integrity / image categories are unrelated to
+# prose translation and left at defaults.
+_LITERARY_SAFETY_SETTINGS: list[types.SafetySetting] = [
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+    types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+        threshold=types.HarmBlockThreshold.BLOCK_NONE,
+    ),
+]
+
+
 def _client(api_key: str) -> genai.Client:
     return genai.Client(api_key=api_key)
 
@@ -256,6 +285,7 @@ async def translate_chapters_batch(
     config = types.GenerateContentConfig(
         system_instruction=system,
         max_output_tokens=max_output_tokens,
+        safety_settings=_LITERARY_SAFETY_SETTINGS,
     )
     response = await client.aio.models.generate_content(
         model=model, contents=prompt, config=config,

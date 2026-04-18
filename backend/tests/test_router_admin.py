@@ -498,6 +498,101 @@ MOVE_BOOK_TEXT = (
 )
 
 
+async def test_import_translations_inserts_rows(admin_client, admin_db):
+    """POST /admin/translations/import writes pre-translated chapters into
+    the cache without going through Gemini. Companion to the offline
+    translate_book.py script used to seed prod from a dev-side run."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={
+            "entries": [
+                {
+                    "book_id": 100,
+                    "chapter_index": 0,
+                    "target_language": "zh",
+                    "paragraphs": ["第一段。", "第二段。"],
+                    "provider": "gemini",
+                    "model": "gemini-2.5-flash",
+                },
+            ],
+        },
+    )
+    assert res.status_code == 200, res.text
+    assert res.json() == {"ok": True, "imported": 1}
+
+    from services.db import get_cached_translation
+    cached = await get_cached_translation(100, 0, "zh")
+    assert cached == ["第一段。", "第二段。"]
+
+
+async def test_import_translations_skips_empty_paragraphs(admin_client, admin_db):
+    """Empty paragraph arrays are skipped — seeding shouldn't clobber an
+    existing translation with an empty placeholder if the export has a
+    chapter where translation failed."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "zh", ["existing"])
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={
+            "entries": [
+                {
+                    "book_id": 100,
+                    "chapter_index": 0,
+                    "target_language": "zh",
+                    "paragraphs": [],  # empty — skip
+                },
+            ],
+        },
+    )
+    assert res.status_code == 200
+    assert res.json()["imported"] == 0
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["existing"]
+
+
+async def test_import_translations_overwrites_existing(admin_client, admin_db):
+    """Non-empty imports DO overwrite — the whole point of seeding is
+    often to replace bad translations with fresh ones."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "zh", ["old translation"])
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={
+            "entries": [
+                {
+                    "book_id": 100,
+                    "chapter_index": 0,
+                    "target_language": "zh",
+                    "paragraphs": ["new translation"],
+                },
+            ],
+        },
+    )
+    assert res.status_code == 200
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["new translation"]
+
+
+async def test_import_translations_requires_admin(admin_db, admin_user):
+    user2 = await get_or_create_user(
+        google_id="user2", email="u2@test.com", name="U2", picture="",
+    )
+    await set_user_approved(user2["id"], True)
+
+    async def _override():
+        return await get_user_by_id(user2["id"])
+
+    app.dependency_overrides[get_current_user] = _override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        res = await c.post(
+            "/api/admin/translations/import",
+            json={"entries": []},
+        )
+    app.dependency_overrides.clear()
+    assert res.status_code == 403
+
+
 async def test_move_translation_shifts_chapter_index(admin_client, admin_db):
     """POST /admin/translations/{id}/{idx}/{lang}/move reassigns an existing
     cached translation to a different chapter_index without retranslating.

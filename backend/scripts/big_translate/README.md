@@ -108,6 +108,25 @@ hard rate limit or a context cap, the tick's prompt tells the loop to
 pick a longer delay (≥ 1200 s) before waking, which gives the limit
 time to refresh. No manual intervention needed — it will resume.
 
+## Known TODOs (not yet implemented)
+
+- **Chapter title translation.** The splitter extracts source titles (e.g.
+  `CHAPTER I.`) but the reader currently shows them untranslated even when
+  translation is on. Adding this needs a migration (new `title_translation`
+  column on `translations`) plus a small reader-side change to prefer the
+  translated title. The driver should be updated to emit each chapter's
+  source title so Claude can translate it alongside the paragraphs.
+- **Splitter sanity-check on import.** Gutenberg's HTML/text layout varies,
+  and `split_with_html_preference` occasionally produces a chapter that's
+  mostly a TOC fragment, an ISBN notice, or a stray heading. A cheap
+  heuristic validator (paragraph count < 2, text length < 100 chars,
+  >50% uppercase, etc.) run in `import_book.py` — with warnings written
+  into `state.json` per book — would flag suspect chapters for manual
+  review before the loop spends tokens translating them.
+
+Both are follow-up work; for now the loop runs without them and you can
+spot-check output in the reader.
+
 ## What lives where after a book finishes
 
 - `data/translations/book_<id>_<lang>.json` — the exported translations,

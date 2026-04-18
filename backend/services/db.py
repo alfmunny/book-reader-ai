@@ -287,11 +287,14 @@ async def get_cached_translation(book_id: int, chapter_index: int, target_langua
 async def get_cached_translation_with_meta(
     book_id: int, chapter_index: int, target_language: str,
 ) -> dict | None:
-    """Like get_cached_translation, but also returns provider/model metadata."""
+    """Like get_cached_translation, but also returns provider/model metadata
+    and the translated chapter title (may be None for rows saved before the
+    011 migration, or when the translator couldn't produce a title)."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT paragraphs, provider, model FROM translations
+            """SELECT paragraphs, provider, model, title_translation
+               FROM translations
                WHERE book_id=? AND chapter_index=? AND target_language=?""",
             (book_id, chapter_index, target_language),
         ) as cursor:
@@ -302,6 +305,7 @@ async def get_cached_translation_with_meta(
         "paragraphs": json.loads(row["paragraphs"]),
         "provider": row["provider"],
         "model": row["model"],
+        "title_translation": row["title_translation"],
     }
 
 
@@ -313,16 +317,18 @@ async def save_translation(
     *,
     provider: str | None = None,
     model: str | None = None,
+    title_translation: str | None = None,
 ) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """
             INSERT OR REPLACE INTO translations
-              (book_id, chapter_index, target_language, paragraphs, provider, model)
-            VALUES (?, ?, ?, ?, ?, ?)
+              (book_id, chapter_index, target_language, paragraphs,
+               provider, model, title_translation)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (book_id, chapter_index, target_language,
-             json.dumps(paragraphs), provider, model),
+             json.dumps(paragraphs), provider, model, title_translation),
         )
         await db.commit()
 

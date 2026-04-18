@@ -53,8 +53,10 @@ until every book in `state.json` is `done`:
 
    - action="translate": for each chapter in the `chapters` array,
      translate the paragraphs into `target_lang`, preserving the paragraph
-     count EXACTLY. Write the array to /tmp/bt_batch.json as
-     `[{"book_id","chapter_index","target_language","paragraphs"}, ...]`.
+     count EXACTLY. Also translate the chapter's `title` field into
+     `target_lang` and put it in a `title_translation` key. Write the
+     array to /tmp/bt_batch.json as
+     `[{"book_id","chapter_index","target_language","paragraphs","title_translation"}, ...]`.
      Then run:
        PYTHONPATH=. ./venv/bin/python scripts/big_translate/save_batch.py /tmp/bt_batch.json
      Schedule next tick in 90s.
@@ -108,24 +110,26 @@ hard rate limit or a context cap, the tick's prompt tells the loop to
 pick a longer delay (≥ 1200 s) before waking, which gives the limit
 time to refresh. No manual intervention needed — it will resume.
 
-## Known TODOs (not yet implemented)
+## Chapter title translation
 
-- **Chapter title translation.** The splitter extracts source titles (e.g.
-  `CHAPTER I.`) but the reader currently shows them untranslated even when
-  translation is on. Adding this needs a migration (new `title_translation`
-  column on `translations`) plus a small reader-side change to prefer the
-  translated title. The driver should be updated to emit each chapter's
-  source title so Claude can translate it alongside the paragraphs.
-- **Splitter sanity-check on import.** Gutenberg's HTML/text layout varies,
-  and `split_with_html_preference` occasionally produces a chapter that's
-  mostly a TOC fragment, an ISBN notice, or a stray heading. A cheap
-  heuristic validator (paragraph count < 2, text length < 100 chars,
-  >50% uppercase, etc.) run in `import_book.py` — with warnings written
-  into `state.json` per book — would flag suspect chapters for manual
-  review before the loop spends tokens translating them.
+The driver emits each chapter's source title (`CHAPTER I.`, `Studierzimmer`,
+etc.) and the loop's tick prompt should translate it alongside the
+paragraphs. Put the translated title in the batch entry under
+`title_translation`; `save_batch.py` passes it through to
+`save_translation`, which now stores it in the `translations.title_translation`
+column (see migration 011). The reader swaps the chapter heading to the
+translated title automatically when translation mode is on.
 
-Both are follow-up work; for now the loop runs without them and you can
-spot-check output in the reader.
+## Known TODOs
+
+- **Splitter sanity-check on import.** Gutenberg's HTML/text layout
+  varies, and `split_with_html_preference` occasionally produces a
+  chapter that's mostly a TOC fragment, an ISBN notice, or a stray
+  heading. A cheap heuristic validator (paragraph count < 2, text
+  length < 100 chars, >50% uppercase, etc.) run in `import_book.py` —
+  with warnings written into `state.json` per book — would flag suspect
+  chapters for manual review before the loop spends tokens translating
+  them. Not yet implemented; for now spot-check output in the reader.
 
 ## What lives where after a book finishes
 

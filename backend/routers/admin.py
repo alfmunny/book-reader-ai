@@ -447,6 +447,7 @@ class ImportTranslationEntry(BaseModel):
     paragraphs: list[str]
     provider: str | None = None
     model: str | None = None
+    title_translation: str | None = None
 
 
 class ImportTranslationsRequest(BaseModel):
@@ -480,6 +481,7 @@ async def import_translations(
             entry.paragraphs,
             provider=entry.provider,
             model=entry.model,
+            title_translation=entry.title_translation,
         )
         count += 1
     return {"ok": True, "imported": count}

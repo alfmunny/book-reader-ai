@@ -37,7 +37,7 @@ sys.path.insert(0, str(BACKEND))
 
 from services.book_chapters import split_with_html_preference  # noqa: E402
 from services.db import (  # noqa: E402
-    DB_PATH, get_cached_book, get_cached_translation, init_db,
+    DB_PATH, get_cached_book, get_cached_translation_with_meta, init_db,
 )
 
 
@@ -57,16 +57,17 @@ async def export_book(book_id: int, lang: str) -> Path:
     for idx, ch in enumerate(chapters):
         if not ch.text.strip():
             continue
-        cached = await get_cached_translation(book_id, idx, lang)
+        cached = await get_cached_translation_with_meta(book_id, idx, lang)
         if not cached:
             continue
         entries.append({
             "book_id": book_id,
             "chapter_index": idx,
             "target_language": lang,
-            "paragraphs": cached,
-            "provider": "claude-code",
-            "model": "claude-opus-4-7",
+            "paragraphs": cached["paragraphs"],
+            "provider": cached.get("provider") or "claude-code",
+            "model": cached.get("model") or "claude-opus-4-7",
+            "title_translation": cached.get("title_translation"),
         })
 
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)

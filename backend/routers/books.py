@@ -185,6 +185,7 @@ async def request_chapter_translation(
             "paragraphs": cached["paragraphs"],
             "provider": cached.get("provider"),
             "model": cached.get("model"),
+            "title_translation": cached.get("title_translation"),
         }
 
     # 2. Already queued / running?

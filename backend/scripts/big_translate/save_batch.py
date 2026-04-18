@@ -56,8 +56,11 @@ async def run(path: str) -> None:
             bid, idx, lang, translated,
             provider=entry.get("provider", "claude-code"),
             model=entry.get("model", "claude-opus-4-7"),
+            title_translation=entry.get("title_translation"),
         )
-        print(f"book {bid} ch {idx + 1}: saved {len(translated)} paragraphs")
+        tt = entry.get("title_translation")
+        tt_note = f" title={tt!r}" if tt else ""
+        print(f"book {bid} ch {idx + 1}: saved {len(translated)} paragraphs{tt_note}")
         saved += 1
     print(f"\n{saved} chapters saved total")
 

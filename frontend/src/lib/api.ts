@@ -264,6 +264,10 @@ export interface ChapterTranslationResponse {
   model?: string;
   position?: number | null;
   attempts?: number;
+  // Translated chapter title ("第一章" instead of "CHAPTER I."), null
+  // when the row was saved before title translation was supported or
+  // the translator didn't produce one.
+  title_translation?: string | null;
   // True when the queue worker is actually running. Reader shows a
   // distinct "worker offline" message when queued but !worker_running.
   worker_running?: boolean;

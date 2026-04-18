@@ -440,6 +440,51 @@ class BulkRetranslateRequest(BaseModel):
     target_language: str
 
 
+class ImportTranslationEntry(BaseModel):
+    book_id: int
+    chapter_index: int
+    target_language: str
+    paragraphs: list[str]
+    provider: str | None = None
+    model: str | None = None
+
+
+class ImportTranslationsRequest(BaseModel):
+    entries: list[ImportTranslationEntry]
+
+
+@router.post("/translations/import")
+async def import_translations(
+    req: ImportTranslationsRequest,
+    _admin: dict = Depends(_require_admin),
+):
+    """Bulk-import pre-translated chapters from an offline run.
+
+    Companion to `scripts/translate_book.py` and `scripts/seed_translations.py`:
+    you translate a book locally (paying once on a dev machine), export
+    the rows to JSON, then POST them here to seed prod without paying
+    for Gemini a second time.
+
+    Overwrites existing cache entries — safer than silently skipping,
+    since the whole point of seeding is usually to replace bad
+    translations. Skips empty paragraphs arrays.
+    """
+    count = 0
+    for entry in req.entries:
+        if not entry.paragraphs:
+            continue
+        await save_translation(
+            entry.book_id,
+            entry.chapter_index,
+            entry.target_language,
+            entry.paragraphs,
+            provider=entry.provider,
+            model=entry.model,
+        )
+        count += 1
+    return {"ok": True, "imported": count}
+
+
 @router.post("/translations/{book_id}/retranslate-all")
 async def retranslate_all(
     book_id: int,

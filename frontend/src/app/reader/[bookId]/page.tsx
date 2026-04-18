@@ -112,6 +112,7 @@ export default function ReaderPage() {
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
+  const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
   const [bookTranslationStatus, setBookTranslationStatus] = useState<TranslationStatus | null>(null);
@@ -212,6 +213,7 @@ export default function ReaderPage() {
     const current = chapters[chapterIndex];
     if (!translationEnabled || !current?.text) {
       setTranslatedParagraphs([]);
+      setTranslatedTitle(null);
       return;
     }
     const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
@@ -230,10 +232,16 @@ export default function ReaderPage() {
 
     const bid = Number(bookId);
 
-    function showCached(res: { paragraphs?: string[]; provider?: string; model?: string }) {
+    function showCached(res: {
+      paragraphs?: string[];
+      provider?: string;
+      model?: string;
+      title_translation?: string | null;
+    }) {
       if (!res.paragraphs) return;
       translationCache.current.set(cacheKey, res.paragraphs);
       setTranslatedParagraphs(res.paragraphs);
+      setTranslatedTitle(res.title_translation ?? null);
       const providerLabel = res.provider
         ? (res.model ? `${res.provider} (${res.model})` : res.provider)
         : "cached";
@@ -830,7 +838,9 @@ export default function ReaderPage() {
                 {/* Chapter heading — shown at top of every chapter, scrolls with content */}
                 {current?.title && (
                   <h2 className="prose-reader mx-auto mb-8 text-center font-serif font-semibold text-lg text-ink/80" data-testid="reader-chapter-heading">
-                    {current.title}
+                    {translationEnabled && translatedTitle
+                      ? translatedTitle
+                      : current.title}
                   </h2>
                 )}
                 <SentenceReader

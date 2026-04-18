@@ -275,6 +275,19 @@ export default function ReaderPage() {
 
       setTranslationUsedProvider(describeStatus(res));
 
+      // Kick the whole-book banner immediately so "N not started" doesn't
+      // misreport the chapter we just enqueued — users clicking "Translate
+      // all N remaining" next would otherwise see a stale count and a
+      // confusing no-op ("enqueued=0" because we already enqueued this).
+      (async () => {
+        try {
+          const status = await getBookTranslationStatus(bid, translationLang);
+          if (!cancelled && currentChapterKey.current === cacheKey) {
+            setBookTranslationStatus(status);
+          }
+        } catch { /* ignore */ }
+      })();
+
       const POLL_MS = 3000;
       while (!cancelled && currentChapterKey.current === cacheKey) {
         await new Promise((r) => setTimeout(r, POLL_MS));
@@ -346,16 +359,37 @@ export default function ReaderPage() {
     try {
       const res = await enqueueBookTranslation(bid, translationLang);
       // Refresh whole-book status immediately so the banner updates
-      // without waiting for the 15s poll tick.
+      // without waiting for the 15s poll tick — the banner may have
+      // been showing stale "not started" counts because a chapter
+      // was on-demand-queued by the reader between polls.
+      let fresh: TranslationStatus | null = null;
       try {
-        const status = await getBookTranslationStatus(bid, translationLang);
-        setBookTranslationStatus(status);
+        fresh = await getBookTranslationStatus(bid, translationLang);
+        setBookTranslationStatus(fresh);
       } catch { /* ignore */ }
-      alert(
-        res.enqueued === 0
-          ? `All chapters are already translated or already queued.`
-          : `Queued ${res.enqueued} chapter${res.enqueued === 1 ? "" : "s"} for translation into ${translationLang}.`,
-      );
+
+      // Distinguish "nothing to queue because everything's done" from
+      // "nothing to queue because everything's already queued" — the
+      // button disappearing + a vague 'already queued' message used
+      // to look like the click was a no-op even when the worker was
+      // actively translating.
+      let msg;
+      if (res.enqueued > 0) {
+        msg = `Queued ${res.enqueued} chapter${res.enqueued === 1 ? "" : "s"} for translation into ${translationLang}.`;
+      } else if (fresh) {
+        const queued = (fresh.queue_pending ?? 0) + (fresh.queue_running ?? 0);
+        const failed = fresh.queue_failed ?? 0;
+        if (queued > 0) {
+          msg = `Nothing new to queue — ${queued} chapter${queued === 1 ? " is" : "s are"} already in the queue and being processed.`;
+        } else if (failed > 0) {
+          msg = `Nothing new to queue — ${failed} chapter${failed === 1 ? "" : "s"} previously failed. Use the Retry button to revive them.`;
+        } else {
+          msg = `All chapters are already translated.`;
+        }
+      } else {
+        msg = `All chapters are already translated or already queued.`;
+      }
+      alert(msg);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to queue book");
     } finally {

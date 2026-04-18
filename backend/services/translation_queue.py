@@ -453,24 +453,48 @@ async def reset_stale_running_rows() -> int:
         return cursor.rowcount
 
 
-async def mark_queue_row_done(
-    book_id: int, chapter_index: int, target_language: str,
-) -> int:
-    """Mark any pending/running row for this (book, chapter, lang) as done.
-
-    Called from save_translation so that when a translation lands from ANY
-    source — reader on-demand, bulk job, manual retranslate, queue worker
-    itself — any queued duplicate is retired immediately and the worker
-    doesn't waste a claim-then-skip tick on it.
-
-    Returns the number of rows updated (usually 0 or 1).
+async def cleanup_orphan_done_rows() -> int:
+    """Delete stale 'done' queue rows left behind by the previous
+    behaviour (UPDATE SET status='done' on completion). If a done
+    row lingers after the cache is deleted, `enqueue()`'s
+    INSERT OR IGNORE treats the chapter as already queued and
+    silently no-ops every future re-enqueue attempt. With the new
+    delete-on-success semantics these rows are redundant regardless
+    of cache state — clear them on worker startup so deployments
+    with pre-existing orphans self-heal without manual intervention.
     """
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         cursor = await db.execute(
-            """UPDATE translation_queue
-               SET status='done', updated_at=CURRENT_TIMESTAMP
-               WHERE book_id=? AND chapter_index=? AND target_language=?
-                 AND status IN ('pending', 'running')""",
+            "DELETE FROM translation_queue WHERE status='done'",
+        )
+        await db.commit()
+        return cursor.rowcount
+
+
+async def mark_queue_row_done(
+    book_id: int, chapter_index: int, target_language: str,
+) -> int:
+    """Delete any queue row for this (book, chapter, lang) once a
+    translation has been cached.
+
+    Called from save_translation so every path that produces a
+    translation — reader on-demand, bulk job, manual retranslate,
+    queue worker itself — retires the queue row immediately.
+
+    Why delete instead of UPDATE SET status='done'? Previously a
+    'done' row stayed in the table after success. If the cache was
+    ever deleted afterwards (admin retranslate, DB restore, bug),
+    the row survived but the cache didn't — and `enqueue()`'s
+    INSERT OR IGNORE silently no-op'd forever, blocking re-translation.
+    The `translations` table is the source of truth for what's
+    translated; a queue row only makes sense for work still to do.
+
+    Returns the number of rows removed (usually 0 or 1).
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        cursor = await db.execute(
+            """DELETE FROM translation_queue
+               WHERE book_id=? AND chapter_index=? AND target_language=?""",
             (book_id, chapter_index, target_language),
         )
         await db.commit()
@@ -665,6 +689,11 @@ class TranslationQueueWorker:
             stale = await reset_stale_running_rows()
             if stale:
                 self._append_log({"event": "startup_reset_stale", "count": stale})
+            orphans = await cleanup_orphan_done_rows()
+            if orphans:
+                self._append_log(
+                    {"event": "startup_cleanup_done_rows", "count": orphans},
+                )
         except Exception:
             logger.exception("Startup housekeeping failed (non-fatal)")
         finally:
@@ -1030,7 +1059,19 @@ class TranslationQueueWorker:
     # ── Status mutations ────────────────────────────────────────────────
 
     async def _mark_done(self, rows: list[QueueRow]) -> None:
-        await self._update_status(rows, "done")
+        # Delete on success so no 'done' row lingers to block a future
+        # re-enqueue via INSERT OR IGNORE. The translations table is
+        # the source of truth for completed work.
+        if not rows:
+            return
+        ids = [r.id for r in rows]
+        placeholders = ",".join("?" for _ in ids)
+        async with aiosqlite.connect(db_module.DB_PATH) as db:
+            await db.execute(
+                f"DELETE FROM translation_queue WHERE id IN ({placeholders})",
+                ids,
+            )
+            await db.commit()
 
     async def _mark_skipped(self, rows: list[QueueRow], *, reason: str) -> None:
         await self._update_status(rows, "skipped", error=reason)

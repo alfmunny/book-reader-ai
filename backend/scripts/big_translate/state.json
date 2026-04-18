@@ -1,0 +1,805 @@
+{
+  "updated_at": "2026-04-18T22:06:45.738359+00:00",
+  "books": [
+    {
+      "id": 84,
+      "title": "Frankenstein; or, the modern prometheus by Mary Wollstonecraft Shelley (150299)",
+      "rank": 1,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 45304,
+      "title": "The City of God, Volume I by Saint of Hippo Augustine (146974)",
+      "rank": 2,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2701,
+      "title": "Moby Dick; Or, The Whale by Herman Melville (115920)",
+      "rank": 3,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1342,
+      "title": "Pride and Prejudice by Jane Austen (101617)",
+      "rank": 4,
+      "status": "in_progress",
+      "source_lang": "en",
+      "target_lang": "zh"
+    },
+    {
+      "id": 1513,
+      "title": "Romeo and Juliet by William Shakespeare (74466)",
+      "rank": 5,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2554,
+      "title": "Crime and Punishment by Fyodor Dostoyevsky (67321)",
+      "rank": 6,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 11,
+      "title": "Alice's Adventures in Wonderland by Lewis Carroll (66137)",
+      "rank": 7,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 100,
+      "title": "The Complete Works of William Shakespeare by William Shakespeare (62720)",
+      "rank": 8,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 52106,
+      "title": "The origin and development of the moral ideas by Edward Westermarck (62592)",
+      "rank": 9,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 43,
+      "title": "The strange case of Dr. Jekyll and Mr. Hyde by Robert Louis Stevenson (61908)",
+      "rank": 10,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2641,
+      "title": "A Room with a View by E. M.  Forster (61392)",
+      "rank": 11,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 64317,
+      "title": "The Great Gatsby by F. Scott  Fitzgerald (59120)",
+      "rank": 12,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 768,
+      "title": "Wuthering Heights by Emily Brontë (58116)",
+      "rank": 13,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1184,
+      "title": "The Count of Monte Cristo by Alexandre Dumas and Auguste Maquet (57781)",
+      "rank": 14,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 8492,
+      "title": "The King in Yellow by Robert W.  Chambers (54943)",
+      "rank": 15,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1260,
+      "title": "Jane Eyre: An Autobiography by Charlotte Brontë (54911)",
+      "rank": 16,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 145,
+      "title": "Middlemarch by George Eliot (54805)",
+      "rank": 17,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 67979,
+      "title": "The Blue Castle: a novel by L. M.  Montgomery (50338)",
+      "rank": 18,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 37106,
+      "title": "Little Women; Or, Meg, Jo, Beth, and Amy by Louisa May Alcott (50199)",
+      "rank": 19,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 844,
+      "title": "The Importance of Being Earnest: A Trivial Comedy for Serious People by Oscar Wilde (47940)",
+      "rank": 20,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 174,
+      "title": "The Picture of Dorian Gray by Oscar Wilde (47764)",
+      "rank": 21,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 58031,
+      "title": "Report of the President's Commission on the Assassination of President John F. Kennedy (45741)",
+      "rank": 22,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 5197,
+      "title": "My Life — Volume 1 by Richard Wagner (44480)",
+      "rank": 23,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 76,
+      "title": "Adventures of Huckleberry Finn by Mark Twain (44168)",
+      "rank": 24,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 345,
+      "title": "Dracula by Bram Stoker (43824)",
+      "rank": 25,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1259,
+      "title": "Twenty years after by Alexandre Dumas and Auguste Maquet (42571)",
+      "rank": 26,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 16389,
+      "title": "The Enchanted April by Elizabeth Von Arnim (42541)",
+      "rank": 27,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 98,
+      "title": "A Tale of Two Cities by Charles Dickens (41453)",
+      "rank": 28,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1661,
+      "title": "The Adventures of Sherlock Holmes by Arthur Conan Doyle (40441)",
+      "rank": 29,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2542,
+      "title": "A Doll's House : a play by Henrik Ibsen (40233)",
+      "rank": 30,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 28054,
+      "title": "The Brothers Karamazov by Fyodor Dostoyevsky (39998)",
+      "rank": 31,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 6761,
+      "title": "The Adventures of Ferdinand Count Fathom — Complete by T.  Smollett (39781)",
+      "rank": 32,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2160,
+      "title": "The Expedition of Humphry Clinker by T.  Smollett (39390)",
+      "rank": 33,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 394,
+      "title": "Cranford by Elizabeth Cleghorn Gaskell (39171)",
+      "rank": 34,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 6593,
+      "title": "History of Tom Jones, a Foundling by Henry Fielding (38983)",
+      "rank": 35,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 26471,
+      "title": "Spoon River Anthology by Edgar Lee Masters (38435)",
+      "rank": 36,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 4085,
+      "title": "The Adventures of Roderick Random by T.  Smollett (38143)",
+      "rank": 37,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1400,
+      "title": "Great Expectations by Charles Dickens (34123)",
+      "rank": 38,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 26225,
+      "title": "Fifteen Thousand Useful Phrases by Grenville Kleiser (34081)",
+      "rank": 39,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1080,
+      "title": "A Modest Proposal by Jonathan Swift (32673)",
+      "rank": 40,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2680,
+      "title": "Meditations by Emperor of Rome Marcus Aurelius (31478)",
+      "rank": 41,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 16328,
+      "title": "Beowulf: An Anglo-Saxon Epic Poem (31318)",
+      "rank": 42,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1998,
+      "title": "Thus Spake Zarathustra: A Book for All and None by Friedrich Wilhelm Nietzsche (30872)",
+      "rank": 43,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 28942,
+      "title": "The Junior Classics, Volume 1: Fairy and wonder tales by William Allan Neilson (30367)",
+      "rank": 44,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 68348,
+      "title": "England under the Angevin Kings, Volumes I and II by Kate Norgate (30203)",
+      "rank": 45,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 3296,
+      "title": "The Confessions of St. Augustine by Saint of Hippo Augustine (29401)",
+      "rank": 46,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 74,
+      "title": "The Adventures of Tom Sawyer, Complete by Mark Twain (29322)",
+      "rank": 47,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 3207,
+      "title": "Leviathan by Thomas Hobbes (29051)",
+      "rank": 48,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 37683,
+      "title": "Chambers's Twentieth Century Dictionary (part 1 of 4: A-D) (28764)",
+      "rank": 49,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 205,
+      "title": "Walden, and On The Duty Of Civil Disobedience by Henry David Thoreau (28530)",
+      "rank": 50,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 47715,
+      "title": "The Works of William Shakespeare [Cambridge Edition] [Vol. 7 of 9] by William Shakespeare (28157)",
+      "rank": 51,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1232,
+      "title": "The Prince by Niccolò Machiavelli (27938)",
+      "rank": 52,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 26296,
+      "title": "Les mille et une nuits, tome premier (27871)",
+      "rank": 53,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 4300,
+      "title": "Ulysses by James Joyce (27869)",
+      "rank": 54,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 13188,
+      "title": "Putnam's Word Book by Louis A.  Flemming (27509)",
+      "rank": 55,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1952,
+      "title": "The Yellow Wallpaper by Charlotte Perkins Gilman (27223)",
+      "rank": 56,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 9701,
+      "title": "I. Beowulf: an Anglo-Saxon poem. II. The fight at Finnsburh: a fragment. (27222)",
+      "rank": 57,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2591,
+      "title": "Grimms' Fairy Tales by Jacob Grimm and Wilhelm Grimm (26988)",
+      "rank": 58,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 25344,
+      "title": "The Scarlet Letter by Nathaniel Hawthorne (26969)",
+      "rank": 59,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 39647,
+      "title": "The Spanish American Reader by Ernesto Nelson (26768)",
+      "rank": 60,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 5200,
+      "title": "Metamorphosis by Franz Kafka (26737)",
+      "rank": 61,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2600,
+      "title": "War and Peace by graf Leo Tolstoy (26444)",
+      "rank": 62,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 120,
+      "title": "Treasure Island by Robert Louis Stevenson (26291)",
+      "rank": 63,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 57336,
+      "title": "Ancient Britain and the Invasions of Julius Caesar by T. Rice  Holmes (26052)",
+      "rank": 64,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 45,
+      "title": "Anne of Green Gables by L. M.  Montgomery (25354)",
+      "rank": 65,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 50559,
+      "title": "The Works of William Shakespeare [Cambridge Edition] [Vol. 3 of 9] by William Shakespeare (24950)",
+      "rank": 66,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 67792,
+      "title": "A History of Magic and Experimental Science, Volume 1 (of 2) by Lynn Thorndike (24341)",
+      "rank": 67,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 36034,
+      "title": "White nights, and other stories by Fyodor Dostoyevsky (24124)",
+      "rank": 68,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 24141,
+      "title": "警世通言 by Menglong Feng (24000)",
+      "rank": 69,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 829,
+      "title": "Gulliver's Travels into Several Remote Nations of the World by Jonathan Swift (23946)",
+      "rank": 70,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 8800,
+      "title": "The divine comedy by Dante Alighieri (23501)",
+      "rank": 71,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 2852,
+      "title": "The Hound of the Baskervilles by Arthur Conan Doyle (23459)",
+      "rank": 72,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 5740,
+      "title": "Tractatus Logico-Philosophicus by Ludwig Wittgenstein (23032)",
+      "rank": 73,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 244,
+      "title": "A Study in Scarlet by Arthur Conan Doyle (22904)",
+      "rank": 74,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 24869,
+      "title": "The Rámáyan of Válmíki, translated into English verse by Valmiki (22841)",
+      "rank": 75,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 49008,
+      "title": "The Works of William Shakespeare [Cambridge Edition] [Vol. 8 of 9] by William Shakespeare (22390)",
+      "rank": 76,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1727,
+      "title": "The Odyssey by Homer (22390)",
+      "rank": 77,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 161,
+      "title": "Sense and Sensibility by Jane Austen (22187)",
+      "rank": 78,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 72679,
+      "title": "The lesser Key of Solomon, Goetia, the book of evil spirits : (22123)",
+      "rank": 79,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 4363,
+      "title": "Beyond Good and Evil by Friedrich Wilhelm Nietzsche (22106)",
+      "rank": 80,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 33311,
+      "title": "Selections from Viri Romae by C. F. L'Homond (22024)",
+      "rank": 81,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 27673,
+      "title": "Oedipus King of Thebes by Sophocles (21900)",
+      "rank": 82,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 33283,
+      "title": "Calculus Made Easy by Silvanus P.  Thompson (21702)",
+      "rank": 83,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 51960,
+      "title": "The Ancient Stone Implements, Weapons and Ornaments, of Great Britain by John Evans (21678)",
+      "rank": 84,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 245,
+      "title": "Life on the Mississippi by Mark Twain (21638)",
+      "rank": 85,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 20968,
+      "title": "Three Hundred Tang Poems, Volume 1 by Various (21595)",
+      "rank": 86,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 408,
+      "title": "The Souls of Black Folk by W. E. B.  Du Bois (21539)",
+      "rank": 87,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 22789,
+      "title": "On the Duties of the Clergy by Bishop of Milan Saint Ambrose (21512)",
+      "rank": 88,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 19488,
+      "title": "The Life of Joan of Arc, Vol. 1 and 2 by Anatole France (21380)",
+      "rank": 89,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 67691,
+      "title": "Pharmacographia by Friedrich A.  Flückiger and Daniel Hanbury (21322)",
+      "rank": 90,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 22788,
+      "title": "The Federalist Papers by Alexander Hamilton and John Jay and James Madison (21206)",
+      "rank": 91,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 1399,
+      "title": "Anna Karenina by graf Leo Tolstoy (21081)",
+      "rank": 92,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 34901,
+      "title": "On Liberty by John Stuart Mill (21037)",
+      "rank": 93,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 31885,
+      "title": "Bible Myths and their Parallels in other Religions by T. W.  Doane (21009)",
+      "rank": 94,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 55,
+      "title": "The Wonderful Wizard of Oz by L. Frank  Baum (20986)",
+      "rank": 95,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 23,
+      "title": "Narrative of the Life of Frederick Douglass, an American Slave by Frederick Douglass (20751)",
+      "rank": 96,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 78248,
+      "title": "Prolegomena to the study of Greek religion by Jane Ellen Harrison (20581)",
+      "rank": 97,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 25851,
+      "title": "The Life of Charles Dickens, Vol. I-III, Complete by John Forster (20551)",
+      "rank": 98,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 77700,
+      "title": "Entstehung und Ausbreitung der Alchemie, mit einem Anhange : by Edmund O. von  Lippmann (20080)",
+      "rank": 99,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    },
+    {
+      "id": 16,
+      "title": "Peter Pan : by J. M.  Barrie (19994)",
+      "rank": 100,
+      "status": "pending",
+      "source_lang": null,
+      "target_lang": null
+    }
+  ]
+}

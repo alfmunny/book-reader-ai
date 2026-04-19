@@ -74,9 +74,15 @@ export function getCachedBooks() {
   return request<BookMeta[]>("/books/cached");
 }
 
-export function getPopularBooks(language = "") {
-  const params = language ? `?language=${language}` : "";
-  return request<BookMeta[]>(`/books/popular${params}`);
+export interface PopularBooksResponse {
+  books: BookMeta[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export function getPopularBooks(page = 1) {
+  return request<PopularBooksResponse>(`/books/popular?page=${page}`);
 }
 
 export function getBookMeta(id: number) {

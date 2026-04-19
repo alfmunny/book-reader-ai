@@ -97,9 +97,10 @@ async def download_book_text(text_url: str) -> str:
         return resp.text.replace("\r\n", "\n").replace("\r", "\n")
 
 
-async def seed(languages: list[str], total_count: int, dry_run: bool = False):
+async def seed(languages: list[str], total_count: int, dry_run: bool = False, manifest_only: bool = False):
     """Main seed function."""
-    await init_db()
+    if not manifest_only:
+        await init_db()
 
     per_lang = max(1, total_count // len(languages))
     all_books: list[dict] = []
@@ -128,6 +129,10 @@ async def seed(languages: list[str], total_count: int, dry_run: bool = False):
             lang = ",".join(b["languages"])
             print(f"  {i:3d}. [{lang}] {b['title']} — {', '.join(b['authors'])} (downloads: {b['download_count']:,})")
         print(f"\n(dry run — nothing downloaded)")
+        return all_books
+
+    if manifest_only:
+        print("(manifest-only — skipping DB download)")
         return all_books
 
     downloaded = 0
@@ -173,10 +178,13 @@ def main():
     parser.add_argument("--append", action="store_true",
                         help="Merge into the existing popular_books.json (keep old entries, "
                              "add new ones by ID). Default behaviour replaces the manifest.")
+    parser.add_argument("--manifest-only", action="store_true",
+                        help="Fetch metadata from Gutendex and write popular_books.json only; "
+                             "skip downloading full text to the database.")
     args = parser.parse_args()
 
     languages = [l.strip() for l in args.languages.split(",")]
-    books = asyncio.run(seed(languages, args.count, args.dry_run))
+    books = asyncio.run(seed(languages, args.count, args.dry_run, args.manifest_only))
 
     # In dry-run mode, don't touch the manifest file
     if args.dry_run:

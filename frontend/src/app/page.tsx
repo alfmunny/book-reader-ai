@@ -15,13 +15,6 @@ const FEATURED = [
   { query: "Pride and Prejudice", lang: "en" },
 ];
 
-const LANGUAGES = [
-  { code: "", label: "All" },
-  { code: "en", label: "English" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
-  { code: "ja", label: "日本語" },
-];
 
 function timeAgo(ms: number): string {
   const diff = Date.now() - ms;
@@ -66,32 +59,26 @@ export default function Home() {
   const [searchedQuery, setSearchedQuery] = useState("");
 
   const [popularBooks, setPopularBooks] = useState<BookMeta[]>([]);
-  const [popularLang, setPopularLang] = useState("");
   const [popularLoading, setPopularLoading] = useState(false);
-  const popularLoaded = useRef(false);
+  const [popularPage, setPopularPage] = useState(1);
+  const [popularTotal, setPopularTotal] = useState(0);
+  const [popularView, setPopularView] = useState<"grid" | "list">("grid");
+
+  const PER_PAGE = 50;
 
   const searchGenRef = useRef(0);
 
-  // Load popular books when discover tab is first shown
   useEffect(() => {
-    if (tab === "discover" && !popularLoaded.current) {
-      popularLoaded.current = true;
-      setPopularLoading(true);
-      getPopularBooks(popularLang)
-        .then(setPopularBooks)
-        .catch(() => setPopularBooks([]))
-        .finally(() => setPopularLoading(false));
-    }
-  }, [tab, popularLang]);
-
-  function handlePopularLangChange(newLang: string) {
-    setPopularLang(newLang);
+    if (tab !== "discover") return;
     setPopularLoading(true);
-    getPopularBooks(newLang)
-      .then(setPopularBooks)
-      .catch(() => setPopularBooks([]))
+    getPopularBooks(popularPage)
+      .then((data) => {
+        setPopularBooks(data.books);
+        setPopularTotal(data.total);
+      })
+      .catch(() => { setPopularBooks([]); setPopularTotal(0); })
       .finally(() => setPopularLoading(false));
-  }
+  }, [tab, popularPage]);
 
   async function handleSearch(q = query, l = lang) {
     if (!q.trim()) return;
@@ -319,46 +306,118 @@ export default function Home() {
 
             {/* Popular Classics section */}
             <section>
-              <h2 className="font-serif font-semibold text-ink text-lg mb-3">Popular Classics</h2>
-
-              <div className="flex gap-2 mb-4">
-                {LANGUAGES.map((l) => (
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
+                <div className="flex items-center gap-1 border border-amber-200 rounded-lg p-0.5 bg-white">
                   <button
-                    key={l.code}
-                    onClick={() => handlePopularLangChange(l.code)}
-                    className={`text-sm rounded-full px-4 py-1.5 border transition-colors ${
-                      popularLang === l.code
-                        ? "bg-amber-700 text-white border-amber-700"
-                        : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                    }`}
+                    onClick={() => setPopularView("grid")}
+                    title="Grid view"
+                    className={`p-1.5 rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
-                    {l.label}
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                      <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+                      <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+                    </svg>
                   </button>
-                ))}
+                  <button
+                    onClick={() => setPopularView("list")}
+                    title="List view"
+                    className={`p-1.5 rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 16 16">
+                      <line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {popularLoading && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
-                      <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
-                      <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
-                      <div className="h-3 bg-amber-100 rounded w-1/2" />
-                    </div>
-                  ))}
-                </div>
+                popularView === "grid" ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
+                        <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
+                        <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
+                        <div className="h-3 bg-amber-100 rounded w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                        <div className="w-8 h-3 bg-amber-100 rounded shrink-0" />
+                        <div className="w-8 h-12 bg-amber-100 rounded shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 bg-amber-100 rounded w-2/3" />
+                          <div className="h-3 bg-amber-100 rounded w-1/3" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
 
               {!popularLoading && popularBooks.length > 0 && (
                 <>
-                  <p className="text-xs text-amber-600 mb-3">
-                    {popularBooks.length} book{popularBooks.length !== 1 ? "s" : ""}
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {popularBooks.map((book) => (
-                      <BookCard key={book.id} book={book} onClick={() => openBook(book.id)} />
-                    ))}
-                  </div>
+                  {popularView === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {popularBooks.map((book) => (
+                        <BookCard key={book.id} book={book} onClick={() => openBook(book.id)} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white">
+                      {popularBooks.map((book, idx) => (
+                        <button
+                          key={book.id}
+                          onClick={() => openBook(book.id)}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
+                        >
+                          <span className="text-xs text-amber-400 w-7 text-right shrink-0 tabular-nums">
+                            {(popularPage - 1) * PER_PAGE + idx + 1}
+                          </span>
+                          {book.cover ? (
+                            <img src={book.cover} alt="" className="w-8 h-12 object-cover rounded shrink-0" />
+                          ) : (
+                            <div className="w-8 h-12 bg-amber-50 border border-amber-100 rounded shrink-0 flex items-center justify-center text-base">📖</div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-serif text-sm font-semibold text-ink truncate">{book.title}</p>
+                            <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
+                          </div>
+                          {book.download_count > 0 && (
+                            <span className="text-xs text-amber-400 shrink-0 tabular-nums">
+                              {book.download_count.toLocaleString()}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {popularTotal > PER_PAGE && (
+                    <div className="flex items-center justify-center gap-4 mt-6">
+                      <button
+                        onClick={() => setPopularPage((p) => p - 1)}
+                        disabled={popularPage === 1}
+                        className="px-4 py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        ← Prev
+                      </button>
+                      <span className="text-sm text-amber-700">
+                        Page {popularPage} of {Math.ceil(popularTotal / PER_PAGE)}
+                      </span>
+                      <button
+                        onClick={() => setPopularPage((p) => p + 1)}
+                        disabled={popularPage >= Math.ceil(popularTotal / PER_PAGE)}
+                        className="px-4 py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
 

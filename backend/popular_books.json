@@ -20,7 +20,7 @@
     "languages": [
       "en"
     ],
-    "download_count": 147663,
+    "download_count": 146974,
     "cover": "https://www.gutenberg.org/cache/epub/45304/pg45304.cover.medium.jpg"
   },
   {
@@ -144,6 +144,18 @@
     "cover": "https://www.gutenberg.org/cache/epub/43/pg43.cover.medium.jpg"
   },
   {
+    "id": 145,
+    "title": "Middlemarch",
+    "authors": [
+      "Eliot, George"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 53885,
+    "cover": "https://www.gutenberg.org/cache/epub/145/pg145.cover.medium.jpg"
+  },
+  {
     "id": 174,
     "title": "The Picture of Dorian Gray",
     "authors": [
@@ -154,18 +166,6 @@
     ],
     "download_count": 52794,
     "cover": "https://www.gutenberg.org/cache/epub/174/pg174.cover.medium.jpg"
-  },
-  {
-    "id": 145,
-    "title": "Middlemarch",
-    "authors": [
-      "Eliot, George"
-    ],
-    "languages": [
-      "en"
-    ],
-    "download_count": 52705,
-    "cover": "https://www.gutenberg.org/cache/epub/145/pg145.cover.medium.jpg"
   },
   {
     "id": 844,
@@ -200,7 +200,7 @@
     "languages": [
       "en"
     ],
-    "download_count": 47401,
+    "download_count": 49414,
     "cover": "https://www.gutenberg.org/cache/epub/37106/pg37106.cover.medium.jpg"
   },
   {
@@ -314,6 +314,18 @@
     "cover": "https://www.gutenberg.org/cache/epub/1259/pg1259.cover.medium.jpg"
   },
   {
+    "id": 28054,
+    "title": "The Brothers Karamazov",
+    "authors": [
+      "Dostoyevsky, Fyodor"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 39032,
+    "cover": "https://www.gutenberg.org/cache/epub/28054/pg28054.cover.medium.jpg"
+  },
+  {
     "id": 76,
     "title": "Adventures of Huckleberry Finn",
     "authors": [
@@ -398,1061 +410,1993 @@
     "cover": "https://www.gutenberg.org/cache/epub/6593/pg6593.cover.medium.jpg"
   },
   {
-    "id": 77700,
-    "title": "Entstehung und Ausbreitung der Alchemie, mit einem Anhange : $b zur älteren Geschichte der Metalle; ein Beitrag zur Kulturgeschichte",
+    "id": 4085,
+    "title": "The Adventures of Roderick Random",
     "authors": [
-      "Lippmann, Edmund O. von (Edmund Oskar)"
+      "Smollett, T. (Tobias)"
     ],
     "languages": [
-      "de"
-    ],
-    "download_count": 19637,
-    "cover": "https://www.gutenberg.org/cache/epub/77700/pg77700.cover.medium.jpg"
-  },
-  {
-    "id": 26296,
-    "title": "Les mille et une nuits, tome premier",
-    "authors": [],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 19180,
-    "cover": "https://www.gutenberg.org/cache/epub/26296/pg26296.cover.medium.jpg"
-  },
-  {
-    "id": 24746,
-    "title": "Reise in die Aequinoctial-Gegenden des neuen Continents. Band 2.",
-    "authors": [
-      "Humboldt, Alexander von"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 13451,
-    "cover": "https://www.gutenberg.org/cache/epub/24746/pg24746.cover.medium.jpg"
-  },
-  {
-    "id": 20051,
-    "title": "Märchen der Gebrüder Grimm 2",
-    "authors": [
-      "Grimm, Jacob",
-      "Grimm, Wilhelm"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 12471,
-    "cover": "https://www.gutenberg.org/cache/epub/20051/pg20051.cover.medium.jpg"
-  },
-  {
-    "id": 24571,
-    "title": "Der Struwwelpeter: oder lustige Geschichten und drollige Bilder",
-    "authors": [
-      "Hoffmann, Heinrich"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 11158,
-    "cover": "https://www.gutenberg.org/cache/epub/24571/pg24571.cover.medium.jpg"
-  },
-  {
-    "id": 2650,
-    "title": "Du côté de chez Swann",
-    "authors": [
-      "Proust, Marcel"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 9067,
-    "cover": "https://www.gutenberg.org/cache/epub/2650/pg2650.cover.medium.jpg"
-  },
-  {
-    "id": 62215,
-    "title": "Le Fantôme de l'Opéra",
-    "authors": [
-      "Leroux, Gaston"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 9043,
-    "cover": "https://www.gutenberg.org/cache/epub/62215/pg62215.cover.medium.jpg"
-  },
-  {
-    "id": 20050,
-    "title": "Märchen der Gebrüder Grimm 1",
-    "authors": [
-      "Grimm, Jacob",
-      "Grimm, Wilhelm"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 8014,
-    "cover": "https://www.gutenberg.org/cache/epub/20050/pg20050.cover.medium.jpg"
-  },
-  {
-    "id": 31284,
-    "title": "Josefine Mutzenbacher: oder Die Geschichte einer Wienerischen Dirne von ihr selbst erzählt",
-    "authors": [
-      "Salten, Felix"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 7817,
-    "cover": "https://www.gutenberg.org/cache/epub/31284/pg31284.cover.medium.jpg"
-  },
-  {
-    "id": 19636,
-    "title": "Bildergeschichten",
-    "authors": [
-      "Busch, Wilhelm"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 7567,
-    "cover": "https://www.gutenberg.org/cache/epub/19636/pg19636.cover.medium.jpg"
-  },
-  {
-    "id": 20973,
-    "title": "Le tour du monde en quatre-vingts jours",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 7257,
-    "cover": "https://www.gutenberg.org/cache/epub/20973/pg20973.cover.medium.jpg"
-  },
-  {
-    "id": 35312,
-    "title": "Aus dem Leben eines Taugenichts: Novelle",
-    "authors": [
-      "Eichendorff, Joseph, Freiherr von"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 7215,
-    "cover": "https://www.gutenberg.org/cache/epub/35312/pg35312.cover.medium.jpg"
-  },
-  {
-    "id": 17989,
-    "title": "Le comte de Monte-Cristo, Tome I",
-    "authors": [
-      "Dumas, Alexandre",
-      "Maquet, Auguste"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 7186,
-    "cover": "https://www.gutenberg.org/cache/epub/17989/pg17989.cover.medium.jpg"
-  },
-  {
-    "id": 32854,
-    "title": "Arsène Lupin, gentleman-cambrioleur",
-    "authors": [
-      "Leblanc, Maurice"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6641,
-    "cover": "https://www.gutenberg.org/cache/epub/32854/pg32854.cover.medium.jpg"
-  },
-  {
-    "id": 19919,
-    "title": "Maman Léo: Les Habits Noirs Tome V",
-    "authors": [
-      "Féval, Paul"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 6613,
-    "cover": "https://www.gutenberg.org/cache/epub/19919/pg19919.cover.medium.jpg"
-  },
-  {
-    "id": 3221,
-    "title": "Mr. Honey's Large Business Dictionary (English-German)",
-    "authors": [
-      "Honig, Winfried"
-    ],
-    "languages": [
-      "de",
       "en"
     ],
-    "download_count": 6382,
-    "cover": "https://www.gutenberg.org/cache/epub/3221/pg3221.cover.medium.jpg"
+    "download_count": 36803,
+    "cover": "https://www.gutenberg.org/cache/epub/4085/pg4085.cover.medium.jpg"
   },
   {
-    "id": 17489,
-    "title": "Les misérables Tome I: Fantine",
+    "id": 1080,
+    "title": "A Modest Proposal: For preventing the children of poor people in Ireland, from being a burden on their parents or country, and for making them beneficial to the publick",
     "authors": [
-      "Hugo, Victor"
+      "Swift, Jonathan"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 6308,
-    "cover": "https://www.gutenberg.org/cache/epub/17489/pg17489.cover.medium.jpg"
+    "download_count": 35578,
+    "cover": "https://www.gutenberg.org/cache/epub/1080/pg1080.cover.medium.jpg"
   },
   {
-    "id": 13951,
-    "title": "Les trois mousquetaires",
+    "id": 1400,
+    "title": "Great Expectations",
     "authors": [
-      "Dumas, Alexandre",
-      "Maquet, Auguste"
+      "Dickens, Charles"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 6079,
-    "cover": "https://www.gutenberg.org/cache/epub/13951/pg13951.cover.medium.jpg"
+    "download_count": 33787,
+    "cover": "https://www.gutenberg.org/cache/epub/1400/pg1400.cover.medium.jpg"
   },
   {
-    "id": 18143,
-    "title": "Roméo et Juliette: Tragédie",
+    "id": 16328,
+    "title": "Beowulf: An Anglo-Saxon Epic Poem",
+    "authors": [],
+    "languages": [
+      "en"
+    ],
+    "download_count": 30984,
+    "cover": "https://www.gutenberg.org/cache/epub/16328/pg16328.cover.medium.jpg"
+  },
+  {
+    "id": 37683,
+    "title": "Chambers's Twentieth Century Dictionary (part 1 of 4: A-D)",
+    "authors": [],
+    "languages": [
+      "en"
+    ],
+    "download_count": 30765,
+    "cover": "https://www.gutenberg.org/cache/epub/37683/pg37683.cover.medium.jpg"
+  },
+  {
+    "id": 26471,
+    "title": "Spoon River Anthology",
     "authors": [
-      "Shakespeare, William"
+      "Masters, Edgar Lee"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 6038,
-    "cover": "https://www.gutenberg.org/cache/epub/18143/pg18143.cover.medium.jpg"
+    "download_count": 30062,
+    "cover": "https://www.gutenberg.org/cache/epub/26471/pg26471.cover.medium.jpg"
   },
   {
-    "id": 22367,
-    "title": "Die Verwandlung",
+    "id": 1232,
+    "title": "The Prince",
     "authors": [
-      "Kafka, Franz"
+      "Machiavelli, Niccolò"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 6019,
-    "cover": "https://www.gutenberg.org/cache/epub/22367/pg22367.cover.medium.jpg"
+    "download_count": 29532,
+    "cover": "https://www.gutenberg.org/cache/epub/1232/pg1232.cover.medium.jpg"
   },
   {
-    "id": 50285,
-    "title": "Dr. Mabuse, der Spieler : $b Roman",
-    "authors": [
-      "Jacques, Norbert"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 5918,
-    "cover": "https://www.gutenberg.org/cache/epub/50285/pg50285.cover.medium.jpg"
-  },
-  {
-    "id": 21798,
-    "title": "Winnetou I",
-    "authors": [
-      "May, Karl"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 5764,
-    "cover": "https://www.gutenberg.org/cache/epub/21798/pg21798.cover.medium.jpg"
-  },
-  {
-    "id": 28718,
-    "title": "Les crimes de l'amour: Précédé d'un avant-propos, suivi des idées sur les romans, de l'auteur des crimes de l'amour à Villeterque, d'une notice bio-bibliographique du marquis de Sade: l'homme et ses écrits et du discours prononcé par le marquis de Sade à la section des piques.",
-    "authors": [
-      "Sade, marquis de"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 5506,
-    "cover": "https://www.gutenberg.org/cache/epub/28718/pg28718.cover.medium.jpg"
-  },
-  {
-    "id": 56156,
-    "title": "Venus im Pelz",
-    "authors": [
-      "Sacher-Masoch, Leopold, Ritter von"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 4967,
-    "cover": "https://www.gutenberg.org/cache/epub/56156/pg56156.cover.medium.jpg"
-  },
-  {
-    "id": 4791,
-    "title": "Voyage au Centre de la Terre",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 4669,
-    "cover": "https://www.gutenberg.org/cache/epub/4791/pg4791.cover.medium.jpg"
-  },
-  {
-    "id": 14287,
-    "title": "L'île mystérieuse",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 4549,
-    "cover": "https://www.gutenberg.org/cache/epub/14287/pg14287.cover.medium.jpg"
-  },
-  {
-    "id": 35018,
-    "title": "雲形紋章",
-    "authors": [
-      "Falkner, John Meade"
-    ],
-    "languages": [
-      "ja"
-    ],
-    "download_count": 4470,
-    "cover": "https://www.gutenberg.org/cache/epub/35018/pg35018.cover.medium.jpg"
-  },
-  {
-    "id": 49501,
-    "title": "Anzeiger für Kunde der deutschen Vorzeit (Jg. 26, 1879): Neue Folge",
-    "authors": [
-      "Various"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 4464,
-    "cover": "https://www.gutenberg.org/cache/epub/49501/pg49501.cover.medium.jpg"
-  },
-  {
-    "id": 5097,
-    "title": "Vingt mille Lieues Sous Les Mers — Complete",
-    "authors": [
-      "Verne, Jules"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 4461,
-    "cover": "https://www.gutenberg.org/cache/epub/5097/pg5097.cover.medium.jpg"
-  },
-  {
-    "id": 2229,
-    "title": "Faust: Der Tragödie erster Teil",
-    "authors": [
-      "Goethe, Johann Wolfgang von"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 4430,
-    "cover": "https://www.gutenberg.org/cache/epub/2229/pg2229.cover.medium.jpg"
-  },
-  {
-    "id": 7205,
-    "title": "Also sprach Zarathustra: Ein Buch für Alle und Keinen",
+    "id": 1998,
+    "title": "Thus Spake Zarathustra: A Book for All and None",
     "authors": [
       "Nietzsche, Friedrich Wilhelm"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 4243,
-    "cover": "https://www.gutenberg.org/cache/epub/7205/pg7205.cover.medium.jpg"
+    "download_count": 29327,
+    "cover": "https://www.gutenberg.org/cache/epub/1998/pg1998.cover.medium.jpg"
   },
   {
-    "id": 21185,
-    "title": "Woyzeck",
+    "id": 28942,
+    "title": "The Junior Classics, Volume 1: Fairy and wonder tales",
     "authors": [
-      "Büchner, Georg"
+      "Neilson, William Allan"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 4128,
-    "cover": "https://www.gutenberg.org/cache/epub/21185/pg21185.cover.medium.jpg"
+    "download_count": 28853,
+    "cover": "https://www.gutenberg.org/cache/epub/28942/pg28942.cover.medium.jpg"
   },
   {
-    "id": 75007,
-    "title": "Vollständiges Orthographisches Wörterbuch der deutschen Sprache : $b mit etymologischen Angaben, kurzen Sacherklärungen und Verdeutschungen der Fremdwörter",
+    "id": 1952,
+    "title": "The Yellow Wallpaper",
     "authors": [
-      "Duden, Konrad"
+      "Gilman, Charlotte Perkins"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 4072,
-    "cover": "https://www.gutenberg.org/cache/epub/75007/pg75007.cover.medium.jpg"
+    "download_count": 28479,
+    "cover": "https://www.gutenberg.org/cache/epub/1952/pg1952.cover.medium.jpg"
   },
   {
-    "id": 23520,
-    "title": "Mon oncle et mon curé; Le voeu de Nadia",
+    "id": 2680,
+    "title": "Meditations",
     "authors": [
-      "La Brète, Jean de"
+      "Marcus Aurelius, Emperor of Rome"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3861,
-    "cover": "https://www.gutenberg.org/cache/epub/23520/pg23520.cover.medium.jpg"
+    "download_count": 28425,
+    "cover": "https://www.gutenberg.org/cache/epub/2680/pg2680.cover.medium.jpg"
   },
   {
-    "id": 25575,
-    "title": "Mémoires d'Outre-Tombe, Tome 4",
+    "id": 25344,
+    "title": "The Scarlet Letter",
     "authors": [
-      "Chateaubriand, François-René, vicomte de"
+      "Hawthorne, Nathaniel"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3812,
-    "cover": "https://www.gutenberg.org/cache/epub/25575/pg25575.cover.medium.jpg"
+    "download_count": 28370,
+    "cover": "https://www.gutenberg.org/cache/epub/25344/pg25344.cover.medium.jpg"
   },
   {
-    "id": 25335,
-    "title": "Robert Burns. Vol. 1, La Vie",
+    "id": 5200,
+    "title": "Metamorphosis",
     "authors": [
-      "Angellier, Auguste"
+      "Kafka, Franz"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3804,
-    "cover": "https://www.gutenberg.org/cache/epub/25335/pg25335.cover.medium.jpg"
+    "download_count": 28364,
+    "cover": "https://www.gutenberg.org/cache/epub/5200/pg5200.cover.medium.jpg"
   },
   {
-    "id": 20971,
-    "title": "Fables de La Fontaine, livre premier",
+    "id": 2591,
+    "title": "Grimms' Fairy Tales",
     "authors": [
-      "La Fontaine, Jean de"
+      "Grimm, Jacob",
+      "Grimm, Wilhelm"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3758,
-    "cover": "https://www.gutenberg.org/cache/epub/20971/pg20971.cover.medium.jpg"
+    "download_count": 27642,
+    "cover": "https://www.gutenberg.org/cache/epub/2591/pg2591.cover.medium.jpg"
   },
   {
-    "id": 78027,
-    "title": "Les enchantements de la forêt",
+    "id": 4300,
+    "title": "Ulysses",
     "authors": [
-      "Theuriet, André"
+      "Joyce, James"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3755,
-    "cover": "https://www.gutenberg.org/cache/epub/78027/pg78027.cover.medium.jpg"
+    "download_count": 27259,
+    "cover": "https://www.gutenberg.org/cache/epub/4300/pg4300.cover.medium.jpg"
   },
   {
-    "id": 21158,
-    "title": "Sammlung deutscher Gedichte 001",
+    "id": 2600,
+    "title": "War and Peace",
     "authors": [
-      "Various"
+      "Tolstoy, Leo, graf"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3706,
-    "cover": "https://www.gutenberg.org/cache/epub/21158/pg21158.cover.medium.jpg"
+    "download_count": 27051,
+    "cover": "https://www.gutenberg.org/cache/epub/2600/pg2600.cover.medium.jpg"
   },
   {
-    "id": 58804,
-    "title": "Die Deutschen Familiennamen, geschichtlich, geographisch, sprachlich",
+    "id": 205,
+    "title": "Walden, and On The Duty Of Civil Disobedience",
     "authors": [
-      "Heintze, Albert"
+      "Thoreau, Henry David"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3643,
-    "cover": "https://www.gutenberg.org/cache/epub/58804/pg58804.cover.medium.jpg"
+    "download_count": 26622,
+    "cover": "https://www.gutenberg.org/cache/epub/205/pg205.cover.medium.jpg"
   },
   {
-    "id": 24850,
-    "title": "Lourdes",
+    "id": 45,
+    "title": "Anne of Green Gables",
     "authors": [
-      "Zola, Émile"
+      "Montgomery, L. M. (Lucy Maud)"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3614,
-    "cover": "https://www.gutenberg.org/cache/epub/24850/pg24850.cover.medium.jpg"
+    "download_count": 26339,
+    "cover": "https://www.gutenberg.org/cache/epub/45/pg45.cover.medium.jpg"
   },
   {
-    "id": 22160,
-    "title": "Studien und Plaudereien. First Series",
+    "id": 74,
+    "title": "The Adventures of Tom Sawyer, Complete",
     "authors": [
-      "Stern, Sigmon M. (Sigmon Martin)"
+      "Twain, Mark"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3610,
-    "cover": "https://www.gutenberg.org/cache/epub/22160/pg22160.cover.medium.jpg"
+    "download_count": 25830,
+    "cover": "https://www.gutenberg.org/cache/epub/74/pg74.cover.medium.jpg"
   },
   {
-    "id": 23756,
-    "title": "Geschichte Alexanders des Grossen",
+    "id": 3296,
+    "title": "The Confessions of St. Augustine",
     "authors": [
-      "Droysen, Johann Gustav"
+      "Augustine, of Hippo, Saint"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3539,
-    "cover": "https://www.gutenberg.org/cache/epub/23756/pg23756.cover.medium.jpg"
+    "download_count": 25581,
+    "cover": "https://www.gutenberg.org/cache/epub/3296/pg3296.cover.medium.jpg"
   },
   {
-    "id": 68400,
-    "title": "Der Marquis de Sade und seine Zeit.",
+    "id": 829,
+    "title": "Gulliver's Travels into Several Remote Nations of the World",
     "authors": [
-      "Bloch, Iwan"
+      "Swift, Jonathan"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3491,
-    "cover": "https://www.gutenberg.org/cache/epub/68400/pg68400.cover.medium.jpg"
+    "download_count": 25457,
+    "cover": "https://www.gutenberg.org/cache/epub/829/pg829.cover.medium.jpg"
   },
   {
-    "id": 24766,
-    "title": "Étude Médico-Légale: Psychopathia Sexualis: avec recherches spéciales sur l'inversion sexuelle",
+    "id": 26184,
+    "title": "Simple Sabotage Field Manual",
     "authors": [
-      "Krafft-Ebing, R. von (Richard)"
+      "United States. Office of Strategic Services"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3490,
-    "cover": "https://www.gutenberg.org/cache/epub/24766/pg24766.cover.medium.jpg"
+    "download_count": 24602,
+    "cover": "https://www.gutenberg.org/cache/epub/26184/pg26184.cover.medium.jpg"
   },
   {
-    "id": 17518,
-    "title": "Les misérables Tome IV: L'idylle rue Plumet et l'épopée rue Saint-Denis",
+    "id": 120,
+    "title": "Treasure Island",
+    "authors": [
+      "Stevenson, Robert Louis"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 24601,
+    "cover": "https://www.gutenberg.org/cache/epub/120/pg120.cover.medium.jpg"
+  },
+  {
+    "id": 36034,
+    "title": "White nights, and other stories",
+    "authors": [
+      "Dostoyevsky, Fyodor"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 23874,
+    "cover": "https://www.gutenberg.org/cache/epub/36034/pg36034.cover.medium.jpg"
+  },
+  {
+    "id": 8800,
+    "title": "The divine comedy",
+    "authors": [
+      "Dante Alighieri"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 22965,
+    "cover": "https://www.gutenberg.org/cache/epub/8800/pg8800.cover.medium.jpg"
+  },
+  {
+    "id": 1727,
+    "title": "The Odyssey: Rendered into English prose for the use of those who cannot read the original",
+    "authors": [
+      "Homer"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 22827,
+    "cover": "https://www.gutenberg.org/cache/epub/1727/pg1727.cover.medium.jpg"
+  },
+  {
+    "id": 1399,
+    "title": "Anna Karenina",
+    "authors": [
+      "Tolstoy, Leo, graf"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 22617,
+    "cover": "https://www.gutenberg.org/cache/epub/1399/pg1399.cover.medium.jpg"
+  },
+  {
+    "id": 28189,
+    "title": "My Friends the Savages: Notes and Observations of a Perak settler (Malay Peninsula)",
+    "authors": [
+      "Cerruti, Giovanni Battista"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 21898,
+    "cover": "https://www.gutenberg.org/cache/epub/28189/pg28189.cover.medium.jpg"
+  },
+  {
+    "id": 2852,
+    "title": "The Hound of the Baskervilles",
+    "authors": [
+      "Doyle, Arthur Conan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 21608,
+    "cover": "https://www.gutenberg.org/cache/epub/2852/pg2852.cover.medium.jpg"
+  },
+  {
+    "id": 26225,
+    "title": "Fifteen Thousand Useful Phrases",
+    "authors": [
+      "Kleiser, Grenville"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 21496,
+    "cover": "https://www.gutenberg.org/cache/epub/26225/pg26225.cover.medium.jpg"
+  },
+  {
+    "id": 408,
+    "title": "The Souls of Black Folk",
+    "authors": [
+      "Du Bois, W. E. B. (William Edward Burghardt)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 21414,
+    "cover": "https://www.gutenberg.org/cache/epub/408/pg408.cover.medium.jpg"
+  },
+  {
+    "id": 244,
+    "title": "A Study in Scarlet",
+    "authors": [
+      "Doyle, Arthur Conan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 21389,
+    "cover": "https://www.gutenberg.org/cache/epub/244/pg244.cover.medium.jpg"
+  },
+  {
+    "id": 22788,
+    "title": "The Federalist Papers",
+    "authors": [
+      "Hamilton, Alexander",
+      "Jay, John",
+      "Madison, James"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20967,
+    "cover": "https://www.gutenberg.org/cache/epub/22788/pg22788.cover.medium.jpg"
+  },
+  {
+    "id": 34901,
+    "title": "On Liberty",
+    "authors": [
+      "Mill, John Stuart"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20878,
+    "cover": "https://www.gutenberg.org/cache/epub/34901/pg34901.cover.medium.jpg"
+  },
+  {
+    "id": 27673,
+    "title": "Oedipus King of Thebes: Translated into English Rhyming Verse with Explanatory Notes",
+    "authors": [
+      "Sophocles"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20775,
+    "cover": "https://www.gutenberg.org/cache/epub/27673/pg27673.cover.medium.jpg"
+  },
+  {
+    "id": 55,
+    "title": "The Wonderful Wizard of Oz",
+    "authors": [
+      "Baum, L. Frank (Lyman Frank)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20616,
+    "cover": "https://www.gutenberg.org/cache/epub/55/pg55.cover.medium.jpg"
+  },
+  {
+    "id": 4363,
+    "title": "Beyond Good and Evil",
+    "authors": [
+      "Nietzsche, Friedrich Wilhelm"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20616,
+    "cover": "https://www.gutenberg.org/cache/epub/4363/pg4363.cover.medium.jpg"
+  },
+  {
+    "id": 23,
+    "title": "Narrative of the Life of Frederick Douglass, an American Slave",
+    "authors": [
+      "Douglass, Frederick"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20603,
+    "cover": "https://www.gutenberg.org/cache/epub/23/pg23.cover.medium.jpg"
+  },
+  {
+    "id": 72679,
+    "title": "The lesser Key of Solomon, Goetia, the book of evil spirits : $b contains two hundred diagrams and seals for invocation and convocation of spirits, necromancy, witchcraft and black art",
+    "authors": [],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20464,
+    "cover": "https://www.gutenberg.org/cache/epub/72679/pg72679.cover.medium.jpg"
+  },
+  {
+    "id": 7370,
+    "title": "Second Treatise of Government",
+    "authors": [
+      "Locke, John"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 20172,
+    "cover": "https://www.gutenberg.org/cache/epub/7370/pg7370.cover.medium.jpg"
+  },
+  {
+    "id": 78248,
+    "title": "Prolegomena to the study of Greek religion",
+    "authors": [
+      "Harrison, Jane Ellen"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 19776,
+    "cover": "https://www.gutenberg.org/cache/epub/78248/pg78248.cover.medium.jpg"
+  },
+  {
+    "id": 219,
+    "title": "Heart of Darkness",
+    "authors": [
+      "Conrad, Joseph"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 19150,
+    "cover": "https://www.gutenberg.org/cache/epub/219/pg219.cover.medium.jpg"
+  },
+  {
+    "id": 161,
+    "title": "Sense and Sensibility",
+    "authors": [
+      "Austen, Jane"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 18666,
+    "cover": "https://www.gutenberg.org/cache/epub/161/pg161.cover.medium.jpg"
+  },
+  {
+    "id": 16,
+    "title": "Peter Pan : $b [Peter and Wendy]",
+    "authors": [
+      "Barrie, J. M. (James Matthew)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 18458,
+    "cover": "https://www.gutenberg.org/cache/epub/16/pg16.cover.medium.jpg"
+  },
+  {
+    "id": 22789,
+    "title": "On the Duties of the Clergy",
+    "authors": [
+      "Ambrose, Saint, Bishop of Milan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 18332,
+    "cover": "https://www.gutenberg.org/cache/epub/22789/pg22789.cover.medium.jpg"
+  },
+  {
+    "id": 135,
+    "title": "Les Misérables",
     "authors": [
       "Hugo, Victor"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3480,
-    "cover": "https://www.gutenberg.org/cache/epub/17518/pg17518.cover.medium.jpg"
+    "download_count": 18171,
+    "cover": "https://www.gutenberg.org/cache/epub/135/pg135.cover.medium.jpg"
   },
   {
-    "id": 45150,
-    "title": "Dictionnaire érotique moderne",
+    "id": 24869,
+    "title": "The Rámáyan of Válmíki, translated into English verse",
     "authors": [
-      "Delvau, Alfred"
+      "Valmiki"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3433,
-    "cover": "https://www.gutenberg.org/cache/epub/45150/pg45150.cover.medium.jpg"
+    "download_count": 18135,
+    "cover": "https://www.gutenberg.org/cache/epub/24869/pg24869.cover.medium.jpg"
   },
   {
-    "id": 21000,
-    "title": "Faust: Eine Tragödie [erster Teil]",
+    "id": 730,
+    "title": "Oliver Twist",
     "authors": [
-      "Goethe, Johann Wolfgang von"
+      "Dickens, Charles"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3414,
-    "cover": "https://www.gutenberg.org/cache/epub/21000/pg21000.cover.medium.jpg"
+    "download_count": 17382,
+    "cover": "https://www.gutenberg.org/cache/epub/730/pg730.cover.medium.jpg"
   },
   {
-    "id": 29049,
-    "title": "Histoire amoureuse des Gaules; suivie des Romans historico-satiriques du XVIIe siècle, Tome I",
+    "id": 2148,
+    "title": "The Works of Edgar Allan Poe — Volume 2",
     "authors": [
-      "Bussy, Roger de Rabutin, comte de"
+      "Poe, Edgar Allan"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3414,
-    "cover": "https://www.gutenberg.org/cache/epub/29049/pg29049.cover.medium.jpg"
+    "download_count": 17308,
+    "cover": "https://www.gutenberg.org/cache/epub/2148/pg2148.cover.medium.jpg"
   },
   {
-    "id": 21801,
-    "title": "Briefe an eine Freundin",
+    "id": 1497,
+    "title": "The Republic",
     "authors": [
-      "Humboldt, Wilhelm von"
+      "Plato"
     ],
     "languages": [
-      "de"
+      "en"
     ],
-    "download_count": 3364,
-    "cover": "https://www.gutenberg.org/cache/epub/21801/pg21801.cover.medium.jpg"
+    "download_count": 17277,
+    "cover": "https://www.gutenberg.org/cache/epub/1497/pg1497.cover.medium.jpg"
   },
   {
-    "id": 15113,
-    "title": "Vie de Jésus",
+    "id": 215,
+    "title": "The call of the wild",
     "authors": [
-      "Renan, Ernest"
+      "London, Jack"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3298,
-    "cover": "https://www.gutenberg.org/cache/epub/15113/pg15113.cover.medium.jpg"
+    "download_count": 17250,
+    "cover": "https://www.gutenberg.org/cache/epub/215/pg215.cover.medium.jpg"
   },
   {
-    "id": 27573,
-    "title": "Esprit des lois: livres I à V, précédés d'une introduction de l'éditeur",
+    "id": 31885,
+    "title": "Bible Myths and their Parallels in other Religions: Being a Comparison of the Old and New Testament Myths and Miracles with those of the Heathen Nations of Antiquity Considering also their Origin and Meaning",
     "authors": [
-      "Montesquieu, Charles de Secondat, baron de"
+      "Doane, T. W. (Thomas William)"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3244,
-    "cover": "https://www.gutenberg.org/cache/epub/27573/pg27573.cover.medium.jpg"
+    "download_count": 17141,
+    "cover": "https://www.gutenberg.org/cache/epub/31885/pg31885.cover.medium.jpg"
   },
   {
-    "id": 78064,
-    "title": "Lucifer : $b roman moderne",
+    "id": 45368,
+    "title": "The Outline of History: Being a Plain History of Life and Mankind",
     "authors": [
-      "Magre, Maurice"
+      "Wells, H. G. (Herbert George)"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 3224,
-    "cover": "https://www.gutenberg.org/cache/epub/78064/pg78064.cover.medium.jpg"
+    "download_count": 17130,
+    "cover": "https://www.gutenberg.org/cache/epub/45368/pg45368.cover.medium.jpg"
   },
   {
-    "id": 2419,
-    "title": "La dame aux camélias",
-    "authors": [
-      "Dumas, Alexandre"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 3142,
-    "cover": "https://www.gutenberg.org/cache/epub/2419/pg2419.cover.medium.jpg"
-  },
-  {
-    "id": 66452,
-    "title": "Die Liebe: Novelle",
-    "authors": [
-      "Kaltneker, Hans"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 3110,
-    "cover": "https://www.gutenberg.org/cache/epub/66452/pg66452.cover.medium.jpg"
-  },
-  {
-    "id": 43759,
-    "title": "Geflügelte Worte: Der Citatenschatz des deutschen Volkes",
-    "authors": [
-      "Büchmann, Georg",
-      "Robert-tornow, Walter"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 3058,
-    "cover": "https://www.gutenberg.org/cache/epub/43759/pg43759.cover.medium.jpg"
-  },
-  {
-    "id": 17161,
-    "title": "Max und Moritz: Eine Bubengeschichte in sieben Streichen",
-    "authors": [
-      "Busch, Wilhelm"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 2892,
-    "cover": "https://www.gutenberg.org/cache/epub/17161/pg17161.cover.medium.jpg"
-  },
-  {
-    "id": 25721,
-    "title": "Caspar Hauser; oder, Die Trägheit des Herzens, Roman",
-    "authors": [
-      "Wassermann, Jakob"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 2892,
-    "cover": "https://www.gutenberg.org/cache/epub/25721/pg25721.cover.medium.jpg"
-  },
-  {
-    "id": 65661,
-    "title": "Der Zauberberg. Erster Band",
-    "authors": [
-      "Mann, Thomas"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 2887,
-    "cover": "https://www.gutenberg.org/cache/epub/65661/pg65661.cover.medium.jpg"
-  },
-  {
-    "id": 47804,
-    "title": "Die Räuber: Ein Schauspiel",
-    "authors": [
-      "Schiller, Friedrich"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 2871,
-    "cover": "https://www.gutenberg.org/cache/epub/47804/pg47804.cover.medium.jpg"
-  },
-  {
-    "id": 34811,
-    "title": "Buddenbrooks: Verfall einer Familie",
-    "authors": [
-      "Mann, Thomas"
-    ],
-    "languages": [
-      "de"
-    ],
-    "download_count": 2841,
-    "cover": "https://www.gutenberg.org/cache/epub/34811/pg34811.cover.medium.jpg"
-  },
-  {
-    "id": 23393,
-    "title": "Japanische Märchen",
-    "authors": [],
-    "languages": [
-      "de"
-    ],
-    "download_count": 2809,
-    "cover": "https://www.gutenberg.org/files/23393/c001.jpg"
-  },
-  {
-    "id": 14155,
-    "title": "Madame Bovary",
-    "authors": [
-      "Flaubert, Gustave"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 2737,
-    "cover": "https://www.gutenberg.org/cache/epub/14155/pg14155.cover.medium.jpg"
-  },
-  {
-    "id": 36635,
-    "title": "Amitié amoureuse",
-    "authors": [
-      "Lecomte du Noüy, Hermine Oudinot"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 2713,
-    "cover": "https://www.gutenberg.org/cache/epub/36635/pg36635.cover.medium.jpg"
-  },
-  {
-    "id": 25097,
-    "title": "Cités et ruines américaines: Mitla, Palenqué, Izamal, Chichen-Itza, Uxmal",
-    "authors": [
-      "Viollet-le-Duc, Eugène-Emmanuel"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 2697,
-    "cover": "https://www.gutenberg.org/cache/epub/25097/pg25097.cover.medium.jpg"
-  },
-  {
-    "id": 6099,
-    "title": "Les Fleurs du Mal",
-    "authors": [
-      "Baudelaire, Charles"
-    ],
-    "languages": [
-      "fr"
-    ],
-    "download_count": 2674,
-    "cover": "https://www.gutenberg.org/cache/epub/6099/pg6099.cover.medium.jpg"
-  },
-  {
-    "id": 38674,
-    "title": "De la terre à la lune, trajet direct en 97 heures 20 minutes",
+    "id": 164,
+    "title": "Twenty Thousand Leagues under the Sea",
     "authors": [
       "Verne, Jules"
     ],
     "languages": [
-      "fr"
+      "en"
     ],
-    "download_count": 2674,
-    "cover": "https://www.gutenberg.org/cache/epub/38674/pg38674.cover.medium.jpg"
+    "download_count": 17061,
+    "cover": "https://www.gutenberg.org/cache/epub/164/pg164.cover.medium.jpg"
   },
   {
-    "id": 41325,
-    "title": "幽霊書店",
+    "id": 521,
+    "title": "The Life and Adventures of Robinson Crusoe",
     "authors": [
-      "Morley, Christopher"
+      "Defoe, Daniel"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 2149,
-    "cover": "https://www.gutenberg.org/cache/epub/41325/pg41325.cover.medium.jpg"
+    "download_count": 17011,
+    "cover": "https://www.gutenberg.org/cache/epub/521/pg521.cover.medium.jpg"
   },
   {
-    "id": 20683,
-    "title": "奥の細道",
+    "id": 3206,
+    "title": "Moby Multiple Language Lists of Common Words",
     "authors": [
-      "Matsuo, Bashō"
+      "Ward, Grady"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 1138,
-    "cover": "https://www.gutenberg.org/cache/epub/20683/pg20683.cover.medium.jpg"
+    "download_count": 16993,
+    "cover": "https://www.gutenberg.org/cache/epub/3206/pg3206.cover.medium.jpg"
   },
   {
-    "id": 34158,
-    "title": "入れかわった男",
+    "id": 20203,
+    "title": "Autobiography of Benjamin Franklin",
     "authors": [
-      "Oppenheim, E. Phillips (Edward Phillips)"
+      "Franklin, Benjamin"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 1066,
-    "cover": "https://www.gutenberg.org/cache/epub/34158/pg34158.cover.medium.jpg"
+    "download_count": 16978,
+    "cover": "https://www.gutenberg.org/cache/epub/20203/pg20203.cover.medium.jpg"
   },
   {
-    "id": 36459,
-    "title": "羹",
+    "id": 30254,
+    "title": "The Romance of Lust: A classic Victorian erotic novel",
     "authors": [
-      "Tanizaki, Jun'ichiro"
+      "Anonymous"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 961,
-    "cover": "https://www.gutenberg.org/cache/epub/36459/pg36459.cover.medium.jpg"
+    "download_count": 16790,
+    "cover": "https://www.gutenberg.org/cache/epub/30254/pg30254.cover.medium.jpg"
   },
   {
-    "id": 35327,
-    "title": "あめりか物語",
+    "id": 21765,
+    "title": "The Metamorphoses of Ovid, Books I-VII",
     "authors": [
-      "Nagai, Kafu"
+      "Ovid"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 881,
-    "cover": "https://www.gutenberg.org/cache/epub/35327/pg35327.cover.medium.jpg"
+    "download_count": 16655,
+    "cover": "https://www.gutenberg.org/cache/epub/21765/pg21765.cover.medium.jpg"
   },
   {
-    "id": 32978,
-    "title": "下宿人",
+    "id": 1023,
+    "title": "Bleak House",
     "authors": [
-      "Lowndes, Marie Belloc"
+      "Dickens, Charles"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 862,
-    "cover": "https://www.gutenberg.org/cache/epub/32978/pg32978.cover.medium.jpg"
+    "download_count": 16318,
+    "cover": "https://www.gutenberg.org/cache/epub/1023/pg1023.cover.medium.jpg"
   },
   {
-    "id": 31617,
-    "title": "刺靑",
+    "id": 36,
+    "title": "The war of the worlds",
     "authors": [
-      "Tanizaki, Jun'ichiro"
+      "Wells, H. G. (Herbert George)"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 761,
-    "cover": "https://www.gutenberg.org/cache/epub/31617/pg31617.cover.medium.jpg"
+    "download_count": 16182,
+    "cover": "https://www.gutenberg.org/cache/epub/36/pg36.cover.medium.jpg"
   },
   {
-    "id": 1982,
-    "title": "羅生門",
+    "id": 132,
+    "title": "The Art of War",
     "authors": [
-      "Akutagawa, Ryūnosuke"
+      "Sunzi, active 6th century B.C."
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 750,
-    "cover": "https://www.gutenberg.org/cache/epub/1982/pg1982.cover.medium.jpg"
+    "download_count": 16140,
+    "cover": "https://www.gutenberg.org/cache/epub/132/pg132.cover.medium.jpg"
   },
   {
-    "id": 31757,
-    "title": "お目出たき人",
+    "id": 996,
+    "title": "Don Quixote",
     "authors": [
-      "Mushanokoji, Saneatsu"
+      "Cervantes Saavedra, Miguel de"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 681,
-    "cover": "https://www.gutenberg.org/cache/epub/31757/pg31757.cover.medium.jpg"
+    "download_count": 16106,
+    "cover": "https://www.gutenberg.org/cache/epub/996/pg996.cover.medium.jpg"
   },
   {
-    "id": 32941,
-    "title": "何處へ",
+    "id": 46,
+    "title": "A Christmas Carol in Prose; Being a Ghost Story of Christmas",
     "authors": [
-      "Masamune, Hakuchō"
+      "Dickens, Charles"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 656,
-    "cover": "https://www.gutenberg.org/cache/epub/32941/pg32941.cover.medium.jpg"
+    "download_count": 15993,
+    "cover": "https://www.gutenberg.org/cache/epub/46/pg46.cover.medium.jpg"
   },
   {
-    "id": 33307,
-    "title": "友情",
+    "id": 13188,
+    "title": "Putnam's Word Book: A Practical Aid in Expressing Ideas Through the Use of an Exact and Varied Vocabulary",
     "authors": [
-      "Mushanokoji, Saneatsu"
+      "Flemming, Louis A. (Louis Andrew)"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 653,
-    "cover": "https://www.gutenberg.org/cache/epub/33307/pg33307.cover.medium.jpg"
+    "download_count": 15913,
+    "cover": "https://www.gutenberg.org/cache/epub/13188/pg13188.cover.medium.jpg"
   },
   {
-    "id": 34636,
-    "title": "腕くらべ",
+    "id": 19488,
+    "title": "The Life of Joan of Arc, Vol. 1 and 2",
     "authors": [
-      "Nagai, Kafu"
+      "France, Anatole"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 646,
-    "cover": "https://www.gutenberg.org/cache/epub/34636/pg34636.cover.medium.jpg"
+    "download_count": 15477,
+    "cover": "https://www.gutenberg.org/cache/epub/19488/pg19488.cover.medium.jpg"
   },
   {
-    "id": 36358,
-    "title": "火星の記憶",
+    "id": 209,
+    "title": "The Turn of the Screw",
     "authors": [
-      "Jones, Raymond F."
+      "James, Henry"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 567,
-    "cover": "https://www.gutenberg.org/cache/epub/36358/pg36358.cover.medium.jpg"
+    "download_count": 15425,
+    "cover": "https://www.gutenberg.org/cache/epub/209/pg209.cover.medium.jpg"
   },
   {
-    "id": 39287,
-    "title": "苦悶の欄",
-    "authors": [
-      "Biggers, Earl Derr"
-    ],
+    "id": 57724,
+    "title": "A Cyclopaedia of Canadian Biography: Being Chiefly Men of the Time: A Collection of Persons Distinguished in Professional and Political Life, Leaders in the Commerce and Industry of Canada, and Successful Pioneers",
+    "authors": [],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 542,
-    "cover": "https://www.gutenberg.org/cache/epub/39287/pg39287.cover.medium.jpg"
+    "download_count": 15400,
+    "cover": "https://www.gutenberg.org/cache/epub/57724/pg57724.cover.medium.jpg"
   },
   {
-    "id": 34084,
-    "title": "法螺男爵旅土産",
+    "id": 35,
+    "title": "The Time Machine",
     "authors": [
-      "Sasaki, Kuni"
+      "Wells, H. G. (Herbert George)"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 515,
-    "cover": "https://www.gutenberg.org/cache/epub/34084/pg34084.cover.medium.jpg"
+    "download_count": 15303,
+    "cover": "https://www.gutenberg.org/cache/epub/35/pg35.cover.medium.jpg"
   },
   {
-    "id": 38697,
-    "title": "殉情詩集",
+    "id": 20000,
+    "title": "Twenty Thousand Leagues Under the Sea",
     "authors": [
-      "Sato, Haruo"
+      "Verne, Jules"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 479,
-    "cover": "https://www.gutenberg.org/cache/epub/38697/pg38697.cover.medium.jpg"
+    "download_count": 15300,
+    "cover": "https://www.gutenberg.org/cache/epub/20000/pg20000.cover.medium.jpg"
   },
   {
-    "id": 36976,
-    "title": "裁判",
+    "id": 15399,
+    "title": "The Interesting Narrative of the Life of Olaudah Equiano, Or Gustavus Vassa, The African: Written By Himself",
     "authors": [
-      "Rice, Elmer"
+      "Equiano, Olaudah"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 453,
-    "cover": "https://www.gutenberg.org/cache/epub/36976/pg36976.cover.medium.jpg"
+    "download_count": 15284,
+    "cover": "https://www.gutenberg.org/cache/epub/15399/pg15399.cover.medium.jpg"
   },
   {
-    "id": 34013,
-    "title": "血笑記",
+    "id": 3300,
+    "title": "An Inquiry into the Nature and Causes of the Wealth of Nations",
     "authors": [
-      "Andreyev, Leonid"
+      "Smith, Adam"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 445,
-    "cover": "https://www.gutenberg.org/cache/epub/34013/pg34013.cover.medium.jpg"
+    "download_count": 15170,
+    "cover": "https://www.gutenberg.org/cache/epub/3300/pg3300.cover.medium.jpg"
   },
   {
-    "id": 2592,
-    "title": "マルチン・ルターの小信仰問答書",
+    "id": 25851,
+    "title": "The Life of Charles Dickens, Vol. I-III, Complete",
     "authors": [
-      "Luther, Martin"
+      "Forster, John"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 418,
-    "cover": "https://www.gutenberg.org/cache/epub/2592/pg2592.cover.medium.jpg"
+    "download_count": 15049,
+    "cover": "https://www.gutenberg.org/cache/epub/25851/pg25851.cover.medium.jpg"
   },
   {
-    "id": 37605,
-    "title": "惡魔",
+    "id": 41,
+    "title": "The Legend of Sleepy Hollow",
     "authors": [
-      "Tanizaki, Jun'ichiro"
+      "Irving, Washington"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 414,
-    "cover": "https://www.gutenberg.org/cache/epub/37605/pg37605.cover.medium.jpg"
+    "download_count": 14944,
+    "cover": "https://www.gutenberg.org/cache/epub/41/pg41.cover.medium.jpg"
   },
   {
-    "id": 37626,
-    "title": "續惡魔",
+    "id": 2814,
+    "title": "Dubliners",
     "authors": [
-      "Tanizaki, Jun'ichiro"
+      "Joyce, James"
     ],
     "languages": [
-      "ja"
+      "en"
     ],
-    "download_count": 396,
-    "cover": "https://www.gutenberg.org/cache/epub/37626/pg37626.cover.medium.jpg"
+    "download_count": 14935,
+    "cover": "https://www.gutenberg.org/cache/epub/2814/pg2814.cover.medium.jpg"
+  },
+  {
+    "id": 44608,
+    "title": "The Bābur-nāma in English (Memoirs of Bābur)",
+    "authors": [
+      "Babur, Emperor of Hindustan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14798,
+    "cover": "https://www.gutenberg.org/cache/epub/44608/pg44608.cover.medium.jpg"
+  },
+  {
+    "id": 21436,
+    "title": "Poems Every Child Should Know",
+    "authors": [],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14785,
+    "cover": "https://www.gutenberg.org/cache/epub/21436/pg21436.cover.medium.jpg"
+  },
+  {
+    "id": 41445,
+    "title": "Frankenstein; Or, The Modern Prometheus",
+    "authors": [
+      "Shelley, Mary Wollstonecraft"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14673,
+    "cover": "https://www.gutenberg.org/cache/epub/41445/pg41445.cover.medium.jpg"
+  },
+  {
+    "id": 158,
+    "title": "Emma",
+    "authors": [
+      "Austen, Jane"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14548,
+    "cover": "https://www.gutenberg.org/cache/epub/158/pg158.cover.medium.jpg"
+  },
+  {
+    "id": 10,
+    "title": "The King James Version of the Bible",
+    "authors": [],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14420,
+    "cover": "https://www.gutenberg.org/cache/epub/10/pg10.cover.medium.jpg"
+  },
+  {
+    "id": 1257,
+    "title": "The three musketeers",
+    "authors": [
+      "Dumas, Alexandre",
+      "Maquet, Auguste"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14084,
+    "cover": "https://www.gutenberg.org/cache/epub/1257/pg1257.cover.medium.jpg"
+  },
+  {
+    "id": 600,
+    "title": "Notes from the Underground",
+    "authors": [
+      "Dostoyevsky, Fyodor"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14064,
+    "cover": "https://www.gutenberg.org/cache/epub/600/pg600.cover.medium.jpg"
+  },
+  {
+    "id": 6133,
+    "title": "The Extraordinary Adventures of Arsène Lupin, Gentleman-Burglar",
+    "authors": [
+      "Leblanc, Maurice"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 14000,
+    "cover": "https://www.gutenberg.org/cache/epub/6133/pg6133.cover.medium.jpg"
+  },
+  {
+    "id": 45001,
+    "title": "Institutes of the Christian Religion (Vol. 1 of 2)",
+    "authors": [
+      "Calvin, Jean"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13764,
+    "cover": "https://www.gutenberg.org/cache/epub/45001/pg45001.cover.medium.jpg"
+  },
+  {
+    "id": 4280,
+    "title": "The Critique of Pure Reason",
+    "authors": [
+      "Kant, Immanuel"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13762,
+    "cover": "https://www.gutenberg.org/cache/epub/4280/pg4280.cover.medium.jpg"
+  },
+  {
+    "id": 3268,
+    "title": "The Mysteries of Udolpho",
+    "authors": [
+      "Radcliffe, Ann Ward"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13617,
+    "cover": "https://www.gutenberg.org/cache/epub/3268/pg3268.cover.medium.jpg"
+  },
+  {
+    "id": 27827,
+    "title": "The Kama Sutra of Vatsyayana: Translated From the Sanscrit in Seven Parts With Preface, Introduction and Concluding Remarks",
+    "authors": [
+      "Vatsyayana"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13597,
+    "cover": "https://www.gutenberg.org/cache/epub/27827/pg27827.cover.medium.jpg"
+  },
+  {
+    "id": 69087,
+    "title": "The murder of Roger Ackroyd",
+    "authors": [
+      "Christie, Agatha"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13583,
+    "cover": "https://www.gutenberg.org/cache/epub/69087/pg69087.cover.medium.jpg"
+  },
+  {
+    "id": 6400,
+    "title": "The Lives of the Twelve Caesars, Complete",
+    "authors": [
+      "Suetonius"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13473,
+    "cover": "https://www.gutenberg.org/cache/epub/6400/pg6400.cover.medium.jpg"
+  },
+  {
+    "id": 43578,
+    "title": "An Introduction to Entomology: Vol. 3: or Elements of the Natural History of the Insects",
+    "authors": [
+      "Kirby, William",
+      "Spence, William"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13460,
+    "cover": "https://www.gutenberg.org/cache/epub/43578/pg43578.cover.medium.jpg"
+  },
+  {
+    "id": 245,
+    "title": "Life on the Mississippi",
+    "authors": [
+      "Twain, Mark"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13400,
+    "cover": "https://www.gutenberg.org/cache/epub/245/pg245.cover.medium.jpg"
+  },
+  {
+    "id": 1946,
+    "title": "On War",
+    "authors": [
+      "Clausewitz, Carl von"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13399,
+    "cover": "https://www.gutenberg.org/cache/epub/1946/pg1946.cover.medium.jpg"
+  },
+  {
+    "id": 1322,
+    "title": "Leaves of Grass",
+    "authors": [
+      "Whitman, Walt"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13334,
+    "cover": "https://www.gutenberg.org/cache/epub/1322/pg1322.cover.medium.jpg"
+  },
+  {
+    "id": 110,
+    "title": "Tess of the d'Urbervilles: A Pure Woman",
+    "authors": [
+      "Hardy, Thomas"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13232,
+    "cover": "https://www.gutenberg.org/cache/epub/110/pg110.cover.medium.jpg"
+  },
+  {
+    "id": 779,
+    "title": "The Tragical History of Doctor Faustus: From the Quarto of 1604",
+    "authors": [
+      "Marlowe, Christopher"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13205,
+    "cover": "https://www.gutenberg.org/cache/epub/779/pg779.cover.medium.jpg"
+  },
+  {
+    "id": 20027,
+    "title": "Grimms' Fairy Tales",
+    "authors": [
+      "Grimm, Jacob",
+      "Grimm, Wilhelm"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13185,
+    "cover": "https://www.gutenberg.org/cache/epub/20027/pg20027.cover.medium.jpg"
+  },
+  {
+    "id": 34413,
+    "title": "The Love Letters of Mary Wollstonecraft to Gilbert Imlay",
+    "authors": [
+      "Wollstonecraft, Mary"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13170,
+    "cover": "https://www.gutenberg.org/cache/epub/34413/pg34413.cover.medium.jpg"
+  },
+  {
+    "id": 26,
+    "title": "Paradise Lost",
+    "authors": [
+      "Milton, John"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13147,
+    "cover": "https://www.gutenberg.org/cache/epub/26/pg26.cover.medium.jpg"
+  },
+  {
+    "id": 1695,
+    "title": "The Man Who Was Thursday: A Nightmare",
+    "authors": [
+      "Chesterton, G. K. (Gilbert Keith)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13140,
+    "cover": "https://www.gutenberg.org/cache/epub/1695/pg1695.cover.medium.jpg"
+  },
+  {
+    "id": 10007,
+    "title": "Carmilla",
+    "authors": [
+      "Le Fanu, Joseph Sheridan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13081,
+    "cover": "https://www.gutenberg.org/cache/epub/10007/pg10007.cover.medium.jpg"
+  },
+  {
+    "id": 514,
+    "title": "Little Women",
+    "authors": [
+      "Alcott, Louisa May"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 13056,
+    "cover": "https://www.gutenberg.org/cache/epub/514/pg514.cover.medium.jpg"
+  },
+  {
+    "id": 3011,
+    "title": "The Lady of the Lake",
+    "authors": [
+      "Scott, Walter"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12958,
+    "cover": "https://www.gutenberg.org/cache/epub/3011/pg3011.cover.medium.jpg"
+  },
+  {
+    "id": 19942,
+    "title": "Candide",
+    "authors": [
+      "Voltaire"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12894,
+    "cover": "https://www.gutenberg.org/cache/epub/19942/pg19942.cover.medium.jpg"
+  },
+  {
+    "id": 40533,
+    "title": "The Life of John Marshall, Volume 4: The building of the nation, 1815-1835",
+    "authors": [
+      "Beveridge, Albert J. (Albert Jeremiah)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12834,
+    "cover": "https://www.gutenberg.org/cache/epub/40533/pg40533.cover.medium.jpg"
+  },
+  {
+    "id": 2097,
+    "title": "The Sign of the Four",
+    "authors": [
+      "Doyle, Arthur Conan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12678,
+    "cover": "https://www.gutenberg.org/cache/epub/2097/pg2097.cover.medium.jpg"
+  },
+  {
+    "id": 25833,
+    "title": "The Great Controversy Between Christ and Satan",
+    "authors": [
+      "White, Ellen Gould Harmon"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12600,
+    "cover": "https://www.gutenberg.org/cache/epub/25833/pg25833.cover.medium.jpg"
+  },
+  {
+    "id": 3825,
+    "title": "Pygmalion",
+    "authors": [
+      "Shaw, Bernard"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12543,
+    "cover": "https://www.gutenberg.org/cache/epub/3825/pg3825.cover.medium.jpg"
+  },
+  {
+    "id": 1524,
+    "title": "Hamlet",
+    "authors": [
+      "Shakespeare, William"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12507,
+    "cover": "https://www.gutenberg.org/cache/epub/1524/pg1524.cover.medium.jpg"
+  },
+  {
+    "id": 43671,
+    "title": "A History of Epidemics in Britain, Volume 2 (of 2): From the Extinction of Plague to the Present Time",
+    "authors": [
+      "Creighton, Charles"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12503,
+    "cover": "https://www.gutenberg.org/cache/epub/43671/pg43671.cover.medium.jpg"
+  },
+  {
+    "id": 43255,
+    "title": "Domesday Book and Beyond: Three Essays in the Early History of England",
+    "authors": [
+      "Maitland, Frederic William"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12471,
+    "cover": "https://www.gutenberg.org/cache/epub/43255/pg43255.cover.medium.jpg"
+  },
+  {
+    "id": 6130,
+    "title": "The Iliad",
+    "authors": [
+      "Homer"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12447,
+    "cover": "https://www.gutenberg.org/cache/epub/6130/pg6130.cover.medium.jpg"
+  },
+  {
+    "id": 65238,
+    "title": "The Secret of Chimneys",
+    "authors": [
+      "Christie, Agatha"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12388,
+    "cover": "https://www.gutenberg.org/cache/epub/65238/pg65238.cover.medium.jpg"
+  },
+  {
+    "id": 67098,
+    "title": "Winnie-the-Pooh",
+    "authors": [
+      "Milne, A. A. (Alan Alexander)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12269,
+    "cover": "https://www.gutenberg.org/cache/epub/67098/pg67098.cover.medium.jpg"
+  },
+  {
+    "id": 2527,
+    "title": "The Sorrows of Young Werther",
+    "authors": [
+      "Goethe, Johann Wolfgang von"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12240,
+    "cover": "https://www.gutenberg.org/cache/epub/2527/pg2527.cover.medium.jpg"
+  },
+  {
+    "id": 2638,
+    "title": "The Idiot",
+    "authors": [
+      "Dostoyevsky, Fyodor"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12235,
+    "cover": "https://www.gutenberg.org/cache/epub/2638/pg2638.cover.medium.jpg"
+  },
+  {
+    "id": 24253,
+    "title": "Folkways: A Study of the Sociological Importance of Usages, Manners, Customs, Mores, and Morals",
+    "authors": [
+      "Sumner, William Graham"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12205,
+    "cover": "https://www.gutenberg.org/cache/epub/24253/pg24253.cover.medium.jpg"
+  },
+  {
+    "id": 165,
+    "title": "McTeague: A Story of San Francisco",
+    "authors": [
+      "Norris, Frank"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12196,
+    "cover": "https://www.gutenberg.org/cache/epub/165/pg165.cover.medium.jpg"
+  },
+  {
+    "id": 45249,
+    "title": "The History of Signboards, from the Earliest times to the Present Day",
+    "authors": [
+      "Hotten, John Camden",
+      "Larwood, Jacob"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12180,
+    "cover": "https://www.gutenberg.org/cache/epub/45249/pg45249.cover.medium.jpg"
+  },
+  {
+    "id": 24739,
+    "title": "Bidwell's Travels, from Wall Street to London Prison: Fifteen Years in Solitude",
+    "authors": [
+      "Bidwell, Austin"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12094,
+    "cover": "https://www.gutenberg.org/cache/epub/24739/pg24739.cover.medium.jpg"
+  },
+  {
+    "id": 11030,
+    "title": "Incidents in the Life of a Slave Girl, Written by Herself",
+    "authors": [
+      "Jacobs, Harriet A. (Harriet Ann)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 12053,
+    "cover": "https://www.gutenberg.org/cache/epub/11030/pg11030.cover.medium.jpg"
+  },
+  {
+    "id": 1251,
+    "title": "Le Morte d'Arthur: Volume 1",
+    "authors": [
+      "Malory, Thomas, Sir"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11998,
+    "cover": "https://www.gutenberg.org/cache/epub/1251/pg1251.cover.medium.jpg"
+  },
+  {
+    "id": 43453,
+    "title": "A Pickle for the Knowing Ones",
+    "authors": [
+      "Dexter, Timothy"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11969,
+    "cover": "https://www.gutenberg.org/cache/epub/43453/pg43453.cover.medium.jpg"
+  },
+  {
+    "id": 42671,
+    "title": "Pride and Prejudice",
+    "authors": [
+      "Austen, Jane"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11938,
+    "cover": "https://www.gutenberg.org/cache/epub/42671/pg42671.cover.medium.jpg"
+  },
+  {
+    "id": 22542,
+    "title": "Jesus the Christ: A Study of the Messiah and His Mission According to Holy; Scriptures Both Ancient and Modern",
+    "authors": [
+      "Talmage, James E. (James Edward)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11930,
+    "cover": "https://www.gutenberg.org/cache/epub/22542/pg22542.cover.medium.jpg"
+  },
+  {
+    "id": 39647,
+    "title": "The Spanish American Reader",
+    "authors": [
+      "Nelson, Ernesto"
+    ],
+    "languages": [
+      "en",
+      "es"
+    ],
+    "download_count": 11889,
+    "cover": "https://www.gutenberg.org/cache/epub/39647/pg39647.cover.medium.jpg"
+  },
+  {
+    "id": 236,
+    "title": "The Jungle Book",
+    "authors": [
+      "Kipling, Rudyard"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11874,
+    "cover": "https://www.gutenberg.org/cache/epub/236/pg236.cover.medium.jpg"
+  },
+  {
+    "id": 29090,
+    "title": "The Complete Poetical Works of Samuel Taylor Coleridge. Vol 1 and 2",
+    "authors": [
+      "Coleridge, Samuel Taylor"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11789,
+    "cover": "https://www.gutenberg.org/cache/epub/29090/pg29090.cover.medium.jpg"
+  },
+  {
+    "id": 10681,
+    "title": "Roget's Thesaurus of English Words and Phrases",
+    "authors": [
+      "Roget, Peter Mark"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11688,
+    "cover": "https://www.gutenberg.org/cache/epub/10681/pg10681.cover.medium.jpg"
+  },
+  {
+    "id": 4217,
+    "title": "A Portrait of the Artist as a Young Man",
+    "authors": [
+      "Joyce, James"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11674,
+    "cover": "https://www.gutenberg.org/cache/epub/4217/pg4217.cover.medium.jpg"
+  },
+  {
+    "id": 71046,
+    "title": "Modern English biography, volume 2 (of 4), I-Q",
+    "authors": [
+      "Boase, Frederic"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11668,
+    "cover": "https://www.gutenberg.org/cache/epub/71046/pg71046.cover.medium.jpg"
+  },
+  {
+    "id": 815,
+    "title": "Democracy in America — Volume 1",
+    "authors": [
+      "Tocqueville, Alexis de"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11623,
+    "cover": "https://www.gutenberg.org/cache/epub/815/pg815.cover.medium.jpg"
+  },
+  {
+    "id": 12082,
+    "title": "Color Images from Mars Rovers: Spirit and Opportunity",
+    "authors": [
+      "Webster, Bob"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11619,
+    "cover": "https://www.gutenberg.org/cache/epub/12082/pg12082.cover.medium.jpg"
+  },
+  {
+    "id": 21700,
+    "title": "Don Juan",
+    "authors": [
+      "Byron, George Gordon Byron, Baron"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11531,
+    "cover": "https://www.gutenberg.org/cache/epub/21700/pg21700.cover.medium.jpg"
+  },
+  {
+    "id": 22981,
+    "title": "Letters of Two Brides",
+    "authors": [
+      "Balzac, Honoré de"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11526,
+    "cover": "https://www.gutenberg.org/cache/epub/22981/pg22981.cover.medium.jpg"
+  },
+  {
+    "id": 8438,
+    "title": "The Ethics of Aristotle",
+    "authors": [
+      "Aristotle"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11506,
+    "cover": "https://www.gutenberg.org/cache/epub/8438/pg8438.cover.medium.jpg"
+  },
+  {
+    "id": 12,
+    "title": "Through the Looking-Glass",
+    "authors": [
+      "Carroll, Lewis"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11498,
+    "cover": "https://www.gutenberg.org/cache/epub/12/pg12.cover.medium.jpg"
+  },
+  {
+    "id": 2465,
+    "title": "Carmen",
+    "authors": [
+      "Mérimée, Prosper"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11498,
+    "cover": "https://www.gutenberg.org/cache/epub/2465/pg2465.cover.medium.jpg"
+  },
+  {
+    "id": 37499,
+    "title": "Napoleon's Letters to Josephine, 1796-1812: For the First Time Collected and Translated, with Notes Social, Historical, and Chronological, from Contemporary Sources",
+    "authors": [
+      "Napoleon I, Emperor of the French"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11450,
+    "cover": "https://www.gutenberg.org/cache/epub/37499/pg37499.cover.medium.jpg"
+  },
+  {
+    "id": 42324,
+    "title": "Frankenstein; Or, The Modern Prometheus",
+    "authors": [
+      "Shelley, Mary Wollstonecraft"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11392,
+    "cover": "https://www.gutenberg.org/cache/epub/42324/pg42324.cover.medium.jpg"
+  },
+  {
+    "id": 52319,
+    "title": "The Genealogy of Morals: The Complete Works, Volume Thirteen, edited by Dr. Oscar Levy.",
+    "authors": [
+      "Nietzsche, Friedrich Wilhelm"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11383,
+    "cover": "https://www.gutenberg.org/cache/epub/52319/pg52319.cover.medium.jpg"
+  },
+  {
+    "id": 43579,
+    "title": "An Introduction to Entomology: Vol. 4: or Elements of the Natural History of the Insects",
+    "authors": [
+      "Kirby, William",
+      "Spence, William"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11356,
+    "cover": "https://www.gutenberg.org/cache/epub/43579/pg43579.cover.medium.jpg"
+  },
+  {
+    "id": 105,
+    "title": "Persuasion",
+    "authors": [
+      "Austen, Jane"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11355,
+    "cover": "https://www.gutenberg.org/cache/epub/105/pg105.cover.medium.jpg"
+  },
+  {
+    "id": 20265,
+    "title": "Anne of the Island",
+    "authors": [
+      "Montgomery, L. M. (Lucy Maud)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11257,
+    "cover": "https://www.gutenberg.org/cache/epub/20265/pg20265.cover.medium.jpg"
+  },
+  {
+    "id": 2147,
+    "title": "The Works of Edgar Allan Poe — Volume 1",
+    "authors": [
+      "Poe, Edgar Allan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11249,
+    "cover": "https://www.gutenberg.org/cache/epub/2147/pg2147.cover.medium.jpg"
+  },
+  {
+    "id": 43945,
+    "title": "A Treatise Upon the Law of Copyright in the United Kingdom and the Dominions of the Crown,: and in the United States of America Containing a Full Appendix of All Acts of Parliament International Conventions, Orders in Council, Treasury Minute and Acts of Congress Now in Force.",
+    "authors": [
+      "MacGillivray, Evan James"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11235,
+    "cover": "https://www.gutenberg.org/cache/epub/43945/pg43945.cover.medium.jpg"
+  },
+  {
+    "id": 45109,
+    "title": "The Enchiridion",
+    "authors": [
+      "Epictetus"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11202,
+    "cover": "https://www.gutenberg.org/cache/epub/45109/pg45109.cover.medium.jpg"
+  },
+  {
+    "id": 103,
+    "title": "Around the World in Eighty Days",
+    "authors": [
+      "Verne, Jules"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11197,
+    "cover": "https://www.gutenberg.org/cache/epub/103/pg103.cover.medium.jpg"
+  },
+  {
+    "id": 108,
+    "title": "The Return of Sherlock Holmes",
+    "authors": [
+      "Doyle, Arthur Conan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11165,
+    "cover": "https://www.gutenberg.org/cache/epub/108/pg108.cover.medium.jpg"
+  },
+  {
+    "id": 1001,
+    "title": "Divine Comedy, Longfellow's Translation, Hell",
+    "authors": [
+      "Dante Alighieri"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11148,
+    "cover": "https://www.gutenberg.org/cache/epub/1001/pg1001.cover.medium.jpg"
+  },
+  {
+    "id": 175,
+    "title": "The Phantom of the Opera",
+    "authors": [
+      "Leroux, Gaston"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11112,
+    "cover": "https://www.gutenberg.org/cache/epub/175/pg175.cover.medium.jpg"
+  },
+  {
+    "id": 1228,
+    "title": "On the Origin of Species By Means of Natural Selection: Or, the Preservation of Favoured Races in the Struggle for Life",
+    "authors": [
+      "Darwin, Charles"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11105,
+    "cover": "https://www.gutenberg.org/cache/epub/1228/pg1228.cover.medium.jpg"
+  },
+  {
+    "id": 44653,
+    "title": "A Latin Grammar for Schools and Colleges",
+    "authors": [
+      "Lane, George Martin"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11080,
+    "cover": "https://www.gutenberg.org/cache/epub/44653/pg44653.cover.medium.jpg"
+  },
+  {
+    "id": 10636,
+    "title": "The Travels of Marco Polo — Volume 1",
+    "authors": [
+      "Polo, Marco",
+      "Rusticiano, da Pisa"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11059,
+    "cover": "https://www.gutenberg.org/cache/epub/10636/pg10636.cover.medium.jpg"
+  },
+  {
+    "id": 3600,
+    "title": "Essays of Michel de Montaigne — Complete",
+    "authors": [
+      "Montaigne, Michel de"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 11049,
+    "cover": "https://www.gutenberg.org/cache/epub/3600/pg3600.cover.medium.jpg"
+  },
+  {
+    "id": 43840,
+    "title": "Poison Romance and Poison Mysteries",
+    "authors": [
+      "Thompson, C. J. S. (Charles John Samuel)"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10963,
+    "cover": "https://www.gutenberg.org/cache/epub/43840/pg43840.cover.medium.jpg"
+  },
+  {
+    "id": 15272,
+    "title": "Spenser's The Faerie Queene, Book I",
+    "authors": [
+      "Spenser, Edmund"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10941,
+    "cover": "https://www.gutenberg.org/cache/epub/15272/pg15272.cover.medium.jpg"
+  },
+  {
+    "id": 19839,
+    "title": "Emma",
+    "authors": [
+      "Austen, Jane"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10869,
+    "cover": "https://www.gutenberg.org/cache/epub/19839/pg19839.cover.medium.jpg"
+  },
+  {
+    "id": 7142,
+    "title": "The History of the Peloponnesian War",
+    "authors": [
+      "Thucydides"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10859,
+    "cover": "https://www.gutenberg.org/cache/epub/7142/pg7142.cover.medium.jpg"
+  },
+  {
+    "id": 41537,
+    "title": "The Divine Comedy of Dante Alighieri: The Inferno",
+    "authors": [
+      "Dante Alighieri"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10859,
+    "cover": "https://www.gutenberg.org/cache/epub/41537/pg41537.cover.medium.jpg"
+  },
+  {
+    "id": 1514,
+    "title": "A Midsummer Night's Dream",
+    "authors": [
+      "Shakespeare, William"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10824,
+    "cover": "https://www.gutenberg.org/cache/epub/1514/pg1514.cover.medium.jpg"
+  },
+  {
+    "id": 23784,
+    "title": "The History of Sir Richard Calmady: A Romance",
+    "authors": [
+      "Malet, Lucas"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10819,
+    "cover": "https://www.gutenberg.org/cache/epub/23784/pg23784.cover.medium.jpg"
+  },
+  {
+    "id": 921,
+    "title": "De Profundis",
+    "authors": [
+      "Wilde, Oscar"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10815,
+    "cover": "https://www.gutenberg.org/cache/epub/921/pg921.cover.medium.jpg"
+  },
+  {
+    "id": 11339,
+    "title": "Aesop's Fables; a new translation",
+    "authors": [
+      "Aesop"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10755,
+    "cover": "https://www.gutenberg.org/cache/epub/11339/pg11339.cover.medium.jpg"
+  },
+  {
+    "id": 18269,
+    "title": "Pascal's Pensées",
+    "authors": [
+      "Pascal, Blaise"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10750,
+    "cover": "https://www.gutenberg.org/cache/epub/18269/pg18269.cover.medium.jpg"
+  },
+  {
+    "id": 834,
+    "title": "The Memoirs of Sherlock Holmes",
+    "authors": [
+      "Doyle, Arthur Conan"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10724,
+    "cover": "https://www.gutenberg.org/cache/epub/834/pg834.cover.medium.jpg"
+  },
+  {
+    "id": 50498,
+    "title": "The Raft",
+    "authors": [
+      "Dawson, Coningsby"
+    ],
+    "languages": [
+      "en"
+    ],
+    "download_count": 10674,
+    "cover": "https://www.gutenberg.org/cache/epub/50498/pg50498.cover.medium.jpg"
   }
 ]

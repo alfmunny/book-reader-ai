@@ -392,9 +392,10 @@ CLASSICS_FIXTURE = [
 
 @pytest.fixture(autouse=False)
 def classics_cache(monkeypatch):
-    monkeypatch.setattr(_books_router, "_classics_cache", list(CLASSICS_FIXTURE))
+    import services.classics as _classics
+    monkeypatch.setattr(_classics, "_classics_cache", list(CLASSICS_FIXTURE))
     yield
-    monkeypatch.setattr(_books_router, "_classics_cache", None)
+    monkeypatch.setattr(_classics, "_classics_cache", None)
 
 
 async def test_classics_endpoint_returns_list(client, classics_cache):
@@ -413,31 +414,44 @@ async def test_popular_russian_tab_returns_original_language_ru(client, classics
     assert books[0]["id"] == 2554
 
 
-async def test_import_stream_blocked_for_free_user_non_classic(client, classics_cache):
-    """Book not in free classics → 402 for free-plan user."""
+async def test_import_stream_always_allowed_for_free_user(client, classics_cache):
+    """Reading is free for all — import stream has no plan gate."""
     await save_book(9999, {**MOCK_META, "id": 9999}, "text")
     resp = await client.get("/api/books/9999/import-stream")
-    assert resp.status_code == 402
-
-
-async def test_import_stream_allowed_for_free_classic(client, classics_cache):
-    """Book in free classics → allowed for free-plan user."""
-    await save_book(1342, MOCK_META, "text")
-    resp = await client.get("/api/books/1342/import-stream")
-    # Gate passes — stream starts (200)
     assert resp.status_code == 200
 
 
-async def test_import_stream_allowed_for_paid_user_non_classic(client, classics_cache):
-    """Paid-plan user can import any book."""
-    import aiosqlite
-    import services.db as db_module
+async def test_chapter_translation_blocked_for_free_user_non_classic(client, classics_cache):
+    """AI translation on non-classic book → 402 for free-plan user."""
+    from services.db import save_translation
+    # book 9999 is not in CLASSICS_FIXTURE → gate fires
+    resp = await client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 402
+
+
+async def test_chapter_translation_allowed_for_free_classic(client, classics_cache):
+    """Free classic book translation is allowed for free-plan user."""
+    # book 1342 IS in CLASSICS_FIXTURE
+    # No cached translation, but it's a free classic so it reaches the queue step (200)
+    resp = await client.post(
+        "/api/books/1342/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 200
+
+
+async def test_chapter_translation_allowed_for_paid_user_non_classic(client, classics_cache):
+    """Paid-plan user can translate any book."""
     from services.db import set_user_plan
-    # Fetch the test user id from the token (conftest creates user id=1)
     await set_user_plan(1, "paid")
-    await save_book(9999, {**MOCK_META, "id": 9999}, "text")
     try:
-        resp = await client.get("/api/books/9999/import-stream")
+        resp = await client.post(
+            "/api/books/9999/chapters/0/translation",
+            json={"target_language": "de"},
+        )
         assert resp.status_code == 200
     finally:
         await set_user_plan(1, "free")

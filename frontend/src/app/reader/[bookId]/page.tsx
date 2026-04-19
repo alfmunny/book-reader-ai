@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -257,7 +257,11 @@ export default function ReaderPage() {
       } catch (e) {
         console.error("Failed to request chapter translation:", e);
         if (!cancelled && currentChapterKey.current === cacheKey) {
-          setTranslationUsedProvider("error · check admin queue");
+          if (e instanceof ApiError && e.status === 402) {
+            setTranslationUsedProvider("upgrade required");
+          } else {
+            setTranslationUsedProvider("error · check admin queue");
+          }
           setTranslationLoading(false);
         }
         return;

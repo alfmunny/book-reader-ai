@@ -122,10 +122,6 @@ export default function Home() {
   }
 
   function openBook(id: number) {
-    if (status === "unauthenticated") {
-      router.push(`/login?callbackUrl=/reader/${id}`);
-      return;
-    }
     const inLibrary = recentBooks.some((b) => b.id === id);
     if (inLibrary) {
       router.push(`/reader/${id}`);

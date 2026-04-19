@@ -497,3 +497,21 @@ export function saveGeminiKey(api_key: string) {
 export function deleteGeminiKey() {
   return request<{ ok: boolean }>("/user/gemini-key", { method: "DELETE" });
 }
+
+export interface ReadingProgressEntry {
+  book_id: number;
+  chapter_index: number;
+  last_read: string;
+}
+
+export function getReadingProgress() {
+  return request<{ entries: ReadingProgressEntry[] }>("/user/reading-progress").then((d) => d.entries);
+}
+
+export function saveReadingProgress(bookId: number, chapterIndex: number) {
+  return request<{ ok: boolean }>(`/user/reading-progress/${bookId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chapter_index: chapterIndex }),
+  });
+}

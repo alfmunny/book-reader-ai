@@ -497,6 +497,30 @@ async def set_setting(key: str, value: str) -> None:
         await db.commit()
 
 
+async def get_reading_progress(user_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT book_id, chapter_index, last_read FROM user_reading_progress WHERE user_id=? ORDER BY last_read DESC",
+            (user_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def upsert_reading_progress(user_id: int, book_id: int, chapter_index: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO user_reading_progress (user_id, book_id, chapter_index, last_read)
+               VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+               ON CONFLICT(user_id, book_id) DO UPDATE SET
+                 chapter_index=excluded.chapter_index,
+                 last_read=excluded.last_read""",
+            (user_id, book_id, chapter_index),
+        )
+        await db.commit()
+
+
 async def list_cached_books() -> list[dict]:
     """Return all cached books (without text field)."""
     async with aiosqlite.connect(DB_PATH) as db:

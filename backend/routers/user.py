@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key
-from services.db import set_user_gemini_key, get_user_by_id
+from services.db import set_user_gemini_key, get_user_by_id, get_reading_progress, upsert_reading_progress
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -39,4 +39,24 @@ async def save_gemini_key(
 @router.delete("/gemini-key")
 async def delete_gemini_key(user: dict = Depends(get_current_user)):
     await set_user_gemini_key(user["id"], None)
+    return {"ok": True}
+
+
+@router.get("/reading-progress")
+async def reading_progress(user: dict = Depends(get_current_user)):
+    entries = await get_reading_progress(user["id"])
+    return {"entries": entries}
+
+
+class ProgressUpdate(BaseModel):
+    chapter_index: int
+
+
+@router.put("/reading-progress/{book_id}")
+async def update_reading_progress(
+    book_id: int,
+    req: ProgressUpdate,
+    user: dict = Depends(get_current_user),
+):
+    await upsert_reading_progress(user["id"], book_id, req.chapter_index)
     return {"ok": True}

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -468,6 +468,9 @@ export default function ReaderPage() {
   function goToChapter(index: number) {
     setChapterIndex(index);
     saveLastChapter(Number(bookId), index);
+    if (session?.backendToken) {
+      saveReadingProgress(Number(bookId), index).catch(() => {});
+    }
     setSelectedText("");
     setTranslatedParagraphs([]);
     setTranslatedTitle(null);

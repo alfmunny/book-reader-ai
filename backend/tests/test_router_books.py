@@ -423,8 +423,17 @@ async def test_import_stream_always_allowed_for_free_user(client, classics_cache
 
 async def test_chapter_translation_blocked_for_free_user_non_classic(client, classics_cache):
     """AI translation on non-classic book → 402 for free-plan user."""
+    resp = await client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 402
+
+
+async def test_chapter_translation_blocked_even_when_cached(client, classics_cache):
+    """Gate fires before cache check — shared cache cannot bypass the plan gate."""
     from services.db import save_translation
-    # book 9999 is not in CLASSICS_FIXTURE → gate fires
+    await save_translation(9999, 0, "de", ["Übersetzung"])
     resp = await client.post(
         "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},

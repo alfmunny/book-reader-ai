@@ -25,11 +25,13 @@ jest.mock("@/lib/recentBooks", () => ({
 const mockGetPopularBooks = jest.fn();
 const mockGetMe = jest.fn();
 const mockSearchBooks = jest.fn();
+const mockGetClassics = jest.fn();
 
 jest.mock("@/lib/api", () => ({
   getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
+  getClassics: (...args: unknown[]) => mockGetClassics(...args),
 }));
 
 function makeBook(id: number) {
@@ -59,8 +61,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  mockGetMe.mockResolvedValue({ role: "user" });
+  mockGetMe.mockResolvedValue({ role: "user", plan: "free" });
   mockGetPopularBooks.mockResolvedValue(makePopularResponse(1)); // default: 200 total, 4 pages
+  mockGetClassics.mockResolvedValue([]); // empty free list by default → no lock icons
 });
 
 afterEach(() => {
@@ -76,13 +79,26 @@ async function renderDiscover() {
 }
 
 describe("Popular Classics – language filter", () => {
-  it("shows All/English/Deutsch/Français tabs", async () => {
+  it("shows All/English/Russian/Deutsch/Français tabs", async () => {
     await renderDiscover();
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Russian" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Deutsch" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "日本語" })).not.toBeInTheDocument();
+  });
+
+  it("Russian tab loads Russian-origin books from classics", async () => {
+    const user = userEvent.setup();
+    const ruBook = { id: 2554, title: "Crime and Punishment", authors: ["Dostoyevsky"], languages: ["en"], subjects: [], download_count: 50000, cover: "", original_language: "ru" };
+    mockGetClassics.mockResolvedValue([ruBook]);
+    await renderDiscover();
+    await user.click(screen.getByRole("button", { name: "Russian" }));
+    await act(flushPromises);
+    expect(screen.getAllByText("Crime and Punishment").length).toBeGreaterThan(0);
+    // popular API should NOT be called with "ru" since it comes from classics
+    expect(mockGetPopularBooks).not.toHaveBeenCalledWith("ru", expect.anything());
   });
 
   it("clicking a language tab fetches with that language and resets to page 1", async () => {
@@ -207,5 +223,41 @@ describe("Popular Classics – pagination", () => {
       await act(flushPromises);
     }
     expect(screen.getByRole("button", { name: /Next/i })).toBeDisabled();
+  });
+});
+
+describe("Popular Classics – freemium gate", () => {
+  it("shows upgrade modal when a locked book is clicked", async () => {
+    const user = userEvent.setup();
+    // Book 1 is not in the free list → locked for free users
+    mockGetClassics.mockResolvedValue([makeBook(999)]); // only book 999 is free
+    await renderDiscover();
+    await act(flushPromises); // wait for classics to load
+    // Click book 1 (locked)
+    const bookCards = screen.getAllByRole("button", { name: /Book 1/i });
+    await user.click(bookCards[0]);
+    expect(screen.getByText("Premium Book")).toBeInTheDocument();
+  });
+
+  it("does not show upgrade modal for free classic books", async () => {
+    const user = userEvent.setup();
+    // Book 1 IS in the free list
+    mockGetClassics.mockResolvedValue([makeBook(1)]);
+    await renderDiscover();
+    await act(flushPromises);
+    const bookCards = screen.getAllByRole("button", { name: /Book 1/i });
+    await user.click(bookCards[0]);
+    expect(screen.queryByText("Premium Book")).not.toBeInTheDocument();
+  });
+
+  it("paid users are never shown the upgrade modal", async () => {
+    const user = userEvent.setup();
+    mockGetMe.mockResolvedValue({ role: "user", plan: "paid" });
+    mockGetClassics.mockResolvedValue([makeBook(999)]); // book 1 not free
+    await renderDiscover();
+    await act(flushPromises);
+    const bookCards = screen.getAllByRole("button", { name: /Book 1/i });
+    await user.click(bookCards[0]);
+    expect(screen.queryByText("Premium Book")).not.toBeInTheDocument();
   });
 });

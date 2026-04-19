@@ -87,6 +87,10 @@ export function getPopularBooks(language = "", page = 1) {
   return request<PopularBooksResponse>(`/books/popular?${params}`);
 }
 
+export function getClassics() {
+  return request<BookMeta[]>("/books/classics");
+}
+
 export function getBookMeta(id: number) {
   return request<BookMeta>(`/books/${id}`);
 }
@@ -464,6 +468,7 @@ export interface BookMeta {
   subjects: string[];
   download_count: number;
   cover: string;
+  original_language?: string;
 }
 
 // Audiobooks
@@ -515,6 +520,7 @@ export function getMe() {
     hasGeminiKey: boolean;
     role: string;
     approved: boolean;
+    plan: string;
   }>("/user/me");
 }
 

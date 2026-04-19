@@ -28,6 +28,25 @@ logger = logging.getLogger(__name__)
 _POPULAR_BOOKS_PATH = os.path.join(os.path.dirname(__file__), "..", "popular_books.json")
 _popular_cache: list[dict] | None = None
 
+# Curated free classics list
+_CLASSICS_PATH = os.path.join(os.path.dirname(__file__), "..", "free_classics.json")
+_classics_cache: list[dict] | None = None
+
+
+def _get_classics() -> list[dict]:
+    global _classics_cache
+    if _classics_cache is None:
+        if os.path.isfile(_CLASSICS_PATH):
+            with open(_CLASSICS_PATH, encoding="utf-8") as f:
+                _classics_cache = json.load(f)
+        else:
+            _classics_cache = []
+    return _classics_cache
+
+
+def _get_free_ids() -> set[int]:
+    return {b["id"] for b in _get_classics()}
+
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -47,6 +66,12 @@ async def cached_books():
     return await list_cached_books()
 
 
+@router.get("/classics")
+async def classics():
+    """Return the curated free classics list (no auth required)."""
+    return _get_classics()
+
+
 @router.get("/popular")
 async def popular_books(
     language: str = "",
@@ -55,9 +80,18 @@ async def popular_books(
 ):
     """Return a paginated slice of the curated popular Gutenberg books manifest.
 
+    language="ru" is a special case: returns Russian-origin books from the
+    free_classics.json (stored as EN translations with original_language="ru").
+    Other language codes use the popular_books.json manifest.
     The manifest is either the new dict format {language: [books]} produced by
     seed_books.py --collections, or the legacy flat list.
     """
+    if language == "ru":
+        books = [b for b in _get_classics() if b.get("original_language") == "ru"]
+        total = len(books)
+        start = (page - 1) * per_page
+        return {"books": books[start: start + per_page], "total": total, "page": page, "per_page": per_page}
+
     global _popular_cache
     if _popular_cache is None:
         if not os.path.isfile(_POPULAR_BOOKS_PATH):
@@ -375,6 +409,14 @@ async def import_stream(
 
     Idempotent: skips already-cached work (same as preseed_translations.py).
     """
+    # Freemium gate: only free-classics books are importable on the free plan
+    free_ids = _get_free_ids()
+    if free_ids and book_id not in free_ids and user.get("plan", "free") != "paid":
+        raise HTTPException(
+            status_code=402,
+            detail="This book is not in the free classics collection. Upgrade to import any book.",
+        )
+
     # Resolve Gemini key once up front
     raw_key = user.get("gemini_key")
     decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None

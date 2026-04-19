@@ -265,6 +265,15 @@ async def delete_user(user_id: int) -> None:
         await db.commit()
 
 
+async def set_user_plan(user_id: int, plan: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET plan = ? WHERE id = ?",
+            (plan, user_id),
+        )
+        await db.commit()
+
+
 async def set_user_gemini_key(user_id: int, encrypted_key: str | None) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(

@@ -62,8 +62,12 @@ test("clicking a library book navigates to reader page", async ({ page }) => {
   }, MOCK_BOOK);
   await page.reload();
 
-  // Click the BookCard (contains author text, unlike search pills)
-  await page.getByRole("button").filter({ hasText: "Jane Austen" }).first().click();
+  // Explicitly open the Library tab — an unauthenticated session can flip to Discover
+  await page.getByRole("button", { name: "Your Library" }).click();
+  // Match by book title (unique in library, no .first() needed)
+  const bookCard = page.getByRole("button", { name: /Pride and Prejudice/ });
+  await expect(bookCard).toBeVisible();
+  await bookCard.click();
   await page.waitForURL(/\/reader\/1342/);
   expect(page.url()).toContain("/reader/1342");
 });

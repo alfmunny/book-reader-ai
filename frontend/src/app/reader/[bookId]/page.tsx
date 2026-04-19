@@ -1028,7 +1028,7 @@ export default function ReaderPage() {
           <InsightChat
             bookId={bookId}
             userId={session?.backendUser?.id ?? null}
-            hasGeminiKey={hasGeminiKey}
+            hasGeminiKey={hasGeminiKey ?? false}
             isVisible={sidebarOpen}
             chapterText={current?.text ?? ""}
             chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}

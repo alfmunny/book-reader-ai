@@ -22,9 +22,6 @@ from services.db import (
     save_audiobook,
     get_audiobook,
     delete_audiobook,
-    save_audio,
-    get_cached_audio,
-    delete_chapter_audio_cache,
 )
 
 
@@ -203,113 +200,6 @@ async def test_delete_audiobook():
 async def test_delete_audiobook_nonexistent_does_not_raise():
     await delete_audiobook(99999)  # should not raise
 
-
-# ── Audio cache ───────────────────────────────────────────────────────────────
-
-async def test_get_cached_audio_miss_returns_none():
-    result = await get_cached_audio(2229, 0, "google", "Charon")
-    assert result is None
-
-
-async def test_save_and_get_audio_roundtrip():
-    audio_bytes = b"\x00\x01\x02\x03" * 10
-    await save_audio(2229, 0, "google", "Charon", audio_bytes, "audio/wav")
-    result = await get_cached_audio(2229, 0, "google", "Charon")
-    assert result is not None
-    cached_bytes, content_type = result
-    assert cached_bytes == audio_bytes
-    assert content_type == "audio/wav"
-
-
-async def test_save_audio_replaces_existing():
-    await save_audio(2229, 0, "google", "Charon", b"old", "audio/wav")
-    await save_audio(2229, 0, "google", "Charon", b"new", "audio/wav")
-    cached_bytes, _ = await get_cached_audio(2229, 0, "google", "Charon")
-    assert cached_bytes == b"new"
-
-
-async def test_audio_cache_keyed_by_provider_and_voice():
-    """Different providers / voices for the same chapter must not collide."""
-    await save_audio(2229, 0, "google", "Charon", b"google-charon", "audio/wav")
-    await save_audio(2229, 0, "google", "Leda", b"google-leda", "audio/wav")
-    await save_audio(2229, 0, "edge", "de-DE-FlorianMultilingualNeural", b"edge", "audio/mpeg")
-
-    a, _ = await get_cached_audio(2229, 0, "google", "Charon")
-    b, _ = await get_cached_audio(2229, 0, "google", "Leda")
-    c, _ = await get_cached_audio(2229, 0, "edge", "de-DE-FlorianMultilingualNeural")
-    assert a == b"google-charon"
-    assert b == b"google-leda"
-    assert c == b"edge"
-
-
-async def test_audio_cache_keyed_by_chapter():
-    await save_audio(2229, 0, "google", "Charon", b"chapter-0", "audio/wav")
-    await save_audio(2229, 1, "google", "Charon", b"chapter-1", "audio/wav")
-
-    a, _ = await get_cached_audio(2229, 0, "google", "Charon")
-    b, _ = await get_cached_audio(2229, 1, "google", "Charon")
-    assert a == b"chapter-0"
-    assert b == b"chapter-1"
-
-
-async def test_audio_cache_keyed_by_chunk_index():
-    """Different chunks of the same chapter must be cached independently."""
-    await save_audio(2229, 0, "google", "Charon", b"chunk-0", "audio/wav", chunk_index=0)
-    await save_audio(2229, 0, "google", "Charon", b"chunk-1", "audio/wav", chunk_index=1)
-    await save_audio(2229, 0, "google", "Charon", b"chunk-2", "audio/wav", chunk_index=2)
-
-    a, _ = await get_cached_audio(2229, 0, "google", "Charon", chunk_index=0)
-    b, _ = await get_cached_audio(2229, 0, "google", "Charon", chunk_index=1)
-    c, _ = await get_cached_audio(2229, 0, "google", "Charon", chunk_index=2)
-    assert a == b"chunk-0"
-    assert b == b"chunk-1"
-    assert c == b"chunk-2"
-
-
-async def test_delete_chapter_audio_cache_removes_all_chunks_for_chapter():
-    # Save 3 chunks for chapter 0 (Faust) plus one for chapter 1 (Pride & Prejudice)
-    await save_audio(2229, 0, "google", "Charon", b"c0", "audio/wav", chunk_index=0)
-    await save_audio(2229, 0, "google", "Charon", b"c1", "audio/wav", chunk_index=1)
-    await save_audio(2229, 0, "google", "Charon", b"c2", "audio/wav", chunk_index=2)
-    await save_audio(1342, 0, "google", "Charon", b"other", "audio/wav", chunk_index=0)
-
-    deleted = await delete_chapter_audio_cache(2229, 0)
-    assert deleted == 3
-
-    # All chunks for the deleted chapter are gone
-    assert await get_cached_audio(2229, 0, "google", "Charon", chunk_index=0) is None
-    assert await get_cached_audio(2229, 0, "google", "Charon", chunk_index=1) is None
-    assert await get_cached_audio(2229, 0, "google", "Charon", chunk_index=2) is None
-    # The unrelated chapter is untouched
-    other = await get_cached_audio(1342, 0, "google", "Charon")
-    assert other is not None and other[0] == b"other"
-
-
-async def test_delete_chapter_audio_cache_removes_across_voices_and_providers():
-    """Regenerate should clear ALL voices/providers for the chapter, not just one."""
-    await save_audio(2229, 0, "google", "Charon", b"a", "audio/wav", chunk_index=0)
-    await save_audio(2229, 0, "google", "Leda", b"b", "audio/wav", chunk_index=0)
-    await save_audio(2229, 0, "edge", "de-DE-FlorianMultilingualNeural", b"c", "audio/mpeg", chunk_index=0)
-
-    deleted = await delete_chapter_audio_cache(2229, 0)
-    assert deleted == 3
-
-    assert await get_cached_audio(2229, 0, "google", "Charon") is None
-    assert await get_cached_audio(2229, 0, "google", "Leda") is None
-    assert await get_cached_audio(2229, 0, "edge", "de-DE-FlorianMultilingualNeural") is None
-
-
-async def test_delete_chapter_audio_cache_returns_zero_when_empty():
-    deleted = await delete_chapter_audio_cache(9999, 99)
-    assert deleted == 0
-
-
-async def test_get_cached_audio_default_chunk_index_is_zero():
-    """Backwards compat: callers that don't pass chunk_index get chunk 0."""
-    await save_audio(2229, 0, "google", "Charon", b"first", "audio/wav")  # default chunk=0
-    result = await get_cached_audio(2229, 0, "google", "Charon")  # default chunk=0
-    assert result is not None
-    assert result[0] == b"first"
 
 
 # ── DB_PATH env var + parent directory handling ──────────────────────────────

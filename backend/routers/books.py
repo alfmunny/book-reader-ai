@@ -14,12 +14,9 @@ from services.db import (
     list_cached_books,
     get_cached_translation,
     save_translation,
-    get_cached_audio,
-    save_audio,
 )
 from services.splitter import build_chapters, build_chapters_from_html
 from services.translate import translate_text
-from services.tts import synthesize, chunk_text, EDGE_VOICE_MAP, _pick_edge_voice
 from services.auth import get_current_user, get_optional_user, decrypt_api_key
 
 logger = logging.getLogger(__name__)
@@ -366,7 +363,6 @@ def _sse(event: str, data: dict) -> str:
 async def import_stream(
     book_id: int,
     target_language: str = Query("", description="Target language for pre-translation (empty = skip)"),
-    generate_tts: bool = Query(False, description="Also pre-generate TTS audio for each chunk"),
     user: dict | None = Depends(get_optional_user),
 ):
     """Stream import progress for a book via Server-Sent Events.
@@ -375,7 +371,6 @@ async def import_stream(
       fetching   — downloading book text from Gutenberg (if not cached)
       splitting  — computing chapter structure
       translating — translating each chapter into target_language
-      tts        — generating TTS audio for each chunk of each chapter
       done       — all steps complete
 
     Idempotent: skips already-cached work (same as preseed_translations.py).
@@ -499,52 +494,6 @@ async def import_stream(
                     await save_translation(book_id, i, target_language, paragraphs)
                     yield _sse("progress", {
                         "stage": "translating", "current": i + 1,
-                        "total": len(chapters), "title": ch.title,
-                    })
-
-            # ── 4. Pre-generate TTS audio ──────────────────────────────────
-            if generate_tts and chapters:
-                voice = _pick_edge_voice(source_language)
-                yield _sse("stage", {
-                    "stage": "tts",
-                    "message": f"Generating audio ({voice})…",
-                    "total": len(chapters),
-                    "provider": "edge",
-                    "voice": voice,
-                })
-                for i, ch in enumerate(chapters):
-                    if not ch.text.strip():
-                        yield _sse("progress", {"stage": "tts", "current": i + 1,
-                                                "total": len(chapters), "skipped": True})
-                        continue
-
-                    chunks = chunk_text(ch.text)
-                    for chunk_idx, chunk in enumerate(chunks):
-                        cached_audio = await get_cached_audio(
-                            book_id, i, "edge", voice, chunk_idx
-                        )
-                        if cached_audio:
-                            continue
-                        try:
-                            audio_bytes, content_type = await synthesize(
-                                chunk, source_language, 1.0, provider="edge",
-                            )
-                            await save_audio(
-                                book_id, i, "edge", voice,
-                                audio_bytes, content_type, chunk_idx,
-                            )
-                        except Exception as e:
-                            logger.exception("TTS failed for book=%s ch=%s chunk=%s",
-                                             book_id, i, chunk_idx)
-                            yield _sse("progress", {
-                                "stage": "tts", "current": i + 1,
-                                "total": len(chapters), "title": ch.title,
-                                "error": str(e)[:120],
-                            })
-                            break  # skip remaining chunks for this chapter
-
-                    yield _sse("progress", {
-                        "stage": "tts", "current": i + 1,
                         "total": len(chapters), "title": ch.title,
                     })
 

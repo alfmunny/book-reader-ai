@@ -39,7 +39,7 @@ test("yields parsed SSE events in order", async () => {
   );
 
   const events = [];
-  for await (const ev of importBookStream(1342, "en", false)) {
+  for await (const ev of importBookStream(1342, "en")) {
     events.push(ev);
   }
 
@@ -50,21 +50,20 @@ test("yields parsed SSE events in order", async () => {
   ]);
 });
 
-test("passes target_language and generate_tts as query params", async () => {
+test("passes target_language as query param", async () => {
   global.fetch = jest.fn().mockResolvedValue(sseStream([]));
 
-  const gen = importBookStream(1342, "de", true);
+  const gen = importBookStream(1342, "de");
   await gen.next();
 
   const [url] = (global.fetch as jest.Mock).mock.calls[0];
   expect(url).toContain("target_language=de");
-  expect(url).toContain("generate_tts=true");
 });
 
 test("sends Authorization header from auth token", async () => {
   global.fetch = jest.fn().mockResolvedValue(sseStream([]));
 
-  const gen = importBookStream(1342, "en", false);
+  const gen = importBookStream(1342, "en");
   await gen.next();
 
   const headers = (global.fetch as jest.Mock).mock.calls[0][1].headers;
@@ -81,7 +80,7 @@ test("handles SSE frame split across chunks", async () => {
   );
 
   const events = [];
-  for await (const ev of importBookStream(1, "en", false)) {
+  for await (const ev of importBookStream(1, "en")) {
     events.push(ev);
   }
   expect(events.length).toBe(2);
@@ -97,6 +96,6 @@ test("throws on non-ok response", async () => {
     json: jest.fn().mockResolvedValue({ detail: "Access denied" }),
   });
 
-  const gen = importBookStream(1342, "en", false);
+  const gen = importBookStream(1342, "en");
   await expect(gen.next()).rejects.toThrow("Access denied");
 });

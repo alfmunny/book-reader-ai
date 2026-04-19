@@ -211,7 +211,7 @@ async def test_stats(admin_client, admin_db):
     data = res.json()
     assert "users_total" in data
     assert "books_cached" in data
-    assert "audio_cache_mb" in data
+    assert "translations_cached" in data
     assert data["users_total"] >= 1
 
 

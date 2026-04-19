@@ -49,7 +49,6 @@ export default function BookImportPage() {
   const [error, setError] = useState("");
   const [loginRequired, setLoginRequired] = useState(false);
   const [isDone, setIsDone] = useState(false);
-  const [generateTts, setGenerateTts] = useState(false);
   const [started, setStarted] = useState(false);
 
   // Target language from user settings
@@ -79,7 +78,6 @@ export default function BookImportPage() {
       for await (const ev of importBookStream(
         Number(bookId),
         targetLangRef.current,
-        generateTts,
         abort.signal,
       )) {
         handleEvent(ev);
@@ -214,23 +212,6 @@ export default function BookImportPage() {
                 </span>{" "}
                 so your first read is instant.
               </p>
-              <label className="flex items-start gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50/50 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={generateTts}
-                  onChange={(e) => setGenerateTts(e.target.checked)}
-                  className="mt-0.5 accent-amber-700"
-                />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-ink">
-                    Also pre-generate audio narration
-                  </div>
-                  <div className="text-xs text-stone-500 mt-0.5">
-                    Uses free Microsoft Edge voices. Slower — can take several
-                    minutes. You can always generate on-demand while reading.
-                  </div>
-                </div>
-              </label>
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={startImport}

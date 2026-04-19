@@ -920,7 +920,7 @@ export default function ReaderPage() {
                       ttsSeekRef.current(startTime);
                       return;
                     }
-                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsProvider)
+                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsGender)
                       .then((url) => {
                         const audio = new Audio(url);
                         audio.onended = () => URL.revokeObjectURL(url);

@@ -18,7 +18,6 @@ import {
   askQuestion,
   synthesizeSpeech,
   getTtsChunks,
-  deleteAudioCache,
   searchAudiobooks,
   getAudiobook,
   saveAudiobook,
@@ -201,7 +200,7 @@ test("synthesizeSpeech returns a blob URL", async () => {
   expect(url).toBe("blob:fake-url");
 });
 
-test("synthesizeSpeech defaults provider to 'auto'", async () => {
+test("synthesizeSpeech defaults gender to 'female'", async () => {
   global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
@@ -209,30 +208,18 @@ test("synthesizeSpeech defaults provider to 'auto'", async () => {
   });
   await synthesizeSpeech("Hello", "en");
   const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-  expect(body.provider).toBe("auto");
+  expect(body.gender).toBe("female");
 });
 
-test("synthesizeSpeech sends explicit provider value", async () => {
+test("synthesizeSpeech sends explicit gender value", async () => {
   global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     blob: jest.fn().mockResolvedValue(new Blob(["x"])),
   });
-  await synthesizeSpeech("Hello", "en", 1.0, "google");
+  await synthesizeSpeech("Hello", "en", 1.0, "male");
   const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-  expect(body.provider).toBe("google");
-});
-
-test("synthesizeSpeech includes Authorization header when token is set", async () => {
-  setAuthToken("my-jwt");
-  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
-  await synthesizeSpeech("Hello", "en", 1.0, "google");
-  const headers = (global.fetch as jest.Mock).mock.calls[0][1].headers;
-  expect(headers.Authorization).toBe("Bearer my-jwt");
+  expect(body.gender).toBe("male");
 });
 
 test("synthesizeSpeech forwards an AbortSignal to fetch", async () => {
@@ -242,20 +229,9 @@ test("synthesizeSpeech forwards an AbortSignal to fetch", async () => {
     blob: jest.fn().mockResolvedValue(new Blob(["x"])),
   });
   const abort = new AbortController();
-  await synthesizeSpeech("Hello", "en", 1.0, "auto", { signal: abort.signal });
+  await synthesizeSpeech("Hello", "en", 1.0, "female", abort.signal);
   const opts = (global.fetch as jest.Mock).mock.calls[0][1];
   expect(opts.signal).toBe(abort.signal);
-});
-
-test("synthesizeSpeech includes chunk_index when provided", async () => {
-  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
-  await synthesizeSpeech("Hello", "en", 1.0, "auto", { bookId: 1, chapterIndex: 2, chunkIndex: 5 });
-  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-  expect(body.chunk_index).toBe(5);
 });
 
 test("getTtsChunks calls /ai/tts/chunks and returns the chunk list", async () => {
@@ -268,41 +244,6 @@ test("getTtsChunks calls /ai/tts/chunks and returns the chunk list", async () =>
   expect(JSON.parse(opts.body).text).toBe("the full chapter text");
 });
 
-test("deleteAudioCache sends DELETE with book_id and chapter_index", async () => {
-  mockFetch({ deleted: 5 });
-  const result = await deleteAudioCache(1342, 3);
-  expect(result.deleted).toBe(5);
-  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
-  expect(url).toContain("/ai/tts/cache");
-  expect(url).toContain("book_id=1342");
-  expect(url).toContain("chapter_index=3");
-  expect(opts.method).toBe("DELETE");
-});
-
-test("synthesizeSpeech includes book_id and chapter_index when provided", async () => {
-  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
-  await synthesizeSpeech("Hello", "en", 1.0, "auto", { bookId: 1342, chapterIndex: 3 });
-  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-  expect(body.book_id).toBe(1342);
-  expect(body.chapter_index).toBe(3);
-});
-
-test("synthesizeSpeech omits book_id when not provided", async () => {
-  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
-  await synthesizeSpeech("Hello", "en");
-  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-  expect(body.book_id).toBeUndefined();
-  expect(body.chapter_index).toBeUndefined();
-});
-
 test("synthesizeSpeech throws on non-ok response", async () => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: false,
@@ -310,16 +251,6 @@ test("synthesizeSpeech throws on non-ok response", async () => {
     json: jest.fn().mockResolvedValue({}),
   });
   await expect(synthesizeSpeech("Hello", "en")).rejects.toThrow("TTS failed");
-});
-
-test("synthesizeSpeech surfaces backend error detail", async () => {
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: false,
-    statusText: "Bad Request",
-    json: jest.fn().mockResolvedValue({ detail: "Gemini API key required. Please add it in your profile." }),
-  });
-  await expect(synthesizeSpeech("Hello", "en", 1.0, "google"))
-    .rejects.toThrow(/Gemini API key required/);
 });
 
 // ── Audiobooks ────────────────────────────────────────────────────────────────

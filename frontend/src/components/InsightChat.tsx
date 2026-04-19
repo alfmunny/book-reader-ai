@@ -7,7 +7,7 @@ import {
   askQuestion,
   getReferences,
 } from "@/lib/api";
-import { getSettings } from "@/lib/settings";
+import { getSettings, saveSettings } from "@/lib/settings";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -70,6 +70,7 @@ export default function InsightChat({
   // Read language from settings at first render (lazy init avoids the
   // "parent state not yet updated" race where useState(prop) captures "en").
   const [lang, setLang] = useState(() => getSettings().insightLang);
+  const [chatFontSize, setChatFontSize] = useState<"xs" | "sm">(() => getSettings().chatFontSize);
   // Use a ref so effects that shouldn't re-run on lang-change can still read current value
   const langRef = useRef(lang);
   langRef.current = lang;
@@ -319,6 +320,17 @@ export default function InsightChat({
               ))}
             </select>
             <button
+              onClick={() => {
+                const next = chatFontSize === "xs" ? "sm" : "xs";
+                setChatFontSize(next);
+                saveSettings({ chatFontSize: next });
+              }}
+              title={`Chat font size: ${chatFontSize}. Click to toggle.`}
+              className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-amber-200 text-amber-600 hover:text-amber-900 text-xs font-bold"
+            >
+              {chatFontSize === "xs" ? "A" : "a"}
+            </button>
+            <button
               onClick={() => setRefreshTick((n) => n + 1)}
               title={hasGeminiKey ? "Append a fresh insight" : "Gemini API key required"}
               disabled={!hasGeminiKey}
@@ -381,7 +393,7 @@ export default function InsightChat({
               if (msg.role === "user") {
                 return (
                   <div key={i} className="flex flex-col items-end gap-1.5">
-                    <div className="bg-amber-700 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] text-sm leading-relaxed shadow-sm">
+                    <div className={`bg-amber-700 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] leading-relaxed shadow-sm text-${chatFontSize}`}>
                       {msg.content}
                     </div>
                     {msg.context && (
@@ -399,7 +411,7 @@ export default function InsightChat({
               // Assistant message — styled as a subtle card
               return (
                 <div key={i} className="bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] shadow-sm">
-                  <div className="prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:text-sm prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-relaxed prose-p:my-1.5 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-sm text-ink">
+                  <div className={`prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-relaxed prose-p:my-1.5 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-ink text-${chatFontSize}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                   </div>
                 </div>
@@ -513,7 +525,7 @@ export default function InsightChat({
           )}
 
           {refsContent && (
-            <div className="prose prose-sm max-w-none font-serif text-sm">
+            <div className={`prose prose-sm max-w-none font-serif text-${chatFontSize}`}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{refsContent}</ReactMarkdown>
             </div>
           )}

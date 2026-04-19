@@ -44,7 +44,7 @@ function makeBook(id: number) {
   };
 }
 
-function makePopularResponse(page: number, total = 120, perPage = 50) {
+function makePopularResponse(page: number, total = 200, perPage = 50) {
   const start = (page - 1) * perPage;
   const books = Array.from({ length: Math.min(perPage, total - start) }, (_, i) =>
     makeBook(start + i + 1)
@@ -60,7 +60,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   mockGetMe.mockResolvedValue({ role: "user" });
-  mockGetPopularBooks.mockResolvedValue(makePopularResponse(1));
+  mockGetPopularBooks.mockResolvedValue(makePopularResponse(1)); // default: 200 total, 4 pages
 });
 
 afterEach(() => {
@@ -72,7 +72,47 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 async function renderDiscover() {
   render(<Home />);
   await act(flushPromises);
+  await act(flushPromises); // second flush: tab→"discover" triggers popular books effect
 }
+
+describe("Popular Classics – language filter", () => {
+  it("shows All/English/Deutsch/Français/日本語 tabs", async () => {
+    await renderDiscover();
+    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Deutsch" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "日本語" })).toBeInTheDocument();
+  });
+
+  it("clicking a language tab fetches with that language and resets to page 1", async () => {
+    const user = userEvent.setup();
+    mockGetPopularBooks
+      .mockResolvedValueOnce(makePopularResponse(1, 120))  // initial load (All)
+      .mockResolvedValueOnce(makePopularResponse(1, 200)); // English tab
+    await renderDiscover();
+    await user.click(screen.getByRole("button", { name: "English" }));
+    await act(flushPromises);
+    expect(mockGetPopularBooks).toHaveBeenCalledWith("en", 1);
+  });
+
+  it("language change resets pagination to page 1", async () => {
+    const user = userEvent.setup();
+    mockGetPopularBooks
+      .mockResolvedValueOnce(makePopularResponse(1))       // initial All
+      .mockResolvedValueOnce(makePopularResponse(2))       // page 2
+      .mockResolvedValueOnce(makePopularResponse(1, 100)); // German page 1
+    await renderDiscover();
+    // Go to page 2
+    await user.click(screen.getByRole("button", { name: /Next/i }));
+    await act(flushPromises);
+    expect(screen.getByText("Page 2 of 4")).toBeInTheDocument();
+    // Switch language → should reset to page 1
+    await user.click(screen.getByRole("button", { name: "Deutsch" }));
+    await act(flushPromises);
+    expect(mockGetPopularBooks).toHaveBeenLastCalledWith("de", 1);
+  });
+});
 
 describe("Popular Classics – view toggle", () => {
   it("renders grid view by default", async () => {
@@ -114,7 +154,7 @@ describe("Popular Classics – view toggle", () => {
 describe("Popular Classics – pagination", () => {
   it("shows pagination when total > per_page", async () => {
     await renderDiscover();
-    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Page 1 of 4")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Prev/i })).toBeDisabled();
   });
@@ -133,8 +173,8 @@ describe("Popular Classics – pagination", () => {
     await renderDiscover();
     await user.click(screen.getByRole("button", { name: /Next/i }));
     await act(flushPromises);
-    expect(mockGetPopularBooks).toHaveBeenCalledWith(2);
-    expect(screen.getByText("Page 2 of 3")).toBeInTheDocument();
+    expect(mockGetPopularBooks).toHaveBeenCalledWith("", 2);
+    expect(screen.getByText("Page 2 of 4")).toBeInTheDocument();
   });
 
   it("Prev is enabled on page 2 and navigates back to page 1", async () => {
@@ -150,23 +190,22 @@ describe("Popular Classics – pagination", () => {
     expect(prev).not.toBeDisabled();
     await user.click(prev);
     await act(flushPromises);
-    expect(mockGetPopularBooks).toHaveBeenCalledWith(1);
-    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument();
+    expect(mockGetPopularBooks).toHaveBeenCalledWith("", 1);
+    expect(screen.getByText("Page 1 of 4")).toBeInTheDocument();
   });
 
   it("Next is disabled on the last page", async () => {
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse(3, 120));
-    // Simulate starting on page 3 by rendering and navigating
     const user = userEvent.setup();
     mockGetPopularBooks
       .mockResolvedValueOnce(makePopularResponse(1))
       .mockResolvedValueOnce(makePopularResponse(2))
-      .mockResolvedValueOnce(makePopularResponse(3));
+      .mockResolvedValueOnce(makePopularResponse(3))
+      .mockResolvedValueOnce(makePopularResponse(4));
     await renderDiscover();
-    await user.click(screen.getByRole("button", { name: /Next/i }));
-    await act(flushPromises);
-    await user.click(screen.getByRole("button", { name: /Next/i }));
-    await act(flushPromises);
+    for (let i = 0; i < 3; i++) {
+      await user.click(screen.getByRole("button", { name: /Next/i }));
+      await act(flushPromises);
+    }
     expect(screen.getByRole("button", { name: /Next/i })).toBeDisabled();
   });
 });

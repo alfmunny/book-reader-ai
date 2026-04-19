@@ -397,14 +397,18 @@ async def test_translation_status_uncached_book(client):
 async def test_translation_status_with_translations(client):
     """Cached book with one chapter translated returns correct counts."""
     from services.db import save_translation
+    from services.book_chapters import clear_cache
+    book_id = 8888  # distinct ID — avoids _chapter_cache collision with 1342
+    meta = {**MOCK_META, "id": book_id}
     text = (
         "CHAPTER I\n\n" + ("The quick brown fox jumps. " * 80) + "\n\n"
         + "CHAPTER II\n\n" + ("A lazy dog sat by the fire. " * 80)
     )
-    await save_book(1342, MOCK_META, text)
-    await save_translation(1342, 0, "zh", ["第一章"])
+    clear_cache(book_id)
+    await save_book(book_id, meta, text)
+    await save_translation(book_id, 0, "zh", ["第一章"])
 
-    resp = await client.get("/api/books/1342/translation-status?target_language=zh")
+    resp = await client.get(f"/api/books/{book_id}/translation-status?target_language=zh")
     assert resp.status_code == 200
     data = resp.json()
     assert data["translated_chapters"] == 1

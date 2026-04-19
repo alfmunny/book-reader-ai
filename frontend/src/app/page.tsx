@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { searchBooks, getPopularBooks, getMe, BookMeta } from "@/lib/api";
+import { searchBooks, getPopularBooks, getMe, getReadingProgress, BookMeta } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
@@ -59,11 +59,29 @@ export default function Home() {
     if (status === "unauthenticated") setTab("discover");
   }, [status]);
 
-  // Fetch user info only when authenticated.
+  // Fetch user info and sync reading progress from backend when authenticated.
   useEffect(() => {
     if (status !== "authenticated") return;
     getMe().then((me) => {
       setIsAdmin(me.role === "admin");
+    }).catch(() => {});
+    getReadingProgress().then((entries) => {
+      const local = getRecentBooks();
+      let changed = false;
+      const merged = [...local];
+      for (const entry of entries) {
+        const backendTs = new Date(entry.last_read).getTime();
+        const idx = merged.findIndex((b) => b.id === entry.book_id);
+        if (idx === -1) continue;
+        if (backendTs > merged[idx].lastRead || merged[idx].lastChapter !== entry.chapter_index) {
+          merged[idx] = { ...merged[idx], lastChapter: entry.chapter_index, lastRead: Math.max(backendTs, merged[idx].lastRead) };
+          changed = true;
+        }
+      }
+      if (changed) {
+        localStorage.setItem("recent_books", JSON.stringify(merged));
+        setRecentBooks(merged);
+      }
     }).catch(() => {});
   }, [status]);
 

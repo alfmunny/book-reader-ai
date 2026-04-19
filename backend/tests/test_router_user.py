@@ -3,8 +3,11 @@ Tests for routers/user.py — profile and Gemini key management.
 """
 
 import pytest
-from services.db import get_user_by_id, set_user_gemini_key
+from services.db import get_user_by_id, set_user_gemini_key, save_book
 from services.auth import encrypt_api_key, decrypt_api_key
+
+_BOOK_META = {"title": "Test Book", "authors": ["Author"], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
+BOOK_ID = 9999
 
 
 async def test_get_me_returns_profile(client, test_user):
@@ -51,3 +54,33 @@ async def test_delete_gemini_key(client, test_user):
 async def test_delete_gemini_key_when_none_does_not_raise(client):
     resp = await client.delete("/api/user/gemini-key")
     assert resp.status_code == 200
+
+
+async def test_reading_progress_empty_initially(client, test_user):
+    resp = await client.get("/api/user/reading-progress")
+    assert resp.status_code == 200
+    assert resp.json()["entries"] == []
+
+
+async def test_reading_progress_save_and_retrieve(client, test_user):
+    await save_book(BOOK_ID, _BOOK_META, "Chapter text")
+    resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 3})
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+    resp = await client.get("/api/user/reading-progress")
+    entries = resp.json()["entries"]
+    assert len(entries) == 1
+    assert entries[0]["book_id"] == BOOK_ID
+    assert entries[0]["chapter_index"] == 3
+
+
+async def test_reading_progress_upserts(client, test_user):
+    await save_book(BOOK_ID, _BOOK_META, "Chapter text")
+    await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 1})
+    await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 5})
+
+    resp = await client.get("/api/user/reading-progress")
+    entries = resp.json()["entries"]
+    assert len(entries) == 1
+    assert entries[0]["chapter_index"] == 5

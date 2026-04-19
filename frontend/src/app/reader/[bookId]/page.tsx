@@ -453,6 +453,8 @@ export default function ReaderPage() {
     saveLastChapter(Number(bookId), index);
     setSelectedText("");
     setTranslatedParagraphs([]);
+    setTranslatedTitle(null);
+    setTranslationUsedProvider("");
     setAudioCurrentTime(0);
     setAudioDuration(0);
     document.getElementById("reader-scroll")?.scrollTo(0, 0);
@@ -835,13 +837,18 @@ export default function ReaderPage() {
               </div>
             ) : (
               <>
-                {/* Chapter heading — shown at top of every chapter, scrolls with content */}
+                {/* Chapter heading — shows original title always; translated title below when available */}
                 {current?.title && (
-                  <h2 className="prose-reader mx-auto mb-8 text-center font-serif font-semibold text-lg text-ink/80" data-testid="reader-chapter-heading">
-                    {translationEnabled && translatedTitle
-                      ? translatedTitle
-                      : current.title}
-                  </h2>
+                  <div className="prose-reader mx-auto mb-8 text-center" data-testid="reader-chapter-heading">
+                    <h2 className="font-serif font-semibold text-lg text-ink/80">
+                      {current.title}
+                    </h2>
+                    {translationEnabled && translatedTitle && (
+                      <p className="font-serif text-base text-amber-700 mt-1">
+                        {translatedTitle}
+                      </p>
+                    )}
+                  </div>
                 )}
                 <SentenceReader
                   text={current?.text ?? ""}

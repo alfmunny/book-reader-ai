@@ -1,20 +1,34 @@
 /**
  * Tests for the chapter heading shown at the top of each chapter's content area.
  *
- * The heading lives inside page.tsx's reader-scroll area and should:
- *   - render the chapter title when the current chapter has one
- *   - not render when the chapter title is empty/undefined (loading or missing)
+ * The heading should:
+ *   - always show the original chapter title
+ *   - show the translated title below when translation is enabled and available
+ *   - not render when the chapter title is empty/undefined
  */
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-// Minimal harness that mirrors the reader's chapter-heading rendering logic
-function ChapterHeadingHarness({ title }: { title: string | undefined }) {
+// Harness mirrors the updated reader chapter-heading rendering logic
+function ChapterHeadingHarness({
+  title,
+  translationEnabled = false,
+  translatedTitle = null,
+}: {
+  title: string | undefined;
+  translationEnabled?: boolean;
+  translatedTitle?: string | null;
+}) {
   return (
     <div>
       {title && (
-        <h2 data-testid="reader-chapter-heading">{title}</h2>
+        <div data-testid="reader-chapter-heading">
+          <h2>{title}</h2>
+          {translationEnabled && translatedTitle && (
+            <p>{translatedTitle}</p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -40,5 +54,36 @@ describe("Reader chapter heading", () => {
   it("does not render while loading (title undefined)", () => {
     render(<ChapterHeadingHarness title={undefined} />);
     expect(screen.queryByTestId("reader-chapter-heading")).not.toBeInTheDocument();
+  });
+
+  it("shows original title even when translation is enabled but not yet loaded", () => {
+    render(<ChapterHeadingHarness title="Chapter I" translationEnabled={true} translatedTitle={null} />);
+    expect(screen.getByText("Chapter I")).toBeInTheDocument();
+    // no second title element
+    expect(screen.getAllByRole("heading").length).toBe(1);
+  });
+
+  it("shows both original and translated title when translation is available", () => {
+    render(
+      <ChapterHeadingHarness
+        title="Chapter I"
+        translationEnabled={true}
+        translatedTitle="第一章"
+      />
+    );
+    expect(screen.getByText("Chapter I")).toBeInTheDocument();
+    expect(screen.getByText("第一章")).toBeInTheDocument();
+  });
+
+  it("does not show translated title when translation is disabled", () => {
+    render(
+      <ChapterHeadingHarness
+        title="Chapter I"
+        translationEnabled={false}
+        translatedTitle="第一章"
+      />
+    );
+    expect(screen.getByText("Chapter I")).toBeInTheDocument();
+    expect(screen.queryByText("第一章")).not.toBeInTheDocument();
   });
 });

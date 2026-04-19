@@ -30,6 +30,7 @@ jest.mock("@/lib/api", () => ({
   getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
+  getBookTranslationStatus: () => Promise.resolve({ book_id: 0, target_language: "en", total_chapters: 0, translated_chapters: 0, bulk_active: false }),
 }));
 
 function makeBook(id: number) {

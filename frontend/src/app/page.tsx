@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { searchBooks, getPopularBooks, getMe, BookMeta } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
+import BookDetailModal from "@/components/BookDetailModal";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -42,6 +43,7 @@ export default function Home() {
 
   const [tab, setTab] = useState<Tab>("library");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<BookMeta | null>(null);
 
   // ── Library state ──
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
@@ -130,6 +132,10 @@ export default function Home() {
     }
   }
 
+  function handleBookClick(book: BookMeta) {
+    setSelectedBook(book);
+  }
+
   return (
     <main className="min-h-screen bg-parchment">
       {/* Header */}
@@ -215,7 +221,7 @@ export default function Home() {
                   <BookCard
                     key={book.id}
                     book={book}
-                    onClick={() => openBook(book.id)}
+                    onClick={() => handleBookClick(book)}
                     badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
                     onRemove={() => {
                       if (!confirm(`Remove "${book.title}" from your library?`)) return;
@@ -318,7 +324,7 @@ export default function Home() {
               {!searching && searchResults.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {searchResults.map((book) => (
-                    <BookCard key={book.id} book={book} onClick={() => openBook(book.id)} />
+                    <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
                   ))}
                 </div>
               )}
@@ -407,7 +413,7 @@ export default function Home() {
                   {popularView === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                       {popularBooks.map((book) => (
-                        <BookCard key={book.id} book={book} onClick={() => openBook(book.id)} />
+                        <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
                       ))}
                     </div>
                   ) : (
@@ -415,7 +421,7 @@ export default function Home() {
                       {popularBooks.map((book, idx) => (
                         <button
                           key={book.id}
-                          onClick={() => openBook(book.id)}
+                          onClick={() => handleBookClick(book)}
                           className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
                         >
                           <span className="text-xs text-amber-400 w-7 text-right shrink-0 tabular-nums">
@@ -475,6 +481,17 @@ export default function Home() {
         )}
       </div>
 
+      {selectedBook && (
+        <BookDetailModal
+          book={selectedBook}
+          recentBook={recentBooks.find((rb) => rb.id === selectedBook.id)}
+          onClose={() => setSelectedBook(null)}
+          onRead={() => {
+            setSelectedBook(null);
+            openBook(selectedBook.id);
+          }}
+        />
+      )}
     </main>
   );
 }

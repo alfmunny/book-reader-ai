@@ -64,10 +64,12 @@ test("clicking a library book navigates to reader page", async ({ page }) => {
 
   // Explicitly open the Library tab in case the session effect flipped to Discover
   await page.getByRole("button", { name: "Your Library" }).click();
-  // Filter by author text — the "Pride and Prejudice" quick-search pill doesn't have it
+  // Click the book card — this opens the detail modal
   const bookCard = page.getByRole("button").filter({ hasText: "Jane Austen" });
   await expect(bookCard).toBeVisible();
   await bookCard.click();
+  // Click the CTA in the modal to navigate
+  await page.getByRole("button", { name: /Continue Reading|Start Reading/ }).click();
   await page.waitForURL(/\/reader\/1342/);
   expect(page.url()).toContain("/reader/1342");
 });

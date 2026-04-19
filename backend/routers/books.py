@@ -48,23 +48,32 @@ async def cached_books():
 
 
 @router.get("/popular")
-async def popular_books(language: str = ""):
-    """Return the curated list of popular Gutenberg books.
-
-    The list is generated offline by scripts/seed_books.py and stored as
-    a JSON manifest. It covers the top ~100 books across English, German,
-    and French.
-    """
+async def popular_books(
+    language: str = "",
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+):
+    """Return a paginated slice of the curated popular Gutenberg books manifest."""
     global _popular_cache
     if _popular_cache is None:
         if not os.path.isfile(_POPULAR_BOOKS_PATH):
-            return []
+            return {"books": [], "total": 0, "page": page, "per_page": per_page}
         with open(_POPULAR_BOOKS_PATH, encoding="utf-8") as f:
             _popular_cache = json.load(f)
 
-    if language:
-        return [b for b in _popular_cache if language in b.get("languages", [])]
-    return _popular_cache
+    filtered = (
+        [b for b in _popular_cache if language in b.get("languages", [])]
+        if language
+        else _popular_cache
+    )
+    total = len(filtered)
+    start = (page - 1) * per_page
+    return {
+        "books": filtered[start : start + per_page],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+    }
 
 
 @router.get("/{book_id}/translation-status")

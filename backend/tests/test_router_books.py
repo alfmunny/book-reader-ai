@@ -95,6 +95,72 @@ async def test_search_delegates_to_gutenberg(client):
     assert resp.json()["count"] == 1
 
 
+# ── /books/popular pagination ────────────────────────────────────────────────
+
+POPULAR_BOOKS = [
+    {
+        "id": i,
+        "title": f"Book {i}",
+        "authors": [f"Author {i}"],
+        "languages": ["en"],
+        "download_count": i * 100,
+        "cover": "",
+    }
+    for i in range(1, 121)
+]
+
+
+import routers.books as _books_router
+
+
+@pytest.fixture(autouse=False)
+def popular_cache(monkeypatch):
+    monkeypatch.setattr(_books_router, "_popular_cache", list(POPULAR_BOOKS))
+    yield
+    monkeypatch.setattr(_books_router, "_popular_cache", None)
+
+
+async def test_popular_books_returns_paginated_shape(client, popular_cache):
+    resp = await client.get("/api/books/popular")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 120
+    assert data["page"] == 1
+    assert data["per_page"] == 50
+    assert len(data["books"]) == 50
+    assert data["books"][0]["id"] == 1
+
+
+async def test_popular_books_page2(client, popular_cache):
+    resp = await client.get("/api/books/popular?page=2")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["page"] == 2
+    assert len(data["books"]) == 50
+    assert data["books"][0]["id"] == 51
+
+
+async def test_popular_books_last_page(client, popular_cache):
+    resp = await client.get("/api/books/popular?page=3")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["page"] == 3
+    assert len(data["books"]) == 20
+
+
+async def test_popular_books_empty_when_no_manifest(client):
+    import routers.books as br
+    original = br._popular_cache
+    br._popular_cache = None
+    with patch("routers.books.os.path.isfile", return_value=False):
+        resp = await client.get("/api/books/popular")
+    br._popular_cache = original
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["books"] == []
+    assert data["total"] == 0
+
+
 # ── Import stream (SSE) ──────────────────────────────────────────────────────
 
 def _parse_sse(body: str) -> list[dict]:

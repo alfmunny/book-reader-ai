@@ -129,7 +129,9 @@ function parseIntoSegments(
   //      than linear interpolation across the whole chapter because it
   //      accounts for varying speech rate per chunk.
   //   b) no chunks → fall back to linear word-proportion across `duration`.
-  const wordCounts = allTexts.map((s) => Math.max(1, s.split(/\s+/).filter(Boolean).length));
+  // Character count is a better proxy for TTS speaking time than word count
+  // because words vary widely in length (e.g. "I" vs "extraordinarily").
+  const wordCounts = allTexts.map((s) => Math.max(1, s.trim().length));
   const startTimes: number[] = new Array(allTexts.length).fill(0);
 
   if (chunks && chunks.length > 0) {

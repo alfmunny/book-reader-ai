@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 from services.auth import get_current_user, decrypt_api_key
-from services.classics import get_free_ids
 from services.db import (
     get_cached_translation,
     save_translation,
@@ -31,18 +30,6 @@ def _require_gemini_key(user: dict) -> str:
     return decrypt_api_key(raw)
 
 
-def _check_freemium(book_id: int | None, user: dict) -> None:
-    """Raise 402 if a free-plan user tries to use AI on a non-free book."""
-    if book_id is None:
-        return
-    free_ids = get_free_ids()
-    if free_ids and book_id not in free_ids and user.get("plan", "free") != "paid":
-        raise HTTPException(
-            status_code=402,
-            detail="AI features for this book require a paid plan.",
-        )
-
-
 # ── Request models ────────────────────────────────────────────────────────────
 
 class InsightRequest(BaseModel):
@@ -50,7 +37,6 @@ class InsightRequest(BaseModel):
     book_title: str
     author: str
     response_language: str = "en"
-    book_id: int | None = None
 
 
 class QARequest(BaseModel):
@@ -59,7 +45,6 @@ class QARequest(BaseModel):
     book_title: str
     author: str
     response_language: str = "en"
-    book_id: int | None = None
 
 
 class ReferencesRequest(BaseModel):
@@ -68,7 +53,6 @@ class ReferencesRequest(BaseModel):
     chapter_title: str = ""
     chapter_excerpt: str = ""
     response_language: str = "en"
-    book_id: int | None = None
 
 
 class TranslateRequest(BaseModel):
@@ -105,7 +89,6 @@ class ChunkTextRequest(BaseModel):
 
 @router.post("/insight")
 async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
-    _check_freemium(req.book_id, user)
     key = _require_gemini_key(user)
     try:
         result = await gemini.generate_insight(
@@ -118,7 +101,6 @@ async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
 
 @router.post("/qa")
 async def qa(req: QARequest, user: dict = Depends(get_current_user)):
-    _check_freemium(req.book_id, user)
     key = _require_gemini_key(user)
     try:
         result = await gemini.answer_question(
@@ -132,7 +114,6 @@ async def qa(req: QARequest, user: dict = Depends(get_current_user)):
 @router.post("/references")
 async def references(req: ReferencesRequest, user: dict = Depends(get_current_user)):
     """Generate AI-curated references, related readings, and video links for a book."""
-    _check_freemium(req.book_id, user)
     key = _require_gemini_key(user)
     try:
         excerpt = req.chapter_excerpt[:800] if req.chapter_excerpt else ""

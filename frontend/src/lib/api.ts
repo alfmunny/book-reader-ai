@@ -94,10 +94,6 @@ export function getPopularBooks(language = "", page = 1) {
   return request<PopularBooksResponse>(`/books/popular?${params}`);
 }
 
-export function getClassics() {
-  return request<BookMeta[]>("/books/classics");
-}
-
 export function getBookMeta(id: number) {
   return request<BookMeta>(`/books/${id}`);
 }
@@ -190,11 +186,11 @@ export async function* importBookStream(
 }
 
 // AI
-export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en", book_id?: number) {
+export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en") {
   return request<{ insight: string }>("/ai/insight", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chapter_text, book_title, author, response_language, book_id }),
+    body: JSON.stringify({ chapter_text, book_title, author, response_language }),
   });
 }
 
@@ -364,12 +360,11 @@ export function askQuestion(
   book_title: string,
   author: string,
   response_language = "en",
-  book_id?: number,
 ) {
   return request<{ answer: string }>("/ai/qa", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, passage, book_title, author, response_language, book_id }),
+    body: JSON.stringify({ question, passage, book_title, author, response_language }),
   });
 }
 
@@ -459,12 +454,11 @@ export function getReferences(
   chapter_title = "",
   chapter_excerpt = "",
   response_language = "en",
-  book_id?: number,
 ) {
   return request<{ references: string }>("/ai/references", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ book_title, author, chapter_title, chapter_excerpt, response_language, book_id }),
+    body: JSON.stringify({ book_title, author, chapter_title, chapter_excerpt, response_language }),
   });
 }
 

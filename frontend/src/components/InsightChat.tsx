@@ -6,7 +6,6 @@ import {
   getInsight,
   askQuestion,
   getReferences,
-  ApiError,
 } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
 
@@ -148,15 +147,11 @@ export default function InsightChat({
     ]);
     setChatLoading(true);
 
-    const numericBookId = bookId ? Number(bookId) : undefined;
     onAIUsed?.();
-    getInsight(chapterText, bookTitle, author, langRef.current, numericBookId)
+    getInsight(chapterText, bookTitle, author, langRef.current)
       .then((r) => setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]))
       .catch((e) => {
-        const msg = e instanceof ApiError && e.status === 402
-          ? "AI features for this book require a paid plan. Upgrade to unlock."
-          : `Error: ${e.message}`;
-        setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
       })
       .finally(() => setChatLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -167,15 +162,11 @@ export default function InsightChat({
     if (refreshTick === 0 || !chapterText || !bookTitle || !hasGeminiKey) return;
     autoScrollRef.current = true;
     setChatLoading(true);
-    const numericBookId = bookId ? Number(bookId) : undefined;
     onAIUsed?.();
-    getInsight(chapterText, bookTitle, author, langRef.current, numericBookId)
+    getInsight(chapterText, bookTitle, author, langRef.current)
       .then((r) => setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]))
       .catch((e) => {
-        const msg = e instanceof ApiError && e.status === 402
-          ? "AI features for this book require a paid plan. Upgrade to unlock."
-          : `Error: ${e.message}`;
-        setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
       })
       .finally(() => setChatLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -234,14 +225,10 @@ export default function InsightChat({
 
     try {
       onAIUsed?.();
-      const numericBookId = bookId ? Number(bookId) : undefined;
-      const r = await askQuestion(text, passage, bookTitle, author, langRef.current, numericBookId);
+      const r = await askQuestion(text, passage, bookTitle, author, langRef.current);
       setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
     } catch (e: any) {
-      const msg = e instanceof ApiError && e.status === 402
-        ? "AI features for this book require a paid plan. Upgrade to unlock."
-        : `Error: ${e.message}`;
-      setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
     } finally {
       setChatLoading(false);
     }
@@ -260,17 +247,14 @@ export default function InsightChat({
     setRefsError("");
     onAIUsed?.();
     try {
-      const numericBookId = bookId ? Number(bookId) : undefined;
       const r = await getReferences(
         bookTitle, author,
         chapterTitle, chapterText.slice(0, 800),
-        langRef.current, numericBookId
+        langRef.current
       );
       setRefsContent(r.references);
     } catch (e: any) {
-      setRefsError(e instanceof ApiError && e.status === 402
-        ? "AI features for this book require a paid plan. Upgrade to unlock."
-        : e.message);
+      setRefsError(e.message);
     } finally {
       setRefsLoading(false);
     }

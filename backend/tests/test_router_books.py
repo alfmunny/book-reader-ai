@@ -380,101 +380,42 @@ async def test_retry_chapter_translation_inserts_if_no_row(client):
     assert row["priority"] == 10
 
 
-# ── Freemium gate ─────────────────────────────────────────────────────────────
+# ── Access and translation gates ─────────────────────────────────────────────
 
-CLASSICS_FIXTURE = [
-    {"id": 1342, "title": "Pride and Prejudice", "authors": ["Austen, Jane"],
-     "languages": ["en"], "download_count": 107502, "cover": ""},
-    {"id": 2554, "title": "Crime and Punishment", "authors": ["Dostoyevsky, Fyodor"],
-     "languages": ["en"], "download_count": 49665, "cover": "", "original_language": "ru"},
-]
-
-
-@pytest.fixture(autouse=False)
-def classics_cache(monkeypatch):
-    import services.classics as _classics
-    monkeypatch.setattr(_classics, "_classics_cache", list(CLASSICS_FIXTURE))
-    yield
-    monkeypatch.setattr(_classics, "_classics_cache", None)
-
-
-async def test_classics_endpoint_returns_list(client, classics_cache):
-    resp = await client.get("/api/books/classics")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert len(data) == 2
-    assert data[0]["id"] == 1342
-
-
-async def test_popular_russian_tab_returns_original_language_ru(client, classics_cache):
-    resp = await client.get("/api/books/popular?language=ru")
-    assert resp.status_code == 200
-    books = resp.json()["books"]
-    assert len(books) == 1
-    assert books[0]["id"] == 2554
-
-
-async def test_import_stream_free_classic_no_login(anon_client, classics_cache):
-    """Free classic is accessible without login."""
-    await save_book(1342, MOCK_META, "text")
-    resp = await anon_client.get("/api/books/1342/import-stream")
-    assert resp.status_code == 200
-
-
-async def test_import_stream_non_classic_requires_login(anon_client, classics_cache):
-    """Non-free book requires login — unauthenticated request gets 401."""
+async def test_import_stream_public_without_login(anon_client):
+    """All books are publicly accessible without login."""
     await save_book(9999, {**MOCK_META, "id": 9999}, "text")
     resp = await anon_client.get("/api/books/9999/import-stream")
-    assert resp.status_code == 401
-
-
-async def test_import_stream_non_classic_allowed_when_logged_in(client, classics_cache):
-    """Logged-in user can import any book."""
-    await save_book(9999, {**MOCK_META, "id": 9999}, "text")
-    resp = await client.get("/api/books/9999/import-stream")
     assert resp.status_code == 200
 
 
-async def test_chapter_translation_blocked_for_free_user_non_classic(client, classics_cache):
-    """AI translation on non-classic book → 402 for free-plan user."""
+async def test_chapter_translation_allowed_for_any_logged_in_user(client):
+    """Any logged-in user can translate any book."""
     resp = await client.post(
         "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},
     )
-    assert resp.status_code == 402
+    assert resp.status_code == 200
 
 
-async def test_chapter_translation_blocked_even_when_cached(client, classics_cache):
-    """Gate fires before cache check — shared cache cannot bypass the plan gate."""
+async def test_chapter_translation_cache_served_without_login(anon_client):
+    """Cached translation is served to unauthenticated users."""
     from services.db import save_translation
     await save_translation(9999, 0, "de", ["Übersetzung"])
-    resp = await client.post(
+    resp = await anon_client.post(
         "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},
     )
-    assert resp.status_code == 402
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["paragraphs"] == ["Übersetzung"]
 
 
-async def test_chapter_translation_allowed_for_free_classic(client, classics_cache):
-    """Free classic book translation is allowed for free-plan user."""
-    # book 1342 IS in CLASSICS_FIXTURE
-    # No cached translation, but it's a free classic so it reaches the queue step (200)
-    resp = await client.post(
-        "/api/books/1342/chapters/0/translation",
+async def test_chapter_translation_requires_login_when_not_cached(anon_client):
+    """Unauthenticated request for a non-cached chapter → 401."""
+    resp = await anon_client.post(
+        "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},
     )
-    assert resp.status_code == 200
-
-
-async def test_chapter_translation_allowed_for_paid_user_non_classic(client, classics_cache):
-    """Paid-plan user can translate any book."""
-    from services.db import set_user_plan
-    await set_user_plan(1, "paid")
-    try:
-        resp = await client.post(
-            "/api/books/9999/chapters/0/translation",
-            json={"target_language": "de"},
-        )
-        assert resp.status_code == 200
-    finally:
-        await set_user_plan(1, "free")
+    assert resp.status_code == 401

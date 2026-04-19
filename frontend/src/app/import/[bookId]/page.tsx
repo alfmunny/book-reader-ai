@@ -306,7 +306,7 @@ export default function BookImportPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center mb-4">
               <p className="font-serif text-base font-semibold text-ink mb-1">Login required</p>
               <p className="text-sm text-amber-800 mb-4">
-                Sign in to read this book. The 100 free classics are available without an account.
+                Sign in to read this book.
               </p>
               <a
                 href="/api/auth/signin"

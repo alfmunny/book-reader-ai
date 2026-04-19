@@ -81,6 +81,12 @@ export async function mockBackend(page: Page) {
     route.fulfill({ json: MOCK_BOOK });
   });
 
+  await page.route(/\/api\/books\/\d+\/translation-status/, (route) =>
+    route.fulfill({
+      json: { book_id: 1342, target_language: "en", total_chapters: 3, translated_chapters: 3, bulk_active: false },
+    })
+  );
+
   await page.route(/\/api\/audiobooks\/\d+$/, (route) =>
     route.fulfill({ status: 404, json: { detail: "Not linked" } })
   );

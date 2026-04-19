@@ -34,6 +34,17 @@ export const MOCK_CHAPTERS = [
 ];
 
 export async function mockBackend(page: Page) {
+  // Mock NextAuth session so useSession() returns status="authenticated" rather
+  // than "unauthenticated". Without this the home page always flips to Discover.
+  await page.route("**/api/auth/session", (route) =>
+    route.fulfill({
+      json: {
+        user: { name: "Test User", email: "test@example.com", image: "" },
+        expires: "2030-01-01T00:00:00.000Z",
+      },
+    })
+  );
+
   await page.route("**/api/user/me", (route) =>
     route.fulfill({ json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false } })
   );

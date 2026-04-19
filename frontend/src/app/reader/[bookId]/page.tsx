@@ -477,6 +477,11 @@ export default function ReaderPage() {
     setTranslationUsedProvider("");
     setAudioCurrentTime(0);
     setAudioDuration(0);
+    setAudioIsPlaying(false);
+    setTtsCurrentTime(0);
+    setTtsDuration(0);
+    setTtsIsPlaying(false);
+    setTtsChunks([]);
     document.getElementById("reader-scroll")?.scrollTo(0, 0);
   }
 

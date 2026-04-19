@@ -19,9 +19,14 @@ from services.db import (
     list_cached_books,
     save_translation,
     get_cached_translation,
+    count_translations_for_book,
     save_audiobook,
     get_audiobook,
     delete_audiobook,
+    get_setting,
+    set_setting,
+    get_reading_progress,
+    upsert_reading_progress,
 )
 
 
@@ -199,6 +204,67 @@ async def test_delete_audiobook():
 
 async def test_delete_audiobook_nonexistent_does_not_raise():
     await delete_audiobook(99999)  # should not raise
+
+
+# ── Translation count ─────────────────────────────────────────────────────────
+
+async def test_count_translations_for_book_zero():
+    count = await count_translations_for_book(1342, "zh")
+    assert count == 0
+
+
+async def test_count_translations_for_book_counts_correctly():
+    await save_translation(1342, 0, "zh", ["para"])
+    await save_translation(1342, 1, "zh", ["para"])
+    await save_translation(1342, 0, "en", ["para"])  # different language — not counted
+    count = await count_translations_for_book(1342, "zh")
+    assert count == 2
+
+
+# ── App settings ──────────────────────────────────────────────────────────────
+
+async def test_get_setting_returns_none_when_not_set():
+    result = await get_setting("nonexistent_key")
+    assert result is None
+
+
+async def test_set_and_get_setting():
+    await set_setting("queue_model", "gemini-2.5-flash")
+    result = await get_setting("queue_model")
+    assert result == "gemini-2.5-flash"
+
+
+async def test_set_setting_overwrites():
+    await set_setting("queue_model", "old")
+    await set_setting("queue_model", "new")
+    assert await get_setting("queue_model") == "new"
+
+
+# ── Reading progress ──────────────────────────────────────────────────────────
+
+async def test_get_reading_progress_empty():
+    result = await get_reading_progress(user_id=1)
+    assert result == []
+
+
+async def test_upsert_and_get_reading_progress():
+    await save_book(1342, SAMPLE_META, "text")
+    user = await get_or_create_user("g-rp", "rp@test.com", "RP", "")
+    await upsert_reading_progress(user["id"], 1342, chapter_index=5)
+    entries = await get_reading_progress(user["id"])
+    assert len(entries) == 1
+    assert entries[0]["book_id"] == 1342
+    assert entries[0]["chapter_index"] == 5
+
+
+async def test_upsert_reading_progress_updates_existing():
+    await save_book(1342, SAMPLE_META, "text")
+    user = await get_or_create_user("g-rp2", "rp2@test.com", "RP2", "")
+    await upsert_reading_progress(user["id"], 1342, chapter_index=2)
+    await upsert_reading_progress(user["id"], 1342, chapter_index=7)
+    entries = await get_reading_progress(user["id"])
+    assert len(entries) == 1
+    assert entries[0]["chapter_index"] == 7
 
 
 

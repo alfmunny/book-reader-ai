@@ -288,3 +288,38 @@ async def test_tts_error_returns_500(client):
         resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en", "rate": 1.0})
     assert resp.status_code == 500
 
+
+# ── References ────────────────────────────────────────────────────────────────
+
+async def test_references_without_key_returns_400(client):
+    resp = await client.post("/api/ai/references", json={
+        "book_title": "Faust", "author": "Goethe",
+    })
+    assert resp.status_code == 400
+    assert "Gemini" in resp.json()["detail"]
+
+
+async def test_references_with_key_returns_references(client, test_user):
+    await _set_key(test_user)
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.answer_question = AsyncMock(return_value="- *Faust* commentary by X")
+        resp = await client.post("/api/ai/references", json={
+            "book_title": "Faust",
+            "author": "Goethe",
+            "chapter_title": "Part I",
+            "chapter_excerpt": "Habe nun, ach!",
+        })
+    assert resp.status_code == 200
+    assert "references" in resp.json()
+    assert "Faust" in resp.json()["references"]
+
+
+async def test_references_error_returns_500(client, test_user):
+    await _set_key(test_user)
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.answer_question = AsyncMock(side_effect=RuntimeError("AI down"))
+        resp = await client.post("/api/ai/references", json={
+            "book_title": "Faust", "author": "Goethe",
+        })
+    assert resp.status_code == 500
+

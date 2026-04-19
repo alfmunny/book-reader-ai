@@ -414,8 +414,22 @@ async def test_popular_russian_tab_returns_original_language_ru(client, classics
     assert books[0]["id"] == 2554
 
 
-async def test_import_stream_always_allowed_for_free_user(client, classics_cache):
-    """Reading is free for all — import stream has no plan gate."""
+async def test_import_stream_free_classic_no_login(anon_client, classics_cache):
+    """Free classic is accessible without login."""
+    await save_book(1342, MOCK_META, "text")
+    resp = await anon_client.get("/api/books/1342/import-stream")
+    assert resp.status_code == 200
+
+
+async def test_import_stream_non_classic_requires_login(anon_client, classics_cache):
+    """Non-free book requires login — unauthenticated request gets 401."""
+    await save_book(9999, {**MOCK_META, "id": 9999}, "text")
+    resp = await anon_client.get("/api/books/9999/import-stream")
+    assert resp.status_code == 401
+
+
+async def test_import_stream_non_classic_allowed_when_logged_in(client, classics_cache):
+    """Logged-in user can import any book."""
     await save_book(9999, {**MOCK_META, "id": 9999}, "text")
     resp = await client.get("/api/books/9999/import-stream")
     assert resp.status_code == 200

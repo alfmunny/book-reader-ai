@@ -166,3 +166,24 @@ async def get_current_user(request: Request) -> dict:
     if not user.get("approved") and not request.url.path.endswith("/user/me"):
         raise HTTPException(status_code=403, detail="Account pending approval")
     return user
+
+
+async def get_optional_user(request: Request) -> dict | None:
+    """Like get_current_user but returns None instead of raising 401 when no token is present.
+
+    Use on endpoints that are publicly accessible but behave differently for
+    authenticated users (e.g. free-classics import-stream).
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    try:
+        token = auth_header.removeprefix("Bearer ").strip()
+        payload = decode_jwt(token)
+        user_id = int(payload["sub"])
+        user = await get_user_by_id(user_id)
+        if not user or not user.get("approved"):
+            return None
+        return user
+    except Exception:
+        return None

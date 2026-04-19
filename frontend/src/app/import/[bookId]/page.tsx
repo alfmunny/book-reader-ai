@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { importBookStream, ImportEvent } from "@/lib/api";
+import { importBookStream, ImportEvent, ApiError } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
 
 type Stage = "fetching" | "splitting" | "translating" | "tts";
@@ -47,6 +47,7 @@ export default function BookImportPage() {
   const [bookTitle, setBookTitle] = useState("");
   const [chapterCount, setChapterCount] = useState(0);
   const [error, setError] = useState("");
+  const [loginRequired, setLoginRequired] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [generateTts, setGenerateTts] = useState(false);
   const [started, setStarted] = useState(false);
@@ -85,6 +86,10 @@ export default function BookImportPage() {
       }
     } catch (e: unknown) {
       if ((e as Error)?.name === "AbortError") return;
+      if (e instanceof ApiError && e.status === 401) {
+        setLoginRequired(true);
+        return;
+      }
       setError(e instanceof Error ? e.message : "Import failed");
     }
   }
@@ -294,6 +299,21 @@ export default function BookImportPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {loginRequired && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center mb-4">
+              <p className="font-serif text-base font-semibold text-ink mb-1">Login required</p>
+              <p className="text-sm text-amber-800 mb-4">
+                Sign in to read this book. The 100 free classics are available without an account.
+              </p>
+              <a
+                href="/api/auth/signin"
+                className="inline-block rounded-lg bg-amber-700 text-white px-5 py-2 text-sm font-medium hover:bg-amber-800"
+              >
+                Sign in
+              </a>
             </div>
           )}
 

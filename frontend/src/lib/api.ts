@@ -156,7 +156,7 @@ export async function* importBookStream(
   });
   if (!res.ok || !res.body) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Import stream failed");
+    throw new ApiError(res.status, err.detail || "Import stream failed");
   }
 
   const reader = res.body.getReader();

@@ -9,7 +9,7 @@ Provides:
 import pytest
 import services.db as db_module
 from services.db import init_db, get_or_create_user, get_user_by_id
-from services.auth import create_jwt, get_current_user
+from services.auth import create_jwt, get_current_user, get_optional_user
 from main import app
 from httpx import AsyncClient, ASGITransport
 
@@ -37,15 +37,21 @@ async def test_user(tmp_db):
 
 @pytest.fixture
 async def client(test_user):
-    """
-    AsyncClient with auth dependency overridden to return test_user.
-    The real DB is already initialised by the test_user fixture.
-    """
+    """AsyncClient authenticated as test_user (overrides both auth dependencies)."""
     async def _override():
-        # Re-fetch on every request so tests that mutate the user (e.g. set gemini key) see fresh data
         return await get_user_by_id(test_user["id"])
 
     app.dependency_overrides[get_current_user] = _override
+    app.dependency_overrides[get_optional_user] = _override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def anon_client(tmp_db):
+    """AsyncClient with no authentication (get_optional_user returns None)."""
+    app.dependency_overrides[get_optional_user] = lambda: None
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()

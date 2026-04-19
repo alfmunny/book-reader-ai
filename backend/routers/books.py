@@ -20,7 +20,7 @@ from services.db import (
 from services.splitter import build_chapters, build_chapters_from_html
 from services.translate import translate_text
 from services.tts import synthesize, chunk_text, EDGE_VOICE_MAP, _pick_edge_voice
-from services.auth import get_current_user, decrypt_api_key
+from services.auth import get_current_user, get_optional_user, decrypt_api_key
 from services.classics import get_classics, get_free_ids
 
 logger = logging.getLogger(__name__)
@@ -388,7 +388,7 @@ async def import_stream(
     book_id: int,
     target_language: str = Query("", description="Target language for pre-translation (empty = skip)"),
     generate_tts: bool = Query(False, description="Also pre-generate TTS audio for each chunk"),
-    user: dict = Depends(get_current_user),
+    user: dict | None = Depends(get_optional_user),
 ):
     """Stream import progress for a book via Server-Sent Events.
 
@@ -400,9 +400,18 @@ async def import_stream(
       done       — all steps complete
 
     Idempotent: skips already-cached work (same as preseed_translations.py).
+    Free classics are accessible without login; other books require a logged-in account.
     """
+    # Access gate: free classics are public; any other book requires login.
+    free_ids = get_free_ids()
+    if free_ids and book_id not in free_ids and user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Login required to read this book.",
+        )
+
     # Resolve Gemini key once up front
-    raw_key = user.get("gemini_key")
+    raw_key = user.get("gemini_key") if user else None
     decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
 
     async def generator() -> AsyncIterator[str]:
@@ -453,7 +462,7 @@ async def import_stream(
                 # completes them, so there's no double work in the happy path.
                 try:
                     from services.translation_queue import enqueue_for_book, worker
-                    queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
+                    queued_by = (user.get("email") or user.get("name") or f"user#{user.get('id')}") if user else "anon"
                     added = await enqueue_for_book(
                         book_id,
                         target_languages=[target_language],

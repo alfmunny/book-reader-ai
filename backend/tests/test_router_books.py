@@ -378,3 +378,66 @@ async def test_retry_chapter_translation_inserts_if_no_row(client):
             row = await cursor.fetchone()
     assert row["status"] == "pending"
     assert row["priority"] == 10
+
+
+# ── Freemium gate ─────────────────────────────────────────────────────────────
+
+CLASSICS_FIXTURE = [
+    {"id": 1342, "title": "Pride and Prejudice", "authors": ["Austen, Jane"],
+     "languages": ["en"], "download_count": 107502, "cover": ""},
+    {"id": 2554, "title": "Crime and Punishment", "authors": ["Dostoyevsky, Fyodor"],
+     "languages": ["en"], "download_count": 49665, "cover": "", "original_language": "ru"},
+]
+
+
+@pytest.fixture(autouse=False)
+def classics_cache(monkeypatch):
+    monkeypatch.setattr(_books_router, "_classics_cache", list(CLASSICS_FIXTURE))
+    yield
+    monkeypatch.setattr(_books_router, "_classics_cache", None)
+
+
+async def test_classics_endpoint_returns_list(client, classics_cache):
+    resp = await client.get("/api/books/classics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+    assert data[0]["id"] == 1342
+
+
+async def test_popular_russian_tab_returns_original_language_ru(client, classics_cache):
+    resp = await client.get("/api/books/popular?language=ru")
+    assert resp.status_code == 200
+    books = resp.json()["books"]
+    assert len(books) == 1
+    assert books[0]["id"] == 2554
+
+
+async def test_import_stream_blocked_for_free_user_non_classic(client, classics_cache):
+    """Book not in free classics → 402 for free-plan user."""
+    await save_book(9999, {**MOCK_META, "id": 9999}, "text")
+    resp = await client.get("/api/books/9999/import-stream")
+    assert resp.status_code == 402
+
+
+async def test_import_stream_allowed_for_free_classic(client, classics_cache):
+    """Book in free classics → allowed for free-plan user."""
+    await save_book(1342, MOCK_META, "text")
+    resp = await client.get("/api/books/1342/import-stream")
+    # Gate passes — stream starts (200)
+    assert resp.status_code == 200
+
+
+async def test_import_stream_allowed_for_paid_user_non_classic(client, classics_cache):
+    """Paid-plan user can import any book."""
+    import aiosqlite
+    import services.db as db_module
+    from services.db import set_user_plan
+    # Fetch the test user id from the token (conftest creates user id=1)
+    await set_user_plan(1, "paid")
+    await save_book(9999, {**MOCK_META, "id": 9999}, "text")
+    try:
+        resp = await client.get("/api/books/9999/import-stream")
+        assert resp.status_code == 200
+    finally:
+        await set_user_plan(1, "free")

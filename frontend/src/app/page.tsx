@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { searchBooks, getPopularBooks, getMe, BookMeta } from "@/lib/api";
+import { searchBooks, getPopularBooks, getClassics, getMe, BookMeta } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ const FEATURED = [
 const POPULAR_LANGS = [
   { code: "", label: "All" },
   { code: "en", label: "English" },
+  { code: "ru", label: "Russian" },
   { code: "de", label: "Deutsch" },
   { code: "fr", label: "Français" },
 ];
@@ -41,6 +42,9 @@ export default function Home() {
 
   const [tab, setTab] = useState<Tab>("library");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userPlan, setUserPlan] = useState("free");
+  const [freeIds, setFreeIds] = useState<Set<number>>(new Set());
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // ── Library state ──
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
@@ -51,10 +55,15 @@ export default function Home() {
     if (books.length === 0) setTab("discover");
   }, []);
 
-  // Fetch admin status so we can show the Admin tab. The request waits for
-  // NextAuth to settle (see awaitSession in api.ts), so no refresh race.
+  // Fetch user info (admin status, plan) and free classics IDs on mount.
   useEffect(() => {
-    getMe().then((me) => setIsAdmin(me.role === "admin")).catch(() => {});
+    getMe().then((me) => {
+      setIsAdmin(me.role === "admin");
+      setUserPlan(me.plan ?? "free");
+    }).catch(() => {});
+    getClassics().then((classics) => {
+      setFreeIds(new Set(classics.map((b) => b.id)));
+    }).catch(() => {});
   }, []);
 
   // ── Discover state ──
@@ -79,7 +88,14 @@ export default function Home() {
   useEffect(() => {
     if (tab !== "discover") return;
     setPopularLoading(true);
-    getPopularBooks(popularLang, popularPage)
+    const fetch =
+      popularLang === "ru"
+        ? getClassics().then((books) => {
+            const ru = books.filter((b) => b.original_language === "ru");
+            return { books: ru, total: ru.length, page: 1, per_page: 50 };
+          })
+        : getPopularBooks(popularLang, popularPage);
+    fetch
       .then((data) => {
         setPopularBooks(data.books);
         setPopularTotal(data.total);
@@ -112,7 +128,15 @@ export default function Home() {
     }
   }
 
+  function isLocked(id: number) {
+    return freeIds.size > 0 && !freeIds.has(id) && userPlan !== "paid";
+  }
+
   function openBook(id: number) {
+    if (isLocked(id)) {
+      setShowUpgradeModal(true);
+      return;
+    }
     // Books already in the user's library skip the import page — they've
     // been opened before, so the translations/TTS are likely already cached
     // or intentionally skipped. First-time opens go through /import to let
@@ -393,7 +417,18 @@ export default function Home() {
                   {popularView === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                       {popularBooks.map((book) => (
-                        <BookCard key={book.id} book={book} onClick={() => openBook(book.id)} />
+                        <div key={book.id} className="relative">
+                          <BookCard book={book} onClick={() => openBook(book.id)} />
+                          {isLocked(book.id) && (
+                            <div className="absolute top-2 right-2 pointer-events-none">
+                              <div className="bg-black/60 rounded-full p-1">
+                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   ) : (
@@ -416,11 +451,15 @@ export default function Home() {
                             <p className="font-serif text-sm font-semibold text-ink truncate">{book.title}</p>
                             <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
                           </div>
-                          {book.download_count > 0 && (
+                          {isLocked(book.id) ? (
+                            <svg className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : book.download_count > 0 ? (
                             <span className="text-xs text-amber-400 shrink-0 tabular-nums">
                               {book.download_count.toLocaleString()}
                             </span>
-                          )}
+                          ) : null}
                         </button>
                       ))}
                     </div>
@@ -460,6 +499,38 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Upgrade modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-8 text-center">
+            <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h2 className="font-serif text-xl font-bold text-ink mb-2">Premium Book</h2>
+            <p className="text-sm text-amber-800 mb-1">
+              100 free classics are available to all readers.
+            </p>
+            <p className="text-sm text-amber-700 mb-6">
+              Unlock lifetime access to all 70,000+ Project Gutenberg books with a one-time upgrade.
+            </p>
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="w-full rounded-xl bg-amber-700 text-white py-2.5 font-medium hover:bg-amber-800 mb-3"
+            >
+              Upgrade — coming soon
+            </button>
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="w-full text-sm text-amber-600 hover:text-amber-800 py-1"
+            >
+              Browse free classics instead
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

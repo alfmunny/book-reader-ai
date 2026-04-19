@@ -76,13 +76,13 @@ async function renderDiscover() {
 }
 
 describe("Popular Classics – language filter", () => {
-  it("shows All/English/Deutsch/Français/日本語 tabs", async () => {
+  it("shows All/English/Deutsch/Français tabs", async () => {
     await renderDiscover();
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Deutsch" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "日本語" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "日本語" })).not.toBeInTheDocument();
   });
 
   it("clicking a language tab fetches with that language and resets to page 1", async () => {

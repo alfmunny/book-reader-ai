@@ -15,8 +15,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  // Protect everything except the login page, NextAuth API routes, and static assets
+  // Protect everything except the home page, login page, NextAuth API routes,
+  // and static assets. The home page (/) is public; auth is required only when
+  // a user actually tries to open a book.
   matcher: [
-    "/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|api/auth|_next/static|_next/image|favicon.ico).+)",
   ],
 };

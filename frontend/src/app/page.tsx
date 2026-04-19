@@ -57,12 +57,13 @@ export default function Home() {
     if (status === "unauthenticated") setTab("discover");
   }, [status]);
 
-  // Fetch user info on mount.
+  // Fetch user info only when authenticated.
   useEffect(() => {
+    if (status !== "authenticated") return;
     getMe().then((me) => {
       setIsAdmin(me.role === "admin");
     }).catch(() => {});
-  }, []);
+  }, [status]);
 
   // ── Discover state ──
   const [query, setQuery] = useState("");
@@ -121,6 +122,10 @@ export default function Home() {
   }
 
   function openBook(id: number) {
+    if (status === "unauthenticated") {
+      router.push(`/login?callbackUrl=/reader/${id}`);
+      return;
+    }
     const inLibrary = recentBooks.some((b) => b.id === id);
     if (inLibrary) {
       router.push(`/reader/${id}`);
@@ -138,20 +143,29 @@ export default function Home() {
             <h1 className="text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
             <p className="text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
           </div>
-          <button
-            onClick={() => router.push("/profile")}
-            title={session?.backendUser?.name ?? "Profile & Settings"}
-            className="w-9 h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
-          >
-            {session?.backendUser?.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
-            ) : (
-              <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
-                {session?.backendUser?.name?.[0] ?? "?"}
-              </span>
-            )}
-          </button>
+          {status === "unauthenticated" ? (
+            <button
+              onClick={() => router.push("/login")}
+              className="rounded-lg border border-amber-300 px-4 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+            >
+              Sign in
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push("/profile")}
+              title={session?.backendUser?.name ?? "Profile & Settings"}
+              className="w-9 h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+            >
+              {session?.backendUser?.picture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
+                  {session?.backendUser?.name?.[0] ?? "?"}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </header>
 

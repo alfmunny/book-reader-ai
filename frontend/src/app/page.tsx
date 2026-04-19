@@ -20,7 +20,6 @@ const POPULAR_LANGS = [
   { code: "en", label: "English" },
   { code: "de", label: "Deutsch" },
   { code: "fr", label: "Français" },
-  { code: "ja", label: "日本語" },
 ];
 
 

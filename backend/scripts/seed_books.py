@@ -39,7 +39,6 @@ COLLECTIONS: dict[str, int] = {
     "en": 200,
     "de": 100,
     "fr": 100,
-    "ja": 100,
 }
 
 

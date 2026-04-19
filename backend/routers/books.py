@@ -208,7 +208,17 @@ async def request_chapter_translation(
         enqueue, queue_status_for_chapter, worker,
     )
 
-    # 1. Already cached? Cached translations are always served regardless of plan.
+    # 1. Freemium gate: free-plan users can only translate free classics.
+    # Checked before the cache so the cache (shared per-book) cannot be used
+    # to bypass the plan restriction.
+    free_ids = get_free_ids()
+    if free_ids and book_id not in free_ids and user.get("plan", "free") != "paid":
+        raise HTTPException(
+            status_code=402,
+            detail="Translation for this book requires a paid plan.",
+        )
+
+    # 2. Already cached?
     cached = await get_cached_translation_with_meta(
         book_id, chapter_index, req.target_language,
     )
@@ -220,14 +230,6 @@ async def request_chapter_translation(
             "model": cached.get("model"),
             "title_translation": cached.get("title_translation"),
         }
-
-    # 2. Freemium gate: free-plan users can only translate free classics.
-    free_ids = get_free_ids()
-    if free_ids and book_id not in free_ids and user.get("plan", "free") != "paid":
-        raise HTTPException(
-            status_code=402,
-            detail="Translation for this book requires a paid plan.",
-        )
 
     # 3. Already queued / running?
     qstatus = await queue_status_for_chapter(

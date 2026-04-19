@@ -226,36 +226,13 @@ describe("Popular Classics – pagination", () => {
   });
 });
 
-describe("Popular Classics – freemium gate", () => {
-  it("shows upgrade modal when a locked book is clicked", async () => {
+describe("Popular Classics – book access", () => {
+  it("clicking any book navigates to import page (no gate on home page)", async () => {
     const user = userEvent.setup();
-    // Book 1 is not in the free list → locked for free users
-    mockGetClassics.mockResolvedValue([makeBook(999)]); // only book 999 is free
-    await renderDiscover();
-    await act(flushPromises); // wait for classics to load
-    // Click book 1 (locked)
-    const bookCards = screen.getAllByRole("button", { name: /Book 1/i });
-    await user.click(bookCards[0]);
-    expect(screen.getByText("Premium Book")).toBeInTheDocument();
-  });
-
-  it("does not show upgrade modal for free classic books", async () => {
-    const user = userEvent.setup();
-    // Book 1 IS in the free list
-    mockGetClassics.mockResolvedValue([makeBook(1)]);
+    mockGetClassics.mockResolvedValue([makeBook(999)]); // book 1 not in classics
     await renderDiscover();
     await act(flushPromises);
-    const bookCards = screen.getAllByRole("button", { name: /Book 1/i });
-    await user.click(bookCards[0]);
-    expect(screen.queryByText("Premium Book")).not.toBeInTheDocument();
-  });
-
-  it("paid users are never shown the upgrade modal", async () => {
-    const user = userEvent.setup();
-    mockGetMe.mockResolvedValue({ role: "user", plan: "paid" });
-    mockGetClassics.mockResolvedValue([makeBook(999)]); // book 1 not free
-    await renderDiscover();
-    await act(flushPromises);
+    // No upgrade modal should ever appear — reading is always free
     const bookCards = screen.getAllByRole("button", { name: /Book 1/i });
     await user.click(bookCards[0]);
     expect(screen.queryByText("Premium Book")).not.toBeInTheDocument();

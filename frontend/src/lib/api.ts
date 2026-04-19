@@ -46,6 +46,13 @@ export function getAuthToken(): string | null {
   return _authToken;
 }
 
+export class ApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   // Wait for NextAuth to finish hydrating before firing the request. Without
   // this, refreshing a protected page races the token setup and the backend
@@ -58,7 +65,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    throw new ApiError(res.status, err.detail || "Request failed");
   }
   return res.json();
 }
@@ -183,11 +190,11 @@ export async function* importBookStream(
 }
 
 // AI
-export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en") {
+export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en", book_id?: number) {
   return request<{ insight: string }>("/ai/insight", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chapter_text, book_title, author, response_language }),
+    body: JSON.stringify({ chapter_text, book_title, author, response_language, book_id }),
   });
 }
 
@@ -356,12 +363,13 @@ export function askQuestion(
   passage: string,
   book_title: string,
   author: string,
-  response_language = "en"
+  response_language = "en",
+  book_id?: number,
 ) {
   return request<{ answer: string }>("/ai/qa", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, passage, book_title, author, response_language }),
+    body: JSON.stringify({ question, passage, book_title, author, response_language, book_id }),
   });
 }
 
@@ -450,12 +458,13 @@ export function getReferences(
   author: string,
   chapter_title = "",
   chapter_excerpt = "",
-  response_language = "en"
+  response_language = "en",
+  book_id?: number,
 ) {
   return request<{ references: string }>("/ai/references", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ book_title, author, chapter_title, chapter_excerpt, response_language }),
+    body: JSON.stringify({ book_title, author, chapter_title, chapter_excerpt, response_language, book_id }),
   });
 }
 

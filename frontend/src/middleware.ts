@@ -15,10 +15,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  // Protect everything except the home page, login page, NextAuth API routes,
-  // and static assets. The home page (/) is public; auth is required only when
-  // a user actually tries to open a book.
+  // Only protect pages that are meaningless or dangerous without an identity:
+  // profile settings, admin panel, and the pending-approval holding page.
+  // Reading and importing public-domain books requires no login.
   matcher: [
-    "/((?!login|api/auth|_next/static|_next/image|favicon.ico).+)",
+    "/(profile|admin|pending)(.*)",
   ],
 };

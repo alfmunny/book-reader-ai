@@ -81,8 +81,10 @@ export interface PopularBooksResponse {
   per_page: number;
 }
 
-export function getPopularBooks(page = 1) {
-  return request<PopularBooksResponse>(`/books/popular?page=${page}`);
+export function getPopularBooks(language = "", page = 1) {
+  const params = new URLSearchParams({ page: String(page) });
+  if (language) params.set("language", language);
+  return request<PopularBooksResponse>(`/books/popular?${params}`);
 }
 
 export function getBookMeta(id: number) {

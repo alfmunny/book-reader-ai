@@ -32,6 +32,16 @@ GUTENDEX_API = "https://gutendex.com/books"
 DEFAULT_LANGUAGES = ["en", "de", "fr"]
 DEFAULT_COUNT = 100  # total across all languages
 
+# Collections for the Discover page: language code → number of books to fetch.
+# Empty string "" means all-language (no language filter, global popularity).
+COLLECTIONS: dict[str, int] = {
+    "": 200,
+    "en": 200,
+    "de": 100,
+    "fr": 100,
+    "ja": 100,
+}
+
 
 def _get_text_url(formats: dict) -> str:
     """Extract the plain-text download URL from Gutendex formats."""
@@ -42,16 +52,17 @@ def _get_text_url(formats: dict) -> str:
 
 
 async def fetch_popular(language: str, count: int) -> list[dict]:
-    """Fetch the top `count` most-downloaded books for a language from Gutendex."""
+    """Fetch the top `count` most-downloaded books for a language from Gutendex.
+
+    Pass language="" to fetch across all languages (global popularity ranking).
+    """
     books = []
     page = 1
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
         while len(books) < count:
-            params = {
-                "languages": language,
-                "sort": "popular",
-                "page": page,
-            }
+            params: dict = {"sort": "popular", "page": page}
+            if language:
+                params["languages"] = language
             try:
                 resp = await client.get(GUTENDEX_API, params=params)
                 resp.raise_for_status()
@@ -167,6 +178,35 @@ async def seed(languages: list[str], total_count: int, dry_run: bool = False, ma
     return all_books
 
 
+def _to_entry(b: dict) -> dict:
+    return {
+        "id": b["id"],
+        "title": b["title"],
+        "authors": b["authors"],
+        "languages": b["languages"],
+        "download_count": b["download_count"],
+        "cover": b.get("cover", ""),
+    }
+
+
+async def build_collections_manifest() -> dict[str, list[dict]]:
+    """Fetch each language collection from Gutendex and return a manifest dict.
+
+    Keys are language codes ("" = all-language global ranking).
+    Values are lists of book metadata sorted by download_count descending.
+    Focuses on classic literature via Gutendex's popularity ranking, which
+    naturally surfaces canonical public-domain works (Austen, Dickens, Goethe…).
+    """
+    manifest: dict[str, list[dict]] = {}
+    for lang, count in COLLECTIONS.items():
+        label = lang.upper() if lang else "ALL"
+        print(f"── {label} ({count} books) ──")
+        books = await fetch_popular(lang, count)
+        print(f"  Fetched {len(books)} books")
+        manifest[lang] = [_to_entry(b) for b in books]
+    return manifest
+
+
 def main():
     parser = argparse.ArgumentParser(description="Seed the database with popular Gutenberg books")
     parser.add_argument("--count", type=int, default=DEFAULT_COUNT,
@@ -181,7 +221,21 @@ def main():
     parser.add_argument("--manifest-only", action="store_true",
                         help="Fetch metadata from Gutendex and write popular_books.json only; "
                              "skip downloading full text to the database.")
+    parser.add_argument("--collections", action="store_true",
+                        help="Build the multi-language collections manifest used by the Discover "
+                             "page (all/en/de/fr/ja). Implies --manifest-only.")
     args = parser.parse_args()
+
+    manifest_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "popular_books.json")
+
+    if args.collections:
+        print("Building multi-language collections manifest…\n")
+        manifest = asyncio.run(build_collections_manifest())
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+        total = sum(len(v) for v in manifest.values())
+        print(f"\nManifest written to {manifest_path} ({len(manifest)} collections, {total} entries)")
+        return
 
     languages = [l.strip() for l in args.languages.split(",")]
     books = asyncio.run(seed(languages, args.count, args.dry_run, args.manifest_only))
@@ -190,35 +244,26 @@ def main():
     if args.dry_run:
         return
 
-    # Write a JSON manifest for the frontend "Popular Books" page
-    manifest_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "popular_books.json")
-    new_entries = [
-        {
-            "id": b["id"],
-            "title": b["title"],
-            "authors": b["authors"],
-            "languages": b["languages"],
-            "download_count": b["download_count"],
-            "cover": b.get("cover", ""),
-        }
-        for b in books
-    ]
+    # Write a flat JSON manifest (legacy format used for DB seeding)
+    new_entries = [_to_entry(b) for b in books]
 
     if args.append and os.path.isfile(manifest_path):
         with open(manifest_path, encoding="utf-8") as f:
             existing = json.load(f)
-        by_id: dict[int, dict] = {b["id"]: b for b in existing}
-        for entry in new_entries:
-            by_id[entry["id"]] = entry   # overwrite if duplicate ID
-        manifest = list(by_id.values())
-        # Keep popularity ordering across the merged set
-        manifest.sort(key=lambda x: x.get("download_count", 0), reverse=True)
+        if isinstance(existing, list):
+            by_id: dict[int, dict] = {b["id"]: b for b in existing}
+            for entry in new_entries:
+                by_id[entry["id"]] = entry
+            manifest_list = list(by_id.values())
+            manifest_list.sort(key=lambda x: x.get("download_count", 0), reverse=True)
+        else:
+            manifest_list = new_entries
     else:
-        manifest = new_entries
+        manifest_list = new_entries
 
     with open(manifest_path, "w", encoding="utf-8") as f:
-        json.dump(manifest, f, ensure_ascii=False, indent=2)
-    print(f"Manifest written to {manifest_path} ({len(manifest)} books)")
+        json.dump(manifest_list, f, ensure_ascii=False, indent=2)
+    print(f"Manifest written to {manifest_path} ({len(manifest_list)} books)")
 
 
 if __name__ == "__main__":

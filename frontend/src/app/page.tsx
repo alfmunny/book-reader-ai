@@ -15,6 +15,14 @@ const FEATURED = [
   { query: "Pride and Prejudice", lang: "en" },
 ];
 
+const POPULAR_LANGS = [
+  { code: "", label: "All" },
+  { code: "en", label: "English" },
+  { code: "de", label: "Deutsch" },
+  { code: "fr", label: "Français" },
+  { code: "ja", label: "日本語" },
+];
+
 
 function timeAgo(ms: number): string {
   const diff = Date.now() - ms;
@@ -60,6 +68,7 @@ export default function Home() {
 
   const [popularBooks, setPopularBooks] = useState<BookMeta[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
+  const [popularLang, setPopularLang] = useState("");
   const [popularPage, setPopularPage] = useState(1);
   const [popularTotal, setPopularTotal] = useState(0);
   const [popularView, setPopularView] = useState<"grid" | "list">("grid");
@@ -71,14 +80,19 @@ export default function Home() {
   useEffect(() => {
     if (tab !== "discover") return;
     setPopularLoading(true);
-    getPopularBooks(popularPage)
+    getPopularBooks(popularLang, popularPage)
       .then((data) => {
         setPopularBooks(data.books);
         setPopularTotal(data.total);
       })
       .catch(() => { setPopularBooks([]); setPopularTotal(0); })
       .finally(() => setPopularLoading(false));
-  }, [tab, popularPage]);
+  }, [tab, popularLang, popularPage]);
+
+  function handlePopularLangChange(lang: string) {
+    setPopularLang(lang);
+    setPopularPage(1);
+  }
 
   async function handleSearch(q = query, l = lang) {
     if (!q.trim()) return;
@@ -306,8 +320,25 @@ export default function Home() {
 
             {/* Popular Classics section */}
             <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
+              <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <h2 className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
+                  <div className="flex gap-1.5">
+                    {POPULAR_LANGS.map((l) => (
+                      <button
+                        key={l.code}
+                        onClick={() => handlePopularLangChange(l.code)}
+                        className={`text-xs rounded-full px-3 py-1 border transition-colors ${
+                          popularLang === l.code
+                            ? "bg-amber-700 text-white border-amber-700"
+                            : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                        }`}
+                      >
+                        {l.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex items-center gap-1 border border-amber-200 rounded-lg p-0.5 bg-white">
                   <button
                     onClick={() => setPopularView("grid")}

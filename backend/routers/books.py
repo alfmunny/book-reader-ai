@@ -53,7 +53,11 @@ async def popular_books(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
 ):
-    """Return a paginated slice of the curated popular Gutenberg books manifest."""
+    """Return a paginated slice of the curated popular Gutenberg books manifest.
+
+    The manifest is either the new dict format {language: [books]} produced by
+    seed_books.py --collections, or the legacy flat list.
+    """
     global _popular_cache
     if _popular_cache is None:
         if not os.path.isfile(_POPULAR_BOOKS_PATH):
@@ -61,15 +65,19 @@ async def popular_books(
         with open(_POPULAR_BOOKS_PATH, encoding="utf-8") as f:
             _popular_cache = json.load(f)
 
-    filtered = (
-        [b for b in _popular_cache if language in b.get("languages", [])]
-        if language
-        else _popular_cache
-    )
-    total = len(filtered)
+    if isinstance(_popular_cache, dict):
+        books = _popular_cache.get(language, _popular_cache.get("", []))
+    else:
+        books = (
+            [b for b in _popular_cache if language in b.get("languages", [])]
+            if language
+            else _popular_cache
+        )
+
+    total = len(books)
     start = (page - 1) * per_page
     return {
-        "books": filtered[start : start + per_page],
+        "books": books[start : start + per_page],
         "total": total,
         "page": page,
         "per_page": per_page,

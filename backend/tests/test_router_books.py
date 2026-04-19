@@ -97,25 +97,26 @@ async def test_search_delegates_to_gutenberg(client):
 
 # ── /books/popular pagination ────────────────────────────────────────────────
 
-POPULAR_BOOKS = [
-    {
-        "id": i,
-        "title": f"Book {i}",
-        "authors": [f"Author {i}"],
-        "languages": ["en"],
-        "download_count": i * 100,
-        "cover": "",
-    }
-    for i in range(1, 121)
-]
+def _make_books(start: int, count: int, lang: str = "en") -> list[dict]:
+    return [
+        {"id": start + i, "title": f"Book {start + i}", "authors": [f"Author {start + i}"],
+         "languages": [lang], "download_count": (start + i) * 100, "cover": ""}
+        for i in range(count)
+    ]
 
+
+POPULAR_CACHE_DICT = {
+    "": _make_books(1, 120),        # 120 all-language books
+    "en": _make_books(1, 120),      # same for English in this fixture
+    "de": _make_books(200, 30),     # 30 German books
+}
 
 import routers.books as _books_router
 
 
 @pytest.fixture(autouse=False)
 def popular_cache(monkeypatch):
-    monkeypatch.setattr(_books_router, "_popular_cache", list(POPULAR_BOOKS))
+    monkeypatch.setattr(_books_router, "_popular_cache", POPULAR_CACHE_DICT)
     yield
     monkeypatch.setattr(_books_router, "_popular_cache", None)
 
@@ -146,6 +147,21 @@ async def test_popular_books_last_page(client, popular_cache):
     data = resp.json()
     assert data["page"] == 3
     assert len(data["books"]) == 20
+
+
+async def test_popular_books_language_filter(client, popular_cache):
+    resp = await client.get("/api/books/popular?language=de")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 30
+    assert data["books"][0]["id"] == 200
+
+
+async def test_popular_books_unknown_language_falls_back_to_all(client, popular_cache):
+    resp = await client.get("/api/books/popular?language=xx")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 120  # falls back to "" collection
 
 
 async def test_popular_books_empty_when_no_manifest(client):

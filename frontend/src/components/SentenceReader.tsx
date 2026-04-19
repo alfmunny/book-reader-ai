@@ -107,7 +107,7 @@ function parseIntoSegments(
       const seg = allTexts[s];
       // Find this segment within the remaining chunk text
       while (chunkIdx < chunks.length) {
-        const chunkText = chunks[chunkIdx].text;
+        const chunkText = chunks[chunkIdx].text.replace(/\n/g, " ");
         const pos = chunkText.indexOf(seg, cursor);
         if (pos >= 0) {
           segmentChunkIdx[s] = chunkIdx;

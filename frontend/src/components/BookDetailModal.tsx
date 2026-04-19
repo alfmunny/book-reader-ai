@@ -86,9 +86,9 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
         </div>
 
         {/* Subject tags */}
-        {book.subjects.length > 0 && (
+        {(book.subjects ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1 mb-4">
-            {book.subjects.slice(0, 5).map((s) => (
+            {(book.subjects ?? []).slice(0, 5).map((s) => (
               <span key={s} className="text-xs px-2 py-0.5 bg-stone-100 rounded-full text-stone-500">
                 {s}
               </span>

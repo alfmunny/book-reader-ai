@@ -60,7 +60,17 @@ async def popular_books(
         if not os.path.isfile(_POPULAR_BOOKS_PATH):
             return {"books": [], "total": 0, "page": page, "per_page": per_page}
         with open(_POPULAR_BOOKS_PATH, encoding="utf-8") as f:
-            _popular_cache = json.load(f)
+            raw = json.load(f)
+        # Normalize: ensure list fields are always arrays, never null.
+        def _norm(book: dict) -> dict:
+            for field in ("authors", "languages", "subjects"):
+                if not isinstance(book.get(field), list):
+                    book[field] = []
+            return book
+        if isinstance(raw, dict):
+            _popular_cache = {k: [_norm(b) for b in v] for k, v in raw.items()}
+        else:
+            _popular_cache = [_norm(b) for b in raw]
 
     if isinstance(_popular_cache, dict):
         books = _popular_cache.get(language, _popular_cache.get("", []))

@@ -19,7 +19,6 @@ from services.db import (
     get_cached_book,
     save_book,
     save_translation,
-    delete_chapter_audio_cache,
     get_setting,
     set_setting,
 )
@@ -273,50 +272,22 @@ async def seed_popular_status(_admin: dict = Depends(_require_admin)):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# AUDIO CACHE
+# AUDIO CACHE (stubs — backend caching removed; endpoints kept for compatibility)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/audio")
 async def get_audio_cache(_admin: dict = Depends(_require_admin)):
-    """List audio cache entries grouped by book + chapter."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("""
-            SELECT book_id, chapter_index, provider, voice,
-                   COUNT(*) as chunks,
-                   SUM(LENGTH(audio)) as total_bytes,
-                   MIN(created_at) as created_at
-            FROM audio_cache
-            GROUP BY book_id, chapter_index, provider, voice
-            ORDER BY book_id, chapter_index
-        """) as cursor:
-            rows = []
-            async for row in cursor:
-                rows.append({
-                    "book_id": row[0],
-                    "chapter_index": row[1],
-                    "provider": row[2],
-                    "voice": row[3],
-                    "chunks": row[4],
-                    "size_mb": round(row[5] / (1024 * 1024), 2),
-                    "created_at": row[6],
-                })
-    return rows
+    return []
 
 
 @router.delete("/audio/{book_id}")
 async def delete_book_audio(book_id: int, _admin: dict = Depends(_require_admin)):
-    """Delete all audio cache for a book."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))
-        await db.commit()
-        return {"ok": True, "deleted": cursor.rowcount}
+    return {"ok": True, "deleted": 0}
 
 
 @router.delete("/audio/{book_id}/{chapter_index}")
 async def delete_chapter_audio(book_id: int, chapter_index: int, _admin: dict = Depends(_require_admin)):
-    """Delete audio cache for a specific chapter."""
-    deleted = await delete_chapter_audio_cache(book_id, chapter_index)
-    return {"ok": True, "deleted": deleted}
+    return {"ok": True, "deleted": 0}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -633,17 +604,8 @@ async def stats(_admin: dict = Depends(_require_admin)):
     users = await list_users()
     books = await list_cached_books()
 
-    audio_count = 0
-    audio_bytes = 0
     translation_count = 0
     async with aiosqlite.connect(DB_PATH) as db:
-        try:
-            async with db.execute("SELECT COUNT(*), COALESCE(SUM(LENGTH(audio)),0) FROM audio_cache") as cur:
-                row = await cur.fetchone()
-                audio_count = row[0]
-                audio_bytes = row[1]
-        except Exception:
-            pass
         try:
             async with db.execute("SELECT COUNT(*) FROM translations") as cur:
                 translation_count = (await cur.fetchone())[0]
@@ -655,8 +617,6 @@ async def stats(_admin: dict = Depends(_require_admin)):
         "users_approved": sum(1 for u in users if u.get("approved")),
         "users_pending": sum(1 for u in users if not u.get("approved")),
         "books_cached": len(books),
-        "audio_chunks_cached": audio_count,
-        "audio_cache_mb": round(audio_bytes / (1024 * 1024), 1),
         "translations_cached": translation_count,
     }
 

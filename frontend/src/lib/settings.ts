@@ -1,15 +1,17 @@
-export type TTSProvider = "auto" | "edge" | "google";
 export type TranslationProvider = "auto" | "gemini" | "google";
 export type FontSize = "sm" | "base" | "lg" | "xl";
+export type ChatFontSize = "xs" | "sm";
 export type Theme = "light" | "dark" | "sepia";
+export type TTSGender = "female" | "male";
 
 export interface AppSettings {
   insightLang: string;
   translationLang: string;
   audiobookEnabled: boolean;
-  ttsProvider: TTSProvider;
+  ttsGender: TTSGender;
   translationProvider: TranslationProvider;
   fontSize: FontSize;
+  chatFontSize: ChatFontSize;
   theme: Theme;
 }
 
@@ -17,9 +19,10 @@ const DEFAULTS: AppSettings = {
   insightLang: "en",
   translationLang: "en",
   audiobookEnabled: true,
-  ttsProvider: "auto",
+  ttsGender: "female",
   translationProvider: "auto",
   fontSize: "base",
+  chatFontSize: "xs",
   theme: "light",
 };
 

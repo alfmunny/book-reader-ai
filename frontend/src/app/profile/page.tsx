@@ -33,7 +33,8 @@ export default function ProfilePage() {
     insightLang: "en",
     translationLang: "en",
     audiobookEnabled: true,
-    ttsProvider: "auto",
+    ttsGender: "female",
+    chatFontSize: "xs",
     translationProvider: "auto",
     fontSize: "base",
     theme: "light",
@@ -92,11 +93,6 @@ export default function ProfilePage() {
       setRemovingKey(false);
     }
   }
-
-  // Resolve "auto" → which provider is actually in use, for the helper text
-  const resolvedTTS = settings.ttsProvider === "auto"
-    ? (hasKey ? "google" : "edge")
-    : settings.ttsProvider;
 
   return (
     <div className="min-h-screen bg-parchment">
@@ -253,52 +249,36 @@ export default function ProfilePage() {
             </p>
           </div>
 
-          {/* TTS provider */}
+          {/* TTS voice gender */}
           <div>
             <label className="block text-sm font-medium text-ink mb-1.5">
-              Text-to-speech provider
+              Text-to-speech voice
             </label>
-            <div className="space-y-2">
-              {([
-                { value: "auto", label: "Auto", hint: "Use Google Gemini TTS if a Gemini key is set, otherwise Microsoft Edge TTS." },
-                { value: "google", label: "Google Gemini", hint: "Higher quality, especially for German and other non-English text. Requires a Gemini API key." },
-                { value: "edge", label: "Microsoft Edge", hint: "Free, no key required. Lower quality for literary text." },
-              ] as const).map((opt) => (
+            <p className="text-xs text-stone-500 mb-2">
+              Uses Microsoft Edge TTS (free, no API key required).
+            </p>
+            <div className="flex gap-2">
+              {(["female", "male"] as const).map((g) => (
                 <label
-                  key={opt.value}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    settings.ttsProvider === opt.value
+                  key={g}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
+                    settings.ttsGender === g
                       ? "border-amber-400 bg-amber-50"
                       : "border-amber-200 bg-white hover:bg-amber-50/50"
                   }`}
                 >
                   <input
                     type="radio"
-                    name="ttsProvider"
-                    value={opt.value}
-                    checked={settings.ttsProvider === opt.value}
-                    onChange={() => updatePref("ttsProvider", opt.value)}
-                    className="mt-0.5 accent-amber-700"
+                    name="ttsGender"
+                    value={g}
+                    checked={settings.ttsGender === g}
+                    onChange={() => updatePref("ttsGender", g)}
+                    className="accent-amber-700"
                   />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-ink">{opt.label}</div>
-                    <div className="text-xs text-stone-500 mt-0.5">{opt.hint}</div>
-                  </div>
+                  <span className="text-sm font-medium text-ink capitalize">{g === "female" ? "♀ Female" : "♂ Male"}</span>
                 </label>
               ))}
             </div>
-            {settings.ttsProvider === "auto" && (
-              <p className="text-xs text-amber-700 mt-2">
-                Currently resolves to{" "}
-                <span className="font-medium">
-                  {resolvedTTS === "google" ? "Google Gemini" : "Microsoft Edge"}
-                </span>
-                {resolvedTTS === "google"
-                  ? " (Gemini key is set)"
-                  : " (no Gemini key — add one above to upgrade)"}
-                .
-              </p>
-            )}
           </div>
 
           {/* Translation provider */}

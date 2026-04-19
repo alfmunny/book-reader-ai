@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { searchBooks, getPopularBooks, getClassics, getMe, BookMeta } from "@/lib/api";
+import { searchBooks, getPopularBooks, getMe, BookMeta } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import { useRouter } from "next/navigation";
@@ -38,7 +38,7 @@ type Tab = "library" | "discover";
 
 export default function Home() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const [tab, setTab] = useState<Tab>("library");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -51,6 +51,11 @@ export default function Home() {
     setRecentBooks(books);
     if (books.length === 0) setTab("discover");
   }, []);
+
+  // Unauthenticated users always see the Discover page first.
+  useEffect(() => {
+    if (status === "unauthenticated") setTab("discover");
+  }, [status]);
 
   // Fetch user info on mount.
   useEffect(() => {
@@ -81,13 +86,7 @@ export default function Home() {
   useEffect(() => {
     if (tab !== "discover") return;
     setPopularLoading(true);
-    const fetch =
-      popularLang === "ru"
-        ? getClassics().then((books) => {
-            const ru = books.filter((b) => b.original_language === "ru");
-            return { books: ru, total: ru.length, page: 1, per_page: 50 };
-          })
-        : getPopularBooks(popularLang, popularPage);
+    const fetch = getPopularBooks(popularLang, popularPage);
     fetch
       .then((data) => {
         setPopularBooks(data.books);

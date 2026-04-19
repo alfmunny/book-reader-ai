@@ -85,7 +85,7 @@ export default function ReaderPage() {
 
 
   // Gemini key reminder — fetch live status so we don't rely on the stale session JWT
-  const [hasGeminiKey, setHasGeminiKey] = useState(true); // optimistic: assume key exists until confirmed otherwise
+  const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null); // null = not yet loaded
   const [isAdmin, setIsAdmin] = useState(false);
   const [geminiReminderVisible, setGeminiReminderVisible] = useState(false);
   const geminiReminderShown = useRef(false);
@@ -225,6 +225,9 @@ export default function ReaderPage() {
       return;
     }
 
+    // If logged in but key status not yet loaded, wait for getMe() to resolve.
+    if (session && hasGeminiKey === null) return;
+
     let cancelled = false;
     setTranslationLoading(true);
     setTranslatedParagraphs([]);
@@ -257,8 +260,8 @@ export default function ReaderPage() {
       } catch (e) {
         console.error("Failed to request chapter translation:", e);
         if (!cancelled && currentChapterKey.current === cacheKey) {
-          if (e instanceof ApiError && e.status === 402) {
-            setTranslationUsedProvider("upgrade required");
+          if (e instanceof ApiError && e.status === 401) {
+            setTranslationUsedProvider("login required");
           } else {
             setTranslationUsedProvider("error · check admin queue");
           }
@@ -270,6 +273,16 @@ export default function ReaderPage() {
 
       if (res.status === "ready") {
         showCached(res);
+        return;
+      }
+
+      // Logged in but no Gemini key — translation was queued but won't run
+      // without a key. Show a notice instead of the misleading queue banner.
+      if (hasGeminiKey === false) {
+        if (!cancelled && currentChapterKey.current === cacheKey) {
+          setTranslationUsedProvider("gemini key required");
+          setTranslationLoading(false);
+        }
         return;
       }
 
@@ -329,7 +342,7 @@ export default function ReaderPage() {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId]);
+  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey]);
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
@@ -689,7 +702,9 @@ export default function ReaderPage() {
                 <span className="text-xs text-amber-600 animate-pulse">
                   {translationUsedProvider || "Translating…"}
                 </span>
-              ) : translationUsedProvider ? (
+              ) : translationUsedProvider &&
+                translationUsedProvider !== "login required" &&
+                translationUsedProvider !== "gemini key required" ? (
                 <span className="text-[10px] text-amber-400">
                   via {translationUsedProvider}
                 </span>
@@ -741,6 +756,35 @@ export default function ReaderPage() {
             </span>
           </div>
         )}
+
+      {/* Login required notice — shown when translation is not cached and user is not logged in */}
+      {translationEnabled && translationUsedProvider === "login required" && (
+        <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
+          <span>
+            Translation requires an account.{" "}
+            <a href="/api/auth/signin" className="underline font-medium hover:text-amber-900">
+              Sign in
+            </a>{" "}
+            to translate this chapter.
+          </span>
+        </div>
+      )}
+
+      {/* Gemini key required notice — shown when logged in but no API key configured */}
+      {translationEnabled && translationUsedProvider === "gemini key required" && (
+        <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
+          <span>
+            Translation requires a Gemini API key.{" "}
+            <button
+              onClick={() => router.push("/profile")}
+              className="underline font-medium hover:text-amber-900"
+            >
+              Add your Gemini API key in Settings
+            </button>{" "}
+            to start translating.
+          </span>
+        </div>
+      )}
 
       {/* Book-level translation progress — shown whenever the queue is
           holding at least one chapter of THIS book in THIS language,
@@ -876,7 +920,7 @@ export default function ReaderPage() {
                       ttsSeekRef.current(startTime);
                       return;
                     }
-                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsProvider)
+                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsGender)
                       .then((url) => {
                         const audio = new Audio(url);
                         audio.onended = () => URL.revokeObjectURL(url);
@@ -984,7 +1028,7 @@ export default function ReaderPage() {
           <InsightChat
             bookId={bookId}
             userId={session?.backendUser?.id ?? null}
-            hasGeminiKey={hasGeminiKey}
+            hasGeminiKey={hasGeminiKey ?? false}
             isVisible={sidebarOpen}
             chapterText={current?.text ?? ""}
             chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}

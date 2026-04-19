@@ -367,66 +367,6 @@ async def count_translations_for_book(book_id: int, target_language: str) -> int
     return row[0] if row else 0
 
 
-# ── Audio cache (whole-chapter TTS output) ────────────────────────────────────
-
-async def get_cached_audio(
-    book_id: int,
-    chapter_index: int,
-    provider: str,
-    voice: str,
-    chunk_index: int = 0,
-) -> tuple[bytes, str] | None:
-    """Return (audio_bytes, content_type) for a cached chunk, or None on miss."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            """
-            SELECT audio, content_type FROM audio_cache
-            WHERE book_id=? AND chapter_index=? AND chunk_index=? AND provider=? AND voice=?
-            """,
-            (book_id, chapter_index, chunk_index, provider, voice),
-        ) as cursor:
-            row = await cursor.fetchone()
-    if not row:
-        return None
-    return row[0], row[1]
-
-
-async def save_audio(
-    book_id: int,
-    chapter_index: int,
-    provider: str,
-    voice: str,
-    audio: bytes,
-    content_type: str,
-    chunk_index: int = 0,
-) -> None:
-    """Insert or replace one cached audio chunk."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            INSERT OR REPLACE INTO audio_cache
-                (book_id, chapter_index, chunk_index, provider, voice, content_type, audio)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (book_id, chapter_index, chunk_index, provider, voice, content_type, audio),
-        )
-        await db.commit()
-
-
-async def delete_chapter_audio_cache(book_id: int, chapter_index: int) -> int:
-    """Delete all cached audio chunks for one chapter (across all providers/voices).
-
-    Returns the number of rows deleted. Used by the Regenerate button to
-    force a fresh TTS generation pass on the next Read click.
-    """
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            "DELETE FROM audio_cache WHERE book_id=? AND chapter_index=?",
-            (book_id, chapter_index),
-        )
-        await db.commit()
-        return cursor.rowcount
-
 
 async def get_cached_book(book_id: int) -> dict | None:
     """Return cached book dict (includes 'text') or None."""

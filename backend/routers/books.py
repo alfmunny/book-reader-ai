@@ -14,14 +14,10 @@ from services.db import (
     list_cached_books,
     get_cached_translation,
     save_translation,
-    get_cached_audio,
-    save_audio,
 )
 from services.splitter import build_chapters, build_chapters_from_html
 from services.translate import translate_text
-from services.tts import synthesize, chunk_text, EDGE_VOICE_MAP, _pick_edge_voice
 from services.auth import get_current_user, get_optional_user, decrypt_api_key
-from services.classics import get_classics, get_free_ids
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +44,6 @@ async def cached_books():
     return await list_cached_books()
 
 
-@router.get("/classics")
-async def classics():
-    """Return the curated free classics list (no auth required)."""
-    return get_classics()
-
-
 @router.get("/popular")
 async def popular_books(
     language: str = "",
@@ -62,18 +52,9 @@ async def popular_books(
 ):
     """Return a paginated slice of the curated popular Gutenberg books manifest.
 
-    language="ru" is a special case: returns Russian-origin books from the
-    free_classics.json (stored as EN translations with original_language="ru").
-    Other language codes use the popular_books.json manifest.
     The manifest is either the new dict format {language: [books]} produced by
     seed_books.py --collections, or the legacy flat list.
     """
-    if language == "ru":
-        books = [b for b in get_classics() if b.get("original_language") == "ru"]
-        total = len(books)
-        start = (page - 1) * per_page
-        return {"books": books[start: start + per_page], "total": total, "page": page, "per_page": per_page}
-
     global _popular_cache
     if _popular_cache is None:
         if not os.path.isfile(_POPULAR_BOOKS_PATH):
@@ -187,7 +168,7 @@ async def request_chapter_translation(
     book_id: int,
     chapter_index: int,
     req: RequestTranslationBody,
-    user: dict = Depends(get_current_user),
+    user: dict | None = Depends(get_optional_user),
 ):
     """Unified reader-side translation endpoint.
 
@@ -195,30 +176,18 @@ async def request_chapter_translation(
     Three outcomes, returned in a single response shape:
 
     - status="ready" → the translation is already cached, paragraphs returned
+      (served to anyone — no auth required for cache hits)
     - status="pending" / "running" → already in the queue, reader polls
     - If not yet queued, this call enqueues it with a high priority
       (user actively waiting) and returns status="pending" with position.
-
-    This replaces the previous reader-side on-demand translate loop which
-    fired per-paragraph Gemini calls and duplicated work the queue worker
-    was about to do anyway.
+      Login is required to enqueue new translations.
     """
     from services.db import get_cached_translation_with_meta
     from services.translation_queue import (
         enqueue, queue_status_for_chapter, worker,
     )
 
-    # 1. Freemium gate: free-plan users can only translate free classics.
-    # Checked before the cache so the cache (shared per-book) cannot be used
-    # to bypass the plan restriction.
-    free_ids = get_free_ids()
-    if free_ids and book_id not in free_ids and user.get("plan", "free") != "paid":
-        raise HTTPException(
-            status_code=402,
-            detail="Translation for this book requires a paid plan.",
-        )
-
-    # 2. Already cached?
+    # 1. Already cached? Served to anyone — no auth required for cache hits.
     cached = await get_cached_translation_with_meta(
         book_id, chapter_index, req.target_language,
     )
@@ -231,6 +200,13 @@ async def request_chapter_translation(
             "title_translation": cached.get("title_translation"),
         }
 
+    # 2. New translation requires login.
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Login required to translate this chapter.",
+        )
+
     # 3. Already queued / running?
     qstatus = await queue_status_for_chapter(
         book_id, chapter_index, req.target_language,
@@ -242,7 +218,7 @@ async def request_chapter_translation(
             "attempts": qstatus["attempts"],
         }
 
-    # 3. Not yet queued — enqueue with high priority. Reader-initiated
+    # 4. Not yet queued — enqueue with high priority. Reader-initiated
     # enqueues jump ahead of admin auto-enqueue (priority=100) and
     # admin per-book enqueue (priority=50) because a user is watching.
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
@@ -387,7 +363,6 @@ def _sse(event: str, data: dict) -> str:
 async def import_stream(
     book_id: int,
     target_language: str = Query("", description="Target language for pre-translation (empty = skip)"),
-    generate_tts: bool = Query(False, description="Also pre-generate TTS audio for each chunk"),
     user: dict | None = Depends(get_optional_user),
 ):
     """Stream import progress for a book via Server-Sent Events.
@@ -396,20 +371,11 @@ async def import_stream(
       fetching   — downloading book text from Gutenberg (if not cached)
       splitting  — computing chapter structure
       translating — translating each chapter into target_language
-      tts        — generating TTS audio for each chunk of each chapter
       done       — all steps complete
 
     Idempotent: skips already-cached work (same as preseed_translations.py).
-    Free classics are accessible without login; other books require a logged-in account.
+    All books are publicly accessible without login.
     """
-    # Access gate: free classics are public; any other book requires login.
-    free_ids = get_free_ids()
-    if free_ids and book_id not in free_ids and user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Login required to read this book.",
-        )
-
     # Resolve Gemini key once up front
     raw_key = user.get("gemini_key") if user else None
     decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
@@ -528,52 +494,6 @@ async def import_stream(
                     await save_translation(book_id, i, target_language, paragraphs)
                     yield _sse("progress", {
                         "stage": "translating", "current": i + 1,
-                        "total": len(chapters), "title": ch.title,
-                    })
-
-            # ── 4. Pre-generate TTS audio ──────────────────────────────────
-            if generate_tts and chapters:
-                voice = _pick_edge_voice(source_language)
-                yield _sse("stage", {
-                    "stage": "tts",
-                    "message": f"Generating audio ({voice})…",
-                    "total": len(chapters),
-                    "provider": "edge",
-                    "voice": voice,
-                })
-                for i, ch in enumerate(chapters):
-                    if not ch.text.strip():
-                        yield _sse("progress", {"stage": "tts", "current": i + 1,
-                                                "total": len(chapters), "skipped": True})
-                        continue
-
-                    chunks = chunk_text(ch.text)
-                    for chunk_idx, chunk in enumerate(chunks):
-                        cached_audio = await get_cached_audio(
-                            book_id, i, "edge", voice, chunk_idx
-                        )
-                        if cached_audio:
-                            continue
-                        try:
-                            audio_bytes, content_type = await synthesize(
-                                chunk, source_language, 1.0, provider="edge",
-                            )
-                            await save_audio(
-                                book_id, i, "edge", voice,
-                                audio_bytes, content_type, chunk_idx,
-                            )
-                        except Exception as e:
-                            logger.exception("TTS failed for book=%s ch=%s chunk=%s",
-                                             book_id, i, chunk_idx)
-                            yield _sse("progress", {
-                                "stage": "tts", "current": i + 1,
-                                "total": len(chapters), "title": ch.title,
-                                "error": str(e)[:120],
-                            })
-                            break  # skip remaining chunks for this chapter
-
-                    yield _sse("progress", {
-                        "stage": "tts", "current": i + 1,
                         "total": len(chapters), "title": ch.title,
                     })
 

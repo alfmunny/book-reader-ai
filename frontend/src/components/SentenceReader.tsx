@@ -392,7 +392,7 @@ export default function SentenceReader({
       const range = (document as Document & { caretRangeFromPoint(x: number, y: number): Range | null })
         .caretRangeFromPoint(e.clientX, e.clientY);
       if (range) {
-        range.expand("word");
+        (range as Range & { expand(unit: string): void }).expand("word");
         word = range.toString().trim();
       }
     }

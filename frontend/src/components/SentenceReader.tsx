@@ -249,6 +249,19 @@ interface Props {
   chapterIndex?: number;
   /** Existing annotations to highlight matching segments. */
   annotations?: Annotation[];
+  /**
+   * Unified tap handler (replaces click/double-click/long-press on mobile).
+   * When provided, a single tap on any word calls this with the word, sentence
+   * text, timing info, and paragraph translation. The parent opens a bottom
+   * drawer with actions (read, save, annotate).
+   */
+  onWordTap?: (info: {
+    word: string;
+    sentenceText: string;
+    startTime: number;
+    chapterIndex: number;
+    translationText?: string;
+  }) => void;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -275,6 +288,7 @@ export default function SentenceReader({
   chapterIndex = 0,
   annotations,
   scrollTargetSentence,
+  onWordTap,
 }: Props) {
   const [wordToast, setWordToast] = useState<string | null>(null);
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
@@ -466,13 +480,44 @@ export default function SentenceReader({
 
         const handleSegClick = (
           e: React.MouseEvent,
-          seg: { startTime: number; text: string; chunkIdx: number },
+          seg: { startTime: number; text: string; chunkIdx: number; flatIdx: number },
         ) => {
           if (disabled) return;
           if (!isSegmentLoaded(seg)) return;
-          // If this segment has an annotation, open the toolbar for editing
-          // instead of seeking TTS — but only on a deliberate single-click
-          // (defer 200ms so a double-click can cancel first)
+
+          // Unified tap mode: extract word at click position, open action drawer
+          if (onWordTap) {
+            if (clickTimer.current) clearTimeout(clickTimer.current);
+            clickTimer.current = setTimeout(() => {
+              clickTimer.current = null;
+              let word = "";
+              const sel = window.getSelection()?.toString().trim() ?? "";
+              if (sel && !sel.includes(" ") && sel.length >= 2) {
+                word = sel;
+              }
+              if (!word && "caretRangeFromPoint" in document) {
+                const range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
+                if (range) { range.expand("word"); word = range.toString().trim(); }
+              }
+              if (!word) {
+                word = seg.text.split(/\s+/).reduce((a: string, b: string) => (b.length > a.length ? b : a), "");
+              }
+              word = word.replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
+                         .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "");
+              if (!word || word.length < 2) word = seg.text.split(/\s+/)[0] ?? "";
+
+              onWordTap({
+                word,
+                sentenceText: seg.text,
+                startTime: seg.startTime,
+                chapterIndex,
+                translationText: translationText || undefined,
+              });
+            }, 150);
+            return;
+          }
+
+          // Legacy mode: seek TTS or open annotation
           if (clickTimer.current) clearTimeout(clickTimer.current);
           clickTimer.current = setTimeout(() => {
             clickTimer.current = null;
@@ -501,11 +546,11 @@ export default function SentenceReader({
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
               onClick={(e) => handleSegClick(e, seg)}
-              onDoubleClick={(e) => handleDoubleClick(e, seg)}
-              onPointerDown={(e) => handlePointerDown(e, seg)}
-              onPointerUp={cancelLongPress}
-              onPointerCancel={cancelLongPress}
-              onPointerMove={handlePointerMove}
+              onDoubleClick={onWordTap ? undefined : (e) => handleDoubleClick(e, seg)}
+              onPointerDown={onWordTap ? undefined : (e) => handlePointerDown(e, seg)}
+              onPointerUp={onWordTap ? undefined : cancelLongPress}
+              onPointerCancel={onWordTap ? undefined : cancelLongPress}
+              onPointerMove={onWordTap ? undefined : handlePointerMove}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {seg.text}

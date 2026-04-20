@@ -12,6 +12,7 @@ import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
+import WordActionDrawer, { type WordAction } from "@/components/WordActionDrawer";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
@@ -42,6 +43,7 @@ export default function ReaderPage() {
 
   const [selectedText, setSelectedText] = useState("");
   const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
+  const [wordAction, setWordAction] = useState<WordAction | null>(null);
 
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -84,6 +86,38 @@ export default function ReaderPage() {
   const isResizing = useRef(false);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+
+  // Immersive mode — on mobile, hide header/toolbar; tap to toggle
+  const [toolbarVisible, setToolbarVisible] = useState(true);
+  const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isMobileRef = useRef(false);
+  useEffect(() => {
+    isMobileRef.current = window.innerWidth < 768;
+    if (isMobileRef.current) {
+      const t = setTimeout(() => setToolbarVisible(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById("reader-scroll");
+    if (!el) return;
+    function onScroll() {
+      if (!isMobileRef.current) return;
+      setToolbarVisible(false);
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [loading, chapterIndex]);
+
+  function handleReaderTap(e: React.MouseEvent | React.TouchEvent) {
+    if (!isMobileRef.current) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-seg]") || target.closest("select") || target.closest("button") || target.closest("a")) return;
+    setToolbarVisible((v) => !v);
+  }
 
   function onResizeStart(e: React.MouseEvent) {
     isResizing.current = true;
@@ -593,7 +627,9 @@ export default function ReaderPage() {
       )}
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur shrink-0">
+      <header className={`border-b border-amber-200 bg-white/70 backdrop-blur shrink-0 transition-all duration-300 ${
+        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
+      } md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b`}>
         {/* Row 1: nav + title + chapter selector + chat toggle */}
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
@@ -861,6 +897,10 @@ export default function ReaderPage() {
         </div>
       </header>
 
+      {/* ── Banners (hidden in immersive mode on mobile) ──────────────── */}
+      <div className={`shrink-0 transition-all duration-300 ${
+        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0" : "max-h-[500px] opacity-100"
+      } md:!max-h-none md:!opacity-100 md:!overflow-visible`}>
       {/* Per-chapter queue banner — when THIS chapter is awaiting the
           background worker. More prominent than the small status line
           in the toolbar because the user actively cares about it while
@@ -974,7 +1014,9 @@ export default function ReaderPage() {
         );
       })()}
 
-      {/* Reading progress bar — combines chapter position + scroll within chapter */}
+      </div>{/* end banners wrapper */}
+
+      {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
         <div className="h-0.5 bg-amber-100" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
           <div
@@ -991,6 +1033,7 @@ export default function ReaderPage() {
           <div
             id="reader-scroll"
             className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
+            onClick={handleReaderTap}
             onMouseUp={handleSelection}
             onTouchEnd={handleSelection}
             onDoubleClick={(e) => {
@@ -1039,6 +1082,15 @@ export default function ReaderPage() {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
                   scrollTargetSentence={scrollTargetSentence}
+                  onWordTap={(info) => {
+                    setWordAction({
+                      word: info.word,
+                      sentenceText: info.sentenceText,
+                      segmentStartTime: info.startTime,
+                      chapterIndex: info.chapterIndex,
+                      translationText: info.translationText,
+                    });
+                  }}
                   onSegmentClick={(startTime, segText) => {
                     if (audiobook) {
                       seekAudioRef.current(startTime);
@@ -1081,7 +1133,7 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Dictionary lookup popup */}
+          {/* Dictionary lookup popup (legacy — desktop fallback) */}
           {lookupWord && (
             <WordLookup
               word={lookupWord.word}
@@ -1089,6 +1141,40 @@ export default function ReaderPage() {
               onClose={() => setLookupWord(null)}
             />
           )}
+
+          {/* Unified word action drawer (mobile + desktop) */}
+          <WordActionDrawer
+            action={wordAction}
+            onClose={() => setWordAction(null)}
+            onReadSentence={(text, startTime) => {
+              if (audiobook) {
+                seekAudioRef.current(startTime);
+              } else if (ttsDuration > 0) {
+                ttsSeekRef.current(startTime);
+              } else {
+                synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
+                  .then(({ url }) => {
+                    const audio = new Audio(url);
+                    audio.onended = () => URL.revokeObjectURL(url);
+                    audio.play().catch(() => URL.revokeObjectURL(url));
+                  })
+                  .catch(() => {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = bookLanguage;
+                    window.speechSynthesis.speak(utter);
+                  });
+              }
+            }}
+            onSaveWord={session?.backendToken ? handleWordSave : undefined}
+            onAnnotate={session?.backendToken ? (sentenceText, ci) => {
+              setAnnotationPanel({
+                sentenceText,
+                chapterIndex: ci,
+                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+              });
+            } : undefined}
+          />
 
           {/* Annotation toolbar */}
           {annotationPanel && (
@@ -1268,7 +1354,9 @@ export default function ReaderPage() {
 
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
       {!loading && chapters.length > 0 && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-between gap-1 safe-bottom">
+        <div className={`md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-between gap-1 safe-bottom transition-transform duration-300 ${
+          toolbarVisible ? "translate-y-0" : "translate-y-full"
+        }`}>
           <button
             onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
             disabled={chapterIndex === 0}

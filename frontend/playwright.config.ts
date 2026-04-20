@@ -14,9 +14,32 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ["html", { outputFolder: "playwright-report", open: "never" }],
     ["list"],
     ["json", { outputFile: "e2e-results.json" }],
+    ["html", { outputFolder: "playwright-report", open: "never" }],
+    ...(process.env.CI
+      ? [
+          [
+            "monocart",
+            {
+              outputFile: "coverage-e2e/report.html",
+              coverage: {
+                reports: [
+                  ["json-summary", { subdir: ".", file: "coverage-summary.json" }],
+                  ["lcov", { subdir: "." }],
+                ],
+                entryFilter: {
+                  '**/node_modules/**': false,
+                  '**/_next/static/chunks/webpack**': false,
+                  '**/localhost:3100/**': true,
+                },
+                sourceFilter: (sourcePath: string) =>
+                  sourcePath.includes("src/") && !sourcePath.includes("node_modules"),
+              },
+            },
+          ] as any,
+        ]
+      : []),
   ],
 
   use: {
@@ -39,7 +62,6 @@ export default defineConfig({
     timeout: 120 * 1000,
     env: {
       PLAYWRIGHT_TEST: "1",
-      INSTRUMENT_COVERAGE: process.env.CI ? "1" : "",
       NEXT_PUBLIC_API_URL: "http://stub.test/api",
       // NextAuth v5 validates config at module load, so the dev server
       // needs these even though our middleware bypass skips the auth call.

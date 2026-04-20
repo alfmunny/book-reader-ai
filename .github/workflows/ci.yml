@@ -83,27 +83,8 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Enable Istanbul instrumentation for E2E
-        run: |
-          cat > .babelrc <<'BABEL'
-          {
-            "presets": ["next/babel"],
-            "plugins": ["istanbul"]
-          }
-          BABEL
-
       - name: Run E2E tests
         run: npm run test:e2e
-
-      - name: Generate E2E coverage report
-        if: always()
-        run: |
-          if [ -d .nyc_output ] && [ "$(ls -A .nyc_output 2>/dev/null)" ]; then
-            npx nyc report --reporter=json-summary --report-dir=coverage-e2e --temp-dir=.nyc_output
-          else
-            echo '{"total":{"statements":{"pct":0},"branches":{"pct":0},"functions":{"pct":0},"lines":{"pct":0}}}' > coverage-e2e/coverage-summary.json
-            echo "No E2E coverage data collected"
-          fi
 
       - name: Upload E2E results summary
         uses: actions/upload-artifact@v4

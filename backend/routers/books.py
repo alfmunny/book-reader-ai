@@ -197,6 +197,16 @@ async def request_chapter_translation(
         enqueue, queue_status_for_chapter, worker,
     )
 
+    # 0. Guard: reject same-language translation.
+    book_meta = await get_cached_book(book_id)
+    if book_meta:
+        source = (book_meta.get("languages") or [None])[0]
+        if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot translate to the same language as the original.",
+            )
+
     # 1. Already cached? Served to anyone — no auth required for cache hits.
     cached = await get_cached_translation_with_meta(
         book_id, chapter_index, req.target_language,
@@ -228,7 +238,15 @@ async def request_chapter_translation(
             "attempts": qstatus["attempts"],
         }
 
-    # 4. Not yet queued — enqueue with high priority. Reader-initiated
+    # 4. Require user's own Gemini key — do not drain the admin queue key.
+    raw_key = user.get("gemini_key")
+    if not (raw_key and decrypt_api_key(raw_key)):
+        raise HTTPException(
+            status_code=403,
+            detail="A Gemini API key is required to translate chapters. Please add one in your profile settings.",
+        )
+
+    # 5. Not yet queued — enqueue with high priority. Reader-initiated
     # enqueues jump ahead of admin auto-enqueue (priority=100) and
     # admin per-book enqueue (priority=50) because a user is watching.
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
@@ -263,6 +281,15 @@ async def enqueue_all_chapters(
     below the active reader's priority=10 so the chapter they're
     currently staring at still wins.
     """
+    book_meta = await get_cached_book(book_id)
+    if book_meta:
+        source = (book_meta.get("languages") or [None])[0]
+        if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot translate to the same language as the original.",
+            )
+
     from services.translation_queue import enqueue_for_book, worker
 
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"

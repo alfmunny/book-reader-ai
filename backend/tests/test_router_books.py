@@ -501,8 +501,21 @@ async def test_import_stream_public_without_login(anon_client):
     assert resp.status_code == 200
 
 
-async def test_chapter_translation_allowed_for_any_logged_in_user(client):
-    """Any logged-in user can translate any book."""
+async def test_chapter_translation_requires_gemini_key(client):
+    """Logged-in user without a Gemini key cannot enqueue new translation."""
+    resp = await client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 403
+    assert "Gemini" in resp.json()["detail"]
+
+
+async def test_chapter_translation_allowed_with_gemini_key(client, test_user):
+    """Logged-in user with a Gemini key can enqueue translation."""
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-key"))
     resp = await client.post(
         "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},
@@ -531,3 +544,26 @@ async def test_chapter_translation_requires_login_when_not_cached(anon_client):
         json={"target_language": "de"},
     )
     assert resp.status_code == 401
+
+
+async def test_chapter_translation_same_language_returns_400(client):
+    """Translating an English book into English is rejected with 400."""
+    en_meta = {**MOCK_META, "id": 7001}
+    await save_book(7001, en_meta, "Chapter I\n\nSome English text here.")
+    resp = await client.post(
+        "/api/books/7001/chapters/0/translation",
+        json={"target_language": "en"},
+    )
+    assert resp.status_code == 400
+    assert "same" in resp.json()["detail"].lower()
+
+
+async def test_enqueue_all_same_language_returns_400(client):
+    """Enqueue-all for the same language as the book is rejected with 400."""
+    en_meta = {**MOCK_META, "id": 7002}
+    await save_book(7002, en_meta, "Chapter I\n\nSome English text here.")
+    resp = await client.post(
+        "/api/books/7002/translations/enqueue-all",
+        json={"target_language": "en"},
+    )
+    assert resp.status_code == 400

@@ -321,6 +321,15 @@ export default function ReaderPage() {
   // This replaces the previous per-paragraph translate loop — admins
   // stop double-spending tokens and all translation work flows through
   // the single queue (same model chain, same rate limits).
+  // Reset translationLang when bookLanguage is known and they coincide.
+  useEffect(() => {
+    if (!bookLanguage) return;
+    const available = LANGUAGES.filter((l) => l.code !== bookLanguage);
+    if (translationLang === bookLanguage && available.length > 0) {
+      setTranslationLang(available[0].code);
+    }
+  }, [bookLanguage, translationLang]);
+
   useEffect(() => {
     const current = chapters[chapterIndex];
     if (!translationEnabled || !current?.text) {
@@ -339,6 +348,13 @@ export default function ReaderPage() {
 
     // If logged in but key status not yet loaded, wait for getMe() to resolve.
     if (session && hasGeminiKey === null) return;
+
+    // Require user's own Gemini key — don't trigger translation on admin's key.
+    if (session && hasGeminiKey === false) {
+      setTranslationUsedProvider("gemini key required");
+      setTranslationLoading(false);
+      return;
+    }
 
     let cancelled = false;
     setTranslationLoading(true);
@@ -374,6 +390,8 @@ export default function ReaderPage() {
         if (!cancelled && currentChapterKey.current === cacheKey) {
           if (e instanceof ApiError && e.status === 401) {
             setTranslationUsedProvider("login required");
+          } else if (e instanceof ApiError && e.status === 403) {
+            setTranslationUsedProvider("gemini key required");
           } else {
             setTranslationUsedProvider("error · check admin queue");
           }
@@ -856,7 +874,7 @@ export default function ReaderPage() {
                 value={translationLang}
                 onChange={(e) => setTranslationLang(e.target.value)}
               >
-                {LANGUAGES.map((l) => (
+                {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
                   <option key={l.code} value={l.code}>{l.label}</option>
                 ))}
               </select>

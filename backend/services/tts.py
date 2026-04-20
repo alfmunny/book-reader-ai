@@ -90,17 +90,26 @@ async def synthesize(
     rate: float = 1.0,
     *,
     gender: Gender = "female",
-) -> tuple[bytes, str]:
-    """Synthesize text with Edge TTS. Returns (mp3_bytes, "audio/mpeg")."""
+) -> tuple[bytes, str, list[dict]]:
+    """Synthesize text with Edge TTS.
+    Returns (mp3_bytes, "audio/mpeg", word_boundaries).
+    Each boundary: {"offset_ms": float, "text": str}
+    """
     voice = _pick_edge_voice(language, gender)
     communicate = edge_tts.Communicate(text.replace("\n", " "), voice, rate=_rate_str(rate))
 
     buf = io.BytesIO()
+    boundaries: list[dict] = []
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             buf.write(chunk["data"])
+        elif chunk["type"] == "WordBoundary":
+            boundaries.append({
+                "offset_ms": round(chunk["offset"] / 10_000, 1),
+                "text": chunk["text"],
+            })
 
-    return buf.getvalue(), "audio/mpeg"
+    return buf.getvalue(), "audio/mpeg", boundaries
 
 
 # ── Text chunking ─────────────────────────────────────────────────────────────

@@ -85,6 +85,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-TTS-Timings"],
 )
 
 # Chrome Private Network Access: allow localhost-to-localhost requests

@@ -85,7 +85,7 @@ async def test_edge_synthesize_returns_mp3_bytes():
     mock_comm.stream = fake_stream
 
     with patch("services.tts.edge_tts.Communicate", return_value=mock_comm):
-        audio, ct = await synthesize("Hello world", "en", 1.0)
+        audio, ct, _ = await synthesize("Hello world", "en", 1.0)
 
     assert audio == b"chunk1chunk2"
     assert ct == "audio/mpeg"
@@ -100,9 +100,28 @@ async def test_edge_synthesize_ignores_non_audio_chunks():
     mock_comm.stream = fake_stream
 
     with patch("services.tts.edge_tts.Communicate", return_value=mock_comm):
-        audio, _ = await synthesize("Hello", "en", 1.0)
+        audio, _, _ = await synthesize("Hello", "en", 1.0)
 
     assert audio == b"audio_only"
+
+
+
+async def test_edge_synthesize_collects_word_boundaries():
+    async def fake_stream():
+        yield {"type": "audio", "data": b"audio"}
+        yield {"type": "WordBoundary", "offset": 1_000_000, "duration": 500_000, "text": "Hello"}
+        yield {"type": "WordBoundary", "offset": 5_000_000, "duration": 400_000, "text": "world"}
+
+    mock_comm = MagicMock()
+    mock_comm.stream = fake_stream
+
+    with patch("services.tts.edge_tts.Communicate", return_value=mock_comm):
+        _, _, boundaries = await synthesize("Hello world", "en", 1.0)
+
+    assert len(boundaries) == 2
+    assert boundaries[0] == {"offset_ms": 100.0, "text": "Hello"}
+    assert boundaries[1] == {"offset_ms": 500.0, "text": "world"}
+
 
 
 async def test_edge_synthesize_uses_female_voice_by_default():

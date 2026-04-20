@@ -1,0 +1,373 @@
+"""
+Extended tests for services/db.py — GitHub/Apple auth, user management,
+annotations, vocabulary, obsidian settings, book insights,
+get_cached_translation_with_meta.
+"""
+
+import pytest
+import services.db as db_module
+from services.db import (
+    init_db,
+    get_or_create_user,
+    get_or_create_user_github,
+    get_or_create_user_apple,
+    get_user_by_id,
+    list_users,
+    set_user_approved,
+    set_user_role,
+    delete_user,
+    set_user_plan,
+    save_translation,
+    get_cached_translation_with_meta,
+    create_annotation,
+    get_annotations,
+    update_annotation,
+    delete_annotation,
+    save_word,
+    get_vocabulary,
+    delete_word,
+    update_obsidian_settings,
+    get_obsidian_settings,
+    save_insight,
+    get_insights,
+    delete_insight,
+)
+
+
+@pytest.fixture(autouse=True)
+async def tmp_db(monkeypatch, tmp_path):
+    path = str(tmp_path / "test.db")
+    monkeypatch.setattr(db_module, "DB_PATH", path)
+    await init_db()
+
+
+# ── GitHub auth ───────────────────────────────────────────────────────────────
+
+async def test_github_new_user_becomes_admin_when_first():
+    user = await get_or_create_user_github("gh1", "alice@example.com", "Alice", "pic")
+    assert user["role"] == "admin"
+    assert user["approved"] == 1
+    assert user["github_id"] == "gh1"
+
+
+async def test_github_second_user_is_pending():
+    await get_or_create_user("google1", "first@example.com", "First", "")
+    user = await get_or_create_user_github("gh2", "second@example.com", "Second", "")
+    assert user["role"] == "user"
+    assert user["approved"] == 0
+
+
+async def test_github_existing_by_github_id_updates_fields():
+    u1 = await get_or_create_user_github("gh3", "old@example.com", "Old", "")
+    u2 = await get_or_create_user_github("gh3", "new@example.com", "New", "newpic")
+    assert u1["id"] == u2["id"]
+    refreshed = await get_user_by_id(u1["id"])
+    assert refreshed["email"] == "new@example.com"
+    assert refreshed["name"] == "New"
+
+
+async def test_github_links_to_existing_google_user_by_email():
+    google_user = await get_or_create_user("g99", "shared@example.com", "Shared", "")
+    gh_user = await get_or_create_user_github("gh4", "shared@example.com", "Shared2", "")
+    assert gh_user["id"] == google_user["id"]
+    refreshed = await get_user_by_id(google_user["id"])
+    assert refreshed["github_id"] == "gh4"
+
+
+async def test_github_no_email_does_not_link():
+    await get_or_create_user("g100", "orphan@example.com", "Orphan", "")
+    new_user = await get_or_create_user_github("gh5", "", "NoEmail", "")
+    assert new_user["email"] == ""
+
+
+# ── Apple auth ────────────────────────────────────────────────────────────────
+
+async def test_apple_new_user_created():
+    user = await get_or_create_user_apple("ap1", "apple@example.com", "Apple User")
+    assert user["apple_id"] == "ap1"
+    assert user["email"] == "apple@example.com"
+    assert user["name"] == "Apple User"
+
+
+async def test_apple_existing_by_apple_id_is_idempotent():
+    u1 = await get_or_create_user_apple("ap2", "a@example.com", "A")
+    u2 = await get_or_create_user_apple("ap2", "a@example.com", "A")
+    assert u1["id"] == u2["id"]
+
+
+async def test_apple_subsequent_login_empty_name_preserves_existing():
+    await get_or_create_user_apple("ap3", "b@example.com", "Bob")
+    # Apple doesn't send name on return logins
+    u2 = await get_or_create_user_apple("ap3", "", "")
+    assert u2["name"] == "Bob"
+    assert u2["email"] == "b@example.com"
+
+
+async def test_apple_links_to_existing_google_user_by_email():
+    google_user = await get_or_create_user("g200", "link@example.com", "Google", "")
+    apple_user = await get_or_create_user_apple("ap4", "link@example.com", "")
+    assert apple_user["id"] == google_user["id"]
+
+
+async def test_apple_no_email_skips_linking():
+    await get_or_create_user("g201", "existing@example.com", "Existing", "")
+    new_user = await get_or_create_user_apple("ap5", "", "NoEmail")
+    # Should create a new user, not link
+    existing = await get_or_create_user("g201", "existing@example.com", "Existing", "")
+    assert new_user["id"] != existing["id"]
+
+
+# ── User management ───────────────────────────────────────────────────────────
+
+async def test_list_users_empty():
+    assert await list_users() == []
+
+
+async def test_list_users_returns_all():
+    await get_or_create_user("g1", "a@example.com", "A", "")
+    await get_or_create_user("g2", "b@example.com", "B", "")
+    users = await list_users()
+    assert len(users) == 2
+    emails = {u["email"] for u in users}
+    assert emails == {"a@example.com", "b@example.com"}
+
+
+async def test_set_user_approved():
+    user = await get_or_create_user("g10", "test@example.com", "Test", "")
+    await set_user_approved(user["id"], True)
+    refreshed = await get_user_by_id(user["id"])
+    assert refreshed["approved"] == 1
+
+    await set_user_approved(user["id"], False)
+    refreshed = await get_user_by_id(user["id"])
+    assert refreshed["approved"] == 0
+
+
+async def test_set_user_role():
+    user = await get_or_create_user("g11", "role@example.com", "Role", "")
+    await set_user_role(user["id"], "admin")
+    refreshed = await get_user_by_id(user["id"])
+    assert refreshed["role"] == "admin"
+
+
+async def test_delete_user():
+    user = await get_or_create_user("g12", "del@example.com", "Del", "")
+    await delete_user(user["id"])
+    assert await get_user_by_id(user["id"]) is None
+
+
+async def test_set_user_plan():
+    user = await get_or_create_user("g13", "plan@example.com", "Plan", "")
+    await set_user_plan(user["id"], "pro")
+    refreshed = await get_user_by_id(user["id"])
+    assert refreshed["plan"] == "pro"
+
+
+# ── Translation cache with metadata ──────────────────────────────────────────
+
+async def test_get_cached_translation_with_meta_returns_all_fields():
+    await save_translation(1, 0, "en", ["Hello world"], provider="gemini", model="gemini-pro")
+    result = await get_cached_translation_with_meta(1, 0, "en")
+    assert result is not None
+    assert result["paragraphs"] == ["Hello world"]
+    assert result["provider"] == "gemini"
+    assert result["model"] == "gemini-pro"
+    assert result["title_translation"] is None
+
+
+async def test_get_cached_translation_with_meta_with_title():
+    await save_translation(2, 0, "de", ["Hallo Welt"], title_translation="Kapitel Eins")
+    result = await get_cached_translation_with_meta(2, 0, "de")
+    assert result["title_translation"] == "Kapitel Eins"
+
+
+async def test_get_cached_translation_with_meta_missing_returns_none():
+    assert await get_cached_translation_with_meta(999, 0, "en") is None
+
+
+async def test_get_cached_translation_with_meta_null_provider():
+    await save_translation(3, 0, "fr", ["Bonjour"])
+    result = await get_cached_translation_with_meta(3, 0, "fr")
+    assert result["provider"] is None
+    assert result["model"] is None
+
+
+# ── Annotations ───────────────────────────────────────────────────────────────
+
+async def test_create_annotation():
+    user = await get_or_create_user("g20", "ann@example.com", "Ann", "")
+    ann = await create_annotation(user["id"], 1, 0, "Some sentence.", "My note", "yellow")
+    assert ann["note_text"] == "My note"
+    assert ann["color"] == "yellow"
+    assert ann["sentence_text"] == "Some sentence."
+    assert ann["user_id"] == user["id"]
+
+
+async def test_create_annotation_conflict_updates_existing():
+    user = await get_or_create_user("g21", "conflict@example.com", "C", "")
+    a1 = await create_annotation(user["id"], 1, 0, "Sentence", "First note", "yellow")
+    a2 = await create_annotation(user["id"], 1, 0, "Sentence", "Updated note", "green")
+    assert a1["id"] == a2["id"]
+    assert a2["note_text"] == "Updated note"
+    assert a2["color"] == "green"
+
+
+async def test_get_annotations_returns_user_annotations():
+    user = await get_or_create_user("g22", "get@example.com", "G", "")
+    await create_annotation(user["id"], 5, 0, "First", "Note1", "yellow")
+    await create_annotation(user["id"], 5, 1, "Second", "Note2", "red")
+    anns = await get_annotations(user["id"], 5)
+    assert len(anns) == 2
+
+
+async def test_get_annotations_isolated_by_user():
+    u1 = await get_or_create_user("g23", "u1@example.com", "U1", "")
+    u2 = await get_or_create_user("g24", "u2@example.com", "U2", "")
+    await create_annotation(u1["id"], 7, 0, "Sent", "U1 note", "yellow")
+    anns_u2 = await get_annotations(u2["id"], 7)
+    assert anns_u2 == []
+
+
+async def test_update_annotation():
+    user = await get_or_create_user("g25", "upd@example.com", "Upd", "")
+    ann = await create_annotation(user["id"], 1, 0, "Sentence", "Old", "yellow")
+    updated = await update_annotation(ann["id"], user["id"], "New", "blue")
+    assert updated is not None
+    assert updated["note_text"] == "New"
+    assert updated["color"] == "blue"
+
+
+async def test_update_annotation_wrong_user_returns_none():
+    u1 = await get_or_create_user("g26", "owner@example.com", "Owner", "")
+    u2 = await get_or_create_user("g27", "other@example.com", "Other", "")
+    ann = await create_annotation(u1["id"], 1, 0, "Sent", "Note", "yellow")
+    result = await update_annotation(ann["id"], u2["id"], "Hack", "red")
+    assert result is None
+
+
+async def test_delete_annotation():
+    user = await get_or_create_user("g28", "del2@example.com", "Del2", "")
+    ann = await create_annotation(user["id"], 1, 0, "Del sent", "Note", "yellow")
+    deleted = await delete_annotation(ann["id"], user["id"])
+    assert deleted is True
+    assert await get_annotations(user["id"], 1) == []
+
+
+async def test_delete_annotation_wrong_user_returns_false():
+    u1 = await get_or_create_user("g29", "own2@example.com", "Own2", "")
+    u2 = await get_or_create_user("g30", "oth2@example.com", "Oth2", "")
+    ann = await create_annotation(u1["id"], 1, 0, "Sent", "Note", "yellow")
+    result = await delete_annotation(ann["id"], u2["id"])
+    assert result is False
+
+
+# ── Vocabulary ────────────────────────────────────────────────────────────────
+
+async def test_save_word_creates_entry():
+    user = await get_or_create_user("g40", "vocab@example.com", "Vocab", "")
+    result = await save_word(user["id"], "Schadenfreude", 1, 0, "He felt Schadenfreude.")
+    assert result["word"] == "Schadenfreude"
+    assert result["user_id"] == user["id"]
+
+
+async def test_save_word_idempotent_vocabulary_entry():
+    user = await get_or_create_user("g41", "vocab2@example.com", "Vocab2", "")
+    r1 = await save_word(user["id"], "Weltanschauung", 1, 0, "Sentence 1.")
+    r2 = await save_word(user["id"], "Weltanschauung", 1, 0, "Sentence 1.")
+    assert r1["id"] == r2["id"]
+
+
+async def test_save_word_multiple_occurrences():
+    user = await get_or_create_user("g42", "vocab3@example.com", "V3", "")
+    await save_word(user["id"], "Angst", 1, 0, "First sentence.")
+    await save_word(user["id"], "Angst", 1, 1, "Second sentence.")
+    vocab = await get_vocabulary(user["id"])
+    assert len(vocab) == 1
+    assert len(vocab[0]["occurrences"]) == 2
+
+
+async def test_get_vocabulary_includes_occurrences():
+    user = await get_or_create_user("g43", "vocab4@example.com", "V4", "")
+    await save_word(user["id"], "Zeitgeist", 42, 3, "The Zeitgeist was clear.")
+    vocab = await get_vocabulary(user["id"])
+    assert vocab[0]["word"] == "Zeitgeist"
+    occ = vocab[0]["occurrences"][0]
+    assert occ["book_id"] == 42
+    assert occ["chapter_index"] == 3
+    assert occ["sentence_text"] == "The Zeitgeist was clear."
+
+
+async def test_delete_word():
+    user = await get_or_create_user("g44", "vocab5@example.com", "V5", "")
+    await save_word(user["id"], "Kindergarten", 1, 0, "In Kindergarten...")
+    deleted = await delete_word(user["id"], "Kindergarten")
+    assert deleted is True
+    assert await get_vocabulary(user["id"]) == []
+
+
+async def test_delete_word_nonexistent_returns_false():
+    user = await get_or_create_user("g45", "vocab6@example.com", "V6", "")
+    result = await delete_word(user["id"], "nonexistent")
+    assert result is False
+
+
+# ── Obsidian settings ─────────────────────────────────────────────────────────
+
+async def test_obsidian_settings_roundtrip():
+    user = await get_or_create_user("g50", "obsidian@example.com", "Obs", "")
+    await update_obsidian_settings(user["id"], "enc-token", "user/repo", "/vault/notes")
+    settings = await get_obsidian_settings(user["id"])
+    assert settings["github_token"] == "enc-token"
+    assert settings["obsidian_repo"] == "user/repo"
+    assert settings["obsidian_path"] == "/vault/notes"
+
+
+async def test_obsidian_settings_null_values():
+    user = await get_or_create_user("g51", "obs2@example.com", "Obs2", "")
+    settings = await get_obsidian_settings(user["id"])
+    assert settings["github_token"] is None
+    assert settings["obsidian_repo"] is None
+
+
+# ── Book insights ─────────────────────────────────────────────────────────────
+
+async def test_save_insight():
+    user = await get_or_create_user("g60", "insight@example.com", "Ins", "")
+    result = await save_insight(user["id"], 1, 0, "What is the theme?", "The theme is love.")
+    assert result["question"] == "What is the theme?"
+    assert result["answer"] == "The theme is love."
+    assert result["book_id"] == 1
+    assert result["chapter_index"] == 0
+
+
+async def test_save_insight_null_chapter():
+    user = await get_or_create_user("g61", "insight2@example.com", "Ins2", "")
+    result = await save_insight(user["id"], 1, None, "Who wrote this?", "The author.")
+    assert result["chapter_index"] is None
+
+
+async def test_get_insights_returns_all_for_book():
+    user = await get_or_create_user("g62", "insight3@example.com", "Ins3", "")
+    await save_insight(user["id"], 5, 0, "Q1", "A1")
+    await save_insight(user["id"], 5, 1, "Q2", "A2")
+    await save_insight(user["id"], 6, 0, "Other book Q", "A")
+    insights = await get_insights(user["id"], 5)
+    assert len(insights) == 2
+    questions = {i["question"] for i in insights}
+    assert questions == {"Q1", "Q2"}
+
+
+async def test_delete_insight():
+    user = await get_or_create_user("g63", "insight4@example.com", "Ins4", "")
+    ins = await save_insight(user["id"], 1, 0, "Q", "A")
+    deleted = await delete_insight(ins["id"], user["id"])
+    assert deleted is True
+    assert await get_insights(user["id"], 1) == []
+
+
+async def test_delete_insight_wrong_user_returns_false():
+    u1 = await get_or_create_user("g64", "ins_own@example.com", "Own", "")
+    u2 = await get_or_create_user("g65", "ins_oth@example.com", "Oth", "")
+    ins = await save_insight(u1["id"], 1, 0, "Q", "A")
+    result = await delete_insight(ins["id"], u2["id"])
+    assert result is False

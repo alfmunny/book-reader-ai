@@ -559,8 +559,10 @@ async def create_annotation(
             (user_id, book_id, chapter_index, sentence_text, note_text, color),
         )
         await db.commit()
-        row_id = cursor.lastrowid
-        async with db.execute("SELECT * FROM annotations WHERE id = ?", (row_id,)) as c:
+        async with db.execute(
+            "SELECT * FROM annotations WHERE user_id = ? AND book_id = ? AND chapter_index = ? AND sentence_text = ?",
+            (user_id, book_id, chapter_index, sentence_text),
+        ) as c:
             row = await c.fetchone()
     return dict(row)
 

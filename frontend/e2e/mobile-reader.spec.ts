@@ -4,7 +4,7 @@
  * Verifies mobile-specific UI (bottom bar controls, header simplification)
  * using a 390×844 viewport (iPhone 13).
  */
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "./base";
 import { mockBackend, MOCK_CHAPTERS } from "./fixtures";
 
 async function setupMobile(page: Page) {

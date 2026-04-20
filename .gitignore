@@ -22,6 +22,10 @@ frontend/.env.*
 !frontend/.env.example
 frontend/tsconfig.tsbuildinfo
 frontend/coverage/
+frontend/coverage-e2e/
+frontend/.v8-coverage/
+frontend/.nyc_output/
+frontend/.babelrc
 frontend/playwright-report/
 frontend/test-results/
 frontend/e2e-results.json

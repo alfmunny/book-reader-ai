@@ -86,12 +86,23 @@ jobs:
       - name: Run E2E tests
         run: npm run test:e2e
 
+      - name: Process E2E coverage (V8 → Istanbul)
+        if: always()
+        run: node scripts/process-e2e-coverage.mjs || echo "Coverage processing skipped"
+
       - name: Upload E2E results summary
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: e2e-results
           path: frontend/e2e-results.json
+
+      - name: Upload E2E coverage summary
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-coverage-summary
+          path: frontend/coverage-e2e/coverage-summary.json
 
       - name: Upload Playwright report on failure
         uses: actions/upload-artifact@v4
@@ -214,6 +225,12 @@ jobs:
           name: e2e-results
           path: e2e-summary
 
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: e2e-coverage-summary
+          path: e2e-coverage-summary
+
       - uses: actions/github-script@v7
         with:
           script: |
@@ -221,6 +238,25 @@ jobs:
 
             // ── Unit coverage (Jest) ────────────────────────────────────────
             const fe = JSON.parse(fs.readFileSync('frontend-summary/coverage-summary.json', 'utf8')).total;
+
+            // ── E2E coverage (Istanbul via babel-plugin-istanbul) ───────────
+            let e2eCov = null;
+            try {
+              e2eCov = JSON.parse(fs.readFileSync('e2e-coverage-summary/coverage-summary.json', 'utf8')).total;
+            } catch { /* no E2E coverage data */ }
+
+            // ── Combined frontend coverage (max of Jest and E2E per metric) ─
+            const combine = (jestMetric, e2eMetric) => {
+              if (!e2eCov) return jestMetric.pct;
+              // Approximate: take the higher of the two since they cover different paths
+              return Math.min(100, Math.max(jestMetric.pct, e2eMetric.pct)).toFixed(2);
+            };
+            const combined = e2eCov ? {
+              statements: combine(fe.statements, e2eCov.statements),
+              branches: combine(fe.branches, e2eCov.branches),
+              functions: combine(fe.functions, e2eCov.functions),
+              lines: combine(fe.lines, e2eCov.lines),
+            } : null;
 
             // ── Unit coverage (pytest) ──────────────────────────────────────
             const [beLines, beBranches] = fs.readFileSync('backend-summary/coverage-numbers.txt', 'utf8').trim().split('\n');
@@ -246,21 +282,29 @@ jobs:
             }
 
             const pct = (v) => `${v}%`;
+            const rows = [
+              `| **Frontend (Jest)** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`,
+            ];
+            if (e2eCov) {
+              rows.push(`| **Frontend (E2E)** | ${pct(e2eCov.statements.pct)} | ${pct(e2eCov.branches.pct)} | ${pct(e2eCov.functions.pct)} | ${pct(e2eCov.lines.pct)} |`);
+              rows.push(`| **Frontend (combined)** | ${combined.statements}% | ${combined.branches}% | ${combined.functions}% | ${combined.lines}% |`);
+            }
+            rows.push(`| **Backend (pytest)** | — | ${beBranches}% | — | ${beLines}% |`);
+
             const body = [
               '## Coverage Report',
               '',
-              '### Unit test coverage',
+              '### Code coverage',
               '',
               '| | Statements | Branches | Functions | Lines |',
               '|---|---|---|---|---|',
-              `| **Frontend (Jest)** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`,
-              `| **Backend (pytest)** | — | ${beBranches}% | — | ${beLines}% |`,
+              ...rows,
               '',
               '### E2E user flows (Playwright)',
               '',
               e2eLine,
               '',
-              '_Updated on every push to this PR. E2E tests verify real user flows in a browser — they complement unit coverage rather than overlap with it._',
+              '_Updated on every push to this PR._',
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({

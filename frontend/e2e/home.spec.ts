@@ -1,7 +1,7 @@
 /**
  * E2E: Home page user flows
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./base";
 import { mockBackend, MOCK_BOOK } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {

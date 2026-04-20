@@ -5,7 +5,7 @@
  * with dictionary definitions from dictionaryapi.dev. These tests mock that
  * external API to keep tests hermetic.
  */
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "./base";
 import { mockBackend, MOCK_CHAPTERS } from "./fixtures";
 
 const MOCK_DEFINITION = [

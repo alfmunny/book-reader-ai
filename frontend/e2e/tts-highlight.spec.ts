@@ -24,7 +24,7 @@
  * In real-TTS mode the tests in "real TTS API" describe block are
  * enabled; all others still run with mocks.
  */
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "./base";
 import { MOCK_BOOK, MOCK_FAUST, MOCK_CHAPTERS } from "./fixtures";
 
 // ── Chapter text with three distinct sentences for highlight testing ──────────

@@ -1,7 +1,7 @@
 /**
  * E2E: Reader page — chapter navigation and continue-reading
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./base";
 import { mockBackend, MOCK_CHAPTERS } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {

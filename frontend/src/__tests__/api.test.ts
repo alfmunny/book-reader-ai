@@ -190,22 +190,22 @@ test("askQuestion sends POST to /ai/qa", async () => {
 
 // ── TTS ───────────────────────────────────────────────────────────────────────
 
+const mockTtsResponse = (extra?: Record<string, string>) => ({
+  ok: true,
+  headers: { get: jest.fn().mockImplementation((h: string) => extra?.[h] ?? null) },
+  blob: jest.fn().mockResolvedValue(new Blob(["mp3"])),
+});
+
 test("synthesizeSpeech returns a blob URL", async () => {
   global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake-url");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["mp3"])),
-  });
-  const url = await synthesizeSpeech("Hello", "en", 1.0);
+  global.fetch = jest.fn().mockResolvedValue(mockTtsResponse());
+  const { url } = await synthesizeSpeech("Hello", "en", 1.0);
   expect(url).toBe("blob:fake-url");
 });
 
 test("synthesizeSpeech defaults gender to 'female'", async () => {
   global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
+  global.fetch = jest.fn().mockResolvedValue(mockTtsResponse());
   await synthesizeSpeech("Hello", "en");
   const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
   expect(body.gender).toBe("female");
@@ -213,10 +213,7 @@ test("synthesizeSpeech defaults gender to 'female'", async () => {
 
 test("synthesizeSpeech sends explicit gender value", async () => {
   global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
+  global.fetch = jest.fn().mockResolvedValue(mockTtsResponse());
   await synthesizeSpeech("Hello", "en", 1.0, "male");
   const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
   expect(body.gender).toBe("male");
@@ -224,14 +221,21 @@ test("synthesizeSpeech sends explicit gender value", async () => {
 
 test("synthesizeSpeech forwards an AbortSignal to fetch", async () => {
   global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
-  global.fetch = jest.fn().mockResolvedValue({
-    ok: true,
-    blob: jest.fn().mockResolvedValue(new Blob(["x"])),
-  });
+  global.fetch = jest.fn().mockResolvedValue(mockTtsResponse());
   const abort = new AbortController();
   await synthesizeSpeech("Hello", "en", 1.0, "female", abort.signal);
   const opts = (global.fetch as jest.Mock).mock.calls[0][1];
   expect(opts.signal).toBe(abort.signal);
+});
+
+test("synthesizeSpeech parses X-TTS-Timings header into wordBoundaries", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  const timings = [{ offset_ms: 100, text: "Hello" }, { offset_ms: 400, text: "world" }];
+  global.fetch = jest.fn().mockResolvedValue(
+    mockTtsResponse({ "X-TTS-Timings": JSON.stringify(timings) })
+  );
+  const { wordBoundaries } = await synthesizeSpeech("Hello world", "en", 1.0);
+  expect(wordBoundaries).toEqual(timings);
 });
 
 test("getTtsChunks calls /ai/tts/chunks and returns the chunk list", async () => {

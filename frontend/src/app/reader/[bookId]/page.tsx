@@ -12,6 +12,7 @@ import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
+import WordActionDrawer, { type WordAction } from "@/components/WordActionDrawer";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
@@ -42,6 +43,7 @@ export default function ReaderPage() {
 
   const [selectedText, setSelectedText] = useState("");
   const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
+  const [wordAction, setWordAction] = useState<WordAction | null>(null);
 
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -1080,6 +1082,15 @@ export default function ReaderPage() {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
                   scrollTargetSentence={scrollTargetSentence}
+                  onWordTap={(info) => {
+                    setWordAction({
+                      word: info.word,
+                      sentenceText: info.sentenceText,
+                      segmentStartTime: info.startTime,
+                      chapterIndex: info.chapterIndex,
+                      translationText: info.translationText,
+                    });
+                  }}
                   onSegmentClick={(startTime, segText) => {
                     if (audiobook) {
                       seekAudioRef.current(startTime);
@@ -1122,7 +1133,7 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Dictionary lookup popup */}
+          {/* Dictionary lookup popup (legacy — desktop fallback) */}
           {lookupWord && (
             <WordLookup
               word={lookupWord.word}
@@ -1130,6 +1141,40 @@ export default function ReaderPage() {
               onClose={() => setLookupWord(null)}
             />
           )}
+
+          {/* Unified word action drawer (mobile + desktop) */}
+          <WordActionDrawer
+            action={wordAction}
+            onClose={() => setWordAction(null)}
+            onReadSentence={(text, startTime) => {
+              if (audiobook) {
+                seekAudioRef.current(startTime);
+              } else if (ttsDuration > 0) {
+                ttsSeekRef.current(startTime);
+              } else {
+                synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
+                  .then(({ url }) => {
+                    const audio = new Audio(url);
+                    audio.onended = () => URL.revokeObjectURL(url);
+                    audio.play().catch(() => URL.revokeObjectURL(url));
+                  })
+                  .catch(() => {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = bookLanguage;
+                    window.speechSynthesis.speak(utter);
+                  });
+              }
+            }}
+            onSaveWord={session?.backendToken ? handleWordSave : undefined}
+            onAnnotate={session?.backendToken ? (sentenceText, ci) => {
+              setAnnotationPanel({
+                sentenceText,
+                chapterIndex: ci,
+                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+              });
+            } : undefined}
+          />
 
           {/* Annotation toolbar */}
           {annotationPanel && (

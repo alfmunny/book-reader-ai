@@ -382,6 +382,118 @@ async def test_retry_chapter_translation_inserts_if_no_row(client):
 
 # ── Access and translation gates ─────────────────────────────────────────────
 
+# ── Translation status endpoint ──────────────────────────────────────────────
+
+async def test_translation_status_uncached_book(client):
+    """Book not in cache → total_chapters=0, translated_chapters=0."""
+    resp = await client.get("/api/books/9999/translation-status?target_language=en")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_chapters"] == 0
+    assert data["translated_chapters"] == 0
+    assert data["bulk_active"] is False
+
+
+async def test_translation_status_with_translations(client):
+    """Cached book with one chapter translated returns correct counts."""
+    from services.db import save_translation
+    from services.book_chapters import clear_cache
+    book_id = 8888  # distinct ID — avoids _chapter_cache collision with 1342
+    meta = {**MOCK_META, "id": book_id}
+    text = (
+        "CHAPTER I\n\n" + ("The quick brown fox jumps. " * 80) + "\n\n"
+        + "CHAPTER II\n\n" + ("A lazy dog sat by the fire. " * 80)
+    )
+    clear_cache(book_id)
+    await save_book(book_id, meta, text)
+    await save_translation(book_id, 0, "zh", ["第一章"])
+
+    resp = await client.get(f"/api/books/{book_id}/translation-status?target_language=zh")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["translated_chapters"] == 1
+    assert data["total_chapters"] >= 2
+
+
+# ── Chapter queue-status endpoint ────────────────────────────────────────────
+
+async def test_chapter_queue_status_no_row(client):
+    """Chapter not in queue → queued=False, status=null."""
+    resp = await client.get(
+        "/api/books/1342/chapters/0/queue-status?target_language=en"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["queued"] is False
+    assert data["status"] is None
+
+
+async def test_chapter_queue_status_pending(client):
+    """Chapter in queue with pending status → queued=True, position>=1."""
+    import aiosqlite
+    import services.db as db_module
+    await save_book(1342, MOCK_META, "text")
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority, status)
+               VALUES (?, ?, ?, ?, ?)""",
+            (1342, 0, "zh", 10, "pending"),
+        )
+        await conn.commit()
+
+    resp = await client.get(
+        "/api/books/1342/chapters/0/queue-status?target_language=zh"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["queued"] is True
+    assert data["status"] == "pending"
+
+
+# ── Popular books flat-list format ───────────────────────────────────────────
+
+async def test_popular_books_flat_list_language_filter(client, monkeypatch):
+    """Legacy flat-list manifest format is filtered by language field."""
+    flat = [
+        {"id": 1, "title": "A", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""},
+        {"id": 2, "title": "B", "authors": [], "languages": ["de"], "subjects": [], "download_count": 0, "cover": ""},
+        {"id": 3, "title": "C", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""},
+    ]
+    import routers.books as br
+    monkeypatch.setattr(br, "_popular_cache", flat)
+    resp = await client.get("/api/books/popular?language=en")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total"] == 2
+    assert all(b["id"] in (1, 3) for b in data["books"])
+
+
+async def test_popular_books_null_subjects_normalized(client, monkeypatch):
+    """Null subjects/authors/languages in manifest are normalized to empty lists."""
+    import routers.books as br
+    # Bypass the file-load path by pre-setting a raw list (simulates loaded but unnormalized)
+    # The normalization happens at load time in the actual endpoint, so test via the route.
+    br._popular_cache = None
+    import json, tempfile, os
+    raw = [{"id": 99, "title": "No Subjects", "authors": ["A"], "languages": ["en"],
+            "download_count": 0, "cover": ""}]  # subjects absent
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(raw, f)
+        tmp_path = f.name
+    monkeypatch.setattr(br, "_POPULAR_BOOKS_PATH", tmp_path)
+    try:
+        resp = await client.get("/api/books/popular")
+        assert resp.status_code == 200
+        books = resp.json()["books"]
+        assert books[0]["subjects"] == []
+    finally:
+        os.unlink(tmp_path)
+        br._popular_cache = None
+
+
+# ── Access gates ─────────────────────────────────────────────────────────────
+
 async def test_import_stream_public_without_login(anon_client):
     """All books are publicly accessible without login."""
     await save_book(9999, {**MOCK_META, "id": 9999}, "text")

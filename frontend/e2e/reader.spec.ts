@@ -80,6 +80,42 @@ test("translation does not show Gemini reminder (queue returns ready)", async ({
   await expect(page.getByText(/AI features require your own Gemini API key/)).not.toBeVisible();
 });
 
+test("translation shows queued state when worker is processing", async ({ page }) => {
+  await page.route("**/api/user/me", (route) =>
+    route.fulfill({ json: { id: 1, email: "t@t.com", name: "T", picture: "", hasGeminiKey: true, role: "user", approved: true } })
+  );
+  await page.route("**/api/books/*/chapters/*/translation", (route) =>
+    route.fulfill({
+      json: { status: "pending", position: 2, worker_running: true },
+    })
+  );
+
+  await page.goto("/reader/1342");
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+
+  await page.getByRole("button", { name: /Translate/ }).first().click();
+
+  // Should show a queued/waiting indicator — not translated text
+  await expect(page.getByText("Translated text.")).not.toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("queue · position 2", { exact: true })).toBeVisible({ timeout: 5000 });
+});
+
+test("translation shows worker offline message when worker not running", async ({ page }) => {
+  await page.route("**/api/user/me", (route) =>
+    route.fulfill({ json: { id: 1, email: "t@t.com", name: "T", picture: "", hasGeminiKey: true, role: "user", approved: true } })
+  );
+  await page.route("**/api/books/*/chapters/*/translation", (route) =>
+    route.fulfill({
+      json: { status: "pending", position: 1, worker_running: false },
+    })
+  );
+
+  await page.goto("/reader/1342");
+  await page.getByRole("button", { name: /Translate/ }).first().click();
+
+  await expect(page.getByText("queue · worker is offline", { exact: true })).toBeVisible({ timeout: 5000 });
+});
+
 test("Your Library shows chapter badge from recent-read data", async ({ page }) => {
   // Seed a recent book with lastChapter = 4
   await page.goto("/");

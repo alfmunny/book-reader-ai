@@ -23,6 +23,7 @@ frontend/.env.*
 frontend/tsconfig.tsbuildinfo
 frontend/coverage/
 frontend/coverage-e2e/
+frontend/.v8-coverage/
 frontend/.nyc_output/
 frontend/.babelrc
 frontend/playwright-report/

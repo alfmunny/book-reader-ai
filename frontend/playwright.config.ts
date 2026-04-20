@@ -17,29 +17,6 @@ export default defineConfig({
     ["list"],
     ["json", { outputFile: "e2e-results.json" }],
     ["html", { outputFolder: "playwright-report", open: "never" }],
-    ...(process.env.CI
-      ? [
-          [
-            "monocart",
-            {
-              outputFile: "coverage-e2e/report.html",
-              coverage: {
-                reports: [
-                  ["json-summary", { subdir: ".", file: "coverage-summary.json" }],
-                  ["lcov", { subdir: "." }],
-                ],
-                entryFilter: {
-                  '**/node_modules/**': false,
-                  '**/_next/static/chunks/webpack**': false,
-                  '**/localhost:3100/**': true,
-                },
-                sourceFilter: (sourcePath: string) =>
-                  sourcePath.includes("src/") && !sourcePath.includes("node_modules"),
-              },
-            },
-          ] as any,
-        ]
-      : []),
   ],
 
   use: {

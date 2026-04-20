@@ -545,9 +545,9 @@ export default function SentenceReader({
         // ── Translation: parallel (side by side) ──
         if (isParallel) {
           return (
-            <div key={pIdx} className="grid grid-cols-2 gap-6 py-4 first:pt-0 last:pb-0">
+            <div key={pIdx} className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2 py-4 first:pt-0 last:pb-0">
               {originalContent}
-              <div className="border-l border-amber-200 pl-6">
+              <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6">
                 {translationText ? (
                   <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
                     {translationText}

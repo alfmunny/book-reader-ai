@@ -1390,6 +1390,7 @@ export default function ReaderPage() {
                       }`}
                       role="switch"
                       aria-checked={translationEnabled}
+                      aria-label="Enable translation"
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
                         translationEnabled ? "translate-x-6" : "translate-x-1"

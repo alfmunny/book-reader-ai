@@ -645,21 +645,21 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Font size */}
+          {/* Font size — hidden on mobile to save header space */}
           <button
             onClick={cycleFontSize}
             title={`Font size: ${fontSize}`}
-            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors flex items-center justify-center"
+            className="hidden md:flex shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors items-center justify-center"
           >
             {fontSize === "sm" ? "A" : fontSize === "base" ? "A" : fontSize === "lg" ? "A" : "A"}
             <span className="text-[8px] align-super">{fontSize === "sm" ? "-" : fontSize === "base" ? "" : fontSize === "lg" ? "+" : "++"}</span>
           </button>
 
-          {/* Theme */}
+          {/* Theme — hidden on mobile */}
           <button
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
-            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors flex items-center justify-center"
+            className="hidden md:flex shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors items-center justify-center"
           >
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
@@ -697,8 +697,9 @@ export default function ReaderPage() {
             <span className="hidden sm:inline">Insight</span>
           </button>
 
-          {/* Annotations sidebar */}
+          {/* Annotations sidebar — hidden on mobile to save header space */}
           {session?.backendToken && (
+            <div className="hidden md:block">
             <AnnotationsSidebar
               annotations={annotations}
               totalCount={annotations.length}
@@ -719,6 +720,7 @@ export default function ReaderPage() {
                 position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
               })}
             />
+            </div>
           )}
 
           {/* Vocabulary link — hidden on small screens */}
@@ -743,18 +745,18 @@ export default function ReaderPage() {
             </button>
           )}
 
-          {/* Audiobook toggle — only shown when feature is enabled in settings */}
+          {/* Audiobook toggle — hidden on mobile to save header space */}
           {audiobookEnabled && (
             <button
               onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
               title={audiobook ? "Audiobook linked" : "Find audiobook"}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden sm:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 audiobook
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
               }`}
             >
-              🎧 <span className="hidden sm:inline">{audiobook ? "Audio" : "Find Audio"}</span>
+              🎧 {audiobook ? "Audio" : "Find Audio"}
             </button>
           )}
         </div>
@@ -775,7 +777,7 @@ export default function ReaderPage() {
           {translationEnabled && (
             <>
               <select
-                className="text-xs rounded border border-amber-300 px-2 py-1 text-ink bg-white"
+                className="text-xs rounded border border-amber-300 px-2 py-2 md:py-1 text-ink bg-white min-h-[44px] md:min-h-0"
                 value={translationLang}
                 onChange={(e) => setTranslationLang(e.target.value)}
               >
@@ -787,23 +789,25 @@ export default function ReaderPage() {
               <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
                 <button
                   onClick={() => setDisplayMode("inline")}
-                  className={`px-3 py-1 transition-colors ${
+                  className={`px-3 py-2 md:py-1 transition-colors min-h-[44px] md:min-h-0 ${
                     displayMode === "inline"
                       ? "bg-amber-700 text-white"
                       : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >
-                  Inline
+                  <span className="md:hidden">⊞</span>
+                  <span className="hidden md:inline">Inline</span>
                 </button>
                 <button
                   onClick={() => setDisplayMode("parallel")}
-                  className={`px-3 py-1 border-l border-amber-300 transition-colors ${
+                  className={`px-3 py-2 md:py-1 border-l border-amber-300 transition-colors min-h-[44px] md:min-h-0 ${
                     displayMode === "parallel"
                       ? "bg-amber-700 text-white"
                       : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >
-                  Side by side
+                  <span className="md:hidden">⫼</span>
+                  <span className="hidden md:inline">Side by side</span>
                 </button>
               </div>
 
@@ -824,7 +828,7 @@ export default function ReaderPage() {
               ) : translationUsedProvider &&
                 translationUsedProvider !== "login required" &&
                 translationUsedProvider !== "gemini key required" ? (
-                <span className="text-xs text-amber-400">
+                <span className="hidden md:inline text-xs text-amber-400">
                   via {translationUsedProvider}
                 </span>
               ) : null}
@@ -832,7 +836,7 @@ export default function ReaderPage() {
               {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                 <button
                   onClick={handleRetranslate}
-                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
+                  className="hidden md:inline-block text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
                 >
                   Retranslate
                 </button>
@@ -923,7 +927,7 @@ export default function ReaderPage() {
           total - ready - queued - (s.queue_failed ?? 0),
         );
         return (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between gap-3 flex-wrap">
+          <div className="bg-amber-50 border-b border-amber-200 px-3 md:px-4 py-1.5 md:py-2 text-xs text-amber-800 flex items-center justify-between gap-2 md:gap-3 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
               <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
               <span>
@@ -964,7 +968,7 @@ export default function ReaderPage() {
                   {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
                 </button>
               )}
-              <span className="text-amber-500">Polls every 15s</span>
+              <span className="hidden sm:inline text-amber-500">Polls every 15s</span>
             </span>
           </div>
         );
@@ -986,7 +990,7 @@ export default function ReaderPage() {
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <div
             id="reader-scroll"
-            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8"
+            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
             onMouseUp={handleSelection}
             onTouchEnd={handleSelection}
             onDoubleClick={(e) => {
@@ -1260,6 +1264,51 @@ export default function ReaderPage() {
           }}
           onClose={() => setShowAudioSearch(false)}
         />
+      )}
+
+      {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
+      {!loading && chapters.length > 0 && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-between gap-1 safe-bottom">
+          <button
+            onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
+            disabled={chapterIndex === 0}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
+            aria-label="Previous chapter"
+          >
+            ‹
+          </button>
+          <button
+            onClick={() => setTranslationEnabled((v) => !v)}
+            className={`min-h-[44px] px-3 rounded-lg text-xs font-medium transition-colors ${
+              translationEnabled
+                ? "bg-amber-700 text-white"
+                : "text-amber-700 bg-amber-50 border border-amber-200"
+            }`}
+          >
+            🌐
+          </button>
+          <span className="text-xs text-amber-500 tabular-nums shrink-0">
+            {chapterIndex + 1}/{chapters.length}
+          </span>
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className={`min-h-[44px] px-3 rounded-lg text-xs font-medium transition-colors ${
+              sidebarOpen
+                ? "bg-amber-700 text-white"
+                : "text-amber-700 bg-amber-50 border border-amber-200"
+            }`}
+          >
+            💬
+          </button>
+          <button
+            onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
+            disabled={chapterIndex === chapters.length - 1}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
+            aria-label="Next chapter"
+          >
+            ›
+          </button>
+        </div>
       )}
     </div>
   );

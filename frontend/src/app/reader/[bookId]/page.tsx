@@ -349,13 +349,6 @@ export default function ReaderPage() {
     // If logged in but key status not yet loaded, wait for getMe() to resolve.
     if (session && hasGeminiKey === null) return;
 
-    // Require user's own Gemini key — don't trigger translation on admin's key.
-    if (session && hasGeminiKey === false) {
-      setTranslationUsedProvider("gemini key required");
-      setTranslationLoading(false);
-      return;
-    }
-
     let cancelled = false;
     setTranslationLoading(true);
     setTranslatedParagraphs([]);

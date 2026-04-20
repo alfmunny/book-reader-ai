@@ -537,3 +537,176 @@ async def list_cached_books() -> list[dict]:
                 d[field] = json.loads(d[field])
         result.append(d)
     return result
+
+
+# ── Annotations ───────────────────────────────────────────────────────────────
+
+async def create_annotation(
+    user_id: int,
+    book_id: int,
+    chapter_index: int,
+    sentence_text: str,
+    note_text: str,
+    color: str,
+) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text, note_text, color)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (user_id, book_id, chapter_index, sentence_text, note_text, color),
+        )
+        await db.commit()
+        row_id = cursor.lastrowid
+        async with db.execute("SELECT * FROM annotations WHERE id = ?", (row_id,)) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def get_annotations(user_id: int, book_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM annotations WHERE user_id = ? AND book_id = ? ORDER BY chapter_index, created_at",
+            (user_id, book_id),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def update_annotation(
+    annotation_id: int,
+    user_id: int,
+    note_text: str,
+    color: str,
+) -> dict | None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute(
+            "UPDATE annotations SET note_text = ?, color = ? WHERE id = ? AND user_id = ?",
+            (note_text, color, annotation_id, user_id),
+        )
+        await db.commit()
+        async with db.execute(
+            "SELECT * FROM annotations WHERE id = ? AND user_id = ?",
+            (annotation_id, user_id),
+        ) as cursor:
+            row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def delete_annotation(annotation_id: int, user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM annotations WHERE id = ? AND user_id = ?",
+            (annotation_id, user_id),
+        )
+        await db.commit()
+    return cursor.rowcount > 0
+
+
+# ── Vocabulary ────────────────────────────────────────────────────────────────
+
+async def save_word(
+    user_id: int,
+    word: str,
+    book_id: int,
+    chapter_index: int,
+    sentence_text: str,
+) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        await db.execute(
+            "INSERT OR IGNORE INTO vocabulary (user_id, word) VALUES (?, ?)",
+            (user_id, word),
+        )
+        await db.commit()
+        async with db.execute(
+            "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
+            (user_id, word),
+        ) as cursor:
+            vocab_row = await cursor.fetchone()
+        vocab_id = vocab_row["id"]
+
+        # Avoid duplicate occurrences for same word+book+sentence
+        await db.execute(
+            """INSERT OR IGNORE INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)
+               SELECT ?, ?, ?, ?
+               WHERE NOT EXISTS (
+                   SELECT 1 FROM word_occurrences
+                   WHERE vocabulary_id = ? AND book_id = ? AND sentence_text = ?
+               )""",
+            (vocab_id, book_id, chapter_index, sentence_text,
+             vocab_id, book_id, sentence_text),
+        )
+        await db.commit()
+
+        async with db.execute("SELECT * FROM vocabulary WHERE id = ?", (vocab_id,)) as cursor:
+            row = await cursor.fetchone()
+    return dict(row)
+
+
+async def get_vocabulary(user_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, word, created_at FROM vocabulary WHERE user_id = ? ORDER BY word",
+            (user_id,),
+        ) as cursor:
+            vocab_rows = await cursor.fetchall()
+
+        result = []
+        for v in vocab_rows:
+            async with db.execute(
+                """SELECT wo.book_id, b.title AS book_title, wo.chapter_index, wo.sentence_text
+                   FROM word_occurrences wo
+                   LEFT JOIN books b ON b.id = wo.book_id
+                   WHERE wo.vocabulary_id = ?
+                   ORDER BY wo.created_at""",
+                (v["id"],),
+            ) as cursor:
+                occurrences = [dict(r) for r in await cursor.fetchall()]
+            result.append({
+                "id": v["id"],
+                "word": v["word"],
+                "created_at": v["created_at"],
+                "occurrences": occurrences,
+            })
+    return result
+
+
+async def delete_word(user_id: int, word: str) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
+            (user_id, word),
+        )
+        await db.commit()
+    return cursor.rowcount > 0
+
+
+# ── Obsidian / GitHub settings ────────────────────────────────────────────────
+
+async def update_obsidian_settings(
+    user_id: int,
+    github_token_encrypted: str | None,
+    repo: str | None,
+    path: str | None,
+) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET github_token = ?, obsidian_repo = ?, obsidian_path = ? WHERE id = ?",
+            (github_token_encrypted, repo, path, user_id),
+        )
+        await db.commit()
+
+
+async def get_obsidian_settings(user_id: int) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT github_token, obsidian_repo, obsidian_path FROM users WHERE id = ?",
+            (user_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+    return dict(row) if row else {}

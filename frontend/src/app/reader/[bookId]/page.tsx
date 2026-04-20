@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, saveVocabularyWord, exportVocabularyToObsidian, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -12,6 +12,8 @@ import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
+import AnnotationToolbar from "@/components/AnnotationToolbar";
+import VocabularyToast from "@/components/VocabularyToast";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -30,6 +32,20 @@ export default function ReaderPage() {
 
   const [selectedText, setSelectedText] = useState("");
   const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
+
+  // Annotations
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationPanel, setAnnotationPanel] = useState<{
+    sentenceText: string;
+    chapterIndex: number;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  // Vocabulary toast
+  const [vocabToastWord, setVocabToastWord] = useState<string | null>(null);
+
+  // Obsidian export toast
+  const [obsidianToast, setObsidianToast] = useState<string | null>(null);
 
   // Audiobook
   const [audiobookEnabled, setAudiobookEnabled] = useState(true);
@@ -192,6 +208,12 @@ export default function ReaderPage() {
     setAudiobook(null);
     getAudiobook(Number(bookId)).then(setAudiobook).catch(() => {});
   }, [bookId]);
+
+  // Load annotations for this book (requires auth)
+  useEffect(() => {
+    if (!bookId || !session?.backendToken) return;
+    getAnnotations(Number(bookId)).then(setAnnotations).catch(() => {});
+  }, [bookId, session?.backendToken]);
 
   const bookLanguage = meta?.languages[0] || "en";
 
@@ -485,6 +507,33 @@ export default function ReaderPage() {
     document.getElementById("reader-scroll")?.scrollTo(0, 0);
   }
 
+  // Vocabulary save handler
+  async function handleWordSave(word: string, sentenceText: string) {
+    try {
+      await saveVocabularyWord({
+        word,
+        book_id: Number(bookId),
+        chapter_index: chapterIndex,
+        sentence_text: sentenceText,
+      });
+      setVocabToastWord(word);
+    } catch {
+      // silently ignore (user may not be logged in)
+    }
+  }
+
+  // Obsidian export handler
+  async function handleObsidianExport() {
+    try {
+      const { url } = await exportVocabularyToObsidian(Number(bookId));
+      setObsidianToast(url);
+      setTimeout(() => setObsidianToast(null), 6000);
+    } catch (e) {
+      setObsidianToast(e instanceof Error ? e.message : "Export failed");
+      setTimeout(() => setObsidianToast(null), 4000);
+    }
+  }
+
   const current = chapters[chapterIndex];
   const chapterParagraphs = current?.text
     ? current.text.split(/\n\n+/).filter((p) => p.trim())
@@ -631,6 +680,28 @@ export default function ReaderPage() {
             </svg>
             Insight
           </button>
+
+          {/* Vocabulary link */}
+          {session?.backendToken && (
+            <button
+              onClick={() => router.push("/vocabulary")}
+              title="Vocabulary"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+            >
+              📚 Vocab
+            </button>
+          )}
+
+          {/* Export vocabulary to Obsidian */}
+          {session?.backendToken && (
+            <button
+              onClick={handleObsidianExport}
+              title="Export vocabulary to Obsidian"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+            >
+              ↗ Obsidian
+            </button>
+          )}
 
           {/* Audiobook toggle — only shown when feature is enabled in settings */}
           {audiobookEnabled && (
@@ -913,12 +984,15 @@ export default function ReaderPage() {
                   isPlaying={audiobook ? audioIsPlaying : ttsIsPlaying}
                   chunks={!audiobook && ttsChunks.length > 0 ? ttsChunks : undefined}
                   disabled={!audiobook && ttsIsLoading}
-                  // Translation props: SentenceReader renders both original
-                  // (highlighted) and translation (when enabled). This ensures
-                  // highlighting works regardless of translation state.
                   translations={translationEnabled ? translatedParagraphs : undefined}
                   translationDisplayMode={displayMode}
                   translationLoading={translationLoading}
+                  annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
+                  chapterIndex={chapterIndex}
+                  onWordSave={session?.backendToken ? handleWordSave : undefined}
+                  onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
+                    setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
+                  } : undefined}
                   onSegmentClick={(startTime, segText) => {
                     if (audiobook) {
                       seekAudioRef.current(startTime);
@@ -968,6 +1042,65 @@ export default function ReaderPage() {
               position={{ x: lookupWord.x, y: lookupWord.y }}
               onClose={() => setLookupWord(null)}
             />
+          )}
+
+          {/* Annotation toolbar */}
+          {annotationPanel && (
+            <AnnotationToolbar
+              sentenceText={annotationPanel.sentenceText}
+              chapterIndex={annotationPanel.chapterIndex}
+              bookId={Number(bookId)}
+              position={annotationPanel.position}
+              existingAnnotation={annotations.find(
+                (a) =>
+                  a.sentence_text === annotationPanel.sentenceText &&
+                  a.chapter_index === annotationPanel.chapterIndex,
+              )}
+              onClose={() => setAnnotationPanel(null)}
+              onSaved={(annotation) => {
+                setAnnotations((prev) => {
+                  const idx = prev.findIndex((a) => a.id === annotation.id);
+                  if (idx >= 0) {
+                    const next = [...prev];
+                    next[idx] = annotation;
+                    return next;
+                  }
+                  return [...prev, annotation];
+                });
+              }}
+              onDeleted={(id) => {
+                setAnnotations((prev) => prev.filter((a) => a.id !== id));
+              }}
+            />
+          )}
+
+          {/* Vocabulary save toast */}
+          {vocabToastWord && (
+            <VocabularyToast
+              word={vocabToastWord}
+              onDone={() => setVocabToastWord(null)}
+            />
+          )}
+
+          {/* Obsidian export toast */}
+          {obsidianToast && (
+            <div className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm text-ink max-w-xs">
+              {obsidianToast.startsWith("http") ? (
+                <>
+                  Exported!{" "}
+                  <a
+                    href={obsidianToast}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-amber-700 underline break-all"
+                  >
+                    {obsidianToast}
+                  </a>
+                </>
+              ) : (
+                <span className="text-red-600">{obsidianToast}</span>
+              )}
+            </div>
           )}
 
           {/* Audiobook player */}

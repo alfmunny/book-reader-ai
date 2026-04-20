@@ -515,3 +515,112 @@ export function saveReadingProgress(bookId: number, chapterIndex: number) {
     body: JSON.stringify({ chapter_index: chapterIndex }),
   });
 }
+
+// ── Annotations ───────────────────────────────────────────────────────────────
+
+export interface Annotation {
+  id: number;
+  chapter_index: number;
+  sentence_text: string;
+  note_text: string;
+  color: string;
+}
+
+export function getAnnotations(bookId: number) {
+  return request<Annotation[]>(`/annotations?book_id=${bookId}`);
+}
+
+export function createAnnotation(data: {
+  book_id: number;
+  chapter_index: number;
+  sentence_text: string;
+  note_text: string;
+  color: string;
+}) {
+  return request<Annotation>("/annotations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAnnotation(id: number, data: { note_text?: string; color?: string }) {
+  return request<Annotation>(`/annotations/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAnnotation(id: number) {
+  return request<{ ok: boolean }>(`/annotations/${id}`, { method: "DELETE" });
+}
+
+// ── Vocabulary ────────────────────────────────────────────────────────────────
+
+export interface VocabularyOccurrence {
+  book_id: number;
+  book_title: string;
+  chapter_index: number;
+  sentence_text: string;
+}
+
+export interface VocabularyWord {
+  id: number;
+  word: string;
+  occurrences: VocabularyOccurrence[];
+}
+
+export function getVocabulary() {
+  return request<VocabularyWord[]>("/vocabulary");
+}
+
+export function saveVocabularyWord(data: {
+  word: string;
+  book_id: number;
+  chapter_index: number;
+  sentence_text: string;
+}) {
+  return request<{ ok: boolean }>("/vocabulary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteVocabularyWord(word: string) {
+  return request<{ ok: boolean }>(`/vocabulary/${encodeURIComponent(word)}`, {
+    method: "DELETE",
+  });
+}
+
+export function exportVocabularyToObsidian(bookId?: number) {
+  return request<{ url: string }>("/vocabulary/export/obsidian", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bookId !== undefined ? { book_id: bookId } : {}),
+  });
+}
+
+// ── Obsidian settings ─────────────────────────────────────────────────────────
+
+export interface ObsidianSettings {
+  obsidian_repo: string;
+  obsidian_path: string;
+}
+
+export function getObsidianSettings() {
+  return request<ObsidianSettings>("/user/obsidian-settings");
+}
+
+export function saveObsidianSettings(data: {
+  github_token?: string;
+  obsidian_repo: string;
+  obsidian_path: string;
+}) {
+  return request<{ ok: boolean }>("/user/obsidian-settings", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}

@@ -1,0 +1,56 @@
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from services.auth import get_current_user
+from services.db import create_annotation, get_annotations, update_annotation, delete_annotation
+
+router = APIRouter(prefix="/annotations", tags=["annotations"])
+
+
+class AnnotationCreate(BaseModel):
+    book_id: int
+    chapter_index: int
+    sentence_text: str
+    note_text: str = ""
+    color: str = "yellow"
+
+
+class AnnotationUpdate(BaseModel):
+    note_text: str
+    color: str
+
+
+@router.post("")
+async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
+    return await create_annotation(
+        user["id"],
+        req.book_id,
+        req.chapter_index,
+        req.sentence_text,
+        req.note_text,
+        req.color,
+    )
+
+
+@router.get("")
+async def list_annotations(book_id: int, user: dict = Depends(get_current_user)):
+    return await get_annotations(user["id"], book_id)
+
+
+@router.patch("/{annotation_id}")
+async def update(
+    annotation_id: int,
+    req: AnnotationUpdate,
+    user: dict = Depends(get_current_user),
+):
+    result = await update_annotation(annotation_id, user["id"], req.note_text, req.color)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+    return result
+
+
+@router.delete("/{annotation_id}")
+async def delete(annotation_id: int, user: dict = Depends(get_current_user)):
+    deleted = await delete_annotation(annotation_id, user["id"])
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Annotation not found")
+    return {"ok": True}

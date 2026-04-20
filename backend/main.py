@@ -11,6 +11,8 @@ from routers.audiobooks import router as audiobooks_router
 from routers.auth import router as auth_router
 from routers.user import router as user_router
 from routers.admin import router as admin_router
+from routers.annotations import router as annotations_router
+from routers.vocabulary import router as vocabulary_router
 from services.db import init_db
 
 
@@ -105,6 +107,8 @@ app.include_router(books_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
 app.include_router(audiobooks_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(annotations_router, prefix="/api")
+app.include_router(vocabulary_router, prefix="/api")
 
 
 @app.get("/api/health")

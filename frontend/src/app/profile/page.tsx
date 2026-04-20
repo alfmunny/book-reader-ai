@@ -2,7 +2,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { saveGeminiKey, deleteGeminiKey, getMe } from "@/lib/api";
+import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings } from "@/lib/api";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 
 const LANGUAGES = [
@@ -28,6 +28,13 @@ export default function ProfilePage() {
   const [removingKey, setRemovingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
+  // ── Obsidian settings state ────────────────────────────────────────────────
+  const [obsidianToken, setObsidianToken] = useState("");
+  const [obsidianRepo, setObsidianRepo] = useState("");
+  const [obsidianPath, setObsidianPath] = useState("All Notes/002 Literature Notes/000 Books");
+  const [obsidianSaving, setObsidianSaving] = useState(false);
+  const [obsidianMsg, setObsidianMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
   // ── Preferences state ──────────────────────────────────────────────────────
   const [settings, setSettings] = useState<AppSettings>({
     insightLang: "en",
@@ -46,6 +53,15 @@ export default function ProfilePage() {
     getMe().then((me) => {
       setHasKey(me.hasGeminiKey);
       setIsAdmin(me.role === "admin");
+    }).catch(() => {});
+  }, [session?.backendToken]);
+
+  // Load Obsidian settings
+  useEffect(() => {
+    if (!session?.backendToken) return;
+    getObsidianSettings().then((s) => {
+      setObsidianRepo(s.obsidian_repo ?? "");
+      setObsidianPath(s.obsidian_path ?? "All Notes/002 Literature Notes/000 Books");
     }).catch(() => {});
   }, [session?.backendToken]);
 
@@ -77,6 +93,24 @@ export default function ProfilePage() {
       setKeyMessage({ text: e instanceof Error ? e.message : "Failed to save key", ok: false });
     } finally {
       setSavingKey(false);
+    }
+  }
+
+  async function handleSaveObsidian() {
+    setObsidianSaving(true);
+    setObsidianMsg(null);
+    try {
+      await saveObsidianSettings({
+        ...(obsidianToken.trim() ? { github_token: obsidianToken.trim() } : {}),
+        obsidian_repo: obsidianRepo.trim(),
+        obsidian_path: obsidianPath.trim(),
+      });
+      setObsidianToken("");
+      setObsidianMsg({ text: "Obsidian settings saved.", ok: true });
+    } catch (e: unknown) {
+      setObsidianMsg({ text: e instanceof Error ? e.message : "Failed to save", ok: false });
+    } finally {
+      setObsidianSaving(false);
     }
   }
 
@@ -198,6 +232,72 @@ export default function ProfilePage() {
           {keyMessage && (
             <p className={`mt-3 text-sm ${keyMessage.ok ? "text-emerald-700" : "text-red-600"}`}>
               {keyMessage.text}
+            </p>
+          )}
+        </section>
+
+        {/* ── Obsidian Export Settings ────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-4">
+          <div>
+            <h2 className="font-serif text-lg font-semibold text-ink mb-1">Obsidian Export</h2>
+            <p className="text-sm text-stone-500">
+              Configure GitHub integration so vocabulary can be pushed to your Obsidian vault.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">
+              GitHub Token
+            </label>
+            <input
+              type="password"
+              placeholder="ghp_… (never shown back)"
+              value={obsidianToken}
+              onChange={(e) => setObsidianToken(e.target.value)}
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              Requires <code>contents:write</code> permission on your vault repo.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">
+              Obsidian Repo
+            </label>
+            <input
+              type="text"
+              placeholder="username/obsidian-notes"
+              value={obsidianRepo}
+              onChange={(e) => setObsidianRepo(e.target.value)}
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">
+              Vault Path
+            </label>
+            <input
+              type="text"
+              placeholder="All Notes/002 Literature Notes/000 Books"
+              value={obsidianPath}
+              onChange={(e) => setObsidianPath(e.target.value)}
+              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+
+          <button
+            onClick={handleSaveObsidian}
+            disabled={obsidianSaving}
+            className="rounded-lg bg-amber-700 text-white px-5 py-2 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+          >
+            {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
+          </button>
+
+          {obsidianMsg && (
+            <p className={`text-sm ${obsidianMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
+              {obsidianMsg.text}
             </p>
           )}
         </section>

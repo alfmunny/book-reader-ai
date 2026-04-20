@@ -14,7 +14,6 @@ import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
 import WordActionDrawer, { type WordAction } from "@/components/WordActionDrawer";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
-import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
@@ -80,8 +79,9 @@ export default function ReaderPage() {
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
 
-  // Sidebar (insight chat) — hidden by default, resizable
+  // Sidebar panel — hidden by default, resizable; tab controls which panel is shown
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "translate" | "export">("chat");
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
   const resizeStartX = useRef(0);
@@ -89,7 +89,6 @@ export default function ReaderPage() {
 
   // Immersive mode — on mobile, hide header/toolbar; tap to toggle
   const [toolbarVisible, setToolbarVisible] = useState(true);
-  const [translateExpanded, setTranslateExpanded] = useState(false);
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isMobileRef = useRef(false);
@@ -211,6 +210,9 @@ export default function ReaderPage() {
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
+  // Staged language — changing the dropdown doesn't fire translation;
+  // user must click Apply to copy pendingTranslationLang → translationLang.
+  const [pendingTranslationLang, setPendingTranslationLang] = useState("en");
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
@@ -228,6 +230,7 @@ export default function ReaderPage() {
   useEffect(() => {
     const s = getSettings();
     setTranslationLang(s.translationLang);
+    setPendingTranslationLang(s.translationLang);
     // translationProvider setting is retained for back-compat but no longer read here.
     setAudiobookEnabled(s.audiobookEnabled);
     setFontSize(s.fontSize);
@@ -327,6 +330,7 @@ export default function ReaderPage() {
     const available = LANGUAGES.filter((l) => l.code !== bookLanguage);
     if (translationLang === bookLanguage && available.length > 0) {
       setTranslationLang(available[0].code);
+      setPendingTranslationLang(available[0].code);
     }
   }, [bookLanguage, translationLang]);
 
@@ -767,184 +771,80 @@ export default function ReaderPage() {
             )}
           </button>
 
-          {/* Insight chat toggle — desktop only (mobile uses bottom bar) */}
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            title="Toggle insight chat"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.836L3 20l1.09-3.27A7.96 7.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            Insight
-          </button>
-
-          {/* Annotations sidebar — desktop only */}
-          {session?.backendToken && (
-            <div className="hidden md:block">
-            <AnnotationsSidebar
-              annotations={annotations}
-              totalCount={annotations.length}
-              loading={annotationsLoading}
-              onJump={(ann) => {
-                if (ann.chapter_index !== chapterIndex) {
-                  setChapterIndex(ann.chapter_index);
-                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
-                } else {
-                  setScrollTargetSentence(undefined);
-                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
-                }
-              }}
-              onEdit={(ann) => setAnnotationPanel({
-                sentenceText: ann.sentence_text,
-                chapterIndex: ann.chapter_index,
-                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-              })}
-            />
-            </div>
-          )}
-
-          {/* Vocabulary link — desktop only */}
-          {session?.backendToken && (
+          {/* Panel tab buttons — desktop only; each opens the sidebar to a specific tab */}
+          <div className="hidden md:flex items-center gap-1 shrink-0">
+            {/* Chat tab */}
             <button
-              onClick={() => router.push("/vocabulary")}
-              title="Vocabulary"
-              className="hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
-            >
-              📚 Vocab
-            </button>
-          )}
-
-          {/* Export vocabulary to Obsidian — desktop only */}
-          {session?.backendToken && (
-            <button
-              onClick={handleObsidianExport}
-              title="Export vocabulary to Obsidian"
-              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
-            >
-              ↗ Obsidian
-            </button>
-          )}
-
-          {/* Audiobook toggle — desktop only */}
-          {audiobookEnabled && (
-            <button
-              onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
-              title={audiobook ? "Audiobook linked" : "Find audiobook"}
-              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                audiobook
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
+              onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
+              title="Insight chat"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "chat"
+                  ? "bg-amber-700 text-white border-amber-700"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
               }`}
-            >
-              🎧 {audiobook ? "Audio" : "Find Audio"}
-            </button>
-          )}
-        </div>
+            >💬 Chat</button>
 
-        {/* Row 2: Translation toolbar — desktop only (mobile uses bottom bar expand) */}
-        <div className="hidden md:flex items-center gap-3 px-4 pb-2 flex-wrap">
-          <button
-            onClick={() => setTranslationEnabled((v) => !v)}
-            className={`text-xs px-3 py-2 md:py-1 rounded-full border font-medium transition-colors min-h-[44px] md:min-h-0 ${
-              translationEnabled
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            🌐 Translate
-          </button>
-
-          {translationEnabled && (
-            <>
-              <select
-                className="text-xs rounded border border-amber-300 px-2 py-2 md:py-1 text-ink bg-white min-h-[44px] md:min-h-0"
-                value={translationLang}
-                onChange={(e) => setTranslationLang(e.target.value)}
+            {/* Notes tab */}
+            {session?.backendToken && (
+              <button
+                onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
+                title="Annotations"
+                className={`relative flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                  sidebarOpen && sidebarTab === "notes"
+                    ? "bg-amber-700 text-white border-amber-700"
+                    : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                }`}
               >
-                {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
-                ))}
-              </select>
-
-              <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
-                <button
-                  onClick={() => setDisplayMode("inline")}
-                  className={`px-3 py-2 md:py-1 transition-colors min-h-[44px] md:min-h-0 ${
-                    displayMode === "inline"
-                      ? "bg-amber-700 text-white"
-                      : "text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  <span className="md:hidden">⊞</span>
-                  <span className="hidden md:inline">Inline</span>
-                </button>
-                <button
-                  onClick={() => setDisplayMode("parallel")}
-                  className={`px-3 py-2 md:py-1 border-l border-amber-300 transition-colors min-h-[44px] md:min-h-0 ${
-                    displayMode === "parallel"
-                      ? "bg-amber-700 text-white"
-                      : "text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  <span className="md:hidden">⫼</span>
-                  <span className="hidden md:inline">Side by side</span>
-                </button>
-              </div>
-
-              {/* Provider dropdown removed — all translations now flow
-                  through the queue worker which uses the admin's
-                  configured model chain. Users no longer choose their
-                  own Gemini vs. Google provider. */}
-
-              {/* Show the translation status text whether we're loading or
-                  done. While queued this surfaces "queue · position N" /
-                  "queue · translating now" so the user sees progress
-                  instead of an opaque "Translating…". When complete it
-                  shows the provider/model that produced the result. */}
-              {translationLoading ? (
-                <span className="text-xs text-amber-600 animate-pulse">
-                  {translationUsedProvider || "Translating…"}
-                </span>
-              ) : translationUsedProvider &&
-                translationUsedProvider !== "login required" &&
-                translationUsedProvider !== "gemini key required" ? (
-                <span className="hidden md:inline text-xs text-amber-400">
-                  via {translationUsedProvider}
-                </span>
-              ) : null}
-
-              {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
-                <button
-                  onClick={handleRetranslate}
-                  className="hidden md:inline-block text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
-                >
-                  Retranslate
-                </button>
-              )}
-
-              {/* Any user can retry their own failed chapter — the queue row
-                  is in 'failed' state, a fresh request is idempotent, and
-                  priority=10 means the worker picks it up ahead of background
-                  auto-enqueued items. */}
-              {!translationLoading &&
-                translationUsedProvider.startsWith("queue failed") && (
-                  <button
-                    onClick={handleRetryFailed}
-                    className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 ml-auto"
-                    title="Re-queue this chapter for the background worker"
-                  >
-                    Retry
-                  </button>
+                📝 Notes
+                {annotations.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                    {annotations.length}
+                  </span>
                 )}
-            </>
-          )}
+              </button>
+            )}
+
+            {/* Translation tab */}
+            <button
+              onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+              title="Translation"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "translate"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : translationEnabled
+                  ? "bg-amber-100 text-amber-800 border-amber-400"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >🌐 Translation</button>
+
+            {/* Export tab */}
+            {session?.backendToken && (
+              <button
+                onClick={() => { setSidebarTab("export"); setSidebarOpen((v) => sidebarTab === "export" ? !v : true); }}
+                title="Export tools"
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                  sidebarOpen && sidebarTab === "export"
+                    ? "bg-amber-700 text-white border-amber-700"
+                    : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                }`}
+              >↗ Export</button>
+            )}
+
+            {/* Audiobook */}
+            {audiobookEnabled && (
+              <button
+                onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
+                title={audiobook ? "Audiobook linked" : "Find audiobook"}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                  audiobook
+                    ? "bg-amber-100 text-amber-900 border-amber-400"
+                    : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                }`}
+              >🎧</button>
+            )}
+          </div>
         </div>
+
       </header>
 
       {/* ── Banners (hidden in immersive mode on mobile) ──────────────── */}
@@ -1343,7 +1243,7 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* Insight Chat sidebar — fullscreen overlay on mobile, inline on desktop */}
+        {/* Side panel — fullscreen overlay on mobile, inline on desktop */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
           className={`flex flex-col overflow-hidden shrink-0 ${
@@ -1352,40 +1252,249 @@ export default function ReaderPage() {
               : "border-l border-amber-200"
           }`}
         >
-          {/* Mobile close button for fullscreen sidebar */}
           {sidebarOpen && (
-            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-amber-200 shrink-0 bg-white/70">
-              <span className="font-serif font-semibold text-ink text-sm">Insight Chat</span>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700 hover:text-amber-900 text-lg"
-                aria-label="Close sidebar"
-              >
-                ✕
-              </button>
-            </div>
+            <>
+              {/* Tab bar */}
+              <div className="flex shrink-0 border-b border-amber-200 bg-white/70">
+                {(["chat", "notes", "translate", "export"] as const).map((tab) => {
+                  const labels: Record<string, string> = { chat: "💬 Chat", notes: "📝 Notes", translate: "🌐 Translation", export: "↗ Export" };
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setSidebarTab(tab)}
+                      className={`relative flex-1 py-2.5 text-xs font-medium transition-colors border-b-2 ${
+                        sidebarTab === tab
+                          ? "text-amber-700 border-amber-700"
+                          : "text-stone-500 border-transparent hover:text-amber-600"
+                      }`}
+                    >
+                      {labels[tab]}
+                      {tab === "notes" && annotations.length > 0 && (
+                        <span className="absolute top-1 right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
+                          {annotations.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {/* Mobile close button */}
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="md:hidden shrink-0 px-3 text-amber-700 hover:text-amber-900 text-lg min-h-[44px]"
+                  aria-label="Close panel"
+                >✕</button>
+              </div>
+
+              {/* ── Chat tab ── keep mounted so history persists */}
+              <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" ? "" : "hidden"}`}>
+                <InsightChat
+                  bookId={bookId}
+                  userId={session?.backendUser?.id ?? null}
+                  hasGeminiKey={hasGeminiKey ?? false}
+                  isVisible={sidebarOpen && sidebarTab === "chat"}
+                  chapterText={current?.text ?? ""}
+                  chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
+                  selectedText={selectedText}
+                  bookTitle={meta?.title ?? ""}
+                  author={meta?.authors[0] ?? ""}
+                  bookLanguage={bookLanguage}
+                  onAIUsed={notifyAIUsed}
+                  chapterIndex={chapterIndex}
+                  onSaveInsight={session?.backendToken ? (question, answer) => {
+                    saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
+                      .then(() => setObsidianToast("Insight saved to book notes"))
+                      .catch(() => setObsidianToast("Failed to save insight"))
+                      .finally(() => setTimeout(() => setObsidianToast(null), 3000));
+                  } : undefined}
+                />
+              </div>
+
+              {/* ── Notes tab ── */}
+              {sidebarTab === "notes" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {annotationsLoading && annotations.length === 0 ? (
+                    <div className="flex justify-center mt-10">
+                      <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                    </div>
+                  ) : annotations.length === 0 ? (
+                    <div className="text-center text-stone-400 mt-10 text-sm">
+                      <p className="text-3xl mb-2">📝</p>
+                      <p>No annotations yet.</p>
+                      <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {annotationsLoading && (
+                        <div className="flex justify-center py-1">
+                          <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {Object.keys(
+                        annotations.reduce<Record<number, true>>((acc, a) => { acc[a.chapter_index] = true; return acc; }, {})
+                      ).map(Number).sort((a, b) => a - b).map((ch) => (
+                        <div key={ch}>
+                          <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">Chapter {ch + 1}</h3>
+                          <div className="space-y-2">
+                            {annotations.filter((a) => a.chapter_index === ch).map((ann) => (
+                              <div
+                                key={ann.id}
+                                className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${
+                                  { yellow: "bg-yellow-100 border-yellow-300 text-yellow-800", blue: "bg-blue-100 border-blue-300 text-blue-800", green: "bg-green-100 border-green-300 text-green-800", pink: "bg-pink-100 border-pink-300 text-pink-800" }[ann.color] ?? "bg-yellow-100 border-yellow-300 text-yellow-800"
+                                }`}
+                                onClick={() => {
+                                  if (ann.chapter_index !== chapterIndex) {
+                                    setChapterIndex(ann.chapter_index);
+                                    setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                                  } else {
+                                    setScrollTargetSentence(undefined);
+                                    setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                                  }
+                                  setSidebarOpen(false);
+                                }}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">&ldquo;{ann.sentence_text}&rdquo;</p>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAnnotationPanel({ sentenceText: ann.sentence_text, chapterIndex: ann.chapter_index, position: { x: window.innerWidth / 2, y: window.innerHeight / 2 } });
+                                      setSidebarOpen(false);
+                                    }}
+                                    className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
+                                    title="Edit annotation"
+                                  >✏️</button>
+                                </div>
+                                {ann.note_text && (
+                                  <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">{ann.note_text}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── Translation tab ── */}
+              {sidebarTab === "translate" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                  {/* Enable/disable toggle */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-ink">Translation</span>
+                    <button
+                      onClick={() => setTranslationEnabled((v) => !v)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        translationEnabled ? "bg-amber-600" : "bg-stone-300"
+                      }`}
+                      role="switch"
+                      aria-checked={translationEnabled}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        translationEnabled ? "translate-x-6" : "translate-x-1"
+                      }`} />
+                    </button>
+                  </div>
+
+                  {translationEnabled && (
+                    <>
+                      {/* Language selector + Apply */}
+                      <div className="space-y-2">
+                        <label className="text-xs text-stone-500 font-medium uppercase tracking-wide">Language</label>
+                        <div className="flex gap-2">
+                          <select
+                            className="flex-1 text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white"
+                            value={pendingTranslationLang}
+                            onChange={(e) => setPendingTranslationLang(e.target.value)}
+                          >
+                            {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
+                              <option key={l.code} value={l.code}>{l.label}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => setTranslationLang(pendingTranslationLang)}
+                            disabled={pendingTranslationLang === translationLang}
+                            className="px-3 py-2 text-xs rounded border border-amber-500 bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                        {pendingTranslationLang !== translationLang && (
+                          <p className="text-xs text-amber-600">Click Apply to translate into {LANGUAGES.find((l) => l.code === pendingTranslationLang)?.label ?? pendingTranslationLang}.</p>
+                        )}
+                      </div>
+
+                      {/* Display mode */}
+                      <div className="space-y-2">
+                        <label className="text-xs text-stone-500 font-medium uppercase tracking-wide">Display</label>
+                        <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
+                          <button
+                            onClick={() => setDisplayMode("inline")}
+                            className={`flex-1 px-3 py-2 transition-colors ${displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"}`}
+                          >Inline</button>
+                          <button
+                            onClick={() => setDisplayMode("parallel")}
+                            className={`flex-1 px-3 py-2 border-l border-amber-300 transition-colors ${displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"}`}
+                          >Side by side</button>
+                        </div>
+                      </div>
+
+                      {/* Status */}
+                      {translationLoading ? (
+                        <p className="text-xs text-amber-600 animate-pulse">{translationUsedProvider || "Translating…"}</p>
+                      ) : translationUsedProvider && translationUsedProvider !== "login required" && translationUsedProvider !== "gemini key required" ? (
+                        <p className="text-xs text-stone-400">via {translationUsedProvider}</p>
+                      ) : null}
+
+                      {/* Admin: retranslate */}
+                      {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
+                        <button
+                          onClick={handleRetranslate}
+                          className="w-full text-xs px-3 py-2 rounded border border-amber-300 text-amber-600 hover:bg-amber-50"
+                        >Retranslate this chapter</button>
+                      )}
+
+                      {/* Retry failed */}
+                      {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
+                        <button
+                          onClick={handleRetryFailed}
+                          className="w-full text-xs px-3 py-2 rounded border border-red-300 text-red-600 hover:bg-red-50"
+                        >Retry</button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── Export tab ── */}
+              {sidebarTab === "export" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  <p className="text-xs text-stone-400 uppercase tracking-wide font-medium">Vocabulary</p>
+                  <button
+                    onClick={() => router.push("/vocabulary")}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
+                  >
+                    <span className="text-lg">📚</span>
+                    <div className="text-left">
+                      <p className="font-medium">Vocabulary list</p>
+                      <p className="text-xs text-stone-400 font-normal">View all saved words</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={handleObsidianExport}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
+                  >
+                    <span className="text-lg">↗</span>
+                    <div className="text-left">
+                      <p className="font-medium">Export to Obsidian</p>
+                      <p className="text-xs text-stone-400 font-normal">Open vocab in Obsidian vault</p>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </>
           )}
-          {/* Keep mounted so chat history persists across open/close */}
-          <InsightChat
-            bookId={bookId}
-            userId={session?.backendUser?.id ?? null}
-            hasGeminiKey={hasGeminiKey ?? false}
-            isVisible={sidebarOpen}
-            chapterText={current?.text ?? ""}
-            chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
-            selectedText={selectedText}
-            bookTitle={meta?.title ?? ""}
-            author={meta?.authors[0] ?? ""}
-            bookLanguage={bookLanguage}
-            onAIUsed={notifyAIUsed}
-            chapterIndex={chapterIndex}
-            onSaveInsight={session?.backendToken ? (question, answer) => {
-              saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
-                .then(() => setObsidianToast("Insight saved to book notes"))
-                .catch(() => setObsidianToast("Failed to save insight"))
-                .finally(() => setTimeout(() => setObsidianToast(null), 3000));
-            } : undefined}
-          />
         </div>
       </div>
 
@@ -1406,36 +1515,6 @@ export default function ReaderPage() {
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
       {!loading && chapters.length > 0 && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 safe-bottom">
-          {/* Translation options expand panel */}
-          {translateExpanded && translationEnabled && (
-            <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 flex items-center gap-2 animate-slide-up">
-              <select
-                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px]"
-                value={translationLang}
-                onChange={(e) => setTranslationLang(e.target.value)}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
-                ))}
-              </select>
-              <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
-                <button
-                  onClick={() => setDisplayMode("inline")}
-                  className={`px-3 py-2 min-h-[44px] transition-colors ${
-                    displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
-                  }`}
-                >Inline</button>
-                <button
-                  onClick={() => setDisplayMode("parallel")}
-                  className={`px-3 py-2 min-h-[44px] border-l border-amber-300 transition-colors ${
-                    displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
-                  }`}
-                >Side by side</button>
-              </div>
-            </div>
-          )}
-
-          {/* Main bottom bar */}
           <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-1 py-1 flex items-center justify-around gap-0.5">
             <button
               onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
@@ -1444,20 +1523,10 @@ export default function ReaderPage() {
               aria-label="Previous chapter"
             >‹</button>
 
+            {/* Translation shortcut — opens panel on Translation tab */}
             <button
-              onClick={() => {
-                if (!translationEnabled) {
-                  setTranslationEnabled(true);
-                  setTranslateExpanded(true);
-                } else {
-                  setTranslateExpanded((v) => !v);
-                }
-              }}
-              onDoubleClick={() => {
-                setTranslationEnabled(false);
-                setTranslateExpanded(false);
-              }}
-              title="Tap: toggle options · Double-tap: turn off"
+              onClick={() => { setSidebarTab("translate"); setSidebarOpen(true); }}
+              title="Translation settings"
               className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
                 translationEnabled
                   ? "bg-amber-700 text-white"
@@ -1490,10 +1559,11 @@ export default function ReaderPage() {
               ))}
             </select>
 
+            {/* Chat shortcut — opens panel on Chat tab */}
             <button
-              onClick={() => setSidebarOpen((v) => !v)}
+              onClick={() => { setSidebarTab("chat"); setSidebarOpen(true); }}
               className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
-                sidebarOpen
+                sidebarOpen && sidebarTab === "chat"
                   ? "bg-amber-700 text-white"
                   : "text-amber-700 bg-amber-50 border border-amber-200"
               }`}

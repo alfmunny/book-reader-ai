@@ -5,7 +5,7 @@
  * apps (Kindle, Apple Books, etc.): persistent progress indicators, smooth chapter
  * navigation, readable customisation, and keyboard accessibility.
  */
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "./base";
 import { mockBackend, MOCK_CHAPTERS } from "./fixtures";
 
 async function setupReader(page: Page) {

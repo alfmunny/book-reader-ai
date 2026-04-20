@@ -39,6 +39,7 @@ export default defineConfig({
     timeout: 120 * 1000,
     env: {
       PLAYWRIGHT_TEST: "1",
+      INSTRUMENT_COVERAGE: process.env.CI ? "1" : "",
       NEXT_PUBLIC_API_URL: "http://stub.test/api",
       // NextAuth v5 validates config at module load, so the dev server
       // needs these even though our middleware bypass skips the auth call.

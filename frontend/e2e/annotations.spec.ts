@@ -5,7 +5,7 @@
  * The "📝 Notes" tab button in the header only shows when the session has a
  * backendToken. These tests mock the session accordingly.
  */
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "./base";
 import { MOCK_BOOK, MOCK_FAUST, MOCK_CHAPTERS } from "./fixtures";
 
 const MOCK_ANNOTATIONS = [

@@ -1,7 +1,7 @@
 /**
  * E2E: Book detail modal — opens, shows book info, navigates on CTA
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./base";
 import { mockBackend, MOCK_BOOK, MOCK_FAUST } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {

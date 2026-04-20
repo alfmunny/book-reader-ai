@@ -1074,7 +1074,7 @@ export default function ReaderPage() {
             className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
             onClick={handleReaderTap}
             onTouchStart={handleTouchStart}
-            onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(e); }}
+            onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}
             onMouseUp={handleSelection}
             onDoubleClick={(e) => {
               const sel = window.getSelection()?.toString().trim();

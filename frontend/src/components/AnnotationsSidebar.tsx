@@ -42,7 +42,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
       <button
         onClick={() => setOpen((v) => !v)}
         title="Annotations"
-        className="relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+        className="relative shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0"
         data-testid="annotations-toggle"
       >
         📝 Notes
@@ -56,7 +56,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
       {/* Drawer */}
       {open && (
         <div
-          className="fixed right-0 top-0 h-full w-80 bg-white border-l border-amber-200 shadow-2xl z-50 flex flex-col"
+          className="fixed right-0 top-0 h-full w-full sm:w-80 bg-white border-l border-amber-200 shadow-2xl z-50 flex flex-col"
           data-testid="annotations-sidebar"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-amber-100">

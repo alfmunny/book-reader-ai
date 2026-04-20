@@ -157,16 +157,16 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-parchment">
       {/* Header */}
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-6 py-4">
+      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
-            <p className="text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
+            <h1 className="text-xl md:text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
+            <p className="text-xs md:text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
           </div>
           {status === "unauthenticated" ? (
             <button
               onClick={() => router.push("/login")}
-              className="rounded-lg border border-amber-300 px-4 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors"
+              className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px]"
             >
               Sign in
             </button>
@@ -174,7 +174,7 @@ export default function Home() {
             <button
               onClick={() => router.push("/profile")}
               title={session?.backendUser?.name ?? "Profile & Settings"}
-              className="w-9 h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+              className="w-10 h-10 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
             >
               {session?.backendUser?.picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -191,7 +191,7 @@ export default function Home() {
 
       {/* Tab bar */}
       <nav className="border-b border-amber-200 bg-white/40 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-6 flex gap-1 items-center">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center">
           {([
             { key: "library" as Tab, label: "Your Library", count: recentBooks.length || undefined },
             { key: "discover" as Tab, label: "Discover" },
@@ -228,7 +228,7 @@ export default function Home() {
         </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
         {/* ════════════ Library Tab ════════════ */}
         {tab === "library" && (
@@ -274,7 +274,7 @@ export default function Home() {
                 70,000+ free public domain classics from Project Gutenberg
               </p>
 
-              <div className="flex gap-2 mb-3">
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <input
                   className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 text-base"
                   placeholder="Search by title or author..."
@@ -282,29 +282,31 @@ export default function Home() {
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 />
-                <select
-                  className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm text-ink"
-                  value={lang}
-                  onChange={(e) => setLang(e.target.value)}
-                >
-                  <option value="">Any language</option>
-                  <option value="en">English</option>
-                  <option value="de">German</option>
-                  <option value="fr">French</option>
-                  <option value="ja">Japanese</option>
-                  <option value="it">Italian</option>
-                  <option value="es">Spanish</option>
-                </select>
-                <button
-                  className="rounded-lg bg-amber-700 px-5 py-2.5 text-white font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center gap-2"
-                  onClick={() => handleSearch()}
-                  disabled={searching}
-                >
-                  {searching && (
-                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  )}
-                  {searching ? "Searching" : "Search"}
-                </button>
+                <div className="flex gap-2">
+                  <select
+                    className="rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm text-ink flex-1 sm:flex-none"
+                    value={lang}
+                    onChange={(e) => setLang(e.target.value)}
+                  >
+                    <option value="">Any language</option>
+                    <option value="en">English</option>
+                    <option value="de">German</option>
+                    <option value="fr">French</option>
+                    <option value="ja">Japanese</option>
+                    <option value="it">Italian</option>
+                    <option value="es">Spanish</option>
+                  </select>
+                  <button
+                    className="rounded-lg bg-amber-700 px-5 py-2.5 text-white font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none"
+                    onClick={() => handleSearch()}
+                    disabled={searching}
+                  >
+                    {searching && (
+                      <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    )}
+                    {searching ? "Searching" : "Search"}
+                  </button>
+                </div>
               </div>
 
               {/* Quick search pills */}
@@ -470,7 +472,7 @@ export default function Home() {
                       <button
                         onClick={() => setPopularPage((p) => p - 1)}
                         disabled={popularPage === 1}
-                        className="px-4 py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
                       >
                         ← Prev
                       </button>
@@ -480,7 +482,7 @@ export default function Home() {
                       <button
                         onClick={() => setPopularPage((p) => p + 1)}
                         disabled={popularPage >= Math.ceil(popularTotal / PER_PAGE)}
-                        className="px-4 py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
                       >
                         Next →
                       </button>

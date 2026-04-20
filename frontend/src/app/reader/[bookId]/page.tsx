@@ -595,12 +595,12 @@ export default function ReaderPage() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur shrink-0">
         {/* Row 1: nav + title + chapter selector + chat toggle */}
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
             onClick={() => router.push("/")}
-            className="text-amber-700 hover:text-amber-900 text-sm shrink-0"
+            className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] flex items-center"
           >
-            ← Library
+            ← <span className="hidden sm:inline ml-1">Library</span>
           </button>
 
           <div className="min-w-0 flex-1">
@@ -623,10 +623,10 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
-                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm"
+                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
                 >‹</button>
                 <select
-                  className="text-xs rounded border border-amber-300 px-2 py-1 text-ink bg-white max-w-[160px]"
+                  className="text-xs rounded border border-amber-300 px-2 py-1.5 text-ink bg-white max-w-[120px] md:max-w-[160px] min-h-[44px] md:min-h-0"
                   value={chapterIndex}
                   onChange={(e) => goToChapter(Number(e.target.value))}
                 >
@@ -639,7 +639,7 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
-                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm"
+                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
                 >›</button>
               </>
             )}
@@ -649,7 +649,7 @@ export default function ReaderPage() {
           <button
             onClick={cycleFontSize}
             title={`Font size: ${fontSize}`}
-            className="shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors"
+            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors flex items-center justify-center"
           >
             {fontSize === "sm" ? "A" : fontSize === "base" ? "A" : fontSize === "lg" ? "A" : "A"}
             <span className="text-[8px] align-super">{fontSize === "sm" ? "-" : fontSize === "base" ? "" : fontSize === "lg" ? "+" : "++"}</span>
@@ -659,7 +659,7 @@ export default function ReaderPage() {
           <button
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
-            className="shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors flex items-center justify-center"
+            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors flex items-center justify-center"
           >
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
@@ -668,7 +668,7 @@ export default function ReaderPage() {
           <button
             onClick={() => router.push("/profile")}
             title={session?.backendUser?.name ?? "Profile"}
-            className="shrink-0 w-8 h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors"
+            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors"
           >
             {session?.backendUser?.picture ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -684,7 +684,7 @@ export default function ReaderPage() {
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             title="Toggle insight chat"
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border text-xs font-medium transition-colors min-h-[44px] md:min-h-0 ${
               sidebarOpen
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -694,7 +694,7 @@ export default function ReaderPage() {
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.836L3 20l1.09-3.27A7.96 7.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            Insight
+            <span className="hidden sm:inline">Insight</span>
           </button>
 
           {/* Annotations sidebar */}
@@ -721,23 +721,23 @@ export default function ReaderPage() {
             />
           )}
 
-          {/* Vocabulary link */}
+          {/* Vocabulary link — hidden on small screens */}
           {session?.backendToken && (
             <button
               onClick={() => router.push("/vocabulary")}
               title="Vocabulary"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               📚 Vocab
             </button>
           )}
 
-          {/* Export vocabulary to Obsidian */}
+          {/* Export vocabulary to Obsidian — hidden on small screens */}
           {session?.backendToken && (
             <button
               onClick={handleObsidianExport}
               title="Export vocabulary to Obsidian"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               ↗ Obsidian
             </button>
@@ -754,16 +754,16 @@ export default function ReaderPage() {
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
               }`}
             >
-              🎧 {audiobook ? "Audio" : "Find Audio"}
+              🎧 <span className="hidden sm:inline">{audiobook ? "Audio" : "Find Audio"}</span>
             </button>
           )}
         </div>
 
         {/* Row 2: Translation toolbar */}
-        <div className="flex items-center gap-3 px-4 pb-2">
+        <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 pb-2 flex-wrap">
           <button
             onClick={() => setTranslationEnabled((v) => !v)}
-            className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
+            className={`text-xs px-3 py-2 md:py-1 rounded-full border font-medium transition-colors min-h-[44px] md:min-h-0 ${
               translationEnabled
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -824,7 +824,7 @@ export default function ReaderPage() {
               ) : translationUsedProvider &&
                 translationUsedProvider !== "login required" &&
                 translationUsedProvider !== "gemini key required" ? (
-                <span className="text-[10px] text-amber-400">
+                <span className="text-xs text-amber-400">
                   via {translationUsedProvider}
                 </span>
               ) : null}
@@ -986,7 +986,7 @@ export default function ReaderPage() {
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <div
             id="reader-scroll"
-            className="flex-1 overflow-y-auto px-8 py-8"
+            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8"
             onMouseUp={handleSelection}
             onTouchEnd={handleSelection}
             onDoubleClick={(e) => {
@@ -1186,11 +1186,11 @@ export default function ReaderPage() {
           </div>
         </div>
 
-        {/* Resize handle — only visible when sidebar is open */}
+        {/* Resize handle — only visible when sidebar is open, hidden on mobile (sidebar is fullscreen there) */}
         {sidebarOpen && (
           <div
             onMouseDown={onResizeStart}
-            className="w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 transition-colors relative group"
+            className="hidden md:block w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 transition-colors relative group"
             title="Drag to resize"
           >
             {/* Three-dot grip indicator */}
@@ -1202,11 +1202,28 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* Insight Chat sidebar — always mounted, hidden with CSS when closed */}
+        {/* Insight Chat sidebar — fullscreen overlay on mobile, inline on desktop */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
-          className="border-l border-amber-200 flex flex-col overflow-hidden shrink-0"
+          className={`flex flex-col overflow-hidden shrink-0 ${
+            sidebarOpen
+              ? "fixed inset-0 z-40 bg-parchment !w-full md:static md:z-auto md:!w-auto md:border-l md:border-amber-200"
+              : "border-l border-amber-200"
+          }`}
         >
+          {/* Mobile close button for fullscreen sidebar */}
+          {sidebarOpen && (
+            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-amber-200 shrink-0 bg-white/70">
+              <span className="font-serif font-semibold text-ink text-sm">Insight Chat</span>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700 hover:text-amber-900 text-lg"
+                aria-label="Close sidebar"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {/* Keep mounted so chat history persists across open/close */}
           <InsightChat
             bookId={bookId}

@@ -72,26 +72,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <main className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.push("/")} className="text-amber-700 hover:text-amber-900 text-sm">
+      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
+        <button onClick={() => router.push("/")} className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center">
           ← Library
         </button>
-        <h1 className="font-serif font-bold text-ink text-xl">Admin Panel</h1>
-        <button onClick={loadStats} className="ml-auto text-sm text-amber-600 hover:text-amber-900">
+        <h1 className="font-serif font-bold text-ink text-lg md:text-xl">Admin Panel</h1>
+        <button onClick={loadStats} className="ml-auto text-sm text-amber-600 hover:text-amber-900 min-h-[44px] flex items-center">
           ↻ Refresh
         </button>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-6">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 md:py-6">
         <ContextualStats tab={current} stats={stats} />
 
-        <div className="flex gap-1 border-b border-amber-200 mb-4">
+        <div className="flex gap-1 border-b border-amber-200 mb-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           {TABS.map(({ key, label, href }) => (
             <Link
               key={key}
               href={href}
               prefetch
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-3 md:px-4 py-2.5 md:py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap min-h-[44px] md:min-h-0 flex items-center ${
                 current === key
                   ? "border-amber-700 text-amber-900"
                   : "border-transparent text-amber-600 hover:text-amber-800"

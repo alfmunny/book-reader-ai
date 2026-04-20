@@ -232,6 +232,10 @@ interface Props {
   translationLoading?: boolean;
   /** Called when the user double-clicks a word to save it to vocabulary. */
   onWordSave?: (word: string, sentenceText: string) => void;
+  /** Called when user double-clicks but onWordSave is not available (e.g. unauthenticated). */
+  onWordSaveBlocked?: () => void;
+  /** Sentence text to scroll to and briefly highlight. */
+  scrollTargetSentence?: string;
   /**
    * Called when the user long-presses a sentence (400ms hold).
    * Provides the sentence text, chapter index, and pointer position.
@@ -266,13 +270,15 @@ export default function SentenceReader({
   translationDisplayMode = "parallel",
   translationLoading = false,
   onWordSave,
+  onWordSaveBlocked,
   onAnnotate,
   chapterIndex = 0,
   annotations,
+  scrollTargetSentence,
 }: Props) {
-  // Toast state for vocabulary save
   const [wordToast, setWordToast] = useState<string | null>(null);
-  // Long-press tracking
+  const [flashTarget, setFlashTarget] = useState<string | null>(null);
+  const jumpTargetRef = useRef<HTMLElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
   // Deferred single-click: we delay onClick by 200ms so a dblclick can cancel it
@@ -331,6 +337,15 @@ export default function SentenceReader({
     return () => clearTimeout(t);
   }, [wordToast]);
 
+  // Scroll to and flash the target sentence when scrollTargetSentence changes
+  useEffect(() => {
+    if (!scrollTargetSentence) return;
+    setFlashTarget(scrollTargetSentence);
+    const scroll = setTimeout(() => jumpTargetRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    const clear = setTimeout(() => setFlashTarget(null), 2500);
+    return () => { clearTimeout(scroll); clearTimeout(clear); };
+  }, [scrollTargetSentence]);
+
   // Cancel pending single-click on unmount
   useEffect(() => () => {
     if (clickTimer.current) clearTimeout(clickTimer.current);
@@ -380,7 +395,7 @@ export default function SentenceReader({
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
     }
-    if (!onWordSave) return;
+    if (!onWordSave) { onWordSaveBlocked?.(); return; }
     e.preventDefault();
 
     // 1. Browser usually selects the double-clicked word — use that first
@@ -402,8 +417,11 @@ export default function SentenceReader({
       word = seg.text.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), "");
     }
 
-    word = word.replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF'-]/g, "");
-    if (!word) return;
+    word = word
+      .replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
+      .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "")
+      .replace(/[-\u2013\u2014]+/g, "");
+    if (!word || word.length < 2) return;
     setWordToast(word);
     onWordSave(word, seg.text);
   }
@@ -463,14 +481,19 @@ export default function SentenceReader({
         // Render a segment span with annotation underline + note icon
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
+          const isJumpTarget = flashTarget !== null && seg.text === flashTarget;
           const annotation = annotationMap.get(seg.text);
           const annotationClass = annotation
             ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
+          const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           return (
             <span
               key={seg.flatIdx}
-              ref={active ? (el) => { activeRef.current = el; } : undefined}
+              ref={(el) => {
+                if (active) activeRef.current = el;
+                if (isJumpTarget) jumpTargetRef.current = el;
+              }}
               data-seg={seg.flatIdx}
               onClick={(e) => handleSegClick(e, seg)}
               onDoubleClick={(e) => handleDoubleClick(e, seg)}
@@ -478,7 +501,7 @@ export default function SentenceReader({
               onPointerUp={cancelLongPress}
               onPointerCancel={cancelLongPress}
               onPointerMove={handlePointerMove}
-              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${extraClass}`}
+              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {seg.text}
               {annotation?.note_text ? <span className="ml-0.5 text-xs select-none">📝</span> : null}

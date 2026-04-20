@@ -85,12 +85,12 @@ async def test_update_annotation(client, test_user):
 
     resp = await client.patch(f"/api/annotations/{ann['id']}", json={
         "note_text": "updated note",
-        "color": "red",
+        "color": "blue",
     })
     assert resp.status_code == 200
     data = resp.json()
     assert data["note_text"] == "updated note"
-    assert data["color"] == "red"
+    assert data["color"] == "blue"
 
 
 async def test_update_annotation_not_found_returns_404(client, test_user):
@@ -112,7 +112,7 @@ async def test_update_annotation_own_only(client, test_user):
 
     resp = await client.patch(f"/api/annotations/{ann['id']}", json={
         "note_text": "hijack",
-        "color": "red",
+        "color": "blue",
     })
     assert resp.status_code == 404
 

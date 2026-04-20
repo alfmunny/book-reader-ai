@@ -553,7 +553,9 @@ async def create_annotation(
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text, note_text, color)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT (user_id, book_id, chapter_index, sentence_text)
+               DO UPDATE SET note_text = excluded.note_text, color = excluded.color""",
             (user_id, book_id, chapter_index, sentence_text, note_text, color),
         )
         await db.commit()
@@ -628,16 +630,11 @@ async def save_word(
             vocab_row = await cursor.fetchone()
         vocab_id = vocab_row["id"]
 
-        # Avoid duplicate occurrences for same word+book+sentence
+        # UNIQUE INDEX on (vocabulary_id, book_id, chapter_index, sentence_text) prevents duplicates
         await db.execute(
             """INSERT OR IGNORE INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)
-               SELECT ?, ?, ?, ?
-               WHERE NOT EXISTS (
-                   SELECT 1 FROM word_occurrences
-                   WHERE vocabulary_id = ? AND book_id = ? AND sentence_text = ?
-               )""",
-            (vocab_id, book_id, chapter_index, sentence_text,
-             vocab_id, book_id, sentence_text),
+               VALUES (?, ?, ?, ?)""",
+            (vocab_id, book_id, chapter_index, sentence_text),
         )
         await db.commit()
 
@@ -710,3 +707,47 @@ async def get_obsidian_settings(user_id: int) -> dict:
         ) as cursor:
             row = await cursor.fetchone()
     return dict(row) if row else {}
+
+
+# ── Book Insights (saved AI Q&A) ──────────────────────────────────────────────
+
+async def save_insight(
+    user_id: int,
+    book_id: int,
+    chapter_index: int | None,
+    question: str,
+    answer: str,
+) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, book_id, chapter_index, question, answer),
+        )
+        await db.commit()
+        row_id = cursor.lastrowid
+        async with db.execute("SELECT * FROM book_insights WHERE id = ?", (row_id,)) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def get_insights(user_id: int, book_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM book_insights WHERE user_id = ? AND book_id = ? ORDER BY created_at",
+            (user_id, book_id),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def delete_insight(insight_id: int, user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM book_insights WHERE id = ? AND user_id = ?",
+            (insight_id, user_id),
+        )
+        await db.commit()
+    return cursor.rowcount > 0

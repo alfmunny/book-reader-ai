@@ -146,17 +146,20 @@ async def test_export_single_book(client, test_user):
     fake_put_response = {
         "content": {"html_url": "https://github.com/user/obsidian-notes/blob/main/Moby Dick.md"}
     }
-    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/user/obsidian-notes/blob/main/Moby Dick.md"):
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/user/obsidian-notes/blob/main/Moby Dick.md"), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
         resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
 
     assert resp.status_code == 200
-    assert "url" in resp.json()
+    assert "urls" in resp.json()
+    assert len(resp.json()["urls"]) == 1
 
 
 async def test_export_all_books(client, test_user):
     await _setup_export(test_user)
 
-    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/user/repo/blob/main/file.md"):
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/user/repo/blob/main/file.md"), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
         resp = await client.post("/api/vocabulary/export/obsidian", json={})
 
     assert resp.status_code == 200
@@ -172,11 +175,8 @@ async def test_export_without_settings_returns_400(client, test_user):
 async def test_export_github_api_error_returns_502(client, test_user):
     await _setup_export(test_user)
 
-    with patch(
-        "routers.vocabulary._github_put",
-        new_callable=AsyncMock,
-        side_effect=Exception("network error"),
-    ):
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, side_effect=Exception("network error")), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
         resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
 
     assert resp.status_code == 500
@@ -193,7 +193,8 @@ async def test_export_calls_github_with_correct_content(client, test_user):
         captured_content["filename"] = filename
         return "https://github.com/example/url"
 
-    with patch("routers.vocabulary._github_put", side_effect=fake_put):
+    with patch("routers.vocabulary._github_put", side_effect=fake_put), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
         resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
 
     assert resp.status_code == 200

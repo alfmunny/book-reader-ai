@@ -38,6 +38,7 @@ export default function AnnotationToolbar({
   const [note, setNote] = useState(existingAnnotation?.note_text ?? "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -70,13 +71,11 @@ export default function AnnotationToolbar({
 
   async function handleSave() {
     setSaving(true);
+    setError(null);
     try {
       let saved: Annotation;
       if (existingAnnotation) {
-        saved = await updateAnnotation(existingAnnotation.id, {
-          note_text: note,
-          color,
-        });
+        saved = await updateAnnotation(existingAnnotation.id, { note_text: note, color });
       } else {
         saved = await createAnnotation({
           book_id: bookId,
@@ -88,8 +87,8 @@ export default function AnnotationToolbar({
       }
       onSaved(saved);
       onClose();
-    } catch {
-      // ignore errors silently
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -98,12 +97,13 @@ export default function AnnotationToolbar({
   async function handleDelete() {
     if (!existingAnnotation) return;
     setDeleting(true);
+    setError(null);
     try {
       await deleteAnnotation(existingAnnotation.id);
       onDeleted(existingAnnotation.id);
       onClose();
-    } catch {
-      // ignore errors silently
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -139,6 +139,11 @@ export default function AnnotationToolbar({
         rows={3}
         className="w-full text-sm border border-stone-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
       />
+
+      {/* Error */}
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{error}</p>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-2">

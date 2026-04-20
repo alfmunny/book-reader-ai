@@ -71,7 +71,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {loading ? (
+            {loading && annotations.length === 0 ? (
               <div className="flex justify-center mt-10">
                 <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
               </div>
@@ -82,7 +82,13 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                 <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
               </div>
             ) : (
-              chapters.map((ch) => (
+              <>
+                {loading && (
+                  <div className="flex justify-center py-1">
+                    <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                  </div>
+                )}
+              {chapters.map((ch) => (
                 <div key={ch}>
                   <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">
                     Chapter {ch + 1}
@@ -115,7 +121,8 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                     ))}
                   </div>
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
         </div>

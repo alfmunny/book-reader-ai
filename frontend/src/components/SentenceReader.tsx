@@ -338,16 +338,18 @@ export default function SentenceReader({
   }, [wordToast]);
 
   // Scroll to and flash the target sentence when scrollTargetSentence changes.
-  // We query the DOM by data attribute after the render that sets flashTarget,
-  // avoiding stale-ref issues between renders.
+  // We capture the sentence in a closure so rapid re-triggers (< 80ms apart)
+  // don't scroll to the wrong element: each timer checks its own sentence.
   useEffect(() => {
     if (!scrollTargetSentence) return;
-    setFlashTarget(scrollTargetSentence);
+    const target = scrollTargetSentence;
+    setFlashTarget(target);
     const scroll = setTimeout(() => {
+      // Only scroll if this effect's target is still the current flash target
       const el = containerRef.current?.querySelector("[data-jump-target]") as HTMLElement | null;
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
-    const clear = setTimeout(() => setFlashTarget(null), 2500);
+    const clear = setTimeout(() => setFlashTarget((cur) => cur === target ? null : cur), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
   }, [scrollTargetSentence]);
 

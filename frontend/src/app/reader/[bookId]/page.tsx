@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, saveVocabularyWord, exportVocabularyToObsidian, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
@@ -13,6 +13,7 @@ import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
+import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
@@ -22,11 +23,20 @@ const metaCache = new Map<string, BookMeta>();
 export default function ReaderPage() {
   const { bookId } = useParams<{ bookId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
 
   const [meta, setMeta] = useState<BookMeta | null>(metaCache.get(bookId) ?? null);
   const [chapters, setChapters] = useState<BookChapter[]>(chaptersCache.get(bookId) ?? []);
-  const [chapterIndex, setChapterIndex] = useState(() => getLastChapter(Number(bookId)));
+  const [chapterIndex, setChapterIndex] = useState(() => {
+    // ?chapter=N from vocabulary deep links takes priority over last-read
+    const qch = searchParams?.get("chapter");
+    if (qch !== null && qch !== undefined) {
+      const n = parseInt(qch, 10);
+      if (!isNaN(n) && n >= 0) return n;
+    }
+    return getLastChapter(Number(bookId));
+  });
   const [loading, setLoading] = useState(!chaptersCache.has(bookId));
   const [error, setError] = useState("");
 
@@ -680,6 +690,22 @@ export default function ReaderPage() {
             </svg>
             Insight
           </button>
+
+          {/* Annotations sidebar */}
+          {session?.backendToken && (
+            <AnnotationsSidebar
+              annotations={annotations}
+              totalCount={annotations.length}
+              onJump={(ann) => {
+                if (ann.chapter_index !== chapterIndex) setChapterIndex(ann.chapter_index);
+              }}
+              onEdit={(ann) => setAnnotationPanel({
+                sentenceText: ann.sentence_text,
+                chapterIndex: ann.chapter_index,
+                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+              })}
+            />
+          )}
 
           {/* Vocabulary link */}
           {session?.backendToken && (

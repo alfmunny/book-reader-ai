@@ -377,13 +377,18 @@ export function askQuestion(
  * Microsoft Edge TTS). Authorization is required, so the call goes
  * through `request`-style headers.
  */
+export interface WordBoundary {
+  offset_ms: number;
+  text: string;
+}
+
 export async function synthesizeSpeech(
   text: string,
   language: string,
   rate = 1.0,
   gender: "female" | "male" = "female",
   signal?: AbortSignal,
-): Promise<string> {
+): Promise<{ url: string; wordBoundaries: WordBoundary[] }> {
   const res = await fetch(`${BASE}/ai/tts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -394,8 +399,12 @@ export async function synthesizeSpeech(
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || "TTS failed");
   }
+  const timingsHeader = res.headers.get("X-TTS-Timings");
+  const wordBoundaries: WordBoundary[] = timingsHeader
+    ? (JSON.parse(timingsHeader) as WordBoundary[])
+    : [];
   const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  return { url: URL.createObjectURL(blob), wordBoundaries };
 }
 
 export async function getTtsChunks(text: string): Promise<string[]> {

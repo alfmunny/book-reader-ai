@@ -93,7 +93,7 @@ async def synthesize(
 ) -> tuple[bytes, str]:
     """Synthesize text with Edge TTS. Returns (mp3_bytes, "audio/mpeg")."""
     voice = _pick_edge_voice(language, gender)
-    communicate = edge_tts.Communicate(text, voice, rate=_rate_str(rate))
+    communicate = edge_tts.Communicate(text.replace("\n", " "), voice, rate=_rate_str(rate))
 
     buf = io.BytesIO()
     async for chunk in communicate.stream():

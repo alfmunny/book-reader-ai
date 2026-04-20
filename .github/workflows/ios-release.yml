@@ -1,0 +1,80 @@
+name: iOS Release
+
+# Triggers on every push to main that touches iOS-relevant files,
+# or manually from the GitHub Actions UI.
+#
+# Because the app loads the live Vercel URL (server.url in capacitor.config.ts),
+# the iOS binary only needs to be rebuilt when native / Capacitor files change.
+# For a coordinated "web + iOS" release, push any change to the paths below or
+# use the manual dispatch button.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/ios/**'
+      - 'frontend/capacitor.config.ts'
+      - 'frontend/package.json'
+      - 'frontend/Gemfile'
+      - 'frontend/Gemfile.lock'
+      - 'frontend/fastlane/**'
+  workflow_dispatch:
+
+jobs:
+  testflight:
+    name: Build & upload to TestFlight
+    runs-on: macos-latest
+    timeout-minutes: 40
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Node / Capacitor ───────────────────────────────────────────────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Sync Capacitor plugins into iOS project
+        run: npx cap sync ios
+
+      # ── Ruby / Fastlane ────────────────────────────────────────────────
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: frontend   # where Gemfile lives
+
+      # ── Build & upload ─────────────────────────────────────────────────
+      # Required secrets (Settings → Secrets → Actions):
+      #
+      #  APPLE_TEAM_ID                   — 10-char Apple Developer Team ID
+      #  ASC_KEY_ID                      — App Store Connect API key ID
+      #  ASC_ISSUER_ID                   — App Store Connect issuer UUID
+      #  ASC_KEY_CONTENT                 — base64-encoded .p8 key file
+      #                                    (openssl base64 -in AuthKey_XXXX.p8 | tr -d '\n')
+      #  IOS_DIST_CERT_BASE64            — base64-encoded .p12 distribution cert
+      #                                    (openssl base64 -in dist.p12 | tr -d '\n')
+      #  IOS_DIST_CERT_PASSWORD          — password used when exporting the .p12
+      #  IOS_PROVISIONING_PROFILE_BASE64 — base64-encoded .mobileprovision (App Store type)
+      #                                    (openssl base64 -in profile.mobileprovision | tr -d '\n')
+      #  KEYCHAIN_PASSWORD               — any random string (used for the temp CI keychain)
+      - name: Build and upload to TestFlight
+        env:
+          APPLE_TEAM_ID:                   ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID:                      ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID:                   ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT:                 ${{ secrets.ASC_KEY_CONTENT }}
+          IOS_DIST_CERT_BASE64:            ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_DIST_CERT_PASSWORD:          ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD:               ${{ secrets.KEYCHAIN_PASSWORD }}
+          GITHUB_RUN_NUMBER:               ${{ github.run_number }}
+        run: bundle exec fastlane beta

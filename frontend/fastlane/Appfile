@@ -1,0 +1,2 @@
+app_identifier "com.bookreader.ai"
+team_id         ENV["APPLE_TEAM_ID"]

@@ -1029,7 +1029,7 @@ export default function ReaderPage() {
                       return;
                     }
                     synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsGender)
-                      .then((url) => {
+                      .then(({ url }) => {
                         const audio = new Audio(url);
                         audio.onended = () => URL.revokeObjectURL(url);
                         audio.play().catch(() => URL.revokeObjectURL(url));

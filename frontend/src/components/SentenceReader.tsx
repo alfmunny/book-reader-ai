@@ -278,7 +278,7 @@ export default function SentenceReader({
 }: Props) {
   const [wordToast, setWordToast] = useState<string | null>(null);
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
-  const jumpTargetRef = useRef<HTMLElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
   // Deferred single-click: we delay onClick by 200ms so a dblclick can cancel it
@@ -337,11 +337,16 @@ export default function SentenceReader({
     return () => clearTimeout(t);
   }, [wordToast]);
 
-  // Scroll to and flash the target sentence when scrollTargetSentence changes
+  // Scroll to and flash the target sentence when scrollTargetSentence changes.
+  // We query the DOM by data attribute after the render that sets flashTarget,
+  // avoiding stale-ref issues between renders.
   useEffect(() => {
     if (!scrollTargetSentence) return;
     setFlashTarget(scrollTargetSentence);
-    const scroll = setTimeout(() => jumpTargetRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    const scroll = setTimeout(() => {
+      const el = containerRef.current?.querySelector("[data-jump-target]") as HTMLElement | null;
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
     const clear = setTimeout(() => setFlashTarget(null), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
   }, [scrollTargetSentence]);
@@ -435,7 +440,7 @@ export default function SentenceReader({
           <strong>{wordToast}</strong> saved to vocabulary
         </div>
       )}
-      <div className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
+      <div ref={containerRef} className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
       {paragraphs.map((para, pIdx) => {
         // Track the text paragraph index so we
         // can pair with the right entry in translations[].
@@ -490,11 +495,9 @@ export default function SentenceReader({
           return (
             <span
               key={seg.flatIdx}
-              ref={(el) => {
-                if (active) activeRef.current = el;
-                if (isJumpTarget) jumpTargetRef.current = el;
-              }}
+              ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
+              data-jump-target={isJumpTarget ? "true" : undefined}
               onClick={(e) => handleSegClick(e, seg)}
               onDoubleClick={(e) => handleDoubleClick(e, seg)}
               onPointerDown={(e) => handlePointerDown(e, seg)}

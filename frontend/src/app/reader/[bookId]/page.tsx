@@ -85,6 +85,38 @@ export default function ReaderPage() {
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
 
+  // Immersive mode — on mobile, hide header/toolbar; tap to toggle
+  const [toolbarVisible, setToolbarVisible] = useState(true);
+  const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isMobileRef = useRef(false);
+  useEffect(() => {
+    isMobileRef.current = window.innerWidth < 768;
+    if (isMobileRef.current) {
+      const t = setTimeout(() => setToolbarVisible(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById("reader-scroll");
+    if (!el) return;
+    function onScroll() {
+      if (!isMobileRef.current) return;
+      setToolbarVisible(false);
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [loading, chapterIndex]);
+
+  function handleReaderTap(e: React.MouseEvent | React.TouchEvent) {
+    if (!isMobileRef.current) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-seg]") || target.closest("select") || target.closest("button") || target.closest("a")) return;
+    setToolbarVisible((v) => !v);
+  }
+
   function onResizeStart(e: React.MouseEvent) {
     isResizing.current = true;
     resizeStartX.current = e.clientX;
@@ -593,7 +625,9 @@ export default function ReaderPage() {
       )}
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur shrink-0">
+      <header className={`border-b border-amber-200 bg-white/70 backdrop-blur shrink-0 transition-all duration-300 ${
+        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
+      } md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b`}>
         {/* Row 1: nav + title + chapter selector + chat toggle */}
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
@@ -861,6 +895,10 @@ export default function ReaderPage() {
         </div>
       </header>
 
+      {/* ── Banners (hidden in immersive mode on mobile) ──────────────── */}
+      <div className={`shrink-0 transition-all duration-300 ${
+        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0" : "max-h-[500px] opacity-100"
+      } md:!max-h-none md:!opacity-100 md:!overflow-visible`}>
       {/* Per-chapter queue banner — when THIS chapter is awaiting the
           background worker. More prominent than the small status line
           in the toolbar because the user actively cares about it while
@@ -974,7 +1012,9 @@ export default function ReaderPage() {
         );
       })()}
 
-      {/* Reading progress bar — combines chapter position + scroll within chapter */}
+      </div>{/* end banners wrapper */}
+
+      {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
         <div className="h-0.5 bg-amber-100" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
           <div
@@ -991,6 +1031,7 @@ export default function ReaderPage() {
           <div
             id="reader-scroll"
             className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
+            onClick={handleReaderTap}
             onMouseUp={handleSelection}
             onTouchEnd={handleSelection}
             onDoubleClick={(e) => {
@@ -1268,7 +1309,9 @@ export default function ReaderPage() {
 
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
       {!loading && chapters.length > 0 && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-between gap-1 safe-bottom">
+        <div className={`md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-between gap-1 safe-bottom transition-transform duration-300 ${
+          toolbarVisible ? "translate-y-0" : "translate-y-full"
+        }`}>
           <button
             onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
             disabled={chapterIndex === 0}

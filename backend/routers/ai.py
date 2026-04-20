@@ -236,13 +236,19 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
 @router.post("/tts")
 async def tts(req: TTSRequest):
     """Synthesize text with Edge TTS (free, no login required)."""
+    import json as _json
     try:
-        audio, content_type = await synthesize(
+        audio, content_type, boundaries = await synthesize(
             req.text, req.language, req.rate, gender=req.gender
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return Response(content=audio, media_type=content_type)
+    headers: dict = {}
+    if boundaries:
+        timings_json = _json.dumps(boundaries, separators=(",", ":"))
+        if len(timings_json) <= 8000:
+            headers["X-TTS-Timings"] = timings_json
+    return Response(content=audio, media_type=content_type, headers=headers)
 
 
 @router.post("/tts/chunks")

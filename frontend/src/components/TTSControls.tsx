@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { synthesizeSpeech, getTtsChunks } from "@/lib/api";
+import { synthesizeSpeech, getTtsChunks, WordBoundary } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { getAudioPosition, saveAudioPosition, clearAudioPosition } from "@/lib/audio";
 
 export interface ChunkSnapshot {
   text: string;
   duration: number;  // 0 until the chunk's audio loads
+  wordBoundaries?: WordBoundary[];
 }
 
 interface Props {
@@ -174,7 +175,7 @@ export default function TTSControls({
         return;
       }
 
-      setAllChunks(chunkTexts.map((t) => ({ text: t, duration: 0 })));
+      setAllChunks(chunkTexts.map((t) => ({ text: t, duration: 0, wordBoundaries: [] })));
 
       const savedPos = getAudioPosition(bookId, chapterIndex);
       let cumulative = 0;
@@ -191,9 +192,10 @@ export default function TTSControls({
         });
 
         let url = "";
+        let wordBoundaries: WordBoundary[] = [];
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            url = await synthesizeSpeech(chunkText, language, 1.0, currentGender, abort.signal);
+            ({ url, wordBoundaries } = await synthesizeSpeech(chunkText, language, 1.0, currentGender, abort.signal));
             break;
           } catch (e) {
             if (abort.signal.aborted || attempt === 2) throw e;
@@ -226,7 +228,7 @@ export default function TTSControls({
         setGlobalDuration(computeGlobalDuration());
         setAllChunks((prev) => {
           const next = [...prev];
-          next[i] = { text: chunkText, duration };
+          next[i] = { text: chunkText, duration, wordBoundaries };
           return next;
         });
 

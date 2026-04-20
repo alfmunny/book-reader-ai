@@ -178,7 +178,7 @@ async def test_tts_returns_audio(client):
     with patch(
         "routers.ai.synthesize",
         new_callable=AsyncMock,
-        return_value=(fake_audio, "audio/mpeg"),
+        return_value=(fake_audio, "audio/mpeg", []),
     ):
         resp = await client.post("/api/ai/tts", json={
             "text": "Hello world",
@@ -195,7 +195,7 @@ async def test_tts_no_auth_required(client):
     with patch(
         "routers.ai.synthesize",
         new_callable=AsyncMock,
-        return_value=(b"mp3", "audio/mpeg"),
+        return_value=(b"mp3", "audio/mpeg", []),
     ):
         resp = await client.post("/api/ai/tts", json={"text": "x", "language": "en", "rate": 1.0})
     assert resp.status_code == 200
@@ -205,7 +205,7 @@ async def test_tts_defaults_to_female_gender(client):
     with patch(
         "routers.ai.synthesize",
         new_callable=AsyncMock,
-        return_value=(b"mp3", "audio/mpeg"),
+        return_value=(b"mp3", "audio/mpeg", []),
     ) as mock_synth:
         await client.post("/api/ai/tts", json={"text": "x", "language": "en", "rate": 1.0})
     assert mock_synth.call_args.kwargs["gender"] == "female"
@@ -215,7 +215,7 @@ async def test_tts_accepts_male_gender(client):
     with patch(
         "routers.ai.synthesize",
         new_callable=AsyncMock,
-        return_value=(b"mp3", "audio/mpeg"),
+        return_value=(b"mp3", "audio/mpeg", []),
     ) as mock_synth:
         await client.post("/api/ai/tts", json={"text": "x", "language": "en", "rate": 1.0, "gender": "male"})
     assert mock_synth.call_args.kwargs["gender"] == "male"

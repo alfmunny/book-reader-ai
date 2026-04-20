@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Annotation } from "@/lib/api";
+import type { Annotation, WordBoundary } from "@/lib/api";
 
 // ── Text parsing ────────────────────────────────────────────────────────────
 
@@ -20,6 +20,7 @@ interface Paragraph {
 export interface ChunkInfo {
   text: string;
   duration: number;  // 0 if not yet loaded; positive once the chunk's audio loads
+  wordBoundaries?: WordBoundary[];
 }
 
 // Common abbreviations that should not trigger a sentence split
@@ -124,41 +125,61 @@ function parseIntoSegments(
   }
 
   // Step 2b: build time map.
-  // Two paths:
-  //   a) chunks given → distribute segments within each chunk by word count,
-  //      using the chunk's MEASURED duration. This is much more accurate
-  //      than linear interpolation across the whole chapter because it
-  //      accounts for varying speech rate per chunk.
-  //   b) no chunks → fall back to linear word-proportion across `duration`.
-  // Character count is a better proxy for TTS speaking time than word count
-  // because words vary widely in length (e.g. "I" vs "extraordinarily").
-  const wordCounts = allTexts.map((s) => Math.max(1, s.trim().length));
+  // Three paths (in order of accuracy):
+  //   a) chunks with word boundaries → exact timing from TTS engine (offset_ms per word)
+  //   b) chunks without word boundaries → character-count proportional per chunk
+  //   c) no chunks → character-count linear fallback (LibriVox audiobook path)
+  const charCounts = allTexts.map((s) => Math.max(1, s.trim().length));
   const startTimes: number[] = new Array(allTexts.length).fill(0);
 
   if (chunks && chunks.length > 0) {
     let chunkStartTime = 0;
     for (let ci = 0; ci < chunks.length; ci++) {
       const chunk = chunks[ci];
-      // Indices of segments in this chunk
       const segIndices: number[] = [];
       for (let s = 0; s < allTexts.length; s++) {
         if (segmentChunkIdx[s] === ci) segIndices.push(s);
       }
-      const chunkWords = segIndices.reduce((sum, idx) => sum + wordCounts[idx], 0) || 1;
-      let elapsed = 0;
-      for (const idx of segIndices) {
-        startTimes[idx] = chunkStartTime + (elapsed / chunkWords) * chunk.duration;
-        elapsed += wordCounts[idx];
+
+      const wbs = chunk.wordBoundaries;
+      if (wbs && wbs.length > 0) {
+        // Path a: locate each segment's start position in the (newline-normalised)
+        // chunk text, count preceding words, and map to the corresponding word
+        // boundary's offset_ms for exact TTS timing.
+        const normalised = chunk.text.replace(/\n/g, " ");
+        let cursor = 0;
+        for (const idx of segIndices) {
+          const seg = allTexts[idx];
+          const pos = normalised.indexOf(seg, cursor);
+          if (pos >= 0) {
+            const wordsBefore =
+              pos === 0 ? 0 : normalised.slice(0, pos).trim().split(/\s+/).length;
+            const wb = wbs[Math.min(wordsBefore, wbs.length - 1)];
+            startTimes[idx] = chunkStartTime + wb.offset_ms / 1000;
+            cursor = pos + seg.length;
+          } else {
+            startTimes[idx] = chunkStartTime;
+          }
+        }
+      } else {
+        // Path b: character-count proportional distribution within chunk
+        const chunkChars = segIndices.reduce((sum, idx) => sum + charCounts[idx], 0) || 1;
+        let elapsed = 0;
+        for (const idx of segIndices) {
+          startTimes[idx] = chunkStartTime + (elapsed / chunkChars) * chunk.duration;
+          elapsed += charCounts[idx];
+        }
       }
+
       chunkStartTime += chunk.duration;
     }
   } else {
-    // Linear fallback (used by the LibriVox audiobook path)
-    const totalWords = wordCounts.reduce((a, b) => a + b, 0) || 1;
+    // Path c: linear fallback (LibriVox audiobook path)
+    const totalChars = charCounts.reduce((a, b) => a + b, 0) || 1;
     let elapsed = 0;
     for (let i = 0; i < allTexts.length; i++) {
-      startTimes[i] = (elapsed / totalWords) * duration;
-      elapsed += wordCounts[i];
+      startTimes[i] = (elapsed / totalChars) * duration;
+      elapsed += charCounts[i];
     }
   }
 
@@ -254,6 +275,8 @@ export default function SentenceReader({
   // Long-press tracking
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
+  // Deferred single-click: we delay onClick by 200ms so a dblclick can cancel it
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track which internal paragraph index each rendered paragraph corresponds
   // to, so we can pair it with the right translation entry. We count only
   // non-illustration paragraphs because TranslationView's paragraphs array
@@ -308,6 +331,11 @@ export default function SentenceReader({
     return () => clearTimeout(t);
   }, [wordToast]);
 
+  // Cancel pending single-click on unmount
+  useEffect(() => () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+  }, []);
+
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";
 
@@ -347,14 +375,33 @@ export default function SentenceReader({
   }
 
   function handleDoubleClick(e: React.MouseEvent, seg: Segment) {
+    // Cancel the deferred single-click so TTS doesn't seek on double-click
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+    }
     if (!onWordSave) return;
     e.preventDefault();
-    const sel = window.getSelection()?.toString().trim();
+
+    // 1. Browser usually selects the double-clicked word — use that first
+    const sel = window.getSelection()?.toString().trim() ?? "";
     let word = sel && !sel.includes(" ") ? sel : "";
-    if (!word) {
-      // Fallback: extract word at click position via nearest word boundary
-      word = seg.text.split(/\s+/).find((w) => w.length > 1) ?? seg.text;
+
+    // 2. Try caretRangeFromPoint for accurate word-at-cursor detection
+    if (!word && "caretRangeFromPoint" in document) {
+      const range = (document as Document & { caretRangeFromPoint(x: number, y: number): Range | null })
+        .caretRangeFromPoint(e.clientX, e.clientY);
+      if (range) {
+        (range as Range & { expand(unit: string): void }).expand("word");
+        word = range.toString().trim();
+      }
     }
+
+    // 3. Last resort: find the longest word in the segment near the click
+    if (!word) {
+      word = seg.text.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), "");
+    }
+
     word = word.replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF'-]/g, "");
     if (!word) return;
     setWordToast(word);
@@ -392,10 +439,25 @@ export default function SentenceReader({
             : "text-stone-400 cursor-default";
         };
 
-        const handleSegClick = (seg: { startTime: number; text: string; chunkIdx: number }) => {
+        const handleSegClick = (
+          e: React.MouseEvent,
+          seg: { startTime: number; text: string; chunkIdx: number },
+        ) => {
           if (disabled) return;
           if (!isSegmentLoaded(seg)) return;
-          onSegmentClick(seg.startTime, seg.text);
+          // If this segment has an annotation, open the toolbar for editing
+          // instead of seeking TTS — but only on a deliberate single-click
+          // (defer 200ms so a double-click can cancel first)
+          if (clickTimer.current) clearTimeout(clickTimer.current);
+          clickTimer.current = setTimeout(() => {
+            clickTimer.current = null;
+            const annotation = annotationMap.get(seg.text);
+            if (annotation && onAnnotate) {
+              onAnnotate(seg.text, chapterIndex, { x: e.clientX, y: e.clientY });
+            } else {
+              onSegmentClick(seg.startTime, seg.text);
+            }
+          }, 200);
         };
 
         // Render a segment span with annotation underline + note icon
@@ -410,7 +472,7 @@ export default function SentenceReader({
               key={seg.flatIdx}
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
-              onClick={() => handleSegClick(seg)}
+              onClick={(e) => handleSegClick(e, seg)}
               onDoubleClick={(e) => handleDoubleClick(e, seg)}
               onPointerDown={(e) => handlePointerDown(e, seg)}
               onPointerUp={cancelLongPress}

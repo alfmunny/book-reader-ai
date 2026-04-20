@@ -69,6 +69,7 @@ export default function InsightChat({
   chapterIndex,
 }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
+  // Keyed by absolute message index (loadedFrom + i) so "Load earlier" doesn't reset saved state
   const [savedInsights, setSavedInsights] = useState<Set<number>>(new Set());
 
   // ── Chat ─────────────────────────────────────────────────────────────
@@ -103,6 +104,7 @@ export default function InsightChat({
     setInput("");
     setContextText("");
     setChatLoading(false);
+    setSavedInsights(new Set());
 
     try {
       const raw = localStorage.getItem(HISTORY_KEY(userId ?? "anon", bookId));
@@ -423,14 +425,15 @@ export default function InsightChat({
                   {onSaveInsight && prevUserMsg && (
                     <button
                       onClick={() => {
-                        if (savedInsights.has(i)) return;
-                        setSavedInsights((prev) => new Set(prev).add(i));
+                        const absIdx = loadedFrom + i;
+                        if (savedInsights.has(absIdx)) return;
+                        setSavedInsights((prev) => new Set(prev).add(absIdx));
                         onSaveInsight(prevUserMsg.content, msg.content);
                       }}
-                      title={savedInsights.has(i) ? "Already saved to notes" : "Save this insight to book notes"}
-                      className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${savedInsights.has(i) ? "text-amber-300 cursor-default" : "text-amber-500 hover:text-amber-800"}`}
+                      title={savedInsights.has(loadedFrom + i) ? "Already saved to notes" : "Save this insight to book notes"}
+                      className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${savedInsights.has(loadedFrom + i) ? "text-amber-300 cursor-default" : "text-amber-500 hover:text-amber-800"}`}
                     >
-                      🔖 {savedInsights.has(i) ? "Saved" : "Save to notes"}
+                      🔖 {savedInsights.has(loadedFrom + i) ? "Saved" : "Save to notes"}
                     </button>
                   )}
                 </div>

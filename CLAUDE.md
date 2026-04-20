@@ -66,13 +66,28 @@ Branch naming: `feat/`, `fix/`, `chore/`, `test/`
 5. `git -C <repo> push -u origin <branch>`
 6. Write PR body to `/tmp/pr-body.md`, then `gh pr create --body-file /tmp/pr-body.md`
 7. `gh pr merge <N> --auto --squash`
-8. **Immediately** run `gh pr checks <N>` and wait ~90s for checks to appear, then run it again
-9. If any check is failing: investigate the CI logs, fix the code, push, and repeat from step 8
-10. Only after all checks are green (or confirmed pending): report PR as done to the user
+8. Launch a background watcher that polls until MERGED — use this exact loop:
+   ```bash
+   BRANCH=<branch-name>
+   while true; do
+     INFO=$(gh pr view <N> --json state,mergeStateStatus -q '"state=\(.state) merge=\(.mergeStateStatus)"')
+     echo "$INFO"
+     echo "$INFO" | grep -q "state=MERGED" && echo "PR #<N> merged" && break
+     echo "$INFO" | grep -q "state=CLOSED" && echo "PR #<N> closed" && break
+     if echo "$INFO" | grep -q "merge=BEHIND"; then
+       git -C /Users/alfmunny/Projects/AI/book-reader-ai fetch origin main
+       git -C /Users/alfmunny/Projects/AI/book-reader-ai rebase origin/main
+       git -C /Users/alfmunny/Projects/AI/book-reader-ai push origin "$BRANCH" --force-with-lease
+     fi
+     FAILED=$(gh pr checks <N> --json name,conclusion 2>/dev/null \
+       | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for c in d if c['conclusion'] in ('FAILURE','ERROR','CANCELLED')))" 2>/dev/null)
+     [ "$FAILED" != "" ] && [ "$FAILED" -gt 0 ] && echo "$FAILED check(s) failed" && gh pr checks <N> && break
+     sleep 20
+   done
+   ```
+   **Why the BEHIND check matters:** multiple PRs can merge concurrently. A branch that was up-to-date at push time can go BEHIND seconds later when another PR lands. The loop must rebase and force-push whenever it sees `mergeStateStatus=BEHIND`, not just once before the initial push.
 
-**A PR is NOT done until it is MERGED or all CI checks pass.** Never end a task with a PR in a failing or unknown state.
-
-**If context may be running low:** Before the session ends, read the PR state one final time with `gh pr checks <N>` and report the result explicitly to the user so they know what to act on.
+**A PR is NOT done until it is MERGED.** Never report a PR as done while it is still OPEN, BEHIND, or BLOCKED.
 
 **Never use `cd && git`** — use `git -C <path>` instead (bare-repo security check cannot be bypassed).
 **Never use `git` binaries directly** — always `git -C /Users/alfmunny/Projects/AI/book-reader-ai`.

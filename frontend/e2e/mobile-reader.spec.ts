@@ -57,8 +57,8 @@ test.describe("Desktop reader unchanged", () => {
     await page.goto("/reader/1342");
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
 
-    // Header has chapter select and Translate
+    // Header has chapter select and Translation tab button
     await expect(page.locator("header select").first()).toBeVisible();
-    await expect(page.locator("header").getByText("Translate")).toBeVisible();
+    await expect(page.locator("header").getByText("Translation")).toBeVisible();
   });
 });

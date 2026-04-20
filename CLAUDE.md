@@ -8,7 +8,7 @@ before doing any work.
 
 ## Testing policy
 
-**Every feature and bug fix must include tests.**
+**Every feature and bug fix must include tests. Always aim to increase or maintain test coverage.**
 
 - New behaviour → write a test that would have failed before the change
 - Bug fix → write a test that reproduces the bug, then fix it
@@ -18,6 +18,8 @@ before doing any work.
   npm --prefix frontend test -- --no-coverage --ci
   /Users/alfmunny/Projects/AI/book-reader-ai/backend/venv/bin/pytest --tb=short -q
   ```
+
+**Coverage rule:** Every new function, route, or component must have at least one automated test (unit or integration). Do not rely on manual test steps in commit messages — if the test does not exist in code, it does not count. If adding tests would require more than trivial effort, write them anyway; coverage is non-negotiable. Run the backend suite from the `backend/` directory so `pytest.ini` is found and all 517+ tests run (not just 121 sync tests).
 
 ### Frontend (Jest + React Testing Library)
 - Test files live in `frontend/src/__tests__/`
@@ -64,7 +66,13 @@ Branch naming: `feat/`, `fix/`, `chore/`, `test/`
 5. `git -C <repo> push -u origin <branch>`
 6. Write PR body to `/tmp/pr-body.md`, then `gh pr create --body-file /tmp/pr-body.md`
 7. `gh pr merge <N> --auto --squash`
-8. Launch background watcher: poll `gh pr view <N> --json state` every 20s until MERGED; report result
+8. **Immediately** run `gh pr checks <N>` and wait ~90s for checks to appear, then run it again
+9. If any check is failing: investigate the CI logs, fix the code, push, and repeat from step 8
+10. Only after all checks are green (or confirmed pending): report PR as done to the user
+
+**A PR is NOT done until it is MERGED or all CI checks pass.** Never end a task with a PR in a failing or unknown state.
+
+**If context may be running low:** Before the session ends, read the PR state one final time with `gh pr checks <N>` and report the result explicitly to the user so they know what to act on.
 
 **Never use `cd && git`** — use `git -C <path>` instead (bare-repo security check cannot be bypassed).
 **Never use `git` binaries directly** — always `git -C /Users/alfmunny/Projects/AI/book-reader-ai`.

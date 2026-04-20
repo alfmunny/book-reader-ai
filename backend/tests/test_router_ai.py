@@ -94,6 +94,29 @@ async def test_translate_without_book_id_skips_cache(client, test_user):
     assert resp.json()["cached"] is False
 
 
+async def test_translate_same_language_returns_400(client, test_user):
+    """Translating into the same language is rejected."""
+    await _set_key(test_user)
+    resp = await client.post("/api/ai/translate", json={
+        "text": CHAPTER_TEXT,
+        "source_language": "de",
+        "target_language": "de",
+    })
+    assert resp.status_code == 400
+    assert "same" in resp.json()["detail"].lower()
+
+
+async def test_translate_same_language_base_code_returns_400(client, test_user):
+    """de-DE and de are treated as the same language."""
+    await _set_key(test_user)
+    resp = await client.post("/api/ai/translate", json={
+        "text": CHAPTER_TEXT,
+        "source_language": "de-DE",
+        "target_language": "de",
+    })
+    assert resp.status_code == 400
+
+
 # ── Translation cache endpoints ───────────────────────────────────────────────
 
 async def test_translate_cache_get_returns_cached(client):

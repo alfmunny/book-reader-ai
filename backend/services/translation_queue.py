@@ -832,6 +832,10 @@ class TranslationQueueWorker:
             mark_handled(items)
             return
         source = (book.get("languages") or ["en"])[0]
+        if source.lower().split("-")[0] == target_language.lower().split("-")[0]:
+            await self._mark_skipped(items, reason="source and target language are the same")
+            mark_handled(items)
+            return
         # Match the reader's splitter exactly so chapter_index alignment
         # stays consistent between the UI and the worker.
         from services.book_chapters import split_with_html_preference

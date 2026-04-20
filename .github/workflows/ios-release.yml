@@ -32,25 +32,59 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ── Check secrets before doing any expensive work ──────────────────
+      # If Apple Developer credentials aren't configured yet, skip the rest
+      # of the job gracefully (no failure). Add the secrets listed below in
+      # Settings → Secrets → Actions when you're ready to ship to TestFlight.
+      - name: Check required secrets
+        id: check-secrets
+        env:
+          APPLE_TEAM_ID:                   ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID:                      ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID:                   ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_CONTENT:                 ${{ secrets.ASC_KEY_CONTENT }}
+          IOS_DIST_CERT_BASE64:            ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD:               ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          missing=""
+          for var in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_CONTENT \
+                     IOS_DIST_CERT_BASE64 IOS_PROVISIONING_PROFILE_BASE64 KEYCHAIN_PASSWORD; do
+            if [ -z "${!var}" ]; then missing="$missing $var"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "⏭ Skipping iOS build — secrets not configured yet:$missing"
+            echo "Add them in Settings → Secrets → Actions when you have an Apple Developer account."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: frontend
+
       # ── Node / Capacitor ───────────────────────────────────────────────
+      # Capacitor CLI requires Node >=22
       - uses: actions/setup-node@v4
+        if: steps.check-secrets.outputs.skip == 'false'
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install JS dependencies
+        if: steps.check-secrets.outputs.skip == 'false'
         run: npm ci
 
       - name: Sync Capacitor plugins into iOS project
+        if: steps.check-secrets.outputs.skip == 'false'
         run: npx cap sync ios
 
       # ── Ruby / Fastlane ────────────────────────────────────────────────
       - uses: ruby/setup-ruby@v1
+        if: steps.check-secrets.outputs.skip == 'false'
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: frontend   # where Gemfile lives
+          working-directory: frontend
 
       # ── Build & upload ─────────────────────────────────────────────────
       # Required secrets (Settings → Secrets → Actions):
@@ -62,11 +96,12 @@ jobs:
       #                                    (openssl base64 -in AuthKey_XXXX.p8 | tr -d '\n')
       #  IOS_DIST_CERT_BASE64            — base64-encoded .p12 distribution cert
       #                                    (openssl base64 -in dist.p12 | tr -d '\n')
-      #  IOS_DIST_CERT_PASSWORD          — password used when exporting the .p12
+      #  IOS_DIST_CERT_PASSWORD          — password used when exporting the .p12 (can be empty)
       #  IOS_PROVISIONING_PROFILE_BASE64 — base64-encoded .mobileprovision (App Store type)
       #                                    (openssl base64 -in profile.mobileprovision | tr -d '\n')
       #  KEYCHAIN_PASSWORD               — any random string (used for the temp CI keychain)
       - name: Build and upload to TestFlight
+        if: steps.check-secrets.outputs.skip == 'false'
         env:
           APPLE_TEAM_ID:                   ${{ secrets.APPLE_TEAM_ID }}
           ASC_KEY_ID:                      ${{ secrets.ASC_KEY_ID }}

@@ -166,6 +166,10 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
 @router.post("/translate")
 async def translate(req: TranslateRequest, user: dict = Depends(get_current_user)):
     """Translate text with auto-fallback: Gemini if key available, else Google Translate (free)."""
+    src = req.source_language.lower().split("-")[0]
+    tgt = req.target_language.lower().split("-")[0]
+    if src == tgt:
+        raise HTTPException(status_code=400, detail="Source and target language are the same.")
     try:
         # Check shared DB cache first — cache hits don't need any key
         if req.book_id is not None and req.chapter_index is not None:

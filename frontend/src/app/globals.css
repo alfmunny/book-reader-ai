@@ -70,3 +70,17 @@ body, [data-theme="light"] {
   border-radius: 2px;
   transition: background-color 0.3s;
 }
+
+/* iOS safe area padding for bottom toolbar */
+.safe-bottom {
+  padding-bottom: max(0.375rem, env(safe-area-inset-bottom));
+}
+
+/* Bottom drawer slide-up animation */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}

@@ -708,14 +708,14 @@ export default function QueueTab({ adminFetch }: Props) {
                           {p.label}
                         </span>
                         {active && (
-                          <span className="text-[10px] text-amber-700">selected</span>
+                          <span className="text-xs text-amber-700">selected</span>
                         )}
                       </div>
                       <div className="text-[11px] text-amber-700">{p.tagline}</div>
                       <div className="text-[11px] text-stone-500 mt-1 leading-snug">
                         {p.description}
                       </div>
-                      <div className="text-[10px] font-mono text-stone-400 mt-1 truncate">
+                      <div className="text-xs font-mono text-stone-400 mt-1 truncate">
                         {p.chain.join(" → ")}
                       </div>
                     </button>
@@ -748,7 +748,7 @@ export default function QueueTab({ adminFetch }: Props) {
                         </span>
                         {!recommended && (
                           <span
-                            className="text-[10px] px-1 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200"
+                            className="text-xs px-1 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-200"
                             title="Drops literary nuance — use only as a last-resort fallback"
                           >
                             not recommended for literature
@@ -833,7 +833,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     >
                       + {opt.label}
                       {!opt.recommended && (
-                        <span className="ml-1 text-[10px] text-orange-600">
+                        <span className="ml-1 text-xs text-orange-600">
                           (not recommended)
                         </span>
                       )}
@@ -916,7 +916,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 </div>
                 <div className="flex flex-wrap gap-4 items-baseline">
                   <div>
-                    <div className="text-[10px] text-stone-500">if primary handles all</div>
+                    <div className="text-xs text-stone-500">if primary handles all</div>
                     <div className="text-lg font-semibold text-emerald-800">
                       ${(
                         byModel[activeChain[0]] ??
@@ -926,7 +926,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] text-stone-500">per book (avg)</div>
+                    <div className="text-xs text-stone-500">per book (avg)</div>
                     <div className="text-lg font-semibold text-emerald-800">
                       ${(
                         (byModel[activeChain[0]] ??
@@ -937,7 +937,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   </div>
                   {activeChain.length > 1 && (
                     <div>
-                      <div className="text-[10px] text-stone-500">
+                      <div className="text-xs text-stone-500">
                         fallback min · {labelForModel(activeChain[activeChain.length - 1])}
                       </div>
                       <div className="text-lg font-semibold text-emerald-800">
@@ -976,7 +976,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       <div className="text-sm font-semibold text-ink">
                         ${row.usd.toFixed(2)}
                       </div>
-                      <div className="text-[10px] text-stone-400">
+                      <div className="text-xs text-stone-400">
                         ${(row.usd / books).toFixed(3)}/book
                       </div>
                     </div>
@@ -1038,7 +1038,7 @@ export default function QueueTab({ adminFetch }: Props) {
             {items.map((it) => (
               <li key={it.id} className="px-4 py-2 flex items-center gap-2 text-xs">
                 <span
-                  className={`px-1.5 py-0.5 rounded text-[10px] shrink-0 ${
+                  className={`px-1.5 py-0.5 rounded text-xs shrink-0 ${
                     it.status === "pending"
                       ? "bg-stone-100 text-stone-600"
                       : it.status === "running"

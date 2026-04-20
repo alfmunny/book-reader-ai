@@ -249,6 +249,19 @@ interface Props {
   chapterIndex?: number;
   /** Existing annotations to highlight matching segments. */
   annotations?: Annotation[];
+  /**
+   * Unified tap handler (replaces click/double-click/long-press on mobile).
+   * When provided, a single tap on any word calls this with the word, sentence
+   * text, timing info, and paragraph translation. The parent opens a bottom
+   * drawer with actions (read, save, annotate).
+   */
+  onWordTap?: (info: {
+    word: string;
+    sentenceText: string;
+    startTime: number;
+    chapterIndex: number;
+    translationText?: string;
+  }) => void;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -275,6 +288,7 @@ export default function SentenceReader({
   chapterIndex = 0,
   annotations,
   scrollTargetSentence,
+  onWordTap,
 }: Props) {
   const [wordToast, setWordToast] = useState<string | null>(null);
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
@@ -338,16 +352,18 @@ export default function SentenceReader({
   }, [wordToast]);
 
   // Scroll to and flash the target sentence when scrollTargetSentence changes.
-  // We query the DOM by data attribute after the render that sets flashTarget,
-  // avoiding stale-ref issues between renders.
+  // We capture the sentence in a closure so rapid re-triggers (< 80ms apart)
+  // don't scroll to the wrong element: each timer checks its own sentence.
   useEffect(() => {
     if (!scrollTargetSentence) return;
-    setFlashTarget(scrollTargetSentence);
+    const target = scrollTargetSentence;
+    setFlashTarget(target);
     const scroll = setTimeout(() => {
+      // Only scroll if this effect's target is still the current flash target
       const el = containerRef.current?.querySelector("[data-jump-target]") as HTMLElement | null;
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
-    const clear = setTimeout(() => setFlashTarget(null), 2500);
+    const clear = setTimeout(() => setFlashTarget((cur) => cur === target ? null : cur), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
   }, [scrollTargetSentence]);
 
@@ -464,23 +480,60 @@ export default function SentenceReader({
 
         const handleSegClick = (
           e: React.MouseEvent,
-          seg: { startTime: number; text: string; chunkIdx: number },
+          seg: { startTime: number; text: string; chunkIdx: number; flatIdx: number },
         ) => {
           if (disabled) return;
           if (!isSegmentLoaded(seg)) return;
-          // If this segment has an annotation, open the toolbar for editing
-          // instead of seeking TTS — but only on a deliberate single-click
-          // (defer 200ms so a double-click can cancel first)
+
+          // Single tap = read sentence aloud / seek to position (lightweight, no UI)
           if (clickTimer.current) clearTimeout(clickTimer.current);
           clickTimer.current = setTimeout(() => {
             clickTimer.current = null;
-            const annotation = annotationMap.get(seg.text);
-            if (annotation && onAnnotate) {
-              onAnnotate(seg.text, chapterIndex, { x: e.clientX, y: e.clientY });
-            } else {
-              onSegmentClick(seg.startTime, seg.text);
-            }
+            onSegmentClick(seg.startTime, seg.text);
           }, 200);
+        };
+
+        // Long press (500ms) → open word action drawer
+        const handleSegLongPress = (e: React.PointerEvent, seg: Segment) => {
+          if (!onWordTap) {
+            // Fallback to legacy annotation long-press
+            handlePointerDown(e, seg);
+            return;
+          }
+          const startX = e.clientX;
+          const startY = e.clientY;
+          longPressStartPos.current = { x: startX, y: startY };
+          longPressTimer.current = setTimeout(() => {
+            longPressTimer.current = null;
+            // Cancel any pending single-click
+            if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null; }
+            // Prevent text selection
+            window.getSelection()?.removeAllRanges();
+
+            // Extract word at press position
+            let word = "";
+            if ("caretRangeFromPoint" in document) {
+              const range = (document as any).caretRangeFromPoint(startX, startY);
+              if (range) { range.expand("word"); word = range.toString().trim(); }
+            }
+            if (!word) {
+              word = seg.text.split(/\s+/).reduce((a: string, b: string) => (b.length > a.length ? b : a), "");
+            }
+            word = word.replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
+                       .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "");
+            if (!word || word.length < 2) word = seg.text.split(/\s+/)[0] ?? "";
+
+            // Haptic feedback
+            if (navigator.vibrate) navigator.vibrate(10);
+
+            onWordTap({
+              word,
+              sentenceText: seg.text,
+              startTime: seg.startTime,
+              chapterIndex,
+              translationText: translationText || undefined,
+            });
+          }, 500);
         };
 
         // Render a segment span with annotation underline + note icon
@@ -499,8 +552,8 @@ export default function SentenceReader({
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
               onClick={(e) => handleSegClick(e, seg)}
-              onDoubleClick={(e) => handleDoubleClick(e, seg)}
-              onPointerDown={(e) => handlePointerDown(e, seg)}
+              onDoubleClick={onWordTap ? undefined : (e) => handleDoubleClick(e, seg)}
+              onPointerDown={(e) => onWordTap ? handleSegLongPress(e, seg) : handlePointerDown(e, seg)}
               onPointerUp={cancelLongPress}
               onPointerCancel={cancelLongPress}
               onPointerMove={handlePointerMove}
@@ -543,9 +596,9 @@ export default function SentenceReader({
         // ── Translation: parallel (side by side) ──
         if (isParallel) {
           return (
-            <div key={pIdx} className="grid grid-cols-2 gap-6 py-4 first:pt-0 last:pb-0">
+            <div key={pIdx} className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2 py-4 first:pt-0 last:pb-0">
               {originalContent}
-              <div className="border-l border-amber-200 pl-6">
+              <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6">
                 {translationText ? (
                   <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
                     {translationText}

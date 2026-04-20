@@ -64,10 +64,10 @@ export default function UsersPage() {
             <div className="flex items-center gap-2">
               <span className="font-medium text-ink text-sm truncate">{u.name}</span>
               {u.role === "admin" && (
-                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">admin</span>
+                <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">admin</span>
               )}
               {!u.approved && (
-                <span className="text-[10px] bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">pending</span>
+                <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">pending</span>
               )}
             </div>
             <p className="text-xs text-stone-400 truncate">{u.email}</p>
@@ -83,7 +83,7 @@ export default function UsersPage() {
                     }),
                   )
                 }
-                className={`text-xs px-2 py-1 rounded border ${
+                className={`text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center ${
                   u.approved ? "border-orange-200 text-orange-600" : "border-emerald-200 text-emerald-600"
                 }`}
               >
@@ -94,7 +94,7 @@ export default function UsersPage() {
                   if (confirm(`Delete "${u.name}"?`))
                     act(() => adminFetch(`/admin/users/${u.id}`, { method: "DELETE" }));
                 }}
-                className="text-xs px-2 py-1 rounded border border-red-200 text-red-500"
+                className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center border-red-200 text-red-500"
               >
                 Del
               </button>

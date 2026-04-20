@@ -12,6 +12,7 @@ import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
+import WordActionDrawer, { type WordAction } from "@/components/WordActionDrawer";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
@@ -42,6 +43,7 @@ export default function ReaderPage() {
 
   const [selectedText, setSelectedText] = useState("");
   const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
+  const [wordAction, setWordAction] = useState<WordAction | null>(null);
 
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -84,6 +86,78 @@ export default function ReaderPage() {
   const isResizing = useRef(false);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+
+  // Immersive mode — on mobile, hide header/toolbar; tap to toggle
+  const [toolbarVisible, setToolbarVisible] = useState(true);
+  const [translateExpanded, setTranslateExpanded] = useState(false);
+  const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isMobileRef = useRef(false);
+  useEffect(() => {
+    isMobileRef.current = window.innerWidth < 768;
+    if (isMobileRef.current) {
+      const t = setTimeout(() => setToolbarVisible(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById("reader-scroll");
+    if (!el) return;
+    function onScroll() {
+      if (!isMobileRef.current) return;
+      setToolbarVisible(false);
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    }
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [loading, chapterIndex]);
+
+  function handleReaderTap(e: React.MouseEvent | React.TouchEvent) {
+    if (!isMobileRef.current) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-seg]") || target.closest("select") || target.closest("button") || target.closest("a")) return;
+
+    // Tap zones: left 20% → prev chapter, right 20% → next chapter, center → toggle toolbar
+    const clientX = "clientX" in e ? e.clientX : (e as React.TouchEvent).changedTouches?.[0]?.clientX ?? 0;
+    const width = window.innerWidth;
+    if (clientX < width * 0.2) {
+      if (chapterIndex > 0) goToChapter(chapterIndex - 1);
+      return;
+    }
+    if (clientX > width * 0.8) {
+      if (chapterIndex < chapters.length - 1) goToChapter(chapterIndex + 1);
+      return;
+    }
+    setToolbarVisible((v) => !v);
+  }
+
+  // Swipe gesture for chapter navigation
+  const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (!isMobileRef.current) return;
+    const touch = e.touches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!isMobileRef.current || !swipeStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - swipeStartRef.current.x;
+    const dy = touch.clientY - swipeStartRef.current.y;
+    const dt = Date.now() - swipeStartRef.current.t;
+    swipeStartRef.current = null;
+
+    // Must be fast (<500ms), horizontal (>80px), and not too vertical
+    if (dt > 500 || Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+
+    if (dx > 0 && chapterIndex > 0) {
+      goToChapter(chapterIndex - 1);
+    } else if (dx < 0 && chapterIndex < chapters.length - 1) {
+      goToChapter(chapterIndex + 1);
+    }
+  }
 
   function onResizeStart(e: React.MouseEvent) {
     isResizing.current = true;
@@ -593,14 +667,16 @@ export default function ReaderPage() {
       )}
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur shrink-0">
-        {/* Row 1: nav + title + chapter selector + chat toggle */}
-        <div className="flex items-center gap-3 px-4 py-3">
+      <header className={`border-b border-amber-200 bg-white/70 backdrop-blur shrink-0 transition-all duration-300 ${
+        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
+      } md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b`}>
+        {/* Row 1: nav + title + controls */}
+        <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
             onClick={() => router.push("/")}
-            className="text-amber-700 hover:text-amber-900 text-sm shrink-0"
+            className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] flex items-center"
           >
-            ← Library
+            ← <span className="hidden sm:inline ml-1">Library</span>
           </button>
 
           <div className="min-w-0 flex-1">
@@ -614,8 +690,8 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Chapter navigation */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Chapter navigation — desktop only (mobile uses bottom bar) */}
+          <div className="hidden md:flex items-center gap-1 shrink-0">
             {loading ? (
               <span className="text-xs text-amber-500 animate-pulse">Loading…</span>
             ) : (
@@ -623,10 +699,10 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
-                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm"
+                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
                 >‹</button>
                 <select
-                  className="text-xs rounded border border-amber-300 px-2 py-1 text-ink bg-white max-w-[160px]"
+                  className="text-xs rounded border border-amber-300 px-2 py-1.5 text-ink bg-white max-w-[160px]"
                   value={chapterIndex}
                   onChange={(e) => goToChapter(Number(e.target.value))}
                 >
@@ -639,36 +715,36 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
-                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm"
+                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
                 >›</button>
               </>
             )}
           </div>
 
-          {/* Font size */}
+          {/* Font size — desktop only */}
           <button
             onClick={cycleFontSize}
             title={`Font size: ${fontSize}`}
-            className="shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors"
+            className="hidden md:flex shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors items-center justify-center"
           >
             {fontSize === "sm" ? "A" : fontSize === "base" ? "A" : fontSize === "lg" ? "A" : "A"}
             <span className="text-[8px] align-super">{fontSize === "sm" ? "-" : fontSize === "base" ? "" : fontSize === "lg" ? "+" : "++"}</span>
           </button>
 
-          {/* Theme */}
+          {/* Theme — desktop only */}
           <button
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
-            className="shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors flex items-center justify-center"
+            className="hidden md:flex shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors items-center justify-center"
           >
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
 
-          {/* Profile */}
+          {/* Profile — mobile: only shown in header; desktop: always */}
           <button
             onClick={() => router.push("/profile")}
             title={session?.backendUser?.name ?? "Profile"}
-            className="shrink-0 w-8 h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors"
+            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors"
           >
             {session?.backendUser?.picture ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -680,11 +756,11 @@ export default function ReaderPage() {
             )}
           </button>
 
-          {/* Insight chat toggle */}
+          {/* Insight chat toggle — desktop only (mobile uses bottom bar) */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             title="Toggle insight chat"
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -697,8 +773,9 @@ export default function ReaderPage() {
             Insight
           </button>
 
-          {/* Annotations sidebar */}
+          {/* Annotations sidebar — desktop only */}
           {session?.backendToken && (
+            <div className="hidden md:block">
             <AnnotationsSidebar
               annotations={annotations}
               totalCount={annotations.length}
@@ -706,7 +783,6 @@ export default function ReaderPage() {
               onJump={(ann) => {
                 if (ann.chapter_index !== chapterIndex) {
                   setChapterIndex(ann.chapter_index);
-                  // Scroll after chapter loads
                   setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
                 } else {
                   setScrollTargetSentence(undefined);
@@ -719,36 +795,37 @@ export default function ReaderPage() {
                 position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
               })}
             />
+            </div>
           )}
 
-          {/* Vocabulary link */}
+          {/* Vocabulary link — desktop only */}
           {session?.backendToken && (
             <button
               onClick={() => router.push("/vocabulary")}
               title="Vocabulary"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               📚 Vocab
             </button>
           )}
 
-          {/* Export vocabulary to Obsidian */}
+          {/* Export vocabulary to Obsidian — desktop only */}
           {session?.backendToken && (
             <button
               onClick={handleObsidianExport}
               title="Export vocabulary to Obsidian"
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               ↗ Obsidian
             </button>
           )}
 
-          {/* Audiobook toggle — only shown when feature is enabled in settings */}
+          {/* Audiobook toggle — desktop only */}
           {audiobookEnabled && (
             <button
               onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
               title={audiobook ? "Audiobook linked" : "Find audiobook"}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 audiobook
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -759,11 +836,11 @@ export default function ReaderPage() {
           )}
         </div>
 
-        {/* Row 2: Translation toolbar */}
-        <div className="flex items-center gap-3 px-4 pb-2">
+        {/* Row 2: Translation toolbar — desktop only (mobile uses bottom bar expand) */}
+        <div className="hidden md:flex items-center gap-3 px-4 pb-2 flex-wrap">
           <button
             onClick={() => setTranslationEnabled((v) => !v)}
-            className={`text-xs px-3 py-1 rounded-full border font-medium transition-colors ${
+            className={`text-xs px-3 py-2 md:py-1 rounded-full border font-medium transition-colors min-h-[44px] md:min-h-0 ${
               translationEnabled
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -775,7 +852,7 @@ export default function ReaderPage() {
           {translationEnabled && (
             <>
               <select
-                className="text-xs rounded border border-amber-300 px-2 py-1 text-ink bg-white"
+                className="text-xs rounded border border-amber-300 px-2 py-2 md:py-1 text-ink bg-white min-h-[44px] md:min-h-0"
                 value={translationLang}
                 onChange={(e) => setTranslationLang(e.target.value)}
               >
@@ -787,23 +864,25 @@ export default function ReaderPage() {
               <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
                 <button
                   onClick={() => setDisplayMode("inline")}
-                  className={`px-3 py-1 transition-colors ${
+                  className={`px-3 py-2 md:py-1 transition-colors min-h-[44px] md:min-h-0 ${
                     displayMode === "inline"
                       ? "bg-amber-700 text-white"
                       : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >
-                  Inline
+                  <span className="md:hidden">⊞</span>
+                  <span className="hidden md:inline">Inline</span>
                 </button>
                 <button
                   onClick={() => setDisplayMode("parallel")}
-                  className={`px-3 py-1 border-l border-amber-300 transition-colors ${
+                  className={`px-3 py-2 md:py-1 border-l border-amber-300 transition-colors min-h-[44px] md:min-h-0 ${
                     displayMode === "parallel"
                       ? "bg-amber-700 text-white"
                       : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >
-                  Side by side
+                  <span className="md:hidden">⫼</span>
+                  <span className="hidden md:inline">Side by side</span>
                 </button>
               </div>
 
@@ -824,7 +903,7 @@ export default function ReaderPage() {
               ) : translationUsedProvider &&
                 translationUsedProvider !== "login required" &&
                 translationUsedProvider !== "gemini key required" ? (
-                <span className="text-[10px] text-amber-400">
+                <span className="hidden md:inline text-xs text-amber-400">
                   via {translationUsedProvider}
                 </span>
               ) : null}
@@ -832,7 +911,7 @@ export default function ReaderPage() {
               {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                 <button
                   onClick={handleRetranslate}
-                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
+                  className="hidden md:inline-block text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
                 >
                   Retranslate
                 </button>
@@ -857,6 +936,10 @@ export default function ReaderPage() {
         </div>
       </header>
 
+      {/* ── Banners (hidden in immersive mode on mobile) ──────────────── */}
+      <div className={`shrink-0 transition-all duration-300 ${
+        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0" : "max-h-[500px] opacity-100"
+      } md:!max-h-none md:!opacity-100 md:!overflow-visible`}>
       {/* Per-chapter queue banner — when THIS chapter is awaiting the
           background worker. More prominent than the small status line
           in the toolbar because the user actively cares about it while
@@ -923,7 +1006,7 @@ export default function ReaderPage() {
           total - ready - queued - (s.queue_failed ?? 0),
         );
         return (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex items-center justify-between gap-3 flex-wrap">
+          <div className="bg-amber-50 border-b border-amber-200 px-3 md:px-4 py-1.5 md:py-2 text-xs text-amber-800 flex items-center justify-between gap-2 md:gap-3 flex-wrap">
             <span className="flex items-center gap-2 min-w-0">
               <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
               <span>
@@ -964,13 +1047,15 @@ export default function ReaderPage() {
                   {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
                 </button>
               )}
-              <span className="text-amber-500">Polls every 15s</span>
+              <span className="hidden sm:inline text-amber-500">Polls every 15s</span>
             </span>
           </div>
         );
       })()}
 
-      {/* Reading progress bar — combines chapter position + scroll within chapter */}
+      </div>{/* end banners wrapper */}
+
+      {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
         <div className="h-0.5 bg-amber-100" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
           <div
@@ -986,9 +1071,11 @@ export default function ReaderPage() {
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <div
             id="reader-scroll"
-            className="flex-1 overflow-y-auto px-8 py-8"
+            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
+            onClick={handleReaderTap}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}
             onMouseUp={handleSelection}
-            onTouchEnd={handleSelection}
             onDoubleClick={(e) => {
               const sel = window.getSelection()?.toString().trim();
               if (sel && sel.length > 1 && sel.length < 30 && !/\s/.test(sel)) {
@@ -1035,6 +1122,15 @@ export default function ReaderPage() {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
                   scrollTargetSentence={scrollTargetSentence}
+                  onWordTap={(info) => {
+                    setWordAction({
+                      word: info.word,
+                      sentenceText: info.sentenceText,
+                      segmentStartTime: info.startTime,
+                      chapterIndex: info.chapterIndex,
+                      translationText: info.translationText,
+                    });
+                  }}
                   onSegmentClick={(startTime, segText) => {
                     if (audiobook) {
                       seekAudioRef.current(startTime);
@@ -1077,7 +1173,7 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Dictionary lookup popup */}
+          {/* Dictionary lookup popup (legacy — desktop fallback) */}
           {lookupWord && (
             <WordLookup
               word={lookupWord.word}
@@ -1085,6 +1181,40 @@ export default function ReaderPage() {
               onClose={() => setLookupWord(null)}
             />
           )}
+
+          {/* Unified word action drawer (mobile + desktop) */}
+          <WordActionDrawer
+            action={wordAction}
+            onClose={() => setWordAction(null)}
+            onReadSentence={(text, startTime) => {
+              if (audiobook) {
+                seekAudioRef.current(startTime);
+              } else if (ttsDuration > 0) {
+                ttsSeekRef.current(startTime);
+              } else {
+                synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
+                  .then(({ url }) => {
+                    const audio = new Audio(url);
+                    audio.onended = () => URL.revokeObjectURL(url);
+                    audio.play().catch(() => URL.revokeObjectURL(url));
+                  })
+                  .catch(() => {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = bookLanguage;
+                    window.speechSynthesis.speak(utter);
+                  });
+              }
+            }}
+            onSaveWord={session?.backendToken ? handleWordSave : undefined}
+            onAnnotate={session?.backendToken ? (sentenceText, ci) => {
+              setAnnotationPanel({
+                sentenceText,
+                chapterIndex: ci,
+                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+              });
+            } : undefined}
+          />
 
           {/* Annotation toolbar */}
           {annotationPanel && (
@@ -1165,8 +1295,8 @@ export default function ReaderPage() {
             />
           )}
 
-          {/* TTS + Recorder */}
-          <div className="border-t border-amber-200 shrink-0">
+          {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
+          <div className="hidden md:block border-t border-amber-200 shrink-0">
             <TTSControls
               text={current?.text ?? ""}
               language={bookLanguage}
@@ -1186,11 +1316,11 @@ export default function ReaderPage() {
           </div>
         </div>
 
-        {/* Resize handle — only visible when sidebar is open */}
+        {/* Resize handle — only visible when sidebar is open, hidden on mobile (sidebar is fullscreen there) */}
         {sidebarOpen && (
           <div
             onMouseDown={onResizeStart}
-            className="w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 transition-colors relative group"
+            className="hidden md:block w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 transition-colors relative group"
             title="Drag to resize"
           >
             {/* Three-dot grip indicator */}
@@ -1202,11 +1332,28 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* Insight Chat sidebar — always mounted, hidden with CSS when closed */}
+        {/* Insight Chat sidebar — fullscreen overlay on mobile, inline on desktop */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
-          className="border-l border-amber-200 flex flex-col overflow-hidden shrink-0"
+          className={`flex flex-col overflow-hidden shrink-0 ${
+            sidebarOpen
+              ? "fixed inset-0 z-40 bg-parchment !w-full md:static md:z-auto md:!w-auto md:border-l md:border-amber-200"
+              : "border-l border-amber-200"
+          }`}
         >
+          {/* Mobile close button for fullscreen sidebar */}
+          {sidebarOpen && (
+            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-amber-200 shrink-0 bg-white/70">
+              <span className="font-serif font-semibold text-ink text-sm">Insight Chat</span>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700 hover:text-amber-900 text-lg"
+                aria-label="Close sidebar"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {/* Keep mounted so chat history persists across open/close */}
           <InsightChat
             bookId={bookId}
@@ -1243,6 +1390,113 @@ export default function ReaderPage() {
           }}
           onClose={() => setShowAudioSearch(false)}
         />
+      )}
+
+      {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
+      {!loading && chapters.length > 0 && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 safe-bottom">
+          {/* Translation options expand panel */}
+          {translateExpanded && translationEnabled && (
+            <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 flex items-center gap-2 animate-slide-up">
+              <select
+                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px]"
+                value={translationLang}
+                onChange={(e) => setTranslationLang(e.target.value)}
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>{l.label}</option>
+                ))}
+              </select>
+              <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
+                <button
+                  onClick={() => setDisplayMode("inline")}
+                  className={`px-3 py-2 min-h-[44px] transition-colors ${
+                    displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
+                  }`}
+                >Inline</button>
+                <button
+                  onClick={() => setDisplayMode("parallel")}
+                  className={`px-3 py-2 min-h-[44px] border-l border-amber-300 transition-colors ${
+                    displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
+                  }`}
+                >Side by side</button>
+              </div>
+            </div>
+          )}
+
+          {/* Main bottom bar */}
+          <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-1 py-1 flex items-center justify-around gap-0.5">
+            <button
+              onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
+              disabled={chapterIndex === 0}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
+              aria-label="Previous chapter"
+            >‹</button>
+
+            <button
+              onClick={() => {
+                if (!translationEnabled) {
+                  setTranslationEnabled(true);
+                  setTranslateExpanded(true);
+                } else {
+                  setTranslateExpanded((v) => !v);
+                }
+              }}
+              onDoubleClick={() => {
+                setTranslationEnabled(false);
+                setTranslateExpanded(false);
+              }}
+              title="Tap: toggle options · Double-tap: turn off"
+              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+                translationEnabled
+                  ? "bg-amber-700 text-white"
+                  : "text-amber-700 bg-amber-50 border border-amber-200"
+              }`}
+            >🌐</button>
+
+            <button
+              onClick={() => {
+                const ttsEl = document.querySelector<HTMLButtonElement>("[data-tts-play]");
+                if (ttsEl) ttsEl.click();
+              }}
+              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+                ttsIsPlaying
+                  ? "bg-amber-700 text-white"
+                  : "text-amber-700 bg-amber-50 border border-amber-200"
+              }`}
+              aria-label={ttsIsPlaying ? "Pause" : "Read aloud"}
+            >{ttsIsPlaying ? "⏸" : "▶"}</button>
+
+            <select
+              className="text-xs rounded border border-amber-200 px-1 py-1 text-amber-700 bg-white min-h-[44px] max-w-[100px] truncate"
+              value={chapterIndex}
+              onChange={(e) => goToChapter(Number(e.target.value))}
+            >
+              {chapters.map((ch, i) => (
+                <option key={i} value={i}>
+                  {i + 1}. {ch.title || `§${i + 1}`}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setSidebarOpen((v) => !v)}
+              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+                sidebarOpen
+                  ? "bg-amber-700 text-white"
+                  : "text-amber-700 bg-amber-50 border border-amber-200"
+              }`}
+              aria-label="Insight chat"
+            >💬</button>
+
+            <button
+              onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
+              disabled={chapterIndex === chapters.length - 1}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
+              aria-label="Next chapter"
+            >›</button>
+          </div>
+        </div>
       )}
     </div>
   );

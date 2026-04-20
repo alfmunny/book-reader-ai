@@ -67,15 +67,15 @@ export default function VocabularyPage() {
 
   return (
     <div className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-6 py-4 flex items-center gap-4">
+      <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <button
           onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center"
         >
           ← Library
         </button>
-        <div className="flex-1">
-          <h1 className="font-serif font-bold text-ink">Vocabulary</h1>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (
             <p className="text-xs text-stone-400 mt-0.5">
               {words.length} word{words.length !== 1 ? "s" : ""} · {totalOccurrences} occurrence{totalOccurrences !== 1 ? "s" : ""}
@@ -85,10 +85,10 @@ export default function VocabularyPage() {
         <button
           onClick={() => handleExport()}
           disabled={exporting || words.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors disabled:opacity-50 min-h-[44px] md:min-h-0 shrink-0"
           data-testid="export-all-btn"
         >
-          {exporting ? "Exporting…" : "↗ Export all to Obsidian"}
+          {exporting ? "Exporting…" : (<><span className="hidden sm:inline">↗ Export all to Obsidian</span><span className="sm:hidden">↗ Export</span></>)}
         </button>
       </header>
 
@@ -103,7 +103,7 @@ export default function VocabularyPage() {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-6 py-8">
+      <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Search */}
         {words.length > 5 && (
           <div className="mb-6">
@@ -151,7 +151,7 @@ export default function VocabularyPage() {
                         <button
                           onClick={() => handleDelete(item.word)}
                           disabled={deleting === item.word}
-                          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50 transition-colors"
+                          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50 transition-colors min-h-[44px] md:min-h-0 flex items-center px-2"
                           data-testid={`delete-${item.word}`}
                         >
                           {deleting === item.word ? "Deleting…" : "Delete"}

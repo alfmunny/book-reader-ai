@@ -292,7 +292,7 @@ export default function BooksPage() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-ink text-sm truncate">{b.title}</span>
                     {b.active && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse">
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse">
                         translating → {b.active_language}
                       </span>
                     )}
@@ -308,7 +308,7 @@ export default function BooksPage() {
 
                 <div className="flex flex-wrap gap-1 items-center">
                   {allLangs.length === 0 ? (
-                    <span className="text-[10px] text-stone-300">no translations</span>
+                    <span className="text-xs text-stone-300">no translations</span>
                   ) : (
                     allLangs.map((lang) => {
                       const count = b.translations?.[lang] || 0;
@@ -333,7 +333,7 @@ export default function BooksPage() {
                       return (
                         <span key={lang} className="inline-flex items-center gap-0.5">
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded-full border ${tone}`}
+                            className={`text-xs px-1.5 py-0.5 rounded-full border ${tone}`}
                             title={pieces.join(" · ")}
                           >
                             {lang} · {count}
@@ -350,7 +350,7 @@ export default function BooksPage() {
                               onClick={() => retryFailedForLang(b, lang, failed)}
                               disabled={retryingFailed === retryKey}
                               title={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
-                              className="text-[10px] px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
                             >
                               {retryingFailed === retryKey ? "…" : "↻"}
                             </button>

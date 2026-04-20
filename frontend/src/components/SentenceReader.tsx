@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Annotation } from "@/lib/api";
 
 // ── Text parsing ────────────────────────────────────────────────────────────
 
@@ -208,7 +209,29 @@ interface Props {
   translationDisplayMode?: "parallel" | "inline";
   /** Show a loading skeleton for translations that haven't arrived yet. */
   translationLoading?: boolean;
+  /** Called when the user double-clicks a word to save it to vocabulary. */
+  onWordSave?: (word: string, sentenceText: string) => void;
+  /**
+   * Called when the user long-presses a sentence (400ms hold).
+   * Provides the sentence text, chapter index, and pointer position.
+   */
+  onAnnotate?: (
+    sentenceText: string,
+    chapterIndex: number,
+    position: { x: number; y: number },
+  ) => void;
+  /** Chapter index — used with onAnnotate. */
+  chapterIndex?: number;
+  /** Existing annotations to highlight matching segments. */
+  annotations?: Annotation[];
 }
+
+const ANNOTATION_COLOR_CLASS: Record<string, string> = {
+  yellow: "border-b-2 border-yellow-400",
+  blue: "border-b-2 border-blue-400",
+  green: "border-b-2 border-green-400",
+  pink: "border-b-2 border-pink-400",
+};
 
 export default function SentenceReader({
   text,
@@ -221,7 +244,16 @@ export default function SentenceReader({
   translations,
   translationDisplayMode = "parallel",
   translationLoading = false,
+  onWordSave,
+  onAnnotate,
+  chapterIndex = 0,
+  annotations,
 }: Props) {
+  // Toast state for vocabulary save
+  const [wordToast, setWordToast] = useState<string | null>(null);
+  // Long-press tracking
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
   // Track which internal paragraph index each rendered paragraph corresponds
   // to, so we can pair it with the right translation entry. We count only
   // non-illustration paragraphs because TranslationView's paragraphs array
@@ -269,11 +301,76 @@ export default function SentenceReader({
     }
   }, [currentIdx, isPlaying]);
 
+  // Auto-clear vocabulary toast after 2s
+  useEffect(() => {
+    if (!wordToast) return;
+    const t = setTimeout(() => setWordToast(null), 2000);
+    return () => clearTimeout(t);
+  }, [wordToast]);
+
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";
 
+  // Build a lookup map: sentence_text → annotation
+  const annotationMap = useMemo(() => {
+    const map = new Map<string, Annotation>();
+    annotations?.forEach((a) => map.set(a.sentence_text, a));
+    return map;
+  }, [annotations]);
+
+  // Long-press handlers (shared across segments)
+  function handlePointerDown(e: React.PointerEvent, seg: Segment) {
+    if (!onAnnotate) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    longPressStartPos.current = { x: startX, y: startY };
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      longPressStartPos.current = null;
+      onAnnotate(seg.text, chapterIndex, { x: startX, y: startY });
+    }, 400);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    longPressStartPos.current = null;
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!longPressStartPos.current) return;
+    const dx = e.clientX - longPressStartPos.current.x;
+    const dy = e.clientY - longPressStartPos.current.y;
+    if (Math.sqrt(dx * dx + dy * dy) > 10) cancelLongPress();
+  }
+
+  function handleDoubleClick(e: React.MouseEvent, seg: Segment) {
+    if (!onWordSave) return;
+    e.preventDefault();
+    const sel = window.getSelection()?.toString().trim();
+    let word = sel && !sel.includes(" ") ? sel : "";
+    if (!word) {
+      // Fallback: extract word at click position via nearest word boundary
+      word = seg.text.split(/\s+/).find((w) => w.length > 1) ?? seg.text;
+    }
+    word = word.replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF'-]/g, "");
+    if (!word) return;
+    setWordToast(word);
+    onWordSave(word, seg.text);
+  }
+
   return (
-    <div className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
+    <>
+      {/* Vocabulary toast */}
+      {wordToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm font-medium text-ink">
+          <span role="img" aria-label="save">💾</span>{" "}
+          <strong>{wordToast}</strong> saved to vocabulary
+        </div>
+      )}
+      <div className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
       {paragraphs.map((para, pIdx) => {
         // Track the text paragraph index so we
         // can pair with the right entry in translations[].
@@ -301,46 +398,51 @@ export default function SentenceReader({
           onSegmentClick(seg.startTime, seg.text);
         };
 
+        // Render a segment span with annotation underline + note icon
+        const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
+          const active = seg.flatIdx === currentIdx;
+          const annotation = annotationMap.get(seg.text);
+          const annotationClass = annotation
+            ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
+            : "";
+          return (
+            <span
+              key={seg.flatIdx}
+              ref={active ? (el) => { activeRef.current = el; } : undefined}
+              data-seg={seg.flatIdx}
+              onClick={() => handleSegClick(seg)}
+              onDoubleClick={(e) => handleDoubleClick(e, seg)}
+              onPointerDown={(e) => handlePointerDown(e, seg)}
+              onPointerUp={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onPointerMove={handlePointerMove}
+              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${extraClass}`}
+            >
+              {seg.text}
+              {annotation?.note_text ? <span className="ml-0.5 text-xs select-none">📝</span> : null}
+              {trailingSpace ? " " : ""}
+            </span>
+          );
+        };
+
         // Render the original text (highlighted, clickable)
         let originalContent: React.ReactNode;
         if (para.isVerse) {
           originalContent = (
             <div className="font-serif text-base text-ink leading-relaxed">
-              {para.segments.map((seg) => {
-                const active = seg.flatIdx === currentIdx;
-                return (
-                  <span key={seg.flatIdx} className="block">
-                    <span
-                      ref={active ? (el) => { activeRef.current = el; } : undefined}
-                      data-seg={seg.flatIdx}
-                      onClick={() => handleSegClick(seg)}
-                      className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)}`}
-                    >
-                      {seg.text}
-                    </span>
-                  </span>
-                );
-              })}
+              {para.segments.map((seg) => (
+                <span key={seg.flatIdx} className="block">
+                  {renderSeg(seg)}
+                </span>
+              ))}
             </div>
           );
         } else {
           originalContent = (
             <p className="font-serif text-base text-ink leading-relaxed">
-              {para.segments.map((seg, sIdx) => {
-                const active = seg.flatIdx === currentIdx;
-                return (
-                  <span
-                    key={seg.flatIdx}
-                    ref={active ? (el) => { activeRef.current = el; } : undefined}
-                    data-seg={seg.flatIdx}
-                    onClick={() => handleSegClick(seg)}
-                    className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)}`}
-                  >
-                    {seg.text}
-                    {sIdx < para.segments.length - 1 ? " " : ""}
-                  </span>
-                );
-              })}
+              {para.segments.map((seg, sIdx) =>
+                renderSeg(seg, "", sIdx < para.segments.length - 1)
+              )}
             </p>
           );
         }
@@ -391,5 +493,6 @@ export default function SentenceReader({
         );
       })}
     </div>
+    </>
   );
 }

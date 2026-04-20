@@ -45,6 +45,7 @@ export default function ReaderPage() {
 
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationsLoading, setAnnotationsLoading] = useState(false);
   const [annotationPanel, setAnnotationPanel] = useState<{
     sentenceText: string;
     chapterIndex: number;
@@ -223,7 +224,11 @@ export default function ReaderPage() {
   // Load annotations for this book (requires auth)
   useEffect(() => {
     if (!bookId || !session?.backendToken) return;
-    getAnnotations(Number(bookId)).then(setAnnotations).catch(() => {});
+    setAnnotationsLoading(true);
+    getAnnotations(Number(bookId))
+      .then(setAnnotations)
+      .catch(() => {})
+      .finally(() => setAnnotationsLoading(false));
   }, [bookId, session?.backendToken]);
 
   const bookLanguage = meta?.languages[0] || "en";
@@ -697,6 +702,7 @@ export default function ReaderPage() {
             <AnnotationsSidebar
               annotations={annotations}
               totalCount={annotations.length}
+              loading={annotationsLoading}
               onJump={(ann) => {
                 if (ann.chapter_index !== chapterIndex) {
                   setChapterIndex(ann.chapter_index);

@@ -23,9 +23,10 @@ interface Props {
   /** Called when user clicks an annotation entry to jump to it */
   onJump: (annotation: Annotation) => void;
   onEdit: (annotation: Annotation) => void;
+  loading?: boolean;
 }
 
-export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit }: Props) {
+export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading }: Props) {
   const [open, setOpen] = useState(false);
 
   // Group by chapter
@@ -70,7 +71,11 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {annotations.length === 0 ? (
+            {loading ? (
+              <div className="flex justify-center mt-10">
+                <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+              </div>
+            ) : annotations.length === 0 ? (
               <div className="text-center text-stone-400 mt-10 text-sm">
                 <p className="text-3xl mb-2">📝</p>
                 <p>No annotations yet.</p>

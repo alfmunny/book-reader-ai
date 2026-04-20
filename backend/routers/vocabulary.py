@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from datetime import datetime, timezone
 
@@ -238,17 +239,24 @@ async def export_obsidian(
         connected = _find_connected_books(bid, all_vocab)
         title = book.get("title", f"Book {bid}") if book else f"Book {bid}"
 
-        # Translate annotation quotes with Google Translate (free, best-effort)
+        # Translate annotation quotes (capped at 10, parallelized with semaphore)
         ann_translations: dict[int, str] = {}
-        for ann in annotations:
-            try:
+        sem = asyncio.Semaphore(3)
+        async def _translate_one(ann: dict) -> tuple[int, str]:
+            async with sem:
                 translated = await translate_text(
                     ann["sentence_text"], "en", req.target_language or "zh"
                 )
-                if translated:
-                    ann_translations[ann["id"]] = translated[0]
-            except Exception:
-                pass
+                return ann["id"], translated[0] if translated else ""
+        results = await asyncio.gather(
+            *[_translate_one(a) for a in annotations[:10]],
+            return_exceptions=True,
+        )
+        for res in results:
+            if isinstance(res, tuple):
+                ann_id, text = res
+                if text:
+                    ann_translations[ann_id] = text
 
         content = _build_book_markdown(
             book, words_for_book, annotations, connected, book_insights,

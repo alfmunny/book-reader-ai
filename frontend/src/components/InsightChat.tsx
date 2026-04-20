@@ -69,6 +69,7 @@ export default function InsightChat({
   chapterIndex,
 }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
+  const [savedInsights, setSavedInsights] = useState<Set<number>>(new Set());
 
   // ── Chat ─────────────────────────────────────────────────────────────
   // Read language from settings at first render (lazy init avoids the
@@ -421,11 +422,15 @@ export default function InsightChat({
                   </div>
                   {onSaveInsight && prevUserMsg && (
                     <button
-                      onClick={() => onSaveInsight(prevUserMsg.content, msg.content)}
-                      title="Save this insight to book notes"
-                      className="mt-2 flex items-center gap-1 text-[10px] text-amber-500 hover:text-amber-800 transition-colors"
+                      onClick={() => {
+                        if (savedInsights.has(i)) return;
+                        setSavedInsights((prev) => new Set(prev).add(i));
+                        onSaveInsight(prevUserMsg.content, msg.content);
+                      }}
+                      title={savedInsights.has(i) ? "Already saved to notes" : "Save this insight to book notes"}
+                      className={`mt-2 flex items-center gap-1 text-[10px] transition-colors ${savedInsights.has(i) ? "text-amber-300 cursor-default" : "text-amber-500 hover:text-amber-800"}`}
                     >
-                      🔖 Save to notes
+                      🔖 {savedInsights.has(i) ? "Saved" : "Save to notes"}
                     </button>
                   )}
                 </div>

@@ -49,6 +49,8 @@ interface Props {
   author: string;
   bookLanguage: string;
   onAIUsed?: () => void;    // called whenever an AI (non-cached) call is made
+  onSaveInsight?: (question: string, answer: string) => void;
+  chapterIndex?: number;
 }
 
 export default function InsightChat({
@@ -63,6 +65,8 @@ export default function InsightChat({
   author,
   bookLanguage,
   onAIUsed,
+  onSaveInsight,
+  chapterIndex,
 }: Props) {
   const [tab, setTab] = useState<Tab>("chat");
 
@@ -409,11 +413,21 @@ export default function InsightChat({
               }
 
               // Assistant message — styled as a subtle card
+              const prevUserMsg = displayedMessages.slice(0, i).reverse().find((m) => m.role === "user");
               return (
                 <div key={i} className="bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] shadow-sm">
                   <div className={`prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-relaxed prose-p:my-1.5 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-ink text-${chatFontSize}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                   </div>
+                  {onSaveInsight && prevUserMsg && (
+                    <button
+                      onClick={() => onSaveInsight(prevUserMsg.content, msg.content)}
+                      title="Save this insight to book notes"
+                      className="mt-2 flex items-center gap-1 text-[10px] text-amber-500 hover:text-amber-800 transition-colors"
+                    >
+                      🔖 Save to notes
+                    </button>
+                  )}
                 </div>
               );
             })}

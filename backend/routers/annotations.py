@@ -1,3 +1,4 @@
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user
@@ -6,17 +7,20 @@ from services.db import create_annotation, get_annotations, update_annotation, d
 router = APIRouter(prefix="/annotations", tags=["annotations"])
 
 
+AnnotationColor = Literal["yellow", "blue", "green", "pink"]
+
+
 class AnnotationCreate(BaseModel):
     book_id: int
     chapter_index: int
     sentence_text: str
     note_text: str = ""
-    color: str = "yellow"
+    color: AnnotationColor = "yellow"
 
 
 class AnnotationUpdate(BaseModel):
     note_text: str
-    color: str
+    color: AnnotationColor
 
 
 @router.post("")

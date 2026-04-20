@@ -53,11 +53,8 @@ export default function VocabularyPage() {
   async function handleExport(bookId?: number) {
     setExporting(true);
     try {
-      const result = await exportVocabularyToObsidian(bookId);
-      const url = (result as { url?: string; urls?: string[] }).url
-        ?? (result as { urls?: string[] }).urls?.[0]
-        ?? "";
-      setExportMsg(url || "Exported successfully");
+      const { urls } = await exportVocabularyToObsidian(bookId);
+      setExportMsg(urls[0] || "Exported successfully");
     } catch (e) {
       setExportMsg(e instanceof Error ? e.message : "Export failed");
     } finally {

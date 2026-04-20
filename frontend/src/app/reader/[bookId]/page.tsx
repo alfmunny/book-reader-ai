@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, saveVocabularyWord, exportVocabularyToObsidian, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -50,6 +50,7 @@ export default function ReaderPage() {
     chapterIndex: number;
     position: { x: number; y: number };
   } | null>(null);
+  const [scrollTargetSentence, setScrollTargetSentence] = useState<string | undefined>();
 
   // Vocabulary toast
   const [vocabToastWord, setVocabToastWord] = useState<string | null>(null);
@@ -535,8 +536,8 @@ export default function ReaderPage() {
   // Obsidian export handler
   async function handleObsidianExport() {
     try {
-      const { url } = await exportVocabularyToObsidian(Number(bookId));
-      setObsidianToast(url);
+      const { urls } = await exportVocabularyToObsidian(Number(bookId));
+      setObsidianToast(urls[0] || "Exported successfully");
       setTimeout(() => setObsidianToast(null), 6000);
     } catch (e) {
       setObsidianToast(e instanceof Error ? e.message : "Export failed");
@@ -697,7 +698,14 @@ export default function ReaderPage() {
               annotations={annotations}
               totalCount={annotations.length}
               onJump={(ann) => {
-                if (ann.chapter_index !== chapterIndex) setChapterIndex(ann.chapter_index);
+                if (ann.chapter_index !== chapterIndex) {
+                  setChapterIndex(ann.chapter_index);
+                  // Scroll after chapter loads
+                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                } else {
+                  setScrollTargetSentence(undefined);
+                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                }
               }}
               onEdit={(ann) => setAnnotationPanel({
                 sentenceText: ann.sentence_text,
@@ -1016,9 +1024,11 @@ export default function ReaderPage() {
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
                   onWordSave={session?.backendToken ? handleWordSave : undefined}
+                  onWordSaveBlocked={!session?.backendToken ? () => setVocabToastWord("Login to save words") : undefined}
                   onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
+                  scrollTargetSentence={scrollTargetSentence}
                   onSegmentClick={(startTime, segText) => {
                     if (audiobook) {
                       seekAudioRef.current(startTime);
@@ -1204,6 +1214,13 @@ export default function ReaderPage() {
             author={meta?.authors[0] ?? ""}
             bookLanguage={bookLanguage}
             onAIUsed={notifyAIUsed}
+            chapterIndex={chapterIndex}
+            onSaveInsight={session?.backendToken ? (question, answer) => {
+              saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
+                .then(() => setObsidianToast("Insight saved to book notes"))
+                .catch(() => setObsidianToast("Failed to save insight"))
+                .finally(() => setTimeout(() => setObsidianToast(null), 3000));
+            } : undefined}
           />
         </div>
       </div>

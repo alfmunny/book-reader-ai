@@ -150,7 +150,8 @@ async def test_export_single_book(client, test_user):
         resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
 
     assert resp.status_code == 200
-    assert "url" in resp.json()
+    assert "urls" in resp.json()
+    assert len(resp.json()["urls"]) == 1
 
 
 async def test_export_all_books(client, test_user):

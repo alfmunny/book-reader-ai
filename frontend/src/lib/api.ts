@@ -529,6 +529,7 @@ export function saveReadingProgress(bookId: number, chapterIndex: number) {
 
 export interface Annotation {
   id: number;
+  book_id: number;
   chapter_index: number;
   sentence_text: string;
   note_text: string;
@@ -603,12 +604,47 @@ export function deleteVocabularyWord(word: string) {
   });
 }
 
-export function exportVocabularyToObsidian(bookId?: number) {
-  return request<{ url: string }>("/vocabulary/export/obsidian", {
+export function exportVocabularyToObsidian(bookId?: number, targetLanguage = "zh") {
+  return request<{ urls: string[] }>("/vocabulary/export/obsidian", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(bookId !== undefined ? { book_id: bookId } : {}),
+    body: JSON.stringify({
+      ...(bookId !== undefined ? { book_id: bookId } : {}),
+      target_language: targetLanguage,
+    }),
   });
+}
+
+// ── Book Insights (saved AI Q&A) ──────────────────────────────────────────────
+
+export interface BookInsight {
+  id: number;
+  book_id: number;
+  chapter_index: number | null;
+  question: string;
+  answer: string;
+  created_at: string;
+}
+
+export function getInsights(bookId: number) {
+  return request<BookInsight[]>(`/insights?book_id=${bookId}`);
+}
+
+export function saveInsight(data: {
+  book_id: number;
+  chapter_index?: number;
+  question: string;
+  answer: string;
+}) {
+  return request<BookInsight>("/insights", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteInsight(id: number) {
+  return request<{ ok: boolean }>(`/insights/${id}`, { method: "DELETE" });
 }
 
 // ── Obsidian settings ─────────────────────────────────────────────────────────

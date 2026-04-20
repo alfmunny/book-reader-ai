@@ -12,7 +12,9 @@ from services.db import (
     delete_word,
     get_obsidian_settings,
     get_cached_book,
+    get_insights,
 )
+from services.translate import translate_text
 
 router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
 
@@ -26,6 +28,7 @@ class WordSave(BaseModel):
 
 class ExportRequest(BaseModel):
     book_id: int | None = None
+    target_language: str = "zh"
 
 
 @router.post("")
@@ -95,8 +98,10 @@ def _build_book_markdown(
     words_for_book: list[dict],
     annotations: list[dict],
     connected: list[dict],
+    insights: list[dict],
     book_id: int,
     export_date: str,
+    ann_translations: dict[int, str] | None = None,
 ) -> str:
     authors = ", ".join(book.get("authors", [])) if book else "Unknown"
     title = book.get("title", f"Book {book_id}") if book else f"Book {book_id}"
@@ -127,16 +132,24 @@ def _build_book_markdown(
         lines.append(f"- [[{conn['title']}]] — shared: {shared_words}")
 
     lines += ["", "## Annotations"]
-    # Group by chapter
     chapters: dict[int, list] = {}
     for ann in annotations:
         chapters.setdefault(ann["chapter_index"], []).append(ann)
     for ch_idx in sorted(chapters):
-        lines.append(f"### Chapter {ch_idx}")
+        lines.append(f"\n### Chapter {ch_idx + 1}")
         for ann in chapters[ch_idx]:
-            lines.append(f"> \"{ann['sentence_text']}\"")
+            lines.append(f"\n> \"{ann['sentence_text']}\"")
+            if ann_translations and ann["id"] in ann_translations:
+                lines.append(f"> *{ann_translations[ann['id']]}*")
             if ann.get("note_text"):
-                lines.append(ann["note_text"])
+                lines.append(f"\n{ann['note_text']}")
+
+    if insights:
+        lines += ["", "## Reading Insights"]
+        for ins in insights:
+            ch_label = f" (Ch.{ins['chapter_index'] + 1})" if ins.get("chapter_index") is not None else ""
+            lines.append(f"\n**Q{ch_label}:** {ins['question']}")
+            lines.append(f"\n{ins['answer']}")
 
     return "\n".join(lines) + "\n"
 
@@ -214,25 +227,42 @@ async def export_obsidian(
 
     from services.db import get_annotations as db_get_annotations
 
+    async def _build_and_push_book(bid: int) -> str:
+        book = await get_cached_book(bid)
+        annotations = await db_get_annotations(user["id"], bid)
+        book_insights = await get_insights(user["id"], bid)
+        words_for_book = [
+            v for v in all_vocab
+            if any(occ["book_id"] == bid for occ in v["occurrences"])
+        ]
+        connected = _find_connected_books(bid, all_vocab)
+        title = book.get("title", f"Book {bid}") if book else f"Book {bid}"
+
+        # Translate annotation quotes with Google Translate (free, best-effort)
+        ann_translations: dict[int, str] = {}
+        for ann in annotations:
+            try:
+                translated = await translate_text(
+                    ann["sentence_text"], "en", req.target_language or "zh"
+                )
+                if translated:
+                    ann_translations[ann["id"]] = translated[0]
+            except Exception:
+                pass
+
+        content = _build_book_markdown(
+            book, words_for_book, annotations, connected, book_insights,
+            bid, export_date, ann_translations,
+        )
+        filename = f"{title}.md"
+        return await _github_put(
+            github_token, repo, obs_path, filename, content, f"Update {filename}"
+        )
+
     try:
         if req.book_id is not None:
-            # Export single book
-            book = await get_cached_book(req.book_id)
-            annotations = await db_get_annotations(user["id"], req.book_id)
-            words_for_book = [
-                v for v in all_vocab
-                if any(occ["book_id"] == req.book_id for occ in v["occurrences"])
-            ]
-            connected = _find_connected_books(req.book_id, all_vocab)
-            title = book.get("title", f"Book {req.book_id}") if book else f"Book {req.book_id}"
-            filename = f"{title}.md"
-            content = _build_book_markdown(
-                book, words_for_book, annotations, connected, req.book_id, export_date
-            )
-            url = await _github_put(
-                github_token, repo, obs_path, filename, content, f"Update {filename}"
-            )
-            return {"url": url}
+            url = await _build_and_push_book(req.book_id)
+            return {"urls": [url]}
         else:
             # Export all — one file per book + one per word
             book_ids = list({
@@ -243,21 +273,7 @@ async def export_obsidian(
 
             urls = []
             for bid in book_ids:
-                book = await get_cached_book(bid)
-                annotations = await db_get_annotations(user["id"], bid)
-                words_for_book = [
-                    v for v in all_vocab
-                    if any(occ["book_id"] == bid for occ in v["occurrences"])
-                ]
-                connected = _find_connected_books(bid, all_vocab)
-                title = book.get("title", f"Book {bid}") if book else f"Book {bid}"
-                filename = f"{title}.md"
-                content = _build_book_markdown(
-                    book, words_for_book, annotations, connected, bid, export_date
-                )
-                url = await _github_put(
-                    github_token, repo, obs_path, filename, content, f"Update {filename}"
-                )
+                url = await _build_and_push_book(bid)
                 urls.append(url)
 
             # Export individual word notes

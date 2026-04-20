@@ -89,6 +89,7 @@ export default function ReaderPage() {
 
   // Immersive mode — on mobile, hide header/toolbar; tap to toggle
   const [toolbarVisible, setToolbarVisible] = useState(true);
+  const [translateExpanded, setTranslateExpanded] = useState(false);
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isMobileRef = useRef(false);
@@ -116,7 +117,46 @@ export default function ReaderPage() {
     if (!isMobileRef.current) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-seg]") || target.closest("select") || target.closest("button") || target.closest("a")) return;
+
+    // Tap zones: left 20% → prev chapter, right 20% → next chapter, center → toggle toolbar
+    const clientX = "clientX" in e ? e.clientX : (e as React.TouchEvent).changedTouches?.[0]?.clientX ?? 0;
+    const width = window.innerWidth;
+    if (clientX < width * 0.2) {
+      if (chapterIndex > 0) goToChapter(chapterIndex - 1);
+      return;
+    }
+    if (clientX > width * 0.8) {
+      if (chapterIndex < chapters.length - 1) goToChapter(chapterIndex + 1);
+      return;
+    }
     setToolbarVisible((v) => !v);
+  }
+
+  // Swipe gesture for chapter navigation
+  const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    if (!isMobileRef.current) return;
+    const touch = e.touches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (!isMobileRef.current || !swipeStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - swipeStartRef.current.x;
+    const dy = touch.clientY - swipeStartRef.current.y;
+    const dt = Date.now() - swipeStartRef.current.t;
+    swipeStartRef.current = null;
+
+    // Must be fast (<500ms), horizontal (>80px), and not too vertical
+    if (dt > 500 || Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+
+    if (dx > 0 && chapterIndex > 0) {
+      goToChapter(chapterIndex - 1);
+    } else if (dx < 0 && chapterIndex < chapters.length - 1) {
+      goToChapter(chapterIndex + 1);
+    }
   }
 
   function onResizeStart(e: React.MouseEvent) {
@@ -630,7 +670,7 @@ export default function ReaderPage() {
       <header className={`border-b border-amber-200 bg-white/70 backdrop-blur shrink-0 transition-all duration-300 ${
         !toolbarVisible ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
       } md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b`}>
-        {/* Row 1: nav + title + chapter selector + chat toggle */}
+        {/* Row 1: nav + title + controls */}
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
             onClick={() => router.push("/")}
@@ -650,8 +690,8 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Chapter navigation */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Chapter navigation — desktop only (mobile uses bottom bar) */}
+          <div className="hidden md:flex items-center gap-1 shrink-0">
             {loading ? (
               <span className="text-xs text-amber-500 animate-pulse">Loading…</span>
             ) : (
@@ -659,10 +699,10 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
-                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
+                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
                 >‹</button>
                 <select
-                  className="text-xs rounded border border-amber-300 px-2 py-1.5 text-ink bg-white max-w-[120px] md:max-w-[160px] min-h-[44px] md:min-h-0"
+                  className="text-xs rounded border border-amber-300 px-2 py-1.5 text-ink bg-white max-w-[160px]"
                   value={chapterIndex}
                   onChange={(e) => goToChapter(Number(e.target.value))}
                 >
@@ -675,13 +715,13 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
-                  className="min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
+                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
                 >›</button>
               </>
             )}
           </div>
 
-          {/* Font size — hidden on mobile to save header space */}
+          {/* Font size — desktop only */}
           <button
             onClick={cycleFontSize}
             title={`Font size: ${fontSize}`}
@@ -691,7 +731,7 @@ export default function ReaderPage() {
             <span className="text-[8px] align-super">{fontSize === "sm" ? "-" : fontSize === "base" ? "" : fontSize === "lg" ? "+" : "++"}</span>
           </button>
 
-          {/* Theme — hidden on mobile */}
+          {/* Theme — desktop only */}
           <button
             onClick={cycleTheme}
             title={`Theme: ${theme}`}
@@ -700,7 +740,7 @@ export default function ReaderPage() {
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
 
-          {/* Profile */}
+          {/* Profile — mobile: only shown in header; desktop: always */}
           <button
             onClick={() => router.push("/profile")}
             title={session?.backendUser?.name ?? "Profile"}
@@ -716,11 +756,11 @@ export default function ReaderPage() {
             )}
           </button>
 
-          {/* Insight chat toggle */}
+          {/* Insight chat toggle — desktop only (mobile uses bottom bar) */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             title="Toggle insight chat"
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border text-xs font-medium transition-colors min-h-[44px] md:min-h-0 ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -730,10 +770,10 @@ export default function ReaderPage() {
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.836L3 20l1.09-3.27A7.96 7.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
-            <span className="hidden sm:inline">Insight</span>
+            Insight
           </button>
 
-          {/* Annotations sidebar — hidden on mobile to save header space */}
+          {/* Annotations sidebar — desktop only */}
           {session?.backendToken && (
             <div className="hidden md:block">
             <AnnotationsSidebar
@@ -743,7 +783,6 @@ export default function ReaderPage() {
               onJump={(ann) => {
                 if (ann.chapter_index !== chapterIndex) {
                   setChapterIndex(ann.chapter_index);
-                  // Scroll after chapter loads
                   setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
                 } else {
                   setScrollTargetSentence(undefined);
@@ -759,7 +798,7 @@ export default function ReaderPage() {
             </div>
           )}
 
-          {/* Vocabulary link — hidden on small screens */}
+          {/* Vocabulary link — desktop only */}
           {session?.backendToken && (
             <button
               onClick={() => router.push("/vocabulary")}
@@ -770,7 +809,7 @@ export default function ReaderPage() {
             </button>
           )}
 
-          {/* Export vocabulary to Obsidian — hidden on small screens */}
+          {/* Export vocabulary to Obsidian — desktop only */}
           {session?.backendToken && (
             <button
               onClick={handleObsidianExport}
@@ -781,12 +820,12 @@ export default function ReaderPage() {
             </button>
           )}
 
-          {/* Audiobook toggle — hidden on mobile to save header space */}
+          {/* Audiobook toggle — desktop only */}
           {audiobookEnabled && (
             <button
               onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
               title={audiobook ? "Audiobook linked" : "Find audiobook"}
-              className={`hidden sm:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 audiobook
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -797,8 +836,8 @@ export default function ReaderPage() {
           )}
         </div>
 
-        {/* Row 2: Translation toolbar */}
-        <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 pb-2 flex-wrap">
+        {/* Row 2: Translation toolbar — desktop only (mobile uses bottom bar expand) */}
+        <div className="hidden md:flex items-center gap-3 px-4 pb-2 flex-wrap">
           <button
             onClick={() => setTranslationEnabled((v) => !v)}
             className={`text-xs px-3 py-2 md:py-1 rounded-full border font-medium transition-colors min-h-[44px] md:min-h-0 ${
@@ -1034,8 +1073,9 @@ export default function ReaderPage() {
             id="reader-scroll"
             className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
             onClick={handleReaderTap}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}
             onMouseUp={handleSelection}
-            onTouchEnd={handleSelection}
             onDoubleClick={(e) => {
               const sel = window.getSelection()?.toString().trim();
               if (sel && sel.length > 1 && sel.length < 30 && !/\s/.test(sel)) {
@@ -1255,8 +1295,8 @@ export default function ReaderPage() {
             />
           )}
 
-          {/* TTS + Recorder */}
-          <div className="border-t border-amber-200 shrink-0">
+          {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
+          <div className="hidden md:block border-t border-amber-200 shrink-0">
             <TTSControls
               text={current?.text ?? ""}
               language={bookLanguage}
@@ -1354,48 +1394,108 @@ export default function ReaderPage() {
 
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
       {!loading && chapters.length > 0 && (
-        <div className={`md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-between gap-1 safe-bottom transition-transform duration-300 ${
-          toolbarVisible ? "translate-y-0" : "translate-y-full"
-        }`}>
-          <button
-            onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
-            disabled={chapterIndex === 0}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
-            aria-label="Previous chapter"
-          >
-            ‹
-          </button>
-          <button
-            onClick={() => setTranslationEnabled((v) => !v)}
-            className={`min-h-[44px] px-3 rounded-lg text-xs font-medium transition-colors ${
-              translationEnabled
-                ? "bg-amber-700 text-white"
-                : "text-amber-700 bg-amber-50 border border-amber-200"
-            }`}
-          >
-            🌐
-          </button>
-          <span className="text-xs text-amber-500 tabular-nums shrink-0">
-            {chapterIndex + 1}/{chapters.length}
-          </span>
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className={`min-h-[44px] px-3 rounded-lg text-xs font-medium transition-colors ${
-              sidebarOpen
-                ? "bg-amber-700 text-white"
-                : "text-amber-700 bg-amber-50 border border-amber-200"
-            }`}
-          >
-            💬
-          </button>
-          <button
-            onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
-            disabled={chapterIndex === chapters.length - 1}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
-            aria-label="Next chapter"
-          >
-            ›
-          </button>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 safe-bottom">
+          {/* Translation options expand panel */}
+          {translateExpanded && translationEnabled && (
+            <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 flex items-center gap-2 animate-slide-up">
+              <select
+                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px]"
+                value={translationLang}
+                onChange={(e) => setTranslationLang(e.target.value)}
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>{l.label}</option>
+                ))}
+              </select>
+              <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
+                <button
+                  onClick={() => setDisplayMode("inline")}
+                  className={`px-3 py-2 min-h-[44px] transition-colors ${
+                    displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
+                  }`}
+                >Inline</button>
+                <button
+                  onClick={() => setDisplayMode("parallel")}
+                  className={`px-3 py-2 min-h-[44px] border-l border-amber-300 transition-colors ${
+                    displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
+                  }`}
+                >Side by side</button>
+              </div>
+            </div>
+          )}
+
+          {/* Main bottom bar */}
+          <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-1 py-1 flex items-center justify-around gap-0.5">
+            <button
+              onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
+              disabled={chapterIndex === 0}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
+              aria-label="Previous chapter"
+            >‹</button>
+
+            <button
+              onClick={() => {
+                if (!translationEnabled) {
+                  setTranslationEnabled(true);
+                  setTranslateExpanded(true);
+                } else {
+                  setTranslateExpanded((v) => !v);
+                }
+              }}
+              onDoubleClick={() => {
+                setTranslationEnabled(false);
+                setTranslateExpanded(false);
+              }}
+              title="Tap: toggle options · Double-tap: turn off"
+              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+                translationEnabled
+                  ? "bg-amber-700 text-white"
+                  : "text-amber-700 bg-amber-50 border border-amber-200"
+              }`}
+            >🌐</button>
+
+            <button
+              onClick={() => {
+                const ttsEl = document.querySelector<HTMLButtonElement>("[data-tts-play]");
+                if (ttsEl) ttsEl.click();
+              }}
+              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+                ttsIsPlaying
+                  ? "bg-amber-700 text-white"
+                  : "text-amber-700 bg-amber-50 border border-amber-200"
+              }`}
+              aria-label={ttsIsPlaying ? "Pause" : "Read aloud"}
+            >{ttsIsPlaying ? "⏸" : "▶"}</button>
+
+            <select
+              className="text-xs rounded border border-amber-200 px-1 py-1 text-amber-700 bg-white min-h-[44px] max-w-[100px] truncate"
+              value={chapterIndex}
+              onChange={(e) => goToChapter(Number(e.target.value))}
+            >
+              {chapters.map((ch, i) => (
+                <option key={i} value={i}>
+                  {i + 1}. {ch.title || `§${i + 1}`}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setSidebarOpen((v) => !v)}
+              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+                sidebarOpen
+                  ? "bg-amber-700 text-white"
+                  : "text-amber-700 bg-amber-50 border border-amber-200"
+              }`}
+              aria-label="Insight chat"
+            >💬</button>
+
+            <button
+              onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
+              disabled={chapterIndex === chapters.length - 1}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
+              aria-label="Next chapter"
+            >›</button>
+          </div>
         </div>
       )}
     </div>

@@ -485,49 +485,55 @@ export default function SentenceReader({
           if (disabled) return;
           if (!isSegmentLoaded(seg)) return;
 
-          // Unified tap mode: extract word at click position, open action drawer
-          if (onWordTap) {
-            if (clickTimer.current) clearTimeout(clickTimer.current);
-            clickTimer.current = setTimeout(() => {
-              clickTimer.current = null;
-              let word = "";
-              const sel = window.getSelection()?.toString().trim() ?? "";
-              if (sel && !sel.includes(" ") && sel.length >= 2) {
-                word = sel;
-              }
-              if (!word && "caretRangeFromPoint" in document) {
-                const range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);
-                if (range) { range.expand("word"); word = range.toString().trim(); }
-              }
-              if (!word) {
-                word = seg.text.split(/\s+/).reduce((a: string, b: string) => (b.length > a.length ? b : a), "");
-              }
-              word = word.replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
-                         .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "");
-              if (!word || word.length < 2) word = seg.text.split(/\s+/)[0] ?? "";
-
-              onWordTap({
-                word,
-                sentenceText: seg.text,
-                startTime: seg.startTime,
-                chapterIndex,
-                translationText: translationText || undefined,
-              });
-            }, 150);
-            return;
-          }
-
-          // Legacy mode: seek TTS or open annotation
+          // Single tap = read sentence aloud / seek to position (lightweight, no UI)
           if (clickTimer.current) clearTimeout(clickTimer.current);
           clickTimer.current = setTimeout(() => {
             clickTimer.current = null;
-            const annotation = annotationMap.get(seg.text);
-            if (annotation && onAnnotate) {
-              onAnnotate(seg.text, chapterIndex, { x: e.clientX, y: e.clientY });
-            } else {
-              onSegmentClick(seg.startTime, seg.text);
-            }
+            onSegmentClick(seg.startTime, seg.text);
           }, 200);
+        };
+
+        // Long press (500ms) → open word action drawer
+        const handleSegLongPress = (e: React.PointerEvent, seg: Segment) => {
+          if (!onWordTap) {
+            // Fallback to legacy annotation long-press
+            handlePointerDown(e, seg);
+            return;
+          }
+          const startX = e.clientX;
+          const startY = e.clientY;
+          longPressStartPos.current = { x: startX, y: startY };
+          longPressTimer.current = setTimeout(() => {
+            longPressTimer.current = null;
+            // Cancel any pending single-click
+            if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null; }
+            // Prevent text selection
+            window.getSelection()?.removeAllRanges();
+
+            // Extract word at press position
+            let word = "";
+            if ("caretRangeFromPoint" in document) {
+              const range = (document as any).caretRangeFromPoint(startX, startY);
+              if (range) { range.expand("word"); word = range.toString().trim(); }
+            }
+            if (!word) {
+              word = seg.text.split(/\s+/).reduce((a: string, b: string) => (b.length > a.length ? b : a), "");
+            }
+            word = word.replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
+                       .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "");
+            if (!word || word.length < 2) word = seg.text.split(/\s+/)[0] ?? "";
+
+            // Haptic feedback
+            if (navigator.vibrate) navigator.vibrate(10);
+
+            onWordTap({
+              word,
+              sentenceText: seg.text,
+              startTime: seg.startTime,
+              chapterIndex,
+              translationText: translationText || undefined,
+            });
+          }, 500);
         };
 
         // Render a segment span with annotation underline + note icon
@@ -547,10 +553,10 @@ export default function SentenceReader({
               data-jump-target={isJumpTarget ? "true" : undefined}
               onClick={(e) => handleSegClick(e, seg)}
               onDoubleClick={onWordTap ? undefined : (e) => handleDoubleClick(e, seg)}
-              onPointerDown={onWordTap ? undefined : (e) => handlePointerDown(e, seg)}
-              onPointerUp={onWordTap ? undefined : cancelLongPress}
-              onPointerCancel={onWordTap ? undefined : cancelLongPress}
-              onPointerMove={onWordTap ? undefined : handlePointerMove}
+              onPointerDown={(e) => onWordTap ? handleSegLongPress(e, seg) : handlePointerDown(e, seg)}
+              onPointerUp={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onPointerMove={handlePointerMove}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {seg.text}

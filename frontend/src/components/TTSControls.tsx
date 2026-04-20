@@ -382,6 +382,7 @@ export default function TTSControls({
           </button>
         ) : status === "playing" ? (
           <button
+            data-tts-play
             onClick={pause}
             className="rounded-lg bg-amber-200 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-300 min-h-[44px] md:min-h-0"
           >
@@ -389,6 +390,7 @@ export default function TTSControls({
           </button>
         ) : status === "paused" ? (
           <button
+            data-tts-play
             onClick={play}
             className="rounded-lg bg-amber-700 text-white px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-800 min-h-[44px] md:min-h-0"
           >

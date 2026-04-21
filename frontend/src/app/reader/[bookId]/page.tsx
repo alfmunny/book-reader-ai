@@ -197,7 +197,9 @@ export default function ReaderPage() {
   // Translation state
   const translationCache = useRef(new Map<string, string[]>());
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
-  const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [translationEnabled, setTranslationEnabled] = useState<boolean>(() =>
+    typeof window !== "undefined" ? getSettings().translationEnabled : false
+  );
   const [translationLang, setTranslationLang] = useState<string>(() =>
     typeof window !== "undefined" ? getSettings().translationLang : "en"
   );
@@ -755,7 +757,7 @@ export default function ReaderPage() {
 
           {/* Translate toggle — opens sidebar with translation controls */}
           <button
-            onClick={() => { setSidebarTab("translate"); setTranslationEnabled(true); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
             title="Translation"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"
@@ -888,45 +890,6 @@ export default function ReaderPage() {
           </span>
         </div>
       )}
-
-      {/* Book-level translation progress — shown whenever the queue is
-          holding at least one chapter of THIS book in THIS language,
-          even if a legacy bulk job isn't running. Gives the user a
-          whole-book view (e.g. "18/21 chapters ready · 3 processing")
-          in addition to the per-chapter banner above. */}
-      {translationEnabled && bookTranslationStatus && (() => {
-        const s = bookTranslationStatus;
-        const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
-        const ready = s.translated_chapters;
-        const total = s.total_chapters;
-        // Chapters that are neither done nor queued — the "nothing is
-        // happening for these" bucket the user can act on via the
-        // Translate-whole-book button.
-        const notStarted = Math.max(
-          0,
-          total - ready - queued - (s.queue_failed ?? 0),
-        );
-        return (
-          <div className="bg-amber-50 border-b border-amber-200 px-3 md:px-4 py-1.5 text-xs text-amber-800 flex items-center gap-2 flex-wrap">
-            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />}
-            <span className="flex-1 min-w-0">
-              <strong>{ready} / {total}</strong> chapters translated
-              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
-              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
-            </span>
-            {notStarted > 0 && (
-              <button
-                onClick={handleTranslateWholeBook}
-                disabled={enqueueingBook}
-                className="shrink-0 text-xs px-3 py-1 rounded-full border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                title={`Queue the remaining ${notStarted} chapters into ${translationLang}`}
-              >
-                {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
-              </button>
-            )}
-          </div>
-        );
-      })()}
 
       </div>{/* end banners wrapper */}
 
@@ -1334,7 +1297,7 @@ export default function ReaderPage() {
                         type="checkbox"
                         className="sr-only"
                         checked={translationEnabled}
-                        onChange={(e) => setTranslationEnabled(e.target.checked)}
+                        onChange={(e) => { setTranslationEnabled(e.target.checked); saveSettings({ translationEnabled: e.target.checked }); }}
                       />
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>

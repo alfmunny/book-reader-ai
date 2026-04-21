@@ -416,7 +416,8 @@ export default function SentenceReader({
     return map;
   }, [annotations]);
 
-  // Lookup that handles selections made within a sentence (substring match fallback)
+  // Lookup with substring fallback: annotations from text-selection may store a
+  // substring of the segment text rather than the full sentence.
   const getAnnotation = useMemo(() => {
     const anns = annotations ?? [];
     return (segText: string): Annotation | undefined => {

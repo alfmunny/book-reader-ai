@@ -195,11 +195,10 @@ describe("SentenceReader highlighting based on currentTime", () => {
       />
     );
     const active = container.querySelector(".bg-amber-300");
-    // Either the last loaded sentence (chunk 1) is highlighted, or nothing is —
-    // but it must NOT be a sentence from chunk 2 (the unloaded chunk).
-    if (active) {
-      expect(active.textContent).toContain("First loaded chunk");
-    }
+    // The loaded chunk must be highlighted — not null, and not from the unloaded chunk.
+    expect(active).not.toBeNull();
+    expect(active!.textContent).toContain("First loaded chunk");
+    expect(active!.textContent).not.toContain("Second unloaded chunk");
   });
 
   it("uses chunk durations for timing when chunks are provided", () => {

@@ -157,6 +157,116 @@ The backend reads `DB_PATH` from the environment and falls back to `backend/book
 
 The Railway setup steps above (volume at `/app/data` + `DB_PATH=/app/data/books.db`) are the minimum viable fix. The longer-term option is to migrate to managed Postgres (Railway Postgres, Neon, Supabase), which removes the volume entirely.
 
+### iOS — TestFlight pipeline
+
+The workflow at `.github/workflows/ios-release.yml` builds an IPA and uploads it to TestFlight automatically whenever iOS-relevant files change on `main` (or via the manual **Run workflow** button). It silently skips if the Apple secrets below are not yet configured, so it never blocks the main pipeline.
+
+#### Prerequisites
+
+- An active **Apple Developer Program** membership ($99/year) at [developer.apple.com](https://developer.apple.com)
+- Xcode installed locally (only needed for the one-time certificate/profile steps)
+- The app bundle ID used by the project is **`com.bookreader.ai`**
+
+#### Step 1 — Create an App ID
+
+1. [developer.apple.com](https://developer.apple.com) → **Certificates, IDs & Profiles → Identifiers → +**
+2. Select **App IDs → App**
+3. **Bundle ID:** `com.bookreader.ai` (Explicit)
+4. Enable **Sign In with Apple** capability if you want Apple login
+5. Save — note your **Team ID** (10-character string shown in the top-right)
+
+#### Step 2 — Create an app in App Store Connect
+
+1. [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → **My Apps → +**
+2. **Bundle ID:** choose `com.bookreader.ai` from the dropdown (appears after Step 1)
+3. Fill in name, primary language, SKU — these can be changed later
+4. Save
+
+#### Step 3 — Create a Distribution Certificate
+
+You need an **Apple Distribution** certificate (not Development).
+
+```bash
+# 1. Generate a Certificate Signing Request in Keychain Access:
+#    Keychain Access → Certificate Assistant → Request a Certificate from a Certificate Authority
+#    Save to disk as CertificateSigningRequest.certSigningRequest
+
+# 2. developer.apple.com → Certificates → + → Apple Distribution
+#    Upload the .certSigningRequest file, download the resulting .cer
+
+# 3. Double-click the .cer to install it in your Keychain
+
+# 4. Export as .p12:
+#    Keychain Access → My Certificates → right-click "Apple Distribution: ..."
+#    → Export → choose .p12 format → set a password (or leave blank)
+
+# 5. Base64-encode it:
+openssl base64 -in dist.p12 | tr -d '\n'   # → IOS_DIST_CERT_BASE64
+```
+
+#### Step 4 — Create an App Store Provisioning Profile
+
+1. [developer.apple.com](https://developer.apple.com) → **Profiles → +**
+2. Distribution → **App Store Connect**
+3. Select the `com.bookreader.ai` App ID
+4. Select the Distribution Certificate from Step 3
+5. Download the `.mobileprovision` file
+
+```bash
+openssl base64 -in profile.mobileprovision | tr -d '\n'   # → IOS_PROVISIONING_PROFILE_BASE64
+```
+
+#### Step 5 — Create an App Store Connect API Key
+
+This lets Fastlane upload to TestFlight without 2FA prompts.
+
+1. [appstoreconnect.apple.com/access/integrations/api](https://appstoreconnect.apple.com/access/integrations/api) → **Generate API Key**
+2. Name: anything (e.g. `CI`), Role: **App Manager**
+3. Download the `.p8` file (only downloadable once — save it)
+4. Note the **Key ID** and **Issuer ID** shown on the page
+
+```bash
+openssl base64 -in AuthKey_XXXX.p8 | tr -d '\n'   # → ASC_KEY_CONTENT
+```
+
+#### Step 6 — Add GitHub Actions secrets
+
+Go to your repo → **Settings → Secrets and variables → Actions → New repository secret** and add all of the following:
+
+| Secret | Where to find it |
+|---|---|
+| `APPLE_TEAM_ID` | Developer Portal — top-right corner (10 chars) |
+| `ASC_KEY_ID` | App Store Connect API key page — **Key ID** |
+| `ASC_ISSUER_ID` | App Store Connect API key page — **Issuer ID** |
+| `ASC_KEY_CONTENT` | base64 of the `.p8` file (Step 5) |
+| `IOS_DIST_CERT_BASE64` | base64 of the `.p12` certificate (Step 3) |
+| `IOS_DIST_CERT_PASSWORD` | password used when exporting the `.p12` (can be empty) |
+| `IOS_PROVISIONING_PROFILE_BASE64` | base64 of the `.mobileprovision` file (Step 4) |
+| `KEYCHAIN_PASSWORD` | any random string — used for the temporary CI keychain |
+
+#### How the pipeline triggers
+
+The workflow runs automatically on every push to `main` that touches any of these paths:
+
+```
+frontend/ios/**
+frontend/capacitor.config.ts
+frontend/package.json
+frontend/Gemfile / Gemfile.lock
+frontend/fastlane/**
+```
+
+Because the iOS app loads the live Vercel URL, a pure web-only change does not require a new binary. Trigger a manual build at any time from **Actions → iOS Release → Run workflow**.
+
+#### Apple Sign In (optional)
+
+If you enable the **Sign In with Apple** capability, you also need to add two secrets to Vercel:
+
+| Variable | How to generate |
+|---|---|
+| `AUTH_APPLE_ID` | The **Services ID** you create in Developer Portal → Identifiers (type: Services IDs) — used as the OAuth client ID |
+| `AUTH_APPLE_SECRET` | A short-lived ES256 JWT — run `node scripts/generate-apple-secret.mjs` (requires `ASC_KEY_CONTENT`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `APPLE_TEAM_ID` in your environment). Regenerate every 6 months. |
+
 ### Post-deploy smoke test
 
 `.github/workflows/smoke-test.yml` polls the live backend health endpoint and the live frontend `/login` page after every push to `main` (and every 6 hours on a schedule). It catches the class of bug that only fails inside the real container — port expansion, missing env vars, volume mount problems — that unit tests and the Docker build CI cannot reach.

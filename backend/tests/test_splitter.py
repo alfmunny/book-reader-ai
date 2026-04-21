@@ -417,3 +417,76 @@ def test_build_chapters_from_html_splits_multi_speaker_cue():
     # The solo and the choral stanza must be distinct paragraphs.
     irrlicht = next(p for p in paragraphs if p.startswith("IRRLICHT."))
     assert "FAUST, MEPHISTOPHELES" not in irrlicht
+
+
+# ── _clean_title fixes ────────────────────────────────────────────────────────
+
+def test_clean_title_keeps_balanced_parens():
+    """'Studierzimmer (I)' must not lose its closing paren."""
+    assert _clean_title("Studierzimmer (I)") == "Studierzimmer (I)"
+
+
+def test_clean_title_keeps_balanced_brackets():
+    assert _clean_title("Chapter [I]") == "Chapter [I]"
+
+
+def test_clean_title_strips_unbalanced_trailing_bracket():
+    """Gutenberg artefact: trailing ] with no matching [ should be removed."""
+    assert _clean_title("Chapter I.]") == "Chapter I."
+
+
+def test_clean_title_strips_unbalanced_trailing_paren():
+    assert _clean_title("Scene II.)") == "Scene II."
+
+
+def test_clean_title_strips_leading_unbalanced_paren():
+    assert _clean_title("(Chapter IV") == "Chapter IV"
+
+
+# ── Faust section-prefix fix ─────────────────────────────────────────────────
+
+def _chapter_html(title: str, words: int = 150) -> str:
+    """Build a chapter div with enough body words to survive _merge_tiny_first."""
+    body = " ".join(["word"] * words)
+    return f'<div class="chapter"><h2>{title}</h2><p>{body}</p></div>'
+
+
+def test_bare_title_div_not_used_as_section_prefix():
+    """A div with only a title and <50 words of body (e.g. 'FAUST' or
+    'ERSTER THEIL') must NOT prefix subsequent chapter titles."""
+    html = (
+        '<div class="chapter"><h2>ERSTER THEIL</h2></div>'
+        + _chapter_html("Nacht")
+        + _chapter_html("Vor dem Tor")
+    )
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 2
+    assert chapters[0].title == "Nacht"
+    assert chapters[1].title == "Vor dem Tor"
+
+
+def test_book_keyword_div_is_used_as_section_prefix():
+    """A div starting with BOOK/PART/TEIL keyword still becomes a prefix."""
+    html = (
+        '<div class="chapter"><h2>TEIL I</h2></div>'
+        + _chapter_html("Nacht")
+    )
+    chapters = build_chapters_from_html(html)
+    assert len(chapters) == 1
+    assert chapters[0].title == "TEIL I — Nacht"
+
+
+def test_faust_prologue_chapters_have_no_prefix():
+    """Chapters before any section marker must not be prefixed."""
+    html = (
+        _chapter_html("Zueignung")
+        + _chapter_html("Vorspiel")
+        + '<div class="chapter"><h2>ERSTER THEIL</h2></div>'
+        + _chapter_html("Nacht")
+    )
+    chapters = build_chapters_from_html(html)
+    titles = [c.title for c in chapters]
+    assert "Zueignung" in titles
+    assert "Vorspiel" in titles
+    assert "Nacht" in titles
+    assert all("ERSTER THEIL" not in t for t in titles)

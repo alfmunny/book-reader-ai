@@ -1127,8 +1127,6 @@ export default function ReaderPage() {
                   translationLoading={translationLoading}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
-                  onWordSave={session?.backendToken ? handleWordSave : undefined}
-                  onWordSaveBlocked={!session?.backendToken ? () => setVocabToastWord("Login to save words") : undefined}
                   onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}

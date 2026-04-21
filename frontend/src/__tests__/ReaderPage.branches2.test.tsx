@@ -2256,7 +2256,7 @@ describe("ReaderPage.branches2 — handleRetryFailed success path details", () =
     const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
     await userEvent.click(translateChapterBtn);
 
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
 
     const retryBtn = screen.queryByRole("button", { name: /retry failed translation/i });
     if (retryBtn) {

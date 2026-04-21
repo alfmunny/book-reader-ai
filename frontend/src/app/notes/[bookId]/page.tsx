@@ -81,6 +81,7 @@ function buildMarkdown(
         lines.push("### Book-level");
         lines.push("");
         for (const i of bookLevel) {
+          if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
           lines.push(`**Q:** ${i.question}`);
           lines.push(`**A:** ${i.answer}`);
           lines.push("");
@@ -90,6 +91,7 @@ function buildMarkdown(
         lines.push(`### ${chapterLabel(chapters, ch)}`);
         lines.push("");
         for (const i of ins) {
+          if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
           lines.push(`**Q:** ${i.question}`);
           lines.push(`**A:** ${i.answer}`);
           lines.push("");
@@ -133,6 +135,7 @@ function buildMarkdown(
 
       const chIns = insights.filter((i) => i.chapter_index === ch);
       for (const i of chIns) {
+        if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
         lines.push(`**Q:** ${i.question}`);
         lines.push(`**A:** ${i.answer}`);
         lines.push("");
@@ -155,6 +158,7 @@ function buildMarkdown(
       lines.push("## Book-level Insights");
       lines.push("");
       for (const i of bookLevelInsights) {
+        if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
         lines.push(`**Q:** ${i.question}`);
         lines.push(`**A:** ${i.answer}`);
         lines.push("");

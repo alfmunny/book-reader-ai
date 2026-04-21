@@ -425,7 +425,7 @@ export default function InsightChat({
               const prevUserMsg = displayedMessages.slice(0, i).reverse().find((m) => m.role === "user");
               return (
                 <div key={i} className="bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] shadow-sm">
-                  <div className={`prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-relaxed prose-p:my-1.5 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-ink text-${chatFontSize}`}>
+                  <div className={`prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-loose prose-p:my-2 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-loose prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-ink text-${chatFontSize}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                   </div>
                   {onSaveInsight && prevUserMsg && (
@@ -553,7 +553,7 @@ export default function InsightChat({
           )}
 
           {refsContent && (
-            <div className={`prose prose-sm max-w-none font-serif text-${chatFontSize}`}>
+            <div className={`prose prose-sm prose-p:leading-loose prose-li:leading-loose max-w-none font-serif text-${chatFontSize}`}>
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{refsContent}</ReactMarkdown>
             </div>
           )}

@@ -14,6 +14,7 @@ import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
+import SentenceActionPopup from "@/components/SentenceActionPopup";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -41,6 +42,7 @@ export default function ReaderPage() {
 
   const [selectedText, setSelectedText] = useState("");
   const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
+  const [sentencePopup, setSentencePopup] = useState<{ text: string; startTime: number; position: { x: number; y: number }; translationText?: string } | null>(null);
   const [chatSheetText, setChatSheetText] = useState<string | null>(null);
 
   // Annotations
@@ -965,12 +967,6 @@ export default function ReaderPage() {
             onTouchStart={handleTouchStart}
             onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}
             onMouseUp={handleSelection}
-            onDoubleClick={(e) => {
-              const sel = window.getSelection()?.toString().trim();
-              if (sel && sel.length > 1 && sel.length < 30 && !/\s/.test(sel)) {
-                setLookupWord({ word: sel, x: e.clientX, y: e.clientY });
-              }
-            }}
           >
             {loading ? (
               <div className="max-w-prose mx-auto space-y-3 animate-pulse">
@@ -1009,23 +1005,12 @@ export default function ReaderPage() {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
                   scrollTargetSentence={scrollTargetSentence}
-                  onSegmentClick={(startTime, segText) => {
-                    if (ttsDuration > 0) {
-                      ttsSeekRef.current(startTime);
-                      return;
-                    }
-                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsGender)
-                      .then(({ url }) => {
-                        const audio = new Audio(url);
-                        audio.onended = () => URL.revokeObjectURL(url);
-                        audio.play().catch(() => URL.revokeObjectURL(url));
-                      })
-                      .catch(() => {
-                        window.speechSynthesis.cancel();
-                        const utter = new SpeechSynthesisUtterance(segText);
-                        utter.lang = bookLanguage;
-                        window.speechSynthesis.speak(utter);
-                      });
+                  onSentenceClick={(info) => {
+                    setSentencePopup({ text: info.sentenceText, startTime: info.startTime, position: info.position, translationText: info.translationText });
+                  }}
+                  onSegmentClick={(startTime) => {
+                    // Called only when TTS is playing (seek)
+                    ttsSeekRef.current(startTime);
                   }}
                 />
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
@@ -1047,12 +1032,43 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Dictionary lookup popup (legacy — desktop fallback) */}
+          {/* Dictionary lookup popup — triggered from word selection via SelectionToolbar */}
           {lookupWord && (
             <WordLookup
               word={lookupWord.word}
               position={{ x: lookupWord.x, y: lookupWord.y }}
+              language={bookLanguage}
               onClose={() => setLookupWord(null)}
+            />
+          )}
+
+          {/* Sentence action popup — single-click on sentence when TTS is idle */}
+          {sentencePopup && (
+            <SentenceActionPopup
+              sentenceText={sentencePopup.text}
+              position={sentencePopup.position}
+              onRead={() => {
+                synthesizeSpeech(sentencePopup.text, bookLanguage, 1.0, getSettings().ttsGender)
+                  .then(({ url }) => {
+                    const audio = new Audio(url);
+                    audio.onended = () => URL.revokeObjectURL(url);
+                    audio.play().catch(() => URL.revokeObjectURL(url));
+                  })
+                  .catch(() => {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(sentencePopup.text);
+                    utter.lang = bookLanguage;
+                    window.speechSynthesis.speak(utter);
+                  });
+              }}
+              onNote={session?.backendToken ? () => {
+                setAnnotationPanel({ sentenceText: sentencePopup.text, chapterIndex, position: sentencePopup.position });
+              } : undefined}
+              onChat={() => {
+                setChatSheetText(sentencePopup.text);
+                setSelectedText(sentencePopup.text);
+              }}
+              onClose={() => setSentencePopup(null)}
             />
           )}
 

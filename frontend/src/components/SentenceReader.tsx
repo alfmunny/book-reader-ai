@@ -271,6 +271,18 @@ interface Props {
     chapterIndex: number;
     translationText?: string;
   }) => void;
+  /**
+   * Single-click handler (when TTS is NOT playing). Fires with the clicked
+   * sentence text, its TTS start time, the click position, and optional
+   * translation. The parent opens a quick-action popup (read, note, chat).
+   */
+  onSentenceClick?: (info: {
+    sentenceText: string;
+    startTime: number;
+    position: { x: number; y: number };
+    translationText?: string;
+    chapterIndex: number;
+  }) => void;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -278,6 +290,20 @@ const ANNOTATION_COLOR_CLASS: Record<string, string> = {
   blue: "border-b-2 border-blue-400",
   green: "border-b-2 border-green-400",
   pink: "border-b-2 border-pink-400",
+};
+
+const PARA_BORDER_CLASS: Record<string, string> = {
+  yellow: "border-l-2 border-yellow-400",
+  blue: "border-l-2 border-blue-400",
+  green: "border-l-2 border-green-400",
+  pink: "border-l-2 border-pink-400",
+};
+
+const NOTE_CARD_CLASS: Record<string, string> = {
+  yellow: "bg-yellow-50 text-yellow-800 border-yellow-200",
+  blue: "bg-blue-50 text-blue-800 border-blue-200",
+  green: "bg-green-50 text-green-800 border-green-200",
+  pink: "bg-pink-50 text-pink-800 border-pink-200",
 };
 
 export default function SentenceReader({
@@ -296,8 +322,10 @@ export default function SentenceReader({
   annotations,
   scrollTargetSentence,
   onWordTap,
+  onSentenceClick,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
+  const [expandedNoteParaIdx, setExpandedNoteParaIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -415,14 +443,14 @@ export default function SentenceReader({
         const segClass = (seg: { flatIdx: number; chunkIdx: number }): string => {
           const active = seg.flatIdx === currentIdx;
           const loaded = isSegmentLoaded(seg);
-          if (active) return "bg-amber-300 text-amber-950 cursor-pointer";
+          if (active) return "bg-amber-300 text-amber-950";
           if (disabled) {
             return loaded
-              ? "text-stone-500 cursor-default"
-              : "text-stone-400/70 cursor-default";
+              ? "text-stone-500"
+              : "text-stone-400/70";
           }
           return loaded
-            ? "cursor-pointer hover:bg-amber-100"
+            ? "hover:bg-amber-50"
             : "text-stone-400 cursor-default";
         };
 
@@ -467,7 +495,7 @@ export default function SentenceReader({
           }, 500);
         };
 
-        // Render a segment span with annotation underline + note icon
+        // Render a segment span with annotation underline
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
           const isJumpTarget = flashTarget !== null && seg.text === flashTarget;
@@ -482,7 +510,16 @@ export default function SentenceReader({
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
-              onDoubleClick={onWordTap ? undefined : () => { if (!disabled && isSegmentLoaded(seg)) onSegmentClick(seg.startTime, seg.text); }}
+              onClick={(e) => {
+                if (disabled || !isSegmentLoaded(seg)) return;
+                if (isPlaying || duration > 0) {
+                  onSegmentClick(seg.startTime, seg.text);
+                } else if (onSentenceClick) {
+                  onSentenceClick({ sentenceText: seg.text, startTime: seg.startTime, position: { x: e.clientX, y: e.clientY }, translationText: translationText || undefined, chapterIndex });
+                } else {
+                  onSegmentClick(seg.startTime, seg.text);
+                }
+              }}
               onPointerDown={(e) => onWordTap ? handleSegLongPress(e, seg) : handlePointerDown(e, seg)}
               onPointerUp={cancelLongPress}
               onPointerCancel={cancelLongPress}
@@ -490,7 +527,6 @@ export default function SentenceReader({
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {seg.text}
-              {annotation?.note_text ? <span className="ml-0.5 text-xs select-none">📝</span> : null}
               {trailingSpace ? " " : ""}
             </span>
           );
@@ -518,28 +554,66 @@ export default function SentenceReader({
           );
         }
 
+        // Annotation side mark helpers for this paragraph
+        const paraAnnotations = para.segments
+          .map((s) => annotationMap.get(s.text))
+          .filter(Boolean) as Annotation[];
+        const paraHasAnnotation = paraAnnotations.length > 0;
+        const dominantColor = paraAnnotations[0]?.color ?? "yellow";
+        const paraNotes = paraAnnotations.filter((a) => a.note_text);
+
+        const noteToggle = paraNotes.length > 0 ? (
+          <div className="mt-0.5 ml-0.5">
+            <button
+              onClick={() => setExpandedNoteParaIdx(expandedNoteParaIdx === pIdx ? null : pIdx)}
+              className="text-xs text-amber-500 hover:text-amber-700 transition-colors select-none"
+            >
+              {expandedNoteParaIdx === pIdx ? "▾ hide note" : `▸ ${paraNotes.length === 1 ? "1 note" : `${paraNotes.length} notes`}`}
+            </button>
+            {expandedNoteParaIdx === pIdx && (
+              <div className="mt-1.5 space-y-1.5">
+                {paraNotes.map((ann) => (
+                  <div key={ann.id} className={`text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[ann.color] ?? NOTE_CARD_CLASS.yellow}`}>
+                    <p className="italic leading-relaxed">{ann.note_text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null;
+
         // ── No translation: render original only ──
         if (!hasTranslations) {
-          return <div key={pIdx}>{originalContent}</div>;
+          return (
+            <div key={pIdx} className={paraHasAnnotation ? `pl-2.5 ${PARA_BORDER_CLASS[dominantColor] ?? PARA_BORDER_CLASS.yellow}` : ""}>
+              {originalContent}
+              {noteToggle}
+            </div>
+          );
         }
 
         // ── Translation: parallel (side by side) ──
         if (isParallel) {
           return (
-            <div key={pIdx} className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2 py-4 first:pt-0 last:pb-0">
-              {originalContent}
-              <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6">
-                {translationText ? (
-                  <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
-                    {translationText}
-                  </p>
-                ) : translationLoading ? (
-                  <div className="space-y-2 animate-pulse">
-                    {Array.from({ length: 3 }).map((_, j) => (
-                      <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
-                    ))}
-                  </div>
-                ) : null}
+            <div key={pIdx} className={`py-4 first:pt-0 last:pb-0 ${paraHasAnnotation ? `pl-2.5 ${PARA_BORDER_CLASS[dominantColor] ?? PARA_BORDER_CLASS.yellow}` : ""}`}>
+              <div className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2">
+                <div>
+                  {originalContent}
+                  {noteToggle}
+                </div>
+                <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6">
+                  {translationText ? (
+                    <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
+                      {translationText}
+                    </p>
+                  ) : translationLoading ? (
+                    <div className="space-y-2 animate-pulse">
+                      {Array.from({ length: 3 }).map((_, j) => (
+                        <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           );
@@ -547,8 +621,9 @@ export default function SentenceReader({
 
         // ── Translation: inline (below) ──
         return (
-          <div key={pIdx}>
+          <div key={pIdx} className={paraHasAnnotation ? `pl-2.5 ${PARA_BORDER_CLASS[dominantColor] ?? PARA_BORDER_CLASS.yellow}` : ""}>
             {originalContent}
+            {noteToggle}
             {translationLoading && textParaIdx === 0 && !translationText && (
               <div className="mt-1 space-y-1 animate-pulse">
                 <div className="h-3 bg-amber-100 rounded w-full" />

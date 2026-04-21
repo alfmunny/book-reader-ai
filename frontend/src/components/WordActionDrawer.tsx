@@ -22,6 +22,7 @@ export interface WordAction {
 
 interface Props {
   action: WordAction | null;
+  language?: string;
   onClose: () => void;
   onReadSentence?: (text: string, startTime: number) => void;
   onSaveWord?: (word: string, sentenceText: string) => void;
@@ -30,6 +31,7 @@ interface Props {
 
 export default function WordActionDrawer({
   action,
+  language,
   onClose,
   onReadSentence,
   onSaveWord,
@@ -50,7 +52,8 @@ export default function WordActionDrawer({
     setError("");
     setResult(null);
 
-    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`)
+    const lang = language?.split(/[-_]/)[0] ?? "en";
+    fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word.toLowerCase())}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
         return r.json();

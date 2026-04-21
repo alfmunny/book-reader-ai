@@ -15,10 +15,11 @@ interface LookupResult {
 interface Props {
   word: string;
   position: { x: number; y: number };
+  language?: string;
   onClose: () => void;
 }
 
-export default function WordLookup({ word, position, onClose }: Props) {
+export default function WordLookup({ word, position, language, onClose }: Props) {
   const [result, setResult] = useState<LookupResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -29,7 +30,8 @@ export default function WordLookup({ word, position, onClose }: Props) {
     setError("");
     setResult(null);
 
-    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`)
+    const lang = language?.split(/[-_]/)[0] ?? "en";
+    fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word.toLowerCase())}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
         return r.json();

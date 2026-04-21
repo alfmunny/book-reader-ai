@@ -390,8 +390,8 @@ describe("SentenceReader annotations", () => {
       />
     );
 
-    // Note toggle button should appear
-    expect(screen.getByText("▸ 1 note")).toBeInTheDocument();
+    // Note dot button should appear on the annotated segment
+    expect(screen.getByRole("button", { name: "Toggle note" })).toBeInTheDocument();
   });
 
   it("applies blue color class for blue annotation", () => {
@@ -893,6 +893,6 @@ describe("SentenceReader annotation substring matching", () => {
       />
     );
 
-    expect(screen.getByText("▸ 1 note")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Toggle note" })).toBeInTheDocument();
   });
 });

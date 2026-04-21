@@ -297,6 +297,8 @@ interface Props {
     translationText?: string;
     chapterIndex: number;
   }) => void;
+  /** When false, annotation underlines and note dots are hidden. Default true. */
+  showAnnotations?: boolean;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -306,11 +308,11 @@ const ANNOTATION_COLOR_CLASS: Record<string, string> = {
   pink: "border-b-2 border-pink-400",
 };
 
-const PARA_BORDER_CLASS: Record<string, string> = {
-  yellow: "border-l-2 border-yellow-400",
-  blue: "border-l-2 border-blue-400",
-  green: "border-l-2 border-green-400",
-  pink: "border-l-2 border-pink-400",
+const NOTE_DOT_CLASS: Record<string, string> = {
+  yellow: "bg-yellow-400",
+  blue: "bg-blue-400",
+  green: "bg-green-400",
+  pink: "bg-pink-400",
 };
 
 const NOTE_CARD_CLASS: Record<string, string> = {
@@ -337,9 +339,10 @@ export default function SentenceReader({
   scrollTargetSentence,
   onWordTap,
   onSentenceClick,
+  showAnnotations = true,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
-  const [expandedNoteParaIdx, setExpandedNoteParaIdx] = useState<number | null>(null);
+  const [expandedNoteFlatIdx, setExpandedNoteFlatIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -520,11 +523,11 @@ export default function SentenceReader({
           }, 500);
         };
 
-        // Render a segment span with annotation underline
+        // Render a segment span with annotation underline + note dot
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
           const isJumpTarget = flashTarget !== null && seg.text === flashTarget;
-          const annotation = getAnnotation(seg.text);
+          const annotation = showAnnotations ? getAnnotation(seg.text) : undefined;
           const annotationClass = annotation
             ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
@@ -554,6 +557,15 @@ export default function SentenceReader({
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {seg.text}
+              {annotation?.note_text && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}
+                  className="inline-block ml-0.5 align-middle leading-none cursor-pointer"
+                  aria-label="Toggle note"
+                >
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[annotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
+                </button>
+              )}
               {trailingSpace ? " " : ""}
             </span>
           );
@@ -581,40 +593,22 @@ export default function SentenceReader({
           );
         }
 
-        // Annotation side mark helpers for this paragraph
-        const paraAnnotations = para.segments
-          .map((s) => getAnnotation(s.text))
-          .filter(Boolean) as Annotation[];
-        const paraHasAnnotation = paraAnnotations.length > 0;
-        const dominantColor = paraAnnotations[0]?.color ?? "yellow";
-        const paraNotes = paraAnnotations.filter((a) => a.note_text);
-
-        const noteToggle = paraNotes.length > 0 ? (
-          <div className="mt-0.5 ml-0.5">
-            <button
-              onClick={() => setExpandedNoteParaIdx(expandedNoteParaIdx === pIdx ? null : pIdx)}
-              className="text-xs text-amber-500 hover:text-amber-700 transition-colors select-none"
-            >
-              {expandedNoteParaIdx === pIdx ? "▾ hide note" : `▸ ${paraNotes.length === 1 ? "1 note" : `${paraNotes.length} notes`}`}
-            </button>
-            {expandedNoteParaIdx === pIdx && (
-              <div className="mt-1.5 space-y-1.5">
-                {paraNotes.map((ann) => (
-                  <div key={ann.id} className={`text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[ann.color] ?? NOTE_CARD_CLASS.yellow}`}>
-                    <p className="italic leading-relaxed">{ann.note_text}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+        // Expanded note card for any annotated sentence in this paragraph
+        const expandedAnn = expandedNoteFlatIdx !== null
+          ? (para.segments.map((s) => s.flatIdx === expandedNoteFlatIdx ? getAnnotation(s.text) : null).find((a) => a != null) ?? null)
+          : null;
+        const noteCard = expandedAnn?.note_text ? (
+          <div className={`mt-1.5 text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[expandedAnn.color] ?? NOTE_CARD_CLASS.yellow}`}>
+            <p className="italic leading-relaxed">{expandedAnn.note_text}</p>
           </div>
         ) : null;
 
         // ── No translation: render original only ──
         if (!hasTranslations) {
           return (
-            <div key={pIdx} className={paraHasAnnotation ? `pl-2.5 ${PARA_BORDER_CLASS[dominantColor] ?? PARA_BORDER_CLASS.yellow}` : ""}>
+            <div key={pIdx}>
               {originalContent}
-              {noteToggle}
+              {noteCard}
             </div>
           );
         }
@@ -622,13 +616,13 @@ export default function SentenceReader({
         // ── Translation: parallel (side by side) ──
         if (isParallel) {
           return (
-            <div key={pIdx} className={`py-4 first:pt-0 last:pb-0 ${paraHasAnnotation ? `pl-2.5 ${PARA_BORDER_CLASS[dominantColor] ?? PARA_BORDER_CLASS.yellow}` : ""}`}>
+            <div key={pIdx} className="py-4 first:pt-0 last:pb-0">
               <div className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2">
                 <div>
                   {originalContent}
-                  {noteToggle}
+                  {noteCard}
                 </div>
-                <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6">
+                <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6" data-translation="true">
                   {translationText ? (
                     <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
                       {translationText}
@@ -648,9 +642,9 @@ export default function SentenceReader({
 
         // ── Translation: inline (below) ──
         return (
-          <div key={pIdx} className={paraHasAnnotation ? `pl-2.5 ${PARA_BORDER_CLASS[dominantColor] ?? PARA_BORDER_CLASS.yellow}` : ""}>
+          <div key={pIdx}>
             {originalContent}
-            {noteToggle}
+            {noteCard}
             {translationLoading && textParaIdx === 0 && !translationText && (
               <div className="mt-1 space-y-1 animate-pulse">
                 <div className="h-3 bg-amber-100 rounded w-full" />
@@ -658,7 +652,7 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+              <p data-translation="true" className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
                 {translationText}
               </p>
             )}

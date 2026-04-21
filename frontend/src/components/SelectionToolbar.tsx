@@ -31,6 +31,15 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
       // Only show for selections inside the reader area
       const readerEl = document.getElementById("reader-scroll");
       if (!readerEl?.contains(range.commonAncestorContainer)) return;
+      // Don't show toolbar for selections inside translation text
+      let node: Node | null = range.commonAncestorContainer;
+      while (node && node !== readerEl) {
+        if ((node as Element).getAttribute?.("data-translation") === "true") {
+          setSelection(null);
+          return;
+        }
+        node = node.parentNode;
+      }
       setSelection({ text, rect });
     }
 

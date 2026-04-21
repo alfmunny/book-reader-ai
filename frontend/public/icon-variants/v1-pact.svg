@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- V1 — THE PACT
+       One flame. Two natures. Left: angular + dark (Mephisto).
+       Right: curved + amber (Faust/knowledge). Divided by a seam.  -->
+  <defs>
+    <linearGradient id="fire" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FEF3C7"/>
+      <stop offset="45%"  stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+    <radialGradient id="apex" cx="50%" cy="0%" r="80%">
+      <stop offset="0%"   stop-color="#FEF3C7" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="88" fill="#0C0300"/>
+
+  <!-- Apex glow -->
+  <ellipse cx="256" cy="78" rx="38" ry="62" fill="url(#apex)"/>
+
+  <!-- Dark half — angular, hard-edged (the shadow, the pact) -->
+  <path d="M 256 72
+    L 194 192
+    L 160 308
+    L 170 386
+    L 214 430
+    L 256 440
+    Z"
+    fill="#180600"/>
+
+  <!-- Amber half — organic, curved (the flame, the knowledge) -->
+  <path d="M 256 72
+    C 284 102, 320 144, 338 194
+    C 360 258, 356 322, 338 370
+    C 320 414, 294 436, 256 440
+    Z"
+    fill="url(#fire)"/>
+
+  <!-- Seam between the two halves -->
+  <line x1="256" y1="72" x2="256" y2="440"
+        stroke="#0C0300" stroke-width="2.5"/>
+
+  <!-- Base ember -->
+  <ellipse cx="256" cy="437" rx="42" ry="9" fill="#F59E0B" opacity="0.22"/>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- BRIGHT C — Richly lit. Deep amber fills, gold strokes.
+       Hat darker, book richer. Like burnished leather and candle-brass. -->
+  <rect width="512" height="512" rx="88" fill="#180700"/>
+  <rect x="18" y="18" width="476" height="476" rx="74"
+        fill="none" stroke="#B45309" stroke-width="1.6"/>
+
+  <!-- Corner diamonds -->
+  <g fill="#B45309" opacity="0.8">
+    <polygon points="38,38 46,30 54,38 46,46"/>
+    <polygon points="458,38 466,30 474,38 466,46"/>
+    <polygon points="38,474 46,466 54,474 46,482"/>
+    <polygon points="458,474 466,466 474,474 466,482"/>
+  </g>
+
+  <!-- Hat crown -->
+  <path d="M 256 68 L 194 246 L 318 246 Z"
+        fill="#6B2C0A" stroke="#B45309" stroke-width="1.8"
+        stroke-linejoin="round"/>
+  <!-- Hat brim -->
+  <path d="M 166 246 L 346 246 L 340 270 L 172 270 Z"
+        fill="#7C3410" stroke="#B45309" stroke-width="1.8"
+        stroke-linejoin="round"/>
+  <!-- Feather -->
+  <path d="M 312 218 C 328 202, 348 188, 364 174
+           C 350 182, 332 198, 318 214 Z"
+        fill="#9A4218"/>
+
+  <!-- Eye -->
+  <circle cx="256" cy="268" r="40" fill="#F59E0B" opacity="0.16"/>
+  <circle cx="256" cy="268" r="13" fill="#FCD34D"/>
+  <circle cx="256" cy="268" r="6"  fill="#FFFBEB"/>
+
+  <!-- Book left page -->
+  <path d="M 256 286 L 256 454 L 62 442 L 62 290 Z"
+        fill="#7C3410" stroke="#B45309" stroke-width="1.8"
+        stroke-linejoin="round"/>
+  <!-- Book right page -->
+  <path d="M 256 286 L 450 290 L 450 442 L 256 454 Z"
+        fill="#92400E" stroke="#B45309" stroke-width="1.8"
+        stroke-linejoin="round"/>
+  <!-- Spine -->
+  <line x1="256" y1="286" x2="256" y2="454" stroke="#B45309" stroke-width="2.2"/>
+  <!-- Eye glow on book -->
+  <ellipse cx="256" cy="290" rx="60" ry="12" fill="#FCD34D" opacity="0.14"/>
+</svg>

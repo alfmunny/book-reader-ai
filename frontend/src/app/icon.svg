@@ -1,133 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>Book Reader AI</title>
-  <defs>
-    <!-- Page glow — left: warm light from spine outward -->
-    <radialGradient id="pg-l" cx="72%" cy="50%" r="72%">
-      <stop offset="0%"   stop-color="#FEF3C7"/>
-      <stop offset="55%"  stop-color="#FDE68A"/>
-      <stop offset="100%" stop-color="#B45309"/>
-    </radialGradient>
-    <!-- Page glow — right: mirror -->
-    <radialGradient id="pg-r" cx="28%" cy="50%" r="72%">
-      <stop offset="0%"   stop-color="#FEF3C7"/>
-      <stop offset="55%"  stop-color="#FDE68A"/>
-      <stop offset="100%" stop-color="#B45309"/>
-    </radialGradient>
-    <!-- Hellfire rising from below the figure -->
-    <radialGradient id="inferno" cx="50%" cy="100%" r="65%">
-      <stop offset="0%"   stop-color="#FCD34D" stop-opacity="0.55"/>
-      <stop offset="28%"  stop-color="#F59E0B" stop-opacity="0.30"/>
-      <stop offset="65%"  stop-color="#D97706" stop-opacity="0.12"/>
-      <stop offset="100%" stop-color="#92400E" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-
-  <!-- ░░ BACKGROUND — near-black cognac leather ░░ -->
+  <!-- BRIGHT B — Woodcut / linework. Outlines only in bright amber-gold.
+       Pure amber lines on black — like an etching or a Retzsch plate. -->
   <rect width="512" height="512" rx="88" fill="#0C0300"/>
-
-  <!-- Ambient hellfire glow (behind everything) -->
-  <ellipse cx="256" cy="480" rx="260" ry="170" fill="url(#inferno)"/>
-
-  <!-- ░░ DOUBLE ORNAMENTAL BORDER ░░ -->
   <rect x="18" y="18" width="476" height="476" rx="74"
-        fill="none" stroke="#6B2B08" stroke-width="1.8" opacity="0.9"/>
-  <rect x="27" y="27" width="458" height="458" rx="67"
-        fill="none" stroke="#6B2B08" stroke-width="0.7" opacity="0.45"/>
+        fill="none" stroke="#F59E0B" stroke-width="1.4" opacity="0.5"/>
 
-  <!-- Corner diamonds -->
-  <g fill="#92400E" opacity="0.95">
-    <polygon points="38,38  46,30  54,38  46,46"/>
-    <polygon points="458,38 466,30 474,38 466,46"/>
-    <polygon points="38,474 46,466 54,474 46,482"/>
-    <polygon points="458,474 466,466 474,474 466,482"/>
-  </g>
+  <!-- Hat crown (outline only) -->
+  <path d="M 256 68 L 194 246 L 318 246 Z"
+        fill="none" stroke="#F59E0B" stroke-width="3.5"
+        stroke-linejoin="round"/>
+  <!-- Hat brim (outline only) -->
+  <path d="M 166 246 L 346 246 L 340 270 L 172 270 Z"
+        fill="none" stroke="#F59E0B" stroke-width="3.5"
+        stroke-linejoin="round"/>
+  <!-- Feather line -->
+  <path d="M 310 222 C 330 204, 352 188, 368 172"
+        fill="none" stroke="#F59E0B" stroke-width="2.5"
+        stroke-linecap="round"/>
 
-  <!-- Decorative top pip -->
-  <line x1="150" y1="52" x2="220" y2="52" stroke="#6B2B08" stroke-width="1" opacity="0.65"/>
-  <line x1="292" y1="52" x2="362" y2="52" stroke="#6B2B08" stroke-width="1" opacity="0.65"/>
-  <polygon points="256,46 261,52 256,58 251,52" fill="#6B2B08" opacity="0.65"/>
+  <!-- Eye -->
+  <circle cx="256" cy="268" r="42" fill="#F59E0B" opacity="0.10"/>
+  <circle cx="256" cy="268" r="14" fill="#FCD34D"/>
+  <circle cx="256" cy="268" r="6"  fill="#FEF3C7"/>
 
-  <!-- ░░ OPEN BOOK ░░ -->
-  <!-- Left page -->
-  <path d="M 256 434 L 256 296 Q 163 280 68 296 L 68 446 Q 161 458 256 434 Z"
-        fill="url(#pg-l)"/>
-  <!-- Right page -->
-  <path d="M 256 296 Q 349 280 444 296 L 444 446 Q 351 458 256 434 L 256 296 Z"
-        fill="url(#pg-r)"/>
-  <!-- Spine crease -->
-  <line x1="256" y1="296" x2="256" y2="434" stroke="#92400E" stroke-width="2.2" opacity="0.55"/>
-
-  <!-- Text lines — left page (slightly angled toward spine) -->
-  <g stroke="#8B3A0A" stroke-width="1.1" opacity="0.22" stroke-linecap="round">
-    <line x1="90"  y1="323" x2="242" y2="316"/>
-    <line x1="88"  y1="337" x2="243" y2="330"/>
-    <line x1="88"  y1="351" x2="242" y2="344"/>
-    <line x1="89"  y1="365" x2="242" y2="358"/>
-    <line x1="89"  y1="379" x2="240" y2="372"/>
-    <line x1="90"  y1="393" x2="238" y2="386"/>
-    <line x1="90"  y1="407" x2="224" y2="400"/>
-    <line x1="91"  y1="421" x2="227" y2="414"/>
-  </g>
-  <!-- Text lines — right page -->
-  <g stroke="#8B3A0A" stroke-width="1.1" opacity="0.22" stroke-linecap="round">
-    <line x1="270" y1="316" x2="422" y2="323"/>
-    <line x1="269" y1="330" x2="424" y2="337"/>
-    <line x1="270" y1="344" x2="424" y2="351"/>
-    <line x1="270" y1="358" x2="423" y2="365"/>
-    <line x1="272" y1="372" x2="423" y2="379"/>
-    <line x1="274" y1="386" x2="422" y2="393"/>
-    <line x1="288" y1="400" x2="422" y2="407"/>
-    <line x1="285" y1="414" x2="421" y2="421"/>
-  </g>
-
-  <!-- Hot glow at the spine — where Mephisto stands -->
-  <ellipse cx="256" cy="300" rx="78" ry="20" fill="#FCD34D" opacity="0.15"/>
-  <ellipse cx="256" cy="300" rx="40" ry="11" fill="#FFFBEB" opacity="0.18"/>
-
-  <!-- ░░ MEPHISTOPHELES SILHOUETTE ░░
-       Classic Faustian figure: tall pointed hat with feather,
-       dramatic sweeping cloak, standing over the open book.  -->
-  <path d="
-    M 258 76
-    L 273 137
-    L 296 157
-    C 298 163, 294 170, 285 175
-    C 279 178, 271 181, 268 185
-    C 281 191, 298 200, 319 219
-    C 339 238, 357 263, 360 288
-    C 362 305, 355 319, 339 323
-    C 325 327, 306 327, 286 323
-    C 277 321, 269 319, 261 318
-    L 256 318
-    L 251 318
-    C 243 319, 235 321, 226 323
-    C 206 327, 187 327, 173 323
-    C 157 319, 150 305, 152 288
-    C 155 263, 173 238, 193 219
-    C 214 200, 231 191, 244 185
-    C 241 181, 233 178, 227 175
-    C 218 170, 214 163, 216 157
-    L 239 137
-    Z
-  " fill="#080200"/>
-
-  <!-- Hat feather — curves upward from right brim, classic Mephisto detail -->
-  <path d="M 286 150 C 300 135, 318 118, 334 104
-           C 320 112, 304 131, 291 146 Z"
-        fill="#110300"/>
-
-  <!-- Subtle amber rim-light on cape base (hellfire from below) -->
-  <path d="M 175 320 C 200 329, 228 331, 256 330 C 284 331, 312 329, 337 320"
-        fill="none" stroke="#D97706" stroke-width="1.3" opacity="0.28"/>
-
-  <!-- THE EYE — a single ember watching from the darkness -->
-  <circle cx="261" cy="167" r="6.5" fill="#F59E0B" opacity="0.10"/>
-  <circle cx="261" cy="167" r="3.0" fill="#F59E0B" opacity="0.90"/>
-  <circle cx="261" cy="167" r="1.5" fill="#FDE68A" opacity="0.95"/>
-
-  <!-- ░░ BOTTOM ORNAMENT ░░ -->
-  <line x1="150" y1="473" x2="220" y2="473" stroke="#6B2B08" stroke-width="1" opacity="0.55"/>
-  <line x1="292" y1="473" x2="362" y2="473" stroke="#6B2B08" stroke-width="1" opacity="0.55"/>
-  <polygon points="256,467 261,473 256,479 251,473" fill="#6B2B08" opacity="0.55"/>
-
+  <!-- Book left page (outline only) -->
+  <path d="M 256 286 L 256 454 L 62 442 L 62 290 Z"
+        fill="none" stroke="#F59E0B" stroke-width="3.5"
+        stroke-linejoin="round"/>
+  <!-- Book right page (outline only) -->
+  <path d="M 256 286 L 450 290 L 450 442 L 256 454 Z"
+        fill="none" stroke="#F59E0B" stroke-width="3.5"
+        stroke-linejoin="round"/>
+  <!-- Spine -->
+  <line x1="256" y1="286" x2="256" y2="454"
+        stroke="#F59E0B" stroke-width="2.5" opacity="0.7"/>
 </svg>

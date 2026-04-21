@@ -111,6 +111,8 @@ test("translation shows worker offline message when worker not running", async (
   );
 
   await page.goto("/reader/1342");
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible({ timeout: 10000 });
+
   await page.getByRole("button", { name: /Translate/ }).first().click();
 
   await expect(page.getByText("queue · worker is offline", { exact: true })).toBeVisible({ timeout: 5000 });

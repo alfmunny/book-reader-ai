@@ -219,48 +219,33 @@ async def test_import_stream_cached_book_skips_fetch(client):
     assert done[0]["book_id"] == 1342
 
 
-async def test_import_stream_translates_chapters(client):
+async def test_import_stream_does_not_translate(client):
+    """Translation is NOT done during import — user must confirm separately."""
     text = ("CHAPTER I\n\n" + ("Erster Absatz. " * 40)
             + "\n\nCHAPTER II\n\n" + ("Zweiter Absatz. " * 40))
     meta = {**MOCK_META, "languages": ["de"]}
     await save_book(1342, meta, text)
 
-    with patch(
-        "routers.books.translate_text",
-        new_callable=AsyncMock,
-        return_value=["Translated paragraph."],
-    ) as mock_translate:
-        resp = await client.get("/api/books/1342/import-stream?target_language=en")
+    resp = await client.get("/api/books/1342/import-stream")
 
     assert resp.status_code == 200
     events = _parse_sse(resp.text)
     stages = [e["stage"] for e in events if e["event"] == "stage"]
-    assert "translating" in stages
-    # translate_text should have been called at least once (per chapter)
-    assert mock_translate.await_count >= 1
+    assert "translating" not in stages
+    assert any(e["event"] == "done" for e in events)
 
 
-async def test_import_stream_skips_already_translated(client):
-    """Chapters with existing translation cache are reported as cached."""
-    from services.db import save_translation
-    text = ("CHAPTER I\n\n" + ("Erster. " * 40)
-            + "\n\nCHAPTER II\n\n" + ("Zweiter. " * 40))
-    meta = {**MOCK_META, "languages": ["de"]}
-    await save_book(1342, meta, text)
-    # Pre-seed chapter 0 translation
-    await save_translation(1342, 0, "en", ["Already done."])
+async def test_import_stream_chapters_event_has_total_words(client):
+    """chapters event includes total_words for cost estimation in the frontend."""
+    text = ("CHAPTER I\n\n" + ("Word " * 100) + "\n\nCHAPTER II\n\n" + ("Word " * 100))
+    await save_book(1342, MOCK_META, text)
 
-    with patch("routers.books.translate_text",
-               new_callable=AsyncMock, return_value=["x"]) as mock_translate:
-        resp = await client.get("/api/books/1342/import-stream?target_language=en")
+    resp = await client.get("/api/books/1342/import-stream")
 
     events = _parse_sse(resp.text)
-    translating = [e for e in events
-                   if e["event"] == "progress" and e.get("stage") == "translating"]
-    cached_count = sum(1 for e in translating if e.get("cached"))
-    assert cached_count >= 1
-    # Only chapter 1 should have been actually translated (0 was cached)
-    assert mock_translate.await_count <= 1
+    chapters_ev = next(e for e in events if e["event"] == "chapters")
+    assert "total_words" in chapters_ev
+    assert chapters_ev["total_words"] > 0
 
 
 async def test_import_stream_done_event_on_uncached_book(client):

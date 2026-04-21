@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation, VocabularyWord } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -80,8 +80,10 @@ export default function ReaderPage() {
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
 
-  // Sidebar (insight chat) — hidden by default, resizable
+  // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "vocab">("chat");
+  const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
   const resizeStartX = useRef(0);
@@ -211,6 +213,7 @@ export default function ReaderPage() {
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
+  const [translationRequested, setTranslationRequested] = useState(false);
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
@@ -305,6 +308,14 @@ export default function ReaderPage() {
       .finally(() => setAnnotationsLoading(false));
   }, [bookId, session?.backendToken]);
 
+  // Fetch vocabulary words for this book
+  useEffect(() => {
+    if (!session?.backendToken) return;
+    getVocabulary().then((words) => {
+      setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
+    }).catch(() => {});
+  }, [bookId, session?.backendToken]);
+
   const bookLanguage = meta?.languages[0] || "en";
 
   // Auto-translate when enabled or chapter/lang changes.
@@ -321,6 +332,11 @@ export default function ReaderPage() {
   // This replaces the previous per-paragraph translate loop — admins
   // stop double-spending tokens and all translation work flows through
   // the single queue (same model chain, same rate limits).
+  // Reset manual translation trigger when chapter or language changes
+  useEffect(() => {
+    setTranslationRequested(false);
+  }, [chapterIndex, translationLang]);
+
   // Reset translationLang when bookLanguage is known and they coincide.
   useEffect(() => {
     if (!bookLanguage) return;
@@ -345,6 +361,9 @@ export default function ReaderPage() {
       setTranslationUsedProvider("cached");
       return;
     }
+
+    // Don't auto-trigger — wait for user to click "Translate this chapter"
+    if (!translationRequested) return;
 
     // If logged in but key status not yet loaded, wait for getMe() to resolve.
     if (session && hasGeminiKey === null) return;
@@ -465,7 +484,7 @@ export default function ReaderPage() {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey]);
+  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey, translationRequested]);
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
@@ -769,10 +788,10 @@ export default function ReaderPage() {
 
           {/* Insight chat toggle — desktop only (mobile uses bottom bar) */}
           <button
-            onClick={() => setSidebarOpen((v) => !v)}
+            onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen
+              sidebarOpen && sidebarTab === "chat"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
@@ -809,14 +828,23 @@ export default function ReaderPage() {
             </div>
           )}
 
-          {/* Vocabulary link — desktop only */}
+          {/* Vocabulary sidebar — desktop only */}
           {session?.backendToken && (
             <button
-              onClick={() => router.push("/vocabulary")}
+              onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
               title="Vocabulary"
-              className="hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "vocab"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
             >
               📚 Vocab
+              {vocabWords.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {vocabWords.length}
+                </span>
+              )}
             </button>
           )}
 
@@ -862,6 +890,14 @@ export default function ReaderPage() {
 
           {translationEnabled && (
             <>
+              {/* Manual trigger — only shown when translation hasn't been requested yet */}
+              {!translationLoading && translatedParagraphs.length === 0 && !translationRequested && (
+                <button
+                  onClick={() => setTranslationRequested(true)}
+                  className="text-xs px-3 py-1.5 rounded border border-amber-500 bg-amber-600 text-white hover:bg-amber-700 font-medium transition-colors"
+                >Translate this chapter</button>
+              )}
+
               <select
                 className="text-xs rounded border border-amber-300 px-2 py-2 md:py-1 text-ink bg-white min-h-[44px] md:min-h-0"
                 value={translationLang}
@@ -1017,49 +1053,23 @@ export default function ReaderPage() {
           total - ready - queued - (s.queue_failed ?? 0),
         );
         return (
-          <div className="bg-amber-50 border-b border-amber-200 px-3 md:px-4 py-1.5 md:py-2 text-xs text-amber-800 flex items-center justify-between gap-2 md:gap-3 flex-wrap">
-            <span className="flex items-center gap-2 min-w-0">
-              <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-              <span>
-                <strong>{ready} / {total}</strong> chapters translated
-                {queued > 0 && (
-                  <>
-                    {" · "}
-                    <strong>{queued}</strong> still processing
-                    {s.queue_running ? ` (${s.queue_running} running)` : ""}
-                  </>
-                )}
-                {s.queue_failed ? (
-                  <>
-                    {" · "}
-                    <span className="text-red-600">{s.queue_failed} failed</span>
-                  </>
-                ) : null}
-                {notStarted > 0 && (
-                  <>
-                    {" · "}
-                    <span className="text-stone-500">{notStarted} not started</span>
-                  </>
-                )}
-              </span>
+          <div className="bg-amber-50 border-b border-amber-200 px-3 md:px-4 py-1.5 text-xs text-amber-800 flex items-center gap-2 flex-wrap">
+            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />}
+            <span className="flex-1 min-w-0">
+              <strong>{ready} / {total}</strong> chapters translated
+              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
+              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
             </span>
-            <span className="flex items-center gap-2 shrink-0">
-              {/* Any authenticated user can queue the whole book they're
-                  reading. Priority=20 (above admin auto, below active-
-                  reader on-demand) so the click is honored without
-                  starving whoever is currently waiting on a chapter. */}
-              {notStarted > 0 && (
-                <button
-                  onClick={handleTranslateWholeBook}
-                  disabled={enqueueingBook}
-                  className="text-xs px-3 py-1 rounded-full border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                  title={`Queue the remaining ${notStarted} chapters into ${translationLang}`}
-                >
-                  {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
-                </button>
-              )}
-              <span className="hidden sm:inline text-amber-500">Polls every 15s</span>
-            </span>
+            {notStarted > 0 && (
+              <button
+                onClick={handleTranslateWholeBook}
+                disabled={enqueueingBook}
+                className="shrink-0 text-xs px-3 py-1 rounded-full border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                title={`Queue the remaining ${notStarted} chapters into ${translationLang}`}
+              >
+                {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
+              </button>
+            )}
           </div>
         );
       })()}
@@ -1334,32 +1344,95 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* Insight Chat — half-screen bottom sheet on mobile, inline sidebar on desktop */}
-        {/* Desktop: inline sidebar */}
+        {/* Insight/Vocab sidebar — desktop only */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
           className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200"
         >
-          <InsightChat
-            bookId={bookId}
-            userId={session?.backendUser?.id ?? null}
-            hasGeminiKey={hasGeminiKey ?? false}
-            isVisible={sidebarOpen}
-            chapterText={current?.text ?? ""}
-            chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
-            selectedText={selectedText}
-            bookTitle={meta?.title ?? ""}
-            author={meta?.authors[0] ?? ""}
-            bookLanguage={bookLanguage}
-            onAIUsed={notifyAIUsed}
-            chapterIndex={chapterIndex}
-            onSaveInsight={session?.backendToken ? (question, answer) => {
-              saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
-                .then(() => setObsidianToast("Insight saved to book notes"))
-                .catch(() => setObsidianToast("Failed to save insight"))
-                .finally(() => setTimeout(() => setObsidianToast(null), 3000));
-            } : undefined}
-          />
+          {sidebarOpen && (
+            <>
+              {/* Tab bar */}
+              <div className="flex shrink-0 border-b border-amber-200 bg-white/70">
+                {(["chat", "vocab"] as const).map((tab) => {
+                  const labels: Record<string, string> = { chat: "💬 Chat", vocab: "📚 Vocab" };
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setSidebarTab(tab)}
+                      className={`relative flex-1 py-2.5 text-xs font-medium transition-colors border-b-2 ${
+                        sidebarTab === tab
+                          ? "text-amber-700 border-amber-700"
+                          : "text-stone-500 border-transparent hover:text-amber-600"
+                      }`}
+                    >
+                      {labels[tab]}
+                      {tab === "vocab" && vocabWords.length > 0 && (
+                        <span className="absolute top-1 right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
+                          {vocabWords.length}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Chat tab — keep mounted so history persists */}
+              <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" ? "" : "hidden"}`}>
+                <InsightChat
+                  bookId={bookId}
+                  userId={session?.backendUser?.id ?? null}
+                  hasGeminiKey={hasGeminiKey ?? false}
+                  isVisible={sidebarOpen && sidebarTab === "chat"}
+                  chapterText={current?.text ?? ""}
+                  chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
+                  selectedText={selectedText}
+                  bookTitle={meta?.title ?? ""}
+                  author={meta?.authors[0] ?? ""}
+                  bookLanguage={bookLanguage}
+                  onAIUsed={notifyAIUsed}
+                  chapterIndex={chapterIndex}
+                  onSaveInsight={session?.backendToken ? (question, answer) => {
+                    saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
+                      .then(() => setObsidianToast("Insight saved to book notes"))
+                      .catch(() => setObsidianToast("Failed to save insight"))
+                      .finally(() => setTimeout(() => setObsidianToast(null), 3000));
+                  } : undefined}
+                />
+              </div>
+
+              {/* Vocab tab */}
+              {sidebarTab === "vocab" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-stone-400 uppercase tracking-wide">
+                      This book · {vocabWords.length} word{vocabWords.length !== 1 ? "s" : ""}
+                    </span>
+                    <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium">
+                      View all →
+                    </button>
+                  </div>
+                  {vocabWords.length === 0 ? (
+                    <div className="text-center text-stone-400 mt-10 text-sm">
+                      <p className="text-3xl mb-2">📚</p>
+                      <p>No words saved yet.</p>
+                      <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {vocabWords.map((w) => (
+                        <div key={w.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                          <span className="text-sm font-medium text-ink">{w.word}</span>
+                          <span className="text-[10px] text-stone-400 shrink-0">
+                            {w.occurrences.filter((o) => o.book_id === Number(bookId)).length}×
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

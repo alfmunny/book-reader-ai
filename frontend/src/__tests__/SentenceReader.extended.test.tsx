@@ -163,6 +163,45 @@ describe("SentenceReader highlighting based on currentTime", () => {
     expect(active?.textContent).toContain("First sentence");
   });
 
+  it("unloaded chunks (duration=0) do not cause premature last-sentence highlight", () => {
+    const chunk1 = "First loaded chunk.";
+    const chunk2 = "Second unloaded chunk that is longer.";
+    const chunks: ChunkInfo[] = [
+      { text: chunk1, duration: 3 },
+      { text: chunk2, duration: 0 }, // not yet loaded
+    ];
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={`${chunk1}\n\n${chunk2}`}
+        duration={10}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // At t=3.5 we've just passed chunk 1 — chunk 2 is still loading.
+    // Should NOT jump to the last sentence of chunk 2.
+    rerender(
+      <SentenceReader
+        text={`${chunk1}\n\n${chunk2}`}
+        duration={10}
+        currentTime={3.5}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+    const active = container.querySelector(".bg-amber-300");
+    // Either the last loaded sentence (chunk 1) is highlighted, or nothing is —
+    // but it must NOT be a sentence from chunk 2 (the unloaded chunk).
+    if (active) {
+      expect(active.textContent).toContain("First loaded chunk");
+    }
+  });
+
   it("uses chunk durations for timing when chunks are provided", () => {
     const chunk1 = "First chunk text here.";
     const chunk2 = "Second chunk is here and it is longer.";

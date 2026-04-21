@@ -141,6 +141,13 @@ function parseIntoSegments(
         if (segmentChunkIdx[s] === ci) segIndices.push(s);
       }
 
+      if (chunk.duration === 0) {
+        // Not yet loaded — Infinity prevents these segments from ever matching
+        // currentTime prematurely. Recalculated once the chunk loads.
+        for (const idx of segIndices) startTimes[idx] = Infinity;
+        continue; // chunkStartTime stays unchanged until we know the real duration
+      }
+
       const wbs = chunk.wordBoundaries;
       if (wbs && wbs.length > 0) {
         // Path a: locate each segment's start position in the (newline-normalised)

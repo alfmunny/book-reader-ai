@@ -48,6 +48,7 @@ export default function ReaderPage() {
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
   const [annotationPanel, setAnnotationPanel] = useState<{
     sentenceText: string;
     chapterIndex: number;
@@ -131,6 +132,8 @@ export default function ReaderPage() {
       if (chapterIndex < chapters.length - 1) goToChapter(chapterIndex + 1);
       return;
     }
+    setNotesExpanded(false);
+    setTranslateExpanded(false);
     setToolbarVisible((v) => !v);
   }
 
@@ -1529,34 +1532,61 @@ export default function ReaderPage() {
             </div>
           )}
 
-          {/* Main bottom bar */}
-          <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-1 py-1 flex items-center justify-around gap-0.5">
-            <button
-              onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
-              disabled={chapterIndex === 0}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
-              aria-label="Previous chapter"
-            >‹</button>
+          {/* Notes expand panel */}
+          {session?.backendToken && notesExpanded && (
+            <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
+              {annotations.length === 0 ? (
+                <div className="text-center text-stone-400 py-4 text-sm">
+                  <p className="text-2xl mb-1">📝</p>
+                  <p>No annotations yet.</p>
+                  <p className="text-xs mt-1">Long-press text to add one.</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {annotations.map((ann) => (
+                    <button
+                      key={ann.id}
+                      onClick={() => {
+                        if (ann.chapter_index !== chapterIndex) {
+                          goToChapter(ann.chapter_index);
+                          setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                        } else {
+                          setScrollTargetSentence(undefined);
+                          setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                        }
+                        setNotesExpanded(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs"
+                    >
+                      <div className="text-ink line-clamp-2">{ann.sentence_text}</div>
+                      {ann.note_text && (
+                        <div className="text-stone-500 mt-0.5 line-clamp-1 italic">{ann.note_text}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* Main bottom bar */}
+          <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-2 py-1.5 flex items-center justify-around gap-1">
             <button
               onClick={() => {
                 if (!translationEnabled) {
                   setTranslationEnabled(true);
                   setTranslateExpanded(true);
                 } else {
-                  setTranslateExpanded((v) => !v);
+                  setTranslationEnabled(false);
+                  setTranslateExpanded(false);
                 }
               }}
-              onDoubleClick={() => {
-                setTranslationEnabled(false);
-                setTranslateExpanded(false);
-              }}
-              title="Tap: toggle options · Double-tap: turn off"
-              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+              className={`h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
                 translationEnabled
-                  ? "bg-amber-700 text-white"
-                  : "text-amber-700 bg-amber-50 border border-amber-200"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
+              aria-label="Translation"
             >🌐</button>
 
             <button
@@ -1564,16 +1594,16 @@ export default function ReaderPage() {
                 const ttsEl = document.querySelector<HTMLButtonElement>("[data-tts-play]");
                 if (ttsEl) ttsEl.click();
               }}
-              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+              className={`h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
                 ttsIsPlaying
-                  ? "bg-amber-700 text-white"
-                  : "text-amber-700 bg-amber-50 border border-amber-200"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label={ttsIsPlaying ? "Pause" : "Read aloud"}
             >{ttsIsPlaying ? "⏸" : "▶"}</button>
 
             <select
-              className="text-xs rounded border border-amber-200 px-1 py-1 text-amber-700 bg-white min-h-[44px] max-w-[100px] truncate"
+              className="h-10 text-xs rounded-lg border border-amber-200 px-1 text-amber-700 bg-white max-w-[110px] truncate"
               value={chapterIndex}
               onChange={(e) => goToChapter(Number(e.target.value))}
             >
@@ -1584,22 +1614,34 @@ export default function ReaderPage() {
               ))}
             </select>
 
+            {session?.backendToken && (
+              <button
+                onClick={() => setNotesExpanded((v) => !v)}
+                className={`relative h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
+                  notesExpanded
+                    ? "bg-amber-700 text-white border-amber-700"
+                    : "text-amber-700 bg-amber-50 border-amber-200"
+                }`}
+                aria-label="Notes"
+              >
+                📝
+                {annotations.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
+                    {annotations.length}
+                  </span>
+                )}
+              </button>
+            )}
+
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-sm transition-colors ${
+              className={`h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
                 sidebarOpen
-                  ? "bg-amber-700 text-white"
-                  : "text-amber-700 bg-amber-50 border border-amber-200"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label="Insight chat"
             >💬</button>
-
-            <button
-              onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
-              disabled={chapterIndex === chapters.length - 1}
-              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-amber-700 disabled:opacity-30 text-lg"
-              aria-label="Next chapter"
-            >›</button>
           </div>
         </div>
       )}

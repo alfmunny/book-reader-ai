@@ -196,7 +196,7 @@ export default function BookImportPage() {
     chapterCount > 0 &&
     !!tl &&
     tl !== sourceLanguage &&
-    translateState === "idle";
+    !translationActioned;
   const readyToRedirect = isDone && (translationActioned || !showTranslatePrompt);
 
   useEffect(() => {

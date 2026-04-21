@@ -56,6 +56,8 @@ before doing any work.
 
 **Never commit directly to `main`.** All changes must go through a PR.
 
+**Always create a PR when a feature or bug fix is complete** — do not leave changes uncommitted or unpushed. If the work spans multiple sessions, push a PR at the end of each session so progress is never lost.
+
 Branch naming: `feat/`, `fix/`, `chore/`, `test/`
 
 **Exact sequence every time:**

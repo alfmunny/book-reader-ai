@@ -100,6 +100,7 @@ export default function ReaderPage() {
     const el = document.getElementById("reader-scroll");
     if (!el) return;
     function onScroll() {
+      setSentencePopup(null);
       if (!isMobileRef.current) return;
       setToolbarVisible(false);
       if (hideTimeout.current) clearTimeout(hideTimeout.current);

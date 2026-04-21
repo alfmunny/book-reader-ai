@@ -163,6 +163,46 @@ describe("SentenceReader highlighting based on currentTime", () => {
     expect(active?.textContent).toContain("First sentence");
   });
 
+  it("all-zero chunks (none loaded) produce no highlight at all", () => {
+    // Exact bug scenario: setAllChunks fires with ALL duration=0 before any chunk
+    // loads, then audio starts. ALL segments have Infinity startTime → currentIdx = -1
+    // → no sentence should be highlighted.
+    const sentences = [
+      "First sentence here.",
+      "Second sentence here.",
+      "Third sentence here.",
+      "Fourth sentence is the last one.",
+    ];
+    const allChunksZero: ChunkInfo[] = sentences.map((t) => ({ text: t, duration: 0 }));
+    const fullText = sentences.join("\n\n");
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={fullText}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={allChunksZero}
+      />
+    );
+
+    // Simulate: audio starts (duration and currentTime become non-zero)
+    // before any chunk has loaded its real duration.
+    rerender(
+      <SentenceReader
+        text={fullText}
+        duration={20}
+        currentTime={0.5}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={allChunksZero}
+      />
+    );
+    // No sentence should be highlighted — all chunks still loading.
+    expect(container.querySelector(".bg-amber-300")).toBeNull();
+  });
+
   it("unloaded chunks (duration=0) do not cause premature last-sentence highlight", () => {
     const chunk1 = "First loaded chunk.";
     const chunk2 = "Second unloaded chunk that is longer.";

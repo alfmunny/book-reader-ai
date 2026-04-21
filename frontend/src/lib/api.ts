@@ -442,44 +442,6 @@ export interface BookMeta {
   original_language?: string;
 }
 
-// Audiobooks
-export interface AudioSection {
-  number: number;
-  title: string;
-  duration: string;
-  url: string;
-}
-
-export interface Audiobook {
-  id: string;
-  title: string;
-  authors: string[];
-  url_librivox: string;
-  url_rss: string;
-  sections: AudioSection[];
-}
-
-export function searchAudiobooks(bookId: number, title: string, author = "") {
-  const p = new URLSearchParams({ title });
-  if (author) p.set("author", author);
-  return request<{ results: Audiobook[] }>(`/audiobooks/${bookId}/search?${p}`);
-}
-
-export function getAudiobook(bookId: number) {
-  return request<Audiobook>(`/audiobooks/${bookId}`);
-}
-
-export function saveAudiobook(bookId: number, audiobook: Audiobook) {
-  return request<{ ok: boolean }>(`/audiobooks/${bookId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(audiobook),
-  });
-}
-
-export function deleteAudiobook(bookId: number) {
-  return request<{ ok: boolean }>(`/audiobooks/${bookId}`, { method: "DELETE" });
-}
 
 // User / Auth
 export function getMe() {

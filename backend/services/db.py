@@ -430,51 +430,6 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
         )
 
 
-async def get_audiobook(book_id: int) -> dict | None:
-    """Return the saved audiobook for a Gutenberg book, or None."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM audiobooks WHERE book_id = ?", (book_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-    if row is None:
-        return None
-    d = dict(row)
-    for field in ("authors", "sections"):
-        if isinstance(d.get(field), str):
-            d[field] = json.loads(d[field])
-    return d
-
-
-async def save_audiobook(book_id: int, audiobook: dict) -> None:
-    """Insert or replace audiobook association."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            INSERT OR REPLACE INTO audiobooks
-                (book_id, librivox_id, title, authors, url_librivox, url_rss, sections)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                book_id,
-                audiobook.get("id", ""),
-                audiobook.get("title", ""),
-                json.dumps(audiobook.get("authors", [])),
-                audiobook.get("url_librivox", ""),
-                audiobook.get("url_rss", ""),
-                json.dumps(audiobook.get("sections", [])),
-            ),
-        )
-        await db.commit()
-
-
-async def delete_audiobook(book_id: int) -> None:
-    """Remove the audiobook association for a book."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM audiobooks WHERE book_id = ?", (book_id,))
-        await db.commit()
-
 
 # ── App settings (key/value config used by the always-on queue, etc.) ────────
 

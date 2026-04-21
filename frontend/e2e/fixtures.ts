@@ -87,10 +87,6 @@ export async function mockBackend(page: Page) {
     })
   );
 
-  await page.route(/\/api\/audiobooks\/\d+$/, (route) =>
-    route.fulfill({ status: 404, json: { detail: "Not linked" } })
-  );
-
   await page.route("**/api/ai/translate", (route) =>
     route.fulfill({ json: { paragraphs: ["[translated]"], cached: true } })
   );

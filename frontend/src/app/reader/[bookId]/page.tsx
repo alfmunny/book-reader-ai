@@ -2,14 +2,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation, VocabularyWord } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
-import AudiobookPlayer from "@/components/AudiobookPlayer";
-import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
 import SelectionToolbar from "@/components/SelectionToolbar";
@@ -61,18 +59,7 @@ export default function ReaderPage() {
   // Obsidian export toast
   const [obsidianToast, setObsidianToast] = useState<string | null>(null);
 
-  // Audiobook
-  const [audiobookEnabled, setAudiobookEnabled] = useState(true);
-  const [audiobook, setAudiobook] = useState<Audiobook | null>(null);
-  const [showAudioSearch, setShowAudioSearch] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
-  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
-  const seekAudioRef = useRef<(t: number) => void>(() => {});
-
   // TTS Read-button playback state — fed by TTSControls via callback props.
-  // When no LibriVox audiobook is linked, these drive the SentenceReader's
-  // sentence highlighting and click-to-seek.
   const [ttsCurrentTime, setTtsCurrentTime] = useState(0);
   const [ttsDuration, setTtsDuration] = useState(0);
   const [ttsIsPlaying, setTtsIsPlaying] = useState(false);
@@ -232,7 +219,6 @@ export default function ReaderPage() {
     const s = getSettings();
     setTranslationLang(s.translationLang);
     // translationProvider setting is retained for back-compat but no longer read here.
-    setAudiobookEnabled(s.audiobookEnabled);
     setFontSize(s.fontSize);
     setTheme(s.theme);
   }, []);
@@ -289,13 +275,6 @@ export default function ReaderPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [bookId]);
-
-  // Load saved audiobook for this book
-  useEffect(() => {
-    if (!bookId) return;
-    setAudiobook(null);
-    getAudiobook(Number(bookId)).then(setAudiobook).catch(() => {});
   }, [bookId]);
 
   // Load annotations for this book (requires auth)
@@ -618,9 +597,6 @@ export default function ReaderPage() {
     setTranslatedParagraphs([]);
     setTranslatedTitle(null);
     setTranslationUsedProvider("");
-    setAudioCurrentTime(0);
-    setAudioDuration(0);
-    setAudioIsPlaying(false);
     setTtsCurrentTime(0);
     setTtsDuration(0);
     setTtsIsPlaying(false);
@@ -857,21 +833,6 @@ export default function ReaderPage() {
             </button>
           )}
 
-          {/* Audiobook toggle — desktop only */}
-          {audiobookEnabled && (
-            <button
-              onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
-              title={audiobook ? "Audiobook linked" : "Find audiobook"}
-              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                audiobook
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              🎧 {audiobook ? "Audio" : "Find Audio"}
-            </button>
-          )}
-
           {/* Profile — always rightmost */}
           <button
             onClick={() => router.push("/profile")}
@@ -1034,11 +995,11 @@ export default function ReaderPage() {
                 )}
                 <SentenceReader
                   text={current?.text ?? ""}
-                  duration={audiobook ? audioDuration : ttsDuration}
-                  currentTime={audiobook ? audioCurrentTime : ttsCurrentTime}
-                  isPlaying={audiobook ? audioIsPlaying : ttsIsPlaying}
-                  chunks={!audiobook && ttsChunks.length > 0 ? ttsChunks : undefined}
-                  disabled={!audiobook && ttsIsLoading}
+                  duration={ttsDuration}
+                  currentTime={ttsCurrentTime}
+                  isPlaying={ttsIsPlaying}
+                  chunks={ttsChunks.length > 0 ? ttsChunks : undefined}
+                  disabled={ttsIsLoading}
                   translations={translationEnabled ? translatedParagraphs : undefined}
                   translationDisplayMode={displayMode}
                   translationLoading={translationLoading}
@@ -1049,10 +1010,6 @@ export default function ReaderPage() {
                   } : undefined}
                   scrollTargetSentence={scrollTargetSentence}
                   onSegmentClick={(startTime, segText) => {
-                    if (audiobook) {
-                      seekAudioRef.current(startTime);
-                      return;
-                    }
                     if (ttsDuration > 0) {
                       ttsSeekRef.current(startTime);
                       return;
@@ -1192,26 +1149,6 @@ export default function ReaderPage() {
                 <span className="text-red-600">{obsidianToast}</span>
               )}
             </div>
-          )}
-
-          {/* Audiobook player */}
-          {audiobookEnabled && audiobook && (
-            <AudiobookPlayer
-              audiobook={audiobook}
-              chapterIndex={chapterIndex}
-              onChapterChange={goToChapter}
-              onUnlink={async () => {
-                await deleteAudiobook(Number(bookId)).catch(() => {});
-                setAudiobook(null);
-                setAudioDuration(0);
-                setAudioCurrentTime(0);
-                setAudioIsPlaying(false);
-              }}
-              onTimeUpdate={setAudioCurrentTime}
-              onDurationChange={setAudioDuration}
-              onPlayStateChange={setAudioIsPlaying}
-              seekRef={seekAudioRef}
-            />
           )}
 
           {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
@@ -1485,19 +1422,6 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Audiobook search modal */}
-      {audiobookEnabled && showAudioSearch && (
-        <AudiobookSearch
-          bookId={Number(bookId)}
-          defaultTitle={meta?.title ?? ""}
-          defaultAuthor={meta?.authors[0] ?? ""}
-          onLinked={(ab) => {
-            setAudiobook(ab);
-            setShowAudioSearch(false);
-          }}
-          onClose={() => setShowAudioSearch(false)}
-        />
-      )}
 
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
       {!loading && chapters.length > 0 && (

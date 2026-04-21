@@ -152,7 +152,6 @@ async function setupTtsReader(page: Page, chapterText = TTS_CHAPTER_TEXT) {
   await page.route(/\/api\/books\/\d+\/translation-status/, (r) =>
     r.fulfill({ json: { book_id: 1342, target_language: "en", total_chapters: 3, translated_chapters: 3, bulk_active: false } })
   );
-  await page.route(/\/api\/audiobooks\/\d+$/, (r) => r.fulfill({ status: 404, json: { detail: "Not linked" } }));
   await page.route("**/api/ai/translate", (r) => r.fulfill({ json: { paragraphs: ["[translated]"], cached: true } }));
   await page.route("**/api/ai/insight", (r) => r.fulfill({ json: { insight: "A mock insight." } }));
   await page.route(/\/api\/annotations/, (r) => r.fulfill({ json: [] }));

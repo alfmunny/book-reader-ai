@@ -18,10 +18,6 @@ import {
   askQuestion,
   synthesizeSpeech,
   getTtsChunks,
-  searchAudiobooks,
-  getAudiobook,
-  saveAudiobook,
-  deleteAudiobook,
   getMe,
   saveGeminiKey,
   deleteGeminiKey,
@@ -255,43 +251,6 @@ test("synthesizeSpeech throws on non-ok response", async () => {
     json: jest.fn().mockResolvedValue({}),
   });
   await expect(synthesizeSpeech("Hello", "en")).rejects.toThrow("TTS failed");
-});
-
-// ── Audiobooks ────────────────────────────────────────────────────────────────
-
-test("searchAudiobooks builds URL with title param", async () => {
-  mockFetch({ results: [] });
-  await searchAudiobooks(1342, "Faust", "Goethe");
-  const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
-  expect(url).toContain("/audiobooks/1342/search");
-  expect(url).toContain("title=Faust");
-  expect(url).toContain("author=Goethe");
-});
-
-test("searchAudiobooks omits author when not provided", async () => {
-  mockFetch({ results: [] });
-  await searchAudiobooks(1342, "Faust");
-  const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
-  expect(url).not.toContain("author=");
-});
-
-test("getAudiobook calls /audiobooks/:id", async () => {
-  mockFetch({ id: "librivox-1" });
-  await getAudiobook(1342);
-  expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain("/audiobooks/1342");
-});
-
-test("saveAudiobook sends POST", async () => {
-  mockFetch({ ok: true });
-  const ab = { id: "librivox-1", title: "Faust", authors: [], url_librivox: "", url_rss: "", sections: [] };
-  await saveAudiobook(1342, ab);
-  expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe("POST");
-});
-
-test("deleteAudiobook sends DELETE", async () => {
-  mockFetch({ ok: true });
-  await deleteAudiobook(1342);
-  expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe("DELETE");
 });
 
 // ── User ──────────────────────────────────────────────────────────────────────

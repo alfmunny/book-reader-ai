@@ -233,3 +233,49 @@ test("annotation count badge appears on Notes button when annotations exist", as
   // The Notes button should display a count badge showing "2"
   await expect(page.getByRole("button", { name: /notes/i }).getByText("2")).toBeVisible({ timeout: 5000 });
 });
+
+test("translation status shows 'From cache · model' when server returns cached translation", async ({ page }) => {
+  // Use regex so query params (?target_language=…) on the GET are also matched
+  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation/, (route) => {
+    route.fulfill({ json: { status: "ready", paragraphs: ["Cached text."], provider: "gemini", model: "gemini-2.0-flash" } });
+  });
+
+  await page.goto("/reader/1342");
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+
+  await openAndEnableTranslation(page);
+  await expect(page.getByText("Cached text.")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/From cache · gemini-2\.0-flash/)).toBeVisible({ timeout: 3000 });
+});
+
+test("translation status shows 'Translated · model' after user-triggered translation", async ({ page }) => {
+  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation/, (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 404, json: { detail: "not cached" } });
+    } else {
+      route.fulfill({ json: { status: "ready", paragraphs: ["Fresh translation."], provider: "gemini", model: "gemini-2.0-flash" } });
+    }
+  });
+
+  await page.goto("/reader/1342");
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+
+  await openAndEnableTranslation(page);
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
+  await expect(page.getByText("Fresh translation.")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/Translated · gemini-2\.0-flash/)).toBeVisible({ timeout: 3000 });
+});
+
+test("Translate this chapter button does not flash when translation is already cached", async ({ page }) => {
+  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation/, (route) => {
+    route.fulfill({ json: { status: "ready", paragraphs: ["Cached."], provider: "gemini", model: "gemini-2.0-flash" } });
+  });
+
+  await page.goto("/reader/1342");
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+
+  await openAndEnableTranslation(page);
+
+  // Button must never be visible — cached translation loads without user action
+  await expect(page.getByRole("button", { name: "Translate this chapter" })).not.toBeVisible({ timeout: 5000 });
+});

@@ -79,7 +79,8 @@ Branch naming: `feat/`, `fix/`, `chore/`, `test/`
        git -C /Users/alfmunny/Projects/AI/book-reader-ai rebase origin/main
        git -C /Users/alfmunny/Projects/AI/book-reader-ai push origin "$BRANCH" --force-with-lease
      fi
-     FAILED=$(gh pr view <N> --json statusCheckRollup -q '[.statusCheckRollup[]? | select(.conclusion=="FAILURE" or .conclusion=="ERROR" or .conclusion=="CANCELLED")] | length' 2>/dev/null)
+     FAILED=$(gh pr checks <N> --json name,conclusion 2>/dev/null \
+       | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for c in d if c['conclusion'] in ('FAILURE','ERROR','CANCELLED')))" 2>/dev/null)
      [ "$FAILED" != "" ] && [ "$FAILED" -gt 0 ] && echo "$FAILED check(s) failed" && gh pr checks <N> && break
      sleep 20
    done

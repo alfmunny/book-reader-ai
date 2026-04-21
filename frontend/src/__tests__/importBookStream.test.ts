@@ -39,7 +39,7 @@ test("yields parsed SSE events in order", async () => {
   );
 
   const events = [];
-  for await (const ev of importBookStream(1342, "en")) {
+  for await (const ev of importBookStream(1342)) {
     events.push(ev);
   }
 
@@ -50,20 +50,21 @@ test("yields parsed SSE events in order", async () => {
   ]);
 });
 
-test("passes target_language as query param", async () => {
+test("calls the correct URL without target_language param", async () => {
   global.fetch = jest.fn().mockResolvedValue(sseStream([]));
 
-  const gen = importBookStream(1342, "de");
+  const gen = importBookStream(1342);
   await gen.next();
 
   const [url] = (global.fetch as jest.Mock).mock.calls[0];
-  expect(url).toContain("target_language=de");
+  expect(url).toContain("/books/1342/import-stream");
+  expect(url).not.toContain("target_language");
 });
 
 test("sends Authorization header from auth token", async () => {
   global.fetch = jest.fn().mockResolvedValue(sseStream([]));
 
-  const gen = importBookStream(1342, "en");
+  const gen = importBookStream(1342);
   await gen.next();
 
   const headers = (global.fetch as jest.Mock).mock.calls[0][1].headers;
@@ -71,7 +72,6 @@ test("sends Authorization header from auth token", async () => {
 });
 
 test("handles SSE frame split across chunks", async () => {
-  // Split a frame across two chunks to exercise the buffer logic
   global.fetch = jest.fn().mockResolvedValue(
     sseStream([
       `event: stage\ndata: {"sta`,
@@ -80,7 +80,7 @@ test("handles SSE frame split across chunks", async () => {
   );
 
   const events = [];
-  for await (const ev of importBookStream(1, "en")) {
+  for await (const ev of importBookStream(1)) {
     events.push(ev);
   }
   expect(events.length).toBe(2);
@@ -96,6 +96,6 @@ test("throws on non-ok response", async () => {
     json: jest.fn().mockResolvedValue({ detail: "Access denied" }),
   });
 
-  const gen = importBookStream(1342, "en");
+  const gen = importBookStream(1342);
   await expect(gen.next()).rejects.toThrow("Access denied");
 });

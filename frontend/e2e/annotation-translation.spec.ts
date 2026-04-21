@@ -64,6 +64,7 @@ test("translationEnabled persists: reopening the reader resumes translation", as
     })
   );
 
+  // Seed settings with translationEnabled = true before first navigation
   await page.addInitScript(() => {
     localStorage.setItem(
       "book-reader-settings",
@@ -103,6 +104,7 @@ test("translation language is persisted to settings on change", async ({ page })
 });
 
 test("translation language is loaded from settings on page open", async ({ page }) => {
+  // Seed settings with French as preferred translation language before first navigation
   await page.addInitScript(() => {
     localStorage.setItem(
       "book-reader-settings",

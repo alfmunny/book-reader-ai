@@ -60,3 +60,28 @@ test("renders multiple authors joined by comma", () => {
   render(<BookCard book={{ ...BOOK, authors: ["Author A", "Author B"] }} onClick={jest.fn()} />);
   expect(screen.getByText("Author A, Author B")).toBeInTheDocument();
 });
+
+// ── onRemove branch ────────────────────────────────────────────────────────────
+
+test("does not render remove button when onRemove is not provided", () => {
+  render(<BookCard book={BOOK} onClick={jest.fn()} />);
+  expect(screen.queryByRole("button", { name: /remove from library/i })).not.toBeInTheDocument();
+});
+
+test("renders remove button when onRemove is provided", () => {
+  render(<BookCard book={BOOK} onClick={jest.fn()} onRemove={jest.fn()} />);
+  expect(screen.getByRole("button", { name: /remove from library/i })).toBeInTheDocument();
+});
+
+test("calls onRemove when remove button is clicked", async () => {
+  const onRemove = jest.fn();
+  const onClick = jest.fn();
+  render(<BookCard book={BOOK} onClick={onClick} onRemove={onRemove} />);
+
+  const removeBtn = screen.getByRole("button", { name: /remove from library/i });
+  await userEvent.click(removeBtn);
+
+  expect(onRemove).toHaveBeenCalledTimes(1);
+  // The main card onClick must NOT fire — stopPropagation is called
+  expect(onClick).not.toHaveBeenCalled();
+});

@@ -299,6 +299,19 @@ describe("WordLookup re-fetch on word change", () => {
   });
 });
 
+describe("WordLookup mobile layout", () => {
+  it("uses fixed bottom layout on narrow viewport (isMobile=true)", async () => {
+    Object.defineProperty(window, "innerWidth", { value: 400, writable: true, configurable: true });
+    const { container } = render(
+      <WordLookup word="hello" position={DEFAULT_POSITION} onClose={jest.fn()} />
+    );
+    const popup = container.firstElementChild as HTMLElement;
+    // On mobile the style has bottom: 8 instead of top
+    expect(popup.style.bottom).toBe("8px");
+    Object.defineProperty(window, "innerWidth", { value: 1024, writable: true, configurable: true });
+  });
+});
+
 describe("WordLookup fetch URL", () => {
   it("fetches from dictionaryapi.dev with encoded word", async () => {
     render(

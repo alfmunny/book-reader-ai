@@ -46,7 +46,7 @@ interface Props {
   author: string;
   bookLanguage: string;
   onAIUsed?: () => void;    // called whenever an AI (non-cached) call is made
-  onSaveInsight?: (question: string, answer: string) => void;
+  onSaveInsight?: (question: string, answer: string, context?: string) => void;
   chapterIndex?: number;
 }
 
@@ -359,7 +359,7 @@ export default function InsightChat({
                         const absIdx = loadedFrom + i;
                         if (savedInsights.has(absIdx)) return;
                         setSavedInsights((prev) => new Set(prev).add(absIdx));
-                        onSaveInsight(prevUserMsg.content, msg.content);
+                        onSaveInsight(prevUserMsg.content, msg.content, prevUserMsg.context);
                       }}
                       title={savedInsights.has(loadedFrom + i) ? "Already saved to notes" : "Save this insight to book notes"}
                       className={`mt-2 flex items-center gap-1 text-xs transition-colors ${savedInsights.has(loadedFrom + i) ? "text-amber-300 cursor-default" : "text-amber-500 hover:text-amber-800"}`}

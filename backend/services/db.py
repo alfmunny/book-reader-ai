@@ -691,13 +691,14 @@ async def save_insight(
     chapter_index: int | None,
     question: str,
     answer: str,
+    context_text: str | None = None,
 ) -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            """INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer)
-               VALUES (?, ?, ?, ?, ?)""",
-            (user_id, book_id, chapter_index, question, answer),
+            """INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer, context_text)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (user_id, book_id, chapter_index, question, answer, context_text),
         )
         await db.commit()
         row_id = cursor.lastrowid

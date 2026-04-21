@@ -11,6 +11,7 @@ class InsightCreate(BaseModel):
     chapter_index: int | None = None
     question: str
     answer: str
+    context_text: str | None = None
 
 
 @router.post("")
@@ -21,6 +22,7 @@ async def create(req: InsightCreate, user: dict = Depends(get_current_user)):
         req.chapter_index,
         req.question,
         req.answer,
+        req.context_text,
     )
 
 

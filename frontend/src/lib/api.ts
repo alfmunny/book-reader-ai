@@ -601,6 +601,7 @@ export interface BookInsight {
   chapter_index: number | null;
   question: string;
   answer: string;
+  context_text?: string | null;
   created_at: string;
 }
 
@@ -621,6 +622,7 @@ export function saveInsight(data: {
   chapter_index?: number;
   question: string;
   answer: string;
+  context_text?: string;
 }) {
   return request<BookInsight>("/insights", {
     method: "POST",

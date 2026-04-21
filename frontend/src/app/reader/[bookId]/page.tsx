@@ -1201,8 +1201,8 @@ export default function ReaderPage() {
                   bookLanguage={bookLanguage}
                   onAIUsed={notifyAIUsed}
                   chapterIndex={chapterIndex}
-                  onSaveInsight={session?.backendToken ? (question, answer) => {
-                    saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
+                  onSaveInsight={session?.backendToken ? (question, answer, context) => {
+                    saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context })
                       .then(() => setObsidianToast("Insight saved to book notes"))
                       .catch(() => setObsidianToast("Failed to save insight"))
                       .finally(() => setTimeout(() => setObsidianToast(null), 3000));

@@ -24,9 +24,11 @@ interface Props {
   onJump: (annotation: Annotation) => void;
   onEdit: (annotation: Annotation) => void;
   loading?: boolean;
+  /** When provided, "View all notes" links to /notes/{bookId} instead of /notes */
+  bookId?: number;
 }
 
-export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading }: Props) {
+export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading, bookId }: Props) {
   const [open, setOpen] = useState(false);
 
   // Group by chapter
@@ -127,13 +129,20 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
           </div>
 
           {/* Footer */}
-          <div className="border-t border-amber-100 px-4 py-3 shrink-0">
+          <div className="border-t border-amber-100 px-4 py-3 shrink-0 flex gap-3 justify-between">
+            <a
+              href={bookId ? `/notes/${bookId}` : "/notes"}
+              onClick={() => setOpen(false)}
+              className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+            >
+              {bookId ? "Book notes →" : "All notes →"}
+            </a>
             <a
               href="/notes"
               onClick={() => setOpen(false)}
-              className="block w-full text-center text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+              className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
             >
-              View all notes →
+              All books
             </a>
           </div>
         </div>

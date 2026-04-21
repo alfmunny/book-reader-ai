@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user
-from services.db import save_insight, get_insights, delete_insight
+from services.db import save_insight, get_insights, get_all_insights, delete_insight
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -22,6 +22,11 @@ async def create(req: InsightCreate, user: dict = Depends(get_current_user)):
         req.question,
         req.answer,
     )
+
+
+@router.get("/all")
+async def list_all_insights(user: dict = Depends(get_current_user)):
+    return await get_all_insights(user["id"])
 
 
 @router.get("")

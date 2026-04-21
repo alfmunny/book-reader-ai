@@ -1080,6 +1080,7 @@ export default function ReaderPage() {
               setSidebarTab("chat");
               setSidebarOpen(true);
             }}
+            onVocab={session?.backendToken ? (word, context) => handleWordSave(word, context) : undefined}
           />
 
           {/* Annotation toolbar */}
@@ -1286,6 +1287,21 @@ export default function ReaderPage() {
                       ))}
                     </>
                   )}
+                  {/* Footer link */}
+                  <div className="border-t border-amber-100 pb-2 pt-3 flex gap-3 justify-between shrink-0">
+                    <a
+                      href={`/notes/${bookId}`}
+                      className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+                    >
+                      Book notes →
+                    </a>
+                    <a
+                      href="/notes"
+                      className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                    >
+                      All books
+                    </a>
+                  </div>
                 </div>
               )}
 

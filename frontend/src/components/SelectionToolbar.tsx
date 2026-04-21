@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 export interface SelectionAction {
   text: string;
+  context: string;
   rect: DOMRect;
 }
 
@@ -11,9 +12,21 @@ interface Props {
   onHighlight?: (text: string) => void;
   onNote?: (text: string) => void;
   onChat?: (text: string) => void;
+  onVocab?: (word: string, context: string) => void;
 }
 
-export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }: Props) {
+/** Walk up from a node to find the nearest sentence span (data-seg) or paragraph. */
+function extractContext(node: Node | null): string {
+  let el: Node | null = node;
+  while (el && el !== document.body) {
+    if ((el as Element).tagName === "P") return (el as Element).textContent?.trim() ?? "";
+    if ((el as Element).hasAttribute?.("data-seg")) return (el as Element).textContent?.trim() ?? "";
+    el = el.parentNode;
+  }
+  return "";
+}
+
+export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, onVocab }: Props) {
   const [selection, setSelection] = useState<SelectionAction | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +53,8 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
         }
         node = node.parentNode;
       }
-      setSelection({ text, rect });
+      const context = extractContext(range.startContainer);
+      setSelection({ text, context, rect });
     }
 
     document.addEventListener("selectionchange", handleSelection);
@@ -52,7 +66,6 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
     if (!selection) return;
     function handleClick(e: MouseEvent) {
       if (toolbarRef.current?.contains(e.target as Node)) return;
-      // Small delay to let the action handlers fire first
       setTimeout(() => {
         const sel = window.getSelection()?.toString().trim() ?? "";
         if (sel.length < 2) setSelection(null);
@@ -72,21 +85,16 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
 
   if (!selection) return null;
 
-  // Position toolbar above the selection, centered
   const scrollEl = document.getElementById("reader-scroll");
   const scrollRect = scrollEl?.getBoundingClientRect();
-  const toolbarWidth = 220;
+  const toolbarWidth = onVocab ? 264 : 220;
 
   let left = selection.rect.left + selection.rect.width / 2 - toolbarWidth / 2;
   let top = selection.rect.top - 52;
 
-  // Keep within viewport
   if (left < 8) left = 8;
   if (left + toolbarWidth > window.innerWidth - 8) left = window.innerWidth - toolbarWidth - 8;
-  // If not enough space above, show below
-  if (top < (scrollRect?.top ?? 60)) {
-    top = selection.rect.bottom + 8;
-  }
+  if (top < (scrollRect?.top ?? 60)) top = selection.rect.bottom + 8;
 
   function handleAction(fn?: (text: string) => void) {
     if (!fn || !selection) return;
@@ -95,6 +103,15 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
     setSelection(null);
   }
 
+  function handleVocabAction() {
+    if (!onVocab || !selection) return;
+    onVocab(selection.text, selection.context || selection.text);
+    window.getSelection()?.removeAllRanges();
+    setSelection(null);
+  }
+
+  const btnClass = "flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[40px]";
+
   return (
     <div
       ref={toolbarRef}
@@ -102,36 +119,19 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
       style={{ left, top }}
     >
       {onRead && (
-        <button
-          onClick={() => handleAction(onRead)}
-          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[40px]"
-        >
-          🔊 Read
-        </button>
+        <button onClick={() => handleAction(onRead)} className={btnClass}>🔊 Read</button>
       )}
       {onHighlight && (
-        <button
-          onClick={() => handleAction(onHighlight)}
-          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[40px]"
-        >
-          🎨 Highlight
-        </button>
+        <button onClick={() => handleAction(onHighlight)} className={btnClass}>🎨 Highlight</button>
       )}
       {onNote && (
-        <button
-          onClick={() => handleAction(onNote)}
-          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[40px]"
-        >
-          📝 Note
-        </button>
+        <button onClick={() => handleAction(onNote)} className={btnClass}>📝 Note</button>
       )}
       {onChat && (
-        <button
-          onClick={() => handleAction(onChat)}
-          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[40px]"
-        >
-          💬 Chat
-        </button>
+        <button onClick={() => handleAction(onChat)} className={btnClass}>💬 Chat</button>
+      )}
+      {onVocab && (
+        <button onClick={handleVocabAction} className={btnClass}>📚 Word</button>
       )}
     </div>
   );

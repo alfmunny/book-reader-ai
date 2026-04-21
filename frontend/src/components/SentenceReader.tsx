@@ -526,6 +526,8 @@ export default function SentenceReader({
               data-jump-target={isJumpTarget ? "true" : undefined}
               onClick={(e) => {
                 if (disabled || !isSegmentLoaded(seg)) return;
+                // Ignore clicks that are the tail of a text-selection drag
+                if (window.getSelection()?.toString().length) return;
                 if (isPlaying || duration > 0) {
                   onSegmentClick(seg.startTime, seg.text);
                 } else if (onSentenceClick) {

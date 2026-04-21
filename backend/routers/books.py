@@ -169,6 +169,27 @@ async def chapter_queue_status(
     return await queue_status_for_chapter(book_id, chapter_index, target_language)
 
 
+@router.get("/{book_id}/chapters/{chapter_index}/translation")
+async def get_chapter_translation(
+    book_id: int,
+    chapter_index: int,
+    target_language: str,
+    _user: dict = Depends(get_current_user),
+):
+    """Return the cached translation if available, 404 otherwise. Never enqueues."""
+    from services.db import get_cached_translation_with_meta
+    cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
+    if not cached:
+        raise HTTPException(status_code=404, detail="Translation not cached")
+    return {
+        "status": "ready",
+        "paragraphs": cached["paragraphs"],
+        "provider": cached.get("provider"),
+        "model": cached.get("model"),
+        "title_translation": cached.get("title_translation"),
+    }
+
+
 class RequestTranslationBody(BaseModel):
     target_language: str
 

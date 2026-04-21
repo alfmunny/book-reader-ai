@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -361,41 +361,40 @@ export default function ReaderPage() {
     const bid = Number(bookId);
 
     (async () => {
-      let queueStatus;
+      // First: check if server already has a cached translation (GET, never enqueues)
       try {
-        queueStatus = await getChapterQueueStatus(bid, chapterIndex, translationLang);
+        const res = await getChapterTranslation(bid, chapterIndex, translationLang);
+        if (cancelled || currentChapterKey.current !== cacheKey) return;
+        if (res.status === "ready" && res.paragraphs) {
+          translationCache.current.set(cacheKey, res.paragraphs);
+          setTranslatedParagraphs(res.paragraphs);
+          setTranslatedTitle(res.title_translation ?? null);
+          setTranslationUsedProvider(res.provider ? (res.model ? `${res.provider} (${res.model})` : res.provider) : "cached");
+          setTranslationLoading(false);
+          return;
+        }
       } catch {
-        if (!cancelled && currentChapterKey.current === cacheKey) setTranslationLoading(false);
-        return;
+        // 404 = not cached yet; other errors fall through to show button
       }
       if (cancelled || currentChapterKey.current !== cacheKey) return;
 
-      if (queueStatus.status === "done") {
-        // Server has a cached translation — fetch it via POST (returns instantly)
-        try {
-          const res = await requestChapterTranslation(bid, chapterIndex, translationLang);
-          if (cancelled || currentChapterKey.current !== cacheKey) return;
-          if (res.status === "ready" && res.paragraphs) {
-            translationCache.current.set(cacheKey, res.paragraphs);
-            setTranslatedParagraphs(res.paragraphs);
-            setTranslatedTitle(res.title_translation ?? null);
-            setTranslationUsedProvider(res.provider ? (res.model ? `${res.provider} (${res.model})` : res.provider) : "cached");
-          }
-        } catch { /* ignore */ }
-        if (!cancelled && currentChapterKey.current === cacheKey) setTranslationLoading(false);
-        return;
-      }
+      // Not cached — check if already queued so we can show the queue banner
+      try {
+        const queueStatus = await getChapterQueueStatus(bid, chapterIndex, translationLang);
+        if (cancelled || currentChapterKey.current !== cacheKey) return;
+        if (queueStatus.status === "pending" || queueStatus.status === "running") {
+          setTranslationLoading(false);
+          setTranslationUsedProvider(
+            queueStatus.status === "running"
+              ? "queue · translating now"
+              : `queue · position ${queueStatus.position ?? "?"}`
+          );
+          return;
+        }
+      } catch { /* ignore */ }
 
-      if (queueStatus.status === "pending" || queueStatus.status === "running") {
-        // Already queued — show queue banner and start polling via handleTranslateThisChapter
-        setTranslationLoading(false);
-        if (queueStatus.status === "running") setTranslationUsedProvider("queue · translating now");
-        else setTranslationUsedProvider(`queue · position ${queueStatus.position ?? "?"}`);
-        return;
-      }
-
-      // Not translated yet (null / failed / skipped) — show "Translate this chapter" button
-      setTranslationLoading(false);
+      // Not translated and not queued — show "Translate this chapter" button
+      if (!cancelled && currentChapterKey.current === cacheKey) setTranslationLoading(false);
     })();
 
     return () => { cancelled = true; };

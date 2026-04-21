@@ -66,11 +66,13 @@ test("translation does not show Gemini reminder (queue returns ready)", async ({
       json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false, role: "user", approved: true },
     })
   );
-  await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({
-      json: { status: "ready", paragraphs: ["Translated text."], provider: "gemini", model: "gemini-2.5-flash" },
-    })
-  );
+  await page.route("**/api/books/*/chapters/*/translation", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
+    } else {
+      route.fulfill({ json: { status: "ready", paragraphs: ["Translated text."], provider: "gemini", model: "gemini-2.5-flash" } });
+    }
+  });
 
   await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();

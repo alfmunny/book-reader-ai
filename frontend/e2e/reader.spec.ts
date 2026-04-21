@@ -60,6 +60,23 @@ async function seedTranslationEnabled(page: import("@playwright/test").Page, lan
   await page.goto("/reader/1342");
 }
 
+test("translation auto-loads and hides button when server has cached translation", async ({ page }) => {
+  // Regression: button was shown even when server already had a cached translation
+  // because the old code only checked in-memory cache, not the server.
+  // Uses regex (not glob) to also match the ?target_language=... query string.
+  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation(\?.*)?$/, (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ json: { status: "ready", paragraphs: ["Server-cached translation."], provider: "gemini" } });
+    } else {
+      route.fallback();
+    }
+  });
+
+  await seedTranslationEnabled(page);
+  await expect(page.getByText("Server-cached translation.")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole("button", { name: "Translate this chapter" })).not.toBeVisible();
+});
+
 test("translation does not show Gemini reminder (queue returns ready)", async ({ page }) => {
   await page.route("**/api/user/me", (route) =>
     route.fulfill({

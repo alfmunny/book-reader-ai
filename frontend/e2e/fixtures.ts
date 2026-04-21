@@ -105,8 +105,9 @@ export async function mockBackend(page: Page) {
     route.fulfill({ status: 200, contentType: "audio/mpeg", body: Buffer.from([0xff, 0xfb]) })
   );
 
-  // GET translation check: 404 = not cached (shows "Translate this chapter" button)
-  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation$/, (route) => {
+  // GET translation check: 404 = not cached (shows "Translate this chapter" button).
+  // Regex matches ?target_language=... query string; excludes translation-status, /retry etc.
+  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation(\?.*)?$/, (route) => {
     if (route.request().method() === "GET") {
       route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
     } else {

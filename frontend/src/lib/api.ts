@@ -267,6 +267,18 @@ export function getChapterQueueStatus(
   );
 }
 
+/** Returns the cached translation if available, throws ApiError(404) if not.
+ * Never enqueues — safe to call on page load. */
+export function getChapterTranslation(
+  bookId: number,
+  chapterIndex: number,
+  targetLanguage: string,
+): Promise<ChapterTranslationResponse> {
+  return request<ChapterTranslationResponse>(
+    `/books/${bookId}/chapters/${chapterIndex}/translation?target_language=${encodeURIComponent(targetLanguage)}`,
+  );
+}
+
 /** Reader-side unified translate endpoint. Returns the cached translation
  * if available, otherwise enqueues the chapter (high priority) and
  * returns queue status. Reader polls until status === 'ready'. */

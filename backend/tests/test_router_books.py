@@ -501,6 +501,31 @@ async def test_import_stream_public_without_login(anon_client):
     assert resp.status_code == 200
 
 
+# ── GET /chapters/{idx}/translation — read-only cache check ──────────────────
+
+async def test_get_chapter_translation_cached(client):
+    """GET returns cached translation when it exists."""
+    from services.db import save_translation
+    await save_translation(9999, 0, "de", ["Übersetzung"])
+    resp = await client.get("/api/books/9999/chapters/0/translation?target_language=de")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["paragraphs"] == ["Übersetzung"]
+
+
+async def test_get_chapter_translation_not_cached(client):
+    """GET returns 404 when no cached translation exists."""
+    resp = await client.get("/api/books/9999/chapters/0/translation?target_language=fr")
+    assert resp.status_code == 404
+
+
+async def test_get_chapter_translation_requires_login(anon_client):
+    """GET requires authentication."""
+    resp = await anon_client.get("/api/books/9999/chapters/0/translation?target_language=de")
+    assert resp.status_code == 401
+
+
 async def test_chapter_translation_requires_gemini_key(client):
     """Logged-in user without a Gemini key cannot enqueue new translation."""
     resp = await client.post(

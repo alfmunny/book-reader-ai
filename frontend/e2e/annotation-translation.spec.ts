@@ -35,11 +35,13 @@ test("toolbar Translate button opens sidebar without enabling translation", asyn
 });
 
 test("enabling the translation toggle loads translation and persists to settings", async ({ page }) => {
-  await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({
-      json: { status: "ready", paragraphs: ["Auto-loaded translation."], cached: true },
-    })
-  );
+  await page.route("**/api/books/*/chapters/*/translation", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
+    } else {
+      route.fulfill({ json: { status: "ready", paragraphs: ["Auto-loaded translation."], cached: true } });
+    }
+  });
 
   await page.goto("/reader/1342");
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
@@ -60,11 +62,13 @@ test("enabling the translation toggle loads translation and persists to settings
 });
 
 test("translationEnabled persists: reopening the reader resumes translation", async ({ page }) => {
-  await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({
-      json: { status: "ready", paragraphs: ["Persisted translation."], cached: true },
-    })
-  );
+  await page.route("**/api/books/*/chapters/*/translation", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
+    } else {
+      route.fulfill({ json: { status: "ready", paragraphs: ["Persisted translation."], cached: true } });
+    }
+  });
 
   // Seed settings with translationEnabled = true before first navigation
   await page.addInitScript(() => {
@@ -91,9 +95,13 @@ test("translation sidebar has no standalone title heading", async ({ page }) => 
 });
 
 test("translation language is persisted to settings on change", async ({ page }) => {
-  await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({ json: { status: "ready", paragraphs: ["Translated."], cached: true } })
-  );
+  await page.route("**/api/books/*/chapters/*/translation", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
+    } else {
+      route.fulfill({ json: { status: "ready", paragraphs: ["Translated."], cached: true } });
+    }
+  });
 
   await page.goto("/reader/1342");
   await openAndEnableTranslation(page);

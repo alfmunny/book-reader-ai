@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "Book Reader AI",
   description: "Read public domain classics with AI assistance",
+  icons: { icon: "/icon.svg" },
 };
 
 export const viewport: Viewport = {

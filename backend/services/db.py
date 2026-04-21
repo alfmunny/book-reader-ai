@@ -564,6 +564,23 @@ async def delete_annotation(annotation_id: int, user_id: int) -> bool:
     return cursor.rowcount > 0
 
 
+async def get_all_annotations(user_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT a.*, b.title AS book_title
+            FROM annotations a
+            LEFT JOIN books b ON b.id = a.book_id
+            WHERE a.user_id = ?
+            ORDER BY b.title, a.chapter_index, a.created_at
+            """,
+            (user_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
 # ── Vocabulary ────────────────────────────────────────────────────────────────
 
 async def save_word(

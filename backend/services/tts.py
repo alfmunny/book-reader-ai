@@ -6,6 +6,32 @@ import io
 from typing import Literal
 
 import edge_tts
+import edge_tts.communicate as _edge_communicate
+
+# ── Fix: edge_tts hardcodes xml:lang='en-US' in SSML, which causes
+# MultilingualNeural voices to auto-switch to English pronunciation
+# for words that "look English" (names, places, Latin terms).
+# Patch mkssml to derive xml:lang from the voice name instead. ──────────
+
+_original_mkssml = _edge_communicate.mkssml
+
+
+def _lang_aware_mkssml(tc, escaped_text):
+    import re
+    m = re.search(r"\(([a-z]{2}-[A-Z]{2})", tc.voice)
+    lang = m.group(1) if m else "en-US"
+    return (
+        f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='{lang}'>"
+        f"<voice name='{tc.voice}'>"
+        f"<prosody pitch='{tc.pitch}' rate='{tc.rate}' volume='{tc.volume}'>"
+        f"{escaped_text}"
+        "</prosody>"
+        "</voice>"
+        "</speak>"
+    )
+
+
+_edge_communicate.mkssml = _lang_aware_mkssml
 
 Gender = Literal["female", "male"]
 

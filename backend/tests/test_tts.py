@@ -211,3 +211,45 @@ Und manche liebe Schatten steigen auf;
 def test_chunk_empty_input():
     assert chunk_text("") == []
     assert chunk_text("\n\n  \n\n") == []
+
+
+# ── SSML language lock (xml:lang derived from voice) ─────────────────────────
+
+def _make_tc(voice, rate="+0%", volume="+0%", pitch="+0Hz"):
+    from edge_tts.data_classes import TTSConfig
+    return TTSConfig(voice=voice, rate=rate, volume=volume, pitch=pitch, boundary="WordBoundary")
+
+
+def test_mkssml_uses_voice_language_not_en_us():
+    """The patched mkssml should set xml:lang to match the voice locale,
+    preventing MultilingualNeural voices from auto-switching to English."""
+    from services.tts import _lang_aware_mkssml
+    ssml = _lang_aware_mkssml(_make_tc("de-DE-FlorianMultilingualNeural"), "Hallo Welt")
+    assert "xml:lang='de-DE'" in ssml
+    assert "xml:lang='en-US'" not in ssml
+
+
+def test_mkssml_english_voice_uses_en_us():
+    from services.tts import _lang_aware_mkssml
+    ssml = _lang_aware_mkssml(_make_tc("en-US-EmmaMultilingualNeural"), "Hello world")
+    assert "xml:lang='en-US'" in ssml
+
+
+def test_mkssml_french_voice_uses_fr_fr():
+    from services.tts import _lang_aware_mkssml
+    ssml = _lang_aware_mkssml(_make_tc("fr-FR-VivienneMultilingualNeural"), "Bonjour le monde")
+    assert "xml:lang='fr-FR'" in ssml
+
+
+def test_mkssml_preserves_prosody():
+    from services.tts import _lang_aware_mkssml
+    ssml = _lang_aware_mkssml(_make_tc("de-DE-FlorianMultilingualNeural", rate="+20%", pitch="+5Hz"), "Text")
+    assert "rate='+20%'" in ssml
+    assert "pitch='+5Hz'" in ssml
+
+
+def test_edge_tts_mkssml_is_patched():
+    """Verify the module-level monkey-patch is in effect."""
+    import edge_tts.communicate as etc
+    from services.tts import _lang_aware_mkssml
+    assert etc.mkssml is _lang_aware_mkssml

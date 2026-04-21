@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- BRIGHT A — Warm fills, amber strokes. Hat slightly darker than book. -->
+  <rect width="512" height="512" rx="88" fill="#160600"/>
+  <rect x="18" y="18" width="476" height="476" rx="74"
+        fill="none" stroke="#D97706" stroke-width="1.6"/>
+
+  <!-- Hat crown -->
+  <path d="M 256 68 L 194 246 L 318 246 Z"
+        fill="#3D1206" stroke="#D97706" stroke-width="2"
+        stroke-linejoin="round"/>
+  <!-- Hat brim -->
+  <path d="M 166 246 L 346 246 L 340 270 L 172 270 Z"
+        fill="#4C1808" stroke="#D97706" stroke-width="2"
+        stroke-linejoin="round"/>
+  <!-- Feather -->
+  <path d="M 312 218 C 328 202, 348 188, 364 174
+           C 350 182, 332 198, 318 214 Z"
+        fill="#6B2B0C"/>
+
+  <!-- Eye -->
+  <circle cx="256" cy="268" r="38" fill="#F59E0B" opacity="0.14"/>
+  <circle cx="256" cy="268" r="13" fill="#F59E0B"/>
+  <circle cx="256" cy="268" r="6"  fill="#FEF3C7"/>
+
+  <!-- Book left page -->
+  <path d="M 256 286 L 256 454 L 62 442 L 62 290 Z"
+        fill="#3D1206" stroke="#D97706" stroke-width="2"
+        stroke-linejoin="round"/>
+  <!-- Book right page -->
+  <path d="M 256 286 L 450 290 L 450 442 L 256 454 Z"
+        fill="#4C1808" stroke="#D97706" stroke-width="2"
+        stroke-linejoin="round"/>
+  <!-- Spine -->
+  <line x1="256" y1="286" x2="256" y2="454" stroke="#D97706" stroke-width="2"/>
+  <!-- Eye-glow on book -->
+  <ellipse cx="256" cy="290" rx="56" ry="11" fill="#F59E0B" opacity="0.13"/>
+</svg>

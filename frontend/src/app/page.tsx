@@ -159,9 +159,13 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
-            <p className="text-xs md:text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" className="w-10 h-10 rounded-xl shrink-0" />
+            <div>
+              <h1 className="text-xl md:text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
+              <p className="text-xs md:text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
+            </div>
           </div>
           {status === "unauthenticated" ? (
             <button

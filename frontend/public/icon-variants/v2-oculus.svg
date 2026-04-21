@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- V2 — THE OCULUS
+       A single watching eye. References the all-seeing aspect of
+       deep reading — and the Faustian eye that sees too much.
+       Pure geometry: almond form, dark pupil, amber iris.  -->
+  <defs>
+    <radialGradient id="iris" cx="50%" cy="45%" r="52%">
+      <stop offset="0%"   stop-color="#FEF3C7"/>
+      <stop offset="38%"  stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#7C2D12"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#F59E0B" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="88" fill="#0C0300"/>
+
+  <!-- Outer amber halo -->
+  <ellipse cx="256" cy="256" rx="218" ry="136" fill="url(#halo)"/>
+
+  <!-- Eye form — pointed at both ends, full amber iris -->
+  <path d="M 78 256
+    C 136 168, 194 144, 256 144
+    C 318 144, 376 168, 434 256
+    C 376 344, 318 368, 256 368
+    C 194 368, 136 344, 78 256 Z"
+    fill="url(#iris)"/>
+
+  <!-- Pupil -->
+  <circle cx="256" cy="256" r="74" fill="#080200"/>
+
+  <!-- Iris ring details -->
+  <circle cx="256" cy="256" r="92"
+          fill="none" stroke="#FDE68A" stroke-width="0.8" opacity="0.20"/>
+  <circle cx="256" cy="256" r="112"
+          fill="none" stroke="#FDE68A" stroke-width="0.5" opacity="0.12"/>
+
+  <!-- Specular catch-light on pupil -->
+  <ellipse cx="232" cy="228" rx="17" ry="11"
+           fill="white" opacity="0.10"
+           transform="rotate(-25 232 228)"/>
+</svg>

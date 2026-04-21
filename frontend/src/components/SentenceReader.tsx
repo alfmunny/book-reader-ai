@@ -285,18 +285,6 @@ interface Props {
     chapterIndex: number;
     translationText?: string;
   }) => void;
-  /**
-   * Single-click handler (when TTS is NOT playing). Fires with the clicked
-   * sentence text, its TTS start time, the click position, and optional
-   * translation. The parent opens a quick-action popup (read, note, chat).
-   */
-  onSentenceClick?: (info: {
-    sentenceText: string;
-    startTime: number;
-    position: { x: number; y: number };
-    translationText?: string;
-    chapterIndex: number;
-  }) => void;
   /** When false, annotation underlines and note dots are hidden. Default true. */
   showAnnotations?: boolean;
 }
@@ -338,7 +326,6 @@ export default function SentenceReader({
   annotations,
   scrollTargetSentence,
   onWordTap,
-  onSentenceClick,
   showAnnotations = true,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
@@ -543,10 +530,6 @@ export default function SentenceReader({
                 // Ignore clicks that are the tail of a text-selection drag
                 if (window.getSelection()?.toString().length) return;
                 if (isPlaying || duration > 0) {
-                  onSegmentClick(seg.startTime, seg.text);
-                } else if (onSentenceClick) {
-                  onSentenceClick({ sentenceText: seg.text, startTime: seg.startTime, position: { x: e.clientX, y: e.clientY }, translationText: translationText || undefined, chapterIndex });
-                } else {
                   onSegmentClick(seg.startTime, seg.text);
                 }
               }}

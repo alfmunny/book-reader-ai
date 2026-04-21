@@ -11,7 +11,6 @@ import TranslationView from "@/components/TranslationView";
 import SentenceReader from "@/components/SentenceReader";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
-import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
 import SentenceActionPopup from "@/components/SentenceActionPopup";
 
@@ -69,7 +68,7 @@ export default function ReaderPage() {
 
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "references" | "vocab" | "translate">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
@@ -200,7 +199,6 @@ export default function ReaderPage() {
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
   const [translationLang, setTranslationLang] = useState("en");
-  const [translationRequested, setTranslationRequested] = useState(false);
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
@@ -311,11 +309,6 @@ export default function ReaderPage() {
   // This replaces the previous per-paragraph translate loop — admins
   // stop double-spending tokens and all translation work flows through
   // the single queue (same model chain, same rate limits).
-  // Reset manual translation trigger when chapter or language changes
-  useEffect(() => {
-    setTranslationRequested(false);
-  }, [chapterIndex, translationLang]);
-
   // Reset translationLang when bookLanguage is known and they coincide.
   useEffect(() => {
     if (!bookLanguage) return;
@@ -340,9 +333,6 @@ export default function ReaderPage() {
       setTranslationUsedProvider("cached");
       return;
     }
-
-    // Don't auto-trigger — wait for user to click "Translate this chapter"
-    if (!translationRequested) return;
 
     // If logged in but key status not yet loaded, wait for getMe() to resolve.
     if (session && hasGeminiKey === null) return;
@@ -463,7 +453,7 @@ export default function ReaderPage() {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey, translationRequested]);
+  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey]);
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
@@ -754,7 +744,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && sidebarTab === "chat"
+              sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
@@ -777,29 +767,24 @@ export default function ReaderPage() {
             🌐 Translate
           </button>
 
-          {/* Annotations sidebar — desktop only */}
+          {/* Notes sidebar toggle — desktop only */}
           {session?.backendToken && (
-            <div className="hidden md:block">
-            <AnnotationsSidebar
-              annotations={annotations}
-              totalCount={annotations.length}
-              loading={annotationsLoading}
-              onJump={(ann) => {
-                if (ann.chapter_index !== chapterIndex) {
-                  goToChapter(ann.chapter_index);
-                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
-                } else {
-                  setScrollTargetSentence(undefined);
-                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
-                }
-              }}
-              onEdit={(ann) => setAnnotationPanel({
-                sentenceText: ann.sentence_text,
-                chapterIndex: ann.chapter_index,
-                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-              })}
-            />
-            </div>
+            <button
+              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
+              title="Annotations & notes"
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "notes"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              📝 Notes
+              {annotations.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {annotations.length}
+                </span>
+              )}
+            </button>
           )}
 
           {/* Vocabulary sidebar — desktop only */}
@@ -1199,39 +1184,13 @@ export default function ReaderPage() {
         >
           {sidebarOpen && (
             <>
-              {/* Tab bar */}
-              <div className="flex shrink-0 border-b border-amber-200 bg-white/70">
-                {(["chat", "references", "vocab", "translate"] as const).map((tab) => {
-                  const labels: Record<string, string> = { chat: "💬 Chat", references: "🔗 Refs", vocab: "📚 Vocab", translate: "🌐 Translate" };
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setSidebarTab(tab)}
-                      className={`relative flex-1 py-2.5 text-xs font-medium transition-colors border-b-2 ${
-                        sidebarTab === tab
-                          ? "text-amber-700 border-amber-700"
-                          : "text-stone-500 border-transparent hover:text-amber-600"
-                      }`}
-                    >
-                      {labels[tab]}
-                      {tab === "vocab" && vocabWords.length > 0 && (
-                        <span className="absolute top-1 right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
-                          {vocabWords.length}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Chat/References tab — keep mounted so history persists */}
-              <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" || sidebarTab === "references" ? "" : "hidden"}`}>
+              {/* Chat — keep mounted so history persists even when other tabs active */}
+              <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" ? "" : "hidden"}`}>
                 <InsightChat
                   bookId={bookId}
                   userId={session?.backendUser?.id ?? null}
                   hasGeminiKey={hasGeminiKey ?? false}
-                  isVisible={sidebarOpen && (sidebarTab === "chat" || sidebarTab === "references")}
-                  view={sidebarTab === "references" ? "references" : "chat"}
+                  isVisible={sidebarOpen && sidebarTab === "chat"}
                   chapterText={current?.text ?? ""}
                   chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
                   selectedText={selectedText}
@@ -1248,6 +1207,86 @@ export default function ReaderPage() {
                   } : undefined}
                 />
               </div>
+
+              {/* Notes tab */}
+              {sidebarTab === "notes" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {annotationsLoading && annotations.length === 0 ? (
+                    <div className="flex justify-center mt-10">
+                      <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                    </div>
+                  ) : annotations.length === 0 ? (
+                    <div className="text-center text-stone-400 mt-10 text-sm">
+                      <p className="text-3xl mb-2">📝</p>
+                      <p>No annotations yet.</p>
+                      <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {Object.keys(
+                        annotations.reduce<Record<number, true>>((acc, a) => { acc[a.chapter_index] = true; return acc; }, {})
+                      ).map(Number).sort((a, b) => a - b).map((ch) => (
+                        <div key={ch}>
+                          <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">
+                            Chapter {ch + 1}
+                          </h3>
+                          <div className="space-y-2">
+                            {annotations.filter((a) => a.chapter_index === ch).map((ann) => {
+                              const colorBadge: Record<string, string> = {
+                                yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
+                                blue: "bg-blue-100 border-blue-300 text-blue-800",
+                                green: "bg-green-100 border-green-300 text-green-800",
+                                pink: "bg-pink-100 border-pink-300 text-pink-800",
+                              };
+                              return (
+                                <div
+                                  key={ann.id}
+                                  className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${colorBadge[ann.color] ?? colorBadge.yellow}`}
+                                  onClick={() => {
+                                    if (ann.chapter_index !== chapterIndex) {
+                                      goToChapter(ann.chapter_index);
+                                      setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                                    } else {
+                                      setScrollTargetSentence(undefined);
+                                      setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                                    }
+                                    setSidebarOpen(false);
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
+                                      &ldquo;{ann.sentence_text}&rdquo;
+                                    </p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAnnotationPanel({
+                                          sentenceText: ann.sentence_text,
+                                          chapterIndex: ann.chapter_index,
+                                          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+                                        });
+                                      }}
+                                      className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
+                                      title="Edit annotation"
+                                    >
+                                      ✏️
+                                    </button>
+                                  </div>
+                                  {ann.note_text && (
+                                    <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">
+                                      {ann.note_text}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Vocab tab */}
               {sidebarTab === "vocab" && (
@@ -1285,8 +1324,6 @@ export default function ReaderPage() {
               {sidebarTab === "translate" && (
                 <div className="flex-1 overflow-y-auto">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50/50">
-                    <h3 className="font-serif font-semibold text-ink text-sm mb-3">Translation</h3>
-
                     {/* Enable/disable toggle */}
                     <label className="flex items-center gap-3 mb-4 cursor-pointer">
                       <div className={`relative w-11 h-6 rounded-full transition-colors ${translationEnabled ? "bg-amber-600" : "bg-stone-300"}`}>
@@ -1307,7 +1344,10 @@ export default function ReaderPage() {
                       <select
                         className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white"
                         value={translationLang}
-                        onChange={(e) => setTranslationLang(e.target.value)}
+                        onChange={(e) => {
+                          setTranslationLang(e.target.value);
+                          saveSettings({ translationLang: e.target.value });
+                        }}
                       >
                         {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
                           <option key={l.code} value={l.code}>{l.label}</option>
@@ -1333,16 +1373,6 @@ export default function ReaderPage() {
                         >Side by side</button>
                       </div>
                     </div>
-
-                    {/* Manual trigger — only shown when translation hasn't been requested yet */}
-                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && !translationRequested && (
-                      <button
-                        onClick={() => setTranslationRequested(true)}
-                        className="mb-3 w-full text-sm px-3 py-2 rounded-lg border border-amber-500 bg-amber-600 text-white hover:bg-amber-700 font-medium transition-colors"
-                      >
-                        Translate this chapter
-                      </button>
-                    )}
 
                     {/* Status */}
                     {translationEnabled && (

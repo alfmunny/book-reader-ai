@@ -777,3 +777,122 @@ describe("SentenceReader long-sentence chunk spanning", () => {
     ).toBe(true);
   });
 });
+
+describe("SentenceReader annotation substring matching", () => {
+  it("highlights a segment when annotation.sentence_text is a substring of the segment", () => {
+    // Simulates annotations created via text-selection: stored text is a fragment of the full sentence.
+    const segmentText = "She came back from my watches below, and reported no vessel in sight.";
+    const annotations: Annotation[] = [
+      {
+        id: 10,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "ck from my watches below, and reported no vessel",
+        note_text: "",
+        color: "green",
+      },
+    ];
+
+    const { container } = render(
+      <SentenceReader
+        text={segmentText}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    const segs = getSegments(container);
+    const annotatedSeg = segs.find((s) => s.textContent?.includes("She came back"));
+    expect(annotatedSeg).toBeDefined();
+    expect(annotatedSeg?.className).toContain("border-green-400");
+  });
+
+  it("exact-match annotation still works after substring fallback added", () => {
+    const annotations: Annotation[] = [
+      {
+        id: 11,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "Exact match sentence.",
+        note_text: "",
+        color: "pink",
+      },
+    ];
+
+    const { container } = render(
+      <SentenceReader
+        text="Exact match sentence."
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    const segs = getSegments(container);
+    const annotatedSeg = segs.find((s) => s.textContent?.includes("Exact match"));
+    expect(annotatedSeg).toBeDefined();
+    expect(annotatedSeg?.className).toContain("border-pink-400");
+  });
+
+  it("short annotation text (<10 chars) does NOT match via substring", () => {
+    // The minimum length guard prevents spurious matches from very short fragments.
+    const annotations: Annotation[] = [
+      {
+        id: 12,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "short",
+        note_text: "",
+        color: "yellow",
+      },
+    ];
+
+    const { container } = render(
+      <SentenceReader
+        text="This sentence contains the word short somewhere."
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    const segs = getSegments(container);
+    const seg = segs.find((s) => s.textContent?.includes("contains the word"));
+    expect(seg).toBeDefined();
+    expect(seg?.className).not.toContain("border-yellow-400");
+  });
+
+  it("shows note toggle for annotation matched via substring", () => {
+    const segmentText = "She came back from my watches below, and reported no vessel in sight.";
+    const annotations: Annotation[] = [
+      {
+        id: 13,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "ck from my watches below, and reported no vessel",
+        note_text: "Important passage",
+        color: "blue",
+      },
+    ];
+
+    render(
+      <SentenceReader
+        text={segmentText}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    expect(screen.getByText("▸ 1 note")).toBeInTheDocument();
+  });
+});

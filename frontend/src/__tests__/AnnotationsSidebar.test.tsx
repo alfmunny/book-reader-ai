@@ -132,10 +132,17 @@ test("backdrop click closes sidebar", async () => {
   expect(screen.queryByTestId("annotations-sidebar")).not.toBeInTheDocument();
 });
 
-test("sidebar shows 'View all notes' link pointing to /notes", async () => {
+test("sidebar footer shows 'All books' link to /notes", async () => {
   render(<AnnotationsSidebar {...BASE_PROPS} />);
   await userEvent.click(screen.getByTestId("annotations-toggle"));
-  const link = screen.getByRole("link", { name: /view all notes/i });
-  expect(link).toBeInTheDocument();
-  expect(link).toHaveAttribute("href", "/notes");
+  const allBooksLink = screen.getByRole("link", { name: /all books/i });
+  expect(allBooksLink).toBeInTheDocument();
+  expect(allBooksLink).toHaveAttribute("href", "/notes");
+});
+
+test("sidebar footer shows 'Book notes' link when bookId provided", async () => {
+  render(<AnnotationsSidebar {...BASE_PROPS} bookId={42} />);
+  await userEvent.click(screen.getByTestId("annotations-toggle"));
+  const bookLink = screen.getByRole("link", { name: /book notes/i });
+  expect(bookLink).toHaveAttribute("href", "/notes/42");
 });

@@ -503,6 +503,7 @@ export interface Annotation {
   sentence_text: string;
   note_text: string;
   color: string;
+  created_at?: string;
 }
 
 export interface AnnotationWithBook extends Annotation {
@@ -603,8 +604,16 @@ export interface BookInsight {
   created_at: string;
 }
 
+export interface BookInsightWithBook extends BookInsight {
+  book_title: string | null;
+}
+
 export function getInsights(bookId: number) {
   return request<BookInsight[]>(`/insights?book_id=${bookId}`);
+}
+
+export function getAllInsights() {
+  return request<BookInsightWithBook[]>("/insights/all");
 }
 
 export function saveInsight(data: {

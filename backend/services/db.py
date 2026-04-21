@@ -717,6 +717,23 @@ async def get_insights(user_id: int, book_id: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_all_insights(user_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT i.*, b.title AS book_title
+            FROM book_insights i
+            LEFT JOIN books b ON b.id = i.book_id
+            WHERE i.user_id = ?
+            ORDER BY b.title, i.chapter_index, i.created_at
+            """,
+            (user_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
 async def delete_insight(insight_id: int, user_id: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(

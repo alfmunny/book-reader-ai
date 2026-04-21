@@ -298,7 +298,7 @@ describe("SentenceReader segment click", () => {
     expect(onSegmentClick.mock.calls[0][0]).toBeGreaterThanOrEqual(0); // startTime
   });
 
-  it("single click calls onSegmentClick when no onSentenceClick provided", () => {
+  it("single click does not call onSegmentClick when TTS is idle", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
@@ -313,7 +313,7 @@ describe("SentenceReader segment click", () => {
     const segs = getSegments(container);
     fireEvent.click(segs[0]);
 
-    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+    expect(onSegmentClick).not.toHaveBeenCalled();
   });
 
   it("does not call onSegmentClick when disabled", () => {
@@ -498,9 +498,8 @@ describe("SentenceReader long-press annotation (onAnnotate)", () => {
 });
 
 describe("SentenceReader click interactions", () => {
-  it("single click calls onSentenceClick when TTS is idle and onSentenceClick provided", () => {
+  it("single click does nothing when TTS is idle", () => {
     const onSegmentClick = jest.fn();
-    const onSentenceClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Click this sentence."
@@ -508,47 +507,23 @@ describe("SentenceReader click interactions", () => {
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
-        onSentenceClick={onSentenceClick}
       />
     );
 
     const segs = getSegments(container);
     fireEvent.click(segs[0]);
 
-    expect(onSentenceClick).toHaveBeenCalledTimes(1);
-    expect(onSentenceClick.mock.calls[0][0].sentenceText).toContain("Click this sentence");
     expect(onSegmentClick).not.toHaveBeenCalled();
   });
 
   it("single click calls onSegmentClick when TTS is playing (seek)", () => {
     const onSegmentClick = jest.fn();
-    const onSentenceClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Seekable sentence."
         duration={10}
         currentTime={0}
         isPlaying={true}
-        onSegmentClick={onSegmentClick}
-        onSentenceClick={onSentenceClick}
-      />
-    );
-
-    const segs = getSegments(container);
-    fireEvent.click(segs[0]);
-
-    expect(onSegmentClick).toHaveBeenCalledTimes(1);
-    expect(onSentenceClick).not.toHaveBeenCalled();
-  });
-
-  it("single click calls onSegmentClick when no onSentenceClick provided", () => {
-    const onSegmentClick = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Fallback sentence."
-        duration={0}
-        currentTime={0}
-        isPlaying={false}
         onSegmentClick={onSegmentClick}
       />
     );
@@ -561,7 +536,6 @@ describe("SentenceReader click interactions", () => {
 
   it("click does not fire when disabled", () => {
     const onSegmentClick = jest.fn();
-    const onSentenceClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Disabled sentence."
@@ -569,7 +543,6 @@ describe("SentenceReader click interactions", () => {
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
-        onSentenceClick={onSentenceClick}
         disabled
       />
     );
@@ -578,12 +551,10 @@ describe("SentenceReader click interactions", () => {
     fireEvent.click(segs[0]);
 
     expect(onSegmentClick).not.toHaveBeenCalled();
-    expect(onSentenceClick).not.toHaveBeenCalled();
   });
 
   it("click does not fire when user has made a text selection (drag-to-select)", () => {
     const onSegmentClick = jest.fn();
-    const onSentenceClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Select this text."
@@ -591,12 +562,9 @@ describe("SentenceReader click interactions", () => {
         currentTime={5}
         isPlaying={true}
         onSegmentClick={onSegmentClick}
-        onSentenceClick={onSentenceClick}
       />
     );
 
-    // Simulate browser behaviour: user dragged to select text, then mouseup fires click.
-    // Mock window.getSelection to return a non-empty selection string.
     const origGetSelection = window.getSelection;
     window.getSelection = () => ({ toString: () => "Select this" } as Selection);
 
@@ -606,7 +574,6 @@ describe("SentenceReader click interactions", () => {
     window.getSelection = origGetSelection;
 
     expect(onSegmentClick).not.toHaveBeenCalled();
-    expect(onSentenceClick).not.toHaveBeenCalled();
   });
 });
 

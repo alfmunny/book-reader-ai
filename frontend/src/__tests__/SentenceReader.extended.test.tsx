@@ -580,6 +580,34 @@ describe("SentenceReader click interactions", () => {
     expect(onSegmentClick).not.toHaveBeenCalled();
     expect(onSentenceClick).not.toHaveBeenCalled();
   });
+
+  it("click does not fire when user has made a text selection (drag-to-select)", () => {
+    const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Select this text."
+        duration={10}
+        currentTime={5}
+        isPlaying={true}
+        onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
+      />
+    );
+
+    // Simulate browser behaviour: user dragged to select text, then mouseup fires click.
+    // Mock window.getSelection to return a non-empty selection string.
+    const origGetSelection = window.getSelection;
+    window.getSelection = () => ({ toString: () => "Select this" } as Selection);
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
+    window.getSelection = origGetSelection;
+
+    expect(onSegmentClick).not.toHaveBeenCalled();
+    expect(onSentenceClick).not.toHaveBeenCalled();
+  });
 });
 
 describe("SentenceReader translations", () => {

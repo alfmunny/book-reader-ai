@@ -456,7 +456,7 @@ export default function ReaderPage() {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey]);
+  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey, chapters]);
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").

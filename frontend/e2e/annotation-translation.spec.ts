@@ -46,7 +46,9 @@ test("enabling the translation toggle loads translation and persists to settings
 
   await openAndEnableTranslation(page);
 
-  // Translation appears after enabling the toggle
+  // Enabling the toggle alone does not fire — user must click the button
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
+
   await expect(page.getByText("Auto-loaded translation.")).toBeVisible({ timeout: 5000 });
 
   // translationEnabled saved to settings
@@ -73,7 +75,10 @@ test("translationEnabled persists: reopening the reader resumes translation", as
   });
   await page.goto("/reader/1342");
 
-  // Translation auto-fires because settings say it was enabled
+  // Toggle is restored — user opens sidebar and clicks the button
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
+
   await expect(page.getByText("Persisted translation.")).toBeVisible({ timeout: 5000 });
 });
 

@@ -74,6 +74,8 @@ test("translation does not show Gemini reminder (queue returns ready)", async ({
 
   await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
   await expect(page.getByText("Translated text.")).toBeVisible();
   await expect(page.getByText(/AI features require your own Gemini API key/)).not.toBeVisible();
 });
@@ -88,8 +90,10 @@ test("translation shows queued state when worker is processing", async ({ page }
 
   await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
   await expect(page.getByText("Translated text.")).not.toBeVisible({ timeout: 3000 });
-  await expect(page.getByText(/queue · position 2/)).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/queue · position 2/).first()).toBeVisible({ timeout: 5000 });
 });
 
 test("translation shows worker offline message when worker not running", async ({ page }) => {
@@ -102,7 +106,9 @@ test("translation shows worker offline message when worker not running", async (
 
   await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible({ timeout: 10000 });
-  await expect(page.getByText(/queue · worker is offline/)).toBeVisible({ timeout: 5000 });
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
+  await expect(page.getByText(/queue · worker is offline/).first()).toBeVisible({ timeout: 5000 });
 });
 
 test("Your Library shows chapter badge from recent-read data", async ({ page }) => {

@@ -327,11 +327,15 @@ export default function ReaderPage() {
     }
   }, [bookLanguage, translationLang]);
 
+  // Load from in-memory cache when translation is enabled and chapter/lang changes.
+  // API calls only happen via handleTranslateThisChapter (explicit user action).
   useEffect(() => {
     const current = chapters[chapterIndex];
     if (!translationEnabled || !current?.text) {
       setTranslatedParagraphs([]);
       setTranslatedTitle(null);
+      setTranslationLoading(false);
+      setTranslationUsedProvider("");
       return;
     }
     const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
@@ -343,126 +347,90 @@ export default function ReaderPage() {
       return;
     }
 
-    // If logged in but key status not yet loaded, wait for getMe() to resolve.
-    if (session && hasGeminiKey === null) return;
+    // No cached translation — clear stale state; user must click "Translate this chapter"
+    setTranslatedParagraphs([]);
+    setTranslatedTitle(null);
+    setTranslationLoading(false);
+    setTranslationUsedProvider("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translationEnabled, translationLang, chapterIndex, bookId, chapters]);
 
-    let cancelled = false;
+  async function handleTranslateThisChapter() {
+    const current = chapters[chapterIndex];
+    if (!current?.text) return;
+    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
+    currentChapterKey.current = cacheKey;
+
     setTranslationLoading(true);
     setTranslatedParagraphs([]);
     setTranslationUsedProvider("");
 
     const bid = Number(bookId);
 
-    function showCached(res: {
-      paragraphs?: string[];
-      provider?: string;
-      model?: string;
-      title_translation?: string | null;
-    }) {
+    function showResult(res: { paragraphs?: string[]; provider?: string; model?: string; title_translation?: string | null }) {
       if (!res.paragraphs) return;
       translationCache.current.set(cacheKey, res.paragraphs);
       setTranslatedParagraphs(res.paragraphs);
       setTranslatedTitle(res.title_translation ?? null);
-      const providerLabel = res.provider
-        ? (res.model ? `${res.provider} (${res.model})` : res.provider)
-        : "cached";
-      setTranslationUsedProvider(providerLabel);
+      setTranslationUsedProvider(res.provider ? (res.model ? `${res.provider} (${res.model})` : res.provider) : "cached");
       setTranslationLoading(false);
     }
 
+    function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
+      if (r.status === "running") return "queue · translating now";
+      if (r.worker_running === false) return "queue · worker is offline";
+      return `queue · position ${r.position ?? "?"}`;
+    }
+
+    let res;
+    try {
+      res = await requestChapterTranslation(bid, chapterIndex, translationLang);
+    } catch (e) {
+      if (currentChapterKey.current === cacheKey) {
+        if (e instanceof ApiError && e.status === 401) setTranslationUsedProvider("login required");
+        else if (e instanceof ApiError && e.status === 403) setTranslationUsedProvider("gemini key required");
+        else setTranslationUsedProvider("error · check admin queue");
+        setTranslationLoading(false);
+      }
+      return;
+    }
+    if (currentChapterKey.current !== cacheKey) return;
+
+    if (res.status === "ready") { showResult(res); return; }
+
+    if (hasGeminiKey === false && !isAdmin) {
+      setTranslationUsedProvider("gemini key required");
+      setTranslationLoading(false);
+      return;
+    }
+
+    setTranslationUsedProvider(describeStatus(res));
+
     (async () => {
-      // 1. Request the translation — returns cached OR queue status.
-      let res;
       try {
-        res = await requestChapterTranslation(bid, chapterIndex, translationLang);
-      } catch (e) {
-        console.error("Failed to request chapter translation:", e);
-        if (!cancelled && currentChapterKey.current === cacheKey) {
-          if (e instanceof ApiError && e.status === 401) {
-            setTranslationUsedProvider("login required");
-          } else if (e instanceof ApiError && e.status === 403) {
-            setTranslationUsedProvider("gemini key required");
-          } else {
-            setTranslationUsedProvider("error · check admin queue");
-          }
-          setTranslationLoading(false);
-        }
-        return;
-      }
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-      if (res.status === "ready") {
-        showCached(res);
-        return;
-      }
-
-      // Logged in but no Gemini key — translation was queued but won't run
-      // without a key. Show a notice instead of the misleading queue banner.
-      if (hasGeminiKey === false) {
-        if (!cancelled && currentChapterKey.current === cacheKey) {
-          setTranslationUsedProvider("gemini key required");
-          setTranslationLoading(false);
-        }
-        return;
-      }
-
-      // 2. Queued / running — show status banner and poll every 3s.
-      //    No hard timeout: as long as the chapter is actually being
-      //    processed, we keep waiting. The user can toggle translate off
-      //    if they want to stop.
-      function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
-        if (r.status === "running") return "queue · translating now";
-        // Pending: distinguish "worker is processing, wait your turn"
-        // from "worker is offline — this will never complete without admin action".
-        if (r.worker_running === false) return "queue · worker is offline";
-        return `queue · position ${r.position ?? "?"}`;
-      }
-
-      setTranslationUsedProvider(describeStatus(res));
-
-      // Kick the whole-book banner immediately so "N not started" doesn't
-      // misreport the chapter we just enqueued — users clicking "Translate
-      // all N remaining" next would otherwise see a stale count and a
-      // confusing no-op ("enqueued=0" because we already enqueued this).
-      (async () => {
-        try {
-          const status = await getBookTranslationStatus(bid, translationLang);
-          if (!cancelled && currentChapterKey.current === cacheKey) {
-            setBookTranslationStatus(status);
-          }
-        } catch { /* ignore */ }
-      })();
-
-      const POLL_MS = 3000;
-      while (!cancelled && currentChapterKey.current === cacheKey) {
-        await new Promise((r) => setTimeout(r, POLL_MS));
-        if (cancelled || currentChapterKey.current !== cacheKey) return;
-        let tick;
-        try {
-          tick = await requestChapterTranslation(bid, chapterIndex, translationLang);
-        } catch {
-          continue; // transient error — try again next tick
-        }
-        if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-        if (tick.status === "ready") {
-          showCached(tick);
-          return;
-        }
-        if (tick.status === "failed") {
-          setTranslationUsedProvider(
-            `queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`,
-          );
-          setTranslationLoading(false);
-          return;
-        }
-        setTranslationUsedProvider(describeStatus(tick));
-      }
+        const status = await getBookTranslationStatus(bid, translationLang);
+        if (currentChapterKey.current === cacheKey) setBookTranslationStatus(status);
+      } catch { /* ignore */ }
     })();
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey, chapters]);
+    const POLL_MS = 3000;
+    let cancelled = false;
+    while (!cancelled && currentChapterKey.current === cacheKey) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      if (cancelled || currentChapterKey.current !== cacheKey) return;
+      let tick;
+      try { tick = await requestChapterTranslation(bid, chapterIndex, translationLang); }
+      catch { continue; }
+      if (cancelled || currentChapterKey.current !== cacheKey) return;
+      if (tick.status === "ready") { showResult(tick); return; }
+      if (tick.status === "failed") {
+        setTranslationUsedProvider(`queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`);
+        setTranslationLoading(false);
+        return;
+      }
+      setTranslationUsedProvider(describeStatus(tick));
+    }
+  }
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
@@ -1369,6 +1337,24 @@ export default function ReaderPage() {
                         >Side by side</button>
                       </div>
                     </div>
+
+                    {/* Translate this chapter button — explicit user action required */}
+                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
+                      <div className="mb-4">
+                        {session?.backendToken ? (
+                          <button
+                            onClick={handleTranslateThisChapter}
+                            className="w-full px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
+                          >
+                            Translate this chapter
+                          </button>
+                        ) : (
+                          <p className="text-xs text-amber-700">
+                            <a href="/api/auth/signin" className="underline font-medium">Sign in</a> to translate this chapter.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Status */}
                     {translationEnabled && (

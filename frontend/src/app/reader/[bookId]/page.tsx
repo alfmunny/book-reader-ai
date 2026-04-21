@@ -12,7 +12,7 @@ import AudiobookPlayer from "@/components/AudiobookPlayer";
 import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
 import WordLookup from "@/components/WordLookup";
-import WordActionDrawer, { type WordAction } from "@/components/WordActionDrawer";
+import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
@@ -43,7 +43,7 @@ export default function ReaderPage() {
 
   const [selectedText, setSelectedText] = useState("");
   const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
-  const [wordAction, setWordAction] = useState<WordAction | null>(null);
+  const [chatSheetText, setChatSheetText] = useState<string | null>(null);
 
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -566,7 +566,7 @@ export default function ReaderPage() {
 
   const handleSelection = useCallback(() => {
     const sel = window.getSelection()?.toString().trim() || "";
-    if (sel.length > 10) setSelectedText(sel);
+    setSelectedText(sel.length > 2 ? sel : "");
   }, []);
 
   // Keyboard shortcuts
@@ -1133,15 +1133,6 @@ export default function ReaderPage() {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
                   scrollTargetSentence={scrollTargetSentence}
-                  onWordTap={(info) => {
-                    setWordAction({
-                      word: info.word,
-                      sentenceText: info.sentenceText,
-                      segmentStartTime: info.startTime,
-                      chapterIndex: info.chapterIndex,
-                      translationText: info.translationText,
-                    });
-                  }}
                   onSegmentClick={(startTime, segText) => {
                     if (audiobook) {
                       seekAudioRef.current(startTime);
@@ -1193,38 +1184,40 @@ export default function ReaderPage() {
             />
           )}
 
-          {/* Unified word action drawer (mobile + desktop) */}
-          <WordActionDrawer
-            action={wordAction}
-            onClose={() => setWordAction(null)}
-            onReadSentence={(text, startTime) => {
-              if (audiobook) {
-                seekAudioRef.current(startTime);
-              } else if (ttsDuration > 0) {
-                ttsSeekRef.current(startTime);
-              } else {
-                synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
-                  .then(({ url }) => {
-                    const audio = new Audio(url);
-                    audio.onended = () => URL.revokeObjectURL(url);
-                    audio.play().catch(() => URL.revokeObjectURL(url));
-                  })
-                  .catch(() => {
-                    window.speechSynthesis.cancel();
-                    const utter = new SpeechSynthesisUtterance(text);
-                    utter.lang = bookLanguage;
-                    window.speechSynthesis.speak(utter);
-                  });
-              }
+          {/* Selection toolbar — appears when user selects text */}
+          <SelectionToolbar
+            onRead={(text) => {
+              synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
+                .then(({ url }) => {
+                  const audio = new Audio(url);
+                  audio.onended = () => URL.revokeObjectURL(url);
+                  audio.play().catch(() => URL.revokeObjectURL(url));
+                })
+                .catch(() => {
+                  window.speechSynthesis.cancel();
+                  const utter = new SpeechSynthesisUtterance(text);
+                  utter.lang = bookLanguage;
+                  window.speechSynthesis.speak(utter);
+                });
             }}
-            onSaveWord={session?.backendToken ? handleWordSave : undefined}
-            onAnnotate={session?.backendToken ? (sentenceText, ci) => {
+            onHighlight={session?.backendToken ? (text) => {
               setAnnotationPanel({
-                sentenceText,
-                chapterIndex: ci,
+                sentenceText: text,
+                chapterIndex,
                 position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
               });
             } : undefined}
+            onNote={session?.backendToken ? (text) => {
+              setAnnotationPanel({
+                sentenceText: text,
+                chapterIndex,
+                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+              });
+            } : undefined}
+            onChat={(text) => {
+              setChatSheetText(text);
+              setSelectedText(text);
+            }}
           />
 
           {/* Annotation toolbar */}
@@ -1343,29 +1336,12 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* Insight Chat sidebar — fullscreen overlay on mobile, inline on desktop */}
+        {/* Insight Chat — half-screen bottom sheet on mobile, inline sidebar on desktop */}
+        {/* Desktop: inline sidebar */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
-          className={`flex flex-col overflow-hidden shrink-0 ${
-            sidebarOpen
-              ? "fixed inset-0 z-40 bg-parchment !w-full md:static md:z-auto md:!w-auto md:border-l md:border-amber-200"
-              : "border-l border-amber-200"
-          }`}
+          className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200"
         >
-          {/* Mobile close button for fullscreen sidebar */}
-          {sidebarOpen && (
-            <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-amber-200 shrink-0 bg-white/70">
-              <span className="font-serif font-semibold text-ink text-sm">Insight Chat</span>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700 hover:text-amber-900 text-lg"
-                aria-label="Close sidebar"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-          {/* Keep mounted so chat history persists across open/close */}
           <InsightChat
             bookId={bookId}
             userId={session?.backendUser?.id ?? null}
@@ -1388,6 +1364,50 @@ export default function ReaderPage() {
           />
         </div>
       </div>
+
+      {/* Mobile: half-screen bottom sheet for chat */}
+      {(sidebarOpen || chatSheetText) && (
+        <div className="md:hidden fixed inset-0 z-40 flex flex-col">
+          {/* Tap-to-dismiss backdrop (top half — user can still see the text) */}
+          <div
+            className="flex-1 bg-black/10"
+            onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
+          />
+          {/* Chat sheet (bottom half) */}
+          <div className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom">
+            {/* Drag handle + close */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-amber-200 shrink-0">
+              <div className="w-10 h-1 bg-amber-200 rounded-full" />
+              <span className="font-serif font-semibold text-ink text-sm">Chat</span>
+              <button
+                onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700 text-lg"
+                aria-label="Close chat"
+              >✕</button>
+            </div>
+            <InsightChat
+              bookId={bookId}
+              userId={session?.backendUser?.id ?? null}
+              hasGeminiKey={hasGeminiKey ?? false}
+              isVisible={true}
+              chapterText={current?.text ?? ""}
+              chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
+              selectedText={chatSheetText || selectedText}
+              bookTitle={meta?.title ?? ""}
+              author={meta?.authors[0] ?? ""}
+              bookLanguage={bookLanguage}
+              onAIUsed={notifyAIUsed}
+              chapterIndex={chapterIndex}
+              onSaveInsight={session?.backendToken ? (question, answer) => {
+                saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
+                  .then(() => setObsidianToast("Insight saved to book notes"))
+                  .catch(() => setObsidianToast("Failed to save insight"))
+                  .finally(() => setTimeout(() => setObsidianToast(null), 3000));
+              } : undefined}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Audiobook search modal */}
       {audiobookEnabled && showAudioSearch && (

@@ -70,7 +70,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-0">
             {loading && annotations.length === 0 ? (
               <div className="flex justify-center mt-10">
                 <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
@@ -124,6 +124,17 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
               ))}
               </>
             )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-amber-100 px-4 py-3 shrink-0">
+            <a
+              href="/notes"
+              onClick={() => setOpen(false)}
+              className="block w-full text-center text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+            >
+              View all notes →
+            </a>
           </div>
         </div>
       )}

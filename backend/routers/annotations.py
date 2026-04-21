@@ -2,7 +2,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user
-from services.db import create_annotation, get_annotations, update_annotation, delete_annotation
+from services.db import create_annotation, get_annotations, get_all_annotations, update_annotation, delete_annotation
 
 router = APIRouter(prefix="/annotations", tags=["annotations"])
 
@@ -33,6 +33,11 @@ async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
         req.note_text,
         req.color,
     )
+
+
+@router.get("/all")
+async def list_all_annotations(user: dict = Depends(get_current_user)):
+    return await get_all_annotations(user["id"])
 
 
 @router.get("")

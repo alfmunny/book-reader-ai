@@ -510,8 +510,16 @@ export interface Annotation {
   color: string;
 }
 
+export interface AnnotationWithBook extends Annotation {
+  book_title: string | null;
+}
+
 export function getAnnotations(bookId: number) {
   return request<Annotation[]>(`/annotations?book_id=${bookId}`);
+}
+
+export function getAllAnnotations() {
+  return request<AnnotationWithBook[]>("/annotations/all");
 }
 
 export function createAnnotation(data: {

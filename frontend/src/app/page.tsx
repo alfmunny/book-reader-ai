@@ -211,6 +211,14 @@ export default function Home() {
               )}
             </button>
           ))}
+          {status === "authenticated" && (
+            <button
+              onClick={() => router.push("/notes")}
+              className="px-5 py-3 text-sm font-medium border-b-2 border-transparent text-amber-600 hover:text-amber-800 transition-colors"
+            >
+              Your Notes
+            </button>
+          )}
           {/* Admin tab — only visible to admin users */}
           {isAdmin && (
             <button

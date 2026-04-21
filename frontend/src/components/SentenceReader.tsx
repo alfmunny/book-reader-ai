@@ -98,9 +98,8 @@ function parseIntoSegments(
   }
 
   // Step 2a: figure out which chunk each segment belongs to (when chunks present)
-  // The chunker splits the chapter at paragraph boundaries; the segmenter
-  // splits at sentences/lines. So a segment never spans chunk boundaries —
-  // we just walk both lists in chapter order and assign.
+  // Walk both lists in chapter order. Sentences longer than a single chunk
+  // (>400 chars) are assigned to the chunk where they start via prefix matching.
   const segmentChunkIdx: number[] = new Array(allTexts.length).fill(-1);
   if (chunks && chunks.length > 0) {
     let chunkIdx = 0;
@@ -115,6 +114,21 @@ function parseIntoSegments(
           segmentChunkIdx[s] = chunkIdx;
           cursor = pos + seg.length;
           break;
+        }
+        // Full match failed — for sentences longer than the chunk size the full
+        // string won't fit in any single chunk. Try matching a prefix (first 50
+        // chars) to detect "sentence starts here but overflows into the next chunk".
+        const PREFIX_LEN = 50;
+        const prefix = seg.slice(0, PREFIX_LEN);
+        if (prefix.length === PREFIX_LEN) {
+          const prefixPos = chunkText.indexOf(prefix, cursor);
+          if (prefixPos >= 0) {
+            // Sentence starts in this chunk; assign it here and consume the rest
+            // of the chunk so the next sentence searches from the next chunk.
+            segmentChunkIdx[s] = chunkIdx;
+            cursor = chunkText.length;
+            break;
+          }
         }
         // Not in this chunk — move to the next
         chunkIdx++;
@@ -139,6 +153,13 @@ function parseIntoSegments(
       const segIndices: number[] = [];
       for (let s = 0; s < allTexts.length; s++) {
         if (segmentChunkIdx[s] === ci) segIndices.push(s);
+      }
+
+      if (chunk.duration === 0) {
+        // Not yet loaded — Infinity prevents these segments from ever matching
+        // currentTime prematurely. Recalculated once the chunk loads.
+        for (const idx of segIndices) startTimes[idx] = Infinity;
+        continue; // chunkStartTime stays unchanged until we know the real duration
       }
 
       const wbs = chunk.wordBoundaries;
@@ -172,6 +193,12 @@ function parseIntoSegments(
       }
 
       chunkStartTime += chunk.duration;
+    }
+    // Segments that couldn't be matched to any chunk (segmentChunkIdx === -1) keep
+    // startTime = 0, which would make them spuriously match currentTime > 0. Assign
+    // Infinity so they behave like unloaded chunks.
+    for (let s = 0; s < allTexts.length; s++) {
+      if (segmentChunkIdx[s] === -1) startTimes[s] = Infinity;
     }
   } else {
     // Path c: linear fallback (LibriVox audiobook path)
@@ -258,6 +285,20 @@ interface Props {
     chapterIndex: number;
     translationText?: string;
   }) => void;
+  /**
+   * Single-click handler (when TTS is NOT playing). Fires with the clicked
+   * sentence text, its TTS start time, the click position, and optional
+   * translation. The parent opens a quick-action popup (read, note, chat).
+   */
+  onSentenceClick?: (info: {
+    sentenceText: string;
+    startTime: number;
+    position: { x: number; y: number };
+    translationText?: string;
+    chapterIndex: number;
+  }) => void;
+  /** When false, annotation underlines and note dots are hidden. Default true. */
+  showAnnotations?: boolean;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -265,6 +306,20 @@ const ANNOTATION_COLOR_CLASS: Record<string, string> = {
   blue: "border-b-2 border-blue-400",
   green: "border-b-2 border-green-400",
   pink: "border-b-2 border-pink-400",
+};
+
+const NOTE_DOT_CLASS: Record<string, string> = {
+  yellow: "bg-yellow-400",
+  blue: "bg-blue-400",
+  green: "bg-green-400",
+  pink: "bg-pink-400",
+};
+
+const NOTE_CARD_CLASS: Record<string, string> = {
+  yellow: "bg-yellow-50 text-yellow-800 border-yellow-200",
+  blue: "bg-blue-50 text-blue-800 border-blue-200",
+  green: "bg-green-50 text-green-800 border-green-200",
+  pink: "bg-pink-50 text-pink-800 border-pink-200",
 };
 
 export default function SentenceReader({
@@ -283,8 +338,11 @@ export default function SentenceReader({
   annotations,
   scrollTargetSentence,
   onWordTap,
+  onSentenceClick,
+  showAnnotations = true,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
+  const [expandedNoteFlatIdx, setExpandedNoteFlatIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -319,7 +377,7 @@ export default function SentenceReader({
   // Current segment: last one whose startTime ≤ currentTime
   const currentIdx = useMemo(() => {
     if (duration === 0 || currentTime === 0) return -1;
-    let best = 0;
+    let best = -1;
     for (let i = 0; i < allSegments.length; i++) {
       if (allSegments[i].startTime <= currentTime) best = i;
       else break;
@@ -360,6 +418,17 @@ export default function SentenceReader({
     annotations?.forEach((a) => map.set(a.sentence_text, a));
     return map;
   }, [annotations]);
+
+  // Lookup with substring fallback: annotations from text-selection may store a
+  // substring of the segment text rather than the full sentence.
+  const getAnnotation = useMemo(() => {
+    const anns = annotations ?? [];
+    return (segText: string): Annotation | undefined => {
+      const exact = annotationMap.get(segText);
+      if (exact) return exact;
+      return anns.find((a) => a.sentence_text.length >= 10 && segText.includes(a.sentence_text));
+    };
+  }, [annotations, annotationMap]);
 
   // Long-press handlers (shared across segments)
   function handlePointerDown(e: React.PointerEvent, seg: Segment) {
@@ -402,14 +471,14 @@ export default function SentenceReader({
         const segClass = (seg: { flatIdx: number; chunkIdx: number }): string => {
           const active = seg.flatIdx === currentIdx;
           const loaded = isSegmentLoaded(seg);
-          if (active) return "bg-amber-300 text-amber-950 cursor-pointer";
+          if (active) return "bg-amber-300 text-amber-950";
           if (disabled) {
             return loaded
-              ? "text-stone-500 cursor-default"
-              : "text-stone-400/70 cursor-default";
+              ? "text-stone-500"
+              : "text-stone-400/70";
           }
           return loaded
-            ? "cursor-pointer hover:bg-amber-100"
+            ? "hover:bg-amber-50"
             : "text-stone-400 cursor-default";
         };
 
@@ -454,11 +523,11 @@ export default function SentenceReader({
           }, 500);
         };
 
-        // Render a segment span with annotation underline + note icon
+        // Render a segment span with annotation underline + note dot
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
           const isJumpTarget = flashTarget !== null && seg.text === flashTarget;
-          const annotation = annotationMap.get(seg.text);
+          const annotation = showAnnotations ? getAnnotation(seg.text) : undefined;
           const annotationClass = annotation
             ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
@@ -469,7 +538,18 @@ export default function SentenceReader({
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
-              onDoubleClick={onWordTap ? undefined : () => { if (!disabled && isSegmentLoaded(seg)) onSegmentClick(seg.startTime, seg.text); }}
+              onClick={(e) => {
+                if (disabled || !isSegmentLoaded(seg)) return;
+                // Ignore clicks that are the tail of a text-selection drag
+                if (window.getSelection()?.toString().length) return;
+                if (isPlaying || duration > 0) {
+                  onSegmentClick(seg.startTime, seg.text);
+                } else if (onSentenceClick) {
+                  onSentenceClick({ sentenceText: seg.text, startTime: seg.startTime, position: { x: e.clientX, y: e.clientY }, translationText: translationText || undefined, chapterIndex });
+                } else {
+                  onSegmentClick(seg.startTime, seg.text);
+                }
+              }}
               onPointerDown={(e) => onWordTap ? handleSegLongPress(e, seg) : handlePointerDown(e, seg)}
               onPointerUp={cancelLongPress}
               onPointerCancel={cancelLongPress}
@@ -477,7 +557,15 @@ export default function SentenceReader({
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {seg.text}
-              {annotation?.note_text ? <span className="ml-0.5 text-xs select-none">📝</span> : null}
+              {annotation?.note_text && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}
+                  className="inline-block ml-0.5 align-middle leading-none cursor-pointer"
+                  aria-label="Toggle note"
+                >
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[annotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
+                </button>
+              )}
               {trailingSpace ? " " : ""}
             </span>
           );
@@ -505,28 +593,48 @@ export default function SentenceReader({
           );
         }
 
+        // Expanded note card for any annotated sentence in this paragraph
+        const expandedAnn = expandedNoteFlatIdx !== null
+          ? (para.segments.map((s) => s.flatIdx === expandedNoteFlatIdx ? getAnnotation(s.text) : null).find((a) => a != null) ?? null)
+          : null;
+        const noteCard = expandedAnn?.note_text ? (
+          <div className={`mt-1.5 text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[expandedAnn.color] ?? NOTE_CARD_CLASS.yellow}`}>
+            <p className="italic leading-relaxed">{expandedAnn.note_text}</p>
+          </div>
+        ) : null;
+
         // ── No translation: render original only ──
         if (!hasTranslations) {
-          return <div key={pIdx}>{originalContent}</div>;
+          return (
+            <div key={pIdx}>
+              {originalContent}
+              {noteCard}
+            </div>
+          );
         }
 
         // ── Translation: parallel (side by side) ──
         if (isParallel) {
           return (
-            <div key={pIdx} className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2 py-4 first:pt-0 last:pb-0">
-              {originalContent}
-              <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6">
-                {translationText ? (
-                  <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
-                    {translationText}
-                  </p>
-                ) : translationLoading ? (
-                  <div className="space-y-2 animate-pulse">
-                    {Array.from({ length: 3 }).map((_, j) => (
-                      <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
-                    ))}
-                  </div>
-                ) : null}
+            <div key={pIdx} className="py-4 first:pt-0 last:pb-0">
+              <div className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2">
+                <div>
+                  {originalContent}
+                  {noteCard}
+                </div>
+                <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6" data-translation="true">
+                  {translationText ? (
+                    <p className="font-serif text-base text-amber-800 leading-relaxed italic whitespace-pre-wrap">
+                      {translationText}
+                    </p>
+                  ) : translationLoading ? (
+                    <div className="space-y-2 animate-pulse">
+                      {Array.from({ length: 3 }).map((_, j) => (
+                        <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           );
@@ -536,6 +644,7 @@ export default function SentenceReader({
         return (
           <div key={pIdx}>
             {originalContent}
+            {noteCard}
             {translationLoading && textParaIdx === 0 && !translationText && (
               <div className="mt-1 space-y-1 animate-pulse">
                 <div className="h-3 bg-amber-100 rounded w-full" />
@@ -543,7 +652,7 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+              <p data-translation="true" className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
                 {translationText}
               </p>
             )}

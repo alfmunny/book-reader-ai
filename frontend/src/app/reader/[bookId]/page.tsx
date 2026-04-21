@@ -2,20 +2,17 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, getAudiobook, deleteAudiobook, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, Audiobook, ApiError, Annotation, VocabularyWord } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
-import AudiobookPlayer from "@/components/AudiobookPlayer";
-import AudiobookSearch from "@/components/AudiobookSearch";
 import SentenceReader from "@/components/SentenceReader";
-import WordLookup from "@/components/WordLookup";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
-import AnnotationsSidebar from "@/components/AnnotationsSidebar";
 import VocabularyToast from "@/components/VocabularyToast";
+import SentenceActionPopup from "@/components/SentenceActionPopup";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -42,7 +39,7 @@ export default function ReaderPage() {
   const [error, setError] = useState("");
 
   const [selectedText, setSelectedText] = useState("");
-  const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
+  const [sentencePopup, setSentencePopup] = useState<{ text: string; startTime: number; position: { x: number; y: number }; translationText?: string } | null>(null);
   const [chatSheetText, setChatSheetText] = useState<string | null>(null);
 
   // Annotations
@@ -62,18 +59,7 @@ export default function ReaderPage() {
   // Obsidian export toast
   const [obsidianToast, setObsidianToast] = useState<string | null>(null);
 
-  // Audiobook
-  const [audiobookEnabled, setAudiobookEnabled] = useState(true);
-  const [audiobook, setAudiobook] = useState<Audiobook | null>(null);
-  const [showAudioSearch, setShowAudioSearch] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
-  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
-  const seekAudioRef = useRef<(t: number) => void>(() => {});
-
   // TTS Read-button playback state — fed by TTSControls via callback props.
-  // When no LibriVox audiobook is linked, these drive the SentenceReader's
-  // sentence highlighting and click-to-seek.
   const [ttsCurrentTime, setTtsCurrentTime] = useState(0);
   const [ttsDuration, setTtsDuration] = useState(0);
   const [ttsIsPlaying, setTtsIsPlaying] = useState(false);
@@ -81,9 +67,15 @@ export default function ReaderPage() {
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
 
+  // Annotation display toggle (persisted)
+  const [showAnnotations, setShowAnnotations] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("reader-show-annotations") !== "false";
+  });
+
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "vocab" | "translate">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
@@ -214,9 +206,12 @@ export default function ReaderPage() {
   // Translation state
   const translationCache = useRef(new Map<string, string[]>());
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
-  const [translationEnabled, setTranslationEnabled] = useState(false);
-  const [translationLang, setTranslationLang] = useState("en");
-  const [translationRequested, setTranslationRequested] = useState(false);
+  const [translationEnabled, setTranslationEnabled] = useState<boolean>(() =>
+    typeof window !== "undefined" ? getSettings().translationEnabled : false
+  );
+  const [translationLang, setTranslationLang] = useState<string>(() =>
+    typeof window !== "undefined" ? getSettings().translationLang : "en"
+  );
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
@@ -230,12 +225,10 @@ export default function ReaderPage() {
   const [theme, setTheme] = useState<Theme>("light");
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Read settings on mount
+  // Read settings on mount (translationLang uses lazy useState above)
   useEffect(() => {
     const s = getSettings();
-    setTranslationLang(s.translationLang);
     // translationProvider setting is retained for back-compat but no longer read here.
-    setAudiobookEnabled(s.audiobookEnabled);
     setFontSize(s.fontSize);
     setTheme(s.theme);
   }, []);
@@ -294,13 +287,6 @@ export default function ReaderPage() {
       .finally(() => setLoading(false));
   }, [bookId]);
 
-  // Load saved audiobook for this book
-  useEffect(() => {
-    if (!bookId) return;
-    setAudiobook(null);
-    getAudiobook(Number(bookId)).then(setAudiobook).catch(() => {});
-  }, [bookId]);
-
   // Load annotations for this book (requires auth)
   useEffect(() => {
     if (!bookId || !session?.backendToken) return;
@@ -335,11 +321,6 @@ export default function ReaderPage() {
   // This replaces the previous per-paragraph translate loop — admins
   // stop double-spending tokens and all translation work flows through
   // the single queue (same model chain, same rate limits).
-  // Reset manual translation trigger when chapter or language changes
-  useEffect(() => {
-    setTranslationRequested(false);
-  }, [chapterIndex, translationLang]);
-
   // Reset translationLang when bookLanguage is known and they coincide.
   useEffect(() => {
     if (!bookLanguage) return;
@@ -349,11 +330,15 @@ export default function ReaderPage() {
     }
   }, [bookLanguage, translationLang]);
 
+  // Load from in-memory cache when translation is enabled and chapter/lang changes.
+  // API calls only happen via handleTranslateThisChapter (explicit user action).
   useEffect(() => {
     const current = chapters[chapterIndex];
     if (!translationEnabled || !current?.text) {
       setTranslatedParagraphs([]);
       setTranslatedTitle(null);
+      setTranslationLoading(false);
+      setTranslationUsedProvider("");
       return;
     }
     const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
@@ -365,129 +350,90 @@ export default function ReaderPage() {
       return;
     }
 
-    // Don't auto-trigger — wait for user to click "Translate this chapter"
-    if (!translationRequested) return;
+    // No cached translation — clear stale state; user must click "Translate this chapter"
+    setTranslatedParagraphs([]);
+    setTranslatedTitle(null);
+    setTranslationLoading(false);
+    setTranslationUsedProvider("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translationEnabled, translationLang, chapterIndex, bookId, chapters]);
 
-    // If logged in but key status not yet loaded, wait for getMe() to resolve.
-    if (session && hasGeminiKey === null) return;
+  async function handleTranslateThisChapter() {
+    const current = chapters[chapterIndex];
+    if (!current?.text) return;
+    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
+    currentChapterKey.current = cacheKey;
 
-    let cancelled = false;
     setTranslationLoading(true);
     setTranslatedParagraphs([]);
     setTranslationUsedProvider("");
 
     const bid = Number(bookId);
 
-    function showCached(res: {
-      paragraphs?: string[];
-      provider?: string;
-      model?: string;
-      title_translation?: string | null;
-    }) {
+    function showResult(res: { paragraphs?: string[]; provider?: string; model?: string; title_translation?: string | null }) {
       if (!res.paragraphs) return;
       translationCache.current.set(cacheKey, res.paragraphs);
       setTranslatedParagraphs(res.paragraphs);
       setTranslatedTitle(res.title_translation ?? null);
-      const providerLabel = res.provider
-        ? (res.model ? `${res.provider} (${res.model})` : res.provider)
-        : "cached";
-      setTranslationUsedProvider(providerLabel);
+      setTranslationUsedProvider(res.provider ? (res.model ? `${res.provider} (${res.model})` : res.provider) : "cached");
       setTranslationLoading(false);
     }
 
+    function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
+      if (r.status === "running") return "queue · translating now";
+      if (r.worker_running === false) return "queue · worker is offline";
+      return `queue · position ${r.position ?? "?"}`;
+    }
+
+    let res;
+    try {
+      res = await requestChapterTranslation(bid, chapterIndex, translationLang);
+    } catch (e) {
+      if (currentChapterKey.current === cacheKey) {
+        if (e instanceof ApiError && e.status === 401) setTranslationUsedProvider("login required");
+        else if (e instanceof ApiError && e.status === 403) setTranslationUsedProvider("gemini key required");
+        else setTranslationUsedProvider("error · check admin queue");
+        setTranslationLoading(false);
+      }
+      return;
+    }
+    if (currentChapterKey.current !== cacheKey) return;
+
+    if (res.status === "ready") { showResult(res); return; }
+
+    if (hasGeminiKey === false && !isAdmin) {
+      setTranslationUsedProvider("gemini key required");
+      setTranslationLoading(false);
+      return;
+    }
+
+    setTranslationUsedProvider(describeStatus(res));
+
     (async () => {
-      // 1. Request the translation — returns cached OR queue status.
-      let res;
       try {
-        res = await requestChapterTranslation(bid, chapterIndex, translationLang);
-      } catch (e) {
-        console.error("Failed to request chapter translation:", e);
-        if (!cancelled && currentChapterKey.current === cacheKey) {
-          if (e instanceof ApiError && e.status === 401) {
-            setTranslationUsedProvider("login required");
-          } else if (e instanceof ApiError && e.status === 403) {
-            setTranslationUsedProvider("gemini key required");
-          } else {
-            setTranslationUsedProvider("error · check admin queue");
-          }
-          setTranslationLoading(false);
-        }
-        return;
-      }
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-      if (res.status === "ready") {
-        showCached(res);
-        return;
-      }
-
-      // Logged in but no Gemini key — translation was queued but won't run
-      // without a key. Show a notice instead of the misleading queue banner.
-      if (hasGeminiKey === false) {
-        if (!cancelled && currentChapterKey.current === cacheKey) {
-          setTranslationUsedProvider("gemini key required");
-          setTranslationLoading(false);
-        }
-        return;
-      }
-
-      // 2. Queued / running — show status banner and poll every 3s.
-      //    No hard timeout: as long as the chapter is actually being
-      //    processed, we keep waiting. The user can toggle translate off
-      //    if they want to stop.
-      function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
-        if (r.status === "running") return "queue · translating now";
-        // Pending: distinguish "worker is processing, wait your turn"
-        // from "worker is offline — this will never complete without admin action".
-        if (r.worker_running === false) return "queue · worker is offline";
-        return `queue · position ${r.position ?? "?"}`;
-      }
-
-      setTranslationUsedProvider(describeStatus(res));
-
-      // Kick the whole-book banner immediately so "N not started" doesn't
-      // misreport the chapter we just enqueued — users clicking "Translate
-      // all N remaining" next would otherwise see a stale count and a
-      // confusing no-op ("enqueued=0" because we already enqueued this).
-      (async () => {
-        try {
-          const status = await getBookTranslationStatus(bid, translationLang);
-          if (!cancelled && currentChapterKey.current === cacheKey) {
-            setBookTranslationStatus(status);
-          }
-        } catch { /* ignore */ }
-      })();
-
-      const POLL_MS = 3000;
-      while (!cancelled && currentChapterKey.current === cacheKey) {
-        await new Promise((r) => setTimeout(r, POLL_MS));
-        if (cancelled || currentChapterKey.current !== cacheKey) return;
-        let tick;
-        try {
-          tick = await requestChapterTranslation(bid, chapterIndex, translationLang);
-        } catch {
-          continue; // transient error — try again next tick
-        }
-        if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-        if (tick.status === "ready") {
-          showCached(tick);
-          return;
-        }
-        if (tick.status === "failed") {
-          setTranslationUsedProvider(
-            `queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`,
-          );
-          setTranslationLoading(false);
-          return;
-        }
-        setTranslationUsedProvider(describeStatus(tick));
-      }
+        const status = await getBookTranslationStatus(bid, translationLang);
+        if (currentChapterKey.current === cacheKey) setBookTranslationStatus(status);
+      } catch { /* ignore */ }
     })();
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translationEnabled, translationLang, chapterIndex, bookId, hasGeminiKey, translationRequested]);
+    const POLL_MS = 3000;
+    let cancelled = false;
+    while (!cancelled && currentChapterKey.current === cacheKey) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      if (cancelled || currentChapterKey.current !== cacheKey) return;
+      let tick;
+      try { tick = await requestChapterTranslation(bid, chapterIndex, translationLang); }
+      catch { continue; }
+      if (cancelled || currentChapterKey.current !== cacheKey) return;
+      if (tick.status === "ready") { showResult(tick); return; }
+      if (tick.status === "failed") {
+        setTranslationUsedProvider(`queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`);
+        setTranslationLoading(false);
+        return;
+      }
+      setTranslationUsedProvider(describeStatus(tick));
+    }
+  }
 
   // Poll book-level translation status when translation is enabled — shows
   // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
@@ -612,6 +558,7 @@ export default function ReaderPage() {
 
   function goToChapter(index: number) {
     setChapterIndex(index);
+    router.replace(`/reader/${bookId}?chapter=${index}`, { scroll: false });
     saveLastChapter(Number(bookId), index);
     if (session?.backendToken) {
       saveReadingProgress(Number(bookId), index).catch(() => {});
@@ -620,9 +567,6 @@ export default function ReaderPage() {
     setTranslatedParagraphs([]);
     setTranslatedTitle(null);
     setTranslationUsedProvider("");
-    setAudioCurrentTime(0);
-    setAudioDuration(0);
-    setAudioIsPlaying(false);
     setTtsCurrentTime(0);
     setTtsDuration(0);
     setTtsIsPlaying(false);
@@ -780,7 +724,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && sidebarTab === "chat"
+              sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
@@ -790,7 +734,7 @@ export default function ReaderPage() {
 
           {/* Translate toggle — opens sidebar with translation controls */}
           <button
-            onClick={() => { setSidebarTab("translate"); setTranslationEnabled(true); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
             title="Translation"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"
@@ -803,29 +747,45 @@ export default function ReaderPage() {
             🌐 Translate
           </button>
 
-          {/* Annotations sidebar — desktop only */}
+          {/* Notes sidebar toggle — desktop only */}
           {session?.backendToken && (
-            <div className="hidden md:block">
-            <AnnotationsSidebar
-              annotations={annotations}
-              totalCount={annotations.length}
-              loading={annotationsLoading}
-              onJump={(ann) => {
-                if (ann.chapter_index !== chapterIndex) {
-                  setChapterIndex(ann.chapter_index);
-                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
-                } else {
-                  setScrollTargetSentence(undefined);
-                  setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
-                }
+            <button
+              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
+              title="Annotations & notes"
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "notes"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              📝 Notes
+              {annotations.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {annotations.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Show/hide annotation marks — desktop only */}
+          {session?.backendToken && (
+            <button
+              onClick={() => {
+                setShowAnnotations((v) => {
+                  const next = !v;
+                  localStorage.setItem("reader-show-annotations", String(next));
+                  return next;
+                });
               }}
-              onEdit={(ann) => setAnnotationPanel({
-                sentenceText: ann.sentence_text,
-                chapterIndex: ann.chapter_index,
-                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-              })}
-            />
-            </div>
+              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                showAnnotations
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
+              }`}
+            >
+              {showAnnotations ? "🔖 Marks on" : "🔖 Marks off"}
+            </button>
           )}
 
           {/* Vocabulary sidebar — desktop only */}
@@ -856,21 +816,6 @@ export default function ReaderPage() {
               className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               ↗ Obsidian
-            </button>
-          )}
-
-          {/* Audiobook toggle — desktop only */}
-          {audiobookEnabled && (
-            <button
-              onClick={() => audiobook ? undefined : setShowAudioSearch(true)}
-              title={audiobook ? "Audiobook linked" : "Find audiobook"}
-              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                audiobook
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              🎧 {audiobook ? "Audio" : "Find Audio"}
             </button>
           )}
 
@@ -944,45 +889,6 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Book-level translation progress — shown whenever the queue is
-          holding at least one chapter of THIS book in THIS language,
-          even if a legacy bulk job isn't running. Gives the user a
-          whole-book view (e.g. "18/21 chapters ready · 3 processing")
-          in addition to the per-chapter banner above. */}
-      {translationEnabled && bookTranslationStatus && (() => {
-        const s = bookTranslationStatus;
-        const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
-        const ready = s.translated_chapters;
-        const total = s.total_chapters;
-        // Chapters that are neither done nor queued — the "nothing is
-        // happening for these" bucket the user can act on via the
-        // Translate-whole-book button.
-        const notStarted = Math.max(
-          0,
-          total - ready - queued - (s.queue_failed ?? 0),
-        );
-        return (
-          <div className="bg-amber-50 border-b border-amber-200 px-3 md:px-4 py-1.5 text-xs text-amber-800 flex items-center gap-2 flex-wrap">
-            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />}
-            <span className="flex-1 min-w-0">
-              <strong>{ready} / {total}</strong> chapters translated
-              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
-              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
-            </span>
-            {notStarted > 0 && (
-              <button
-                onClick={handleTranslateWholeBook}
-                disabled={enqueueingBook}
-                className="shrink-0 text-xs px-3 py-1 rounded-full border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                title={`Queue the remaining ${notStarted} chapters into ${translationLang}`}
-              >
-                {enqueueingBook ? "Queueing…" : `Translate all ${notStarted} remaining`}
-              </button>
-            )}
-          </div>
-        );
-      })()}
-
       </div>{/* end banners wrapper */}
 
       {/* Reading progress bar — always visible, even in immersive mode */}
@@ -1006,12 +912,6 @@ export default function ReaderPage() {
             onTouchStart={handleTouchStart}
             onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}
             onMouseUp={handleSelection}
-            onDoubleClick={(e) => {
-              const sel = window.getSelection()?.toString().trim();
-              if (sel && sel.length > 1 && sel.length < 30 && !/\s/.test(sel)) {
-                setLookupWord({ word: sel, x: e.clientX, y: e.clientY });
-              }
-            }}
           >
             {loading ? (
               <div className="max-w-prose mx-auto space-y-3 animate-pulse">
@@ -1036,11 +936,11 @@ export default function ReaderPage() {
                 )}
                 <SentenceReader
                   text={current?.text ?? ""}
-                  duration={audiobook ? audioDuration : ttsDuration}
-                  currentTime={audiobook ? audioCurrentTime : ttsCurrentTime}
-                  isPlaying={audiobook ? audioIsPlaying : ttsIsPlaying}
-                  chunks={!audiobook && ttsChunks.length > 0 ? ttsChunks : undefined}
-                  disabled={!audiobook && ttsIsLoading}
+                  duration={ttsDuration}
+                  currentTime={ttsCurrentTime}
+                  isPlaying={ttsIsPlaying}
+                  chunks={ttsChunks.length > 0 ? ttsChunks : undefined}
+                  disabled={ttsIsLoading}
                   translations={translationEnabled ? translatedParagraphs : undefined}
                   translationDisplayMode={displayMode}
                   translationLoading={translationLoading}
@@ -1049,28 +949,14 @@ export default function ReaderPage() {
                   onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
+                  showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
-                  onSegmentClick={(startTime, segText) => {
-                    if (audiobook) {
-                      seekAudioRef.current(startTime);
-                      return;
-                    }
-                    if (ttsDuration > 0) {
-                      ttsSeekRef.current(startTime);
-                      return;
-                    }
-                    synthesizeSpeech(segText, bookLanguage, 1.0, getSettings().ttsGender)
-                      .then(({ url }) => {
-                        const audio = new Audio(url);
-                        audio.onended = () => URL.revokeObjectURL(url);
-                        audio.play().catch(() => URL.revokeObjectURL(url));
-                      })
-                      .catch(() => {
-                        window.speechSynthesis.cancel();
-                        const utter = new SpeechSynthesisUtterance(segText);
-                        utter.lang = bookLanguage;
-                        window.speechSynthesis.speak(utter);
-                      });
+                  onSentenceClick={(info) => {
+                    setSentencePopup({ text: info.sentenceText, startTime: info.startTime, position: info.position, translationText: info.translationText });
+                  }}
+                  onSegmentClick={(startTime) => {
+                    // Called only when TTS is playing (seek)
+                    ttsSeekRef.current(startTime);
                   }}
                 />
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
@@ -1092,12 +978,35 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Dictionary lookup popup (legacy — desktop fallback) */}
-          {lookupWord && (
-            <WordLookup
-              word={lookupWord.word}
-              position={{ x: lookupWord.x, y: lookupWord.y }}
-              onClose={() => setLookupWord(null)}
+          {/* Sentence action popup — single-click on sentence when TTS is idle */}
+          {sentencePopup && (
+            <SentenceActionPopup
+              sentenceText={sentencePopup.text}
+              position={sentencePopup.position}
+              onRead={() => {
+                synthesizeSpeech(sentencePopup.text, bookLanguage, 1.0, getSettings().ttsGender)
+                  .then(({ url }) => {
+                    const audio = new Audio(url);
+                    audio.onended = () => URL.revokeObjectURL(url);
+                    audio.play().catch(() => URL.revokeObjectURL(url));
+                  })
+                  .catch(() => {
+                    window.speechSynthesis.cancel();
+                    const utter = new SpeechSynthesisUtterance(sentencePopup.text);
+                    utter.lang = bookLanguage;
+                    window.speechSynthesis.speak(utter);
+                  });
+              }}
+              onNote={session?.backendToken ? () => {
+                setAnnotationPanel({ sentenceText: sentencePopup.text, chapterIndex, position: sentencePopup.position });
+              } : undefined}
+              onChat={() => {
+                setChatSheetText(sentencePopup.text);
+                setSelectedText(sentencePopup.text);
+                setSidebarTab("chat");
+                setSidebarOpen(true);
+              }}
+              onClose={() => setSentencePopup(null)}
             />
           )}
 
@@ -1134,6 +1043,8 @@ export default function ReaderPage() {
             onChat={(text) => {
               setChatSheetText(text);
               setSelectedText(text);
+              setSidebarTab("chat");
+              setSidebarOpen(true);
             }}
           />
 
@@ -1196,26 +1107,6 @@ export default function ReaderPage() {
             </div>
           )}
 
-          {/* Audiobook player */}
-          {audiobookEnabled && audiobook && (
-            <AudiobookPlayer
-              audiobook={audiobook}
-              chapterIndex={chapterIndex}
-              onChapterChange={goToChapter}
-              onUnlink={async () => {
-                await deleteAudiobook(Number(bookId)).catch(() => {});
-                setAudiobook(null);
-                setAudioDuration(0);
-                setAudioCurrentTime(0);
-                setAudioIsPlaying(false);
-              }}
-              onTimeUpdate={setAudioCurrentTime}
-              onDurationChange={setAudioDuration}
-              onPlayStateChange={setAudioIsPlaying}
-              seekRef={seekAudioRef}
-            />
-          )}
-
           {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
           <div className="hidden md:block border-t border-amber-200 shrink-0">
             <TTSControls
@@ -1260,32 +1151,7 @@ export default function ReaderPage() {
         >
           {sidebarOpen && (
             <>
-              {/* Tab bar */}
-              <div className="flex shrink-0 border-b border-amber-200 bg-white/70">
-                {(["chat", "vocab", "translate"] as const).map((tab) => {
-                  const labels: Record<string, string> = { chat: "💬 Chat", vocab: "📚 Vocab", translate: "🌐 Translate" };
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setSidebarTab(tab)}
-                      className={`relative flex-1 py-2.5 text-xs font-medium transition-colors border-b-2 ${
-                        sidebarTab === tab
-                          ? "text-amber-700 border-amber-700"
-                          : "text-stone-500 border-transparent hover:text-amber-600"
-                      }`}
-                    >
-                      {labels[tab]}
-                      {tab === "vocab" && vocabWords.length > 0 && (
-                        <span className="absolute top-1 right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
-                          {vocabWords.length}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Chat tab — keep mounted so history persists */}
+              {/* Chat — keep mounted so history persists even when other tabs active */}
               <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" ? "" : "hidden"}`}>
                 <InsightChat
                   bookId={bookId}
@@ -1308,6 +1174,86 @@ export default function ReaderPage() {
                   } : undefined}
                 />
               </div>
+
+              {/* Notes tab */}
+              {sidebarTab === "notes" && (
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {annotationsLoading && annotations.length === 0 ? (
+                    <div className="flex justify-center mt-10">
+                      <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                    </div>
+                  ) : annotations.length === 0 ? (
+                    <div className="text-center text-stone-400 mt-10 text-sm">
+                      <p className="text-3xl mb-2">📝</p>
+                      <p>No annotations yet.</p>
+                      <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {Object.keys(
+                        annotations.reduce<Record<number, true>>((acc, a) => { acc[a.chapter_index] = true; return acc; }, {})
+                      ).map(Number).sort((a, b) => a - b).map((ch) => (
+                        <div key={ch}>
+                          <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">
+                            Chapter {ch + 1}
+                          </h3>
+                          <div className="space-y-2">
+                            {annotations.filter((a) => a.chapter_index === ch).map((ann) => {
+                              const colorBadge: Record<string, string> = {
+                                yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
+                                blue: "bg-blue-100 border-blue-300 text-blue-800",
+                                green: "bg-green-100 border-green-300 text-green-800",
+                                pink: "bg-pink-100 border-pink-300 text-pink-800",
+                              };
+                              return (
+                                <div
+                                  key={ann.id}
+                                  className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${colorBadge[ann.color] ?? colorBadge.yellow}`}
+                                  onClick={() => {
+                                    if (ann.chapter_index !== chapterIndex) {
+                                      goToChapter(ann.chapter_index);
+                                      setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                                    } else {
+                                      setScrollTargetSentence(undefined);
+                                      setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                                    }
+                                    setSidebarOpen(false);
+                                  }}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
+                                      &ldquo;{ann.sentence_text}&rdquo;
+                                    </p>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAnnotationPanel({
+                                          sentenceText: ann.sentence_text,
+                                          chapterIndex: ann.chapter_index,
+                                          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+                                        });
+                                      }}
+                                      className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
+                                      title="Edit annotation"
+                                    >
+                                      ✏️
+                                    </button>
+                                  </div>
+                                  {ann.note_text && (
+                                    <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">
+                                      {ann.note_text}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Vocab tab */}
               {sidebarTab === "vocab" && (
@@ -1345,8 +1291,6 @@ export default function ReaderPage() {
               {sidebarTab === "translate" && (
                 <div className="flex-1 overflow-y-auto">
                   <div className="px-4 py-3 border-b border-amber-200 bg-amber-50/50">
-                    <h3 className="font-serif font-semibold text-ink text-sm mb-3">Translation</h3>
-
                     {/* Enable/disable toggle */}
                     <label className="flex items-center gap-3 mb-4 cursor-pointer">
                       <div className={`relative w-11 h-6 rounded-full transition-colors ${translationEnabled ? "bg-amber-600" : "bg-stone-300"}`}>
@@ -1356,7 +1300,7 @@ export default function ReaderPage() {
                         type="checkbox"
                         className="sr-only"
                         checked={translationEnabled}
-                        onChange={(e) => setTranslationEnabled(e.target.checked)}
+                        onChange={(e) => { setTranslationEnabled(e.target.checked); saveSettings({ translationEnabled: e.target.checked }); }}
                       />
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
@@ -1367,7 +1311,10 @@ export default function ReaderPage() {
                       <select
                         className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white"
                         value={translationLang}
-                        onChange={(e) => setTranslationLang(e.target.value)}
+                        onChange={(e) => {
+                          setTranslationLang(e.target.value);
+                          saveSettings({ translationLang: e.target.value });
+                        }}
                       >
                         {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
                           <option key={l.code} value={l.code}>{l.label}</option>
@@ -1394,14 +1341,22 @@ export default function ReaderPage() {
                       </div>
                     </div>
 
-                    {/* Manual trigger — only shown when translation hasn't been requested yet */}
-                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && !translationRequested && (
-                      <button
-                        onClick={() => setTranslationRequested(true)}
-                        className="mb-3 w-full text-sm px-3 py-2 rounded-lg border border-amber-500 bg-amber-600 text-white hover:bg-amber-700 font-medium transition-colors"
-                      >
-                        Translate this chapter
-                      </button>
+                    {/* Translate this chapter button — explicit user action required */}
+                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
+                      <div className="mb-4">
+                        {session?.backendToken ? (
+                          <button
+                            onClick={handleTranslateThisChapter}
+                            className="w-full px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
+                          >
+                            Translate this chapter
+                          </button>
+                        ) : (
+                          <p className="text-xs text-amber-700">
+                            <a href="/api/auth/signin" className="underline font-medium">Sign in</a> to translate this chapter.
+                          </p>
+                        )}
+                      </div>
                     )}
 
                     {/* Status */}
@@ -1414,6 +1369,36 @@ export default function ReaderPage() {
                         ) : null}
                       </div>
                     )}
+
+                    {/* Book-level translation progress */}
+                    {translationEnabled && bookTranslationStatus && (() => {
+                      const s = bookTranslationStatus;
+                      const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
+                      const ready = s.translated_chapters;
+                      const total = s.total_chapters;
+                      const notStarted = Math.max(0, total - ready - queued - (s.queue_failed ?? 0));
+                      return (
+                        <div className="mt-3 pt-3 border-t border-amber-200">
+                          <div className="flex items-center gap-1.5 text-xs text-amber-700">
+                            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />}
+                            <span>
+                              <strong>{ready} / {total}</strong> chapters translated
+                              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
+                              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
+                            </span>
+                          </div>
+                          {notStarted > 0 && (
+                            <button
+                              onClick={handleTranslateWholeBook}
+                              disabled={enqueueingBook}
+                              className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                            >
+                              {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Admin: retranslate */}
                     {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
@@ -1486,19 +1471,6 @@ export default function ReaderPage() {
         </div>
       )}
 
-      {/* Audiobook search modal */}
-      {audiobookEnabled && showAudioSearch && (
-        <AudiobookSearch
-          bookId={Number(bookId)}
-          defaultTitle={meta?.title ?? ""}
-          defaultAuthor={meta?.authors[0] ?? ""}
-          onLinked={(ab) => {
-            setAudiobook(ab);
-            setShowAudioSearch(false);
-          }}
-          onClose={() => setShowAudioSearch(false)}
-        />
-      )}
 
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
       {!loading && chapters.length > 0 && (

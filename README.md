@@ -15,7 +15,6 @@ An AI-powered reader for [Project Gutenberg](https://www.gutenberg.org/) books. 
 | **AI insights** | One fascinating insight per chapter — hidden symbols, historical context, literary devices |
 | **Chat / Q&A** | Ask anything about the passage; full conversation history per book |
 | **Text-to-speech** | Neural TTS (Microsoft Edge MultilingualNeural voices) with speed control |
-| **Audiobooks** | Link a LibriVox audiobook; syncs section to current chapter |
 | **Pronunciation practice** | Record yourself reading aloud; AI gives specific feedback |
 | **Related videos** | AI suggests a YouTube query for theatrical or film performances |
 | **Illustrations** | Inline images extracted from the Gutenberg HTML source |
@@ -27,7 +26,7 @@ An AI-powered reader for [Project Gutenberg](https://www.gutenberg.org/) books. 
 ## Tech stack
 
 **Frontend** — Next.js 14 (App Router), NextAuth v5 (Google OAuth), Tailwind CSS, React Testing Library  
-**Backend** — FastAPI, SQLite (aiosqlite), Anthropic Claude / Google Gemini, Microsoft Edge TTS, LibriVox API  
+**Backend** — FastAPI, SQLite (aiosqlite), Anthropic Claude / Google Gemini, Microsoft Edge TTS  
 **Deployment** — Vercel (frontend) + Railway (backend)
 
 ---
@@ -291,7 +290,6 @@ book-reader-ai/
 │   ├── routers/
 │   │   ├── ai.py             # /ai/* — translation, insights, TTS, Q&A
 │   │   ├── books.py          # /books/* — search, cache, chapters
-│   │   ├── audiobooks.py     # /audiobooks/* — LibriVox integration
 │   │   ├── auth.py           # /auth/google — Google token exchange
 │   │   └── user.py           # /user/* — profile, Gemini key management
 │   ├── services/
@@ -300,8 +298,7 @@ book-reader-ai/
 │   │   ├── db.py             # SQLite helpers
 │   │   ├── gutenberg.py      # Gutenberg fetch + HTML image extraction
 │   │   ├── tts.py            # Edge TTS (MultilingualNeural voices)
-│   │   ├── auth.py           # JWT + Google token verification + Fernet encryption
-│   │   └── librivox.py       # LibriVox API
+│   │   └── auth.py           # JWT + Google token verification + Fernet encryption
 │   └── Dockerfile
 ├── frontend/
 │   └── src/

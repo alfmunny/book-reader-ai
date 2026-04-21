@@ -20,9 +20,6 @@ from services.db import (
     save_translation,
     get_cached_translation,
     count_translations_for_book,
-    save_audiobook,
-    get_audiobook,
-    delete_audiobook,
     get_setting,
     set_setting,
     get_reading_progress,
@@ -170,40 +167,6 @@ async def test_translation_upsert_replaces_existing():
     result = await get_cached_translation(1, 0, "en")
     assert result == ["new"]
 
-
-# ── Audiobooks ────────────────────────────────────────────────────────────────
-
-SAMPLE_AUDIOBOOK = {
-    "id": "librivox-123",
-    "title": "Faust",
-    "authors": ["Goethe"],
-    "url_librivox": "https://librivox.org/faust",
-    "url_rss": "https://librivox.org/faust/feed",
-    "sections": [{"number": 1, "title": "Part I", "duration": "1:00:00", "url": "https://audio.mp3"}],
-}
-
-
-async def test_save_and_get_audiobook():
-    await save_audiobook(2229, SAMPLE_AUDIOBOOK)
-    result = await get_audiobook(2229)
-    assert result is not None
-    assert result["title"] == "Faust"
-    assert result["sections"][0]["title"] == "Part I"
-
-
-async def test_get_audiobook_missing_returns_none():
-    result = await get_audiobook(99999)
-    assert result is None
-
-
-async def test_delete_audiobook():
-    await save_audiobook(2229, SAMPLE_AUDIOBOOK)
-    await delete_audiobook(2229)
-    assert await get_audiobook(2229) is None
-
-
-async def test_delete_audiobook_nonexistent_does_not_raise():
-    await delete_audiobook(99999)  # should not raise
 
 
 # ── Translation count ─────────────────────────────────────────────────────────

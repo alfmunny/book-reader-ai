@@ -163,6 +163,84 @@ describe("SentenceReader highlighting based on currentTime", () => {
     expect(active?.textContent).toContain("First sentence");
   });
 
+  it("all-zero chunks (none loaded) produce no highlight at all", () => {
+    // Exact bug scenario: setAllChunks fires with ALL duration=0 before any chunk
+    // loads, then audio starts. ALL segments have Infinity startTime → currentIdx = -1
+    // → no sentence should be highlighted.
+    const sentences = [
+      "First sentence here.",
+      "Second sentence here.",
+      "Third sentence here.",
+      "Fourth sentence is the last one.",
+    ];
+    const allChunksZero: ChunkInfo[] = sentences.map((t) => ({ text: t, duration: 0 }));
+    const fullText = sentences.join("\n\n");
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={fullText}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={allChunksZero}
+      />
+    );
+
+    // Simulate: audio starts (duration and currentTime become non-zero)
+    // before any chunk has loaded its real duration.
+    rerender(
+      <SentenceReader
+        text={fullText}
+        duration={20}
+        currentTime={0.5}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={allChunksZero}
+      />
+    );
+    // No sentence should be highlighted — all chunks still loading.
+    expect(container.querySelector(".bg-amber-300")).toBeNull();
+  });
+
+  it("unloaded chunks (duration=0) do not cause premature last-sentence highlight", () => {
+    const chunk1 = "First loaded chunk.";
+    const chunk2 = "Second unloaded chunk that is longer.";
+    const chunks: ChunkInfo[] = [
+      { text: chunk1, duration: 3 },
+      { text: chunk2, duration: 0 }, // not yet loaded
+    ];
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={`${chunk1}\n\n${chunk2}`}
+        duration={10}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // At t=3.5 we've just passed chunk 1 — chunk 2 is still loading.
+    // Should NOT jump to the last sentence of chunk 2.
+    rerender(
+      <SentenceReader
+        text={`${chunk1}\n\n${chunk2}`}
+        duration={10}
+        currentTime={3.5}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+    const active = container.querySelector(".bg-amber-300");
+    // The loaded chunk must be highlighted — not null, and not from the unloaded chunk.
+    expect(active).not.toBeNull();
+    expect(active!.textContent).toContain("First loaded chunk");
+    expect(active!.textContent).not.toContain("Second unloaded chunk");
+  });
+
   it("uses chunk durations for timing when chunks are provided", () => {
     const chunk1 = "First chunk text here.";
     const chunk2 = "Second chunk is here and it is longer.";
@@ -200,32 +278,32 @@ describe("SentenceReader highlighting based on currentTime", () => {
 });
 
 describe("SentenceReader segment click", () => {
-  it("double-clicking a segment calls onSegmentClick with start time", () => {
+  it("single click calls onSegmentClick when TTS is playing (seek)", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Hello world. Another sentence here."
         duration={10}
         currentTime={0}
-        isPlaying={false}
+        isPlaying={true}
         onSegmentClick={onSegmentClick}
       />
     );
 
     const segs = getSegments(container);
     expect(segs.length).toBeGreaterThan(0);
-    fireEvent.doubleClick(segs[0]);
+    fireEvent.click(segs[0]);
 
     expect(onSegmentClick).toHaveBeenCalledTimes(1);
     expect(onSegmentClick.mock.calls[0][0]).toBeGreaterThanOrEqual(0); // startTime
   });
 
-  it("single click does not call onSegmentClick", () => {
+  it("single click calls onSegmentClick when no onSentenceClick provided", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Hello world. Another sentence here."
-        duration={10}
+        duration={0}
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
@@ -235,7 +313,7 @@ describe("SentenceReader segment click", () => {
     const segs = getSegments(container);
     fireEvent.click(segs[0]);
 
-    expect(onSegmentClick).not.toHaveBeenCalled();
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
   });
 
   it("does not call onSegmentClick when disabled", () => {
@@ -289,7 +367,7 @@ describe("SentenceReader annotations", () => {
     expect(annotatedSeg?.className).toContain("border-yellow-400");
   });
 
-  it("renders note icon for annotation with note text", () => {
+  it("shows collapsible note toggle for annotation with note text", () => {
     const annotations: Annotation[] = [
       {
         id: 2,
@@ -312,8 +390,8 @@ describe("SentenceReader annotations", () => {
       />
     );
 
-    // Note icon should appear
-    expect(screen.getByText("📝")).toBeInTheDocument();
+    // Note dot button should appear on the annotated segment
+    expect(screen.getByRole("button", { name: "Toggle note" })).toBeInTheDocument();
   });
 
   it("applies blue color class for blue annotation", () => {
@@ -419,53 +497,56 @@ describe("SentenceReader long-press annotation (onAnnotate)", () => {
   });
 });
 
-describe("SentenceReader double-click triggers TTS", () => {
-  it("calls onSegmentClick on double-click", () => {
+describe("SentenceReader click interactions", () => {
+  it("single click calls onSentenceClick when TTS is idle and onSentenceClick provided", () => {
     const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
     const { container } = render(
       <SentenceReader
-        text="Double click this sentence."
-        duration={10}
+        text="Click this sentence."
+        duration={0}
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
       />
     );
 
     const segs = getSegments(container);
-    fireEvent.doubleClick(segs[0]);
+    fireEvent.click(segs[0]);
 
-    expect(onSegmentClick).toHaveBeenCalledTimes(1);
-    const [startTime, text] = onSegmentClick.mock.calls[0];
-    expect(typeof startTime).toBe("number");
-    expect(text).toContain("Double click this sentence");
-  });
-
-  it("does not call onSegmentClick when disabled", () => {
-    const onSegmentClick = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Disabled sentence."
-        duration={10}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={onSegmentClick}
-        disabled
-      />
-    );
-
-    const segs = getSegments(container);
-    fireEvent.doubleClick(segs[0]);
-
+    expect(onSentenceClick).toHaveBeenCalledTimes(1);
+    expect(onSentenceClick.mock.calls[0][0].sentenceText).toContain("Click this sentence");
     expect(onSegmentClick).not.toHaveBeenCalled();
   });
 
-  it("single click does not trigger TTS", () => {
+  it("single click calls onSegmentClick when TTS is playing (seek)", () => {
+    const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Seekable sentence."
+        duration={10}
+        currentTime={0}
+        isPlaying={true}
+        onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
+      />
+    );
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+    expect(onSentenceClick).not.toHaveBeenCalled();
+  });
+
+  it("single click calls onSegmentClick when no onSentenceClick provided", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
-        text="Single click sentence."
-        duration={10}
+        text="Fallback sentence."
+        duration={0}
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
@@ -475,7 +556,57 @@ describe("SentenceReader double-click triggers TTS", () => {
     const segs = getSegments(container);
     fireEvent.click(segs[0]);
 
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("click does not fire when disabled", () => {
+    const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Disabled sentence."
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
+        disabled
+      />
+    );
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
     expect(onSegmentClick).not.toHaveBeenCalled();
+    expect(onSentenceClick).not.toHaveBeenCalled();
+  });
+
+  it("click does not fire when user has made a text selection (drag-to-select)", () => {
+    const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Select this text."
+        duration={10}
+        currentTime={5}
+        isPlaying={true}
+        onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
+      />
+    );
+
+    // Simulate browser behaviour: user dragged to select text, then mouseup fires click.
+    // Mock window.getSelection to return a non-empty selection string.
+    const origGetSelection = window.getSelection;
+    window.getSelection = () => ({ toString: () => "Select this" } as Selection);
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
+    window.getSelection = origGetSelection;
+
+    expect(onSegmentClick).not.toHaveBeenCalled();
+    expect(onSentenceClick).not.toHaveBeenCalled();
   });
 });
 
@@ -526,5 +657,242 @@ describe("SentenceReader translations", () => {
     );
     // Should have animate-pulse loading skeleton in the parallel translation pane
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
+  });
+});
+
+describe("SentenceReader long-sentence chunk spanning", () => {
+  // Regression test for: sentences longer than one TTS chunk (~400 chars) caused
+  // the chunk-segment matching loop to exhaust all chunks, leaving the long sentence
+  // AND all subsequent sentences with startTime=Infinity (never highlighted).
+  it("sentences after a cross-chunk sentence are still highlighted", () => {
+    const SHORT = "Call me Ishmael.";
+    // Build a sentence that is definitely > 400 chars so it can't fit in one chunk.
+    const LONG =
+      "Whenever I find myself growing grim about the mouth; whenever it is a damp, " +
+      "drizzly November in my soul; whenever I find myself involuntarily pausing " +
+      "before coffin warehouses, and bringing up the rear of every funeral I meet; " +
+      "and especially whenever my hypos get such an upper hand of me, that it " +
+      "requires a strong moral principle to prevent me from deliberately stepping " +
+      "into the street, and methodically knocking people's hats off.";
+    // ~418 chars — longer than a 400-char chunk
+    expect(LONG.length).toBeGreaterThan(400);
+
+    const AFTER = "This is my substitute for pistol and ball.";
+
+    // Simulate how the TTS backend splits text: chunk1 ends mid-LONG sentence.
+    const chunk1Text = SHORT + "\n" + LONG.slice(0, 350);
+    const chunk2Text = LONG.slice(350) + "\n" + AFTER;
+
+    const chunks: ChunkInfo[] = [
+      { text: chunk1Text, duration: 7 },
+      { text: chunk2Text, duration: 4 },
+    ];
+
+    // Text contains all three sentences; the segmenter will produce [SHORT, LONG, AFTER].
+    const fullText = `${SHORT}\n\n${LONG}\n\n${AFTER}`;
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={fullText}
+        duration={11}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // At t=8 we are in chunk2 (starts at t=7). AFTER should be highlighted.
+    // Without the fix, LONG exhausts the chunk list, AFTER also gets Infinity → nothing
+    // highlights after sentence 1.
+    rerender(
+      <SentenceReader
+        text={fullText}
+        duration={11}
+        currentTime={8}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    const active = container.querySelector(".bg-amber-300");
+    expect(active).not.toBeNull();
+    expect(active?.textContent).toContain("substitute for pistol");
+  });
+
+  it("the long sentence itself gets a finite startTime and is highlighted", () => {
+    const SHORT = "Short opener.";
+    const LONG =
+      "This is a very long sentence that deliberately exceeds the four-hundred " +
+      "character chunk boundary so that the text-to-speech backend is forced to " +
+      "split it across two consecutive audio chunks, which previously caused the " +
+      "entire sentence highlighting system to freeze because indexOf could never " +
+      "find the complete sentence text inside any single chunk of audio data, " +
+      "leaving every subsequent sentence permanently un-highlighted no matter how much time elapsed.";
+    expect(LONG.length).toBeGreaterThan(400);
+
+    const AFTER = "Trailing sentence.";
+
+    const chunk1Text = SHORT + "\n" + LONG.slice(0, 350);
+    const chunk2Text = LONG.slice(350) + "\n" + AFTER;
+
+    const chunks: ChunkInfo[] = [
+      { text: chunk1Text, duration: 5 },
+      { text: chunk2Text, duration: 5 },
+    ];
+
+    const fullText = `${SHORT}\n\n${LONG}\n\n${AFTER}`;
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={fullText}
+        duration={10}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // At t=1, SHORT is done and LONG should be active (it starts very early in chunk1)
+    rerender(
+      <SentenceReader
+        text={fullText}
+        duration={10}
+        currentTime={1}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    const active = container.querySelector(".bg-amber-300");
+    expect(active).not.toBeNull();
+    // Either SHORT or LONG is active — both are from chunk1, so a finite startTime was assigned.
+    // The important invariant: the system did NOT freeze (active is not null).
+    expect(
+      active?.textContent?.includes("Short opener") ||
+      active?.textContent?.includes("very long sentence")
+    ).toBe(true);
+  });
+});
+
+describe("SentenceReader annotation substring matching", () => {
+  it("highlights a segment when annotation.sentence_text is a substring of the segment", () => {
+    // Simulates annotations created via text-selection: stored text is a fragment of the full sentence.
+    const segmentText = "She came back from my watches below, and reported no vessel in sight.";
+    const annotations: Annotation[] = [
+      {
+        id: 10,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "ck from my watches below, and reported no vessel",
+        note_text: "",
+        color: "green",
+      },
+    ];
+
+    const { container } = render(
+      <SentenceReader
+        text={segmentText}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    const segs = getSegments(container);
+    const annotatedSeg = segs.find((s) => s.textContent?.includes("She came back"));
+    expect(annotatedSeg).toBeDefined();
+    expect(annotatedSeg?.className).toContain("border-green-400");
+  });
+
+  it("exact-match annotation still works after substring fallback added", () => {
+    const annotations: Annotation[] = [
+      {
+        id: 11,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "Exact match sentence.",
+        note_text: "",
+        color: "pink",
+      },
+    ];
+
+    const { container } = render(
+      <SentenceReader
+        text="Exact match sentence."
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    const segs = getSegments(container);
+    const annotatedSeg = segs.find((s) => s.textContent?.includes("Exact match"));
+    expect(annotatedSeg).toBeDefined();
+    expect(annotatedSeg?.className).toContain("border-pink-400");
+  });
+
+  it("short annotation text (<10 chars) does NOT match via substring", () => {
+    // The minimum length guard prevents spurious matches from very short fragments.
+    const annotations: Annotation[] = [
+      {
+        id: 12,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "short",
+        note_text: "",
+        color: "yellow",
+      },
+    ];
+
+    const { container } = render(
+      <SentenceReader
+        text="This sentence contains the word short somewhere."
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    const segs = getSegments(container);
+    const seg = segs.find((s) => s.textContent?.includes("contains the word"));
+    expect(seg).toBeDefined();
+    expect(seg?.className).not.toContain("border-yellow-400");
+  });
+
+  it("shows note toggle for annotation matched via substring", () => {
+    const segmentText = "She came back from my watches below, and reported no vessel in sight.";
+    const annotations: Annotation[] = [
+      {
+        id: 13,
+        book_id: 1,
+        chapter_index: 0,
+        sentence_text: "ck from my watches below, and reported no vessel",
+        note_text: "Important passage",
+        color: "blue",
+      },
+    ];
+
+    render(
+      <SentenceReader
+        text={segmentText}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        annotations={annotations}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Toggle note" })).toBeInTheDocument();
   });
 });

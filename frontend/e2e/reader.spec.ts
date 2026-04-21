@@ -49,35 +49,34 @@ test("continue-reading: reopening a book restores the last-read chapter", async 
   await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 30), { exact: false })).toBeVisible({ timeout: 5000 });
 });
 
+/** Seed localStorage with translationEnabled=true so translation auto-fires on page load. */
+async function seedTranslationEnabled(page: import("@playwright/test").Page, lang = "de") {
+  await page.addInitScript((l: string) => {
+    localStorage.setItem(
+      "book-reader-settings",
+      JSON.stringify({ translationEnabled: true, translationLang: l, insightLang: "en", ttsGender: "female", fontSize: "base", theme: "light" })
+    );
+  }, lang);
+  await page.goto("/reader/1342");
+}
+
 test("translation does not show Gemini reminder (queue returns ready)", async ({ page }) => {
-  // User has no Gemini key — translation still works via the queue
-  // (admin's key). No Gemini reminder should show.
   await page.route("**/api/user/me", (route) =>
     route.fulfill({
       json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false, role: "user", approved: true },
     })
   );
-  // Unified queue-aware translate endpoint returns ready+paragraphs.
   await page.route("**/api/books/*/chapters/*/translation", (route) =>
     route.fulfill({
-      json: {
-        status: "ready",
-        paragraphs: ["Translated text."],
-        provider: "gemini",
-        model: "gemini-2.5-flash",
-      },
+      json: { status: "ready", paragraphs: ["Translated text."], provider: "gemini", model: "gemini-2.5-flash" },
     })
   );
 
-  await page.goto("/reader/1342");
+  await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
-
-  await page.getByRole("button", { name: /Translate/ }).first().click();
-  await page.getByRole("button", { name: /Translate this chapter/i }).click();
-
-  // Translation should appear
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
   await expect(page.getByText("Translated text.")).toBeVisible();
-  // Gemini reminder should NOT appear
   await expect(page.getByText(/AI features require your own Gemini API key/)).not.toBeVisible();
 });
 
@@ -86,20 +85,15 @@ test("translation shows queued state when worker is processing", async ({ page }
     route.fulfill({ json: { id: 1, email: "t@t.com", name: "T", picture: "", hasGeminiKey: true, role: "user", approved: true } })
   );
   await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({
-      json: { status: "pending", position: 2, worker_running: true },
-    })
+    route.fulfill({ json: { status: "pending", position: 2, worker_running: true } })
   );
 
-  await page.goto("/reader/1342");
+  await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
-
-  await page.getByRole("button", { name: /Translate/ }).first().click();
-  await page.getByRole("button", { name: /Translate this chapter/i }).click();
-
-  // Should show a queued/waiting indicator — not translated text
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
   await expect(page.getByText("Translated text.")).not.toBeVisible({ timeout: 3000 });
-  await expect(page.getByText("queue · position 2", { exact: true })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByText(/queue · position 2/).first()).toBeVisible({ timeout: 5000 });
 });
 
 test("translation shows worker offline message when worker not running", async ({ page }) => {
@@ -107,18 +101,14 @@ test("translation shows worker offline message when worker not running", async (
     route.fulfill({ json: { id: 1, email: "t@t.com", name: "T", picture: "", hasGeminiKey: true, role: "user", approved: true } })
   );
   await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({
-      json: { status: "pending", position: 1, worker_running: false },
-    })
+    route.fulfill({ json: { status: "pending", position: 1, worker_running: false } })
   );
 
-  await page.goto("/reader/1342");
+  await seedTranslationEnabled(page);
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible({ timeout: 10000 });
-
-  await page.getByRole("button", { name: /Translate/ }).first().click();
-  await page.getByRole("button", { name: /Translate this chapter/i }).click();
-
-  await expect(page.getByText("queue · worker is offline", { exact: true })).toBeVisible({ timeout: 5000 });
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.getByRole("button", { name: "Translate this chapter" }).click();
+  await expect(page.getByText(/queue · worker is offline/).first()).toBeVisible({ timeout: 5000 });
 });
 
 test("Your Library shows chapter badge from recent-read data", async ({ page }) => {

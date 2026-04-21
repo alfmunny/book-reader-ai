@@ -5,7 +5,6 @@ import remarkGfm from "remark-gfm";
 import {
   getInsight,
   askQuestion,
-  getReferences,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
 
@@ -26,8 +25,6 @@ const HISTORY_KEY = (userId: number | string, bookId: string) => `chat-history:$
 const INITIAL_DISPLAY = 30; // messages shown on first load
 const LOAD_BATCH = 20;      // messages revealed per "load earlier" click
 const MAX_STORED = 200;     // cap localStorage to last N messages
-
-type Tab = "chat" | "references";
 
 interface Message {
   role: "user" | "assistant";
@@ -68,7 +65,6 @@ export default function InsightChat({
   onSaveInsight,
   chapterIndex,
 }: Props) {
-  const [tab, setTab] = useState<Tab>("chat");
   // Keyed by absolute message index (loadedFrom + i) so "Load earlier" doesn't reset saved state
   const [savedInsights, setSavedInsights] = useState<Set<number>>(new Set());
 
@@ -242,78 +238,13 @@ export default function InsightChat({
     }
   }
 
-  // ── Speak ─────────────────────────────────────────────────────────────
-  // ── References ──────────────────────────────────────────────────────
-  const [refsContent, setRefsContent] = useState("");
-  const [refsLoading, setRefsLoading] = useState(false);
-  const [refsError, setRefsError] = useState("");
-  const refsFetched = useRef(false);
-
-  async function fetchReferences() {
-    if (!hasGeminiKey || !bookTitle) return;
-    setRefsLoading(true);
-    setRefsError("");
-    onAIUsed?.();
-    try {
-      const r = await getReferences(
-        bookTitle, author,
-        chapterTitle, chapterText.slice(0, 800),
-        langRef.current
-      );
-      setRefsContent(r.references);
-    } catch (e: any) {
-      setRefsError(e.message);
-    } finally {
-      setRefsLoading(false);
-    }
-  }
-
-  // Auto-fetch references when the tab is first opened
-  useEffect(() => {
-    if (tab === "references" && !refsFetched.current && hasGeminiKey && bookTitle) {
-      refsFetched.current = true;
-      fetchReferences();
-    }
-  }, [tab, hasGeminiKey, bookTitle]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset when book changes
-  useEffect(() => {
-    setRefsContent("");
-    setRefsError("");
-    refsFetched.current = false;
-  }, [bookId]);
-
   // ── Render ────────────────────────────────────────────────────────────
   const displayedMessages = messages.slice(loadedFrom);
   const hasEarlier = loadedFrom > 0;
 
-  const tabs: { id: Tab; icon: string; label: string }[] = [
-    { id: "chat", icon: "💬", label: "Chat" },
-    { id: "references", icon: "📚", label: "References" },
-  ];
-
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white">
-      {/* Tab bar */}
-      <div className="flex border-b border-amber-200 shrink-0">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 py-2 text-xs font-medium transition-colors ${
-              tab === t.id
-                ? "bg-amber-100 text-amber-900 border-b-2 border-amber-600"
-                : "text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── CHAT TAB ─────────────────────────────────────────────────── */}
-      {tab === "chat" && (
-        <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden">
           {/* Language bar */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-amber-100 shrink-0 bg-amber-50/50">
             <span className="text-xs text-amber-600 shrink-0">Language</span>
@@ -419,7 +350,7 @@ export default function InsightChat({
               const prevUserMsg = displayedMessages.slice(0, i).reverse().find((m) => m.role === "user");
               return (
                 <div key={i} className="bg-amber-50/60 border border-amber-100 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] shadow-sm">
-                  <div className={`prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-relaxed prose-p:my-1.5 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-relaxed prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-ink text-${chatFontSize}`}>
+                  <div className={`prose prose-sm prose-headings:font-serif prose-headings:text-ink prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1.5 prose-p:text-ink prose-p:leading-loose prose-p:my-2 prose-strong:text-amber-900 prose-em:text-amber-800 prose-li:text-ink prose-li:leading-loose prose-li:my-0.5 prose-ul:my-1.5 prose-ol:my-1.5 max-w-none font-serif text-ink text-${chatFontSize}`}>
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                   </div>
                   {onSaveInsight && prevUserMsg && (
@@ -509,59 +440,7 @@ export default function InsightChat({
             </div>
             {hasGeminiKey && <p className="text-xs text-amber-400 mt-1.5">Enter · Shift+Enter for newline</p>}
           </div>
-        </div>
-      )}
-
-      {/* ── REFERENCES TAB ──────────────────────────────────────────── */}
-      {tab === "references" && (
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
-          {!hasGeminiKey && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
-              References require a{" "}
-              <a href="/profile" target="_blank" className="underline font-medium">Gemini API key</a>{" "}
-              (free from Google AI Studio).
-            </div>
-          )}
-
-          {hasGeminiKey && !refsContent && !refsLoading && !refsError && (
-            <button
-              onClick={fetchReferences}
-              className="rounded-lg bg-amber-700 py-2 text-white text-sm font-medium hover:bg-amber-800"
-            >
-              Find references for this book
-            </button>
-          )}
-
-          {refsLoading && (
-            <div className="flex items-center gap-2 text-sm text-amber-700">
-              <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
-              Finding references…
-            </div>
-          )}
-
-          {refsError && (
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {refsError}
-              <button onClick={fetchReferences} className="ml-2 underline">Retry</button>
-            </div>
-          )}
-
-          {refsContent && (
-            <div className={`prose prose-sm max-w-none font-serif text-${chatFontSize}`}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{refsContent}</ReactMarkdown>
-            </div>
-          )}
-
-          {refsContent && (
-            <button
-              onClick={() => { setRefsContent(""); fetchReferences(); }}
-              className="text-xs text-amber-600 hover:text-amber-900 self-start"
-            >
-              ↻ Refresh references
-            </button>
-          )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

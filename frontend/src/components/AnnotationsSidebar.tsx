@@ -79,7 +79,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
               <div className="text-center text-stone-400 mt-10 text-sm">
                 <p className="text-3xl mb-2">📝</p>
                 <p>No annotations yet.</p>
-                <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
+                <p className="mt-1 text-xs">Click a sentence and choose Note to add one.</p>
               </div>
             ) : (
               <>

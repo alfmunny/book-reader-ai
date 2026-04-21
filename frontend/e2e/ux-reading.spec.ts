@@ -181,6 +181,22 @@ test.describe("Display customisation (desktop)", () => {
     await expect(themeBtn).toHaveAttribute("title", "Theme: light");
   });
 
+  test("chapter title changes color in dark theme", async ({ page }) => {
+    const themeBtn = page.locator('button[title^="Theme:"]');
+    const heading = page.getByTestId("reader-chapter-heading").locator("h2");
+    await expect(heading).toBeVisible();
+
+    const lightColor = await heading.evaluate((el) => getComputedStyle(el).color);
+
+    // Cycle to dark theme (light → sepia → dark)
+    await themeBtn.click();
+    await themeBtn.click();
+    await expect(themeBtn).toHaveAttribute("title", "Theme: dark");
+
+    const darkColor = await heading.evaluate((el) => getComputedStyle(el).color);
+    expect(darkColor).not.toBe(lightColor);
+  });
+
   test("font size change persists across chapter navigation", async ({ page }) => {
     const fontBtn = page.locator('button[title^="Font size:"]');
     await fontBtn.click(); // base → lg

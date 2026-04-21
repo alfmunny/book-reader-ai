@@ -18,6 +18,7 @@ body, [data-theme="light"] {
 [data-theme="dark"] .bg-white\/60 { background-color: rgba(37, 37, 64, 0.6); }
 [data-theme="dark"] .bg-white\/40 { background-color: rgba(37, 37, 64, 0.4); }
 [data-theme="dark"] .text-ink { color: #e0dcd4; }
+[data-theme="dark"] .text-ink\/80 { color: rgba(224, 220, 212, 0.8); }
 [data-theme="dark"] .text-amber-700 { color: #d4a853; }
 [data-theme="dark"] .text-amber-800 { color: #c4983e; }
 [data-theme="dark"] .text-amber-600 { color: #ddb862; }
@@ -46,6 +47,7 @@ body, [data-theme="light"] {
 [data-theme="sepia"] .bg-white { background-color: #faf6ee; }
 [data-theme="sepia"] .bg-white\/60 { background-color: rgba(250, 246, 238, 0.6); }
 [data-theme="sepia"] .text-ink { color: #5b4636; }
+[data-theme="sepia"] .text-ink\/80 { color: rgba(91, 70, 54, 0.8); }
 
 /* ── Prose reader ── */
 .prose-reader {

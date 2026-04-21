@@ -105,6 +105,10 @@ export async function mockBackend(page: Page) {
     route.fulfill({ status: 200, contentType: "audio/mpeg", body: Buffer.from([0xff, 0xfb]) })
   );
 
+  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/queue-status/, (route) =>
+    route.fulfill({ json: { queued: false, status: null, position: null, attempts: 0 } })
+  );
+
   await page.route("**/api/annotations*", (route) => {
     if (route.request().method() === "GET") {
       route.fulfill({ json: [] });

@@ -51,6 +51,8 @@ interface Props {
   onAIUsed?: () => void;    // called whenever an AI (non-cached) call is made
   onSaveInsight?: (question: string, answer: string) => void;
   chapterIndex?: number;
+  /** When provided by the parent sidebar, hides the internal tab bar and uses this value instead */
+  view?: "chat" | "references";
 }
 
 export default function InsightChat({
@@ -67,8 +69,10 @@ export default function InsightChat({
   onAIUsed,
   onSaveInsight,
   chapterIndex,
+  view,
 }: Props) {
-  const [tab, setTab] = useState<Tab>("chat");
+  const [internalTab, setInternalTab] = useState<Tab>("chat");
+  const tab = view ?? internalTab;
   // Keyed by absolute message index (loadedFrom + i) so "Load earlier" doesn't reset saved state
   const [savedInsights, setSavedInsights] = useState<Set<number>>(new Set());
 
@@ -294,22 +298,24 @@ export default function InsightChat({
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white">
-      {/* Tab bar */}
-      <div className="flex border-b border-amber-200 shrink-0">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 py-2 text-xs font-medium transition-colors ${
-              tab === t.id
-                ? "bg-amber-100 text-amber-900 border-b-2 border-amber-600"
-                : "text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
+      {/* Tab bar — hidden when parent sidebar controls the view */}
+      {!view && (
+        <div className="flex border-b border-amber-200 shrink-0">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setInternalTab(t.id)}
+              className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                tab === t.id
+                  ? "bg-amber-100 text-amber-900 border-b-2 border-amber-600"
+                  : "text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── CHAT TAB ─────────────────────────────────────────────────── */}
       {tab === "chat" && (

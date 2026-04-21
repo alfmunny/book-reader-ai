@@ -609,6 +609,7 @@ export default function ReaderPage() {
 
   function goToChapter(index: number) {
     setChapterIndex(index);
+    router.replace(`/reader/${bookId}?chapter=${index}`, { scroll: false });
     saveLastChapter(Number(bookId), index);
     if (session?.backendToken) {
       saveReadingProgress(Number(bookId), index).catch(() => {});
@@ -809,7 +810,7 @@ export default function ReaderPage() {
               loading={annotationsLoading}
               onJump={(ann) => {
                 if (ann.chapter_index !== chapterIndex) {
-                  setChapterIndex(ann.chapter_index);
+                  goToChapter(ann.chapter_index);
                   setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
                 } else {
                   setScrollTargetSentence(undefined);

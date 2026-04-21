@@ -12,11 +12,8 @@ from services.db import (
     get_cached_book,
     save_book,
     list_cached_books,
-    get_cached_translation,
-    save_translation,
 )
 from services.splitter import build_chapters, build_chapters_from_html
-from services.translate import translate_text
 from services.auth import get_current_user, get_optional_user, decrypt_api_key
 
 logger = logging.getLogger(__name__)
@@ -420,7 +417,6 @@ def _sse(event: str, data: dict) -> str:
 @router.get("/{book_id}/import-stream")
 async def import_stream(
     book_id: int,
-    target_language: str = Query("", description="Target language for pre-translation (empty = skip)"),
     user: dict | None = Depends(get_optional_user),
 ):
     """Stream import progress for a book via Server-Sent Events.
@@ -428,15 +424,15 @@ async def import_stream(
     Stages:
       fetching   — downloading book text from Gutenberg (if not cached)
       splitting  — computing chapter structure
-      translating — translating each chapter into target_language
       done       — all steps complete
 
-    Idempotent: skips already-cached work (same as preseed_translations.py).
+    Translation is NOT started here. After import the client shows a cost-
+    confirmation panel; the user explicitly enqueues via POST
+    /books/{id}/translations/enqueue-all.
+
+    Idempotent: skips already-cached work.
     All books are publicly accessible without login.
     """
-    # Resolve Gemini key once up front
-    raw_key = user.get("gemini_key") if user else None
-    decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
 
     async def generator() -> AsyncIterator[str]:
         try:
@@ -466,94 +462,12 @@ async def import_stream(
             # ── 2. Split chapters ───────────────────────────────────────────
             yield _sse("stage", {"stage": "splitting", "message": "Splitting chapters…"})
             chapters = build_chapters(text)
+            total_words = sum(len(c.text.split()) for c in chapters)
             yield _sse("chapters", {
                 "total": len(chapters),
+                "total_words": total_words,
                 "titles": [c.title or f"Chapter {i + 1}" for i, c in enumerate(chapters)],
             })
-
-            # ── 3. Translate each chapter ───────────────────────────────────
-            should_translate = (
-                target_language
-                and target_language != source_language
-                and len(chapters) > 0
-            )
-            if should_translate:
-                # Enqueue this book for the user's target language BEFORE the
-                # inline stream runs. Rationale: if the user closes their tab
-                # or the connection drops, the background worker picks up
-                # whatever chapters the stream didn't finish. The save_translation
-                # -> mark-queue-row-done hook clears rows as the inline stream
-                # completes them, so there's no double work in the happy path.
-                try:
-                    from services.translation_queue import enqueue_for_book, worker
-                    queued_by = (user.get("email") or user.get("name") or f"user#{user.get('id')}") if user else "anon"
-                    added = await enqueue_for_book(
-                        book_id,
-                        target_languages=[target_language],
-                        queued_by=queued_by,
-                    )
-                    if added:
-                        worker().wake()
-                except Exception:
-                    logger.warning(
-                        "Failed to pre-enqueue user import for book %s → %s",
-                        book_id, target_language, exc_info=True,
-                    )
-
-                # Resolve provider: prefer Gemini if user has a key, else Google (free)
-                provider = "gemini" if decrypted_key else "google"
-                yield _sse("stage", {
-                    "stage": "translating",
-                    "message": f"Translating to {target_language} ({provider})…",
-                    "total": len(chapters),
-                    "provider": provider,
-                })
-                for i, ch in enumerate(chapters):
-                    if not ch.text.strip():
-                        yield _sse("progress", {"stage": "translating", "current": i + 1,
-                                                "total": len(chapters), "skipped": True})
-                        continue
-
-                    existing = await get_cached_translation(book_id, i, target_language)
-                    if existing:
-                        yield _sse("progress", {"stage": "translating", "current": i + 1,
-                                                "total": len(chapters), "cached": True,
-                                                "title": ch.title})
-                        continue
-
-                    try:
-                        paragraphs = await translate_text(
-                            ch.text, source_language, target_language,
-                            provider=provider, gemini_key=decrypted_key,
-                        )
-                    except Exception as e:
-                        # Fall back to Google if Gemini hits quota/etc.
-                        if provider == "gemini":
-                            try:
-                                paragraphs = await translate_text(
-                                    ch.text, source_language, target_language,
-                                    provider="google",
-                                )
-                            except Exception as e2:
-                                yield _sse("progress", {
-                                    "stage": "translating", "current": i + 1,
-                                    "total": len(chapters), "title": ch.title,
-                                    "error": str(e2)[:120],
-                                })
-                                continue
-                        else:
-                            yield _sse("progress", {
-                                "stage": "translating", "current": i + 1,
-                                "total": len(chapters), "title": ch.title,
-                                "error": str(e)[:120],
-                            })
-                            continue
-
-                    await save_translation(book_id, i, target_language, paragraphs)
-                    yield _sse("progress", {
-                        "stage": "translating", "current": i + 1,
-                        "total": len(chapters), "title": ch.title,
-                    })
 
             yield _sse("done", {"book_id": book_id})
 

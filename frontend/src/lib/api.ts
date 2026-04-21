@@ -110,10 +110,11 @@ export interface BookChapter {
 /** An event streamed from GET /books/:id/import-stream. */
 export interface ImportEvent {
   event: "stage" | "meta" | "chapters" | "progress" | "done" | "error";
-  stage?: "fetching" | "splitting" | "translating" | "tts";
+  stage?: "fetching" | "splitting";
   message?: string;
   progress?: number;
   total?: number;
+  total_words?: number;
   current?: number;
   title?: string;
   cached?: boolean;
@@ -122,8 +123,6 @@ export interface ImportEvent {
   book_id?: number;
   source_language?: string;
   titles?: string[];
-  provider?: string;
-  voice?: string;
 }
 
 /**
@@ -133,18 +132,14 @@ export interface ImportEvent {
  */
 export async function* importBookStream(
   bookId: number,
-  targetLanguage: string,
   signal?: AbortSignal,
 ): AsyncGenerator<ImportEvent> {
   await awaitSession();
-  const params = new URLSearchParams({
-    target_language: targetLanguage,
-  });
   const headers: Record<string, string> = {
     Accept: "text/event-stream",
     ...(_authToken ? { Authorization: `Bearer ${_authToken}` } : {}),
   };
-  const res = await fetch(`${BASE}/books/${bookId}/import-stream?${params}`, {
+  const res = await fetch(`${BASE}/books/${bookId}/import-stream`, {
     headers,
     signal,
   });

@@ -66,6 +66,12 @@ export default function ReaderPage() {
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
 
+  // Annotation display toggle (persisted)
+  const [showAnnotations, setShowAnnotations] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("reader-show-annotations") !== "false";
+  });
+
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
@@ -790,6 +796,27 @@ export default function ReaderPage() {
             </button>
           )}
 
+          {/* Show/hide annotation marks — desktop only */}
+          {session?.backendToken && (
+            <button
+              onClick={() => {
+                setShowAnnotations((v) => {
+                  const next = !v;
+                  localStorage.setItem("reader-show-annotations", String(next));
+                  return next;
+                });
+              }}
+              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                showAnnotations
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
+              }`}
+            >
+              {showAnnotations ? "🔖 Marks on" : "🔖 Marks off"}
+            </button>
+          )}
+
           {/* Vocabulary sidebar — desktop only */}
           {session?.backendToken && (
             <button
@@ -951,6 +978,7 @@ export default function ReaderPage() {
                   onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
+                  showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
                   onSentenceClick={(info) => {
                     setSentencePopup({ text: info.sentenceText, startTime: info.startTime, position: info.position, translationText: info.translationText });
@@ -1004,6 +1032,8 @@ export default function ReaderPage() {
               onChat={() => {
                 setChatSheetText(sentencePopup.text);
                 setSelectedText(sentencePopup.text);
+                setSidebarTab("chat");
+                setSidebarOpen(true);
               }}
               onClose={() => setSentencePopup(null)}
             />
@@ -1042,6 +1072,8 @@ export default function ReaderPage() {
             onChat={(text) => {
               setChatSheetText(text);
               setSelectedText(text);
+              setSidebarTab("chat");
+              setSidebarOpen(true);
             }}
           />
 

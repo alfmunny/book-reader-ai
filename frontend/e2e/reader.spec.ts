@@ -73,6 +73,7 @@ test("translation does not show Gemini reminder (queue returns ready)", async ({
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
 
   await page.getByRole("button", { name: /Translate/ }).first().click();
+  await page.getByRole("button", { name: /Translate this chapter/i }).click();
 
   // Translation should appear
   await expect(page.getByText("Translated text.")).toBeVisible();
@@ -94,6 +95,7 @@ test("translation shows queued state when worker is processing", async ({ page }
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
 
   await page.getByRole("button", { name: /Translate/ }).first().click();
+  await page.getByRole("button", { name: /Translate this chapter/i }).click();
 
   // Should show a queued/waiting indicator — not translated text
   await expect(page.getByText("Translated text.")).not.toBeVisible({ timeout: 3000 });
@@ -114,6 +116,7 @@ test("translation shows worker offline message when worker not running", async (
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible({ timeout: 10000 });
 
   await page.getByRole("button", { name: /Translate/ }).first().click();
+  await page.getByRole("button", { name: /Translate this chapter/i }).click();
 
   await expect(page.getByText("queue · worker is offline", { exact: true })).toBeVisible({ timeout: 5000 });
 });

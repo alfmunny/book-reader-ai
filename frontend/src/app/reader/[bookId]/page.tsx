@@ -9,7 +9,6 @@ import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
 import SentenceReader from "@/components/SentenceReader";
-import WordLookup from "@/components/WordLookup";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import AnnotationsSidebar from "@/components/AnnotationsSidebar";
@@ -41,7 +40,6 @@ export default function ReaderPage() {
   const [error, setError] = useState("");
 
   const [selectedText, setSelectedText] = useState("");
-  const [lookupWord, setLookupWord] = useState<{ word: string; x: number; y: number } | null>(null);
   const [sentencePopup, setSentencePopup] = useState<{ text: string; startTime: number; position: { x: number; y: number }; translationText?: string } | null>(null);
   const [chatSheetText, setChatSheetText] = useState<string | null>(null);
 
@@ -1031,16 +1029,6 @@ export default function ReaderPage() {
               </>
             )}
           </div>
-
-          {/* Dictionary lookup popup — triggered from word selection via SelectionToolbar */}
-          {lookupWord && (
-            <WordLookup
-              word={lookupWord.word}
-              position={{ x: lookupWord.x, y: lookupWord.y }}
-              language={bookLanguage}
-              onClose={() => setLookupWord(null)}
-            />
-          )}
 
           {/* Sentence action popup — single-click on sentence when TTS is idle */}
           {sentencePopup && (

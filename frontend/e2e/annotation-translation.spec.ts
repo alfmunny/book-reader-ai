@@ -2,7 +2,8 @@
  * E2E: Annotation and Translation features
  *
  * Covers:
- * - Translation auto-loads when sidebar is opened (no "Translate this chapter" button)
+ * - Toolbar Translate button opens sidebar without auto-enabling translation
+ * - User enables translation via the toggle; state persists to settings
  * - Translation language persists to settings
  * - Notes sidebar shows annotations grouped by chapter
  * - InsightChat has no References tab or internal tab bar
@@ -14,9 +15,26 @@ test.beforeEach(async ({ page }) => {
   await mockBackend(page);
 });
 
+/** Open the translate sidebar and flip the toggle from Disabled → Enabled. */
+async function openAndEnableTranslation(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await page.locator("label").filter({ hasText: /Disabled/ }).click();
+}
+
 // ── Translation ───────────────────────────────────────────────────────────────
 
-test("translation auto-loads when Translate button is clicked", async ({ page }) => {
+test("toolbar Translate button opens sidebar without enabling translation", async ({ page }) => {
+  await page.goto("/reader/1342");
+  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
+
+  await page.getByRole("button", { name: /Translate/i }).first().click();
+
+  // Sidebar translate panel is visible, but translation is still disabled
+  await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("Disabled")).toBeVisible();
+});
+
+test("enabling the translation toggle loads translation and persists to settings", async ({ page }) => {
   await page.route("**/api/books/*/chapters/*/translation", (route) =>
     route.fulfill({
       json: { status: "ready", paragraphs: ["Auto-loaded translation."], cached: true },
@@ -26,18 +44,39 @@ test("translation auto-loads when Translate button is clicked", async ({ page })
   await page.goto("/reader/1342");
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
 
-  // Single click on Translate — no secondary "Translate this chapter" needed
-  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await openAndEnableTranslation(page);
 
-  // Translation should appear automatically
+  // Translation appears after enabling the toggle
   await expect(page.getByText("Auto-loaded translation.")).toBeVisible({ timeout: 5000 });
+
+  // translationEnabled saved to settings
+  const saved = await page.evaluate(() => {
+    const raw = localStorage.getItem("book-reader-settings");
+    return raw ? JSON.parse(raw) : null;
+  });
+  expect(saved?.translationEnabled).toBe(true);
+});
+
+test("translationEnabled persists: reopening the reader resumes translation", async ({ page }) => {
+  await page.route("**/api/books/*/chapters/*/translation", (route) =>
+    route.fulfill({
+      json: { status: "ready", paragraphs: ["Persisted translation."], cached: true },
+    })
+  );
+
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "book-reader-settings",
+      JSON.stringify({ translationEnabled: true, translationLang: "de", insightLang: "en", ttsGender: "female", fontSize: "base", theme: "light" })
+    );
+  });
+  await page.goto("/reader/1342");
+
+  // Translation auto-fires because settings say it was enabled
+  await expect(page.getByText("Persisted translation.")).toBeVisible({ timeout: 5000 });
 });
 
 test("translation sidebar has no standalone title heading", async ({ page }) => {
-  await page.route("**/api/books/*/chapters/*/translation", (route) =>
-    route.fulfill({ json: { status: "ready", paragraphs: ["Text."], cached: true } })
-  );
-
   await page.goto("/reader/1342");
   await page.getByRole("button", { name: /Translate/i }).first().click();
 
@@ -51,14 +90,11 @@ test("translation language is persisted to settings on change", async ({ page })
   );
 
   await page.goto("/reader/1342");
-  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await openAndEnableTranslation(page);
 
-  // "Target language" label is next to the language select in the translate panel
   await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });
-  // Select German from the dropdown labeled "Target language"
   await page.locator("label", { hasText: "Target language" }).locator("..").locator("select").selectOption({ value: "de" });
 
-  // Verify settings are persisted to localStorage
   const saved = await page.evaluate(() => {
     const raw = localStorage.getItem("book-reader-settings");
     return raw ? JSON.parse(raw) : null;
@@ -67,20 +103,17 @@ test("translation language is persisted to settings on change", async ({ page })
 });
 
 test("translation language is loaded from settings on page open", async ({ page }) => {
-  // Seed settings with French as preferred translation language
-  await page.goto("/reader/1342");
-  await page.evaluate(() => {
+  await page.addInitScript(() => {
     localStorage.setItem(
       "book-reader-settings",
       JSON.stringify({ translationLang: "fr", insightLang: "en", ttsGender: "female", fontSize: "base", theme: "light" })
     );
   });
-  await page.reload();
+  await page.goto("/reader/1342");
 
   await page.getByRole("button", { name: /Translate/i }).first().click();
   await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });
 
-  // The language dropdown should show French as the selected value
   const selectValue = await page.locator("label", { hasText: "Target language" })
     .locator("..").locator("select").inputValue();
   expect(selectValue).toBe("fr");

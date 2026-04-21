@@ -39,6 +39,7 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<AppSettings>({
     insightLang: "en",
     translationLang: "en",
+    translationEnabled: false,
     ttsGender: "female",
     chatFontSize: "xs",
     translationProvider: "auto",

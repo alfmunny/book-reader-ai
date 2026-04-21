@@ -48,7 +48,7 @@ export async function mockBackend(page: Page) {
   );
 
   await page.route("**/api/user/me", (route) =>
-    route.fulfill({ json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false } })
+    route.fulfill({ json: { id: 1, email: "test@example.com", name: "Test", picture: "", hasGeminiKey: false, approved: true } })
   );
 
   await page.route("**/api/books/cached", (route) =>
@@ -87,6 +87,10 @@ export async function mockBackend(page: Page) {
     route.fulfill({
       json: { book_id: 1342, target_language: "en", total_chapters: 3, translated_chapters: 3, bulk_active: false },
     })
+  );
+
+  await page.route("**/api/user/reading-progress*", (route) =>
+    route.fulfill({ json: { entries: [] } })
   );
 
   await page.route("**/api/ai/translate", (route) =>

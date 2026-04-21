@@ -180,6 +180,12 @@ function parseIntoSegments(
 
       chunkStartTime += chunk.duration;
     }
+    // Segments that couldn't be matched to any chunk (segmentChunkIdx === -1) keep
+    // startTime = 0, which would make them spuriously match currentTime > 0. Assign
+    // Infinity so they behave like unloaded chunks.
+    for (let s = 0; s < allTexts.length; s++) {
+      if (segmentChunkIdx[s] === -1) startTimes[s] = Infinity;
+    }
   } else {
     // Path c: linear fallback (LibriVox audiobook path)
     const totalChars = charCounts.reduce((a, b) => a + b, 0) || 1;
@@ -326,7 +332,7 @@ export default function SentenceReader({
   // Current segment: last one whose startTime ≤ currentTime
   const currentIdx = useMemo(() => {
     if (duration === 0 || currentTime === 0) return -1;
-    let best = 0;
+    let best = -1;
     for (let i = 0; i < allSegments.length; i++) {
       if (allSegments[i].startTime <= currentTime) best = i;
       else break;

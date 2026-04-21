@@ -82,7 +82,7 @@ export default function ReaderPage() {
 
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "vocab" | "translate">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "references" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
@@ -1260,8 +1260,8 @@ export default function ReaderPage() {
             <>
               {/* Tab bar */}
               <div className="flex shrink-0 border-b border-amber-200 bg-white/70">
-                {(["chat", "vocab", "translate"] as const).map((tab) => {
-                  const labels: Record<string, string> = { chat: "💬 Chat", vocab: "📚 Vocab", translate: "🌐 Translate" };
+                {(["chat", "references", "vocab", "translate"] as const).map((tab) => {
+                  const labels: Record<string, string> = { chat: "💬 Chat", references: "🔗 Refs", vocab: "📚 Vocab", translate: "🌐 Translate" };
                   return (
                     <button
                       key={tab}
@@ -1283,13 +1283,14 @@ export default function ReaderPage() {
                 })}
               </div>
 
-              {/* Chat tab — keep mounted so history persists */}
-              <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" ? "" : "hidden"}`}>
+              {/* Chat/References tab — keep mounted so history persists */}
+              <div className={`flex flex-col flex-1 overflow-hidden ${sidebarTab === "chat" || sidebarTab === "references" ? "" : "hidden"}`}>
                 <InsightChat
                   bookId={bookId}
                   userId={session?.backendUser?.id ?? null}
                   hasGeminiKey={hasGeminiKey ?? false}
-                  isVisible={sidebarOpen && sidebarTab === "chat"}
+                  isVisible={sidebarOpen && (sidebarTab === "chat" || sidebarTab === "references")}
+                  view={sidebarTab === "references" ? "references" : "chat"}
                   chapterText={current?.text ?? ""}
                   chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
                   selectedText={selectedText}

@@ -47,7 +47,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
     return () => document.removeEventListener("selectionchange", handleSelection);
   }, []);
 
-  // Close when clicking outside
+  // Close when clicking outside or when the reader scrolls
   useEffect(() => {
     if (!selection) return;
     function handleClick(e: MouseEvent) {
@@ -58,8 +58,16 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat }
         if (sel.length < 2) setSelection(null);
       }, 100);
     }
+    function handleScroll() {
+      window.getSelection()?.removeAllRanges();
+      setSelection(null);
+    }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.getElementById("reader-scroll")?.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.getElementById("reader-scroll")?.removeEventListener("scroll", handleScroll);
+    };
   }, [selection]);
 
   if (!selection) return null;

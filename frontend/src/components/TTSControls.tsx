@@ -92,7 +92,8 @@ export default function TTSControls({
 
     return () => {
       const t = computeGlobalCurrentTime();
-      if (t > 0 && t < globalDuration - 1) {
+      const dur = computeGlobalDuration();
+      if (t > 0 && t < dur - 1) {
         saveAudioPosition(bookId, chapterIndex, t);
       }
       genRef.current++;

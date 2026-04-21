@@ -125,11 +125,21 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
             : "Start Reading"}
         </button>
 
-        {book.download_count > 0 && (
-          <p className="text-center text-xs text-stone-400 mt-3">
-            {book.download_count.toLocaleString()} downloads on Project Gutenberg
-          </p>
-        )}
+        <div className="flex items-center justify-between mt-3">
+          {book.download_count > 0 && (
+            <p className="text-xs text-stone-400">
+              {book.download_count.toLocaleString()} downloads
+            </p>
+          )}
+          <a
+            href={`https://www.gutenberg.org/ebooks/${book.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-amber-600 hover:text-amber-800 hover:underline ml-auto"
+          >
+            View on Project Gutenberg ↗
+          </a>
+        </div>
       </div>
     </div>
   );

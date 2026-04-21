@@ -1,50 +1,28 @@
 """
 TTS service using Microsoft Edge TTS (free, no API key, MP3 output).
+
+Uses pure single-language voices (not MultilingualNeural) to prevent
+the TTS engine from auto-switching to English pronunciation for words
+that "look English" — names, places, Latin terms, ALL-CAPS headings.
 """
 
 import io
 from typing import Literal
 
 import edge_tts
-import edge_tts.communicate as _edge_communicate
-
-# ── Fix: edge_tts hardcodes xml:lang='en-US' in SSML, which causes
-# MultilingualNeural voices to auto-switch to English pronunciation
-# for words that "look English" (names, places, Latin terms).
-# Patch mkssml to derive xml:lang from the voice name instead. ──────────
-
-_original_mkssml = _edge_communicate.mkssml
-
-
-def _lang_aware_mkssml(tc, escaped_text):
-    import re
-    m = re.search(r"\(([a-z]{2}-[A-Z]{2})", tc.voice)
-    lang = m.group(1) if m else "en-US"
-    return (
-        f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='{lang}'>"
-        f"<voice name='{tc.voice}'>"
-        f"<prosody pitch='{tc.pitch}' rate='{tc.rate}' volume='{tc.volume}'>"
-        f"{escaped_text}"
-        "</prosody>"
-        "</voice>"
-        "</speak>"
-    )
-
-
-_edge_communicate.mkssml = _lang_aware_mkssml
 
 Gender = Literal["female", "male"]
 
 EDGE_VOICE_FEMALE: dict[str, str] = {
-    "en": "en-US-EmmaMultilingualNeural",
-    "en-us": "en-US-EmmaMultilingualNeural",
-    "en-gb": "en-GB-AdaMultilingualNeural",
-    "de": "de-DE-SeraphinaMultilingualNeural",
-    "fr": "fr-FR-VivienneMultilingualNeural",
-    "es": "es-ES-XimenaMultilingualNeural",
+    "en": "en-US-JennyNeural",
+    "en-us": "en-US-JennyNeural",
+    "en-gb": "en-GB-SoniaNeural",
+    "de": "de-DE-KatjaNeural",
+    "fr": "fr-FR-DeniseNeural",
+    "es": "es-ES-ElviraNeural",
     "it": "it-IT-IsabellaNeural",
-    "pt": "pt-BR-ThalitaMultilingualNeural",
-    "zh": "zh-CN-XiaoxiaoMultilingualNeural",
+    "pt": "pt-BR-FranciscaNeural",
+    "zh": "zh-CN-XiaoxiaoNeural",
     "ja": "ja-JP-NanamiNeural",
     "ko": "ko-KR-SunHiNeural",
     "nl": "nl-NL-ColetteNeural",
@@ -64,17 +42,17 @@ EDGE_VOICE_FEMALE: dict[str, str] = {
 }
 
 EDGE_VOICE_MALE: dict[str, str] = {
-    "en": "en-US-AndrewMultilingualNeural",
-    "en-us": "en-US-AndrewMultilingualNeural",
+    "en": "en-US-GuyNeural",
+    "en-us": "en-US-GuyNeural",
     "en-gb": "en-GB-RyanNeural",
-    "de": "de-DE-FlorianMultilingualNeural",
-    "fr": "fr-FR-RemyMultilingualNeural",
+    "de": "de-DE-ConradNeural",
+    "fr": "fr-FR-HenriNeural",
     "es": "es-ES-AlvaroNeural",
-    "it": "it-IT-GiuseppeMultilingualNeural",
+    "it": "it-IT-DiegoNeural",
     "pt": "pt-BR-AntonioNeural",
     "zh": "zh-CN-YunyangNeural",
-    "ja": "ja-JP-MasaruMultilingualNeural",
-    "ko": "ko-KR-HyunsuMultilingualNeural",
+    "ja": "ja-JP-KeitaNeural",
+    "ko": "ko-KR-InJoonNeural",
     "nl": "nl-NL-MaartenNeural",
     "ru": "ru-RU-DmitryNeural",
     "ar": "ar-SA-HamedNeural",
@@ -91,8 +69,8 @@ EDGE_VOICE_MALE: dict[str, str] = {
     "he": "he-IL-AvriNeural",
 }
 
-_FALLBACK_FEMALE = "en-US-EmmaMultilingualNeural"
-_FALLBACK_MALE = "en-US-AndrewMultilingualNeural"
+_FALLBACK_FEMALE = "en-US-JennyNeural"
+_FALLBACK_MALE = "en-US-GuyNeural"
 
 
 def _pick_edge_voice(language: str, gender: Gender = "female") -> str:

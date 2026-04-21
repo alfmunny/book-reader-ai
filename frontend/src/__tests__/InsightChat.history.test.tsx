@@ -40,11 +40,12 @@ beforeEach(() => {
 describe("InsightChat — history persistence", () => {
   it("saves messages to localStorage after receiving an insight", async () => {
     render(<InsightChat {...BASE} />);
-    await waitFor(() =>
-      expect(localStorage.getItem(HISTORY_KEY(1, "1342"))).not.toBeNull()
-    );
-    const stored = JSON.parse(localStorage.getItem(HISTORY_KEY(1, "1342"))!);
-    expect(stored.some((m: any) => m.content === "Chapter insight.")).toBe(true);
+    await waitFor(() => {
+      const raw = localStorage.getItem(HISTORY_KEY(1, "1342"));
+      expect(raw).not.toBeNull();
+      const stored = JSON.parse(raw!);
+      expect(stored.some((m: any) => m.content === "Chapter insight.")).toBe(true);
+    });
   });
 
   it("restores previous messages from localStorage on mount", async () => {

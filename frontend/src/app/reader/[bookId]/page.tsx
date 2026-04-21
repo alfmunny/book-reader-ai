@@ -787,7 +787,7 @@ export default function ReaderPage() {
 
           {/* Translate toggle — opens sidebar with translation controls */}
           <button
-            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+            onClick={() => { setSidebarTab("translate"); setTranslationEnabled(true); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
             title="Translation"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"

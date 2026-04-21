@@ -200,8 +200,7 @@ describe("SentenceReader highlighting based on currentTime", () => {
 });
 
 describe("SentenceReader segment click", () => {
-  it("clicking a segment calls onSegmentClick with start time", async () => {
-    jest.useFakeTimers();
+  it("double-clicking a segment calls onSegmentClick with start time", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
@@ -215,20 +214,31 @@ describe("SentenceReader segment click", () => {
 
     const segs = getSegments(container);
     expect(segs.length).toBeGreaterThan(0);
-    fireEvent.click(segs[0]);
-
-    // The click fires after a 200ms debounce
-    act(() => {
-      jest.advanceTimersByTime(250);
-    });
+    fireEvent.doubleClick(segs[0]);
 
     expect(onSegmentClick).toHaveBeenCalledTimes(1);
     expect(onSegmentClick.mock.calls[0][0]).toBeGreaterThanOrEqual(0); // startTime
-    jest.useRealTimers();
   });
 
-  it("does not call onSegmentClick when disabled", async () => {
-    jest.useFakeTimers();
+  it("single click does not call onSegmentClick", () => {
+    const onSegmentClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Hello world. Another sentence here."
+        duration={10}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={onSegmentClick}
+      />
+    );
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
+    expect(onSegmentClick).not.toHaveBeenCalled();
+  });
+
+  it("does not call onSegmentClick when disabled", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
@@ -242,14 +252,9 @@ describe("SentenceReader segment click", () => {
     );
 
     const segs = getSegments(container);
-    fireEvent.click(segs[0]);
-
-    act(() => {
-      jest.advanceTimersByTime(250);
-    });
+    fireEvent.doubleClick(segs[0]);
 
     expect(onSegmentClick).not.toHaveBeenCalled();
-    jest.useRealTimers();
   });
 });
 
@@ -414,69 +419,63 @@ describe("SentenceReader long-press annotation (onAnnotate)", () => {
   });
 });
 
-describe("SentenceReader word double-click (onWordSave)", () => {
-  it("calls onWordSave with word and sentence text on double-click", () => {
-    const onWordSave = jest.fn();
+describe("SentenceReader double-click triggers TTS", () => {
+  it("calls onSegmentClick on double-click", () => {
+    const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Double click this sentence."
-        duration={0}
+        duration={10}
         currentTime={0}
         isPlaying={false}
-        onSegmentClick={noop}
-        onWordSave={onWordSave}
-      />
-    );
-
-    const segs = getSegments(container);
-    fireEvent.doubleClick(segs[0], { clientX: 50, clientY: 50 });
-
-    expect(onWordSave).toHaveBeenCalledTimes(1);
-    // First arg should be a non-empty word, second should include the sentence text
-    const [word, sentenceText] = onWordSave.mock.calls[0];
-    expect(typeof word).toBe("string");
-    expect(word.length).toBeGreaterThanOrEqual(2);
-    expect(sentenceText).toContain("Double click this sentence");
-  });
-
-  it("calls onWordSaveBlocked when no onWordSave provided", () => {
-    const onWordSaveBlocked = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Double click me."
-        duration={0}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={noop}
-        onWordSaveBlocked={onWordSaveBlocked}
+        onSegmentClick={onSegmentClick}
       />
     );
 
     const segs = getSegments(container);
     fireEvent.doubleClick(segs[0]);
 
-    expect(onWordSaveBlocked).toHaveBeenCalledTimes(1);
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+    const [startTime, text] = onSegmentClick.mock.calls[0];
+    expect(typeof startTime).toBe("number");
+    expect(text).toContain("Double click this sentence");
   });
 
-  it("shows vocabulary toast after saving a word", async () => {
-    const onWordSave = jest.fn();
+  it("does not call onSegmentClick when disabled", () => {
+    const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
-        text="Save this vocabulary."
-        duration={0}
+        text="Disabled sentence."
+        duration={10}
         currentTime={0}
         isPlaying={false}
-        onSegmentClick={noop}
-        onWordSave={onWordSave}
+        onSegmentClick={onSegmentClick}
+        disabled
       />
     );
 
     const segs = getSegments(container);
-    fireEvent.doubleClick(segs[0], { clientX: 50, clientY: 50 });
+    fireEvent.doubleClick(segs[0]);
 
-    await waitFor(() => {
-      expect(screen.getByText(/saved to vocabulary/i)).toBeInTheDocument();
-    });
+    expect(onSegmentClick).not.toHaveBeenCalled();
+  });
+
+  it("single click does not trigger TTS", () => {
+    const onSegmentClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Single click sentence."
+        duration={10}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={onSegmentClick}
+      />
+    );
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
+    expect(onSegmentClick).not.toHaveBeenCalled();
   });
 });
 

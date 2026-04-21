@@ -230,10 +230,6 @@ interface Props {
   translationDisplayMode?: "parallel" | "inline";
   /** Show a loading skeleton for translations that haven't arrived yet. */
   translationLoading?: boolean;
-  /** Called when the user double-clicks a word to save it to vocabulary. */
-  onWordSave?: (word: string, sentenceText: string) => void;
-  /** Called when user double-clicks but onWordSave is not available (e.g. unauthenticated). */
-  onWordSaveBlocked?: () => void;
   /** Sentence text to scroll to and briefly highlight. */
   scrollTargetSentence?: string;
   /**
@@ -282,21 +278,16 @@ export default function SentenceReader({
   translations,
   translationDisplayMode = "parallel",
   translationLoading = false,
-  onWordSave,
-  onWordSaveBlocked,
   onAnnotate,
   chapterIndex = 0,
   annotations,
   scrollTargetSentence,
   onWordTap,
 }: Props) {
-  const [wordToast, setWordToast] = useState<string | null>(null);
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
-  // Deferred single-click: we delay onClick by 200ms so a dblclick can cancel it
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Track which internal paragraph index each rendered paragraph corresponds
   // to, so we can pair it with the right translation entry. We count only
   // non-illustration paragraphs because TranslationView's paragraphs array
@@ -344,13 +335,6 @@ export default function SentenceReader({
     }
   }, [currentIdx, isPlaying]);
 
-  // Auto-clear vocabulary toast after 2s
-  useEffect(() => {
-    if (!wordToast) return;
-    const t = setTimeout(() => setWordToast(null), 2000);
-    return () => clearTimeout(t);
-  }, [wordToast]);
-
   // Scroll to and flash the target sentence when scrollTargetSentence changes.
   // We capture the sentence in a closure so rapid re-triggers (< 80ms apart)
   // don't scroll to the wrong element: each timer checks its own sentence.
@@ -366,11 +350,6 @@ export default function SentenceReader({
     const clear = setTimeout(() => setFlashTarget((cur) => cur === target ? null : cur), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
   }, [scrollTargetSentence]);
-
-  // Cancel pending single-click on unmount
-  useEffect(() => () => {
-    if (clickTimer.current) clearTimeout(clickTimer.current);
-  }, []);
 
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";
@@ -410,52 +389,8 @@ export default function SentenceReader({
     if (Math.sqrt(dx * dx + dy * dy) > 10) cancelLongPress();
   }
 
-  function handleDoubleClick(e: React.MouseEvent, seg: Segment) {
-    // Cancel the deferred single-click so TTS doesn't seek on double-click
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-    }
-    if (!onWordSave) { onWordSaveBlocked?.(); return; }
-    e.preventDefault();
-
-    // 1. Browser usually selects the double-clicked word — use that first
-    const sel = window.getSelection()?.toString().trim() ?? "";
-    let word = sel && !sel.includes(" ") ? sel : "";
-
-    // 2. Try caretRangeFromPoint for accurate word-at-cursor detection
-    if (!word && "caretRangeFromPoint" in document) {
-      const range = (document as Document & { caretRangeFromPoint(x: number, y: number): Range | null })
-        .caretRangeFromPoint(e.clientX, e.clientY);
-      if (range) {
-        (range as Range & { expand(unit: string): void }).expand("word");
-        word = range.toString().trim();
-      }
-    }
-
-    // 3. Last resort: find the longest word in the segment near the click
-    if (!word) {
-      word = seg.text.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), "");
-    }
-
-    word = word
-      .replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
-      .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "")
-      .replace(/[-\u2013\u2014]+/g, "");
-    if (!word || word.length < 2) return;
-    setWordToast(word);
-    onWordSave(word, seg.text);
-  }
-
   return (
     <>
-      {/* Vocabulary toast */}
-      {wordToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm font-medium text-ink">
-          <span role="img" aria-label="save">💾</span>{" "}
-          <strong>{wordToast}</strong> saved to vocabulary
-        </div>
-      )}
       <div ref={containerRef} className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
       {paragraphs.map((para, pIdx) => {
         // Track the text paragraph index so we
@@ -478,21 +413,6 @@ export default function SentenceReader({
             : "text-stone-400 cursor-default";
         };
 
-        const handleSegClick = (
-          e: React.MouseEvent,
-          seg: { startTime: number; text: string; chunkIdx: number; flatIdx: number },
-        ) => {
-          if (disabled) return;
-          if (!isSegmentLoaded(seg)) return;
-
-          // Single tap = read sentence aloud / seek to position (lightweight, no UI)
-          if (clickTimer.current) clearTimeout(clickTimer.current);
-          clickTimer.current = setTimeout(() => {
-            clickTimer.current = null;
-            onSegmentClick(seg.startTime, seg.text);
-          }, 200);
-        };
-
         // Long press (500ms) → open word action drawer
         const handleSegLongPress = (e: React.PointerEvent, seg: Segment) => {
           if (!onWordTap) {
@@ -505,8 +425,6 @@ export default function SentenceReader({
           longPressStartPos.current = { x: startX, y: startY };
           longPressTimer.current = setTimeout(() => {
             longPressTimer.current = null;
-            // Cancel any pending single-click
-            if (clickTimer.current) { clearTimeout(clickTimer.current); clickTimer.current = null; }
             // Prevent text selection
             window.getSelection()?.removeAllRanges();
 
@@ -551,8 +469,7 @@ export default function SentenceReader({
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
-              onClick={(e) => handleSegClick(e, seg)}
-              onDoubleClick={onWordTap ? undefined : (e) => handleDoubleClick(e, seg)}
+              onDoubleClick={onWordTap ? undefined : () => { if (!disabled && isSegmentLoaded(seg)) onSegmentClick(seg.startTime, seg.text); }}
               onPointerDown={(e) => onWordTap ? handleSegLongPress(e, seg) : handlePointerDown(e, seg)}
               onPointerUp={cancelLongPress}
               onPointerCancel={cancelLongPress}

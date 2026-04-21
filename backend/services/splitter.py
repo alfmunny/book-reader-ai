@@ -122,10 +122,19 @@ def _strip_illustration_markers(m: re.Match) -> str:
 
 def _clean_title(title: str) -> str:
     """Remove Gutenberg bracket artifacts from chapter titles."""
-    # Strip trailing brackets/parens that aren't balanced (e.g. "Chapter I.]")
-    title = re.sub(r'[\]\)}>]+\s*$', '', title)
-    # Strip leading brackets that aren't balanced
-    title = re.sub(r'^[\[\({<]+', '', title)
+    # Strip trailing ) or ] only when unbalanced — "Chapter I.]" has an
+    # extra ], but "Studierzimmer (I)" has matching parens and must be kept.
+    if title.count(')') > title.count('('):
+        title = re.sub(r'\)+\s*$', '', title)
+    if title.count(']') > title.count('['):
+        title = re.sub(r'\]+\s*$', '', title)
+    # } and > never appear in legitimate titles — always strip them.
+    title = re.sub(r'[}>]+\s*$', '', title)
+    # Strip leading unbalanced ( or [
+    if title.count('(') > title.count(')'):
+        title = re.sub(r'^\(+', '', title)
+    if title.count('[') > title.count(']'):
+        title = re.sub(r'^\[+', '', title)
     return title.strip()
 
 
@@ -409,9 +418,14 @@ def build_chapters_from_html(html: str) -> list[Chapter]:
         word_count = len(body_text.split())
 
         # Section divider detection. Gutenberg uses a flat structure where
-        # "BOOK ONE: 1805", "PART I", etc. are sibling divs with class="chapter"
-        # and almost no body text (just the heading).
-        is_section = _looks_like_book_heading(title) or (word_count < 50 and bool(title))
+        # "BOOK ONE: 1805", "PART I", "TEIL I", etc. are sibling divs with
+        # class="chapter" and almost no body text (just the heading).
+        # Only divs that start with an explicit book/part/volume keyword are
+        # used as a section prefix — bare title divs like "ERSTER THEIL" or
+        # "FAUST" have word_count < 50 but should not pollute subsequent
+        # chapter titles with a spurious prefix.
+        is_section = _looks_like_book_heading(title)
+        is_tiny = not is_section and word_count < 50 and bool(title)
 
         # Skip meta/frontmatter headings entirely — they aren't real chapters
         # and shouldn't prefix the chapters that follow either.
@@ -422,6 +436,10 @@ def build_chapters_from_html(html: str) -> list[Chapter]:
             # Remember as current book label; skip creating a chapter for it.
             if title:
                 current_book = title
+            continue
+
+        # Skip tiny non-book-heading divs without using them as a prefix.
+        if is_tiny:
             continue
 
         if not body_text.strip() or not title:

@@ -39,7 +39,6 @@ export default function ProfilePage() {
   const [settings, setSettings] = useState<AppSettings>({
     insightLang: "en",
     translationLang: "en",
-    audiobookEnabled: true,
     ttsGender: "female",
     chatFontSize: "xs",
     translationProvider: "auto",
@@ -415,30 +414,6 @@ export default function ProfilePage() {
                 </label>
               ))}
             </div>
-          </div>
-
-          {/* LibriVox audiobook */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-ink">LibriVox audiobook linking</p>
-              <p className="text-xs text-stone-500 mt-0.5">
-                Search and sync public-domain audiobooks from LibriVox.
-              </p>
-            </div>
-            <button
-              role="switch"
-              aria-checked={settings.audiobookEnabled}
-              onClick={() => updatePref("audiobookEnabled", !settings.audiobookEnabled)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 ${
-                settings.audiobookEnabled ? "bg-amber-700" : "bg-amber-200"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg transition-transform ${
-                  settings.audiobookEnabled ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
           </div>
 
           {/* Single save button at the bottom of the preferences section */}

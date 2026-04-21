@@ -7,7 +7,6 @@ load_dotenv()
 
 from routers.books import router as books_router
 from routers.ai import router as ai_router
-from routers.audiobooks import router as audiobooks_router
 from routers.auth import router as auth_router
 from routers.user import router as user_router
 from routers.admin import router as admin_router
@@ -107,7 +106,6 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
 app.include_router(books_router, prefix="/api")
 app.include_router(ai_router, prefix="/api")
-app.include_router(audiobooks_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(annotations_router, prefix="/api")
 app.include_router(vocabulary_router, prefix="/api")

@@ -7,7 +7,6 @@ export type TTSGender = "female" | "male";
 export interface AppSettings {
   insightLang: string;
   translationLang: string;
-  audiobookEnabled: boolean;
   ttsGender: TTSGender;
   translationProvider: TranslationProvider;
   fontSize: FontSize;
@@ -18,7 +17,6 @@ export interface AppSettings {
 const DEFAULTS: AppSettings = {
   insightLang: "en",
   translationLang: "en",
-  audiobookEnabled: true,
   ttsGender: "female",
   translationProvider: "auto",
   fontSize: "base",

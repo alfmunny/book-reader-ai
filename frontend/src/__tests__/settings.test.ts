@@ -10,7 +10,6 @@ test("getSettings returns defaults when nothing is saved", () => {
   const s = getSettings();
   expect(s.insightLang).toBe("en");
   expect(s.translationLang).toBe("en");
-  expect(s.audiobookEnabled).toBe(true);
   expect(s.ttsGender).toBe("female");
 });
 
@@ -22,12 +21,11 @@ test("ttsGender can be saved and read back", () => {
 test("missing ttsGender in stored settings falls back to default", () => {
   localStorage.setItem(
     "book-reader-settings",
-    JSON.stringify({ insightLang: "de", translationLang: "fr", audiobookEnabled: false })
+    JSON.stringify({ insightLang: "de", translationLang: "fr" })
   );
   const s = getSettings();
   expect(s.ttsGender).toBe("female");
   expect(s.insightLang).toBe("de");
-  expect(s.audiobookEnabled).toBe(false);
 });
 
 test("saveSettings persists a value", () => {
@@ -44,9 +42,9 @@ test("saveSettings merges with existing settings", () => {
 });
 
 test("saveSettings partial update does not wipe other fields", () => {
-  saveSettings({ audiobookEnabled: false });
+  saveSettings({ ttsGender: "male" });
   const s = getSettings();
-  expect(s.audiobookEnabled).toBe(false);
+  expect(s.ttsGender).toBe("male");
   expect(s.insightLang).toBe("en"); // default preserved
 });
 

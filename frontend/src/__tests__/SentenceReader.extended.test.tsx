@@ -278,32 +278,32 @@ describe("SentenceReader highlighting based on currentTime", () => {
 });
 
 describe("SentenceReader segment click", () => {
-  it("double-clicking a segment calls onSegmentClick with start time", () => {
+  it("single click calls onSegmentClick when TTS is playing (seek)", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Hello world. Another sentence here."
         duration={10}
         currentTime={0}
-        isPlaying={false}
+        isPlaying={true}
         onSegmentClick={onSegmentClick}
       />
     );
 
     const segs = getSegments(container);
     expect(segs.length).toBeGreaterThan(0);
-    fireEvent.doubleClick(segs[0]);
+    fireEvent.click(segs[0]);
 
     expect(onSegmentClick).toHaveBeenCalledTimes(1);
     expect(onSegmentClick.mock.calls[0][0]).toBeGreaterThanOrEqual(0); // startTime
   });
 
-  it("single click does not call onSegmentClick", () => {
+  it("single click calls onSegmentClick when no onSentenceClick provided", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Hello world. Another sentence here."
-        duration={10}
+        duration={0}
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
@@ -313,7 +313,7 @@ describe("SentenceReader segment click", () => {
     const segs = getSegments(container);
     fireEvent.click(segs[0]);
 
-    expect(onSegmentClick).not.toHaveBeenCalled();
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
   });
 
   it("does not call onSegmentClick when disabled", () => {
@@ -367,7 +367,7 @@ describe("SentenceReader annotations", () => {
     expect(annotatedSeg?.className).toContain("border-yellow-400");
   });
 
-  it("renders note icon for annotation with note text", () => {
+  it("shows collapsible note toggle for annotation with note text", () => {
     const annotations: Annotation[] = [
       {
         id: 2,
@@ -390,8 +390,8 @@ describe("SentenceReader annotations", () => {
       />
     );
 
-    // Note icon should appear
-    expect(screen.getByText("📝")).toBeInTheDocument();
+    // Note toggle button should appear
+    expect(screen.getByText("▸ 1 note")).toBeInTheDocument();
   });
 
   it("applies blue color class for blue annotation", () => {
@@ -497,53 +497,56 @@ describe("SentenceReader long-press annotation (onAnnotate)", () => {
   });
 });
 
-describe("SentenceReader double-click triggers TTS", () => {
-  it("calls onSegmentClick on double-click", () => {
+describe("SentenceReader click interactions", () => {
+  it("single click calls onSentenceClick when TTS is idle and onSentenceClick provided", () => {
     const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
     const { container } = render(
       <SentenceReader
-        text="Double click this sentence."
-        duration={10}
+        text="Click this sentence."
+        duration={0}
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
       />
     );
 
     const segs = getSegments(container);
-    fireEvent.doubleClick(segs[0]);
+    fireEvent.click(segs[0]);
 
-    expect(onSegmentClick).toHaveBeenCalledTimes(1);
-    const [startTime, text] = onSegmentClick.mock.calls[0];
-    expect(typeof startTime).toBe("number");
-    expect(text).toContain("Double click this sentence");
-  });
-
-  it("does not call onSegmentClick when disabled", () => {
-    const onSegmentClick = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Disabled sentence."
-        duration={10}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={onSegmentClick}
-        disabled
-      />
-    );
-
-    const segs = getSegments(container);
-    fireEvent.doubleClick(segs[0]);
-
+    expect(onSentenceClick).toHaveBeenCalledTimes(1);
+    expect(onSentenceClick.mock.calls[0][0].sentenceText).toContain("Click this sentence");
     expect(onSegmentClick).not.toHaveBeenCalled();
   });
 
-  it("single click does not trigger TTS", () => {
+  it("single click calls onSegmentClick when TTS is playing (seek)", () => {
+    const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Seekable sentence."
+        duration={10}
+        currentTime={0}
+        isPlaying={true}
+        onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
+      />
+    );
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+    expect(onSentenceClick).not.toHaveBeenCalled();
+  });
+
+  it("single click calls onSegmentClick when no onSentenceClick provided", () => {
     const onSegmentClick = jest.fn();
     const { container } = render(
       <SentenceReader
-        text="Single click sentence."
-        duration={10}
+        text="Fallback sentence."
+        duration={0}
         currentTime={0}
         isPlaying={false}
         onSegmentClick={onSegmentClick}
@@ -553,7 +556,29 @@ describe("SentenceReader double-click triggers TTS", () => {
     const segs = getSegments(container);
     fireEvent.click(segs[0]);
 
+    expect(onSegmentClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("click does not fire when disabled", () => {
+    const onSegmentClick = jest.fn();
+    const onSentenceClick = jest.fn();
+    const { container } = render(
+      <SentenceReader
+        text="Disabled sentence."
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={onSegmentClick}
+        onSentenceClick={onSentenceClick}
+        disabled
+      />
+    );
+
+    const segs = getSegments(container);
+    fireEvent.click(segs[0]);
+
     expect(onSegmentClick).not.toHaveBeenCalled();
+    expect(onSentenceClick).not.toHaveBeenCalled();
   });
 });
 

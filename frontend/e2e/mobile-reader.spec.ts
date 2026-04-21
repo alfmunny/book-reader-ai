@@ -24,26 +24,38 @@ test.describe("Mobile reader bottom bar", () => {
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
   });
 
-  test("shows prev/next chapter buttons", async ({ page }) => {
-    await expect(page.getByLabel("Previous chapter")).toBeVisible();
-    await expect(page.getByLabel("Next chapter")).toBeVisible();
+  test("does not show prev/next chapter arrow buttons", async ({ page }) => {
+    await expect(page.getByLabel("Previous chapter")).not.toBeVisible();
+    await expect(page.getByLabel("Next chapter")).not.toBeVisible();
   });
 
-  test("prev is disabled on first chapter", async ({ page }) => {
-    await expect(page.getByLabel("Previous chapter")).toBeDisabled();
-  });
-
-  test("next button advances to chapter 2", async ({ page }) => {
-    await page.getByLabel("Next chapter").click();
+  test("chapter dropdown navigates to chapter 2", async ({ page }) => {
+    // The mobile bottom bar contains a select for chapter navigation
+    const mobileBar = page.locator(".md\\:hidden").last();
+    const select = mobileBar.locator("select");
+    await select.selectOption("1");
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
   });
 
-  test("prev button returns to chapter 1 from chapter 2", async ({ page }) => {
-    await page.getByLabel("Next chapter").click();
+  test("chapter dropdown returns to chapter 1 from chapter 2", async ({ page }) => {
+    const mobileBar = page.locator(".md\\:hidden").last();
+    const select = mobileBar.locator("select");
+    await select.selectOption("1");
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
 
-    await page.getByLabel("Previous chapter").click();
+    await select.selectOption("0");
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
+  });
+
+  test("translation button toggles on with single tap and off with second tap", async ({ page }) => {
+    const translateBtn = page.getByLabel("Translation");
+    await translateBtn.click();
+    // Options panel (Inline / Side by side) should appear
+    await expect(page.getByText("Inline")).toBeVisible({ timeout: 3000 });
+
+    // Second tap turns translation off
+    await translateBtn.click();
+    await expect(page.getByText("Inline")).not.toBeVisible();
   });
 });
 

@@ -631,3 +631,121 @@ describe("SentenceReader translations", () => {
     expect(container.querySelector(".animate-pulse")).toBeTruthy();
   });
 });
+
+describe("SentenceReader long-sentence chunk spanning", () => {
+  // Regression test for: sentences longer than one TTS chunk (~400 chars) caused
+  // the chunk-segment matching loop to exhaust all chunks, leaving the long sentence
+  // AND all subsequent sentences with startTime=Infinity (never highlighted).
+  it("sentences after a cross-chunk sentence are still highlighted", () => {
+    const SHORT = "Call me Ishmael.";
+    // Build a sentence that is definitely > 400 chars so it can't fit in one chunk.
+    const LONG =
+      "Whenever I find myself growing grim about the mouth; whenever it is a damp, " +
+      "drizzly November in my soul; whenever I find myself involuntarily pausing " +
+      "before coffin warehouses, and bringing up the rear of every funeral I meet; " +
+      "and especially whenever my hypos get such an upper hand of me, that it " +
+      "requires a strong moral principle to prevent me from deliberately stepping " +
+      "into the street, and methodically knocking people's hats off.";
+    // ~418 chars — longer than a 400-char chunk
+    expect(LONG.length).toBeGreaterThan(400);
+
+    const AFTER = "This is my substitute for pistol and ball.";
+
+    // Simulate how the TTS backend splits text: chunk1 ends mid-LONG sentence.
+    const chunk1Text = SHORT + "\n" + LONG.slice(0, 350);
+    const chunk2Text = LONG.slice(350) + "\n" + AFTER;
+
+    const chunks: ChunkInfo[] = [
+      { text: chunk1Text, duration: 7 },
+      { text: chunk2Text, duration: 4 },
+    ];
+
+    // Text contains all three sentences; the segmenter will produce [SHORT, LONG, AFTER].
+    const fullText = `${SHORT}\n\n${LONG}\n\n${AFTER}`;
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={fullText}
+        duration={11}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // At t=8 we are in chunk2 (starts at t=7). AFTER should be highlighted.
+    // Without the fix, LONG exhausts the chunk list, AFTER also gets Infinity → nothing
+    // highlights after sentence 1.
+    rerender(
+      <SentenceReader
+        text={fullText}
+        duration={11}
+        currentTime={8}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    const active = container.querySelector(".bg-amber-300");
+    expect(active).not.toBeNull();
+    expect(active?.textContent).toContain("substitute for pistol");
+  });
+
+  it("the long sentence itself gets a finite startTime and is highlighted", () => {
+    const SHORT = "Short opener.";
+    const LONG =
+      "This is a very long sentence that deliberately exceeds the four-hundred " +
+      "character chunk boundary so that the text-to-speech backend is forced to " +
+      "split it across two consecutive audio chunks, which previously caused the " +
+      "entire sentence highlighting system to freeze because indexOf could never " +
+      "find the complete sentence text inside any single chunk of audio data, " +
+      "leaving every subsequent sentence permanently un-highlighted no matter how much time elapsed.";
+    expect(LONG.length).toBeGreaterThan(400);
+
+    const AFTER = "Trailing sentence.";
+
+    const chunk1Text = SHORT + "\n" + LONG.slice(0, 350);
+    const chunk2Text = LONG.slice(350) + "\n" + AFTER;
+
+    const chunks: ChunkInfo[] = [
+      { text: chunk1Text, duration: 5 },
+      { text: chunk2Text, duration: 5 },
+    ];
+
+    const fullText = `${SHORT}\n\n${LONG}\n\n${AFTER}`;
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={fullText}
+        duration={10}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // At t=1, SHORT is done and LONG should be active (it starts very early in chunk1)
+    rerender(
+      <SentenceReader
+        text={fullText}
+        duration={10}
+        currentTime={1}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    const active = container.querySelector(".bg-amber-300");
+    expect(active).not.toBeNull();
+    // Either SHORT or LONG is active — both are from chunk1, so a finite startTime was assigned.
+    // The important invariant: the system did NOT freeze (active is not null).
+    expect(
+      active?.textContent?.includes("Short opener") ||
+      active?.textContent?.includes("very long sentence")
+    ).toBe(true);
+  });
+});

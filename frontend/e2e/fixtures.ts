@@ -36,11 +36,13 @@ export const MOCK_CHAPTERS = [
 export async function mockBackend(page: Page) {
   // Mock NextAuth session so useSession() returns status="authenticated" rather
   // than "unauthenticated". Without this the home page always flips to Discover.
+  // backendToken is included so annotation/notes features are enabled.
   await page.route("**/api/auth/session", (route) =>
     route.fulfill({
       json: {
         user: { name: "Test User", email: "test@example.com", image: "" },
         expires: "2030-01-01T00:00:00.000Z",
+        backendToken: "e2e-test-token",
       },
     })
   );
@@ -98,4 +100,16 @@ export async function mockBackend(page: Page) {
   await page.route("**/api/ai/tts", (route) =>
     route.fulfill({ status: 200, contentType: "audio/mpeg", body: Buffer.from([0xff, 0xfb]) })
   );
+
+  await page.route("**/api/annotations*", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ json: [] });
+    } else if (route.request().method() === "POST") {
+      route.fulfill({
+        json: { id: 1, book_id: 1342, chapter_index: 0, sentence_text: "", note_text: "", color: "yellow" },
+      });
+    } else {
+      route.fulfill({ json: { ok: true } });
+    }
+  });
 }

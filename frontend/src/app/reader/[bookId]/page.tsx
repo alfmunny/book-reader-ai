@@ -198,7 +198,9 @@ export default function ReaderPage() {
   const translationCache = useRef(new Map<string, string[]>());
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState(false);
-  const [translationLang, setTranslationLang] = useState("en");
+  const [translationLang, setTranslationLang] = useState<string>(() =>
+    typeof window !== "undefined" ? getSettings().translationLang : "en"
+  );
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
@@ -212,10 +214,9 @@ export default function ReaderPage() {
   const [theme, setTheme] = useState<Theme>("light");
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Read settings on mount
+  // Read settings on mount (translationLang uses lazy useState above)
   useEffect(() => {
     const s = getSettings();
-    setTranslationLang(s.translationLang);
     // translationProvider setting is retained for back-compat but no longer read here.
     setFontSize(s.fontSize);
     setTheme(s.theme);

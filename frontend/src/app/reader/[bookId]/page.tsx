@@ -1386,6 +1386,36 @@ export default function ReaderPage() {
                       </div>
                     )}
 
+                    {/* Book-level translation progress */}
+                    {translationEnabled && bookTranslationStatus && (() => {
+                      const s = bookTranslationStatus;
+                      const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
+                      const ready = s.translated_chapters;
+                      const total = s.total_chapters;
+                      const notStarted = Math.max(0, total - ready - queued - (s.queue_failed ?? 0));
+                      return (
+                        <div className="mt-3 pt-3 border-t border-amber-200">
+                          <div className="flex items-center gap-1.5 text-xs text-amber-700">
+                            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />}
+                            <span>
+                              <strong>{ready} / {total}</strong> chapters translated
+                              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
+                              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
+                            </span>
+                          </div>
+                          {notStarted > 0 && (
+                            <button
+                              onClick={handleTranslateWholeBook}
+                              disabled={enqueueingBook}
+                              className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                            >
+                              {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Admin: retranslate */}
                     {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                       <button

@@ -82,7 +82,7 @@ export default function ReaderPage() {
 
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "vocab">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
@@ -770,23 +770,9 @@ export default function ReaderPage() {
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
 
-          {/* Profile — mobile: only shown in header; desktop: always */}
-          <button
-            onClick={() => router.push("/profile")}
-            title={session?.backendUser?.name ?? "Profile"}
-            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors"
-          >
-            {session?.backendUser?.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
-            ) : (
-              <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
-                {session?.backendUser?.name?.[0] ?? "?"}
-              </span>
-            )}
-          </button>
+          {/* ── Feature buttons (desktop) — all LEFT of profile ────────── */}
 
-          {/* Insight chat toggle — desktop only (mobile uses bottom bar) */}
+          {/* Insight chat toggle */}
           <button
             onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
@@ -796,11 +782,22 @@ export default function ReaderPage() {
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round"
-                d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.836L3 20l1.09-3.27A7.96 7.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            Insight
+            💬 Insight
+          </button>
+
+          {/* Translate toggle — opens sidebar with translation controls */}
+          <button
+            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+            title="Translation"
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "translate"
+                ? "bg-amber-700 text-white border-amber-700"
+                : translationEnabled
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            🌐 Translate
           </button>
 
           {/* Annotations sidebar — desktop only */}
@@ -873,113 +870,22 @@ export default function ReaderPage() {
               🎧 {audiobook ? "Audio" : "Find Audio"}
             </button>
           )}
-        </div>
 
-        {/* Row 2: Translation toolbar — desktop only (mobile uses bottom bar expand) */}
-        <div className="hidden md:flex items-center gap-3 px-4 pb-2 flex-wrap">
+          {/* Profile — always rightmost */}
           <button
-            onClick={() => setTranslationEnabled((v) => !v)}
-            className={`text-xs px-3 py-2 md:py-1 rounded-full border font-medium transition-colors min-h-[44px] md:min-h-0 ${
-              translationEnabled
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
+            onClick={() => router.push("/profile")}
+            title={session?.backendUser?.name ?? "Profile"}
+            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
           >
-            🌐 Translate
+            {session?.backendUser?.picture ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
+                {session?.backendUser?.name?.[0] ?? "?"}
+              </span>
+            )}
           </button>
-
-          {translationEnabled && (
-            <>
-              {/* Manual trigger — only shown when translation hasn't been requested yet */}
-              {!translationLoading && translatedParagraphs.length === 0 && !translationRequested && (
-                <button
-                  onClick={() => setTranslationRequested(true)}
-                  className="text-xs px-3 py-1.5 rounded border border-amber-500 bg-amber-600 text-white hover:bg-amber-700 font-medium transition-colors"
-                >Translate this chapter</button>
-              )}
-
-              <select
-                className="text-xs rounded border border-amber-300 px-2 py-2 md:py-1 text-ink bg-white min-h-[44px] md:min-h-0"
-                value={translationLang}
-                onChange={(e) => setTranslationLang(e.target.value)}
-              >
-                {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
-                ))}
-              </select>
-
-              <div className="flex rounded border border-amber-300 overflow-hidden text-xs">
-                <button
-                  onClick={() => setDisplayMode("inline")}
-                  className={`px-3 py-2 md:py-1 transition-colors min-h-[44px] md:min-h-0 ${
-                    displayMode === "inline"
-                      ? "bg-amber-700 text-white"
-                      : "text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  <span className="md:hidden">⊞</span>
-                  <span className="hidden md:inline">Inline</span>
-                </button>
-                <button
-                  onClick={() => setDisplayMode("parallel")}
-                  className={`px-3 py-2 md:py-1 border-l border-amber-300 transition-colors min-h-[44px] md:min-h-0 ${
-                    displayMode === "parallel"
-                      ? "bg-amber-700 text-white"
-                      : "text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  <span className="md:hidden">⫼</span>
-                  <span className="hidden md:inline">Side by side</span>
-                </button>
-              </div>
-
-              {/* Provider dropdown removed — all translations now flow
-                  through the queue worker which uses the admin's
-                  configured model chain. Users no longer choose their
-                  own Gemini vs. Google provider. */}
-
-              {/* Show the translation status text whether we're loading or
-                  done. While queued this surfaces "queue · position N" /
-                  "queue · translating now" so the user sees progress
-                  instead of an opaque "Translating…". When complete it
-                  shows the provider/model that produced the result. */}
-              {translationLoading ? (
-                <span className="text-xs text-amber-600 animate-pulse">
-                  {translationUsedProvider || "Translating…"}
-                </span>
-              ) : translationUsedProvider &&
-                translationUsedProvider !== "login required" &&
-                translationUsedProvider !== "gemini key required" ? (
-                <span className="hidden md:inline text-xs text-amber-400">
-                  via {translationUsedProvider}
-                </span>
-              ) : null}
-
-              {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
-                <button
-                  onClick={handleRetranslate}
-                  className="hidden md:inline-block text-xs px-2 py-1 rounded border border-amber-300 text-amber-600 hover:bg-amber-50 ml-auto"
-                >
-                  Retranslate
-                </button>
-              )}
-
-              {/* Any user can retry their own failed chapter — the queue row
-                  is in 'failed' state, a fresh request is idempotent, and
-                  priority=10 means the worker picks it up ahead of background
-                  auto-enqueued items. */}
-              {!translationLoading &&
-                translationUsedProvider.startsWith("queue failed") && (
-                  <button
-                    onClick={handleRetryFailed}
-                    className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 ml-auto"
-                    title="Re-queue this chapter for the background worker"
-                  >
-                    Retry
-                  </button>
-                )}
-            </>
-          )}
         </div>
       </header>
 
@@ -1344,7 +1250,7 @@ export default function ReaderPage() {
           </div>
         )}
 
-        {/* Insight/Vocab sidebar — desktop only */}
+        {/* Insight/Vocab/Translate sidebar — desktop only */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
           className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200"
@@ -1353,8 +1259,8 @@ export default function ReaderPage() {
             <>
               {/* Tab bar */}
               <div className="flex shrink-0 border-b border-amber-200 bg-white/70">
-                {(["chat", "vocab"] as const).map((tab) => {
-                  const labels: Record<string, string> = { chat: "💬 Chat", vocab: "📚 Vocab" };
+                {(["chat", "vocab", "translate"] as const).map((tab) => {
+                  const labels: Record<string, string> = { chat: "💬 Chat", vocab: "📚 Vocab", translate: "🌐 Translate" };
                   return (
                     <button
                       key={tab}
@@ -1429,6 +1335,103 @@ export default function ReaderPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Translate tab */}
+              {sidebarTab === "translate" && (
+                <div className="flex-1 overflow-y-auto">
+                  <div className="px-4 py-3 border-b border-amber-200 bg-amber-50/50">
+                    <h3 className="font-serif font-semibold text-ink text-sm mb-3">Translation</h3>
+
+                    {/* Enable/disable toggle */}
+                    <label className="flex items-center gap-3 mb-4 cursor-pointer">
+                      <div className={`relative w-11 h-6 rounded-full transition-colors ${translationEnabled ? "bg-amber-600" : "bg-stone-300"}`}>
+                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${translationEnabled ? "translate-x-5" : ""}`} />
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={translationEnabled}
+                        onChange={(e) => setTranslationEnabled(e.target.checked)}
+                      />
+                      <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
+                    </label>
+
+                    {/* Language selector */}
+                    <div className="mb-4">
+                      <label className="block text-xs text-amber-700 mb-1">Target language</label>
+                      <select
+                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white"
+                        value={translationLang}
+                        onChange={(e) => setTranslationLang(e.target.value)}
+                      >
+                        {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
+                          <option key={l.code} value={l.code}>{l.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Display mode */}
+                    <div className="mb-4">
+                      <label className="block text-xs text-amber-700 mb-1">Display</label>
+                      <div className="flex rounded-lg border border-amber-300 overflow-hidden">
+                        <button
+                          onClick={() => setDisplayMode("inline")}
+                          className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                            displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
+                          }`}
+                        >Inline</button>
+                        <button
+                          onClick={() => setDisplayMode("parallel")}
+                          className={`flex-1 px-3 py-2 text-sm border-l border-amber-300 transition-colors ${
+                            displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
+                          }`}
+                        >Side by side</button>
+                      </div>
+                    </div>
+
+                    {/* Manual trigger — only shown when translation hasn't been requested yet */}
+                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && !translationRequested && (
+                      <button
+                        onClick={() => setTranslationRequested(true)}
+                        className="mb-3 w-full text-sm px-3 py-2 rounded-lg border border-amber-500 bg-amber-600 text-white hover:bg-amber-700 font-medium transition-colors"
+                      >
+                        Translate this chapter
+                      </button>
+                    )}
+
+                    {/* Status */}
+                    {translationEnabled && (
+                      <div className="text-xs text-amber-600">
+                        {translationLoading ? (
+                          <span className="animate-pulse">{translationUsedProvider || "Translating…"}</span>
+                        ) : translationUsedProvider && translationUsedProvider !== "login required" && translationUsedProvider !== "gemini key required" ? (
+                          <span>via {translationUsedProvider}</span>
+                        ) : null}
+                      </div>
+                    )}
+
+                    {/* Admin: retranslate */}
+                    {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
+                      <button
+                        onClick={handleRetranslate}
+                        className="mt-3 w-full text-xs px-3 py-2 rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50"
+                      >
+                        Retranslate chapter
+                      </button>
+                    )}
+
+                    {/* Retry failed */}
+                    {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
+                      <button
+                        onClick={handleRetryFailed}
+                        className="mt-2 w-full text-xs px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                      >
+                        Retry failed translation
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </>

@@ -98,9 +98,8 @@ function parseIntoSegments(
   }
 
   // Step 2a: figure out which chunk each segment belongs to (when chunks present)
-  // The chunker splits the chapter at paragraph boundaries; the segmenter
-  // splits at sentences/lines. So a segment never spans chunk boundaries —
-  // we just walk both lists in chapter order and assign.
+  // Walk both lists in chapter order. Sentences longer than a single chunk
+  // (>400 chars) are assigned to the chunk where they start via prefix matching.
   const segmentChunkIdx: number[] = new Array(allTexts.length).fill(-1);
   if (chunks && chunks.length > 0) {
     let chunkIdx = 0;
@@ -115,6 +114,21 @@ function parseIntoSegments(
           segmentChunkIdx[s] = chunkIdx;
           cursor = pos + seg.length;
           break;
+        }
+        // Full match failed — for sentences longer than the chunk size the full
+        // string won't fit in any single chunk. Try matching a prefix (first 50
+        // chars) to detect "sentence starts here but overflows into the next chunk".
+        const PREFIX_LEN = 50;
+        const prefix = seg.slice(0, PREFIX_LEN);
+        if (prefix.length === PREFIX_LEN) {
+          const prefixPos = chunkText.indexOf(prefix, cursor);
+          if (prefixPos >= 0) {
+            // Sentence starts in this chunk; assign it here and consume the rest
+            // of the chunk so the next sentence searches from the next chunk.
+            segmentChunkIdx[s] = chunkIdx;
+            cursor = chunkText.length;
+            break;
+          }
         }
         // Not in this chunk — move to the next
         chunkIdx++;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
@@ -12,7 +12,6 @@ import SentenceReader from "@/components/SentenceReader";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import VocabularyToast from "@/components/VocabularyToast";
-import SentenceActionPopup from "@/components/SentenceActionPopup";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -39,7 +38,6 @@ export default function ReaderPage() {
   const [error, setError] = useState("");
 
   const [selectedText, setSelectedText] = useState("");
-  const [sentencePopup, setSentencePopup] = useState<{ text: string; startTime: number; position: { x: number; y: number }; translationText?: string } | null>(null);
   const [chatSheetText, setChatSheetText] = useState<string | null>(null);
 
   // Annotations
@@ -100,7 +98,6 @@ export default function ReaderPage() {
     const el = document.getElementById("reader-scroll");
     if (!el) return;
     function onScroll() {
-      setSentencePopup(null);
       if (!isMobileRef.current) return;
       setToolbarVisible(false);
       if (hideTimeout.current) clearTimeout(hideTimeout.current);
@@ -205,7 +202,7 @@ export default function ReaderPage() {
   }
 
   // Translation state
-  const translationCache = useRef(new Map<string, string[]>());
+  const translationCache = useRef(new Map<string, { paragraphs: string[]; label: string }>());
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
   const [translationEnabled, setTranslationEnabled] = useState<boolean>(() =>
     typeof window !== "undefined" ? getSettings().translationEnabled : false
@@ -331,6 +328,21 @@ export default function ReaderPage() {
     }
   }, [bookLanguage, translationLang]);
 
+  // Eagerly hide the "Translate this chapter" button before the browser paints
+  // when we know an async server check is about to run. Without this, the button
+  // flashes briefly between the render that enabled translation and the useEffect
+  // that sets translationLoading=true.
+  useLayoutEffect(() => {
+    if (!translationEnabled || !chapters[chapterIndex]?.text) return;
+    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
+    if (!translationCache.current.has(cacheKey)) {
+      setTranslationLoading(true);
+      setTranslationUsedProvider("");
+      setTranslatedParagraphs([]);
+      setTranslatedTitle(null);
+    }
+  }, [translationEnabled, translationLang, chapterIndex, bookId, chapters]);
+
   // Load from in-memory cache when translation is enabled and chapter/lang changes.
   // After a cache miss, checks server queue status — auto-loads if already done,
   // shows queue banner if in-progress, shows button only if not yet requested.
@@ -347,8 +359,9 @@ export default function ReaderPage() {
     currentChapterKey.current = cacheKey;
 
     if (translationCache.current.has(cacheKey)) {
-      setTranslatedParagraphs(translationCache.current.get(cacheKey)!);
-      setTranslationUsedProvider("cached");
+      const cached = translationCache.current.get(cacheKey)!;
+      setTranslatedParagraphs(cached.paragraphs);
+      setTranslationUsedProvider(cached.label);
       return;
     }
 
@@ -367,10 +380,11 @@ export default function ReaderPage() {
         const res = await getChapterTranslation(bid, chapterIndex, translationLang);
         if (cancelled || currentChapterKey.current !== cacheKey) return;
         if (res.status === "ready" && res.paragraphs) {
-          translationCache.current.set(cacheKey, res.paragraphs);
+          const label = res.model ? `cache · ${res.model}` : "cache";
+          translationCache.current.set(cacheKey, { paragraphs: res.paragraphs, label });
           setTranslatedParagraphs(res.paragraphs);
           setTranslatedTitle(res.title_translation ?? null);
-          setTranslationUsedProvider(res.provider ? (res.model ? `${res.provider} (${res.model})` : res.provider) : "cached");
+          setTranslationUsedProvider(label);
           setTranslationLoading(false);
           return;
         }
@@ -416,10 +430,11 @@ export default function ReaderPage() {
 
     function showResult(res: { paragraphs?: string[]; provider?: string; model?: string; title_translation?: string | null }) {
       if (!res.paragraphs) return;
-      translationCache.current.set(cacheKey, res.paragraphs);
+      const label = res.model ? `translated · ${res.model}` : (res.provider ? `translated · ${res.provider}` : "translated");
+      translationCache.current.set(cacheKey, { paragraphs: res.paragraphs, label });
       setTranslatedParagraphs(res.paragraphs);
       setTranslatedTitle(res.title_translation ?? null);
-      setTranslationUsedProvider(res.provider ? (res.model ? `${res.provider} (${res.model})` : res.provider) : "cached");
+      setTranslationUsedProvider(label);
       setTranslationLoading(false);
     }
 
@@ -995,9 +1010,6 @@ export default function ReaderPage() {
                   } : undefined}
                   showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
-                  onSentenceClick={(info) => {
-                    setSentencePopup({ text: info.sentenceText, startTime: info.startTime, position: info.position, translationText: info.translationText });
-                  }}
                   onSegmentClick={(startTime) => {
                     // Called only when TTS is playing (seek)
                     ttsSeekRef.current(startTime);
@@ -1022,37 +1034,6 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Sentence action popup — single-click on sentence when TTS is idle */}
-          {sentencePopup && (
-            <SentenceActionPopup
-              sentenceText={sentencePopup.text}
-              position={sentencePopup.position}
-              onRead={() => {
-                synthesizeSpeech(sentencePopup.text, bookLanguage, 1.0, getSettings().ttsGender)
-                  .then(({ url }) => {
-                    const audio = new Audio(url);
-                    audio.onended = () => URL.revokeObjectURL(url);
-                    audio.play().catch(() => URL.revokeObjectURL(url));
-                  })
-                  .catch(() => {
-                    window.speechSynthesis.cancel();
-                    const utter = new SpeechSynthesisUtterance(sentencePopup.text);
-                    utter.lang = bookLanguage;
-                    window.speechSynthesis.speak(utter);
-                  });
-              }}
-              onNote={session?.backendToken ? () => {
-                setAnnotationPanel({ sentenceText: sentencePopup.text, chapterIndex, position: sentencePopup.position });
-              } : undefined}
-              onChat={() => {
-                setChatSheetText(sentencePopup.text);
-                setSelectedText(sentencePopup.text);
-                setSidebarTab("chat");
-                setSidebarOpen(true);
-              }}
-              onClose={() => setSentencePopup(null)}
-            />
-          )}
 
           {/* Selection toolbar — appears when user selects text */}
           <SelectionToolbar
@@ -1405,12 +1386,32 @@ export default function ReaderPage() {
 
                     {/* Status */}
                     {translationEnabled && (
-                      <div className="text-xs text-amber-600">
-                        {translationLoading ? (
-                          <span className="animate-pulse">{translationUsedProvider || "Translating…"}</span>
-                        ) : translationUsedProvider && translationUsedProvider !== "login required" && translationUsedProvider !== "gemini key required" ? (
-                          <span>via {translationUsedProvider}</span>
-                        ) : null}
+                      <div className="text-xs">
+                        {translationLoading && !translationUsedProvider && (
+                          <span className="animate-pulse text-amber-600">Checking for translation…</span>
+                        )}
+                        {translationLoading && translationUsedProvider.startsWith("queue") && (
+                          <span className="animate-pulse text-sky-600">
+                            {translationUsedProvider === "queue · translating now"
+                              ? "Translating now…"
+                              : translationUsedProvider === "queue · worker is offline"
+                              ? "Worker offline — translation queued"
+                              : `In queue · position ${translationUsedProvider.replace(/^queue · position /, "")}`}
+                          </span>
+                        )}
+                        {!translationLoading && (
+                          translationUsedProvider === "cache" ? (
+                            <span className="text-stone-400">Loaded from cache</span>
+                          ) : translationUsedProvider.startsWith("cache · ") ? (
+                            <span className="text-stone-400">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
+                          ) : translationUsedProvider === "translated" ? (
+                            <span className="text-green-700">Translated</span>
+                          ) : translationUsedProvider.startsWith("translated · ") ? (
+                            <span className="text-green-700">Translated · <span className="font-mono">{translationUsedProvider.slice(13)}</span></span>
+                          ) : translationUsedProvider.startsWith("queue failed") ? (
+                            <span className="text-red-600">{translationUsedProvider}</span>
+                          ) : null
+                        )}
                       </div>
                     )}
 

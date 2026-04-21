@@ -416,6 +416,16 @@ export default function SentenceReader({
     return map;
   }, [annotations]);
 
+  // Lookup that handles selections made within a sentence (substring match fallback)
+  const getAnnotation = useMemo(() => {
+    const anns = annotations ?? [];
+    return (segText: string): Annotation | undefined => {
+      const exact = annotationMap.get(segText);
+      if (exact) return exact;
+      return anns.find((a) => a.sentence_text.length >= 10 && segText.includes(a.sentence_text));
+    };
+  }, [annotations, annotationMap]);
+
   // Long-press handlers (shared across segments)
   function handlePointerDown(e: React.PointerEvent, seg: Segment) {
     if (!onAnnotate) return;
@@ -513,7 +523,7 @@ export default function SentenceReader({
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
           const isJumpTarget = flashTarget !== null && seg.text === flashTarget;
-          const annotation = annotationMap.get(seg.text);
+          const annotation = getAnnotation(seg.text);
           const annotationClass = annotation
             ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
@@ -572,7 +582,7 @@ export default function SentenceReader({
 
         // Annotation side mark helpers for this paragraph
         const paraAnnotations = para.segments
-          .map((s) => annotationMap.get(s.text))
+          .map((s) => getAnnotation(s.text))
           .filter(Boolean) as Annotation[];
         const paraHasAnnotation = paraAnnotations.length > 0;
         const dominantColor = paraAnnotations[0]?.color ?? "yellow";

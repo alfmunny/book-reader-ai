@@ -64,14 +64,13 @@ test("translationEnabled persists: reopening the reader resumes translation", as
     })
   );
 
-  await page.goto("/reader/1342");
-  await page.evaluate(() => {
+  await page.addInitScript(() => {
     localStorage.setItem(
       "book-reader-settings",
       JSON.stringify({ translationEnabled: true, translationLang: "de", insightLang: "en", ttsGender: "female", fontSize: "base", theme: "light" })
     );
   });
-  await page.reload();
+  await page.goto("/reader/1342");
 
   // Translation auto-fires because settings say it was enabled
   await expect(page.getByText("Persisted translation.")).toBeVisible({ timeout: 5000 });
@@ -104,14 +103,13 @@ test("translation language is persisted to settings on change", async ({ page })
 });
 
 test("translation language is loaded from settings on page open", async ({ page }) => {
-  await page.goto("/reader/1342");
-  await page.evaluate(() => {
+  await page.addInitScript(() => {
     localStorage.setItem(
       "book-reader-settings",
       JSON.stringify({ translationLang: "fr", insightLang: "en", ttsGender: "female", fontSize: "base", theme: "light" })
     );
   });
-  await page.reload();
+  await page.goto("/reader/1342");
 
   await page.getByRole("button", { name: /Translate/i }).first().click();
   await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });

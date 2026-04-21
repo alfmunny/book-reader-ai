@@ -51,14 +51,13 @@ test("continue-reading: reopening a book restores the last-read chapter", async 
 
 /** Seed localStorage with translationEnabled=true so translation auto-fires on page load. */
 async function seedTranslationEnabled(page: import("@playwright/test").Page, lang = "de") {
-  await page.goto("/reader/1342");
-  await page.evaluate((l) => {
+  await page.addInitScript((l: string) => {
     localStorage.setItem(
       "book-reader-settings",
       JSON.stringify({ translationEnabled: true, translationLang: l, insightLang: "en", ttsGender: "female", fontSize: "base", theme: "light" })
     );
   }, lang);
-  await page.reload();
+  await page.goto("/reader/1342");
 }
 
 test("translation does not show Gemini reminder (queue returns ready)", async ({ page }) => {

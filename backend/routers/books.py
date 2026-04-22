@@ -265,6 +265,15 @@ async def request_chapter_translation(
             detail="Cannot translate to the same language as the original.",
         )
 
+    # 0e. Guard: reject out-of-bounds chapter_index.
+    from services.book_chapters import split_with_html_preference
+    _chapters = await split_with_html_preference(book_id, book_meta.get("text") or "")
+    if chapter_index < 0 or chapter_index >= len(_chapters):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+        )
+
     # 1. New translation requires login.
     if user is None:
         raise HTTPException(
@@ -375,8 +384,16 @@ async def retry_chapter_translation(
     check_book_access(book, user)
 
     from services.translation_queue import enqueue, queue_status_for_chapter, worker
+    from services.book_chapters import split_with_html_preference as _split
 
     target_language = req.target_language.lower().split("-")[0]
+
+    _ch = await _split(book_id, book.get("text") or "")
+    if chapter_index < 0 or chapter_index >= len(_ch):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chapter index out of range (book has {len(_ch)} chapter(s)).",
+        )
 
     # Guard: reject retry of a running item. enqueue(reset_failed=True) resets
     # status='pending' in-place — same row ID. When the worker finishes it calls

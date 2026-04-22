@@ -345,8 +345,13 @@ async def test_retry_chapter_translation_inserts_if_no_row(client):
     still succeeds and creates a pending row."""
     import aiosqlite
     import services.db as db_module
+    from services.book_chapters import clear_cache as _clear
 
-    await save_book(1342, MOCK_META, "text")
+    text = "\n\n".join(
+        f"CHAPTER {i}\n\n" + "word " * 200 for i in range(1, 4)
+    )
+    await save_book(1342, MOCK_META, text)
+    _clear()
     resp = await client.post(
         "/api/books/1342/chapters/2/translation/retry",
         json={"target_language": "fr"},
@@ -952,3 +957,48 @@ async def test_owner_can_access_own_upload_book(client, test_user, tmp_db):
     await _insert_upload_book(9911, test_user["id"])
     resp = await client.get("/api/books/9911")
     assert resp.status_code == 200, resp.text
+
+
+# ── chapter_index bounds checks ───────────────────────────────────────────────
+
+async def test_request_translation_out_of_bounds_chapter_returns_400(client, test_user):
+    """Regression #429: POST /translation with chapter_index beyond chapter count must
+    return 400 instead of silently enqueuing impossible work.
+    """
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9877, {**MOCK_META, "id": 9877, "languages": ["de"]}, text)
+    _clear()
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("test-key"))
+
+    resp = await client.post(
+        "/api/books/9877/chapters/999/translation",
+        json={"target_language": "en"},
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on 2-chapter book, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_retry_translation_out_of_bounds_chapter_returns_400(client, test_user):
+    """Regression #429: POST /translation/retry with out-of-bounds chapter_index
+    must return 400 instead of silently enqueuing impossible work.
+    """
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9878, {**MOCK_META, "id": 9878, "languages": ["de"]}, text)
+    _clear()
+
+    resp = await client.post(
+        "/api/books/9878/chapters/999/translation/retry",
+        json={"target_language": "en"},
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on 2-chapter book, "
+        f"got {resp.status_code}: {resp.text}"
+    )

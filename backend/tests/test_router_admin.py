@@ -11,6 +11,7 @@ from services.db import (
     save_translation, set_user_approved, create_annotation, save_insight,
     upsert_reading_progress, save_word, get_vocabulary,
     save_chapter_summary, get_chapter_summary,
+    log_reading_event,
 )
 from services.auth import get_current_user, create_jwt
 from main import app
@@ -191,6 +192,30 @@ async def test_delete_user_removes_all_user_data(admin_client, admin_db, admin_u
         ) as cur:
             (occ_count,) = await cur.fetchone()
     assert occ_count == 0, "orphaned word_occurrences left after delete_user"
+
+
+async def test_delete_user_removes_reading_history(admin_client, admin_db, admin_user):
+    """Regression for #287: delete_user must also remove reading_history rows.
+
+    PRAGMA foreign_keys is disabled so ON DELETE CASCADE is never enforced;
+    delete_user must include an explicit DELETE FROM reading_history.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    user2 = await get_or_create_user(
+        google_id="del-history-user", email="history@test.com", name="History", picture=""
+    )
+    await log_reading_event(user2["id"], 100, 0)
+    await log_reading_event(user2["id"], 100, 1)
+
+    res = await admin_client.delete(f"/api/admin/users/{user2['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM reading_history WHERE user_id = ?", (user2["id"],)
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 0, "orphaned reading_history rows left after delete_user"
 
 
 # ── Books ────────────────────────────────────────────────────────────────────

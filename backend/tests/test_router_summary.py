@@ -28,6 +28,11 @@ _BOOK_META = {
 BOOK_ID = 9001
 CHAPTER_INDEX = 3
 CHAPTER_TEXT = "Mephistopheles erscheint im Studierzimmer des Faust."
+_CHAPTER = "word " * 200
+_BOOK_TEXT = (
+    f"CHAPTER I\n\n{_CHAPTER}\n\nCHAPTER II\n\n{_CHAPTER}"
+    f"\n\nCHAPTER III\n\n{_CHAPTER}\n\nCHAPTER IV\n\n{_CHAPTER}"
+)
 SUMMARY_CONTENT = "**Overview**\nFaust meets Mephistopheles.\n\n**Key Events**\n- The devil appears."
 
 _PAYLOAD = {
@@ -47,7 +52,7 @@ async def _set_queue_key(tmp_db):
 # ── Cache hit ─────────────────────────────────────────────────────────────────
 
 async def test_summary_cache_hit(client, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_chapter_summary(BOOK_ID, CHAPTER_INDEX, SUMMARY_CONTENT, model="test-model")
 
     with patch("routers.ai.gemini.generate_chapter_summary", new_callable=AsyncMock) as mock_gen:
@@ -64,7 +69,7 @@ async def test_summary_cache_hit(client, tmp_db):
 # ── Cache miss — queue key present ───────────────────────────────────────────
 
 async def test_summary_cache_miss_generates_and_caches(client, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await _set_queue_key(tmp_db)
 
     with patch("routers.ai.gemini.generate_chapter_summary", new_callable=AsyncMock, return_value=SUMMARY_CONTENT):
@@ -82,7 +87,7 @@ async def test_summary_cache_miss_generates_and_caches(client, tmp_db):
 
 
 async def test_summary_second_request_uses_cache(client, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await _set_queue_key(tmp_db)
 
     call_count = 0
@@ -103,7 +108,7 @@ async def test_summary_second_request_uses_cache(client, tmp_db):
 # ── No queue key ──────────────────────────────────────────────────────────────
 
 async def test_summary_no_queue_key_returns_503(client, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
 
     resp = await client.post("/api/ai/summary", json=_PAYLOAD)
     assert resp.status_code == 503
@@ -119,7 +124,7 @@ async def test_summary_book_not_found_returns_404(client, tmp_db):
 # ── Gemini failure ────────────────────────────────────────────────────────────
 
 async def test_summary_gemini_error_returns_500(client, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await _set_queue_key(tmp_db)
 
     with patch(
@@ -135,7 +140,7 @@ async def test_summary_gemini_error_returns_500(client, tmp_db):
 # ── Admin delete ──────────────────────────────────────────────────────────────
 
 async def test_summary_admin_can_delete(client, test_user, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_chapter_summary(BOOK_ID, CHAPTER_INDEX, SUMMARY_CONTENT)
     await set_user_role(test_user["id"], "admin")
 
@@ -148,7 +153,7 @@ async def test_summary_admin_can_delete(client, test_user, tmp_db):
 
 
 async def test_summary_non_admin_delete_forbidden(client, test_user, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_chapter_summary(BOOK_ID, CHAPTER_INDEX, SUMMARY_CONTENT)
     # First user is auto-admin; explicitly demote them for this test.
     await set_user_role(test_user["id"], "user")

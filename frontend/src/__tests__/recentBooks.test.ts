@@ -138,3 +138,10 @@ test("removeRecentBook does not throw on empty library", () => {
   expect(() => removeRecentBook(1)).not.toThrow();
   expect(getRecentBooks()).toEqual([]);
 });
+
+test("getLastChapter returns 0 when localStorage.getItem throws (line 50 catch)", () => {
+  jest.spyOn(Storage.prototype, "getItem").mockImplementationOnce(() => {
+    throw new Error("Storage unavailable");
+  });
+  expect(getLastChapter(1342)).toBe(0);
+});

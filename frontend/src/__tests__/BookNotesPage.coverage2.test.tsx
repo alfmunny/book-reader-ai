@@ -30,7 +30,8 @@ jest.mock("@/lib/api", () => ({
 
 import * as api from "@/lib/api";
 import { useSession } from "next-auth/react";
-import BookNotesPage, { buildMarkdown } from "@/app/notes/[bookId]/page";
+import BookNotesPage from "@/app/notes/[bookId]/page";
+import { buildMarkdown } from "@/lib/notesMarkdown";
 import type { Annotation, BookInsight, VocabularyWord, BookChapter, BookMeta } from "@/lib/api";
 
 const mockUseSession = useSession as jest.Mock;

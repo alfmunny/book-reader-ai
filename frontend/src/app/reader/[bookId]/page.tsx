@@ -51,6 +51,7 @@ export default function ReaderPage() {
     position: { x: number; y: number };
   } | null>(null);
   const [scrollTargetSentence, setScrollTargetSentence] = useState<string | undefined>();
+  const didUrlScrollRef = useRef(false);
 
   // Vocabulary toast
   const [vocabToastWord, setVocabToastWord] = useState<string | null>(null);
@@ -306,6 +307,20 @@ export default function ReaderPage() {
       setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
     }).catch(() => {});
   }, [bookId, session?.backendToken]);
+
+  // On initial chapter load, scroll to sentence specified in ?sentence= URL param
+  useEffect(() => {
+    if (loading || didUrlScrollRef.current) return;
+    const sentence = searchParams?.get("sentence");
+    if (!sentence) return;
+    didUrlScrollRef.current = true;
+    const decoded = decodeURIComponent(sentence);
+    setTimeout(() => {
+      setScrollTargetSentence(undefined);
+      setTimeout(() => setScrollTargetSentence(decoded), 50);
+    }, 500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const bookLanguage = meta?.languages[0] || "en";
 
@@ -1027,6 +1042,8 @@ export default function ReaderPage() {
                   } : undefined}
                   showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
+                  scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
+                  vocabWords={new Set(vocabWords.map((v) => v.word.toLowerCase()))}
                   onSegmentClick={(startTime) => {
                     // Called only when TTS is playing (seek)
                     ttsSeekRef.current(startTime);

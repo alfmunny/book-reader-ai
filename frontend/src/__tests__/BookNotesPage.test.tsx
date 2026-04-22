@@ -253,6 +253,30 @@ test("chapter view renders content under chapter heading", async () => {
   expect(screen.getByRole("button", { name: /Chapter 1/i })).toBeInTheDocument();
 });
 
+// ── Jump links ─────────────────────────────────────────────────────────────────
+
+test("vocab sentence is a reader link with sentence and word params", async () => {
+  mockGetAnnotations.mockResolvedValue([]);
+  mockGetVocabulary.mockResolvedValue([makeVocabWord()]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/The great leviathan/));
+  const sentenceLink = screen.getByRole("link", { name: /The great leviathan/ });
+  const href = sentenceLink.getAttribute("href") ?? "";
+  expect(href).toContain("/reader/10?chapter=0");
+  expect(href).toContain("sentence=");
+  expect(href).toContain("word=leviathan");
+});
+
+test("insight with context_text has reader link", async () => {
+  mockGetAnnotations.mockResolvedValue([]);
+  mockGetInsights.mockResolvedValue([makeInsight({ context_text: "The pale whale loomed." })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/What is the white whale/));
+  const link = screen.getByRole("link", { name: /Chapter 1/i });
+  expect(link.getAttribute("href")).toContain("/reader/10?chapter=0");
+  expect(link.getAttribute("href")).toContain("sentence=");
+});
+
 // ── Navigation ─────────────────────────────────────────────────────────────────
 
 test("← Notes button navigates to /notes", async () => {

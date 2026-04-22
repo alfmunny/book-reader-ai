@@ -242,7 +242,7 @@ function AnnotationCard({
       {!isEditing && (
         <div className="flex items-center gap-3 mt-2">
           <a
-            href={`/reader/${bookId}?chapter=${ann.chapter_index}`}
+            href={`/reader/${bookId}?chapter=${ann.chapter_index}&sentence=${encodeURIComponent(ann.sentence_text)}`}
             className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
           >
             → {chapterLabel(chapters, ann.chapter_index)}
@@ -271,14 +271,20 @@ function AnnotationCard({
 function InsightCard({
   ins,
   chapters,
+  bookId,
   onDelete,
   isDeleting,
 }: {
   ins: BookInsight;
   chapters: BookChapter[];
+  bookId: number;
   onDelete: () => void;
   isDeleting: boolean;
 }) {
+  const readerHref = ins.chapter_index !== null
+    ? `/reader/${bookId}?chapter=${ins.chapter_index}${ins.context_text ? `&sentence=${encodeURIComponent(ins.context_text)}` : ""}`
+    : null;
+
   return (
     <div className="my-3 space-y-1.5">
       {ins.context_text && (
@@ -291,8 +297,13 @@ function InsightCard({
       </p>
       <p className="text-sm text-ink leading-relaxed">{ins.answer}</p>
       <div className="flex items-center gap-3 pt-0.5">
-        {ins.chapter_index !== null && (
-          <span className="text-xs text-stone-400">{chapterLabel(chapters, ins.chapter_index)}</span>
+        {readerHref && (
+          <a
+            href={readerHref}
+            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+          >
+            → {chapterLabel(chapters, ins.chapter_index as number)}
+          </a>
         )}
         <button
           onClick={onDelete}
@@ -313,9 +324,10 @@ function VocabRow({
   chapters,
 }: {
   word: string;
-  occurrence: { chapter_index: number; sentence_text: string };
+  occurrence: { book_id: number; chapter_index: number; sentence_text: string };
   chapters: BookChapter[];
 }) {
+  const readerHref = `/reader/${occurrence.book_id}?chapter=${occurrence.chapter_index}&sentence=${encodeURIComponent(occurrence.sentence_text)}&word=${encodeURIComponent(word)}`;
   return (
     <li className="flex gap-2 text-sm leading-relaxed before:content-['·'] before:text-amber-400 before:font-bold before:shrink-0">
       <span>
@@ -327,7 +339,12 @@ function VocabRow({
         </a>{" "}
         <span className="text-stone-400 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
         {" — "}
-        <span className="italic text-stone-600">&ldquo;{truncate(occurrence.sentence_text, 90)}&rdquo;</span>
+        <a
+          href={readerHref}
+          className="italic text-stone-600 hover:text-amber-700 hover:underline transition-colors"
+        >
+          &ldquo;{truncate(occurrence.sentence_text, 90)}&rdquo;
+        </a>
       </span>
     </li>
   );
@@ -503,6 +520,7 @@ export default function BookNotesPage() {
         key={ins.id}
         ins={ins}
         chapters={chapters}
+        bookId={bookId}
         onDelete={() => handleDeleteInsight(ins.id)}
         isDeleting={deletingIns.has(ins.id)}
       />

@@ -11,7 +11,7 @@ async def test_post_creates_insight_and_returns_it(client: AsyncClient):
     await save_book(1, _META, "text")
     payload = {
         "book_id": 1,
-        "chapter_index": 2,
+        "chapter_index": 0,
         "question": "What is the theme?",
         "answer": "The theme is love.",
     }
@@ -19,7 +19,7 @@ async def test_post_creates_insight_and_returns_it(client: AsyncClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["book_id"] == 1
-    assert data["chapter_index"] == 2
+    assert data["chapter_index"] == 0
     assert data["question"] == "What is the theme?"
     assert data["answer"] == "The theme is love."
     assert "id" in data
@@ -304,3 +304,19 @@ async def test_get_insights_returns_404_for_missing_book(client, test_user, tmp_
     """GET /insights?book_id=N returns 404 when book doesn't exist (#397)."""
     resp = await client.get("/api/insights?book_id=999999")
     assert resp.status_code == 404, resp.text
+
+
+async def test_create_insight_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """POST /insights rejects chapter_index beyond the book's chapter count (issue #450)."""
+    from services.db import save_book
+    from services.book_chapters import clear_cache as _clear
+    _META2 = {"title": "T2", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9883, {**_META2, "id": 9883}, text)
+    _clear()
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 9883, "chapter_index": 999, "question": "Q?", "answer": "A."},
+    )
+    assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
+    assert "out of range" in resp.json()["detail"].lower()

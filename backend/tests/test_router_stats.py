@@ -1,0 +1,160 @@
+"""
+Tests for GET /user/stats and the reading_history logging hook.
+
+Covers:
+- Stats endpoint returns correct totals
+- Reading streak: today, yesterday, gap breaks streak
+- Longest streak calculation
+- Activity heatmap from all event types
+- log_reading_event called on PUT /user/reading-progress
+- Zero state: fresh user returns zeros
+"""
+
+import pytest
+from datetime import date, timedelta
+from services.db import (
+    save_book, upsert_reading_progress, log_reading_event,
+    get_user_stats, save_word, create_annotation, save_insight,
+)
+import aiosqlite
+import services.db as db_module
+
+_BOOK_META = {
+    "title": "Test Book",
+    "authors": ["Author"],
+    "languages": ["en"],
+    "subjects": [],
+    "download_count": 0,
+    "cover": "",
+}
+BOOK_ID = 5001
+
+
+# ── Zero state ────────────────────────────────────────────────────────────────
+
+async def test_stats_fresh_user_returns_zeros(client, tmp_db):
+    resp = await client.get("/api/user/stats")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["totals"]["books_started"] == 0
+    assert data["totals"]["vocabulary_words"] == 0
+    assert data["totals"]["annotations"] == 0
+    assert data["totals"]["insights"] == 0
+    assert data["streak"] == 0
+    assert data["longest_streak"] == 0
+    assert data["activity"] == []
+
+
+# ── Totals ────────────────────────────────────────────────────────────────────
+
+async def test_stats_totals_reflect_user_data(client, test_user, tmp_db):
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await upsert_reading_progress(test_user["id"], BOOK_ID, 2)
+    await save_word(test_user["id"], "serendipity", BOOK_ID, 0, "It was serendipity.")
+    await save_word(test_user["id"], "ephemeral", BOOK_ID, 1, "An ephemeral moment.")
+    await create_annotation(test_user["id"], BOOK_ID, 0, "A sentence.", "A note.", "yellow")
+
+    resp = await client.get("/api/user/stats")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["totals"]["books_started"] == 1
+    assert data["totals"]["vocabulary_words"] == 2
+    assert data["totals"]["annotations"] == 1
+    assert data["totals"]["insights"] == 0
+
+
+# ── Streak calculation ────────────────────────────────────────────────────────
+
+async def _insert_history_at(db_path, user_id, book_id, day_offset):
+    """Insert a reading_history row with a synthetic timestamp."""
+    target_date = date.today() - timedelta(days=day_offset)
+    ts = f"{target_date.isoformat()} 12:00:00"
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "INSERT INTO reading_history (user_id, book_id, chapter_index, read_at) VALUES (?, ?, 0, ?)",
+            (user_id, book_id, ts),
+        )
+        await db.commit()
+
+
+async def test_streak_today_only(client, test_user, tmp_db):
+    await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, 0)  # today
+    resp = await client.get("/api/user/stats")
+    assert resp.json()["streak"] == 1
+
+
+async def test_streak_yesterday_only(client, test_user, tmp_db):
+    await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, 1)  # yesterday
+    resp = await client.get("/api/user/stats")
+    assert resp.json()["streak"] == 1
+
+
+async def test_streak_consecutive_days(client, test_user, tmp_db):
+    for offset in range(5):  # today, yesterday, 2 days ago, 3, 4
+        await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, offset)
+    resp = await client.get("/api/user/stats")
+    assert resp.json()["streak"] == 5
+
+
+async def test_streak_gap_breaks_streak(client, test_user, tmp_db):
+    # Today and 2 days ago — missing yesterday → streak = 1
+    await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, 0)
+    await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, 2)
+    resp = await client.get("/api/user/stats")
+    assert resp.json()["streak"] == 1
+
+
+async def test_streak_zero_when_last_activity_was_two_days_ago(client, test_user, tmp_db):
+    await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, 2)
+    resp = await client.get("/api/user/stats")
+    assert resp.json()["streak"] == 0
+
+
+async def test_longest_streak(client, test_user, tmp_db):
+    # 3-day run 10 days ago, 5-day run 3 days ago (which includes today)
+    for offset in [10, 11, 12]:   # old 3-day run
+        await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, offset)
+    for offset in [0, 1, 2, 3, 4]:   # current 5-day run
+        await _insert_history_at(tmp_db, test_user["id"], BOOK_ID, offset)
+    resp = await client.get("/api/user/stats")
+    data = resp.json()
+    assert data["longest_streak"] == 5
+    assert data["streak"] == 5
+
+
+# ── Activity heatmap ──────────────────────────────────────────────────────────
+
+async def test_activity_includes_vocabulary_events(client, test_user, tmp_db):
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "loquacious", BOOK_ID, 0, "A loquacious narrator.")
+    resp = await client.get("/api/user/stats")
+    activity = resp.json()["activity"]
+    today = date.today().isoformat()
+    counts = {a["date"]: a["count"] for a in activity}
+    assert today in counts
+    assert counts[today] >= 1
+
+
+# ── Reading progress hook ─────────────────────────────────────────────────────
+
+async def test_progress_update_logs_reading_event(client, test_user, tmp_db):
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 3})
+    assert resp.status_code == 200
+
+    # Stats should now show streak = 1 (today has a reading event)
+    stats_resp = await client.get("/api/user/stats")
+    assert stats_resp.json()["streak"] == 1
+    assert stats_resp.json()["totals"]["books_started"] == 1
+
+
+async def test_progress_update_multiple_chapters_all_logged(client, test_user, tmp_db):
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    for ch in range(4):
+        await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": ch})
+
+    # 4 reading events → activity count for today >= 4
+    resp = await client.get("/api/user/stats")
+    today = date.today().isoformat()
+    activity = {a["date"]: a["count"] for a in resp.json()["activity"]}
+    assert activity.get(today, 0) >= 4

@@ -34,6 +34,7 @@ jest.mock("@/lib/api", () => ({
   getMe: jest.fn().mockResolvedValue({ hasGeminiKey: false, role: "user" }),
   getObsidianSettings: jest.fn().mockResolvedValue({ obsidian_repo: "u/v", obsidian_path: "Notes" }),
   saveObsidianSettings: jest.fn().mockResolvedValue({}),
+  getUserStats: jest.fn().mockResolvedValue({ totals: { books_started: 0, vocabulary_words: 0, annotations: 0, insights: 0 }, streak: 0, longest_streak: 0, activity: [] }),
 }));
 
 jest.mock("@/lib/settings", () => ({

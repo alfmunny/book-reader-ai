@@ -499,6 +499,99 @@ async def upsert_reading_progress(user_id: int, book_id: int, chapter_index: int
         await db.commit()
 
 
+async def log_reading_event(user_id: int, book_id: int, chapter_index: int) -> None:
+    """Append one row to reading_history for streak / heatmap analytics."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO reading_history (user_id, book_id, chapter_index) VALUES (?, ?, ?)",
+            (user_id, book_id, chapter_index),
+        )
+        await db.commit()
+
+
+async def get_user_stats(user_id: int) -> dict:
+    """Return aggregated reading statistics for a user."""
+    from datetime import date, timedelta
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+
+        # ── Totals ────────────────────────────────────────────────────────────
+        async with db.execute(
+            "SELECT COUNT(DISTINCT book_id) FROM user_reading_progress WHERE user_id=?",
+            (user_id,),
+        ) as cur:
+            books_started = (await cur.fetchone())[0]
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM vocabulary WHERE user_id=?", (user_id,)
+        ) as cur:
+            vocab_words = (await cur.fetchone())[0]
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM annotations WHERE user_id=?", (user_id,)
+        ) as cur:
+            annotations = (await cur.fetchone())[0]
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE user_id=?", (user_id,)
+        ) as cur:
+            insights = (await cur.fetchone())[0]
+
+        # ── Activity per day (last 365 days) — union of all event types ──────
+        activity_sql = """
+            SELECT DATE(ts) AS day, COUNT(*) AS cnt FROM (
+                SELECT created_at AS ts FROM vocabulary WHERE user_id=?
+                UNION ALL SELECT created_at FROM annotations WHERE user_id=?
+                UNION ALL SELECT created_at FROM book_insights WHERE user_id=?
+                UNION ALL SELECT read_at FROM reading_history WHERE user_id=?
+            ) WHERE ts >= DATE('now', '-365 days')
+            GROUP BY day ORDER BY day DESC
+        """
+        async with db.execute(activity_sql, (user_id, user_id, user_id, user_id)) as cur:
+            activity_rows = await cur.fetchall()
+
+    activity = [{"date": r["day"], "count": r["cnt"]} for r in activity_rows]
+
+    # ── Streak (consecutive days ending today or yesterday) ───────────────────
+    dates_set = {a["date"] for a in activity}
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+
+    streak = 0
+    if today in dates_set or yesterday in dates_set:
+        check = date.today() if today in dates_set else date.today() - timedelta(days=1)
+        while check.isoformat() in dates_set:
+            streak += 1
+            check -= timedelta(days=1)
+
+    # Longest streak in the available data
+    sorted_dates = sorted(dates_set)
+    longest = 0
+    run = 0
+    prev: date | None = None
+    for ds in sorted_dates:
+        d = date.fromisoformat(ds)
+        if prev is None or (d - prev).days == 1:
+            run += 1
+        else:
+            run = 1
+        longest = max(longest, run)
+        prev = d
+
+    return {
+        "totals": {
+            "books_started": books_started,
+            "vocabulary_words": vocab_words,
+            "annotations": annotations,
+            "insights": insights,
+        },
+        "streak": streak,
+        "longest_streak": longest,
+        "activity": activity,
+    }
+
+
 async def list_cached_books() -> list[dict]:
     """Return all cached books (without text field)."""
     async with aiosqlite.connect(DB_PATH) as db:

@@ -499,6 +499,22 @@ export function saveReadingProgress(bookId: number, chapterIndex: number) {
   });
 }
 
+export interface UserStats {
+  totals: {
+    books_started: number;
+    vocabulary_words: number;
+    annotations: number;
+    insights: number;
+  };
+  streak: number;
+  longest_streak: number;
+  activity: { date: string; count: number }[];
+}
+
+export function getUserStats() {
+  return request<UserStats>("/user/stats");
+}
+
 // ── Annotations ───────────────────────────────────────────────────────────────
 
 export interface Annotation {

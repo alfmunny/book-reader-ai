@@ -927,6 +927,21 @@ async def test_upload_book_retry_translation_blocked_for_non_owner(client, test_
     assert resp.status_code == 403, resp.text
 
 
+async def test_import_stream_blocked_for_non_owner_of_uploaded_book(anon_client, tmp_db):
+    """Regression #383: import-stream must return 403 for an uploaded (private)
+    book when the requester is not the owner. Previously the access check was
+    missing and chapter titles / word counts were leaked."""
+    import services.db as _db
+    from services.db import get_or_create_user
+    owner = await get_or_create_user("owner-gid-is", "owner-is@ex.com", "OwnerIS", "")
+    await _insert_upload_book(9909, owner["id"])
+    resp = await anon_client.get("/api/books/9909/import-stream")
+    assert resp.status_code == 403, (
+        f"Expected 403 for unauthenticated access to private uploaded book import-stream, "
+        f"got {resp.status_code} (#383)"
+    )
+
+
 async def test_gutenberg_book_still_accessible_to_any_user(client, test_user, tmp_db):
     await save_book(9910, MOCK_META, "some text")
     resp = await client.get("/api/books/9910")

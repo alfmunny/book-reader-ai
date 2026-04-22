@@ -3,14 +3,16 @@
 ## Session 3 — 2026-04-22
 
 ### Implemented this session
-- [ ] AI Chapter Summary (in progress)
+- [x] AI Chapter Summary (PR #262)
+- [x] Reading Statistics Dashboard (PR #268)
+- [x] Immersive Reading Mode (PR #301)
 
 ### Proposed (design docs below)
 - [ ] Vocabulary Flashcards / Spaced Repetition System (SRS)
 
 ---
 
-## Feature 1: AI Chapter Summary ✅ (implementing now)
+## Feature 1: AI Chapter Summary ✅ (merged — PR #262)
 
 ### Overview
 When a user wants to recall what happened in a chapter before continuing, they can click "Summarize" in the reader sidebar to get a concise AI-generated summary. Summaries are cached in the database and shared across all users — just like translations.
@@ -236,7 +238,28 @@ SELECT DATE(ts) as day, COUNT(*) as events FROM (
 
 ---
 
-## Feature 4: Chapter Comprehension Quiz (FUTURE)
+## Feature 4: Immersive Reading Mode ✅ (merged — PR #301)
+
+### Overview
+A distraction-free reading experience with typography customisation and paragraph-level focus + TTS.
+
+### What shipped
+- **Focus Mode** (`F` key / button): hides header chrome, shows floating HUD with chapter nav, "Read §" button, Aa panel, and exit
+- **Typography Panel** (`Aa` button): font size (S/M/L/XL), font family (Serif/Sans), line spacing (Tight/Normal/Relaxed), content width (Narrow/Normal/Wide) — all persisted to localStorage
+- **Paragraph Focus**: dims all paragraphs except the active one (opacity 0.2 → 1 transition). Focus tracks scroll when paused, and tracks TTS position when playing
+- **Paragraph TTS**: "Read §" button seeks audio to the focused paragraph's start time and auto-pauses at its end time
+
+### Key settings added
+`lineHeight`, `contentWidth`, `fontFamily`, `paragraphFocus` added to `AppSettings`
+
+### Tests
+- `TypographyPanel.test.tsx` — 9 tests (controls, callbacks, outside-click, aria)
+- `SentenceReader.focus.test.tsx` — 6 tests (para-dim/para-active classes, timings, scroll detection)
+- `TTSControls.stopAt.test.tsx` — 2 tests (stopAtTime fires/does not fire)
+
+---
+
+## Feature 5: Chapter Comprehension Quiz (FUTURE)
 
 After reading a chapter, ask 3-5 AI-generated multiple-choice questions to test comprehension. Results stored per user/chapter.
 

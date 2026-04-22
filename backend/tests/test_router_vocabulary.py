@@ -337,3 +337,46 @@ def test_build_book_markdown_format():
 
     # Insight without context skips callout
     assert "**Q:** Book theme?" in content
+
+
+async def test_export_annotation_translation_uses_book_language(client, test_user):
+    """Regression for #285: annotation translations must use the book's actual source
+    language, not hardcoded 'en'.  Before the fix, exporting a German book always
+    passed source='en' to translate_text, producing wrong translations."""
+    german_meta = {
+        **_BOOK_META,
+        "title": "Faust",
+        "authors": ["Goethe"],
+        "languages": ["de"],  # German book
+    }
+    german_book_id = 9099
+    await save_book(german_book_id, german_meta, "text")
+    await save_word(test_user["id"], "Mephisto", german_book_id, 0, "Mephisto erschien.")
+    enc_token = encrypt_api_key("ghp_test_token")
+    await update_obsidian_settings(
+        test_user["id"], enc_token, "user/obsidian-notes",
+        "All Notes/002 Literature Notes/000 Books",
+    )
+
+    from services.db import create_annotation
+    await create_annotation(test_user["id"], german_book_id, 0, "Mephisto erschien.", "A note.", "yellow")
+
+    translate_calls: list[tuple] = []
+
+    async def spy_translate(text, src, tgt, **kwargs):
+        translate_calls.append((src, tgt))
+        return []
+
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://url"), \
+         patch("routers.vocabulary.translate_text", side_effect=spy_translate):
+        resp = await client.post("/api/vocabulary/export/obsidian",
+                                 json={"book_id": german_book_id, "target_language": "zh"})
+
+    assert resp.status_code == 200
+    # All translation calls must use "de" as source, not the hardcoded "en"
+    assert translate_calls, "translate_text should have been called for the annotation"
+    for src, tgt in translate_calls:
+        assert src == "de", (
+            f"translate_text called with source={src!r} but book language is 'de'; "
+            "source language must not be hardcoded to 'en'"
+        )

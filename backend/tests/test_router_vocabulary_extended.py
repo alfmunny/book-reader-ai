@@ -23,6 +23,7 @@ from routers.vocabulary import (
     _build_word_markdown,
     _find_connected_books,
     _github_put,
+    _sanitize_filename,
 )
 
 
@@ -637,3 +638,29 @@ async def test_export_corrupted_github_token_returns_400(client, test_user):
 
     resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
     assert resp.status_code == 400
+
+
+# ── _sanitize_filename ────────────────────────────────────────────────────────
+
+def test_sanitize_filename_replaces_slash():
+    assert _sanitize_filename("A/B") == "A_B"
+
+
+def test_sanitize_filename_replaces_backslash():
+    assert _sanitize_filename("A\\B") == "A_B"
+
+
+def test_sanitize_filename_replaces_colon():
+    assert _sanitize_filename("Beowulf: An Epic") == "Beowulf_ An Epic"
+
+
+def test_sanitize_filename_replaces_other_invalid_chars():
+    assert _sanitize_filename('A*B?C"D<E>F|G') == "A_B_C_D_E_F_G"
+
+
+def test_sanitize_filename_strips_leading_trailing_underscores_and_spaces():
+    assert _sanitize_filename("/leading") == "leading"
+
+
+def test_sanitize_filename_empty_result_returns_untitled():
+    assert _sanitize_filename("///") == "untitled"

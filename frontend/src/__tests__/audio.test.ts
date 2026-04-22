@@ -58,3 +58,24 @@ test("saveAudioPosition silently ignores invalid input", () => {
   saveAudioPosition(1342, 0, -1);
   expect(getAudioPosition(1342, 0)).toBe(0);
 });
+
+test("getAudioPosition returns 0 when localStorage.getItem throws (line 25)", () => {
+  jest.spyOn(Storage.prototype, "getItem").mockImplementationOnce(() => {
+    throw new Error("Storage unavailable");
+  });
+  expect(getAudioPosition(1342, 0)).toBe(0);
+});
+
+test("saveAudioPosition swallows localStorage.setItem errors", () => {
+  jest.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+    throw new Error("QuotaExceededError");
+  });
+  expect(() => saveAudioPosition(1342, 0, 5)).not.toThrow();
+});
+
+test("clearAudioPosition swallows localStorage.removeItem errors", () => {
+  jest.spyOn(Storage.prototype, "removeItem").mockImplementationOnce(() => {
+    throw new Error("Storage unavailable");
+  });
+  expect(() => clearAudioPosition(1342, 0)).not.toThrow();
+});

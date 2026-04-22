@@ -1,7 +1,9 @@
 /**
  * api.ts — additional coverage for uncovered functions:
  * getAllAnnotations, getAllInsights, getWordDefinition (with/without lang),
- * markSessionSettled with pending waiters, request without auth token.
+ * markSessionSettled with pending waiters, request without auth token,
+ * error with no detail field (line 68), importBookStream branches (140,148,169-171),
+ * exportVocabularyToObsidian (line 599).
  */
 import {
   setAuthToken,
@@ -10,6 +12,8 @@ import {
   getWordDefinition,
   markSessionSettled,
   awaitSession,
+  importBookStream,
+  exportVocabularyToObsidian,
 } from "@/lib/api";
 
 function mockFetch(body: unknown, ok = true, status = ok ? 200 : 400) {
@@ -111,4 +115,118 @@ test("request sends no Authorization header when authToken is null", async () =>
   const headers = (global.fetch as jest.Mock).mock.calls[0][1]?.headers ?? {};
   expect(headers.Authorization).toBeUndefined();
   setAuthToken("test-token"); // restore
+});
+
+// ── Line 68: err.detail || "Request failed" fallback ─────────────────────────
+
+test("request throws ApiError with 'Request failed' when error body has no detail field (line 68)", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    status: 500,
+    statusText: "Internal Server Error",
+    json: jest.fn().mockResolvedValue({}), // no detail field
+  });
+  await expect(getAllAnnotations()).rejects.toThrow("Request failed");
+});
+
+// ── Lines 140, 148: importBookStream — no auth + json error on bad response ───
+
+test("importBookStream sends no Authorization header when authToken is null (line 140)", async () => {
+  setAuthToken(null);
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode("event:done\ndata:{}\n\n"));
+      controller.close();
+    },
+  });
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true, body: stream, json: jest.fn(),
+  });
+
+  const results = [];
+  for await (const ev of importBookStream(1)) results.push(ev);
+
+  const headers = (global.fetch as jest.Mock).mock.calls[0][1]?.headers ?? {};
+  expect(headers["Authorization"]).toBeUndefined();
+  setAuthToken("test-token");
+});
+
+test("importBookStream throws with statusText when json() rejects on bad response (line 148)", async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: false,
+    status: 400,
+    statusText: "Stream Error",
+    body: null,
+    json: jest.fn().mockRejectedValue(new Error("no json")),
+  });
+
+  const gen = importBookStream(1);
+  await expect(gen.next()).rejects.toThrow("Stream Error");
+});
+
+// ── Lines 169-171: SSE frame with data: but no event: → continue ─────────────
+
+test("importBookStream skips frame with data but no event (lines 169-171)", async () => {
+  const encoder = new TextEncoder();
+  // First frame: only data: line, no event: → event is "" → line 171 continue
+  // Second frame: proper event+data
+  const sseData = "data:{\"ignored\":true}\n\nevent:done\ndata:{\"stage\":\"fetching\"}\n\n";
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(sseData));
+      controller.close();
+    },
+  });
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true, body: stream, json: jest.fn(),
+  });
+
+  const results = [];
+  for await (const ev of importBookStream(1)) results.push(ev);
+
+  // Only the second frame (event:done) should be yielded; the first (data only) is skipped
+  expect(results).toHaveLength(1);
+  expect(results[0].event).toBe("done");
+});
+
+test("importBookStream skips frame with malformed JSON (catch block)", async () => {
+  const encoder = new TextEncoder();
+  const sseData = "event:stage\ndata:NOT_JSON\n\nevent:done\ndata:{}\n\n";
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(encoder.encode(sseData));
+      controller.close();
+    },
+  });
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true, body: stream, json: jest.fn(),
+  });
+
+  const results = [];
+  for await (const ev of importBookStream(1)) results.push(ev);
+
+  // Only the valid "done" frame yields; the malformed "stage" frame is skipped
+  expect(results).toHaveLength(1);
+  expect(results[0].event).toBe("done");
+});
+
+// ── Line 599: exportVocabularyToObsidian with bookId defined ─────────────────
+
+test("exportVocabularyToObsidian includes book_id when bookId is defined (line 599)", async () => {
+  setAuthToken("test-token");
+  mockFetch({ urls: ["obsidian://..."] });
+  await exportVocabularyToObsidian(42, "zh");
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1]?.body);
+  expect(body.book_id).toBe(42);
+  expect(body.target_language).toBe("zh");
+});
+
+test("exportVocabularyToObsidian omits book_id when bookId is undefined (line 604 false branch)", async () => {
+  setAuthToken("test-token");
+  mockFetch({ urls: [] });
+  await exportVocabularyToObsidian(undefined, "de");
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1]?.body);
+  expect(body.book_id).toBeUndefined();
+  expect(body.target_language).toBe("de");
 });

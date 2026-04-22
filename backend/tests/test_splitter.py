@@ -73,6 +73,32 @@ def test_act_scene_headings():
     assert len(chs) == 3
 
 
+def test_letter_headings_english():
+    # Regression for #421: epistolary novels use "Letter I", "Letter II" headings.
+    text = "\n\nLetter I\n\n" + "Dear friend. " * 200
+    text += "\n\nLetter II\n\n" + "I write again. " * 200
+    text += "\n\nLetter III\n\n" + "Still writing. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
+    assert chs[0].title == "Letter I"
+
+
+def test_letter_headings_french():
+    text = "\n\nLETTRE I\n\n" + "Mon ami. " * 200
+    text += "\n\nLETTRE II\n\n" + "Je vous écris. " * 200
+    text += "\n\nLETTRE III\n\n" + "Encore une lettre. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
+
+
+def test_letter_headings_german():
+    text = "\n\nBrief I\n\n" + "Lieber Freund. " * 200
+    text += "\n\nBrief II\n\n" + "Ich schreibe. " * 200
+    text += "\n\nBrief III\n\n" + "Noch ein Brief. " * 200
+    chs = build_chapters(text)
+    assert len(chs) == 3
+
+
 def test_roman_numeral_chapters():
     text = ""
     for n in ["I", "II", "III", "IV", "V"]:

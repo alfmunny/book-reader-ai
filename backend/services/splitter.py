@@ -51,6 +51,7 @@ KEYWORD_RE = re.compile(
     r'|PART|PARTIE|TEIL|Teil'
     r'|ACT|ACTE|AKT|Akt'
     r'|SCENE|SCÈNE|SZENE|Szene'
+    r'|LETTER|LETTRE|BRIEF'
     r'|PROLOGUE?|EPILOGUE?|PRÉFACE|VORWORT|NACHWORT'
     r'|INTRODUCTION|EINLEITUNG)'
     r'[^\n]{0,80})'                # rest of the heading line

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key
 from services.db import (
     set_user_gemini_key, get_user_by_id, get_reading_progress, upsert_reading_progress,
-    get_obsidian_settings, update_obsidian_settings,
+    get_obsidian_settings, update_obsidian_settings, get_cached_book,
 )
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -62,6 +62,8 @@ async def update_reading_progress(
     req: ProgressUpdate,
     user: dict = Depends(get_current_user),
 ):
+    if not await get_cached_book(book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
     await upsert_reading_progress(user["id"], book_id, req.chapter_index)
     return {"ok": True}
 

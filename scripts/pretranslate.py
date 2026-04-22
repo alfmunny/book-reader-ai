@@ -186,7 +186,7 @@ class OllamaTranslator:
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 async def _get_books(book_ids: list[int] | None) -> list[dict]:
-    """Return list of {id, meta, text_content} dicts."""
+    """Return list of {id, title, text} dicts."""
     import aiosqlite
     from services.db import DB_PATH
     async with aiosqlite.connect(DB_PATH) as db:
@@ -194,13 +194,13 @@ async def _get_books(book_ids: list[int] | None) -> list[dict]:
         if book_ids:
             placeholders = ",".join("?" * len(book_ids))
             async with db.execute(
-                f"SELECT id, meta_json, text_content FROM books WHERE id IN ({placeholders})",
+                f"SELECT id, title, text FROM books WHERE id IN ({placeholders})",
                 book_ids,
             ) as cur:
                 return [dict(r) for r in await cur.fetchall()]
         else:
             async with db.execute(
-                "SELECT id, meta_json, text_content FROM books"
+                "SELECT id, title, text FROM books"
             ) as cur:
                 return [dict(r) for r in await cur.fetchall()]
 
@@ -229,7 +229,7 @@ async def _save(book_id: int, chapter_index: int, lang: str,
 
 def _get_chapters(book: dict) -> list[dict]:
     """Return [{title, text}, ...] for a book row."""
-    text = book.get("text_content") or ""
+    text = book.get("text") or ""
 
     # Uploaded book with confirmed chapters stored as JSON
     if text.startswith("{"):
@@ -256,20 +256,25 @@ async def run(args: argparse.Namespace) -> None:
         print("No books found.")
         return
 
-    # Build translator
-    if args.provider == "marian":
-        translator = MarianTranslator(args.lang)
-    else:
-        translator = OllamaTranslator(args.model, args.lang,
-                                      base_url=args.ollama_url)
+    # Translator is loaded lazily on first real translation (skipped for --dry-run)
+    translator = None
+
+    def _get_translator():
+        nonlocal translator
+        if translator is None:
+            if args.provider == "marian":
+                translator = MarianTranslator(args.lang)
+            else:
+                translator = OllamaTranslator(args.model, args.lang,
+                                              base_url=args.ollama_url)
+        return translator
 
     total_chapters = 0
     translated_count = 0
     skipped_count = 0
 
     for book in books:
-        meta = json.loads(book.get("meta_json") or "{}")
-        title = meta.get("title", f"Book #{book['id']}")
+        title = book.get("title") or f"Book #{book['id']}"
         chapters = _get_chapters(book)
 
         print(f"\nBook {book['id']}: {title} — {len(chapters)} chapter(s)")
@@ -297,16 +302,17 @@ async def run(args: argparse.Namespace) -> None:
                 skipped_count += 1
                 continue
 
+            t = _get_translator()
             t0 = time.time()
             translated: list[str] = []
             for para in paragraphs:
-                translated.append(translator.translate_paragraph(para))
+                translated.append(t.translate_paragraph(para))
 
             elapsed = time.time() - t0
             await _save(
                 book["id"], idx, args.lang, translated,
-                provider=translator.provider_tag(),
-                model=translator.model_tag(),
+                provider=t.provider_tag(),
+                model=t.model_tag(),
             )
             translated_count += 1
             print(f" done ({elapsed:.1f}s)")

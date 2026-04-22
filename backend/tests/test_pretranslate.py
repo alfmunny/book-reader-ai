@@ -82,7 +82,7 @@ def test_get_chapters_from_confirmed_json():
         {"title": "Chapter I", "text": "First chapter text."},
         {"title": "Chapter II", "text": "Second chapter text."},
     ]
-    book = {"text_content": json.dumps({"draft": False, "chapters": chapters})}
+    book = {"text": json.dumps({"draft": False, "chapters": chapters})}
     result = pt._get_chapters(book)
     assert len(result) == 2
     assert result[0]["title"] == "Chapter I"
@@ -90,7 +90,7 @@ def test_get_chapters_from_confirmed_json():
 
 
 def test_get_chapters_skips_draft_json():
-    book = {"text_content": json.dumps({"draft": True, "chapters": []})}
+    book = {"text": json.dumps({"draft": True, "chapters": []})}
     # Draft books fall back to splitter — patch at source module
     with patch("services.splitter.build_chapters", return_value=[]) as mock_split:
         result = pt._get_chapters(book)
@@ -98,7 +98,7 @@ def test_get_chapters_skips_draft_json():
 
 
 def test_get_chapters_from_gutenberg_text():
-    book = {"text_content": "Chapter I\n\nSome text here.\n\nChapter II\n\nMore text."}
+    book = {"text": "Chapter I\n\nSome text here.\n\nChapter II\n\nMore text."}
     with patch("services.splitter.build_chapters") as mock_split:
         mock_split.return_value = [
             MagicMock(title="Chapter I", text="Some text here."),
@@ -110,7 +110,7 @@ def test_get_chapters_from_gutenberg_text():
 
 
 def test_get_chapters_empty_text():
-    book = {"text_content": ""}
+    book = {"text": ""}
     with patch("services.splitter.build_chapters", return_value=[]):
         result = pt._get_chapters(book)
     assert result == []

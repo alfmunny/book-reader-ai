@@ -170,8 +170,8 @@ test("Notes sidebar shows empty state when no annotations", async ({ page }) => 
   await page.goto("/reader/1342");
   await page.getByRole("button", { name: /notes/i }).click();
 
-  // Empty state text should appear
-  await expect(page.getByText("No annotations yet.")).toBeVisible({ timeout: 3000 });
+  // Empty state text should appear (default "This chapter" filter view)
+  await expect(page.getByText("No annotations in this chapter yet.")).toBeVisible({ timeout: 3000 });
 });
 
 test("Notes sidebar shows existing annotations from API", async ({ page }) => {
@@ -210,6 +210,8 @@ test("Notes sidebar shows existing annotations from API", async ({ page }) => {
   await expect(page.getByText("Famous opening line")).toBeVisible({ timeout: 3000 });
   // Sentence text is shown in the notes panel (quoted/excerpted form)
   await expect(page.getByText(/truth universally acknowledged/).first()).toBeVisible({ timeout: 3000 });
+  // Mr. Bennet is chapter_index=1; switch to "All chapters" to see it
+  await page.getByRole("button", { name: "All chapters" }).click();
   await expect(page.getByText(/Mr\. Bennet was among/).first()).toBeVisible({ timeout: 3000 });
 });
 

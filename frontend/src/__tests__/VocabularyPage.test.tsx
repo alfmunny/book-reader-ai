@@ -13,12 +13,14 @@ jest.mock("next-auth/react", () => ({
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
+  useSearchParams: () => ({ get: () => null }),
 }));
 
 jest.mock("@/lib/api", () => ({
   getVocabulary: jest.fn(),
   deleteVocabularyWord: jest.fn(),
   exportVocabularyToObsidian: jest.fn(),
+  getWordDefinition: jest.fn(),
 }));
 
 import * as api from "@/lib/api";

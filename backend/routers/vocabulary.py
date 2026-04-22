@@ -48,6 +48,12 @@ async def list_vocabulary(user: dict = Depends(get_current_user)):
     return await get_vocabulary(user["id"])
 
 
+@router.get("/definition/{word}")
+async def get_definition(word: str, lang: str = "en", user: dict = Depends(get_current_user)):
+    from services import wiktionary
+    return await wiktionary.lookup(word, lang)
+
+
 @router.delete("/{word}")
 async def remove_word(word: str, user: dict = Depends(get_current_user)):
     deleted = await delete_word(user["id"], word)
@@ -94,6 +100,14 @@ async def _github_put(
     return put_resp.json()["content"]["html_url"]
 
 
+_LANG_NAMES: dict[str, str] = {
+    "en": "English", "de": "German", "fr": "French", "es": "Spanish",
+    "it": "Italian", "pt": "Portuguese", "ru": "Russian", "ja": "Japanese",
+    "zh": "Chinese", "nl": "Dutch", "pl": "Polish", "sv": "Swedish",
+    "fi": "Finnish", "da": "Danish", "no": "Norwegian", "la": "Latin",
+}
+
+
 def _build_book_markdown(
     book: dict,
     words_for_book: list[dict],
@@ -104,53 +118,77 @@ def _build_book_markdown(
     export_date: str,
     ann_translations: dict[int, str] | None = None,
 ) -> str:
-    authors = ", ".join(book.get("authors", [])) if book else "Unknown"
+    authors_list: list[str] = book.get("authors", []) if book else []
+    authors = ", ".join(authors_list) if authors_list else "Unknown"
     title = book.get("title", f"Book {book_id}") if book else f"Book {book_id}"
+    langs: list[str] = book.get("languages", ["en"]) if book else ["en"]
+    language = ", ".join(_LANG_NAMES.get(l, l) for l in langs) if langs else "English"
+    safe_title = title.replace('"', '\\"')
 
     lines = [
         "---",
-        f"Author: {authors}",
-        "Language: English",
-        f"Source: gutenberg.org/ebooks/{book_id}",
-        f"Export-Date: {export_date}",
+        f'title: "{safe_title}"',
+        f"author: {authors}",
+        f"language: {language}",
+        f"source: https://www.gutenberg.org/ebooks/{book_id}",
+        "tags:",
+        "  - reading",
+        "  - books",
+        f"export_date: {export_date}",
         "---",
-        "#reading #books",
         "",
-        "## Vocabulary",
     ]
 
-    for entry in words_for_book:
-        word = entry["word"]
-        for occ in entry["occurrences"]:
-            if occ["book_id"] == book_id:
-                lines.append(
-                    f"- [[{word}]] — Ch.{occ['chapter_index']}: \"{occ['sentence_text']}\""
-                )
+    if words_for_book:
+        lines.append("## Vocabulary")
+        lines.append("")
+        for entry in words_for_book:
+            word = entry["word"]
+            for occ in entry["occurrences"]:
+                if occ["book_id"] == book_id:
+                    lines.append(
+                        f"- [[{word}]] — Ch.{occ['chapter_index'] + 1}: \"{occ['sentence_text']}\""
+                    )
+        lines.append("")
 
-    lines += ["", "## Connected Books (shared vocabulary)"]
-    for conn in connected:
-        shared_words = ", ".join(f"[[{w}]]" for w in conn["shared_words"])
-        lines.append(f"- [[{conn['title']}]] — shared: {shared_words}")
+    if connected:
+        lines.append("## Connected Books")
+        lines.append("")
+        for conn in connected:
+            shared_words = ", ".join(f"[[{w}]]" for w in conn["shared_words"])
+            lines.append(f"- [[{conn['title']}]] — shared: {shared_words}")
+        lines.append("")
 
-    lines += ["", "## Annotations"]
-    chapters: dict[int, list] = {}
-    for ann in annotations:
-        chapters.setdefault(ann["chapter_index"], []).append(ann)
-    for ch_idx in sorted(chapters):
-        lines.append(f"\n### Chapter {ch_idx + 1}")
-        for ann in chapters[ch_idx]:
-            lines.append(f"\n> \"{ann['sentence_text']}\"")
-            if ann_translations and ann["id"] in ann_translations:
-                lines.append(f"> *{ann_translations[ann['id']]}*")
-            if ann.get("note_text"):
-                lines.append(f"\n{ann['note_text']}")
+    if annotations:
+        lines.append("## Annotations")
+        chapters: dict[int, list] = {}
+        for ann in annotations:
+            chapters.setdefault(ann["chapter_index"], []).append(ann)
+        for ch_idx in sorted(chapters):
+            lines.append(f"\n### Chapter {ch_idx + 1}")
+            for ann in chapters[ch_idx]:
+                lines.append(f"\n> [!quote] Ch.{ch_idx + 1}")
+                lines.append(f"> {ann['sentence_text']}")
+                if ann_translations and ann["id"] in ann_translations:
+                    lines.append(f"> ")
+                    lines.append(f"> *{ann_translations[ann['id']]}*")
+                if ann.get("note_text"):
+                    lines.append(f"\n{ann['note_text']}")
+        lines.append("")
 
     if insights:
-        lines += ["", "## Reading Insights"]
+        lines.append("## Reading Insights")
+        lines.append("")
         for ins in insights:
             ch_label = f" (Ch.{ins['chapter_index'] + 1})" if ins.get("chapter_index") is not None else ""
-            lines.append(f"\n**Q{ch_label}:** {ins['question']}")
-            lines.append(f"\n{ins['answer']}")
+            if ins.get("context_text"):
+                lines.append(f"> [!quote]{ch_label}")
+                lines.append(f"> {ins['context_text']}")
+                lines.append("")
+            lines.append(f"**Q{ch_label}:** {ins['question']}")
+            lines.append("")
+            lines.append(ins["answer"])
+            lines.append("")
 
     return "\n".join(lines) + "\n"
 

@@ -33,10 +33,10 @@ test("renders cover image when cover URL is provided", () => {
   expect(img).toHaveAttribute("src", BOOK.cover);
 });
 
-test("renders placeholder emoji when no cover URL", () => {
+test("renders SVG placeholder when no cover URL", () => {
   const { container } = render(<BookCard book={{ ...BOOK, cover: "" }} onClick={jest.fn()} />);
   expect(screen.queryByRole("img")).not.toBeInTheDocument();
-  expect(container.textContent).toContain("📖");
+  expect(container.querySelector("svg")).toBeInTheDocument();
 });
 
 test("renders badge when provided", () => {

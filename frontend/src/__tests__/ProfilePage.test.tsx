@@ -115,8 +115,14 @@ describe("ProfilePage — Gemini key management", () => {
 });
 
 describe("ProfilePage — Obsidian settings", () => {
+  async function openObsidian() {
+    fireEvent.click(screen.getByRole("button", { name: /Obsidian Export/i }));
+  }
+
   it("loads existing Obsidian repo from API on mount", async () => {
     render(<ProfilePage />);
+    await act(async () => {});
+    openObsidian();
     await waitFor(() => {
       const repoInput = screen.getByPlaceholderText(/username\/obsidian-notes/i);
       expect((repoInput as HTMLInputElement).value).toBe("user/vault");
@@ -126,6 +132,8 @@ describe("ProfilePage — Obsidian settings", () => {
   it("calls saveObsidianSettings and clears token input on success", async () => {
     const { saveObsidianSettings } = require("@/lib/api");
     render(<ProfilePage />);
+    await act(async () => {});
+    openObsidian();
     await waitFor(() => screen.getByPlaceholderText(/username\/obsidian-notes/i));
 
     const tokenInput = screen.getByPlaceholderText(/ghp_/i);
@@ -145,6 +153,8 @@ describe("ProfilePage — Obsidian settings", () => {
   it("does not include github_token when token input is empty", async () => {
     const { saveObsidianSettings } = require("@/lib/api");
     render(<ProfilePage />);
+    await act(async () => {});
+    openObsidian();
     await waitFor(() => screen.getByPlaceholderText(/username\/obsidian-notes/i));
 
     fireEvent.click(screen.getByRole("button", { name: /save obsidian settings/i }));
@@ -159,6 +169,8 @@ describe("ProfilePage — Obsidian settings", () => {
     saveObsidianSettings.mockRejectedValueOnce(new Error("Auth failed"));
 
     render(<ProfilePage />);
+    await act(async () => {});
+    openObsidian();
     await waitFor(() => screen.getByRole("button", { name: /save obsidian settings/i }));
     fireEvent.click(screen.getByRole("button", { name: /save obsidian settings/i }));
 

@@ -10,6 +10,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
+import { EmptyVocabIcon } from "@/components/Icons";
 
 interface LemmaGroup {
   lemma: string;
@@ -270,10 +271,10 @@ function VocabularyPageContent() {
             ))}
           </div>
         ) : words.length === 0 ? (
-          <div className="text-center text-stone-400 mt-20">
-            <p className="text-4xl mb-3">📖</p>
-            <p className="font-serif text-lg">No saved words yet.</p>
-            <p className="text-sm mt-1">Double-click any word while reading to save it here.</p>
+          <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+            <EmptyVocabIcon className="w-14 h-14 text-amber-300" />
+            <p className="font-serif text-lg text-stone-500 mt-1">No saved words yet.</p>
+            <p className="text-sm">Double-click any word while reading to save it here.</p>
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-center text-stone-400 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>

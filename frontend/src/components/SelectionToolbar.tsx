@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { SpeakerIcon, HighlightIcon, NoteIcon, ChatIcon, WordIcon } from "@/components/Icons";
 
 export interface SelectionAction {
   text: string;
@@ -110,28 +111,43 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     setSelection(null);
   }
 
-  const btnClass = "flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[40px]";
+  const btnClass = "flex items-center gap-1.5 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors min-h-[40px]";
 
   return (
     <div
       ref={toolbarRef}
-      className="fixed z-50 flex items-center gap-0.5 bg-stone-800 rounded-xl shadow-xl px-1 py-1 animate-fade-in"
+      className="fixed z-50 flex items-center gap-0.5 bg-stone-800/95 backdrop-blur rounded-xl shadow-xl border border-white/10 px-1 py-1 animate-fade-in"
       style={{ left, top }}
     >
       {onRead && (
-        <button onClick={() => handleAction(onRead)} className={btnClass}>🔊 Read</button>
+        <button onClick={() => handleAction(onRead)} className={btnClass}>
+          <SpeakerIcon className="w-3.5 h-3.5 shrink-0" />
+          Read
+        </button>
       )}
       {onHighlight && (
-        <button onClick={() => handleAction(onHighlight)} className={btnClass}>🎨 Highlight</button>
+        <button onClick={() => handleAction(onHighlight)} className={btnClass}>
+          <HighlightIcon className="w-3.5 h-3.5 shrink-0" />
+          Highlight
+        </button>
       )}
       {onNote && (
-        <button onClick={() => handleAction(onNote)} className={btnClass}>📝 Note</button>
+        <button onClick={() => handleAction(onNote)} className={btnClass}>
+          <NoteIcon className="w-3.5 h-3.5 shrink-0" />
+          Note
+        </button>
       )}
       {onChat && (
-        <button onClick={() => handleAction(onChat)} className={btnClass}>💬 Chat</button>
+        <button onClick={() => handleAction(onChat)} className={btnClass}>
+          <ChatIcon className="w-3.5 h-3.5 shrink-0" />
+          Chat
+        </button>
       )}
       {onVocab && (
-        <button onClick={handleVocabAction} className={btnClass}>📚 Word</button>
+        <button onClick={handleVocabAction} className={btnClass}>
+          <WordIcon className="w-3.5 h-3.5 shrink-0" />
+          Word
+        </button>
       )}
     </div>
   );

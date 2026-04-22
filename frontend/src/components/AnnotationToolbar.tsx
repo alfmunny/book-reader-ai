@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { createAnnotation, updateAnnotation, deleteAnnotation, Annotation } from "@/lib/api";
+import { CloseIcon } from "@/components/Icons";
 
 const COLORS = [
   { key: "yellow", label: "Yellow", bg: "bg-yellow-400", border: "border-yellow-500" },
@@ -165,9 +166,10 @@ export default function AnnotationToolbar({
         )}
         <button
           onClick={onClose}
-          className="rounded-lg border border-stone-300 text-stone-500 text-sm px-3 py-1.5 hover:bg-stone-50 transition-colors"
+          aria-label="Close"
+          className="rounded-lg border border-stone-300 text-stone-500 px-2.5 py-1.5 hover:bg-stone-50 transition-colors flex items-center justify-center"
         >
-          ✕
+          <CloseIcon className="w-4 h-4" />
         </button>
       </div>
     </div>

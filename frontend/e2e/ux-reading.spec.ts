@@ -152,13 +152,13 @@ test.describe("Display customisation (desktop)", () => {
     const fontBtn = page.locator('button[title^="Font size:"]');
     // Default is "base" — clicking advances to "lg"
     await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", "Font size: lg");
+    await expect(fontBtn).toHaveAttribute("title", /Font size: lg/);
     await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", "Font size: xl");
+    await expect(fontBtn).toHaveAttribute("title", /Font size: xl/);
     await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", "Font size: sm");
+    await expect(fontBtn).toHaveAttribute("title", /Font size: sm/);
     await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", "Font size: base");
+    await expect(fontBtn).toHaveAttribute("title", /Font size: base/);
   });
 
   test("theme button is visible in header", async ({ page }) => {
@@ -170,15 +170,15 @@ test.describe("Display customisation (desktop)", () => {
     const themeBtn = page.locator('button[title^="Theme:"]');
     // Default is "light" → click to get "sepia"
     await themeBtn.click();
-    await expect(themeBtn).toHaveAttribute("title", "Theme: sepia");
+    await expect(themeBtn).toHaveAttribute("title", /Theme: sepia/);
     const htmlTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
     expect(htmlTheme).toBe("sepia");
 
     await themeBtn.click();
-    await expect(themeBtn).toHaveAttribute("title", "Theme: dark");
+    await expect(themeBtn).toHaveAttribute("title", /Theme: dark/);
 
     await themeBtn.click();
-    await expect(themeBtn).toHaveAttribute("title", "Theme: light");
+    await expect(themeBtn).toHaveAttribute("title", /Theme: light/);
   });
 
   test("chapter title changes color in dark theme", async ({ page }) => {
@@ -191,7 +191,7 @@ test.describe("Display customisation (desktop)", () => {
     // Cycle to dark theme (light → sepia → dark)
     await themeBtn.click();
     await themeBtn.click();
-    await expect(themeBtn).toHaveAttribute("title", "Theme: dark");
+    await expect(themeBtn).toHaveAttribute("title", /Theme: dark/);
 
     const darkColor = await heading.evaluate((el) => getComputedStyle(el).color);
     expect(darkColor).not.toBe(lightColor);
@@ -200,12 +200,12 @@ test.describe("Display customisation (desktop)", () => {
   test("font size change persists across chapter navigation", async ({ page }) => {
     const fontBtn = page.locator('button[title^="Font size:"]');
     await fontBtn.click(); // base → lg
-    await expect(fontBtn).toHaveAttribute("title", "Font size: lg");
+    await expect(fontBtn).toHaveAttribute("title", /Font size: lg/);
 
     await page.keyboard.press("ArrowRight");
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
     // Font size should still be "lg" after navigation
-    await expect(fontBtn).toHaveAttribute("title", "Font size: lg");
+    await expect(fontBtn).toHaveAttribute("title", /Font size: lg/);
   });
 
   test("desktop header shows chapter selector dropdown", async ({ page }) => {

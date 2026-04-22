@@ -69,7 +69,7 @@ test("handles insight with null created_at without updating lastActivity (line 7
 
 // ── Line 167: insCount > 1 → plural "insights" (the "s" branch) ──────────────
 
-test("shows 'insights' (plural) when insCount is 2 (line 167 's' branch)", async () => {
+test("shows insight count pill when insCount is 2", async () => {
   mockGetAllInsights.mockResolvedValue([
     { id: 1, book_id: 5, chapter_index: 0, question: "Q1?", answer: "A1.",
       created_at: "2026-01-01T00:00:00", book_title: "Multi-Insight Book" },
@@ -77,15 +77,19 @@ test("shows 'insights' (plural) when insCount is 2 (line 167 's' branch)", async
       created_at: "2026-01-02T00:00:00", book_title: "Multi-Insight Book" },
   ]);
 
-  render(<NotesPage />);
+  const { container } = render(<NotesPage />);
   await act(async () => await flushPromises());
 
-  expect(screen.getAllByText(/2 insights/)[0]).toBeInTheDocument();
+  // Header sky pill shows "2" for insights
+  const header = container.querySelector("header");
+  const skyPills = header?.querySelectorAll(".bg-sky-50");
+  const pill = Array.from(skyPills || []).find((el) => el.textContent?.trim() === "2");
+  expect(pill).toBeTruthy();
 });
 
 // ── Line 173: vocCount > 1 → plural "words" (the "s" branch) ─────────────────
 
-test("shows 'words' (plural) when vocCount is 2 (line 173 's' branch)", async () => {
+test("shows vocab count pill when vocCount is 2", async () => {
   mockGetVocabulary.mockResolvedValue([
     { id: 1, word: "run", lemma: "run", language: "en",
       occurrences: [{ book_id: 3, book_title: "Vocab Book", chapter_index: 0, sentence_text: "He can run." }] },
@@ -93,10 +97,14 @@ test("shows 'words' (plural) when vocCount is 2 (line 173 's' branch)", async ()
       occurrences: [{ book_id: 3, book_title: "Vocab Book", chapter_index: 1, sentence_text: "She can walk." }] },
   ]);
 
-  render(<NotesPage />);
+  const { container } = render(<NotesPage />);
   await act(async () => await flushPromises());
 
-  expect(screen.getAllByText(/2 words/)[0]).toBeInTheDocument();
+  // Header emerald pill shows "2" for vocab words
+  const header = container.querySelector("header");
+  const emeraldPills = header?.querySelectorAll(".bg-emerald-50");
+  const pill = Array.from(emeraldPills || []).find((el) => el.textContent?.trim() === "2");
+  expect(pill).toBeTruthy();
 });
 
 // ── Line 70: annotation created_at null ───────────────────────────────────────

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { synthesizeSpeech, getTtsChunks, WordBoundary } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { getAudioPosition, saveAudioPosition, clearAudioPosition } from "@/lib/audio";
+import { PlayIcon, PauseIcon, RetryIcon, CloseIcon } from "@/components/Icons";
 
 export interface ChunkSnapshot {
   text: string;
@@ -379,38 +380,43 @@ export default function TTSControls({
             title="Click to cancel"
           >
             <span className="w-3 h-3 border-2 border-amber-700/40 border-t-amber-800 rounded-full animate-spin" />
-            Preparing… ×
+            Preparing…
+            <CloseIcon className="w-3.5 h-3.5" />
           </button>
         ) : status === "playing" ? (
           <button
             data-tts-play
             onClick={pause}
-            className="rounded-lg bg-amber-200 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-300 min-h-[44px] md:min-h-0"
+            className="rounded-lg bg-amber-200 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-300 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
-            ⏸ Pause
+            <PauseIcon className="w-3.5 h-3.5" />
+            Pause
           </button>
         ) : status === "paused" ? (
           <button
             data-tts-play
             onClick={play}
-            className="rounded-lg bg-amber-700 text-white px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-800 min-h-[44px] md:min-h-0"
+            className="rounded-lg bg-amber-700 text-white px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-800 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
-            ▶ Read
+            <PlayIcon className="w-3.5 h-3.5" />
+            Read
           </button>
         ) : status === "error" ? (
           <button
             onClick={play}
-            className="rounded-lg bg-red-100 text-red-800 border border-red-300 px-3 py-2.5 md:py-1.5 text-sm hover:bg-red-200 min-h-[44px] md:min-h-0"
+            className="rounded-lg bg-red-100 text-red-800 border border-red-300 px-3 py-2.5 md:py-1.5 text-sm hover:bg-red-200 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
             title={errorMsg || "Audio failed"}
           >
-            ↻ Retry
+            <RetryIcon className="w-3.5 h-3.5" />
+            Retry
           </button>
         ) : (
           <button
             disabled
-            className="rounded-lg bg-amber-100 text-amber-400 px-4 py-2.5 md:py-1.5 text-sm cursor-not-allowed min-h-[44px] md:min-h-0"
+            className="rounded-lg bg-amber-100 text-amber-400 px-4 py-2.5 md:py-1.5 text-sm cursor-not-allowed min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
-            ▶ Read
+            <PlayIcon className="w-3.5 h-3.5" />
+            Read
           </button>
         )}
       </div>
@@ -419,10 +425,10 @@ export default function TTSControls({
       <button
         onClick={toggleGender}
         title={`Voice: ${gender}. Click to switch.`}
-        className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0"
+        className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 font-medium"
         disabled={status === "loading"}
       >
-        {gender === "female" ? "♀ F" : "♂ M"}
+        {gender === "female" ? "F" : "M"}
       </button>
 
       {/* Seek bar */}

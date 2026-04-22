@@ -119,7 +119,7 @@ describe("TTSControls — saveAudioPosition on cleanup (line 96)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -163,7 +163,7 @@ describe("TTSControls — loadAndPlay with seekToGlobal when chunks exist (line 
     // First, load chunks by playing
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -213,7 +213,7 @@ describe("TTSControls — gen changed mid-chunk-load triggers URL revoke (lines 
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -249,7 +249,7 @@ describe("TTSControls — seekTo pauses previous active chunk (line 326)", () =>
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -290,7 +290,7 @@ describe("TTSControls — seekTo iterates past chunks (line 342)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -326,7 +326,7 @@ describe("TTSControls — idle status when text is empty", () => {
 
     // With empty text, status starts as idle → disabled button rendered
     const buttons = screen.getAllByRole("button");
-    const readBtn = buttons.find((b) => b.textContent?.includes("▶ Read"));
+    const readBtn = buttons.find((b) => b.textContent?.includes("Read"));
     expect(readBtn).toBeDefined();
     if (readBtn) expect(readBtn).toBeDisabled();
   });
@@ -343,7 +343,7 @@ describe("TTSControls — formatTime for negative/infinite values", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);

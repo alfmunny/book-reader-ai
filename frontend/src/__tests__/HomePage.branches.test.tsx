@@ -486,7 +486,7 @@ describe("HomePage — popular books list view with cover image (line 452)", () 
     });
   });
 
-  it("renders book emoji placeholder for books without cover in list view", async () => {
+  it("renders SVG placeholder for books without cover in list view", async () => {
     const bookNoCover = makeBook(78, "No Cover Book", "");
     mockGetPopularBooks.mockResolvedValue(makePopularResponse([bookNoCover]));
 
@@ -497,7 +497,7 @@ describe("HomePage — popular books list view with cover image (line 452)", () 
     await user.click(listViewBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("📖")).toBeInTheDocument();
+      expect(document.querySelector("svg")).toBeInTheDocument();
     });
   });
 

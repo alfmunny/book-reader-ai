@@ -4,6 +4,7 @@ import { searchBooks, getPopularBooks, getMe, getReadingProgress, BookMeta } fro
 import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
+import { BookCoverPlaceholderIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -195,7 +196,7 @@ export default function Home() {
 
       {/* Tab bar */}
       <nav className="border-b border-amber-200 bg-white/40 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {([
             { key: "library" as Tab, label: "Your Library", count: recentBooks.length || undefined },
             { key: "discover" as Tab, label: "Discover" },
@@ -270,12 +271,23 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16">
-                <p className="font-serif text-lg text-ink mb-2">Your library is empty</p>
-                <p className="text-sm text-amber-700 mb-4">Books you open will appear here for quick access.</p>
+              <div className="text-center py-20">
+                <div className="inline-flex items-end justify-center gap-1.5 mb-6 opacity-30">
+                  {[40, 56, 48, 60, 44].map((h, i) => (
+                    <div
+                      key={i}
+                      className="w-6 rounded-t-sm bg-amber-700"
+                      style={{ height: h }}
+                    />
+                  ))}
+                </div>
+                <h2 className="font-serif text-xl font-semibold text-ink mb-2">Your library is empty</h2>
+                <p className="text-sm text-amber-700 mb-6 max-w-xs mx-auto">
+                  Books you open will appear here for quick access. Explore 70,000+ free classics to get started.
+                </p>
                 <button
                   onClick={() => setTab("discover")}
-                  className="rounded-lg bg-amber-700 px-5 py-2.5 text-white font-medium hover:bg-amber-800"
+                  className="rounded-lg bg-amber-700 px-6 py-2.5 text-white font-medium hover:bg-amber-800 transition-colors shadow-sm"
                 >
                   Discover Books
                 </button>
@@ -468,9 +480,12 @@ export default function Home() {
                             {(popularPage - 1) * PER_PAGE + idx + 1}
                           </span>
                           {book.cover ? (
-                            <img src={book.cover} alt="" className="w-8 h-12 object-cover rounded shrink-0" />
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={book.cover} alt="" className="w-9 h-14 object-cover rounded shrink-0" />
                           ) : (
-                            <div className="w-8 h-12 bg-amber-50 border border-amber-100 rounded shrink-0 flex items-center justify-center text-base">📖</div>
+                            <div className="w-9 h-14 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-100 rounded shrink-0 flex items-center justify-center">
+                              <BookCoverPlaceholderIcon className="w-5 h-7 text-amber-500" />
+                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="font-serif text-sm font-semibold text-ink truncate">{book.title}</p>

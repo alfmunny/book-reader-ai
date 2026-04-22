@@ -14,6 +14,7 @@ import AnnotationToolbar from "@/components/AnnotationToolbar";
 import VocabularyToast from "@/components/VocabularyToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -803,23 +804,146 @@ export default function ReaderPage() {
           {/* Font size — desktop only */}
           <button
             onClick={cycleFontSize}
-            title={`Font size: ${fontSize}`}
-            className="hidden md:flex shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors items-center justify-center"
+            title={`Font size: ${fontSize} — click to cycle`}
+            className="hidden md:flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors"
           >
-            {fontSize === "sm" ? "A" : fontSize === "base" ? "A" : fontSize === "lg" ? "A" : "A"}
-            <span className="text-[8px] align-super">{fontSize === "sm" ? "-" : fontSize === "base" ? "" : fontSize === "lg" ? "+" : "++"}</span>
+            <span className="font-serif">A</span>
+            <span className="hidden lg:inline text-[9px] text-amber-500 font-sans font-normal">
+              {fontSize === "sm" ? "S" : fontSize === "base" ? "M" : fontSize === "lg" ? "L" : "XL"}
+            </span>
           </button>
 
           {/* Theme — desktop only */}
           <button
             onClick={cycleTheme}
-            title={`Theme: ${theme}`}
-            className="hidden md:flex shrink-0 w-8 h-8 rounded-full border border-amber-300 hover:bg-amber-100 text-sm transition-colors items-center justify-center"
+            title={`Theme: ${theme} — click to cycle`}
+            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
           >
-            {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
+            {theme === "light" ? <SunIcon className="w-3.5 h-3.5" /> : theme === "sepia" ? <SepiaIcon className="w-3.5 h-3.5" /> : <MoonIcon className="w-3.5 h-3.5" />}
+            <span className="hidden lg:inline capitalize text-[9px] font-sans">{theme}</span>
           </button>
 
+          {/* ── Feature buttons — desktop only ────────────────────────── */}
 
+          {/* Insight chat toggle */}
+          <button
+            onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
+            title="Toggle insight chat"
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && (sidebarTab === "chat")
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <ChatIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden lg:inline">Insight</span>
+          </button>
+
+          {/* Translate toggle */}
+          <button
+            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+            title="Translation"
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "translate"
+                ? "bg-amber-700 text-white border-amber-700"
+                : translationEnabled
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <GlobeIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden lg:inline">Translate</span>
+          </button>
+
+          {/* Chapter summary */}
+          <button
+            onClick={() => { setSidebarTab("summary"); setSidebarOpen((v) => sidebarTab === "summary" ? !v : true); }}
+            title="Chapter summary"
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "summary"
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <SummaryIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden lg:inline">Summary</span>
+          </button>
+
+          {/* Notes sidebar toggle */}
+          {session?.backendToken && (
+            <button
+              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
+              title="Annotations & notes"
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "notes"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              <NoteIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden lg:inline">Notes</span>
+              {annotations.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {annotations.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Show/hide annotation marks — lg+ only */}
+          {session?.backendToken && (
+            <button
+              onClick={() => {
+                setShowAnnotations((v) => {
+                  const next = !v;
+                  localStorage.setItem("reader-show-annotations", String(next));
+                  return next;
+                });
+              }}
+              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                showAnnotations
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
+              }`}
+            >
+              <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />
+              {showAnnotations ? "Marks on" : "Marks off"}
+            </button>
+          )}
+
+          {/* Vocabulary sidebar */}
+          {session?.backendToken && (
+            <button
+              onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
+              title="Vocabulary"
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "vocab"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              <BookOpenIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden lg:inline">Vocab</span>
+              {vocabWords.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {vocabWords.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Export vocabulary to Obsidian — lg+ only */}
+          {session?.backendToken && (
+            <button
+              onClick={handleObsidianExport}
+              title="Export vocabulary to Obsidian"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+            >
+              <ExportIcon className="w-3.5 h-3.5 shrink-0" />
+              Obsidian
+            </button>
+          )}
 
           {/* Profile — always rightmost */}
           <button
@@ -836,122 +960,6 @@ export default function ReaderPage() {
               </span>
             )}
           </button>
-        </div>
-
-        {/* ── Feature buttons row — desktop only, scrolls if too narrow ── */}
-        <div data-testid="reader-feature-row" className="hidden md:flex items-center gap-2 overflow-x-auto px-4 pb-2">
-          {/* Insight chat toggle */}
-          <button
-            onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
-            title="Toggle insight chat"
-            className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && (sidebarTab === "chat")
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            💬 Insight
-          </button>
-
-          {/* Translate toggle — opens sidebar with translation controls */}
-          <button
-            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
-            title="Translation"
-            className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && sidebarTab === "translate"
-                ? "bg-amber-700 text-white border-amber-700"
-                : translationEnabled
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            🌐 Translate
-          </button>
-
-          {/* Chapter Summary toggle */}
-          <button
-            onClick={() => { setSidebarTab("summary"); setSidebarOpen((v) => sidebarTab === "summary" ? !v : true); }}
-            title="Chapter summary"
-            className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && sidebarTab === "summary"
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            📋 Summary
-          </button>
-
-          {/* Notes sidebar toggle */}
-          {session?.backendToken && (
-            <button
-              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
-              title="Annotations & notes"
-              className={`relative flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                sidebarOpen && sidebarTab === "notes"
-                  ? "bg-amber-700 text-white border-amber-700"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              📝 Notes
-              {annotations.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
-                  {annotations.length}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Show/hide annotation marks */}
-          {session?.backendToken && (
-            <button
-              onClick={() => {
-                setShowAnnotations((v) => {
-                  const next = !v;
-                  localStorage.setItem("reader-show-annotations", String(next));
-                  return next;
-                });
-              }}
-              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
-              className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                showAnnotations
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
-              }`}
-            >
-              {showAnnotations ? "🔖 Marks on" : "🔖 Marks off"}
-            </button>
-          )}
-
-          {/* Vocabulary sidebar */}
-          {session?.backendToken && (
-            <button
-              onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
-              title="Vocabulary"
-              className={`relative flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                sidebarOpen && sidebarTab === "vocab"
-                  ? "bg-amber-700 text-white border-amber-700"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              📚 Vocab
-              {vocabWords.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
-                  {vocabWords.length}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Export vocabulary to Obsidian — lg+ only */}
-          {session?.backendToken && (
-            <button
-              onClick={handleObsidianExport}
-              title="Export vocabulary to Obsidian"
-              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
-            >
-              ↗ Obsidian
-            </button>
-          )}
         </div>
       </header>
 
@@ -1011,9 +1019,9 @@ export default function ReaderPage() {
 
       {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
-        <div className="h-0.5 bg-amber-100" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
+        <div className="h-1 bg-amber-100/80" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
           <div
-            className="h-full bg-amber-600 transition-all duration-150"
+            className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
             style={{ width: `${((chapterIndex + scrollProgress / 100) / chapters.length) * 100}%` }}
           />
         </div>
@@ -1248,7 +1256,7 @@ export default function ReaderPage() {
         {/* Insight/Vocab/Translate sidebar — desktop only */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
-          className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200"
+          className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200 transition-[width] duration-200"
         >
           {sidebarOpen && (
             <>
@@ -1756,26 +1764,26 @@ export default function ReaderPage() {
                   setTranslateExpanded(false);
                 }
               }}
-              className={`h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
+              className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
                 translationEnabled
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label="Translation"
-            >🌐</button>
+            ><GlobeIcon className="w-5 h-5" /></button>
 
             <button
               onClick={() => {
                 const ttsEl = document.querySelector<HTMLButtonElement>("[data-tts-play]");
                 if (ttsEl) ttsEl.click();
               }}
-              className={`h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
+              className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
                 ttsIsPlaying
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label={ttsIsPlaying ? "Pause" : "Read aloud"}
-            >{ttsIsPlaying ? "⏸" : "▶"}</button>
+            >{ttsIsPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}</button>
 
             <select
               className="h-10 text-xs rounded-lg border border-amber-200 px-1 text-amber-700 bg-white max-w-[110px] truncate"
@@ -1792,14 +1800,14 @@ export default function ReaderPage() {
             {session?.backendToken && (
               <button
                 onClick={() => setNotesExpanded((v) => !v)}
-                className={`relative h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
+                className={`relative h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
                   notesExpanded
                     ? "bg-amber-700 text-white border-amber-700"
                     : "text-amber-700 bg-amber-50 border-amber-200"
                 }`}
                 aria-label="Notes"
               >
-                📝
+                <NoteIcon className="w-5 h-5" />
                 {annotations.length > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
                     {annotations.length}
@@ -1810,13 +1818,13 @@ export default function ReaderPage() {
 
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className={`h-10 w-10 flex items-center justify-center rounded-lg border text-sm transition-colors ${
+              className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
                 sidebarOpen
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label="Insight chat"
-            >💬</button>
+            ><ChatIcon className="w-5 h-5" /></button>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
+import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, WordIcon } from "@/components/Icons";
 
 interface BookSummary {
   bookId: number;
@@ -103,15 +104,23 @@ export default function NotesOverviewPage() {
             onClick={() => router.push("/")}
             className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0"
           >
-            ← Library
+            <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
           </button>
           <div className="flex-1">
             <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>
           </div>
           {!loading && (
-            <span className="text-xs text-stone-400 shrink-0">
-              {totalAnn} ann · {totalIns} insights · {totalVoc} words
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                <NoteIcon className="w-3 h-3" />{totalAnn}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-2 py-0.5">
+                <InsightIcon className="w-3 h-3" />{totalIns}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+                <WordIcon className="w-3 h-3" />{totalVoc}
+              </span>
+            </div>
           )}
         </div>
       </header>
@@ -131,7 +140,7 @@ export default function NotesOverviewPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-stone-400">
-            <p className="text-4xl mb-3">📒</p>
+            <EmptyNotesIcon className="w-14 h-14 mx-auto mb-4 text-amber-400/60" />
             {books.length === 0 ? (
               <>
                 <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
@@ -154,23 +163,23 @@ export default function NotesOverviewPage() {
                     <p className="font-serif font-semibold text-ink text-base leading-snug group-hover:text-amber-900 transition-colors truncate">
                       {book.title}
                     </p>
-                    <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-stone-500">
+                    <div className="flex flex-wrap gap-2 mt-1.5">
                       {book.annCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <span className="text-amber-500">📝</span>
-                          {book.annCount} annotation{book.annCount !== 1 ? "s" : ""}
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">
+                          <NoteIcon className="w-3 h-3 shrink-0" />
+                          {book.annCount}
                         </span>
                       )}
                       {book.insCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <span className="text-amber-500">💬</span>
-                          {book.insCount} insight{book.insCount !== 1 ? "s" : ""}
+                        <span className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-50 border border-sky-100 rounded-full px-2 py-0.5">
+                          <InsightIcon className="w-3 h-3 shrink-0" />
+                          {book.insCount}
                         </span>
                       )}
                       {book.vocCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <span className="text-amber-500">📚</span>
-                          {book.vocCount} word{book.vocCount !== 1 ? "s" : ""}
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                          <VocabIcon className="w-3 h-3 shrink-0" />
+                          {book.vocCount}
                         </span>
                       )}
                     </div>

@@ -148,8 +148,8 @@ test("calls deleteAnnotation and onDeleted when deleting", async () => {
   });
 });
 
-test("calls onClose when X button is clicked", async () => {
+test("calls onClose when close button is clicked", async () => {
   render(<AnnotationToolbar {...BASE_PROPS} />);
-  await userEvent.click(screen.getByRole("button", { name: /✕/i }));
+  await userEvent.click(screen.getByRole("button", { name: /close/i }));
   expect(BASE_PROPS.onClose).toHaveBeenCalled();
 });

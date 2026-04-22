@@ -217,6 +217,74 @@ async def test_save_word_rejects_whitespace_only_sentence(client, test_user):
     assert resp.status_code == 400
 
 
+# ── Atomicity regression ─────────────────────────────────────────────────────
+
+async def test_save_word_is_atomic(test_user, tmp_db):
+    """Regression #302: save_word must not leave an orphaned vocabulary row
+    when the word_occurrences INSERT fails.
+
+    Before the fix there were two commits: the first committed the vocabulary
+    row durably before the word_occurrences INSERT ran.  If that INSERT failed,
+    the vocabulary row was already on disk — an orphaned entry with no
+    occurrences.
+
+    After the fix both INSERTs share a single transaction.  If the
+    word_occurrences INSERT fails before the commit, the vocabulary INSERT is
+    rolled back too, leaving the DB clean.
+    """
+    import aiosqlite
+
+    await save_book(BOOK_ID, _BOOK_META, "text")
+
+    original_connect = aiosqlite.connect
+
+    def _patched_connect(path, **kw):
+        ctx = original_connect(path, **kw)
+
+        class _WrappedCtx:
+            async def __aenter__(self_inner):
+                conn = await ctx.__aenter__()
+                original_execute = conn.execute
+
+                def _fail_on_occ_insert(sql, params=None):
+                    if "word_occurrences" in sql and "INSERT" in sql:
+                        async def _raise():
+                            raise RuntimeError("simulated word_occurrences failure")
+                        return _raise()
+                    # Pass through — must return the original result object
+                    # (supports both `await` and `async with`)
+                    if params is None:
+                        return original_execute(sql)
+                    return original_execute(sql, params)
+
+                conn.execute = _fail_on_occ_insert
+                return conn
+
+            async def __aexit__(self_inner, *args):
+                return await ctx.__aexit__(*args)
+
+        return _WrappedCtx()
+
+    with patch("services.db.aiosqlite.connect", side_effect=_patched_connect):
+        with pytest.raises(RuntimeError, match="simulated word_occurrences failure"):
+            await save_word(test_user["id"], "leviathan", BOOK_ID, 0, "A sentence.")
+
+    # After the failure, vocabulary row must NOT be on disk.
+    # Before fix: first commit already wrote the vocab row → count = 1 → assertion fails.
+    # After fix: single transaction rolled back → count = 0 → assertion passes.
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM vocabulary WHERE user_id=? AND word='leviathan'",
+            (test_user["id"],),
+        ) as cur:
+            vocab_count = (await cur.fetchone())[0]
+
+    assert vocab_count == 0, (
+        "vocabulary row must be rolled back when word_occurrences INSERT fails (#302); "
+        "two-commit pattern left an orphaned row"
+    )
+
+
 # ── Export endpoint ───────────────────────────────────────────────────────────
 
 async def _setup_export(test_user, book_id=BOOK_ID):

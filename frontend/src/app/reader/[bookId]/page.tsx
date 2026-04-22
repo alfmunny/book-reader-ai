@@ -808,7 +808,7 @@ export default function ReaderPage() {
             className="hidden md:flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors"
           >
             <span className="font-serif">A</span>
-            <span className="text-[9px] text-amber-500 font-sans font-normal">
+            <span className="hidden lg:inline text-[9px] text-amber-500 font-sans font-normal">
               {fontSize === "sm" ? "S" : fontSize === "base" ? "M" : fontSize === "lg" ? "L" : "XL"}
             </span>
           </button>
@@ -820,7 +820,7 @@ export default function ReaderPage() {
             className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
           >
             {theme === "light" ? <SunIcon className="w-3.5 h-3.5" /> : theme === "sepia" ? <SepiaIcon className="w-3.5 h-3.5" /> : <MoonIcon className="w-3.5 h-3.5" />}
-            <span className="capitalize text-[9px] font-sans">{theme}</span>
+            <span className="hidden lg:inline capitalize text-[9px] font-sans">{theme}</span>
           </button>
 
           {/* ── Feature buttons (desktop) — all LEFT of profile ────────── */}
@@ -829,21 +829,21 @@ export default function ReaderPage() {
           <button
             onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
           >
             <ChatIcon className="w-3.5 h-3.5 shrink-0" />
-            Insight
+            <span className="hidden lg:inline">Insight</span>
           </button>
 
           {/* Translate toggle — opens sidebar with translation controls */}
           <button
             onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
             title="Translation"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"
                 ? "bg-amber-700 text-white border-amber-700"
                 : translationEnabled
@@ -852,7 +852,7 @@ export default function ReaderPage() {
             }`}
           >
             <GlobeIcon className="w-3.5 h-3.5 shrink-0" />
-            Translate
+            <span className="hidden lg:inline">Translate</span>
           </button>
 
           {/* Notes sidebar toggle — desktop only */}
@@ -860,14 +860,14 @@ export default function ReaderPage() {
             <button
               onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
               title="Annotations & notes"
-              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 sidebarOpen && sidebarTab === "notes"
                   ? "bg-amber-700 text-white border-amber-700"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
               }`}
             >
               <NoteIcon className="w-3.5 h-3.5 shrink-0" />
-              Notes
+              <span className="hidden lg:inline">Notes</span>
               {annotations.length > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
                   {annotations.length}
@@ -876,7 +876,7 @@ export default function ReaderPage() {
             </button>
           )}
 
-          {/* Show/hide annotation marks — desktop only */}
+          {/* Show/hide annotation marks — lg+ only */}
           {session?.backendToken && (
             <button
               onClick={() => {
@@ -887,7 +887,7 @@ export default function ReaderPage() {
                 });
               }}
               title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
-              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 showAnnotations
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
@@ -903,14 +903,14 @@ export default function ReaderPage() {
             <button
               onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
               title="Vocabulary"
-              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 sidebarOpen && sidebarTab === "vocab"
                   ? "bg-amber-700 text-white border-amber-700"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50"
               }`}
             >
               <BookOpenIcon className="w-3.5 h-3.5 shrink-0" />
-              Vocab
+              <span className="hidden lg:inline">Vocab</span>
               {vocabWords.length > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
                   {vocabWords.length}

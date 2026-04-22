@@ -143,22 +143,21 @@ test.describe("Display customisation (desktop)", () => {
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
   });
 
-  test("font size button is visible in header", async ({ page }) => {
-    const fontBtn = page.locator('button[title^="Font size:"]');
-    await expect(fontBtn).toBeVisible();
+  test("typography button is visible in header", async ({ page }) => {
+    const aaBtn = page.locator('button[title="Typography settings"]');
+    await expect(aaBtn).toBeVisible();
   });
 
-  test("font size button cycles through sizes on click", async ({ page }) => {
-    const fontBtn = page.locator('button[title^="Font size:"]');
-    // Default is "base" — clicking advances to "lg"
-    await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", /Font size: lg/);
-    await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", /Font size: xl/);
-    await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", /Font size: sm/);
-    await fontBtn.click();
-    await expect(fontBtn).toHaveAttribute("title", /Font size: base/);
+  test("typography panel opens and allows font size selection", async ({ page }) => {
+    const aaBtn = page.locator('button[title="Typography settings"]');
+    await aaBtn.click();
+    const panel = page.getByTestId("typography-panel");
+    await expect(panel).toBeVisible();
+    // Click "L" (lg) font size option — use exact to avoid matching XL/Normal/Relaxed
+    await panel.getByRole("button", { name: "L", exact: true }).click();
+    // data-font-size attribute should update on <html>
+    const fontSize = await page.evaluate(() => document.documentElement.getAttribute("data-font-size"));
+    expect(fontSize).toBe("lg");
   });
 
   test("theme button is visible in header", async ({ page }) => {
@@ -198,14 +197,19 @@ test.describe("Display customisation (desktop)", () => {
   });
 
   test("font size change persists across chapter navigation", async ({ page }) => {
-    const fontBtn = page.locator('button[title^="Font size:"]');
-    await fontBtn.click(); // base → lg
-    await expect(fontBtn).toHaveAttribute("title", /Font size: lg/);
+    // Open typography panel and select "L" (lg)
+    const aaBtn = page.locator('button[title="Typography settings"]');
+    await aaBtn.click();
+    const panel = page.getByTestId("typography-panel");
+    await panel.getByRole("button", { name: "L", exact: true }).click();
+    // Close panel by clicking outside
+    await page.keyboard.press("Escape");
 
     await page.keyboard.press("ArrowRight");
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
     // Font size should still be "lg" after navigation
-    await expect(fontBtn).toHaveAttribute("title", /Font size: lg/);
+    const fontSize = await page.evaluate(() => document.documentElement.getAttribute("data-font-size"));
+    expect(fontSize).toBe("lg");
   });
 
   test("desktop header shows chapter selector dropdown", async ({ page }) => {

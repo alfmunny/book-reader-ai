@@ -3,7 +3,7 @@
  * Mocks all external dependencies heavily to test render paths and interactions.
  */
 import React from "react";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // ─── next-auth ────────────────────────────────────────────────────────────────
@@ -492,29 +492,38 @@ describe("ReaderPage — sidebar tabs", () => {
   });
 });
 
-describe("ReaderPage — font size cycling", () => {
-  it("cycles font size when Aa button is clicked", async () => {
+describe("ReaderPage — typography panel", () => {
+  it("opens typography panel and changes font size", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    // Find the font-size button (title includes "Font size:")
-    const fontBtn = await screen.findByTitle(/font size/i);
-    await userEvent.click(fontBtn);
+    // Open the typography panel
+    const aaBtn = await screen.findByTitle("Typography settings");
+    await userEvent.click(aaBtn);
+
+    // Panel opens — pick a font size
+    const panel = await screen.findByTestId("typography-panel");
+    expect(panel).toBeInTheDocument();
+    const lgBtn = within(panel).getByText("L");
+    await userEvent.click(lgBtn);
 
     expect(mockSaveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ fontSize: expect.any(String) }),
+      expect.objectContaining({ fontSize: "lg" }),
     );
   });
 
-  it("cycles through sm → base → lg → xl → sm", async () => {
+  it("changes font size to base when M is clicked in typography panel", async () => {
     mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, fontSize: "sm" });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    const fontBtn = await screen.findByTitle(/font size/i);
-    await userEvent.click(fontBtn); // sm → base
+    const aaBtn = await screen.findByTitle("Typography settings");
+    await userEvent.click(aaBtn);
+    const panel = await screen.findByTestId("typography-panel");
+    const mBtn = within(panel).getByText("M");
+    await userEvent.click(mBtn);
     expect(mockSaveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ fontSize: "base" }));
   });
 });

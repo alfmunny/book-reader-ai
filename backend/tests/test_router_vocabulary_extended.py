@@ -626,3 +626,14 @@ async def test_get_vocabulary_includes_lemma_language_fields(client, test_user):
     entry = next(v for v in vocab if v["word"] == "swam")
     assert "lemma" in entry
     assert "language" in entry
+
+
+async def test_export_corrupted_github_token_returns_400(client, test_user):
+    """A corrupted (un-decryptable) GitHub token must return 400, not 500."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "wave", BOOK_ID, 0, "A wave crashed.")
+    # Store a garbage string that is not a valid Fernet token
+    await update_obsidian_settings(test_user["id"], "not-a-valid-fernet-token", "user/repo", None)
+
+    resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
+    assert resp.status_code == 400

@@ -253,6 +253,15 @@ test("synthesizeSpeech throws on non-ok response", async () => {
   await expect(synthesizeSpeech("Hello", "en")).rejects.toThrow("TTS failed");
 });
 
+test("synthesizeSpeech falls back to empty wordBoundaries on malformed X-TTS-Timings", async () => {
+  global.URL.createObjectURL = jest.fn().mockReturnValue("blob:fake");
+  global.fetch = jest.fn().mockResolvedValue(
+    mockTtsResponse({ "X-TTS-Timings": "not valid json{{" })
+  );
+  const { wordBoundaries } = await synthesizeSpeech("Hello", "en", 1.0);
+  expect(wordBoundaries).toEqual([]);
+});
+
 // ── User ──────────────────────────────────────────────────────────────────────
 
 test("getMe calls /user/me", async () => {

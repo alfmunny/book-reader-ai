@@ -407,9 +407,14 @@ export async function synthesizeSpeech(
     throw new Error(err.detail || "TTS failed");
   }
   const timingsHeader = res.headers.get("X-TTS-Timings");
-  const wordBoundaries: WordBoundary[] = timingsHeader
-    ? (JSON.parse(timingsHeader) as WordBoundary[])
-    : [];
+  let wordBoundaries: WordBoundary[] = [];
+  if (timingsHeader) {
+    try {
+      wordBoundaries = JSON.parse(timingsHeader) as WordBoundary[];
+    } catch {
+      // malformed header — proceed without word boundaries
+    }
+  }
   const blob = await res.blob();
   return { url: URL.createObjectURL(blob), wordBoundaries };
 }

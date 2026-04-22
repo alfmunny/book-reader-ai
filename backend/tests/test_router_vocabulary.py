@@ -201,5 +201,48 @@ async def test_export_calls_github_with_correct_content(client, test_user):
     content = captured_content["content"]
     assert "## Vocabulary" in content
     assert "leviathan" in content
-    assert "## Annotations" in content
-    assert "gutenberg.org/ebooks/" in content
+    # Sections only present when data exists; no annotations in this fixture
+    assert "## Annotations" not in content
+    assert "https://www.gutenberg.org/ebooks/" in content
+    # YAML frontmatter
+    assert 'title:' in content
+    assert "tags:" in content
+
+
+def test_build_book_markdown_format():
+    from routers.vocabulary import _build_book_markdown
+    book = {"title": "Moby Dick", "authors": ["Herman Melville"], "languages": ["en"]}
+    words = [{"word": "whale", "occurrences": [
+        {"book_id": 1, "book_title": "Moby Dick", "chapter_index": 0, "sentence_text": "The whale breached."}
+    ]}]
+    annotations = [{"id": 1, "chapter_index": 0, "sentence_text": "Call me Ishmael.", "note_text": "Famous opening.", "color": "yellow"}]
+    insights = [
+        {"chapter_index": 0, "question": "What is the white whale?", "answer": "A symbol of obsession.", "context_text": "The pale whale loomed."},
+        {"chapter_index": None, "question": "Book theme?", "answer": "Man vs nature.", "context_text": None},
+    ]
+    content = _build_book_markdown(book, words, annotations, [], insights, 1, "2026-04-22")
+
+    # YAML frontmatter
+    assert 'title: "Moby Dick"' in content
+    assert "author: Herman Melville" in content
+    assert "language: English" in content
+    assert "https://www.gutenberg.org/ebooks/1" in content
+    assert "tags:" in content
+    assert "  - reading" in content
+
+    # Vocabulary uses [[word]] backlinks and 1-indexed chapters
+    assert "[[whale]]" in content
+    assert "Ch.1" in content
+
+    # Annotations use [!quote] callouts
+    assert "> [!quote] Ch.1" in content
+    assert "> Call me Ishmael." in content
+    assert "Famous opening." in content
+
+    # Insight with context renders [!quote] callout
+    assert "> [!quote] (Ch.1)" in content
+    assert "> The pale whale loomed." in content
+    assert "**Q (Ch.1):** What is the white whale?" in content
+
+    # Insight without context skips callout
+    assert "**Q:** Book theme?" in content

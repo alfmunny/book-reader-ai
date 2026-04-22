@@ -587,3 +587,42 @@ async def test_save_word_same_sentence_different_chapter_creates_separate_occurr
     chapters = {occ["chapter_index"] for occ in entry["occurrences"]}
     assert 0 in chapters
     assert 5 in chapters
+
+
+# ── GET /vocabulary/definition/{word} ────────────────────────────────────────
+
+async def test_get_definition_returns_wiktionary_result(client, test_user):
+    fake_result = {
+        "lemma": "whale",
+        "language": "en",
+        "definitions": [{"pos": "noun", "text": "A large marine mammal."}],
+        "url": "https://en.wiktionary.org/wiki/whale",
+    }
+    from services import wiktionary as wikt_mod
+    with patch.object(wikt_mod, "lookup", new_callable=AsyncMock, return_value=fake_result):
+        resp = await client.get("/api/vocabulary/definition/whale?lang=en")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["lemma"] == "whale"
+    assert len(data["definitions"]) == 1
+
+
+async def test_get_definition_requires_auth(anon_client):
+    resp = await anon_client.get("/api/vocabulary/definition/whale")
+    assert resp.status_code == 401
+
+
+# ── Lemma + language fields in vocabulary list ────────────────────────────────
+
+async def test_get_vocabulary_includes_lemma_language_fields(client, test_user):
+    """GET /vocabulary returns lemma and language fields (even if null initially)."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "swam", BOOK_ID, 0, "The fish swam.")
+
+    resp = await client.get("/api/vocabulary")
+    assert resp.status_code == 200
+    vocab = resp.json()
+    entry = next(v for v in vocab if v["word"] == "swam")
+    assert "lemma" in entry
+    assert "language" in entry

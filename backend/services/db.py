@@ -583,6 +583,24 @@ async def get_all_annotations(user_id: int) -> list[dict]:
 
 # ── Vocabulary ────────────────────────────────────────────────────────────────
 
+async def _update_lemma(vocab_id: int, word: str, book_id: int) -> None:
+    try:
+        book = await get_cached_book(book_id)
+        langs = book.get("languages", ["en"]) if book else ["en"]
+        lang = langs[0] if langs else "en"
+        from services import wiktionary
+        result = await wiktionary.lookup(word, lang)
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "UPDATE vocabulary SET lemma = ?, language = ? WHERE id = ?",
+                (result["lemma"], result["language"], vocab_id),
+            )
+            await db.commit()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning("Lemma update failed for %s", word, exc_info=True)
+
+
 async def save_word(
     user_id: int,
     word: str,
@@ -590,6 +608,7 @@ async def save_word(
     chapter_index: int,
     sentence_text: str,
 ) -> dict:
+    import asyncio
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         await db.execute(
@@ -614,6 +633,8 @@ async def save_word(
 
         async with db.execute("SELECT * FROM vocabulary WHERE id = ?", (vocab_id,)) as cursor:
             row = await cursor.fetchone()
+
+    asyncio.create_task(_update_lemma(vocab_id, word, book_id))
     return dict(row)
 
 
@@ -621,7 +642,7 @@ async def get_vocabulary(user_id: int) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT id, word, created_at FROM vocabulary WHERE user_id = ? ORDER BY word",
+            "SELECT id, word, lemma, language, created_at FROM vocabulary WHERE user_id = ? ORDER BY word",
             (user_id,),
         ) as cursor:
             vocab_rows = await cursor.fetchall()
@@ -640,6 +661,8 @@ async def get_vocabulary(user_id: int) -> list[dict]:
             result.append({
                 "id": v["id"],
                 "word": v["word"],
+                "lemma": v["lemma"],
+                "language": v["language"],
                 "created_at": v["created_at"],
                 "occurrences": occurrences,
             })

@@ -7,6 +7,7 @@ Provides:
 """
 
 import pytest
+from unittest.mock import AsyncMock, patch
 import services.db as db_module
 from services.db import init_db, get_or_create_user, get_user_by_id
 from services.auth import create_jwt, get_current_user, get_optional_user
@@ -20,6 +21,12 @@ TEST_USER = {
     "name": "Test User",
     "picture": "",
 }
+
+
+@pytest.fixture(autouse=True)
+def no_wiktionary_http(monkeypatch):
+    """Prevent _update_lemma from making real HTTP calls in every test."""
+    monkeypatch.setattr(db_module, "_update_lemma", AsyncMock(return_value=None))
 
 
 @pytest.fixture

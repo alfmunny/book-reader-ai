@@ -556,7 +556,16 @@ export interface VocabularyOccurrence {
 export interface VocabularyWord {
   id: number;
   word: string;
+  lemma?: string | null;
+  language?: string | null;
   occurrences: VocabularyOccurrence[];
+}
+
+export interface WordDefinition {
+  lemma: string;
+  language: string;
+  definitions: Array<{ pos: string; text: string }>;
+  url: string;
 }
 
 export function getVocabulary() {
@@ -580,6 +589,11 @@ export function deleteVocabularyWord(word: string) {
   return request<{ ok: boolean }>(`/vocabulary/${encodeURIComponent(word)}`, {
     method: "DELETE",
   });
+}
+
+export function getWordDefinition(word: string, lang?: string) {
+  const params = lang ? `?lang=${encodeURIComponent(lang)}` : "";
+  return request<WordDefinition>(`/vocabulary/definition/${encodeURIComponent(word)}${params}`);
 }
 
 export function exportVocabularyToObsidian(bookId?: number, targetLanguage = "zh") {

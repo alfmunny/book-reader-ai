@@ -233,6 +233,35 @@ async def delete_uploaded_book(book_id: int, user: dict = Depends(get_current_us
             raise HTTPException(status_code=400, detail="Cannot delete Gutenberg books via this endpoint")
         if row[0] != user["id"] and user.get("role") != "admin":
             raise HTTPException(status_code=403, detail="Not your book")
+
+        async with db.execute(
+            "SELECT chapter_index, target_language FROM translation_queue "
+            "WHERE book_id=? AND status='running' LIMIT 1",
+            (book_id,),
+        ) as cur:
+            running = await cur.fetchone()
+        if running:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"A translation job is currently running for this book "
+                    f"(chapter {running[0]}, language '{running[1]}'). "
+                    "Wait for it to finish before deleting."
+                ),
+            )
+
+        await db.execute("DELETE FROM translations WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
+        await db.execute(
+            "DELETE FROM translation_queue WHERE book_id=? AND status != 'running'",
+            (book_id,),
+        )
+        await db.execute("DELETE FROM word_occurrences WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM annotations WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM book_insights WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM chapter_summaries WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM reading_history WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM user_reading_progress WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM book_uploads WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM books WHERE id=?", (book_id,))
         await db.commit()

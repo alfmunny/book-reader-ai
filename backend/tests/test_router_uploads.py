@@ -4,8 +4,14 @@ Tests for routers/uploads.py — user book upload endpoints.
 import io
 import json
 import pytest
+import aiosqlite
 from unittest.mock import AsyncMock, patch
-from services.db import get_or_create_user, get_user_by_id
+from services.db import (
+    get_or_create_user, get_user_by_id,
+    save_translation, create_annotation, save_insight,
+    save_chapter_summary, upsert_reading_progress,
+)
+import services.db as db_module
 from services.auth import get_current_user, get_optional_user
 from main import app
 from httpx import AsyncClient, ASGITransport
@@ -179,3 +185,225 @@ async def test_chapters_endpoint_returns_400_for_draft_book(client, test_user):
 
     chapters_resp = await client.get(f"/api/books/{book_id}/chapters")
     assert chapters_resp.status_code == 400
+
+
+# ── Cascade delete tests (#372) ───────────────────────────────────────────────
+
+async def _upload_and_confirm(client) -> int:
+    """Upload + confirm an uploaded book; return its book_id."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+    detected = upload_resp.json()["detected_chapters"]
+    chapters_to_confirm = [
+        {"title": ch["title"], "original_index": ch["index"]}
+        for ch in detected
+    ]
+    confirm_resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": chapters_to_confirm},
+    )
+    assert confirm_resp.status_code == 200
+    return book_id
+
+
+async def test_delete_uploaded_book_cascades_child_tables(client, test_user, tmp_db):
+    """Regression #372: delete_uploaded_book must remove all child-table rows.
+
+    Without the fix, translations, audio_cache, translation_queue,
+    word_occurrences, annotations, book_insights, chapter_summaries,
+    reading_history, and user_reading_progress are left as orphans.
+    """
+    book_id = await _upload_and_confirm(client)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        # translations
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (?, 0, 'zh', '[]')",
+            (book_id,),
+        )
+        # audio_cache
+        await db.execute(
+            "INSERT INTO audio_cache (book_id, chapter_index, chunk_index, provider, voice, "
+            "content_type, audio) VALUES (?, 0, 0, 'edge', 'v1', 'audio/mpeg', X'00')",
+            (book_id,),
+        )
+        # translation_queue (pending, not running)
+        await db.execute(
+            "INSERT INTO translation_queue "
+            "(book_id, chapter_index, target_language, status, priority) "
+            "VALUES (?, 0, 'de', 'pending', 50)",
+            (book_id,),
+        )
+        # chapter_summaries
+        await db.execute(
+            "INSERT INTO chapter_summaries (book_id, chapter_index, content, model) "
+            "VALUES (?, 0, 'Great chapter.', 'gemini')",
+            (book_id,),
+        )
+        # reading_history
+        await db.execute(
+            "INSERT INTO reading_history (user_id, book_id, chapter_index, read_at) "
+            "VALUES (?, ?, 0, CURRENT_TIMESTAMP)",
+            (test_user["id"], book_id),
+        )
+        # user_reading_progress
+        await db.execute(
+            "INSERT INTO user_reading_progress (user_id, book_id, chapter_index) "
+            "VALUES (?, ?, 0)",
+            (test_user["id"], book_id),
+        )
+        await db.commit()
+
+    # annotations, book_insights via service helpers (they re-read DB_PATH)
+    await create_annotation(test_user["id"], book_id, 0, "Interesting line.", "Quote", "yellow")
+    await save_insight(test_user["id"], book_id, 0, "What is the theme?", "The theme is adventure.")
+
+    del_resp = await client.delete(f"/api/books/upload/{book_id}")
+    assert del_resp.status_code == 200
+
+    async with aiosqlite.connect(tmp_db) as db:
+        for table, col in [
+            ("translations", "book_id"),
+            ("audio_cache", "book_id"),
+            ("translation_queue", "book_id"),
+            ("annotations", "book_id"),
+            ("book_insights", "book_id"),
+            ("chapter_summaries", "book_id"),
+            ("reading_history", "book_id"),
+            ("user_reading_progress", "book_id"),
+        ]:
+            async with db.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE {col}=?", (book_id,)
+            ) as cur:
+                (count,) = await cur.fetchone()
+            assert count == 0, f"orphaned rows left in {table} after delete_uploaded_book (#372)"
+
+        # word_occurrences — joined through vocabulary
+        async with db.execute(
+            "SELECT COUNT(*) FROM word_occurrences WHERE book_id=?", (book_id,)
+        ) as cur:
+            (wo_count,) = await cur.fetchone()
+        assert wo_count == 0, "orphaned word_occurrences left after delete_uploaded_book (#372)"
+
+
+async def test_delete_uploaded_book_rejects_when_translation_running(client, test_user, tmp_db):
+    """Regression #372: delete_uploaded_book must return 409 when a queue row
+    is currently running — deleting mid-job leaves orphaned translations."""
+    book_id = await _upload_and_confirm(client)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO translation_queue "
+            "(book_id, chapter_index, target_language, status, priority) "
+            "VALUES (?, 0, 'de', 'running', 100)",
+            (book_id,),
+        )
+        await db.commit()
+
+    del_resp = await client.delete(f"/api/books/upload/{book_id}")
+    assert del_resp.status_code == 409, (
+        "delete_uploaded_book must return 409 when a translation job is running (#372)"
+    )
+
+    # Book must still exist
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT id FROM books WHERE id=?", (book_id,)) as cur:
+            row = await cur.fetchone()
+    assert row is not None, "Book must not be deleted when a queue job is running"
+
+
+def _make_bypass_status_check_uploads(real_aiosqlite):
+    """Patch aiosqlite so the running-status SELECT returns 'pending', bypassing
+    the Python 409 check, while all other SQL runs against the real DB.
+    This simulates the race where a row becomes 'running' after the Python check.
+    """
+    orig_connect = real_aiosqlite.connect
+    _select_done = [False]
+
+    class FakeStatusRow:
+        def __getitem__(self, k): return "pending"
+
+    class FakeCursor:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def fetchone(self): return FakeStatusRow()
+
+    class SpyConn:
+        def __init__(self, real):
+            self._r = real
+
+        @property
+        def row_factory(self): return self._r.row_factory
+
+        @row_factory.setter
+        def row_factory(self, v): self._r.row_factory = v
+
+        def execute(self, sql, *args, **kwargs):
+            s = sql.strip().upper()
+            if s.startswith("SELECT") and "status" in sql.lower() and not _select_done[0]:
+                _select_done[0] = True
+                return FakeCursor()
+            return self._r.execute(sql, *args, **kwargs)
+
+        async def commit(self): await self._r.commit()
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return await self._r.__aexit__(*a)
+
+    def patched_connect(database, **kw):
+        real_cm = orig_connect(database, **kw)
+
+        class WrappedCM:
+            async def __aenter__(self_):
+                conn = await real_cm.__aenter__()
+                return SpyConn(conn)
+
+            async def __aexit__(self_, *a):
+                return await real_cm.__aexit__(*a)
+
+        return WrappedCM()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = real_aiosqlite.Row
+
+    return FakeAiosqlite()
+
+
+async def test_delete_uploaded_book_sql_guard_preserves_running_queue_row(
+    client, test_user, tmp_db
+):
+    """Regression #372: even if Python 409 check races, SQL guard must
+    preserve running translation_queue rows when deleting an uploaded book."""
+    book_id = await _upload_and_confirm(client)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        cursor = await db.execute(
+            "INSERT INTO translation_queue "
+            "(book_id, chapter_index, target_language, status, priority) "
+            "VALUES (?, 0, 'fr', 'running', 100)",
+            (book_id,),
+        )
+        running_id = cursor.lastrowid
+        await db.commit()
+
+    import aiosqlite as _real_aio
+    import routers.uploads as uploads_mod
+
+    old_aio = uploads_mod.aiosqlite
+    uploads_mod.aiosqlite = _make_bypass_status_check_uploads(_real_aio)
+    try:
+        del_resp = await client.delete(f"/api/books/upload/{book_id}")
+    finally:
+        uploads_mod.aiosqlite = old_aio
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE id=?", (running_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    assert row is not None and row[0] == "running", (
+        "SQL guard (AND status != 'running') must preserve running queue rows "
+        "even when Python 409 check is bypassed (#372)"
+    )

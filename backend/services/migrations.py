@@ -93,7 +93,7 @@ async def run(db_path: str) -> list[str]:
              "SELECT 1 FROM pragma_table_info('book_insights') WHERE name='context_text'"),
             ("017_vocabulary_lemma_language",
              "SELECT 1 FROM pragma_table_info('vocabulary') WHERE name='lemma'"),
-            ("018_chapter_summaries",
+            ("020_chapter_summaries",
              "SELECT name FROM sqlite_master WHERE type='table' AND name='chapter_summaries'"),
             ("019_reading_history",
              "SELECT name FROM sqlite_master WHERE type='table' AND name='reading_history'"),

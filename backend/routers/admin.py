@@ -376,7 +376,10 @@ async def retranslate(
 
     # 4. Resolve provider — use admin's Gemini key if available, else Google
     raw_key = admin.get("gemini_key")
-    decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+    try:
+        decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+    except HTTPException:
+        decrypted_key = None  # corrupted key → fall back to Google
     provider = "gemini" if decrypted_key else "google"
 
     # 5. Translate
@@ -474,7 +477,10 @@ async def retranslate_all(
     source_language = (book.get("languages") or ["en"])[0]
 
     raw_key = admin.get("gemini_key")
-    decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+    try:
+        decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+    except HTTPException:
+        decrypted_key = None  # corrupted key → fall back to Google
     provider = "gemini" if decrypted_key else "google"
 
     # Delete all existing translations for this language
@@ -687,7 +693,13 @@ async def bulk_translate_start(
             status_code=400,
             detail="Bulk translation requires a Gemini API key on the admin account",
         )
-    api_key = decrypt_api_key(raw_key)
+    try:
+        api_key = decrypt_api_key(raw_key)
+    except HTTPException:
+        raise HTTPException(
+            status_code=400,
+            detail="Your Gemini API key could not be decrypted. Please remove it and add it again in your profile.",
+        )
 
     try:
         kwargs: dict = dict(

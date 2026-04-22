@@ -837,7 +837,7 @@ describe("ReaderPage.branches — profile picture display", () => {
     });
   });
 
-  it("shows ? when session has no backendUser", async () => {
+  it("shows Sign in link when session has no backendToken", async () => {
     mockUseSession.mockReturnValue({
       data: { backendToken: null, backendUser: null, user: null },
       status: "unauthenticated",
@@ -846,9 +846,9 @@ describe("ReaderPage.branches — profile picture display", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    // "?" placeholder should show
+    // Guest sees "Sign in" link instead of profile avatar
     await waitFor(() => {
-      expect(screen.queryByText("?")).toBeTruthy();
+      expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
     });
   });
 });

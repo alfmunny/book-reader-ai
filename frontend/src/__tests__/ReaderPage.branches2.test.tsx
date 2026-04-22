@@ -1524,7 +1524,7 @@ describe("ReaderPage.branches2 — profile avatar variants", () => {
     });
   });
 
-  it("shows '?' when session has no backendUser", async () => {
+  it("shows 'Sign in' link when session has no backendToken", async () => {
     mockUseSession.mockReturnValue({
       data: { backendToken: null, backendUser: null, user: null },
       status: "unauthenticated",
@@ -1534,7 +1534,7 @@ describe("ReaderPage.branches2 — profile avatar variants", () => {
     await flushPromises();
 
     await waitFor(() => {
-      expect(screen.getByText("?")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
     });
   });
 });

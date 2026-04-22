@@ -697,14 +697,16 @@ describe("ReaderPage — API data loading", () => {
 });
 
 describe("ReaderPage — unauthenticated session", () => {
-  it("does not show Notes/Vocab/Marks buttons when not authenticated", async () => {
+  it("shows Notes and Vocab buttons for guests (they show auth prompt on click)", async () => {
     mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    expect(screen.queryByTitle("Annotations & notes")).not.toBeInTheDocument();
-    expect(screen.queryByTitle("Vocabulary")).not.toBeInTheDocument();
+    // Notes and Vocab are visible for guests — clicking shows auth prompt
+    expect(screen.getByTitle("Annotations & notes")).toBeInTheDocument();
+    expect(screen.getByTitle("Vocabulary")).toBeInTheDocument();
+    // Obsidian export and annotation marks toggle remain hidden (no auth)
     expect(screen.queryByTitle(/annotation marks/i)).not.toBeInTheDocument();
   });
 

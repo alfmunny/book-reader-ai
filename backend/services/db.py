@@ -275,6 +275,15 @@ async def set_user_role(user_id: int, role: str) -> None:
 
 async def delete_user(user_id: int) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """DELETE FROM word_occurrences WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ?)""",
+            (user_id,),
+        )
+        await db.execute("DELETE FROM vocabulary WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM annotations WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM book_insights WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM user_reading_progress WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         await db.commit()
 

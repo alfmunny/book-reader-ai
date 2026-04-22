@@ -134,6 +134,46 @@ async def test_cannot_delete_self(admin_client, admin_user):
     assert res.status_code == 400
 
 
+async def test_delete_user_removes_all_user_data(admin_client, admin_db, admin_user):
+    """delete_user must cascade to all user-owned tables — vocabulary,
+    word_occurrences, annotations, book_insights, and reading_progress."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    user2 = await get_or_create_user(
+        google_id="del-user-cascade", email="cascade@test.com", name="Cascade", picture=""
+    )
+
+    with patch("services.db._update_lemma", new_callable=AsyncMock):
+        await save_word(user2["id"], "cascadeword", 100, 0, "A cascade sentence.")
+    await create_annotation(user2["id"], 100, 0, "Some text.", "", "yellow")
+    await save_insight(user2["id"], 100, 0, "Q?", "A.")
+    await upsert_reading_progress(user2["id"], 100, 2)
+
+    res = await admin_client.delete(f"/api/admin/users/{user2['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        for table, col in [
+            ("vocabulary", "user_id"),
+            ("annotations", "user_id"),
+            ("book_insights", "user_id"),
+            ("user_reading_progress", "user_id"),
+        ]:
+            async with conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE {col} = ?", (user2["id"],)
+            ) as cur:
+                (count,) = await cur.fetchone()
+            assert count == 0, f"orphaned rows left in {table} after delete_user"
+
+        async with conn.execute(
+            "SELECT COUNT(*) FROM word_occurrences wo "
+            "JOIN vocabulary v ON v.id = wo.vocabulary_id "
+            "WHERE v.user_id = ?",
+            (user2["id"],)
+        ) as cur:
+            (occ_count,) = await cur.fetchone()
+    assert occ_count == 0, "orphaned word_occurrences left after delete_user"
+
+
 # ── Books ────────────────────────────────────────────────────────────────────
 
 async def test_get_books(admin_client, admin_db):

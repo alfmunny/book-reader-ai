@@ -533,6 +533,7 @@ async def test_get_chapter_translation_no_cache_returns_404_for_guest(anon_clien
 async def test_get_chapter_translation_cached_served_to_guest(anon_client):
     """GET serves cached translation to unauthenticated users."""
     from services.db import save_translation
+    await save_book(9999, MOCK_META, "text")
     await save_translation(9999, 0, "es", ["Hola mundo"])
     resp = await anon_client.get("/api/books/9999/chapters/0/translation?target_language=es")
     assert resp.status_code == 200

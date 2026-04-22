@@ -369,12 +369,18 @@ async def test_retry_chapter_translation_inserts_if_no_row(client):
 
 # ── Translation status endpoint ──────────────────────────────────────────────
 
-async def test_translation_status_uncached_book(client):
-    """Book not in cache → total_chapters=0, translated_chapters=0."""
-    resp = await client.get("/api/books/9999/translation-status?target_language=en")
+async def test_translation_status_nonexistent_book_returns_404(client):
+    """translation-status for a book that doesn't exist must return 404."""
+    resp = await client.get("/api/books/99999/translation-status?target_language=de")
+    assert resp.status_code == 404
+
+
+async def test_translation_status_cached_book_no_translations(client):
+    """Cached book with no translations → total_chapters≥0, translated_chapters=0."""
+    await save_book(9998, MOCK_META, "Chapter I\n\nSome text here.")
+    resp = await client.get("/api/books/9998/translation-status?target_language=de")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total_chapters"] == 0
     assert data["translated_chapters"] == 0
     assert data["bulk_active"] is False
 

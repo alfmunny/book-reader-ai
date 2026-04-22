@@ -105,8 +105,10 @@ async def translation_status(book_id: int, target_language: str):
     from services.bulk_translate import manager as bulk_manager
 
     cached = await get_cached_book(book_id)
+    if not cached:
+        raise HTTPException(status_code=404, detail="Book not found")
     total_chapters = 0
-    if cached and cached.get("text"):
+    if cached.get("text"):
         # Use the shared resolver so total_chapters matches what the reader
         # displays (and what the queue worker processes).
         from services.book_chapters import split_with_html_preference

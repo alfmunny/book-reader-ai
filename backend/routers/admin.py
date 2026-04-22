@@ -214,6 +214,8 @@ async def import_book(req: ImportBookRequest, _admin: dict = Depends(_require_ad
 @router.delete("/books/{book_id}")
 async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
     """Delete a cached book and all its associated audio + translation cache."""
+    if not await get_cached_book(book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
         await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
@@ -933,6 +935,8 @@ async def queue_enqueue_book(
     req: EnqueueBookRequest,
     admin: dict = Depends(_require_admin),
 ):
+    if not await get_cached_book(req.book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
     added = await enqueue_for_book(
         req.book_id,
         target_languages=req.target_languages,

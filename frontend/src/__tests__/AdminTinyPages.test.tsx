@@ -1,7 +1,6 @@
 /**
  * Tests for small admin pages that are currently at 0% coverage.
  *   - src/app/admin/page.tsx       — redirects to /admin/users
- *   - src/app/admin/bulk/page.tsx  — renders BulkTranslateTab
  *   - src/app/admin/queue/page.tsx — renders QueueTab
  */
 import React from "react";
@@ -15,12 +14,6 @@ jest.mock("next/navigation", () => ({
 }));
 
 // ─── Heavy child components ────────────────────────────────────────────────
-jest.mock("@/components/BulkTranslateTab", () => {
-  const BulkTranslateTab = () => <div data-testid="bulk-translate-tab" />;
-  BulkTranslateTab.displayName = "BulkTranslateTab";
-  return { __esModule: true, default: BulkTranslateTab };
-});
-
 jest.mock("@/components/QueueTab", () => {
   const QueueTab = () => <div data-testid="queue-tab" />;
   QueueTab.displayName = "QueueTab";
@@ -61,24 +54,6 @@ describe("Admin index page (admin/page.tsx)", () => {
   it("renders nothing visible (returns null)", () => {
     const { container } = render(<AdminIndex />);
     expect(container.firstChild).toBeNull();
-  });
-});
-
-describe("Admin bulk translate page (admin/bulk/page.tsx)", () => {
-  let BulkPage: React.ComponentType;
-
-  beforeAll(async () => {
-    const mod = await import("@/app/admin/bulk/page");
-    BulkPage = mod.default;
-  });
-
-  it("renders without crashing", () => {
-    render(<BulkPage />);
-  });
-
-  it("renders the BulkTranslateTab component", () => {
-    render(<BulkPage />);
-    expect(screen.getByTestId("bulk-translate-tab")).toBeInTheDocument();
   });
 });
 

@@ -5,14 +5,13 @@ import Link from "next/link";
 import { getMe } from "@/lib/api";
 import { adminFetch, type Stats } from "@/lib/adminFetch";
 
-type TabKey = "users" | "books" | "audio" | "queue" | "bulk";
+type TabKey = "users" | "books" | "audio" | "queue";
 
 const TABS: { key: TabKey; label: string; href: string }[] = [
   { key: "users", label: "Users", href: "/admin/users" },
   { key: "books", label: "Books", href: "/admin/books" },
   { key: "audio", label: "Audio Cache", href: "/admin/audio" },
   { key: "queue", label: "Queue", href: "/admin/queue" },
-  { key: "bulk", label: "Bulk Translate", href: "/admin/bulk" },
 ];
 
 function activeTab(pathname: string | null): TabKey | null {

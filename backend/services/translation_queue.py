@@ -36,11 +36,6 @@ import aiosqlite
 
 from services import db as db_module
 from services.auth import decrypt_api_key
-from services.bulk_translate import (
-    ChapterWork,
-    DEFAULT_MAX_OUTPUT_TOKENS,
-    group_chapters_for_batch,
-)
 from services.db import (
     get_cached_book,
     get_cached_translation,
@@ -86,6 +81,44 @@ RETRY_BACKOFF = (1.0, 5.0, 15.0)
 # rest of the queue is exhausted, but they no longer block other books.
 FAIL_PRIORITY_BUMP = 1000
 DEFAULT_PRIORITY = 100
+
+# ── Chapter batching ─────────────────────────────────────────────────────────
+
+DEFAULT_MAX_OUTPUT_TOKENS = 7500
+_WORDS_TO_OUTPUT_TOKENS = 1.4
+
+
+@dataclass
+class ChapterWork:
+    book_id: int
+    book_title: str
+    source_language: str
+    chapter_index: int
+    chapter_text: str
+
+
+def group_chapters_for_batch(
+    chapters: list[ChapterWork],
+    *,
+    max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+) -> list[list[ChapterWork]]:
+    """Greedily group consecutive chapters so each batch's estimated output
+    stays under max_output_tokens."""
+    batches: list[list[ChapterWork]] = []
+    current: list[ChapterWork] = []
+    current_tokens = 0.0
+    for ch in chapters:
+        words = len(ch.chapter_text.split())
+        est = words * _WORDS_TO_OUTPUT_TOKENS
+        if current and current_tokens + est > max_output_tokens:
+            batches.append(current)
+            current = []
+            current_tokens = 0.0
+        current.append(ch)
+        current_tokens += est
+    if current:
+        batches.append(current)
+    return batches
 
 
 # ── Fallback chain helpers ───────────────────────────────────────────────────
@@ -621,6 +654,9 @@ class WorkerState:
     retry_delay_seconds: float = 0.0
     retry_next_at: Optional[str] = None  # ISO-8601 UTC timestamp
     retry_reason: str = ""          # short transient error, e.g. "503 UNAVAILABLE"
+    total_chapters: int = 0
+    skipped_chapters: int = 0
+    ended_at: Optional[str] = None
     log: list[dict] = field(default_factory=list)
 
 
@@ -730,6 +766,8 @@ class TranslationQueueWorker:
             await self._sleep_or_wake(IDLE_POLL_SECONDS)
             return
 
+        was_idle = self._state.idle
+
         # Pull one batch's worth of pending items, all sharing the same
         # (book_id, target_language). Batching across books would force us to
         # rebuild prior_context per chapter, which loses the cross-batch
@@ -737,6 +775,8 @@ class TranslationQueueWorker:
         items = await self._claim_next_batch()
 
         if not items:
+            if not was_idle and (self._state.chapters_done + self._state.chapters_failed) > 0:
+                self._state.ended_at = datetime.now(timezone.utc).isoformat()
             self._state.idle = True
             self._state.waiting_reason = "queue empty"
             self._state.current_book_id = None
@@ -746,6 +786,7 @@ class TranslationQueueWorker:
             await self._sleep_or_wake(IDLE_POLL_SECONDS)
             return
 
+        self._state.total_chapters = await self._count_pending()
         self._state.idle = False
         self._state.waiting_reason = ""
         await self._process_batch(items, api_key)
@@ -854,6 +895,7 @@ class TranslationQueueWorker:
             if not text.strip():
                 await self._mark_done([row])
                 mark_handled([row])
+                self._state.skipped_chapters += 1
                 continue
             existing = await get_cached_translation(
                 book_id, row.chapter_index, target_language,
@@ -861,6 +903,7 @@ class TranslationQueueWorker:
             if existing:
                 await self._mark_done([row])
                 mark_handled([row])
+                self._state.skipped_chapters += 1
                 self._append_log({
                     "event": "skipped_cached",
                     "book_id": book_id,
@@ -1081,6 +1124,7 @@ class TranslationQueueWorker:
 
     async def _mark_skipped(self, rows: list[QueueRow], *, reason: str) -> None:
         await self._update_status(rows, "skipped", error=reason)
+        self._state.skipped_chapters += len(rows)
 
     async def _mark_failed(self, rows: list[QueueRow], reason: str) -> None:
         await self._update_status(rows, "failed", error=reason)
@@ -1133,6 +1177,14 @@ class TranslationQueueWorker:
             logger.exception("Failed to decrypt queue_api_key — clearing")
             return None
 
+    async def _count_pending(self) -> int:
+        async with aiosqlite.connect(db_module.DB_PATH) as db:
+            async with db.execute(
+                "SELECT COUNT(*) FROM translation_queue WHERE status IN ('pending', 'running')"
+            ) as cursor:
+                (n,) = await cursor.fetchone()
+        return n
+
     async def _sleep_or_wake(self, seconds: float) -> None:
         """Sleep until either `seconds` elapses, the wake event fires, or
         the stop event fires."""
@@ -1150,6 +1202,59 @@ class TranslationQueueWorker:
         self._state.log.append(entry)
         if len(self._state.log) > max_len:
             self._state.log = self._state.log[-max_len:]
+
+
+# ── Work planning (mirrors bulk translate, but uses the queue's splitter) ────
+
+async def plan_work_for_queue(
+    target_language: str,
+    *,
+    book_ids: list[int] | None = None,
+) -> list[dict]:
+    """Return a per-book list of chapters that still need translation.
+
+    Uses split_with_html_preference — same splitter as the worker — so
+    chapter counts here match what actually ends up in the queue.
+    """
+    from services.db import list_cached_books
+    from services.book_chapters import split_with_html_preference
+
+    target_language = target_language.lower().split("-")[0]
+    all_books = await list_cached_books()
+    plans = []
+
+    for meta in all_books:
+        if book_ids is not None and meta["id"] not in book_ids:
+            continue
+        source = (meta.get("languages") or [None])[0]
+        if not source or source.lower().split("-")[0] == target_language:
+            continue
+        book = await get_cached_book(meta["id"])
+        if not book or not book.get("text"):
+            continue
+        chapters = await split_with_html_preference(meta["id"], book["text"])
+        to_translate = []
+        for idx, ch in enumerate(chapters):
+            if not ch.text.strip():
+                continue
+            if await get_cached_translation(meta["id"], idx, target_language):
+                continue
+            to_translate.append(ChapterWork(
+                book_id=meta["id"],
+                book_title=book.get("title") or str(meta["id"]),
+                source_language=source,
+                chapter_index=idx,
+                chapter_text=ch.text,
+            ))
+        if to_translate:
+            plans.append({
+                "book_id": meta["id"],
+                "book_title": book.get("title") or str(meta["id"]),
+                "source_language": source,
+                "chapters": to_translate,
+            })
+
+    return plans
 
 
 # ── Module-level singleton ────────────────────────────────────────────────────

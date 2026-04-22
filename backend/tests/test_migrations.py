@@ -632,6 +632,69 @@ async def test_bootstrap_marks_017_when_lemma_exists(tmp_db):
 
 # ── No migrations directory ──────────────────────────────────────────────────
 
+# ── 018→020 chapter_summaries rename (issue #275) ───────────────────────────
+
+async def test_020_chapter_summaries_applied_on_fresh_db(tmp_db):
+    """After renaming 018_chapter_summaries → 020_chapter_summaries, a fresh DB
+    must apply the migration under the new version key."""
+    applied = await run_migrations(tmp_db)
+    assert "020_chapter_summaries" in applied, (
+        "020_chapter_summaries must be applied on fresh DB"
+    )
+    assert "018_chapter_summaries" not in applied, (
+        "018_chapter_summaries file no longer exists; old key must not appear in applied list"
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='chapter_summaries'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, "chapter_summaries table must exist"
+
+
+async def test_legacy_db_with_018_chapter_summaries_gets_020_bootstrapped(tmp_db):
+    """A database that already ran 018_chapter_summaries (before the rename)
+    must have 020_chapter_summaries bootstrapped — the renamed migration must
+    NOT be re-applied, which would fail with 'table already exists'."""
+    # Simulate a legacy DB: schema_migrations has 018_chapter_summaries and
+    # the chapter_summaries table already exists.
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "CREATE TABLE schema_migrations "
+            "(version TEXT PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        )
+        await db.execute(
+            "INSERT INTO schema_migrations (version) VALUES ('018_chapter_summaries')"
+        )
+        await db.execute(
+            """CREATE TABLE chapter_summaries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                book_id INTEGER NOT NULL,
+                chapter_index INTEGER NOT NULL,
+                model TEXT,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(book_id, chapter_index)
+            )"""
+        )
+        await db.commit()
+
+    applied = await run_migrations(tmp_db)
+    assert "020_chapter_summaries" not in applied, (
+        "020_chapter_summaries must NOT be re-applied on a DB that already has chapter_summaries"
+    )
+    # Must be bootstrapped (recorded in schema_migrations) so it is never re-run
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT version FROM schema_migrations WHERE version='020_chapter_summaries'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, (
+                "020_chapter_summaries must be bootstrapped into schema_migrations "
+                "for legacy DBs so the renamed file is never applied twice"
+            )
+
+
+# ── No migrations directory ──────────────────────────────────────────────────
+
 async def test_missing_migrations_dir_returns_empty(tmp_db, monkeypatch):
     """If the migrations directory doesn't exist, run() should return []
     and create only the schema_migrations tracking table."""

@@ -221,6 +221,10 @@ async def translate_cache(
     _user: dict = Depends(get_current_user),
 ):
     """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""
+    book = await get_cached_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, _user)
     target_language = target_language.lower().split("-")[0]
     from services.db import get_cached_translation_with_meta
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
@@ -281,19 +285,23 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
     if src == tgt:
         raise HTTPException(status_code=400, detail="Source and target language are the same.")
     try:
+        # Validate book existence and access BEFORE cache lookup — checking the
+        # cache first would leak cached translation content of private uploaded
+        # books to any authenticated user who knows the book_id.
+        if req.book_id is not None:
+            _book = await get_cached_book(req.book_id)
+            if not _book:
+                raise HTTPException(status_code=404, detail="Book not found")
+            check_book_access(_book, user)
+        if req.chapter_index is not None and req.chapter_index < 0:
+            raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
+
         # Check shared DB cache first — cache hits don't need any key.
         # Use normalized codes so "ZH" and "zh-CN" both hit a "zh" cache entry.
         if req.book_id is not None and req.chapter_index is not None:
             cached = await get_cached_translation(req.book_id, req.chapter_index, tgt)
             if cached:
                 return {"paragraphs": cached, "cached": True}
-
-        # Validate book/chapter before spending API quota on translation.
-        if req.book_id is not None:
-            if not await get_cached_book(req.book_id):
-                raise HTTPException(status_code=404, detail="Book not found")
-        if req.chapter_index is not None and req.chapter_index < 0:
-            raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
 
         # Resolve "auto" to a concrete provider
         raw_key = user.get("gemini_key")

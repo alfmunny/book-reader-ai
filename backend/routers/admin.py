@@ -373,6 +373,7 @@ async def retranslate(
     admin: dict = Depends(_require_admin),
 ):
     """Delete cached translation and re-translate the chapter."""
+    target_language = target_language.lower().split("-")[0]
     # 1. Get the book text
     book = await get_cached_book(book_id)
     if not book or not book.get("text"):
@@ -479,7 +480,7 @@ async def import_translations(
         await save_translation(
             entry.book_id,
             entry.chapter_index,
-            entry.target_language,
+            entry.target_language.lower().split("-")[0],
             entry.paragraphs,
             provider=entry.provider,
             model=entry.model,
@@ -496,6 +497,7 @@ async def retranslate_all(
     admin: dict = Depends(_require_admin),
 ):
     """Delete and retranslate ALL chapters of a book for a target language."""
+    target_language = req.target_language.lower().split("-")[0]
     book = await get_cached_book(book_id)
     if not book or not book.get("text"):
         raise HTTPException(status_code=404, detail="Book not found in cache")
@@ -515,7 +517,7 @@ async def retranslate_all(
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "DELETE FROM translations WHERE book_id=? AND target_language=?",
-            (book_id, req.target_language),
+            (book_id, target_language),
         )
         await db.commit()
 
@@ -523,18 +525,18 @@ async def retranslate_all(
     for i, ch in enumerate(chapters):
         try:
             paragraphs = await do_translate(
-                ch.text, source_language, req.target_language,
+                ch.text, source_language, target_language,
                 provider=provider, gemini_key=decrypted_key,
             )
         except Exception:
             if provider == "gemini":
                 paragraphs = await do_translate(
-                    ch.text, source_language, req.target_language, provider="google",
+                    ch.text, source_language, target_language, provider="google",
                 )
             else:
                 results.append({"chapter": i, "status": "failed"})
                 continue
-        await save_translation(book_id, i, req.target_language, paragraphs)
+        await save_translation(book_id, i, target_language, paragraphs)
         results.append({"chapter": i, "status": "ok", "paragraphs": len(paragraphs)})
 
     return {"ok": True, "chapters": len(results), "results": results}
@@ -564,6 +566,7 @@ async def move_translation(
     indices. Clears any pending/failed queue row at the destination so
     the worker doesn't later overwrite the moved translation.
     """
+    target_language = target_language.lower().split("-")[0]
     book = await get_cached_book(book_id)
     if not book or not book.get("text"):
         raise HTTPException(status_code=404, detail="Book not found in cache")
@@ -902,7 +905,11 @@ async def queue_set_settings(
     if req.auto_translate_languages is not None:
         await set_setting(
             SETTING_AUTO_LANGS,
-            json.dumps([lang for lang in req.auto_translate_languages if lang]),
+            json.dumps([
+                lang.lower().split("-")[0]
+                for lang in req.auto_translate_languages
+                if lang
+            ]),
         )
     if req.rpm is not None:
         await set_setting(SETTING_RPM, str(req.rpm))
@@ -987,7 +994,8 @@ async def queue_delete_book(
     target_language: str | None = None,
     _admin: dict = Depends(_require_admin),
 ):
-    deleted = await delete_queue_for_book(book_id, target_language=target_language)
+    norm = target_language.lower().split("-")[0] if target_language else None
+    deleted = await delete_queue_for_book(book_id, target_language=norm)
     return {"ok": True, "deleted": deleted}
 
 
@@ -1036,7 +1044,7 @@ async def queue_retry_failed(
         params.append(req.book_id)
     if req.target_language is not None:
         clauses.append("target_language=?")
-        params.append(req.target_language)
+        params.append(req.target_language.lower().split("-")[0])
     where = " AND ".join(clauses)
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(

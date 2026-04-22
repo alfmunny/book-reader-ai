@@ -20,6 +20,8 @@ async def create(req: InsightCreate, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="question cannot be empty")
     if not req.answer or not req.answer.strip():
         raise HTTPException(status_code=400, detail="answer cannot be empty")
+    if req.chapter_index is not None and req.chapter_index < 0:
+        raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     if not await get_cached_book(req.book_id):
         raise HTTPException(status_code=404, detail="Book not found")
     return await save_insight(

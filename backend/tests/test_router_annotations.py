@@ -241,3 +241,16 @@ async def test_create_annotation_rejects_empty_sentence(client, test_user):
         "sentence_text": "",
     })
     assert resp.status_code == 400
+
+
+async def test_create_annotation_rejects_negative_chapter_index(client, test_user):
+    """POST /annotations with chapter_index < 0 must return 400.
+    Negative indices are not valid book positions and would produce
+    invisible orphan rows (no reader query matches chapter -1)."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/annotations", json={
+        "book_id": BOOK_ID,
+        "chapter_index": -1,
+        "sentence_text": "Some highlighted text.",
+    })
+    assert resp.status_code == 400

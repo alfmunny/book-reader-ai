@@ -248,3 +248,39 @@ async def test_manager_retries_on_failure(tmp_db, monkeypatch):
     assert call_count["n"] >= 2
     from services.db import get_cached_translation
     assert await get_cached_translation(1342, 0, "zh") == ["ok 0"]
+
+
+# ── Language normalization ───────────────────────────────────────────────────
+
+async def test_plan_work_normalizes_language_code(tmp_db):
+    """plan_work('ZH-CN') must treat already-translated 'zh' chapters as done,
+    not re-schedule them because of a casing/subtag mismatch."""
+    await save_book(1342, EN_BOOK_META, TWO_CHAPTER_TEXT)
+    # Both chapters already translated under the normalized form.
+    await save_translation(1342, 0, "zh", ["已翻译"])
+    await save_translation(1342, 1, "zh", ["已翻译二"])
+
+    plans = await plan_work("ZH-CN")
+    assert plans == [], f"Expected no chapters to translate, got {plans}"
+
+
+async def test_manager_normalizes_language_before_save(tmp_db, monkeypatch):
+    """BulkTranslationManager.start() with target_language='ZH-CN' must save
+    translations under 'zh' so readers can find them."""
+    await save_book(1342, EN_BOOK_META, TWO_CHAPTER_TEXT)
+
+    async def fake_translate(*args, **kwargs):
+        return {0: ["第一章。"], 1: ["第二章。"]}
+    monkeypatch.setattr(
+        "services.bulk_translate.translate_chapters_batch", fake_translate,
+    )
+
+    mgr = BulkTranslationManager()
+    await mgr.start(target_language="ZH-CN", api_key="fake", rpm=60, rpd=10000)
+    if mgr._task:
+        await mgr._task
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(1342, 0, "zh") == ["第一章。"], \
+        "Translation should be stored under normalized 'zh', not 'ZH-CN'"
+    assert await get_cached_translation(1342, 0, "ZH-CN") is None

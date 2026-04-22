@@ -676,3 +676,44 @@ async def test_chapter_translation_normalizes_language_for_cache_hit(anon_client
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ready"
+
+
+async def test_translation_status_normalizes_language(client):
+    """GET /books/{id}/translation-status?target_language=ZH-CN must count
+    translations stored under 'zh', not 'ZH-CN'."""
+    from services.db import save_translation
+    await save_book(1342, MOCK_META, "text")
+    await save_translation(1342, 0, "zh", ["翻译"])
+    resp = await client.get(
+        "/api/books/1342/translation-status?target_language=ZH-CN"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["translated_chapters"] == 1, (
+        f"Expected 1 translated chapter but got {data.get('translated_chapters')}; "
+        "target_language was not normalized before DB lookup"
+    )
+
+
+async def test_chapter_queue_status_normalizes_language(client):
+    """GET .../queue-status?target_language=ZH-CN must find rows stored under 'zh'."""
+    import aiosqlite
+    import services.db as db_module
+    await save_book(1342, MOCK_META, "text")
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority, status)
+               VALUES (?, ?, ?, ?, ?)""",
+            (1342, 0, "zh", 10, "pending"),
+        )
+        await conn.commit()
+    resp = await client.get(
+        "/api/books/1342/chapters/0/queue-status?target_language=ZH-CN"
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["queued"] is True, (
+        "Expected queued=True for 'ZH-CN' when row stored under 'zh'; "
+        "target_language was not normalized"
+    )

@@ -104,6 +104,7 @@ async def translation_status(book_id: int, target_language: str):
     from services.db import count_translations_for_book, DB_PATH
     from services.bulk_translate import manager as bulk_manager
 
+    target_language = target_language.lower().split("-")[0]
     cached = await get_cached_book(book_id)
     if not cached:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -164,6 +165,7 @@ async def chapter_queue_status(
     on-demand translate to avoid duplicating work the background worker is
     already scheduled to do.
     """
+    target_language = target_language.lower().split("-")[0]
     if not await get_cached_book(book_id):
         raise HTTPException(status_code=404, detail="Book not found")
     from services.translation_queue import queue_status_for_chapter

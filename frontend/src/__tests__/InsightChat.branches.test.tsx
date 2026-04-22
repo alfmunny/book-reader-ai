@@ -345,6 +345,34 @@ describe("InsightChat — persist effect skips when bookId empty", () => {
   });
 });
 
+// ── Chapter navigation cancels in-flight getInsight ──────────────────────────
+
+describe("InsightChat — cancelled getInsight on chapter change", () => {
+  it("does not update messages with stale insight after chapter changes mid-flight", async () => {
+    let resolveChapter1!: (v: any) => void;
+    mockGetInsight.mockReturnValueOnce(new Promise((r) => { resolveChapter1 = r; }));
+    mockGetInsight.mockResolvedValue({ insight: "Chapter 2 insight" });
+
+    const { rerender } = render(<InsightChat {...BASE} isVisible chapterText="Chapter one text here long enough." />);
+    await flushPromises();
+
+    // Navigate to chapter 2 before chapter 1 resolves
+    rerender(<InsightChat {...BASE} isVisible chapterText="Chapter two text here long enough." chapterTitle="Chapter II" />);
+    await flushPromises();
+
+    // Now resolve the stale chapter 1 response
+    await act(async () => {
+      resolveChapter1({ insight: "Chapter 1 stale insight" });
+      await flushPromises();
+    });
+
+    // The stale insight from chapter 1 must NOT appear in the chat
+    expect(screen.queryByText("Chapter 1 stale insight")).not.toBeInTheDocument();
+    // Chapter 2 insight should be present (if it resolved)
+    expect(screen.getByText("Chapter 2 insight")).toBeInTheDocument();
+  });
+});
+
 // ── Chapter header rendering branch ──────────────────────────────────────────
 
 describe("InsightChat — chapter header divider rendering", () => {

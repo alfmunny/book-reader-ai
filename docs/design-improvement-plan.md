@@ -149,3 +149,30 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-22 | 2.5 | BookDetailModal SVG close + spacing | ✅ Done |
 | 2026-04-22 | 3.1 | CSS custom properties for color tokens | ✅ Done |
 | 2026-04-22 | 3.3 | Shared SVG icons component | ✅ Done |
+| 2026-04-22 | 4.1 | TTSControls: SVG icons, text gender labels | ✅ Done |
+| 2026-04-22 | 4.2 | VocabularyToast: SVG check icon + aria-live | ✅ Done |
+| 2026-04-22 | 4.3 | Notes page: SVG badge icons (ann/insight/vocab) | ✅ Done |
+| 2026-04-22 | 4.4 | Notes empty state: EmptyNotesIcon SVG | ✅ Done |
+| 2026-04-22 | 4.5 | AnnotationToolbar: SVG close button | ✅ Done |
+| 2026-04-22 | 4.6 | VocabWordTooltip: SVG close + Saved icon | ✅ Done |
+| 2026-04-22 | 5.1 | InsightChat: amber highlight on active font size | ✅ Done |
+| 2026-04-22 | 5.2 | Profile: Obsidian section accordion | ✅ Done |
+| 2026-04-22 | 5.4 | Import: cost panel card hierarchy | ✅ Done |
+| 2026-04-22 | 5.5 | Notes back buttons: ArrowLeftIcon SVG | ✅ Done |
+| 2026-04-22 | 6.1 | Vocabulary: EmptyVocabIcon SVG empty state | ✅ Done |
+| 2026-04-22 | 6.2 | Notes header: icon+count stat pills | ✅ Done |
+| 2026-04-22 | 6.3 | Profile: section category labels | ✅ Done |
+
+---
+
+## Wave 7 Plan — UX Issue Fixes (Next Session)
+
+These are structural changes requiring more careful implementation and testing:
+
+| # | Issue | Effort | Approach |
+|---|-------|--------|---------|
+| 7.1 | UX-007: "Remove from library" × button below 44px touch target | Low | Increase hit area to 44×44px with `p-3` and inline-flex |
+| 7.2 | UX-001: Reader header button overflow on mid-size screens | High | Group into "More" popover or move low-priority buttons to sidebar |
+| 7.3 | UX-005: No slide animation on translation sidebar | Medium | CSS `transition` + conditional translate class |
+| 7.4 | UX-004: Mobile tab bar 5-tab clip at 375px | Medium | `overflow-x-auto scrollbar-none` or icon-only on narrow screens |
+| 7.5 | UX-006: Keyboard shortcut discoverability | Low | Add `?` shortcut panel or tooltip hints on hover |

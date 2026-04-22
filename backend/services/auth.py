@@ -62,6 +62,36 @@ def decode_jwt(token: str) -> dict:
         raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
 
+# ── GitHub access token verification ─────────────────────────────────────────
+
+async def verify_github_access_token(access_token: str) -> dict:
+    """Verify a GitHub OAuth access token and return verified profile data.
+
+    Calls https://api.github.com/user with the token.  Raises 401 on failure.
+    Returns dict with keys: id (str), email, name, picture.
+    """
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=401, detail="Invalid GitHub access token")
+    data = resp.json()
+    github_id = data.get("id")
+    if not github_id:
+        raise HTTPException(status_code=401, detail="GitHub token missing user id")
+    return {
+        "id": str(github_id),
+        "email": data.get("email") or "",
+        "name": data.get("name") or data.get("login") or "",
+        "picture": data.get("avatar_url") or "",
+    }
+
+
 # ── Google ID token verification ──────────────────────────────────────────────
 
 async def verify_google_id_token(id_token: str) -> dict:

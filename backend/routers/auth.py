@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from services.auth import verify_google_id_token, verify_apple_id_token, create_jwt
+from services.auth import verify_google_id_token, verify_apple_id_token, verify_github_access_token, create_jwt
 from services.db import get_or_create_user, get_or_create_user_github, get_or_create_user_apple
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -43,23 +43,27 @@ async def google_login(req: GoogleAuthRequest):
 
 
 class GitHubAuthRequest(BaseModel):
-    github_id: str
-    email: str = ""
-    name: str = ""
-    picture: str = ""
+    access_token: str
 
 
 @router.post("/github")
 async def github_login(req: GitHubAuthRequest):
-    """Exchange GitHub profile info for our own backend JWT."""
-    if not req.github_id:
-        raise HTTPException(status_code=400, detail="github_id is required")
+    """Verify a GitHub OAuth access token server-side and issue our own JWT."""
+    if not req.access_token:
+        raise HTTPException(status_code=400, detail="access_token is required")
+
+    try:
+        profile = await verify_github_access_token(req.access_token)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
     user = await get_or_create_user_github(
-        github_id=req.github_id,
-        email=req.email,
-        name=req.name,
-        picture=req.picture,
+        github_id=profile["id"],
+        email=profile["email"],
+        name=profile["name"],
+        picture=profile["picture"],
     )
     return _user_response(user)
 

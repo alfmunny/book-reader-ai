@@ -35,17 +35,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id_token: account.id_token }),
             });
-          } else if (account.provider === "github") {
-            const ghProfile = profile as { id?: number; login?: string; avatar_url?: string; email?: string; name?: string } | undefined;
+          } else if (account.provider === "github" && account.access_token) {
             res = await fetch(`${API}/auth/github`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                github_id: String(ghProfile?.id ?? account.providerAccountId),
-                email: ghProfile?.email ?? token.email ?? "",
-                name: ghProfile?.name ?? ghProfile?.login ?? "",
-                picture: ghProfile?.avatar_url ?? "",
-              }),
+              body: JSON.stringify({ access_token: account.access_token }),
             });
           } else if (account.provider === "apple" && account.id_token) {
             const appleProfile = profile as { name?: { firstName?: string; lastName?: string } } | undefined;

@@ -85,3 +85,10 @@ test("calls onRemove when remove button is clicked", async () => {
   // The main card onClick must NOT fire — stopPropagation is called
   expect(onClick).not.toHaveBeenCalled();
 });
+
+test("remove button meets 44px minimum touch target size", () => {
+  render(<BookCard book={BOOK} onClick={jest.fn()} onRemove={jest.fn()} />);
+  const removeBtn = screen.getByRole("button", { name: /remove from library/i });
+  expect(removeBtn.className).toContain("min-w-[44px]");
+  expect(removeBtn.className).toContain("min-h-[44px]");
+});

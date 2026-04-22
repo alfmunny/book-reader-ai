@@ -22,7 +22,7 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
           }}
           title="Remove from library"
           aria-label="Remove from library"
-          className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full bg-white/80 text-stone-500 border border-amber-200 text-xs hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+          className="absolute top-0 right-0 z-10 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full bg-white/80 text-stone-500 border border-amber-200 text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200"
         >
           ×
         </button>

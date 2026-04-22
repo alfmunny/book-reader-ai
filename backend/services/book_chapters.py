@@ -16,6 +16,7 @@ Chapter list for a book.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections import defaultdict
 
@@ -57,6 +58,22 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
         cached = _chapter_cache.get(book_id)
         if cached is not None:
             return cached
+
+        # Uploaded books store chapters as JSON, not raw text.
+        # Detect and return pre-split chapters directly to avoid feeding
+        # JSON to the Gutenberg HTML / regex splitter.
+        if text and text.lstrip().startswith("{"):
+            try:
+                data = json.loads(text)
+                if not data.get("draft") and "chapters" in data:
+                    chapters: list[Chapter] = [
+                        Chapter(title=ch["title"], text=ch["text"])
+                        for ch in data["chapters"]
+                    ]
+                    _chapter_cache[book_id] = chapters
+                    return chapters
+            except (ValueError, KeyError, TypeError):
+                pass  # not a valid uploaded-book JSON — fall through to normal split
 
         try:
             html = await get_book_html(book_id)

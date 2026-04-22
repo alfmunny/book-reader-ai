@@ -437,3 +437,50 @@ async def test_delete_uploaded_book_sql_guard_preserves_running_queue_row(
         "SQL guard (AND status != 'running') must preserve running queue rows "
         "even when Python 409 check is bypassed (#372)"
     )
+
+
+# ── Uploaded book chapter-split fix (#380) ────────────────────────────────────
+
+async def test_translation_status_uploaded_book_reports_correct_chapter_count(
+    client, test_user, tmp_db
+):
+    """Regression #380: translation-status must report the correct chapter count
+    for uploaded books. Previously, split_with_html_preference received JSON text
+    and produced wrong chapter counts."""
+    book_id = await _upload_and_confirm(client)
+
+    resp = await client.get(f"/api/books/{book_id}/translation-status?target_language=zh")
+    assert resp.status_code == 200
+    data = resp.json()
+    # The sample TXT has 2 chapters (Chapter 1 and Chapter 2); must not be 1 or garbage
+    assert data["total_chapters"] >= 2, (
+        f"total_chapters={data['total_chapters']} — split_with_html_preference "
+        "must return the uploaded book's pre-split chapters, not split JSON text (#380)"
+    )
+
+
+async def test_split_with_html_preference_handles_uploaded_book_json():
+    """Regression #380: split_with_html_preference must return correct chapters
+    when passed uploaded-book JSON text instead of raw book text."""
+    import json
+    from services.book_chapters import split_with_html_preference, clear_cache
+
+    uploaded_json = json.dumps({
+        "draft": False,
+        "chapters": [
+            {"title": "Chapter One", "text": "The first chapter content here."},
+            {"title": "Chapter Two", "text": "The second chapter content here."},
+            {"title": "Chapter Three", "text": "The third chapter content here."},
+        ]
+    })
+
+    clear_cache(99999)
+    chapters = await split_with_html_preference(99999, uploaded_json)
+    clear_cache(99999)
+
+    assert len(chapters) == 3, (
+        f"Expected 3 chapters from uploaded JSON, got {len(chapters)} (#380)"
+    )
+    assert chapters[0].title == "Chapter One"
+    assert "first chapter" in chapters[0].text
+    assert chapters[2].title == "Chapter Three"

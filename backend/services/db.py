@@ -806,10 +806,9 @@ async def save_word(
                VALUES (?, ?, ?, ?)""",
             (vocab_id, book_id, chapter_index, sentence_text),
         )
-        await db.commit()  # single atomic commit for both inserts
-
         async with db.execute("SELECT * FROM vocabulary WHERE id = ?", (vocab_id,)) as cursor:
             row = await cursor.fetchone()
+        await db.commit()  # single atomic commit for both inserts
 
     asyncio.create_task(_update_lemma(vocab_id, word, book_id))
     return dict(row)
@@ -915,10 +914,10 @@ async def save_insight(
                VALUES (?, ?, ?, ?, ?, ?)""",
             (user_id, book_id, chapter_index, question, answer, context_text),
         )
-        await db.commit()
         row_id = cursor.lastrowid
         async with db.execute("SELECT * FROM book_insights WHERE id = ?", (row_id,)) as c:
             row = await c.fetchone()
+        await db.commit()
     return dict(row)
 
 

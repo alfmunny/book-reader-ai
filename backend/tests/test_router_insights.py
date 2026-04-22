@@ -207,3 +207,67 @@ async def test_post_insight_rejects_negative_chapter_index(client: AsyncClient):
         json={"book_id": 1, "question": "Q?", "answer": "A.", "chapter_index": -5},
     )
     assert resp.status_code == 400
+
+
+async def test_save_insight_select_runs_before_commit(tmp_db, test_user, monkeypatch):
+    """Regression #351: SELECT must execute before COMMIT in save_insight.
+
+    If COMMIT precedes SELECT, a concurrent delete_book (which cascades to
+    book_insights) can remove the just-inserted row between the two operations,
+    causing the SELECT to return None and dict(row) to crash with TypeError.
+    """
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import save_book, save_insight
+
+    await save_book(1, _META, "text")
+
+    events: list[str] = []
+    orig_connect = _real_aiosqlite.connect
+
+    def patched_connect(database, **kwargs):
+        real_cm = orig_connect(database, **kwargs)
+
+        class TrackedConn:
+            def __init__(self):
+                self._conn = None
+
+            async def __aenter__(self):
+                self._conn = await real_cm.__aenter__()
+                return self
+
+            async def __aexit__(self, *args):
+                return await real_cm.__aexit__(*args)
+
+            @property
+            def row_factory(self):
+                return self._conn.row_factory
+
+            @row_factory.setter
+            def row_factory(self, v):
+                self._conn.row_factory = v
+
+            def execute(self, sql, *args, **kwargs):
+                if sql.strip().upper().startswith("SELECT"):
+                    events.append("SELECT")
+                return self._conn.execute(sql, *args, **kwargs)
+
+            async def commit(self):
+                events.append("COMMIT")
+                return await self._conn.commit()
+
+        return TrackedConn()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = _real_aiosqlite.Row
+
+    monkeypatch.setattr(db_module, "aiosqlite", FakeAiosqlite)
+
+    await save_insight(test_user["id"], 1, 0, "Q?", "A.")
+
+    assert "COMMIT" in events and "SELECT" in events
+    assert events.index("SELECT") < events.index("COMMIT"), (
+        "SELECT must run before COMMIT in save_insight — otherwise a "
+        "concurrent delete_book can delete the row and crash dict(None) (#351)"
+    )

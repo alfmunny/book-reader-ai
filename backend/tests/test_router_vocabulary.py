@@ -448,3 +448,68 @@ async def test_export_annotation_translation_uses_book_language(client, test_use
             f"translate_text called with source={src!r} but book language is 'de'; "
             "source language must not be hardcoded to 'en'"
         )
+
+
+async def test_save_word_select_runs_before_commit(tmp_db, test_user, monkeypatch):
+    """Regression #351: SELECT must execute before COMMIT in save_word.
+
+    If COMMIT precedes SELECT, a concurrent write (e.g. _update_lemma on
+    another connection) can modify the vocabulary row between the two operations,
+    causing the function to return data it did not write.
+    """
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import save_book, save_word
+
+    _META = {"title": "T", "authors": [], "languages": ["de"], "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(7777, _META, "text")
+
+    events: list[str] = []
+    orig_connect = _real_aiosqlite.connect
+
+    def patched_connect(database, **kwargs):
+        real_cm = orig_connect(database, **kwargs)
+
+        class TrackedConn:
+            def __init__(self):
+                self._conn = None
+
+            async def __aenter__(self):
+                self._conn = await real_cm.__aenter__()
+                return self
+
+            async def __aexit__(self, *args):
+                return await real_cm.__aexit__(*args)
+
+            @property
+            def row_factory(self):
+                return self._conn.row_factory
+
+            @row_factory.setter
+            def row_factory(self, v):
+                self._conn.row_factory = v
+
+            def execute(self, sql, *args, **kwargs):
+                if sql.strip().upper().startswith("SELECT"):
+                    events.append("SELECT")
+                return self._conn.execute(sql, *args, **kwargs)
+
+            async def commit(self):
+                events.append("COMMIT")
+                return await self._conn.commit()
+
+        return TrackedConn()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = _real_aiosqlite.Row
+
+    monkeypatch.setattr(db_module, "aiosqlite", FakeAiosqlite)
+
+    await save_word(test_user["id"], "Wort", 7777, 0, "Ein Satz.")
+
+    assert "COMMIT" in events and "SELECT" in events
+    assert events.index("SELECT") < events.index("COMMIT"), (
+        "SELECT must run before COMMIT in save_word to avoid returning data "
+        "from a concurrent _update_lemma write (#351)"
+    )

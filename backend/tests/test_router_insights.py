@@ -175,3 +175,23 @@ async def test_post_insight_rejects_nonexistent_book(client: AsyncClient):
         json={"book_id": 777777, "question": "Q?", "answer": "A."},
     )
     assert resp.status_code == 404
+
+
+async def test_post_insight_rejects_empty_question(client: AsyncClient):
+    """POST /insights with empty question must return 400."""
+    await save_book(1, _META, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 1, "question": "", "answer": "Some answer."},
+    )
+    assert resp.status_code == 400
+
+
+async def test_post_insight_rejects_empty_answer(client: AsyncClient):
+    """POST /insights with empty answer must return 400."""
+    await save_book(1, _META, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 1, "question": "What is the theme?", "answer": ""},
+    )
+    assert resp.status_code == 400

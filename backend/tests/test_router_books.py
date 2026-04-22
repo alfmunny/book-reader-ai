@@ -1002,3 +1002,25 @@ async def test_retry_translation_out_of_bounds_chapter_returns_400(client, test_
         f"Expected 400 for out-of-bounds chapter_index=999 on 2-chapter book, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+async def test_queue_status_out_of_bounds_chapter_returns_400(client, test_user):
+    """Regression #457: GET /books/{book_id}/chapters/{chapter_index}/queue-status
+    with chapter_index beyond the book's chapter count must return 400.
+
+    Without the bounds check any authenticated user gets a silent "not queued"
+    response for a chapter that does not exist."""
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9879, {**MOCK_META, "id": 9879}, text)
+    _clear()
+
+    resp = await client.get(
+        "/api/books/9879/chapters/999/queue-status?target_language=de"
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on 2-chapter book, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()

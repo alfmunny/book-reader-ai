@@ -187,6 +187,13 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             if cached:
                 return {"paragraphs": cached, "cached": True}
 
+        # Validate book/chapter before spending API quota on translation.
+        if req.book_id is not None:
+            if not await get_cached_book(req.book_id):
+                raise HTTPException(status_code=404, detail="Book not found")
+        if req.chapter_index is not None and req.chapter_index < 0:
+            raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
+
         # Resolve "auto" to a concrete provider
         raw_key = user.get("gemini_key")
         try:

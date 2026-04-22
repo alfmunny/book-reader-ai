@@ -167,6 +167,33 @@ async def test_save_word_rejects_nonexistent_book(client, test_user):
     assert resp.status_code == 404
 
 
+async def test_save_word_rejects_empty_sentence(client, test_user):
+    """POST /vocabulary with empty sentence_text must return 400.
+
+    An occurrence with no sentence context cannot be displayed and
+    represents a client error."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/vocabulary", json={
+        "word": "spectre",
+        "book_id": BOOK_ID,
+        "chapter_index": 0,
+        "sentence_text": "",
+    })
+    assert resp.status_code == 400
+
+
+async def test_save_word_rejects_whitespace_only_sentence(client, test_user):
+    """POST /vocabulary with whitespace-only sentence_text must return 400."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/vocabulary", json={
+        "word": "spectre",
+        "book_id": BOOK_ID,
+        "chapter_index": 0,
+        "sentence_text": "   ",
+    })
+    assert resp.status_code == 400
+
+
 # ── Export endpoint ───────────────────────────────────────────────────────────
 
 async def _setup_export(test_user, book_id=BOOK_ID):

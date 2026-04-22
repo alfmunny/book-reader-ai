@@ -465,6 +465,12 @@ async def import_translations(
     since the whole point of seeding is usually to replace bad
     translations. Skips empty paragraphs arrays.
     """
+    # Pre-validate all referenced books exist before writing any row.
+    book_ids = {e.book_id for e in req.entries if e.paragraphs}
+    for bid in book_ids:
+        if not await get_cached_book(bid):
+            raise HTTPException(status_code=404, detail=f"Book {bid} not found")
+
     count = 0
     for entry in req.entries:
         if not entry.paragraphs:

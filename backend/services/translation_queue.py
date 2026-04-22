@@ -164,6 +164,7 @@ async def enqueue(
     inserted or an existing row was revived; 0 if the INSERT OR IGNORE
     path no-op'd because a non-stale row already exists).
     """
+    target_language = target_language.lower().split("-")[0]
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         if reset_failed:
             cursor = await db.execute(
@@ -223,6 +224,7 @@ async def enqueue_for_book(
 
     inserted = 0
     for lang in target_languages:
+        lang = lang.lower().split("-")[0]
         if not lang or lang == source:
             continue
         for idx, ch in enumerate(chapters):

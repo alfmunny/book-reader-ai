@@ -210,7 +210,8 @@ async def enqueue(
                          last_error=NULL,
                          priority=MIN(priority, excluded.priority),
                          queued_by=COALESCE(excluded.queued_by, queued_by),
-                         updated_at=CURRENT_TIMESTAMP""",
+                         updated_at=CURRENT_TIMESTAMP
+                   WHERE translation_queue.status != 'running'""",
                 (book_id, chapter_index, target_language, priority, queued_by),
             )
         else:

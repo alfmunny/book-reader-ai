@@ -170,6 +170,35 @@ async def test_enqueue_reset_failed_revives_failed_row():
     assert row[1] == 0
 
 
+async def test_enqueue_reset_failed_does_not_touch_running_row():
+    """Regression #321: enqueue(reset_failed=True) must not reset a running row.
+
+    A running row's worker holds its ID; if the row is reset to 'pending'
+    the worker's _mark_done(id) will delete the re-enqueued row when it
+    finishes, silently voiding the retranslation.
+    """
+    import aiosqlite
+    await enqueue(20, 0, "zh")
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running', attempts=1 "
+            "WHERE book_id=20 AND chapter_index=0 AND target_language='zh'"
+        )
+        await db.commit()
+
+    count = await enqueue(20, 0, "zh", reset_failed=True)
+    assert count == 0  # no update happened
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT status, attempts FROM translation_queue "
+            "WHERE book_id=20 AND chapter_index=0 AND target_language='zh'"
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row[0] == "running"  # still running
+    assert row[1] == 1          # attempts not zeroed
+
+
 async def test_enqueue_preserves_lower_priority():
     await enqueue(3, 0, "fr", priority=100, reset_failed=True)
     # Try to re-enqueue with higher priority (lower number = higher priority)

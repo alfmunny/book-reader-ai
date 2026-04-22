@@ -456,7 +456,7 @@ async def test_delete_language_translations_normalizes_language(admin_client, ad
     assert res.json()["deleted"] == 1
 
 
-# ── Delete translation queue cleanup (regression #335) ───────────────────────
+# ── Delete translation queue cleanup + running guard (regression #335, #338) ──
 
 async def test_delete_specific_translation_clears_queue_row(admin_client, admin_db):
     """Regression #335: DELETE /translations/{id}/{idx}/{lang} must also remove
@@ -480,6 +480,26 @@ async def test_delete_specific_translation_clears_queue_row(admin_client, admin_
     assert added == 1, "enqueue must return 1 after orphan queue row is cleaned up"
 
 
+async def test_delete_specific_translation_rejects_409_when_running(admin_client, admin_db):
+    """Regression #338: DELETE /translations/{id}/{idx}/{lang} must return 409
+    when a queue worker is actively translating the chapter — the worker would
+    re-insert the deleted translation via save_translation INSERT OR REPLACE."""
+    from services.translation_queue import enqueue
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "de", ["paragraph"])
+    await enqueue(100, 0, "de")
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE book_id=100 AND chapter_index=0 AND target_language='de'"
+        )
+        await db.commit()
+
+    res = await admin_client.delete("/api/admin/translations/100/0/de")
+    assert res.status_code == 409
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "de") == ["paragraph"]
+
+
 async def test_delete_language_translations_clears_queue_rows(admin_client, admin_db):
     """Regression #335: DELETE /translations/{id}/{lang} must remove non-running
     queue rows for that language so subsequent enqueue calls can proceed."""
@@ -489,7 +509,6 @@ async def test_delete_language_translations_clears_queue_rows(admin_client, admi
     await save_translation(100, 1, "zh", ["第二章"])
     await enqueue(100, 0, "zh")
     await enqueue(100, 1, "zh")
-    # Simulate a pending and a failed row
     async with aiosqlite.connect(admin_db) as db:
         await db.execute(
             "UPDATE translation_queue SET status='failed' WHERE book_id=100 AND chapter_index=1 AND target_language='zh'"
@@ -504,6 +523,28 @@ async def test_delete_language_translations_clears_queue_rows(admin_client, admi
     added_1 = await enqueue2(100, 1, "zh")
     assert added_0 == 1, "ch0 must be re-enqueueable after cleanup"
     assert added_1 == 1, "ch1 must be re-enqueueable after cleanup"
+
+
+async def test_delete_language_translations_rejects_409_when_running(admin_client, admin_db):
+    """Regression #338: DELETE /translations/{id}/{lang} must return 409 when
+    any queue worker is actively translating a chapter for that language."""
+    from services.translation_queue import enqueue
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "zh", ["章节0"])
+    await save_translation(100, 1, "zh", ["章节1"])
+    await enqueue(100, 1, "zh")
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE book_id=100 AND chapter_index=1 AND target_language='zh'"
+        )
+        await db.commit()
+
+    res = await admin_client.delete("/api/admin/translations/100/zh")
+    assert res.status_code == 409
+    detail = res.json()["detail"]
+    assert "1" in detail  # blocked chapter index mentioned
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["章节0"]
 
 
 async def test_delete_book_translations_clears_queue_rows(admin_client, admin_db):
@@ -526,29 +567,23 @@ async def test_delete_book_translations_clears_queue_rows(admin_client, admin_db
     assert added_zh == 1, "zh must be re-enqueueable after full book translation delete"
 
 
-async def test_delete_translation_preserves_running_queue_row(admin_client, admin_db):
-    """Regression #335: queue cleanup must NOT delete running rows — the worker
-    holds them and will call mark_queue_row_done when done."""
+async def test_delete_book_translations_rejects_409_when_running(admin_client, admin_db):
+    """Regression #338: DELETE /translations/{id} must return 409 when any
+    queue worker is actively translating any chapter of the book."""
     from services.translation_queue import enqueue
     await save_book(100, BOOK_META, BOOK_TEXT)
     await save_translation(100, 0, "de", ["paragraph"])
     await enqueue(100, 0, "de")
     async with aiosqlite.connect(admin_db) as db:
         await db.execute(
-            "UPDATE translation_queue SET status='running' WHERE book_id=100 AND chapter_index=0"
+            "UPDATE translation_queue SET status='running' WHERE book_id=100"
         )
         await db.commit()
 
-    res = await admin_client.delete("/api/admin/translations/100/0/de")
-    assert res.status_code == 200
-
-    async with aiosqlite.connect(admin_db) as db:
-        async with db.execute(
-            "SELECT status FROM translation_queue WHERE book_id=100 AND chapter_index=0 AND target_language='de'"
-        ) as cur:
-            row = await cur.fetchone()
-    assert row is not None, "running queue row must survive translation deletion"
-    assert row[0] == "running"
+    res = await admin_client.delete("/api/admin/translations/100")
+    assert res.status_code == 409
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "de") == ["paragraph"]
 
 
 # ── Audio ────────────────────────────────────────────────────────────────────

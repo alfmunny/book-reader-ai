@@ -112,6 +112,35 @@ async def test_enqueue_inserts_new_row():
     assert count == 1
 
 
+async def test_enqueue_normalizes_language_code():
+    """enqueue('ZH-CN') must store 'zh', not 'ZH-CN'.
+
+    Without normalization a queue row stored as 'ZH-CN' and a translation
+    saved under 'zh' never match — the reader keeps re-requesting an already-
+    done translation and queue status_for_chapter returns 'not queued'."""
+    from services.translation_queue import queue_status_for_chapter
+    await enqueue(5, 0, "ZH-CN", priority=50)
+    status = await queue_status_for_chapter(5, 0, "zh")
+    assert status["queued"] is True, "normalized 'zh' must find the row stored from 'ZH-CN'"
+
+
+async def test_enqueue_for_book_normalizes_language_codes():
+    """enqueue_for_book with 'ZH-CN' must enqueue rows stored as 'zh'."""
+    book_meta = {"title": "T", "authors": ["A"], "languages": ["de"],
+                 "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(110, book_meta, "Chapter I\n\nSome text here.")
+
+    from services.splitter import Chapter
+    fake_chapters = [Chapter(title="Ch1", text="Content")]
+    with patch("services.book_chapters.split_with_html_preference", new_callable=AsyncMock, return_value=fake_chapters):
+        count = await enqueue_for_book(110, target_languages=["ZH-CN"])
+    assert count == 1
+
+    from services.translation_queue import queue_status_for_chapter
+    status = await queue_status_for_chapter(110, 0, "zh")
+    assert status["queued"] is True
+
+
 async def test_enqueue_existing_pending_row_is_noop():
     await enqueue(1, 0, "en")
     count = await enqueue(1, 0, "en")

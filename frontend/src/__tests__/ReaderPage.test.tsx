@@ -339,6 +339,37 @@ describe("ReaderPage — error state", () => {
     await userEvent.click(link);
     expect(mockPush).toHaveBeenCalledWith("/");
   });
+
+  it("shows Retry button in error state", async () => {
+    mockGetBookChapters.mockRejectedValue(new Error("Network failure"));
+    render(<ReaderPage />);
+    await flushPromises();
+    expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it("clicking Retry re-fetches chapters and clears error on success", async () => {
+    mockGetBookChapters.mockRejectedValueOnce(new Error("Network failure"));
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Error state visible
+    const retryBtn = await screen.findByRole("button", { name: /retry/i });
+
+    // Second call succeeds
+    mockGetBookChapters.mockResolvedValue({
+      meta: SAMPLE_META,
+      chapters: SAMPLE_CHAPTERS,
+    });
+
+    await userEvent.click(retryBtn);
+    await flushPromises();
+
+    // Error is gone, chapter content appears
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+    });
+    expect(mockGetBookChapters).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("ReaderPage — chapter navigation", () => {

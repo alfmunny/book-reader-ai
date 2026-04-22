@@ -771,17 +771,20 @@ export default function ReaderPage() {
     ? current.text.split(/\n\n+/).filter((p) => p.trim())
     : [];
 
-  if (error)
-    return (
-      <div className="h-screen bg-parchment flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => router.push("/")} className="text-amber-700 underline">
-            Back to library
-          </button>
-        </div>
-      </div>
-    );
+  function retryChapterLoad() {
+    setError("");
+    setLoading(true);
+    chaptersCache.delete(bookId);
+    getBookChapters(Number(bookId))
+      .then((data) => {
+        chaptersCache.set(bookId, data.chapters);
+        metaCache.set(bookId, data.meta);
+        setChapters(data.chapters);
+        setMeta(data.meta);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }
 
   return (
     <div className="h-screen bg-parchment flex flex-col overflow-hidden">
@@ -1247,6 +1250,26 @@ export default function ReaderPage() {
                 {Array.from({ length: 14 }).map((_, i) => (
                   <div key={i} className={`h-4 bg-amber-200 rounded ${i % 5 === 4 ? "w-2/3" : "w-full"}`} />
                 ))}
+              </div>
+            ) : error ? (
+              <div className="max-w-prose mx-auto text-center py-16 px-4">
+                <BookOpenIcon className="w-10 h-10 text-amber-300 mx-auto mb-4" aria-hidden="true" />
+                <h2 className="font-serif text-lg text-ink mb-2">Failed to load chapter</h2>
+                <p className="text-sm text-stone-500 mb-6">{error}</p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={retryChapterLoad}
+                    className="px-4 py-2 rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors"
+                  >
+                    Retry
+                  </button>
+                  <button
+                    onClick={() => router.push("/")}
+                    className="px-4 py-2 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+                  >
+                    Back to library
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -1978,7 +2001,7 @@ export default function ReaderPage() {
 
 
       {/* ── Mobile floating bottom toolbar ─────────────────────────────── */}
-      {!loading && chapters.length > 0 && (
+      {!loading && (chapters.length > 0 || error) && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 safe-bottom">
           {/* Translation options expand panel */}
           {translateExpanded && translationEnabled && (

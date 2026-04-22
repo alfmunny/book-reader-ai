@@ -104,7 +104,11 @@ async def get_or_create_user(google_id: str, email: str, name: str, picture: str
                 (email, name, picture, google_id),
             )
             await db.commit()
-            return dict(row)
+            updated = dict(row)
+            updated["email"] = email
+            updated["name"] = name
+            updated["picture"] = picture
+            return updated
 
         # New user — check if this is the very first user (auto-admin)
         async with db.execute("SELECT COUNT(*) FROM users") as cursor:
@@ -138,7 +142,11 @@ async def get_or_create_user_github(github_id: str, email: str, name: str, pictu
                 (email, name, picture, github_id),
             )
             await db.commit()
-            return dict(row)
+            updated = dict(row)
+            updated["email"] = email
+            updated["name"] = name
+            updated["picture"] = picture
+            return updated
 
         # Try linking to existing account by email (user signed in via Google before)
         if email:
@@ -150,7 +158,11 @@ async def get_or_create_user_github(github_id: str, email: str, name: str, pictu
                     (github_id, name, picture, row["id"]),
                 )
                 await db.commit()
-                return dict(row)
+                updated = dict(row)
+                updated["github_id"] = github_id
+                updated["name"] = name
+                updated["picture"] = picture
+                return updated
 
         # New user
         async with db.execute("SELECT COUNT(*) FROM users") as cursor:

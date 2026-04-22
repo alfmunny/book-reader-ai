@@ -66,6 +66,28 @@ async def test_github_existing_by_github_id_updates_fields():
     assert refreshed["name"] == "New"
 
 
+async def test_google_existing_user_returns_updated_profile():
+    """Regression: get_or_create_user must return the updated profile, not stale data.
+
+    The function updated the DB but returned the pre-UPDATE row, so the login
+    response showed the old name/picture for the entire session.
+    """
+    await get_or_create_user("gupdate1", "old@example.com", "Old Name", "old.jpg")
+    u2 = await get_or_create_user("gupdate1", "new@example.com", "New Name", "new.jpg")
+    assert u2["email"] == "new@example.com"
+    assert u2["name"] == "New Name"
+    assert u2["picture"] == "new.jpg"
+
+
+async def test_github_existing_by_github_id_returns_updated_profile():
+    """Regression: get_or_create_user_github must return the updated profile."""
+    await get_or_create_user_github("ghupdate1", "old@g.com", "Old", "old.jpg")
+    u2 = await get_or_create_user_github("ghupdate1", "new@g.com", "New", "new.jpg")
+    assert u2["email"] == "new@g.com"
+    assert u2["name"] == "New"
+    assert u2["picture"] == "new.jpg"
+
+
 async def test_github_links_to_existing_google_user_by_email():
     google_user = await get_or_create_user("g99", "shared@example.com", "Shared", "")
     gh_user = await get_or_create_user_github("gh4", "shared@example.com", "Shared2", "")

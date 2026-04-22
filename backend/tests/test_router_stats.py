@@ -48,6 +48,11 @@ _BOOK_META = {
     "cover": "",
 }
 BOOK_ID = 5001
+_CH = "word " * 200
+_BOOK_TEXT = (
+    f"CHAPTER I\n\n{_CH}\n\nCHAPTER II\n\n{_CH}\n\nCHAPTER III\n\n{_CH}"
+    f"\n\nCHAPTER IV\n\n{_CH}\n\nCHAPTER V\n\n{_CH}\n\nCHAPTER VI\n\n{_CH}"
+)
 
 
 # ── Zero state ────────────────────────────────────────────────────────────────
@@ -68,7 +73,7 @@ async def test_stats_fresh_user_returns_zeros(client, tmp_db):
 # ── Totals ────────────────────────────────────────────────────────────────────
 
 async def test_stats_totals_reflect_user_data(client, test_user, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await upsert_reading_progress(test_user["id"], BOOK_ID, 2)
     await save_word(test_user["id"], "serendipity", BOOK_ID, 0, "It was serendipity.")
     await save_word(test_user["id"], "ephemeral", BOOK_ID, 1, "An ephemeral moment.")
@@ -145,7 +150,7 @@ async def test_longest_streak(client, test_user, tmp_db):
 # ── Activity heatmap ──────────────────────────────────────────────────────────
 
 async def test_activity_includes_vocabulary_events(client, test_user, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_word(test_user["id"], "loquacious", BOOK_ID, 0, "A loquacious narrator.")
     resp = await client.get("/api/user/stats")
     activity = resp.json()["activity"]
@@ -158,7 +163,7 @@ async def test_activity_includes_vocabulary_events(client, test_user, tmp_db):
 # ── Reading progress hook ─────────────────────────────────────────────────────
 
 async def test_progress_update_logs_reading_event(client, test_user, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 3})
     assert resp.status_code == 200
 
@@ -175,7 +180,7 @@ async def test_progress_and_event_written_by_combined_function(test_user, tmp_db
     written via two separate service calls."""
     from services.db import upsert_progress_and_log_event  # ImportError before the fix
 
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await upsert_progress_and_log_event(test_user["id"], BOOK_ID, 7)
 
     async with aiosqlite.connect(tmp_db) as db:
@@ -195,7 +200,7 @@ async def test_progress_and_event_written_by_combined_function(test_user, tmp_db
 
 
 async def test_progress_update_multiple_chapters_all_logged(client, test_user, tmp_db):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     for ch in range(4):
         await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": ch})
 
@@ -215,7 +220,7 @@ async def test_streak_uses_utc_not_local_date(test_user, tmp_db):
     server's local date.today() returns 2026-04-20.  The streak must still be 1
     because the event is 'today' in UTC — the same reference frame SQLite uses.
     """
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     async with aiosqlite.connect(tmp_db) as db:
         await db.execute(
             "INSERT INTO reading_history (user_id, book_id, chapter_index, read_at)"

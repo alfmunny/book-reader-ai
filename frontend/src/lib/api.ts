@@ -594,6 +594,7 @@ export interface VocabularyWord {
   word: string;
   lemma?: string | null;
   language?: string | null;
+  created_at?: string | null;
   occurrences: VocabularyOccurrence[];
 }
 

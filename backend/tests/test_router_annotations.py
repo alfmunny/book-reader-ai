@@ -214,3 +214,16 @@ async def test_get_all_returns_own_annotations_only(client, test_user):
 async def test_get_all_requires_auth(anon_client):
     resp = await anon_client.get("/api/annotations/all")
     assert resp.status_code == 401
+
+
+async def test_create_annotation_rejects_nonexistent_book(client, test_user):
+    """POST /annotations for a book that doesn't exist must return 404.
+
+    SQLite FK enforcement is OFF so the INSERT would otherwise silently
+    succeed and store an orphaned row referencing a non-existent book."""
+    resp = await client.post("/api/annotations", json={
+        "book_id": 777777,
+        "chapter_index": 0,
+        "sentence_text": "Orphan sentence.",
+    })
+    assert resp.status_code == 404

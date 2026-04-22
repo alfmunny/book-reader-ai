@@ -2,9 +2,13 @@
 
 import pytest
 from httpx import AsyncClient
+from services.db import save_book, save_insight
+
+_META = {"title": "Test", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
 
 
 async def test_post_creates_insight_and_returns_it(client: AsyncClient):
+    await save_book(1, _META, "text")
     payload = {
         "book_id": 1,
         "chapter_index": 2,
@@ -22,6 +26,7 @@ async def test_post_creates_insight_and_returns_it(client: AsyncClient):
 
 
 async def test_post_with_null_chapter_index(client: AsyncClient):
+    await save_book(5, _META, "text")
     payload = {
         "book_id": 5,
         "chapter_index": None,
@@ -36,7 +41,8 @@ async def test_post_with_null_chapter_index(client: AsyncClient):
 
 
 async def test_get_returns_insights_for_book_id(client: AsyncClient):
-    # Create two insights for book 10 and one for book 99
+    await save_book(10, _META, "text")
+    await save_book(99, _META, "text")
     for i in range(2):
         await client.post(
             "/api/insights",
@@ -56,16 +62,13 @@ async def test_get_returns_insights_for_book_id(client: AsyncClient):
 
 async def test_get_returns_only_current_users_insights(client: AsyncClient, test_user):
     """A second authenticated client should not see the first user's insights."""
-    import services.db as db_module
-    from services.db import save_insight
+    await save_book(7, _META, "text")
 
-    # Create insight for test_user (via client fixture)
     await client.post(
         "/api/insights",
         json={"book_id": 7, "question": "Q1", "answer": "A1"},
     )
 
-    # Create insight for a different user directly in DB
     from services.db import get_or_create_user
     other_user = await get_or_create_user(
         google_id="other-google",
@@ -78,12 +81,12 @@ async def test_get_returns_only_current_users_insights(client: AsyncClient, test
     resp = await client.get("/api/insights", params={"book_id": 7})
     assert resp.status_code == 200
     data = resp.json()
-    # Only the current user's insight should be returned
     assert len(data) == 1
     assert data[0]["question"] == "Q1"
 
 
 async def test_delete_returns_ok(client: AsyncClient):
+    await save_book(3, _META, "text")
     resp = await client.post(
         "/api/insights",
         json={"book_id": 3, "question": "Delete me", "answer": "Yes"},
@@ -102,7 +105,7 @@ async def test_delete_returns_404_if_not_found(client: AsyncClient):
 
 async def test_delete_returns_404_if_wrong_user(client: AsyncClient, test_user):
     """Insight belonging to another user should not be deletable."""
-    from services.db import save_insight, get_or_create_user
+    from services.db import get_or_create_user
 
     other_user = await get_or_create_user(
         google_id="other-google-2",
@@ -119,6 +122,8 @@ async def test_delete_returns_404_if_wrong_user(client: AsyncClient, test_user):
 
 async def test_get_all_returns_insights_across_books(client: AsyncClient, test_user):
     """GET /api/insights/all returns all of the user's insights with book_title."""
+    await save_book(20, _META, "text")
+    await save_book(21, _META, "text")
     await client.post("/api/insights", json={"book_id": 20, "question": "Q-A", "answer": "A-A"})
     await client.post("/api/insights", json={"book_id": 21, "question": "Q-B", "answer": "A-B"})
 
@@ -133,7 +138,8 @@ async def test_get_all_returns_insights_across_books(client: AsyncClient, test_u
 
 async def test_get_all_returns_own_insights_only(client: AsyncClient, test_user):
     """GET /api/insights/all must not return other users' insights."""
-    from services.db import save_insight, get_or_create_user
+    await save_book(30, _META, "text")
+    from services.db import get_or_create_user
 
     other = await get_or_create_user(
         google_id="other-all-g", email="other-all@example.com", name="Other", picture=""
@@ -157,3 +163,15 @@ async def test_insights_require_auth(anon_client):
 
     resp = await anon_client.post("/api/insights", json={"book_id": 1, "question": "Q", "answer": "A"})
     assert resp.status_code == 401
+
+
+async def test_post_insight_rejects_nonexistent_book(client: AsyncClient):
+    """POST /insights for a book that doesn't exist must return 404.
+
+    SQLite FK enforcement is OFF so the INSERT would otherwise silently
+    succeed and store an orphaned row referencing a non-existent book."""
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 777777, "question": "Q?", "answer": "A."},
+    )
+    assert resp.status_code == 404

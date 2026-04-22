@@ -513,6 +513,7 @@ async def test_get_chapter_translation_requires_login(anon_client):
 
 async def test_chapter_translation_requires_gemini_key(client):
     """Logged-in user without a Gemini key cannot enqueue new translation."""
+    await save_book(9999, MOCK_META, "text")
     resp = await client.post(
         "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},
@@ -525,6 +526,7 @@ async def test_chapter_translation_allowed_with_gemini_key(client, test_user):
     """Logged-in user with a Gemini key can enqueue translation."""
     from services.db import set_user_gemini_key
     from services.auth import encrypt_api_key
+    await save_book(9999, MOCK_META, "text")
     await set_user_gemini_key(test_user["id"], encrypt_api_key("my-key"))
     resp = await client.post(
         "/api/books/9999/chapters/0/translation",
@@ -549,6 +551,7 @@ async def test_chapter_translation_cache_served_without_login(anon_client):
 
 async def test_chapter_translation_requires_login_when_not_cached(anon_client):
     """Unauthenticated request for a non-cached chapter → 401."""
+    await save_book(9999, MOCK_META, "text")
     resp = await anon_client.post(
         "/api/books/9999/chapters/0/translation",
         json={"target_language": "de"},
@@ -586,6 +589,7 @@ async def test_chapter_translation_corrupted_gemini_key_returns_403(client, test
     InvalidToken raises HTTPException(500) instead of falling through to 403.
     """
     from services.db import set_user_gemini_key
+    await save_book(9999, MOCK_META, "text")
     # Store a raw string that is not valid Fernet ciphertext
     await set_user_gemini_key(test_user["id"], "not-valid-fernet-ciphertext")
     resp = await client.post(
@@ -594,3 +598,36 @@ async def test_chapter_translation_corrupted_gemini_key_returns_403(client, test
     )
     assert resp.status_code == 403
     assert "Gemini" in resp.json()["detail"]
+
+
+async def test_chapter_translation_rejects_nonexistent_book(client, test_user):
+    """POST translation for a non-existent book must return 404 (not 403/500).
+
+    SQLite FK enforcement is OFF — without this check the endpoint would
+    either leak auth status or silently enqueue work for a ghost book."""
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-key"))
+    resp = await client.post(
+        "/api/books/888888/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 404
+
+
+async def test_enqueue_all_rejects_nonexistent_book(client):
+    """POST enqueue-all for a non-existent book must return 404."""
+    resp = await client.post(
+        "/api/books/888888/translations/enqueue-all",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 404
+
+
+async def test_retry_translation_rejects_nonexistent_book(client):
+    """POST retry for a non-existent book must return 404."""
+    resp = await client.post(
+        "/api/books/888888/chapters/0/translation/retry",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 404

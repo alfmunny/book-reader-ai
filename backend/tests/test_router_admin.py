@@ -1571,3 +1571,72 @@ async def test_queue_delete_item_sql_guard_prevents_running_delete(admin_client,
         ) as cur:
             row = await cur.fetchone()
     assert row is not None and row[0] == "running", "Running row must not be deleted"
+
+
+# ── delete_book running-queue guard (#370) ────────────────────────────────────
+
+_BOOK_META = {"title": "T", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
+
+
+async def test_delete_book_rejects_when_translation_running(admin_client, admin_db):
+    """Regression #370: DELETE /admin/books/{id} must return 409 if a queue row
+    is currently running — deleting it would silently discard the in-flight job."""
+    await save_book(1, _BOOK_META, "text")
+
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            """INSERT INTO translation_queue
+               (book_id, chapter_index, target_language, status, priority)
+               VALUES (1, 0, 'de', 'running', 100)"""
+        )
+        await db.commit()
+
+    res = await admin_client.delete("/api/admin/books/1")
+    assert res.status_code == 409, (
+        "delete_book must return 409 when a translation job is running (#370)"
+    )
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute("SELECT id FROM books WHERE id=1") as cur:
+            row = await cur.fetchone()
+    assert row is not None, "Book must not be deleted when a queue job is running"
+
+
+async def test_delete_book_sql_guard_preserves_running_queue_row(admin_client, admin_db):
+    """Regression #370: even if the Python 409 check races, SQL guard must
+    preserve running translation_queue rows when deleting a book."""
+    await save_book(2, _BOOK_META, "text")
+
+    async with aiosqlite.connect(admin_db) as db:
+        cursor = await db.execute(
+            """INSERT INTO translation_queue
+               (book_id, chapter_index, target_language, status, priority)
+               VALUES (2, 0, 'fr', 'running', 100)"""
+        )
+        running_id = cursor.lastrowid
+        await db.commit()
+
+    # Simulate race: make the SELECT status check see 'pending' so the Python
+    # 409 guard passes, but the actual row in the DB is 'running'
+    import aiosqlite as _real_aio
+    import routers.admin as admin_mod
+
+    monkeypatch_fake = _make_bypass_status_check_aiosqlite(_real_aio, running_id)
+
+    orig_setattr = None
+    import routers.admin as _admin_mod
+    old_aio = _admin_mod.aiosqlite
+    _admin_mod.aiosqlite = monkeypatch_fake
+    try:
+        res = await admin_client.delete("/api/admin/books/2")
+    finally:
+        _admin_mod.aiosqlite = old_aio
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE id=?", (running_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    assert row is not None and row[0] == "running", (
+        "SQL guard (AND status != 'running') must preserve running queue row (#370)"
+    )

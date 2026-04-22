@@ -224,10 +224,32 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
     if not await get_cached_book(book_id):
         raise HTTPException(status_code=404, detail="Book not found")
     async with aiosqlite.connect(DB_PATH) as db:
+        # Reject if any worker is running — deleting the queue row would cause
+        # mark_queue_row_done() to no-op and the worker to discard its result. (#370)
+        async with db.execute(
+            "SELECT chapter_index, target_language FROM translation_queue "
+            "WHERE book_id=? AND status='running' LIMIT 1",
+            (book_id,),
+        ) as cur:
+            running = await cur.fetchone()
+        if running:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"A translation job is currently running for this book "
+                    f"(chapter {running[0]}, language '{running[1]}'). "
+                    "Wait for it to finish before deleting."
+                ),
+            )
         await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
         await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))
-        await db.execute("DELETE FROM translation_queue WHERE book_id = ?", (book_id,))
+        # SQL guard: skip running rows in case a job transitioned after the
+        # Python check above (same pattern as delete_book_translations, #335).
+        await db.execute(
+            "DELETE FROM translation_queue WHERE book_id=? AND status != 'running'",
+            (book_id,),
+        )
         await db.execute("DELETE FROM word_occurrences WHERE book_id = ?", (book_id,))
         await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"

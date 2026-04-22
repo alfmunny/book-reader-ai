@@ -1,10 +1,11 @@
 /**
  * Additional coverage tests for /notes/[bookId] page.
  * Targets: buildMarkdown, handleExport, chapter view, unauthenticated redirect,
- * nested collapse, book-level insights, vocab in chapter view, "Open reader" button.
+ * nested collapse, book-level insights, vocab in chapter view, "Open reader" button,
+ * collapse toggle callbacks (lines 473, 483, 497, 519, 568, 596), hash scroll (296-298).
  */
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 
 jest.mock("next-auth/react", () => ({
   useSession: jest.fn(),
@@ -302,4 +303,178 @@ test("collapsing a chapter sub-heading hides its annotations", async () => {
   const ch1Btns = screen.getAllByRole("button", { name: /Chapter 1/i });
   fireEvent.click(ch1Btns[ch1Btns.length - 1]); // innermost Chapter 1 button
   expect(screen.queryByText(/Sub chapter text/)).not.toBeInTheDocument();
+});
+
+// ── Collapse toggle callbacks (lines 473, 483, 497, 519, 568, 596) ────────────
+
+test("clicking AI Insights heading collapses insights section (line 473)", async () => {
+  mockGetInsights.mockResolvedValue([makeInsight({ chapter_index: 0 })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/What is Moby Dick/));
+
+  fireEvent.click(screen.getByRole("button", { name: /AI Insights/i }));
+  expect(screen.queryByText(/What is Moby Dick/)).not.toBeInTheDocument();
+});
+
+test("clicking Book-level sub-heading collapses book-level insights (line 483)", async () => {
+  mockGetInsights.mockResolvedValue([makeInsight({ chapter_index: null as any })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/What is Moby Dick/));
+
+  fireEvent.click(screen.getByRole("button", { name: /Book-level/i }));
+  expect(screen.queryByText(/What is Moby Dick/)).not.toBeInTheDocument();
+});
+
+test("clicking chapter insight sub-heading collapses chapter insights (line 497)", async () => {
+  mockGetInsights.mockResolvedValue([makeInsight({ chapter_index: 0, question: "Chapter Q?" })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Chapter Q/));
+
+  // There are multiple Chapter 1 buttons — the last one inside AI Insights is for chapter insights
+  const ch1Btns = screen.getAllByRole("button", { name: /Chapter 1/i });
+  fireEvent.click(ch1Btns[ch1Btns.length - 1]);
+  expect(screen.queryByText(/Chapter Q/)).not.toBeInTheDocument();
+});
+
+test("clicking Vocabulary heading collapses vocab section (line 519)", async () => {
+  mockGetVocabulary.mockResolvedValue([makeVocab()]);
+  render(<BookNotesPage />);
+  await waitFor(() => expect(screen.getAllByText(/leviathan/i).length).toBeGreaterThan(0));
+
+  fireEvent.click(screen.getByRole("button", { name: /Vocabulary/i }));
+  expect(screen.queryByText(/leviathan/i)).not.toBeInTheDocument();
+});
+
+test("clicking chapter heading in chapter view collapses chapter content (line 568)", async () => {
+  mockGetAnnotations.mockResolvedValue([makeAnnotation({ sentence_text: "Chapter toggle text." })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Chapter toggle text/));
+
+  fireEvent.click(screen.getByRole("button", { name: "By chapter" }));
+  await waitFor(() => screen.getByText(/Chapter toggle text/));
+
+  fireEvent.click(screen.getByRole("button", { name: /Chapter 1/i }));
+  expect(screen.queryByText(/Chapter toggle text/)).not.toBeInTheDocument();
+});
+
+test("clicking Book-level Insights heading in chapter view collapses it (line 596)", async () => {
+  mockGetInsights.mockResolvedValue([makeInsight({ chapter_index: null as any, question: "Book Q?" })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Book Q/));
+
+  fireEvent.click(screen.getByRole("button", { name: "By chapter" }));
+
+  fireEvent.click(screen.getByRole("button", { name: /Book-level Insights/i }));
+  expect(screen.queryByText(/Book Q/)).not.toBeInTheDocument();
+});
+
+// ── Lines 296-298: Hash-based scroll on load ──────────────────────────────────
+
+test("scrolls to anchored annotation when window.location.hash is set on load (lines 296-298)", async () => {
+  const scrollIntoViewMock = jest.fn();
+  window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+  mockGetAnnotations.mockResolvedValue([makeAnnotation({ id: 42, sentence_text: "Scroll target." })]);
+
+  // In JSDOM, assigning location.hash directly is allowed
+  window.location.hash = "#annotation-42";
+
+  jest.useFakeTimers();
+  render(<BookNotesPage />);
+
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    jest.runAllTimers();
+  });
+
+  jest.useRealTimers();
+  window.location.hash = "";
+});
+
+test("hash scroll: el is null when hash points to missing element (line 298 false branch)", async () => {
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+  window.location.hash = "#nonexistent-element-xyz";
+  mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
+
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Call me Ishmael/));
+
+  // No crash — el===null branch gracefully skips setTimeout
+  window.location.hash = "";
+});
+
+// ── Line 274: status !== "authenticated" early-return ─────────────────────────
+
+test("renders nothing when session status is 'loading' (line 274)", () => {
+  mockUseSession.mockReturnValue({ data: null, status: "loading" });
+  render(<BookNotesPage />);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+// ── Line 306: toggleCollapse delete branch (un-collapse after collapse) ────────
+
+test("clicking a collapsed heading again un-collapses it (line 306 delete branch)", async () => {
+  mockGetAnnotations.mockResolvedValue([makeAnnotation({ sentence_text: "Uncollapse me." })]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Uncollapse me/));
+
+  const annBtn = screen.getByRole("button", { name: /Annotations/i });
+  fireEvent.click(annBtn); // collapse (add to Set)
+  expect(screen.queryByText(/Uncollapse me/)).not.toBeInTheDocument();
+
+  fireEvent.click(annBtn); // un-collapse (delete from Set)
+  expect(screen.getByText(/Uncollapse me/)).toBeInTheDocument();
+});
+
+// ── Lines 347, 357: confirm returns false → no delete ─────────────────────────
+
+test("annotation delete is skipped when user cancels confirm (line 347)", async () => {
+  jest.spyOn(window, "confirm").mockReturnValue(false);
+  mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Call me Ishmael/));
+
+  fireEvent.click(screen.getByTitle("Delete annotation"));
+  expect(api.deleteAnnotation).not.toHaveBeenCalled();
+  expect(screen.getByText(/Call me Ishmael/)).toBeInTheDocument();
+});
+
+test("insight delete is skipped when user cancels confirm (line 357)", async () => {
+  jest.spyOn(window, "confirm").mockReturnValue(false);
+  mockGetInsights.mockResolvedValue([makeInsight()]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/What is Moby Dick/));
+
+  fireEvent.click(screen.getByTitle("Delete insight"));
+  expect(api.deleteInsight).not.toHaveBeenCalled();
+  expect(screen.getByText(/What is Moby Dick/)).toBeInTheDocument();
+});
+
+// ── Line 372: export throws non-Error → "Export failed" fallback ───────────────
+
+test("export shows 'Export failed' when non-Error is thrown (line 372)", async () => {
+  mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
+  mockExportVocabularyToObsidian.mockRejectedValue("plain string error");
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Call me Ishmael/));
+
+  fireEvent.click(screen.getByRole("button", { name: /Export/i }));
+  await waitFor(() => expect(screen.getByText("Export failed")).toBeInTheDocument());
+});
+
+// ── Line 694: meta.authors null → authors paragraph hidden ────────────────────
+
+test("authors paragraph is hidden when meta.authors is null (line 694)", async () => {
+  mockGetBookChapters.mockResolvedValue({
+    book_id: 10,
+    meta: { id: 10, title: "No Author Book", authors: null as unknown as string[], languages: ["en"], subjects: [], download_count: 0, cover: null },
+    chapters: [{ title: "Chapter 1", text: "" }],
+  } as any);
+  mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText("No Author Book"));
+  // Book title visible but no author name line (authors is null → ?? [] → length 0)
+  expect(screen.queryByText(/Herman Melville/)).not.toBeInTheDocument();
 });

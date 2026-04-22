@@ -745,3 +745,54 @@ async def test_queue_put_settings_non_admin_blocked(admin_db, admin_user):
     app.dependency_overrides.clear()
 
     assert res.status_code == 403
+
+
+# ── Corrupted Gemini key in admin endpoints ───────────────────────────────────
+
+_CORRUPT_KEY = "not-a-valid-fernet-token"
+
+
+async def test_retranslate_with_corrupted_key_falls_back_to_google(admin_client, admin_user, admin_db):
+    """Corrupted admin Gemini key must not cause 500 — should fall back to Google."""
+    await save_book(200, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            "UPDATE users SET gemini_key=? WHERE id=?", (_CORRUPT_KEY, admin_user["id"])
+        )
+        await conn.commit()
+
+    captured = []
+
+    async def capture_translate(text, src, tgt, provider="google", gemini_key=None):
+        captured.append(provider)
+        return ["Translated."]
+
+    with patch("routers.admin.do_translate", side_effect=capture_translate):
+        res = await admin_client.post("/api/admin/translations/200/0/fr/retranslate")
+
+    assert res.status_code == 200
+    assert captured and captured[0] == "google"
+
+
+async def test_retranslate_all_with_corrupted_key_falls_back_to_google(admin_client, admin_user, admin_db):
+    """Corrupted admin Gemini key in retranslate-all must fall back to Google."""
+    await save_book(200, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            "UPDATE users SET gemini_key=? WHERE id=?", (_CORRUPT_KEY, admin_user["id"])
+        )
+        await conn.commit()
+
+    captured = []
+
+    async def capture_translate(text, src, tgt, provider="google", gemini_key=None):
+        captured.append(provider)
+        return ["Translated."]
+
+    with patch("routers.admin.do_translate", side_effect=capture_translate):
+        res = await admin_client.post(
+            "/api/admin/translations/200/retranslate-all", json={"target_language": "fr"}
+        )
+
+    assert res.status_code == 200
+    assert captured and all(p == "google" for p in captured)

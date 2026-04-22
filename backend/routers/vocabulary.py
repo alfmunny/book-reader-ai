@@ -260,7 +260,13 @@ async def export_obsidian(
             detail="Obsidian settings (GitHub token and repo) not configured",
         )
 
-    github_token = decrypt_api_key(github_token_enc)
+    try:
+        github_token = decrypt_api_key(github_token_enc)
+    except HTTPException:
+        raise HTTPException(
+            status_code=400,
+            detail="Your GitHub token could not be decrypted. Please remove it and add it again in your profile.",
+        )
     export_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     all_vocab = await get_vocabulary(user["id"])
 

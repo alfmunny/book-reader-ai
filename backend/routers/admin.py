@@ -630,18 +630,34 @@ async def move_translation(
                         "Delete it first, then retry the move."
                     ),
                 )
+        # Reject if the destination chapter's queue row is running: the worker
+        # will save a new translation that would silently overwrite the move.
+        async with db.execute(
+            "SELECT 1 FROM translation_queue "
+            "WHERE book_id=? AND chapter_index=? AND target_language=? AND status='running'",
+            (book_id, new_idx, target_language),
+        ) as cursor:
+            if await cursor.fetchone() is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Chapter {new_idx} is currently being translated. "
+                        "Wait for it to finish, then retry the move."
+                    ),
+                )
         await db.execute(
             "UPDATE translations "
             "SET chapter_index=? "
             "WHERE book_id=? AND chapter_index=? AND target_language=?",
             (new_idx, book_id, chapter_index, target_language),
         )
-        # A queue row at the destination (pending/running/failed) would
-        # let the worker later translate over the top. Clear it — the
-        # move means we're asserting this chapter is now done.
+        # A queue row at the destination (pending/failed) would let the worker
+        # later translate over the top. Clear it — the move means we're
+        # asserting this chapter is now done. Running rows are already rejected
+        # above, so only non-running rows can remain here.
         await db.execute(
             "DELETE FROM translation_queue "
-            "WHERE book_id=? AND chapter_index=? AND target_language=?",
+            "WHERE book_id=? AND chapter_index=? AND target_language=? AND status != 'running'",
             (book_id, new_idx, target_language),
         )
         await db.commit()

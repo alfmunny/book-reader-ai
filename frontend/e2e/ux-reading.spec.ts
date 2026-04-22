@@ -153,8 +153,8 @@ test.describe("Display customisation (desktop)", () => {
     await aaBtn.click();
     const panel = page.getByTestId("typography-panel");
     await expect(panel).toBeVisible();
-    // Click "L" (lg) font size option
-    await panel.getByRole("button", { name: "L" }).click();
+    // Click "L" (lg) font size option — use exact to avoid matching XL/Normal/Relaxed
+    await panel.getByRole("button", { name: "L", exact: true }).click();
     // data-font-size attribute should update on <html>
     const fontSize = await page.evaluate(() => document.documentElement.getAttribute("data-font-size"));
     expect(fontSize).toBe("lg");
@@ -201,7 +201,7 @@ test.describe("Display customisation (desktop)", () => {
     const aaBtn = page.locator('button[title="Typography settings"]');
     await aaBtn.click();
     const panel = page.getByTestId("typography-panel");
-    await panel.getByRole("button", { name: "L" }).click();
+    await panel.getByRole("button", { name: "L", exact: true }).click();
     // Close panel by clicking outside
     await page.keyboard.press("Escape");
 

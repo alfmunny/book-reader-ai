@@ -10,8 +10,15 @@ Install extra dependencies first:
     pip install -r scripts/requirements-pretranslate.txt
 
 Usage:
-    # Translate one book into German (MarianMT default)
+    # Translate one book into German (MarianMT default) → write to local DB
     python scripts/pretranslate.py --book-id 1342 --lang de
+
+    # Translate and upload directly to a remote server
+    python scripts/pretranslate.py --book-id 11 --lang de \\
+        --server-url https://your-app.railway.app --admin-token <JWT>
+
+    # Export translations to JSON for manual upload later
+    python scripts/pretranslate.py --book-id 11 --lang de --export alice_de.json
 
     # Translate all books into French using Ollama
     python scripts/pretranslate.py --all --lang fr --provider ollama --model llama3:8b
@@ -21,6 +28,11 @@ Usage:
 
     # Re-translate even if cache exists
     python scripts/pretranslate.py --book-id 1342 --lang de --force
+
+Recommended book candidates for pre-translation seeding:
+    11    Alice's Adventures in Wonderland (12 chapters, ~26 k words) — short demo
+    1342  Pride and Prejudice (61 chapters, ~122 k words) — classic English novel
+    2600  War and Peace (365 chapters, ~580 k words) — comprehensive but slow
 """
 
 import argparse
@@ -54,6 +66,10 @@ MARIAN_PAIRS: dict[str, str] = {
 
 MARIAN_MAX_TOKENS = 480  # Leave headroom below the 512-token limit
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÀ-ɏ一-鿿])")
+
+# Batch size for server uploads: POST this many chapters at once to avoid
+# hitting request-body size limits on PaaS platforms.
+UPLOAD_BATCH_SIZE = 20
 
 
 # ── Text chunking ─────────────────────────────────────────────────────────────
@@ -225,6 +241,37 @@ async def _save(book_id: int, chapter_index: int, lang: str,
     )
 
 
+# ── Server upload ─────────────────────────────────────────────────────────────
+
+def _upload_batch(entries: list[dict], server_url: str, admin_token: str) -> int:
+    """POST a batch of translation entries to the server import endpoint.
+
+    Returns the number of entries successfully imported.
+    Raises RuntimeError on HTTP failure.
+    """
+    try:
+        import requests as _req
+    except ImportError:
+        _missing_deps("requests")
+
+    url = server_url.rstrip("/") + "/api/admin/translations/import"
+    headers = {"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"}
+    body = {"entries": entries}
+
+    resp = _req.post(url, json=body, headers=headers, timeout=60)
+    if resp.status_code == 404:
+        raise RuntimeError(
+            f"Server returned 404 for {url}. Check --server-url and ensure the book "
+            f"(id={entries[0]['book_id']}) exists on the server."
+        )
+    if resp.status_code == 401:
+        raise RuntimeError("Server returned 401 Unauthorized. Check --admin-token.")
+    if not resp.ok:
+        raise RuntimeError(f"Server upload failed: {resp.status_code} {resp.text[:200]}")
+
+    return resp.json().get("imported", len(entries))
+
+
 # ── Chapter extraction ────────────────────────────────────────────────────────
 
 def _get_chapters(book: dict) -> list[dict]:
@@ -256,6 +303,13 @@ async def run(args: argparse.Namespace) -> None:
         print("No books found.")
         return
 
+    server_url: str | None = getattr(args, "server_url", None)
+    admin_token: str | None = getattr(args, "admin_token", None)
+    export_path: str | None = getattr(args, "export", None)
+
+    # Buffer for --export and batched server uploads
+    all_entries: list[dict] = []
+
     # Translator is loaded lazily on first real translation (skipped for --dry-run)
     translator = None
 
@@ -272,6 +326,7 @@ async def run(args: argparse.Namespace) -> None:
     total_chapters = 0
     translated_count = 0
     skipped_count = 0
+    upload_count = 0
 
     for book in books:
         title = book.get("title") or f"Book #{book['id']}"
@@ -279,11 +334,13 @@ async def run(args: argparse.Namespace) -> None:
 
         print(f"\nBook {book['id']}: {title} — {len(chapters)} chapter(s)")
 
+        book_entries: list[dict] = []
+
         for idx, ch in enumerate(chapters):
             already = not args.force and await _is_cached(book["id"], idx, args.lang)
             total_chapters += 1
 
-            if already:
+            if already and not server_url and not export_path:
                 skipped_count += 1
                 print(f"  [{idx + 1}/{len(chapters)}] {ch['title'][:50]} — already cached, skipping")
                 continue
@@ -309,15 +366,58 @@ async def run(args: argparse.Namespace) -> None:
                 translated.append(t.translate_paragraph(para))
 
             elapsed = time.time() - t0
-            await _save(
-                book["id"], idx, args.lang, translated,
-                provider=t.provider_tag(),
-                model=t.model_tag(),
-            )
-            translated_count += 1
-            print(f" done ({elapsed:.1f}s)")
 
-    print(f"\nDone. {translated_count} translated, {skipped_count} skipped, {total_chapters} total.")
+            entry = {
+                "book_id": book["id"],
+                "chapter_index": idx,
+                "target_language": args.lang,
+                "paragraphs": translated,
+                "provider": t.provider_tag(),
+                "model": t.model_tag(),
+                "title_translation": None,
+            }
+
+            if server_url:
+                # Accumulate and upload in batches
+                book_entries.append(entry)
+                if len(book_entries) >= UPLOAD_BATCH_SIZE:
+                    n = _upload_batch(book_entries, server_url, admin_token or "")
+                    upload_count += n
+                    book_entries = []
+                    print(f" uploaded ({elapsed:.1f}s)")
+                else:
+                    print(f" translated ({elapsed:.1f}s), buffering...")
+            elif export_path:
+                all_entries.append(entry)
+                print(f" done ({elapsed:.1f}s)")
+            else:
+                await _save(book["id"], idx, args.lang, translated,
+                            provider=t.provider_tag(), model=t.model_tag())
+                print(f" done ({elapsed:.1f}s)")
+
+            translated_count += 1
+
+        # Flush remaining book entries to server
+        if server_url and book_entries:
+            n = _upload_batch(book_entries, server_url, admin_token or "")
+            upload_count += n
+            print(f"  → Uploaded {n} chapter(s) for book {book['id']}")
+
+    # Write export file
+    if export_path and all_entries:
+        with open(export_path, "w", encoding="utf-8") as f:
+            json.dump({"entries": all_entries}, f, ensure_ascii=False, indent=2)
+        print(f"\nExported {len(all_entries)} chapter(s) to {export_path}")
+        print(f"Upload with:\n  curl -X POST {'{SERVER_URL}'}/api/admin/translations/import \\")
+        print(f"    -H 'Authorization: Bearer {'{ADMIN_JWT}'}' \\")
+        print(f"    -H 'Content-Type: application/json' \\")
+        print(f"    -d @{export_path}")
+
+    summary = f"\nDone. {translated_count} translated"
+    if upload_count:
+        summary += f", {upload_count} uploaded to server"
+    summary += f", {skipped_count} skipped, {total_chapters} total."
+    print(summary)
 
 
 # ── Error helpers ─────────────────────────────────────────────────────────────
@@ -360,6 +460,26 @@ def main() -> None:
     parser.add_argument("--db", metavar="PATH",
                         help="Override DB_PATH (defaults to backend/books.db or DB_PATH env)")
 
+    # Server upload options
+    parser.add_argument(
+        "--server-url", metavar="URL",
+        help=(
+            "Upload translations to a remote server instead of local DB. "
+            "e.g. https://your-app.railway.app"
+        ),
+    )
+    parser.add_argument(
+        "--admin-token", metavar="JWT",
+        help="Admin JWT for --server-url authentication (or set ADMIN_TOKEN env var)",
+    )
+    parser.add_argument(
+        "--export", metavar="FILE",
+        help=(
+            "Export translated chapters as JSON compatible with "
+            "POST /api/admin/translations/import for manual upload."
+        ),
+    )
+
     args = parser.parse_args()
 
     if args.db:
@@ -367,6 +487,16 @@ def main() -> None:
 
     if args.all:
         args.book_id = None
+
+    # Resolve admin token from env if not passed on CLI
+    if args.server_url and not args.admin_token:
+        args.admin_token = os.environ.get("ADMIN_TOKEN", "")
+        if not args.admin_token:
+            print(
+                "Error: --server-url requires --admin-token or ADMIN_TOKEN env var.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     if args.provider == "marian" and args.lang not in MARIAN_PAIRS:
         print(

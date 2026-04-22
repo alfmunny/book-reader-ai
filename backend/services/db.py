@@ -285,6 +285,7 @@ async def delete_user(user_id: int) -> None:
         await db.execute("DELETE FROM book_insights WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM user_reading_progress WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM reading_history WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM book_uploads WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         await db.commit()
 

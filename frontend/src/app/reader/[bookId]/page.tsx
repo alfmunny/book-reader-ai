@@ -1325,12 +1325,16 @@ export default function ReaderPage() {
                   ) : (
                     <div className="space-y-1.5">
                       {vocabWords.map((w) => (
-                        <div key={w.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                        <button
+                          key={w.id}
+                          onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
+                          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors text-left"
+                        >
                           <span className="text-sm font-medium text-ink">{w.word}</span>
                           <span className="text-[10px] text-stone-400 shrink-0">
                             {w.occurrences.filter((o) => o.book_id === Number(bookId)).length}×
                           </span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -1530,8 +1534,8 @@ export default function ReaderPage() {
               bookLanguage={bookLanguage}
               onAIUsed={notifyAIUsed}
               chapterIndex={chapterIndex}
-              onSaveInsight={session?.backendToken ? (question, answer) => {
-                saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer })
+              onSaveInsight={session?.backendToken ? (question, answer, context) => {
+                saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context })
                   .then(() => setObsidianToast("Insight saved to book notes"))
                   .catch(() => setObsidianToast("Failed to save insight"))
                   .finally(() => setTimeout(() => setObsidianToast(null), 3000));

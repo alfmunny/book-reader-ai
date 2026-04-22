@@ -315,7 +315,7 @@ describe("InsightChat — onSaveInsight (lines 359-397)", () => {
     );
 
     // Save button should appear on the assistant reply
-    const saveBtn = screen.getByTitle(/Save this insight to book notes/i);
+    const saveBtn = screen.getByTitle(/Save to notes/i);
     expect(saveBtn).toBeInTheDocument();
   });
 
@@ -333,7 +333,7 @@ describe("InsightChat — onSaveInsight (lines 359-397)", () => {
       expect(screen.getByText("Test answer.")).toBeInTheDocument()
     );
 
-    const saveBtn = screen.getByTitle(/Save this insight to book notes/i);
+    const saveBtn = screen.getByTitle(/Save to notes/i);
     fireEvent.click(saveBtn);
 
     expect(onSaveInsight).toHaveBeenCalledTimes(1);
@@ -356,16 +356,16 @@ describe("InsightChat — onSaveInsight (lines 359-397)", () => {
       expect(screen.getByText("Test answer.")).toBeInTheDocument()
     );
 
-    const saveBtn = screen.getByTitle(/Save this insight/i);
+    const saveBtn = screen.getByTitle(/Save to notes/i);
     fireEvent.click(saveBtn);
 
-    // After saving, the button should change to "Already saved to notes"
+    // After saving, the button should change to "Already saved"
     await waitFor(() =>
-      expect(screen.getByTitle(/Already saved to notes/i)).toBeInTheDocument()
+      expect(screen.getByTitle(/Already saved/i)).toBeInTheDocument()
     );
 
     // Clicking again should not call onSaveInsight a second time
-    const alreadySavedBtn = screen.getByTitle(/Already saved to notes/i);
+    const alreadySavedBtn = screen.getByTitle(/Already saved/i);
     fireEvent.click(alreadySavedBtn);
     expect(onSaveInsight).toHaveBeenCalledTimes(1);
   });
@@ -391,7 +391,7 @@ describe("InsightChat — onSaveInsight (lines 359-397)", () => {
     // Both key-reminder notices should be present
     expect(screen.getAllByText(/Gemini API key/i).length).toBeGreaterThanOrEqual(1);
     // Insight notice (top of messages area)
-    expect(screen.getByText(/Insights and chat require/i)).toBeInTheDocument();
+    expect(screen.getByText(/Insights require/i)).toBeInTheDocument();
     // Input-area reminder
     expect(screen.getByText(/Chat requires a/i)).toBeInTheDocument();
   });
@@ -400,16 +400,16 @@ describe("InsightChat — onSaveInsight (lines 359-397)", () => {
 // ── Lines 167-175 (context chip rendering) ────────────────────────────────────
 
 describe("InsightChat — context chip (lines 167-175 render paths)", () => {
-  it("displays the context chip with truncated text when selectedText > 90 chars", async () => {
-    const longText = "A".repeat(100);
+  it("displays the context chip with truncated text when selectedText > 160 chars", async () => {
+    const longText = "A".repeat(170);
     render(<InsightChat {...BASE} selectedText={longText} />);
     await act(async () => {});
 
-    // The chip truncates at 90 chars with an ellipsis
+    // The chip truncates at 160 chars with an ellipsis
     expect(screen.getByText(/…/)).toBeInTheDocument();
   });
 
-  it("displays context chip without ellipsis when selectedText <= 90 chars", async () => {
+  it("displays context chip without ellipsis when selectedText <= 160 chars", async () => {
     const shortText = "Short selection.";
     render(<InsightChat {...BASE} selectedText={shortText} />);
     await act(async () => {});

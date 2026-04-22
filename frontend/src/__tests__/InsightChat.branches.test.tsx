@@ -82,7 +82,7 @@ describe("InsightChat — loadEarlier button (lines 196-206)", () => {
     await act(async () => await flushPromises());
 
     expect(
-      screen.getByRole("button", { name: /Load earlier messages/i })
+      screen.getByRole("button", { name: /Load earlier/i })
     ).toBeInTheDocument();
   });
 
@@ -98,7 +98,7 @@ describe("InsightChat — loadEarlier button (lines 196-206)", () => {
     render(<InsightChat {...BASE} />);
     await act(async () => await flushPromises());
 
-    const loadBtn = screen.getByRole("button", { name: /Load earlier messages/i });
+    const loadBtn = screen.getByRole("button", { name: /Load earlier/i });
     expect(loadBtn).toBeInTheDocument();
 
     fireEvent.click(loadBtn);
@@ -106,7 +106,7 @@ describe("InsightChat — loadEarlier button (lines 196-206)", () => {
 
     // After click, loadedFrom = 0 → button gone
     expect(
-      screen.queryByRole("button", { name: /Load earlier messages/i })
+      screen.queryByRole("button", { name: /Load earlier/i })
     ).not.toBeInTheDocument();
   });
 
@@ -122,7 +122,7 @@ describe("InsightChat — loadEarlier button (lines 196-206)", () => {
     await act(async () => await flushPromises());
 
     // Button shows "20 more"
-    const btn = screen.getByRole("button", { name: /Load earlier messages/i });
+    const btn = screen.getByRole("button", { name: /Load earlier/i });
     expect(btn.textContent).toContain("20");
   });
 
@@ -140,12 +140,12 @@ describe("InsightChat — loadEarlier button (lines 196-206)", () => {
     await act(async () => await flushPromises());
 
     // First click
-    let loadBtn = screen.getByRole("button", { name: /Load earlier messages/i });
+    let loadBtn = screen.getByRole("button", { name: /Load earlier/i });
     fireEvent.click(loadBtn);
     await act(async () => await flushPromises());
 
     // Should still have the button (loadedFrom=10 > 0)
-    loadBtn = screen.getByRole("button", { name: /Load earlier messages/i });
+    loadBtn = screen.getByRole("button", { name: /Load earlier/i });
     expect(loadBtn).toBeInTheDocument();
 
     // Second click → loadedFrom = 0
@@ -153,7 +153,7 @@ describe("InsightChat — loadEarlier button (lines 196-206)", () => {
     await act(async () => await flushPromises());
 
     expect(
-      screen.queryByRole("button", { name: /Load earlier messages/i })
+      screen.queryByRole("button", { name: /Load earlier/i })
     ).not.toBeInTheDocument();
   });
 });
@@ -233,28 +233,28 @@ describe("InsightChat — chatFontSize toggle (lines 262-264)", () => {
   it("shows 'A' (uppercase) when chatFontSize is xs", () => {
     render(<InsightChat {...BASE} />);
     // Default is "xs" → button shows "A"
-    const toggleBtn = screen.getByTitle(/Chat font size: xs/i);
+    const toggleBtn = screen.getByTitle(/Toggle font size/i);
     expect(toggleBtn.textContent).toBe("A");
   });
 
   it("toggles from xs to sm and shows 'a' (lowercase) after click", async () => {
     render(<InsightChat {...BASE} />);
 
-    const toggleBtn = screen.getByTitle(/Chat font size: xs/i);
+    const toggleBtn = screen.getByTitle(/Toggle font size/i);
     expect(toggleBtn.textContent).toBe("A");
 
     fireEvent.click(toggleBtn);
     await act(async () => await flushPromises());
 
     // After toggle: chatFontSize = "sm" → button shows "a"
-    const updatedBtn = screen.getByTitle(/Chat font size: sm/i);
+    const updatedBtn = screen.getByTitle(/Toggle font size/i);
     expect(updatedBtn.textContent).toBe("a");
   });
 
   it("calls saveSettings with chatFontSize when toggling", async () => {
     render(<InsightChat {...BASE} />);
 
-    const toggleBtn = screen.getByTitle(/Chat font size: xs/i);
+    const toggleBtn = screen.getByTitle(/Toggle font size/i);
     fireEvent.click(toggleBtn);
     await act(async () => await flushPromises());
 
@@ -266,15 +266,15 @@ describe("InsightChat — chatFontSize toggle (lines 262-264)", () => {
     render(<InsightChat {...BASE} />);
 
     // First click: xs → sm
-    fireEvent.click(screen.getByTitle(/Chat font size: xs/i));
+    fireEvent.click(screen.getByTitle(/Toggle font size/i));
     await act(async () => await flushPromises());
 
     // Second click: sm → xs
-    fireEvent.click(screen.getByTitle(/Chat font size: sm/i));
+    fireEvent.click(screen.getByTitle(/Toggle font size/i));
     await act(async () => await flushPromises());
 
     // Back to xs → shows "A"
-    expect(screen.getByTitle(/Chat font size: xs/i).textContent).toBe("A");
+    expect(screen.getByTitle(/Toggle font size/i).textContent).toBe("A");
     expect(mockSaveSettings).toHaveBeenLastCalledWith({ chatFontSize: "xs" });
   });
 });

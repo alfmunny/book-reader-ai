@@ -349,7 +349,20 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
                 raise
 
         # Save to shared cache with normalized language codes so any casing variant hits it.
+        # Guard: reject if the queue worker is currently translating this chapter (#393).
+        # The worker uses INSERT OR REPLACE — it would overwrite whatever we save here.
+        # Same pattern as save_translate_cache (PUT /translate/cache, PR #341).
         if req.book_id is not None and req.chapter_index is not None:
+            from services.translation_queue import queue_status_for_chapter
+            _qstatus = await queue_status_for_chapter(req.book_id, req.chapter_index, tgt)
+            if _qstatus["status"] == "running":
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"A translation job is currently running for chapter {req.chapter_index}. "
+                        "Wait for it to finish before saving."
+                    ),
+                )
             await save_translation(
                 req.book_id, req.chapter_index, tgt, paragraphs,
                 provider=chosen,

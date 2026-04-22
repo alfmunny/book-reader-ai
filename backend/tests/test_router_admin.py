@@ -377,6 +377,41 @@ async def test_delete_book_removes_reading_history(admin_client, admin_db, admin
     assert count == 0, "reading_history rows must be removed when the book is deleted"
 
 
+async def test_delete_book_removes_book_uploads_row(admin_client, admin_db, admin_user):
+    """Regression #392: admin delete_book must remove book_uploads rows.
+
+    SQLite FK enforcement is OFF so ON DELETE CASCADE never fires. Without an
+    explicit DELETE, the orphaned book_uploads row keeps counting against the
+    user's upload quota — preventing them from uploading a replacement book."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            """INSERT INTO book_uploads (book_id, user_id, filename, file_size, format)
+               VALUES (100, ?, 'test.txt', 1024, 'txt')""",
+            (admin_user["id"],),
+        )
+        await db.commit()
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_uploads WHERE book_id=100"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1
+
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_uploads WHERE book_id=100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0, (
+        "book_uploads row must be deleted when admin deletes a book (#392); "
+        "orphaned row inflates upload quota and blocks user from re-uploading"
+    )
+
+
 # ── Translations ─────────────────────────────────────────────────────────────
 
 async def test_get_translations(admin_client, admin_db):

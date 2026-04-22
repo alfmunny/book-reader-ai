@@ -278,6 +278,49 @@ async def test_translate_cache_put_rejects_409_when_running(client, test_user, t
     assert cached == ["existing paragraph"]
 
 
+async def test_translate_post_rejects_409_when_running(client, test_user, tmp_db):
+    """Regression #393: POST /ai/translate must return 409 when a queue worker is
+    actively translating the same chapter and we're about to save a new result.
+
+    The guard must fire BEFORE save_translation, not before the cache lookup:
+    a cache HIT returns early without saving (no race), but a cache MISS where
+    we just finished translating must be blocked so the worker's INSERT OR REPLACE
+    doesn't silently overwrite the freshly-saved result."""
+    from services.db import save_book, get_cached_translation, set_user_gemini_key
+    from services.translation_queue import enqueue
+    from services.auth import encrypt_api_key as _enc
+    _BM = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"],
+            "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(61, _BM, "text")
+    await set_user_gemini_key(test_user["id"], _enc("my-key"))
+    # No pre-seeded cached translation — we need the AI call path to reach the save
+    await enqueue(61, 0, "zh")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' "
+            "WHERE book_id=61 AND chapter_index=0 AND target_language='zh'"
+        )
+        await db.commit()
+
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, return_value=["new paragraph"]):
+        resp = await client.post("/api/ai/translate", json={
+            "text": "Es war einmal.",
+            "source_language": "de",
+            "target_language": "zh",
+            "book_id": 61,
+            "chapter_index": 0,
+        })
+    assert resp.status_code == 409, (
+        f"Expected 409 when worker is running and about to save, got {resp.status_code}: {resp.text}"
+    )
+
+    # Nothing must have been written to the translation cache
+    cached = await get_cached_translation(61, 0, "zh")
+    assert cached is None, (
+        "No translation must be saved when 409 guard fires for running worker"
+    )
+
+
 # ── Insight ───────────────────────────────────────────────────────────────────
 
 async def test_insight_without_key_returns_400(client):

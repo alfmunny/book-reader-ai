@@ -77,6 +77,8 @@ export default function ReaderPage() {
   const [ttsIsLoading, setTtsIsLoading] = useState(false);
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
+  const ttsControlsRef = useRef<{ pause: () => void; play: () => void } | null>(null);
+  const ttsIsPlayingRef = useRef(false);
 
   // Annotation display toggle (persisted)
   const [showAnnotations, setShowAnnotations] = useState(() => {
@@ -678,6 +680,13 @@ export default function ReaderPage() {
       } else if (e.key === "?") {
         e.preventDefault();
         setShowShortcuts((v) => !v);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        if (ttsIsPlayingRef.current) {
+          ttsControlsRef.current?.pause();
+        } else {
+          ttsControlsRef.current?.play();
+        }
       } else if (e.key === "Escape") {
         if (focusMode) { e.preventDefault(); setFocusMode(false); }
         setShowTypographyPanel(false);
@@ -1115,6 +1124,7 @@ export default function ReaderPage() {
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-2">Keyboard Shortcuts</p>
                 <div className="space-y-1.5">
                   {[
+                    { keys: ["Space"], label: "Play / Pause TTS" },
                     { keys: ["←", "→"], label: "Previous / Next chapter" },
                     { keys: ["F"], label: "Toggle focus mode" },
                     { keys: ["?"], label: "Show this panel" },
@@ -1308,16 +1318,24 @@ export default function ReaderPage() {
           {/* Selection toolbar — appears when user selects text */}
           <SelectionToolbar
             onRead={(text) => {
+              const wasPlaying = ttsIsPlayingRef.current;
+              if (wasPlaying) ttsControlsRef.current?.pause();
               synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
                 .then(({ url }) => {
                   const audio = new Audio(url);
-                  audio.onended = () => URL.revokeObjectURL(url);
-                  audio.play().catch(() => URL.revokeObjectURL(url));
+                  const resume = () => {
+                    URL.revokeObjectURL(url);
+                    if (wasPlaying) ttsControlsRef.current?.play();
+                  };
+                  audio.onended = resume;
+                  audio.onerror = resume;
+                  audio.play().catch(resume);
                 })
                 .catch(() => {
                   window.speechSynthesis.cancel();
                   const utter = new SpeechSynthesisUtterance(text);
                   utter.lang = bookLanguage;
+                  utter.onend = () => { if (wasPlaying) ttsControlsRef.current?.play(); };
                   window.speechSynthesis.speak(utter);
                 });
             }}
@@ -1466,11 +1484,15 @@ export default function ReaderPage() {
                 setTtsCurrentTime(currentTime);
                 setTtsDuration(duration);
                 setTtsIsPlaying(isPlaying);
+                ttsIsPlayingRef.current = isPlaying;
               }}
               onLoadingChange={setTtsIsLoading}
               onChunksUpdate={setTtsChunks}
               onSeekRegister={(seekFn) => {
                 ttsSeekRef.current = seekFn;
+              }}
+              onControlsRegister={(controls) => {
+                ttsControlsRef.current = controls;
               }}
               stopAtTime={paragraphFocus ? ttsStopAt : undefined}
               onStopAtReached={() => setTtsStopAt(undefined)}

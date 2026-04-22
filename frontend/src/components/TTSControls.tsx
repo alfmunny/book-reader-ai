@@ -20,6 +20,7 @@ interface Props {
   onLoadingChange?: (isLoading: boolean) => void;
   onChunksUpdate?: (chunks: ChunkSnapshot[]) => void;
   onSeekRegister?: (seekAndPlay: (time: number) => void) => void;
+  onControlsRegister?: (controls: { pause: () => void; play: () => void }) => void;
   /** Auto-pause when globalCurrentTime reaches this value. */
   stopAtTime?: number;
   /** Called when stopAtTime is reached and audio is auto-paused. */
@@ -51,6 +52,7 @@ export default function TTSControls({
   onLoadingChange,
   onChunksUpdate,
   onSeekRegister,
+  onControlsRegister,
   stopAtTime,
   onStopAtReached,
 }: Props) {
@@ -77,12 +79,14 @@ export default function TTSControls({
   const onLoadingChangeRef = useRef(onLoadingChange);
   const onChunksUpdateRef = useRef(onChunksUpdate);
   const onSeekRegisterRef = useRef(onSeekRegister);
+  const onControlsRegisterRef = useRef(onControlsRegister);
   const onStopAtReachedRef = useRef(onStopAtReached);
   const stopAtTimeRef = useRef(stopAtTime);
   useEffect(() => { onPlaybackUpdateRef.current = onPlaybackUpdate; }, [onPlaybackUpdate]);
   useEffect(() => { onLoadingChangeRef.current = onLoadingChange; }, [onLoadingChange]);
   useEffect(() => { onChunksUpdateRef.current = onChunksUpdate; }, [onChunksUpdate]);
   useEffect(() => { onSeekRegisterRef.current = onSeekRegister; }, [onSeekRegister]);
+  useEffect(() => { onControlsRegisterRef.current = onControlsRegister; }, [onControlsRegister]);
   useEffect(() => { onStopAtReachedRef.current = onStopAtReached; }, [onStopAtReached]);
   useEffect(() => { stopAtTimeRef.current = stopAtTime; }, [stopAtTime]);
 
@@ -388,6 +392,7 @@ export default function TTSControls({
 
   useEffect(() => {
     onSeekRegisterRef.current?.((time: number) => { seekTo(time); });
+    onControlsRegisterRef.current?.({ pause, play });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId, chapterIndex]);
 

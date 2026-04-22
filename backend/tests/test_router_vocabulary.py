@@ -153,6 +153,29 @@ async def test_delete_word_case_insensitive(client, test_user):
     assert not any(v["word"].lower() == "apple" for v in vocab)
 
 
+async def test_save_word_rejects_empty_word(client, test_user):
+    """POST /vocabulary with an empty word must return 400.
+
+    An empty-string word stored in the vocabulary is unusable — the user
+    can never delete it via DELETE /vocabulary/ (no path segment) and
+    the UNIQUE(user_id, word) constraint allows exactly one empty entry
+    per user, polluting the vocabulary silently."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/vocabulary", json={
+        "word": "", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Some text."
+    })
+    assert resp.status_code == 400
+
+
+async def test_save_word_strips_and_rejects_whitespace_only_word(client, test_user):
+    """POST /vocabulary with whitespace-only word must return 400."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/vocabulary", json={
+        "word": "   ", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Some text."
+    })
+    assert resp.status_code == 400
+
+
 async def test_save_word_rejects_nonexistent_book(client, test_user):
     """POST /vocabulary for a book that doesn't exist must return 404.
 

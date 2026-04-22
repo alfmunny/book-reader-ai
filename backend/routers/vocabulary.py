@@ -34,6 +34,8 @@ class ExportRequest(BaseModel):
 
 @router.post("")
 async def save(req: WordSave, user: dict = Depends(get_current_user)):
+    if not req.word or not req.word.strip():
+        raise HTTPException(status_code=400, detail="Word cannot be empty")
     if not req.sentence_text or not req.sentence_text.strip():
         raise HTTPException(status_code=400, detail="sentence_text cannot be empty")
     if not await get_cached_book(req.book_id):

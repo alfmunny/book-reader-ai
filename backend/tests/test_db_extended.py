@@ -131,6 +131,14 @@ async def test_apple_links_to_existing_google_user_by_email():
     assert apple_user["id"] == google_user["id"]
 
 
+async def test_apple_existing_by_email_returns_updated_profile():
+    # Regression: linking Apple ID to an existing account must return the
+    # post-UPDATE profile (with apple_id set), not the stale pre-UPDATE row.
+    await get_or_create_user("g202", "apple-link@example.com", "Google User", "")
+    result = await get_or_create_user_apple("ap4b", "apple-link@example.com", "")
+    assert result["apple_id"] == "ap4b"
+
+
 async def test_apple_no_email_skips_linking():
     await get_or_create_user("g201", "existing@example.com", "Existing", "")
     new_user = await get_or_create_user_apple("ap5", "", "NoEmail")

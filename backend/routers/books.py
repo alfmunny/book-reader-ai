@@ -381,9 +381,14 @@ async def retry_chapter_translation(
 
 
 @router.get("/{book_id}")
-async def book_meta(book_id: int):
+async def book_meta(book_id: int, user: dict | None = Depends(get_optional_user)):
     cached = await get_cached_book(book_id)
     if cached:
+        # Privacy check: uploaded books are only visible to owner or admin
+        owner_id = cached.get("owner_user_id")
+        if owner_id is not None:
+            if user is None or (user["id"] != owner_id and user.get("role") != "admin"):
+                raise HTTPException(status_code=403, detail="Not your book")
         return {k: v for k, v in cached.items() if k not in ("text", "cached_at", "images")}
     try:
         return await get_book_meta(book_id)
@@ -392,7 +397,7 @@ async def book_meta(book_id: int):
 
 
 @router.get("/{book_id}/chapters")
-async def book_chapters(book_id: int):
+async def book_chapters(book_id: int, user: dict | None = Depends(get_optional_user)):
     """
     Return book split into chapters.
     Serves from local DB if cached, otherwise fetches from Gutenberg and caches.
@@ -403,6 +408,28 @@ async def book_chapters(book_id: int):
       2. Fall back to regex-based splitting on the plain text otherwise.
     """
     cached = await get_cached_book(book_id)
+
+    # Handle uploaded books (chapters stored as JSON in text field)
+    if cached and cached.get("source") == "upload":
+        owner_id = cached.get("owner_user_id")
+        if owner_id is not None:
+            if user is None or (user["id"] != owner_id and user.get("role") != "admin"):
+                raise HTTPException(status_code=403, detail="Not your book")
+        text = cached.get("text", "")
+        try:
+            import json as _json
+            data = _json.loads(text)
+        except Exception:
+            raise HTTPException(status_code=422, detail="Book data corrupted")
+        if data.get("draft"):
+            raise HTTPException(status_code=400, detail="Book not yet confirmed. Visit /upload/{book_id}/chapters to confirm.")
+        raw_chapters = data.get("chapters", [])
+        meta = {k: v for k, v in cached.items() if k not in ("text", "cached_at", "images")}
+        return {
+            "book_id": book_id,
+            "meta": meta,
+            "chapters": [{"title": ch["title"], "text": ch["text"]} for ch in raw_chapters],
+        }
 
     if cached and cached.get("text"):
         text = cached["text"]

@@ -708,3 +708,35 @@ export function saveObsidianSettings(data: {
     body: JSON.stringify(data),
   });
 }
+
+// ── Book uploads ──────────────────────────────────────────────────────────────
+
+export interface UploadQuota { used: number; max: number; }
+export interface DraftChapter { index: number; title: string; preview: string; word_count: number; }
+export interface UploadResult { book_id: number; title: string; author: string; format: string; detected_chapters: DraftChapter[]; }
+
+export function uploadBook(file: File): Promise<UploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  return request<UploadResult>("/books/upload", { method: "POST", body: form });
+}
+
+export function getUploadQuota(): Promise<UploadQuota> {
+  return request<UploadQuota>("/books/upload/quota");
+}
+
+export function getDraftChapters(bookId: number): Promise<{ chapters: DraftChapter[] }> {
+  return request("/books/" + bookId + "/chapters/draft");
+}
+
+export function confirmChapters(bookId: number, chapters: { title: string; original_index: number }[]): Promise<{ ok: boolean; chapter_count: number }> {
+  return request("/books/" + bookId + "/chapters/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chapters }),
+  });
+}
+
+export function deleteUploadedBook(bookId: number): Promise<{ ok: boolean }> {
+  return request("/books/upload/" + bookId, { method: "DELETE" });
+}

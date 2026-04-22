@@ -36,6 +36,7 @@ const SAMPLE_WORDS = [
       {
         book_id: 10,
         book_title: "Moby Dick",
+        book_language: "en",
         chapter_index: 2,
         sentence_text: "The ephemeral whale loomed.",
       },
@@ -48,10 +49,24 @@ const SAMPLE_WORDS = [
       {
         book_id: 10,
         book_title: "Moby Dick",
+        book_language: "en",
         chapter_index: 5,
         sentence_text: "His ardent gaze swept the sea.",
       },
     ],
+  },
+];
+
+const MULTI_LANG_WORDS = [
+  {
+    id: 1,
+    word: "Schiff",
+    occurrences: [{ book_id: 20, book_title: "Faust", book_language: "de", chapter_index: 0, sentence_text: "Das Schiff fuhr fort." }],
+  },
+  {
+    id: 2,
+    word: "ephemeral",
+    occurrences: [{ book_id: 10, book_title: "Moby Dick", book_language: "en", chapter_index: 2, sentence_text: "The ephemeral whale." }],
   },
 ];
 
@@ -122,4 +137,37 @@ test("shows empty state when no words", async () => {
   render(<VocabularyPage />);
   await flushPromises();
   expect(await screen.findByText(/No saved words yet/i)).toBeInTheDocument();
+});
+
+test("shows language filter tabs when words span multiple languages", async () => {
+  mockGetVocabulary.mockResolvedValue(MULTI_LANG_WORDS);
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("Schiff");
+
+  expect(screen.getByTestId("lang-filter")).toBeInTheDocument();
+  expect(screen.getByTestId("lang-filter-de")).toBeInTheDocument();
+  expect(screen.getByTestId("lang-filter-en")).toBeInTheDocument();
+});
+
+test("language filter shows only words from selected language", async () => {
+  mockGetVocabulary.mockResolvedValue(MULTI_LANG_WORDS);
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("Schiff");
+
+  // Click German filter
+  await userEvent.click(screen.getByTestId("lang-filter-de"));
+
+  // Only German word visible
+  expect(screen.getByText("Schiff")).toBeInTheDocument();
+  expect(screen.queryByText("ephemeral")).not.toBeInTheDocument();
+});
+
+test("does not show language tabs when all words are from single language", async () => {
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ephemeral");
+
+  expect(screen.queryByTestId("lang-filter")).not.toBeInTheDocument();
 });

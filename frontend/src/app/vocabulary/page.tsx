@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getVocabulary, deleteVocabularyWord, exportVocabularyToObsidian, VocabularyWord } from "@/lib/api";
 
+const LANG_NAMES: Record<string, string> = {
+  de: "Deutsch", en: "English", fr: "Français", es: "Español",
+  zh: "中文", ja: "日本語", it: "Italiano", pt: "Português",
+  nl: "Nederlands", ru: "Русский", ar: "العربية", ko: "한국어",
+  la: "Latina", fi: "Suomi", sv: "Svenska", pl: "Polski",
+};
+
 export default function VocabularyPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -14,6 +21,7 @@ export default function VocabularyPage() {
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [langFilter, setLangFilter] = useState<string | null>(null);
 
   useEffect(() => {
     getVocabulary()
@@ -22,11 +30,28 @@ export default function VocabularyPage() {
       .finally(() => setLoading(false));
   }, [session?.backendToken]);
 
-  // Filter + group alphabetically
+  // Collect available languages across all words
+  const availableLanguages = useMemo(() => {
+    const seen = new Set<string>();
+    for (const w of words) {
+      for (const o of w.occurrences) {
+        if (o.book_language) seen.add(o.book_language);
+      }
+    }
+    return [...seen].sort();
+  }, [words]);
+
+  // Filter by language, then by search query
   const filtered = useMemo(() => {
+    let result = words;
+    if (langFilter) {
+      result = words
+        .map((w) => ({ ...w, occurrences: w.occurrences.filter((o) => o.book_language === langFilter) }))
+        .filter((w) => w.occurrences.length > 0);
+    }
     const q = search.trim().toLowerCase();
-    return q ? words.filter((w) => w.word.toLowerCase().includes(q)) : words;
-  }, [words, search]);
+    return q ? result.filter((w) => w.word.toLowerCase().includes(q)) : result;
+  }, [words, search, langFilter]);
 
   const grouped = useMemo(() =>
     filtered.reduce<Record<string, VocabularyWord[]>>((acc, w) => {
@@ -64,6 +89,7 @@ export default function VocabularyPage() {
   }
 
   const totalOccurrences = words.reduce((sum, w) => sum + w.occurrences.length, 0);
+  const filteredCount = filtered.length;
 
   return (
     <div className="min-h-screen bg-parchment">
@@ -104,6 +130,36 @@ export default function VocabularyPage() {
       )}
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        {/* Language filter tabs */}
+        {availableLanguages.length > 1 && (
+          <div className="flex gap-2 flex-wrap mb-5" data-testid="lang-filter">
+            <button
+              onClick={() => setLangFilter(null)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                langFilter === null
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              All
+            </button>
+            {availableLanguages.map((lang) => (
+              <button
+                key={lang}
+                onClick={() => setLangFilter(lang)}
+                data-testid={`lang-filter-${lang}`}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  langFilter === lang
+                    ? "bg-amber-700 text-white border-amber-700"
+                    : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                }`}
+              >
+                {LANG_NAMES[lang] ?? lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Search */}
         {words.length > 5 && (
           <div className="mb-6">
@@ -129,8 +185,10 @@ export default function VocabularyPage() {
             <p className="font-serif text-lg">No saved words yet.</p>
             <p className="text-sm mt-1">Double-click any word while reading to save it here.</p>
           </div>
-        ) : filtered.length === 0 ? (
-          <p className="text-center text-stone-400 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>
+        ) : filteredCount === 0 ? (
+          <p className="text-center text-stone-400 mt-12 text-sm">
+            {search ? `No words match "${search}"` : "No words for this language yet."}
+          </p>
         ) : (
           <div className="space-y-8">
             {letters.map((letter) => (

@@ -72,6 +72,7 @@ async def test_get_vocabulary_with_occurrences(client, test_user):
     assert occ["chapter_index"] == 5
     assert occ["sentence_text"] == "Captain Ahab spoke."
     assert occ["book_title"] == "Moby Dick"
+    assert occ["book_language"] == "en"
 
 
 async def test_get_vocabulary_own_only(client, test_user):

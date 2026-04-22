@@ -612,14 +612,25 @@ async def get_vocabulary(user_id: int) -> list[dict]:
         result = []
         for v in vocab_rows:
             async with db.execute(
-                """SELECT wo.book_id, b.title AS book_title, wo.chapter_index, wo.sentence_text
+                """SELECT wo.book_id, b.title AS book_title, b.languages AS book_languages,
+                          wo.chapter_index, wo.sentence_text
                    FROM word_occurrences wo
                    LEFT JOIN books b ON b.id = wo.book_id
                    WHERE wo.vocabulary_id = ?
                    ORDER BY wo.created_at""",
                 (v["id"],),
             ) as cursor:
-                occurrences = [dict(r) for r in await cursor.fetchall()]
+                occurrences = []
+                for r in await cursor.fetchall():
+                    occ = dict(r)
+                    raw_langs = occ.pop("book_languages", None)
+                    try:
+                        import json as _json
+                        langs = _json.loads(raw_langs) if raw_langs else []
+                        occ["book_language"] = langs[0] if langs else None
+                    except Exception:
+                        occ["book_language"] = raw_langs or None
+                    occurrences.append(occ)
             result.append({
                 "id": v["id"],
                 "word": v["word"],

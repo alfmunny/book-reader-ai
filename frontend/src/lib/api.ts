@@ -533,6 +533,7 @@ export function deleteAnnotation(id: number) {
 export interface VocabularyOccurrence {
   book_id: number;
   book_title: string;
+  book_language?: string | null;
   chapter_index: number;
   sentence_text: string;
 }

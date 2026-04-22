@@ -12,6 +12,7 @@ import SentenceReader from "@/components/SentenceReader";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import VocabularyToast from "@/components/VocabularyToast";
+import VocabWordTooltip from "@/components/VocabWordTooltip";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -75,6 +76,9 @@ export default function ReaderPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
+  const [vocabView, setVocabView] = useState<"chapter" | "book">("chapter");
+  // Word definition tooltip (shown when "Word" is clicked in SelectionToolbar)
+  const [vocabTooltip, setVocabTooltip] = useState<{ word: string; context: string; rect: DOMRect } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const isResizing = useRef(false);
   const resizeStartX = useRef(0);
@@ -643,6 +647,10 @@ export default function ReaderPage() {
         sentence_text: sentenceText,
       });
       setVocabToastWord(word);
+      // Refresh sidebar word list
+      getVocabulary().then((words) => {
+        setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
+      }).catch(() => {});
     } catch {
       // silently ignore (user may not be logged in)
     }
@@ -1080,7 +1088,7 @@ export default function ReaderPage() {
               setSidebarTab("chat");
               setSidebarOpen(true);
             }}
-            onVocab={session?.backendToken ? (word, context) => handleWordSave(word, context) : undefined}
+            onVocab={session?.backendToken ? (word, context, rect) => setVocabTooltip({ word, context, rect }) : undefined}
           />
 
           {/* Annotation toolbar */}
@@ -1109,6 +1117,20 @@ export default function ReaderPage() {
               }}
               onDeleted={(id) => {
                 setAnnotations((prev) => prev.filter((a) => a.id !== id));
+              }}
+            />
+          )}
+
+          {/* Word definition tooltip */}
+          {vocabTooltip && (
+            <VocabWordTooltip
+              word={vocabTooltip.word}
+              lang={bookLanguage}
+              rect={vocabTooltip.rect}
+              onClose={() => setVocabTooltip(null)}
+              onSave={() => {
+                handleWordSave(vocabTooltip.word, vocabTooltip.context);
+                setVocabTooltip(null);
               }}
             />
           )}
@@ -1306,40 +1328,59 @@ export default function ReaderPage() {
               )}
 
               {/* Vocab tab */}
-              {sidebarTab === "vocab" && (
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-400 uppercase tracking-wide">
-                      This book · {vocabWords.length} word{vocabWords.length !== 1 ? "s" : ""}
-                    </span>
-                    <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium">
-                      View all →
-                    </button>
-                  </div>
-                  {vocabWords.length === 0 ? (
-                    <div className="text-center text-stone-400 mt-10 text-sm">
-                      <p className="text-3xl mb-2">📚</p>
-                      <p>No words saved yet.</p>
-                      <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {vocabWords.map((w) => (
+              {sidebarTab === "vocab" && (() => {
+                const filteredVocab = vocabView === "chapter"
+                  ? vocabWords.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId) && o.chapter_index === chapterIndex))
+                  : vocabWords;
+                return (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* Filter toggle */}
+                    <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-0.5">
+                      {(["chapter", "book"] as const).map((v) => (
                         <button
-                          key={w.id}
-                          onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
-                          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors text-left"
+                          key={v}
+                          onClick={() => setVocabView(v)}
+                          className={`flex-1 text-xs py-1 rounded-md font-medium transition-colors ${
+                            vocabView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                          }`}
                         >
-                          <span className="text-sm font-medium text-ink">{w.word}</span>
-                          <span className="text-[10px] text-stone-400 shrink-0">
-                            {w.occurrences.filter((o) => o.book_id === Number(bookId)).length}×
-                          </span>
+                          {v === "chapter" ? "This chapter" : "All chapters"}
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-stone-400">
+                        {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
+                      </span>
+                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium">
+                        View all →
+                      </button>
+                    </div>
+                    {filteredVocab.length === 0 ? (
+                      <div className="text-center text-stone-400 mt-10 text-sm">
+                        <p className="text-3xl mb-2">📚</p>
+                        <p>No words saved{vocabView === "chapter" ? " in this chapter" : ""} yet.</p>
+                        <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {filteredVocab.map((w) => (
+                          <button
+                            key={w.id}
+                            onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors text-left"
+                          >
+                            <span className="text-sm font-medium text-ink">{w.word}</span>
+                            <span className="text-[10px] text-stone-400 shrink-0">
+                              {w.occurrences.filter((o) => o.book_id === Number(bookId)).length}×
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Translate tab */}
               {sidebarTab === "translate" && (

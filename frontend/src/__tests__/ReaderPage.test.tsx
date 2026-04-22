@@ -461,7 +461,7 @@ describe("ReaderPage — sidebar tabs", () => {
     const vocabBtn = await screen.findByTitle("Vocabulary");
     await userEvent.click(vocabBtn);
 
-    expect(await screen.findByText("No words saved yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No words saved in this chapter yet.")).toBeInTheDocument();
   });
 
   it("toggling the same sidebar button twice closes it", async () => {
@@ -1089,7 +1089,7 @@ describe("ReaderPage — vocab sidebar content", () => {
     const bid = bookIdCounter;
     const vocabWords = [
       { id: 10, word: "ephemeral", occurrences: [{ book_id: bid, chapter_index: 0, sentence_text: "test" }] },
-      { id: 11, word: "sublime", occurrences: [{ book_id: bid, chapter_index: 1, sentence_text: "test" }] },
+      { id: 11, word: "sublime", occurrences: [{ book_id: bid, chapter_index: 0, sentence_text: "test" }] },
     ];
     mockGetVocabulary.mockResolvedValue(vocabWords);
     mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });

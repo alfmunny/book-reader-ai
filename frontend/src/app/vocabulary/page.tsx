@@ -292,8 +292,10 @@ function VocabularyPageContent() {
                       <div
                         key={group.lemma}
                         ref={target ? highlightRef : undefined}
-                        className={`bg-white rounded-xl border p-4 transition-colors ${
-                          target ? "border-amber-400 ring-2 ring-amber-300" : "border-amber-100"
+                        className={`rounded-xl border p-4 transition-colors ${
+                          target
+                            ? "bg-white border-amber-400 ring-2 ring-amber-300 animate-vocab-flash"
+                            : "bg-white border-amber-100"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">

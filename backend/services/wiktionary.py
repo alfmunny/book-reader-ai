@@ -43,6 +43,9 @@ def _extract_lemma(raw_html: str, current_word: str) -> str | None:
 
 
 def _strip_html(text: str) -> str:
+    # Remove <style> and <script> blocks entirely (including their CSS/JS content)
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
     return re.sub(r"<[^>]+>", "", text).strip()
 
 

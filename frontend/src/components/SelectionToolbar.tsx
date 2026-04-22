@@ -12,7 +12,7 @@ interface Props {
   onHighlight?: (text: string) => void;
   onNote?: (text: string) => void;
   onChat?: (text: string) => void;
-  onVocab?: (word: string, context: string) => void;
+  onVocab?: (word: string, context: string, rect: DOMRect) => void;
 }
 
 /** Walk up from a node to find the nearest sentence span (data-seg) or paragraph. */
@@ -105,7 +105,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
 
   function handleVocabAction() {
     if (!onVocab || !selection) return;
-    onVocab(selection.text, selection.context || selection.text);
+    onVocab(selection.text, selection.context || selection.text, selection.rect);
     window.getSelection()?.removeAllRanges();
     setSelection(null);
   }

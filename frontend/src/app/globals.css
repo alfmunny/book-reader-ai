@@ -95,3 +95,13 @@ body, [data-theme="light"] {
 .animate-fade-in {
   animation: fade-in 0.15s ease-out;
 }
+
+/* Vocab word highlight flash */
+@keyframes vocab-flash {
+  0%   { background-color: rgb(251 191 36 / 0.5); }
+  40%  { background-color: rgb(251 191 36 / 0.3); }
+  100% { background-color: transparent; }
+}
+.animate-vocab-flash {
+  animation: vocab-flash 1.8s ease-out forwards;
+}

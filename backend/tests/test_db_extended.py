@@ -419,3 +419,64 @@ async def test_delete_insight_wrong_user_returns_false():
     ins = await save_insight(u1["id"], 1, 0, "Q", "A")
     result = await delete_insight(ins["id"], u2["id"])
     assert result is False
+
+
+# ── delete_user cascade: uploaded books and all child data ────────────────────
+
+async def test_delete_user_removes_owned_books_and_all_child_data():
+    """delete_user() must delete books with owner_user_id=user and all related rows.
+    SQLite FK cascade is OFF, so we rely on the explicit DELETE statements.
+    """
+    import aiosqlite
+    owner = await get_or_create_user("g70", "owner416@example.com", "Owner", "")
+    other = await get_or_create_user("g71", "other416@example.com", "Other", "")
+    book_id = 416001
+
+    # Insert an uploaded book owned by the user
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects, download_count,
+               cover, text, images, source, owner_user_id)
+               VALUES (?, 'Owned', '[]', '["en"]', '[]', 0, '', '{}', '[]', 'upload', ?)""",
+            (book_id, owner["id"]),
+        )
+        # Book-level child data
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) VALUES (?, 0, 'en', '[]')",
+            (book_id,),
+        )
+        await db.execute(
+            "INSERT INTO chapter_summaries (book_id, chapter_index, content) VALUES (?, 0, 'summary')",
+            (book_id,),
+        )
+        # Cross-user data: another user's annotation and reading progress on the owned book
+        await db.execute(
+            "INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text, note_text, color) VALUES (?, ?, 0, 'sent', '', 'yellow')",
+            (other["id"], book_id),
+        )
+        await db.execute(
+            "INSERT INTO user_reading_progress (user_id, book_id, chapter_index) VALUES (?, ?, 0)",
+            (other["id"], book_id),
+        )
+        await db.execute(
+            "INSERT INTO book_uploads (book_id, user_id, filename, file_size, format) VALUES (?, ?, 'f.epub', 100, 'epub')",
+            (book_id, owner["id"]),
+        )
+        await db.commit()
+
+    await delete_user(owner["id"])
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        for table, col in [
+            ("books", "id"),
+            ("translations", "book_id"),
+            ("chapter_summaries", "book_id"),
+            ("annotations", "book_id"),
+            ("user_reading_progress", "book_id"),
+            ("book_uploads", "book_id"),
+        ]:
+            cur = await db.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE {col} = ?", (book_id,)
+            )
+            count = (await cur.fetchone())[0]
+            assert count == 0, f"{table} still has rows for deleted owner's book (#{416})"

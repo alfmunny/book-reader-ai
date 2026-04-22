@@ -353,6 +353,7 @@ async def delete_translation(
     _admin: dict = Depends(_require_admin),
 ):
     """Delete a specific cached translation."""
+    target_language = target_language.lower().split("-")[0]
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             "DELETE FROM translations WHERE book_id=? AND chapter_index=? AND target_language=?",

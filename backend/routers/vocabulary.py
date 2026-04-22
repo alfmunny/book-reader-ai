@@ -295,6 +295,7 @@ async def export_obsidian(
         ]
         connected = _find_connected_books(bid, all_vocab)
         title = book.get("title", f"Book {bid}") if book else f"Book {bid}"
+        book_lang = (book.get("languages") or ["en"])[0] if book else "en"
 
         # Translate annotation quotes (capped at 10, parallelized with semaphore)
         ann_translations: dict[int, str] = {}
@@ -302,7 +303,7 @@ async def export_obsidian(
         async def _translate_one(ann: dict) -> tuple[int, str]:
             async with sem:
                 translated = await translate_text(
-                    ann["sentence_text"], "en", req.target_language or "zh"
+                    ann["sentence_text"], book_lang, req.target_language or "zh"
                 )
                 return ann["id"], translated[0] if translated else ""
         results = await asyncio.gather(

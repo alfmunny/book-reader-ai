@@ -1124,6 +1124,48 @@ async def test_import_translations_rejects_nonexistent_book(admin_client, admin_
     assert res.status_code == 404
 
 
+async def test_import_translations_rejects_409_when_chapter_is_running(admin_client, admin_db):
+    """Regression #395: POST /admin/translations/import must return 409 when
+    any of the imported chapters has a queue worker currently running.
+
+    Without this guard: admin imports a pre-translated chapter → save_translation
+    (INSERT OR REPLACE) writes the imported data → worker finishes → worker's
+    INSERT OR REPLACE silently overwrites the admin's import.
+
+    Same race as retranslate (#334) and PUT /ai/translate/cache (#341)."""
+    from services.translation_queue import enqueue
+    from services.db import get_cached_translation
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "de", ["old translation"])
+    await enqueue(100, 0, "de")
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' "
+            "WHERE book_id=100 AND chapter_index=0 AND target_language='de'"
+        )
+        await db.commit()
+
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={
+            "entries": [{
+                "book_id": 100,
+                "chapter_index": 0,
+                "target_language": "de",
+                "paragraphs": ["imported translation"],
+            }],
+        },
+    )
+    assert res.status_code == 409, (
+        f"Expected 409 when worker is running, got {res.status_code}: {res.text}"
+    )
+
+    # The old translation must still be in place (import was rejected)
+    assert await get_cached_translation(100, 0, "de") == ["old translation"], (
+        "Existing translation must be untouched when 409 guard fires"
+    )
+
+
 async def test_move_translation_shifts_chapter_index(admin_client, admin_db):
     """POST /admin/translations/{id}/{idx}/{lang}/move reassigns an existing
     cached translation to a different chapter_index without retranslating.

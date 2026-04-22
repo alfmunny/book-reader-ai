@@ -593,6 +593,25 @@ async def import_translations(
         if not await get_cached_book(bid):
             raise HTTPException(status_code=404, detail=f"Book {bid} not found")
 
+    # Pre-check: reject if any chapter to be imported has a running queue job.
+    # The worker uses INSERT OR REPLACE and would overwrite the imported translation
+    # when it finishes — same race as retranslate (#334) and PUT /translate/cache (#341).
+    from services.translation_queue import queue_status_for_chapter
+    for entry in req.entries:
+        if not entry.paragraphs:
+            continue
+        lang = entry.target_language.lower().split("-")[0]
+        status = await queue_status_for_chapter(entry.book_id, entry.chapter_index, lang)
+        if status["status"] == "running":
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"A translation job is currently running for book {entry.book_id} "
+                    f"chapter {entry.chapter_index} ({lang}). "
+                    "Wait for it to finish before importing."
+                ),
+            )
+
     count = 0
     for entry in req.entries:
         if not entry.paragraphs:

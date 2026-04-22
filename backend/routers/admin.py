@@ -347,6 +347,22 @@ async def get_translations(_admin: dict = Depends(_require_admin)):
 async def delete_book_translations(book_id: int, _admin: dict = Depends(_require_admin)):
     """Delete all translations for a book."""
     async with aiosqlite.connect(DB_PATH) as db:
+        # Reject if any worker is running — it would re-insert via INSERT OR REPLACE. (#338)
+        async with db.execute(
+            "SELECT chapter_index, target_language FROM translation_queue "
+            "WHERE book_id=? AND status='running' LIMIT 1",
+            (book_id,),
+        ) as cur:
+            running = await cur.fetchone()
+        if running:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"A translation job is currently running for this book "
+                    f"(chapter {running[0]}, language '{running[1]}'). "
+                    "Wait for it to finish before deleting."
+                ),
+            )
         cursor = await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
         if cursor.rowcount == 0:
             raise HTTPException(status_code=404, detail="No translations found for this book")
@@ -369,6 +385,20 @@ async def delete_language_translations(
     """Delete all cached translations for one language of a book."""
     target_language = target_language.lower().split("-")[0]
     async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT chapter_index FROM translation_queue "
+            "WHERE book_id=? AND target_language=? AND status='running' LIMIT 1",
+            (book_id, target_language),
+        ) as cur:
+            running = await cur.fetchone()
+        if running:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"A translation job is currently running for chapter {running[0]}. "
+                    "Wait for it to finish before deleting."
+                ),
+            )
         cursor = await db.execute(
             "DELETE FROM translations WHERE book_id=? AND target_language=?",
             (book_id, target_language),
@@ -394,6 +424,19 @@ async def delete_translation(
     """Delete a specific cached translation."""
     target_language = target_language.lower().split("-")[0]
     async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT 1 FROM translation_queue "
+            "WHERE book_id=? AND chapter_index=? AND target_language=? AND status='running'",
+            (book_id, chapter_index, target_language),
+        ) as cur:
+            if await cur.fetchone():
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"A translation job is currently running for chapter {chapter_index}. "
+                        "Wait for it to finish before deleting."
+                    ),
+                )
         cursor = await db.execute(
             "DELETE FROM translations WHERE book_id=? AND chapter_index=? AND target_language=?",
             (book_id, chapter_index, target_language),

@@ -713,6 +713,19 @@ describe("ReaderPage — chapter starting from URL param", () => {
     // Chapter index 2 → "Chapter Three"
     expect(await screen.findByText("Chapter Three")).toBeInTheDocument();
   });
+
+  it("records the deep-link chapter (not the saved chapter) in recent books", async () => {
+    // Saved chapter is 0, but URL says chapter=2 — recordRecentBook should see 2
+    mockGetLastChapter.mockReturnValue(0);
+    mockUseSearchParams.mockReturnValue({ get: (key: string) => key === "chapter" ? "2" : null });
+    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bookIdCounter }, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+    expect(mockRecordRecentBook).toHaveBeenCalledWith(
+      expect.objectContaining({ id: expect.any(Number) }),
+      2,
+    );
+  });
 });
 
 describe("ReaderPage — mobile bottom bar", () => {

@@ -291,8 +291,9 @@ export default function ReaderPage() {
         const urlChapter = searchParams?.get("chapter");
         const urlChapterIdx = urlChapter !== null ? parseInt(urlChapter, 10) : NaN;
         const targetChapter = !isNaN(urlChapterIdx) ? urlChapterIdx : savedChapter;
-        setChapterIndex(Math.min(targetChapter, data.chapters.length - 1));
-        recordRecentBook(data.meta, savedChapter);
+        const clampedTarget = Math.min(targetChapter, data.chapters.length - 1);
+        setChapterIndex(clampedTarget);
+        recordRecentBook(data.meta, clampedTarget);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

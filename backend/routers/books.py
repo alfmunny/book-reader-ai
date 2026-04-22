@@ -503,8 +503,14 @@ async def import_stream(
     /books/{id}/translations/enqueue-all.
 
     Idempotent: skips already-cached work.
-    All books are publicly accessible without login.
+    Gutenberg books are publicly accessible; uploaded books require ownership.
     """
+    # Access guard runs before the stream starts so the HTTP status is 403,
+    # not a mid-stream error. Uploaded books are private; Gutenberg books are
+    # not yet in the DB at this point so no check is needed for them.
+    _pre_cached = await get_cached_book(book_id)
+    if _pre_cached:
+        check_book_access(_pre_cached, user)
 
     async def generator() -> AsyncIterator[str]:
         try:

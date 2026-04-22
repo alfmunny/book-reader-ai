@@ -6,7 +6,7 @@ Full CRUD where applicable.
 import json
 import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
 from services.db import (
     DB_PATH,
@@ -1037,11 +1037,11 @@ class QueueSettingsRequest(BaseModel):
     enabled: bool | None = None
     api_key: str | None = None     # plaintext; empty string clears
     auto_translate_languages: list[str] | None = None
-    rpm: int | None = None
-    rpd: int | None = None
+    rpm: int | None = Field(default=None, ge=1)
+    rpd: int | None = Field(default=None, ge=1)
     model: str | None = None
     model_chain: list[str] | None = None
-    max_output_tokens: int | None = None
+    max_output_tokens: int | None = Field(default=None, ge=1)
 
 
 @router.put("/queue/settings")

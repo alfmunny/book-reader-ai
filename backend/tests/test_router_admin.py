@@ -1856,3 +1856,54 @@ async def test_delete_book_sql_guard_preserves_running_queue_row(admin_client, a
     assert row is not None and row[0] == "running", (
         "SQL guard (AND status != 'running') must preserve running queue row (#370)"
     )
+
+
+# ── Queue settings input validation ──────────────────────────────────────────
+
+
+async def test_queue_settings_rejects_zero_rpm(admin_client, admin_db):
+    """Regression #460: PUT /admin/queue/settings with rpm=0 must return 422.
+
+    Zero or negative RPM causes division-by-zero in the queue worker's
+    rate-limit sleep calculation."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"rpm": 0},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for rpm=0, got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_settings_rejects_negative_rpd(admin_client, admin_db):
+    """Regression #460: PUT /admin/queue/settings with rpd=-1 must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"rpd": -1},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for rpd=-1, got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_settings_rejects_zero_max_output_tokens(admin_client, admin_db):
+    """Regression #460: PUT /admin/queue/settings with max_output_tokens=0 must
+    return 422. Zero tokens passed to the AI API causes API errors."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"max_output_tokens": 0},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for max_output_tokens=0, got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_settings_accepts_valid_positive_values(admin_client, admin_db):
+    """Regression #460: PUT /admin/queue/settings with valid positive values must succeed."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"rpm": 10, "rpd": 1000, "max_output_tokens": 8192},
+    )
+    assert res.status_code == 200, (
+        f"Expected 200 for valid positive values, got {res.status_code}: {res.text}"
+    )

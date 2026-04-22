@@ -257,6 +257,9 @@ async def delete_uploaded_book(book_id: int, user: dict = Depends(get_current_us
             (book_id,),
         )
         await db.execute("DELETE FROM word_occurrences WHERE book_id=?", (book_id,))
+        await db.execute(
+            "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
         await db.execute("DELETE FROM annotations WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM book_insights WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM chapter_summaries WHERE book_id=?", (book_id,))
@@ -265,4 +268,6 @@ async def delete_uploaded_book(book_id: int, user: dict = Depends(get_current_us
         await db.execute("DELETE FROM book_uploads WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM books WHERE id=?", (book_id,))
         await db.commit()
+    from services.book_chapters import clear_cache as _clear_chapter_cache
+    _clear_chapter_cache(book_id)
     return {"ok": True}

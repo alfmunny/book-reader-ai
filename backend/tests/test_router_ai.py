@@ -10,9 +10,10 @@ Focuses on:
   - Error paths: upstream Gemini failure → 500
 """
 
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, patch
-from services.db import save_book, save_translation, get_cached_translation, set_user_gemini_key
+from services.db import save_book, save_translation, get_cached_translation, set_user_gemini_key, set_setting
 from services.auth import encrypt_api_key
 
 
@@ -491,4 +492,49 @@ async def test_insight_with_corrupted_key_returns_400(client, test_user):
         "author": "Goethe",
     })
     assert resp.status_code == 400
+
+
+# ── Chapter summary concurrent generation ────────────────────────────────────
+
+async def test_summary_concurrent_requests_call_gemini_once(client, test_user, tmp_db):
+    """Regression #298: two concurrent requests for the same uncached chapter
+    must trigger only one Gemini call; the second waits and hits the cache.
+
+    Without the per-key asyncio.Lock in routers/ai.py, both requests race
+    past the cache-miss check and both call generate_chapter_summary().
+    """
+    from services.auth import encrypt_api_key as _enc
+    await save_book(8888, _BOOK_META, "text")
+    await set_setting("queue_api_key", _enc("test-gemini-key"))
+
+    call_count = 0
+
+    async def _fake_generate(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        await asyncio.sleep(0.01)  # simulate latency so both requests overlap
+        return "A generated summary."
+
+    payload = {
+        "book_id": 8888,
+        "chapter_index": 0,
+        "chapter_text": "Some text here.",
+        "book_title": "Faust",
+        "author": "Goethe",
+        "chapter_title": "Chapter 1",
+    }
+
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.generate_chapter_summary = _fake_generate
+        mock_gemini.MODEL = "gemini-pro"
+        results = await asyncio.gather(
+            client.post("/api/ai/summary", json=payload),
+            client.post("/api/ai/summary", json=payload),
+        )
+
+    assert all(r.status_code == 200 for r in results)
+    assert call_count == 1, (
+        f"Expected 1 Gemini call for concurrent requests to the same chapter, "
+        f"got {call_count}. Missing per-key asyncio.Lock in the summary endpoint."
+    )
 

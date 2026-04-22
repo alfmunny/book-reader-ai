@@ -897,3 +897,32 @@ async def test_worker_processes_batch(tmp_db):
         ) as cursor:
             (count,) = await cursor.fetchone()
     assert count == 0
+
+
+async def test_clear_queue_status_filter_preserves_running_items(tmp_db):
+    """Regression #373: clear_queue(status='running') must not delete running rows.
+
+    PR #320 added the guard only to the status=None path. The status-filter path
+    (WHERE status=?) had no AND status != 'running' guard, so passing
+    status='running' deleted all in-flight worker rows — giving false cancellation
+    and breaking mark_queue_row_done semantics.
+    """
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE chapter_index=0"
+        )
+        await db.commit()
+
+    # Even if someone explicitly asks to clear running items, the guard must
+    # prevent it and return 0 rows deleted.
+    removed = await clear_queue(status="running")
+    assert removed == 0, (
+        "clear_queue(status='running') must not delete running rows (#373)"
+    )
+
+    remaining = await list_queue()
+    running = [r for r in remaining if r["status"] == "running"]
+    assert len(running) == 1, "Running row must survive clear_queue(status='running')"
+    assert running[0]["chapter_index"] == 0

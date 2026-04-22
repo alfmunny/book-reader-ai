@@ -17,6 +17,7 @@ import VocabularyToast from "@/components/VocabularyToast";
 import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
+import AuthPromptModal from "@/components/AuthPromptModal";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
@@ -260,6 +261,7 @@ export default function ReaderPage() {
   const [ttsStopAt, setTtsStopAt] = useState<number | undefined>();
   const [showTypographyPanel, setShowTypographyPanel] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [authPrompt, setAuthPrompt] = useState<string | null>(null);
 
   // Read settings on mount (translationLang uses lazy useState above)
   useEffect(() => {
@@ -738,6 +740,14 @@ export default function ReaderPage() {
     }
   }
 
+  // On mobile: auto-show auth modal when translation is blocked for guests
+  useEffect(() => {
+    if (session?.backendToken) return;
+    if (translationUsedProvider !== "login required") return;
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) setAuthPrompt("translate books");
+  }, [translationUsedProvider, session?.backendToken]);
+
   // Paragraph focus handlers
   function handleParagraphVisible(idx: number) {
     if (!ttsIsPlaying) setFocusParagraphIdx(idx);
@@ -1023,25 +1033,26 @@ export default function ReaderPage() {
           </button>
 
           {/* Notes sidebar toggle */}
-          {session?.backendToken && (
-            <button
-              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
-              title="Annotations & notes"
-              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                sidebarOpen && sidebarTab === "notes"
-                  ? "bg-amber-700 text-white border-amber-700"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              <NoteIcon className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden lg:inline">Notes</span>
-              {annotations.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
-                  {annotations.length}
-                </span>
-              )}
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (!session?.backendToken) { setAuthPrompt("save annotations and notes"); return; }
+              setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true);
+            }}
+            title="Annotations & notes"
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "notes"
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <NoteIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden lg:inline">Notes</span>
+            {annotations.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                {annotations.length}
+              </span>
+            )}
+          </button>
 
           {/* Show/hide annotation marks — lg+ only */}
           {session?.backendToken && (
@@ -1066,25 +1077,26 @@ export default function ReaderPage() {
           )}
 
           {/* Vocabulary sidebar */}
-          {session?.backendToken && (
-            <button
-              onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
-              title="Vocabulary"
-              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                sidebarOpen && sidebarTab === "vocab"
-                  ? "bg-amber-700 text-white border-amber-700"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              <BookOpenIcon className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden lg:inline">Vocab</span>
-              {vocabWords.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
-                  {vocabWords.length}
-                </span>
-              )}
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (!session?.backendToken) { setAuthPrompt("save vocabulary"); return; }
+              setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true);
+            }}
+            title="Vocabulary"
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "vocab"
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <BookOpenIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden lg:inline">Vocab</span>
+            {vocabWords.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                {vocabWords.length}
+              </span>
+            )}
+          </button>
 
           {/* Export vocabulary to Obsidian — lg+ only */}
           {session?.backendToken && (
@@ -1151,21 +1163,30 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Profile — always rightmost */}
-          <button
-            onClick={() => router.push("/profile")}
-            title={session?.backendUser?.name ?? "Profile"}
-            className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
-          >
-            {session?.backendUser?.picture ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
-            ) : (
-              <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
-                {session?.backendUser?.name?.[0] ?? "?"}
-              </span>
-            )}
-          </button>
+          {/* Profile / Sign-in — always rightmost */}
+          {session?.backendToken ? (
+            <button
+              onClick={() => router.push("/profile")}
+              title={session.backendUser?.name ?? "Profile"}
+              className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
+            >
+              {session.backendUser?.picture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-xs font-bold">
+                  {session.backendUser?.name?.[0] ?? "?"}
+                </span>
+              )}
+            </button>
+          ) : (
+            <a
+              href="/api/auth/signin"
+              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+            >
+              Sign in
+            </a>
+          )}
         </div>
       </header>
 
@@ -2117,24 +2138,25 @@ export default function ReaderPage() {
               <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500" />
             </div>
 
-            {session?.backendToken && (
-              <button
-                onClick={() => setNotesExpanded((v) => !v)}
-                className={`relative h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
-                  notesExpanded
-                    ? "bg-amber-700 text-white border-amber-700"
-                    : "text-amber-700 bg-amber-50 border-amber-200"
-                }`}
-                aria-label="Notes"
-              >
-                <NoteIcon className="w-5 h-5" />
-                {annotations.length > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
-                    {annotations.length}
-                  </span>
-                )}
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (!session?.backendToken) { setAuthPrompt("save annotations and notes"); return; }
+                setNotesExpanded((v) => !v);
+              }}
+              className={`relative h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
+                notesExpanded
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "text-amber-700 bg-amber-50 border-amber-200"
+              }`}
+              aria-label="Notes"
+            >
+              <NoteIcon className="w-5 h-5" />
+              {annotations.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
+                  {annotations.length}
+                </span>
+              )}
+            </button>
 
             <button
               onClick={() => setSidebarOpen((v) => !v)}
@@ -2148,6 +2170,12 @@ export default function ReaderPage() {
           </div>
         </div>
       )}
+
+      <AuthPromptModal
+        open={authPrompt !== null}
+        feature={authPrompt ?? ""}
+        onClose={() => setAuthPrompt(null)}
+      />
     </div>
   );
 }

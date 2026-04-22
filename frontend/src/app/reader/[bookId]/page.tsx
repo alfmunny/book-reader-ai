@@ -100,6 +100,8 @@ export default function ReaderPage() {
     [vocabWords],
   );
   const [vocabView, setVocabView] = useState<"chapter" | "book">("chapter");
+  const [notesView, setNotesView] = useState<"chapter" | "all">("chapter");
+  const [collapsedNoteChapters, setCollapsedNoteChapters] = useState<Set<number>>(new Set());
   // Word definition tooltip (shown when "Word" is clicked in SelectionToolbar)
   const [vocabTooltip, setVocabTooltip] = useState<{ word: string; context: string; rect: DOMRect } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(320);
@@ -1624,99 +1626,134 @@ export default function ReaderPage() {
               </div>
 
               {/* Notes tab */}
-              {sidebarTab === "notes" && (
-                <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                  {annotationsLoading && annotations.length === 0 ? (
-                    <div className="flex justify-center mt-10">
-                      <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+              {sidebarTab === "notes" && (() => {
+                const filteredNotes = notesView === "chapter"
+                  ? annotations.filter((a) => a.chapter_index === chapterIndex)
+                  : annotations;
+                const colorBadge: Record<string, string> = {
+                  yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
+                  blue: "bg-blue-100 border-blue-300 text-blue-800",
+                  green: "bg-green-100 border-green-300 text-green-800",
+                  pink: "bg-pink-100 border-pink-300 text-pink-800",
+                };
+                const renderCard = (ann: (typeof annotations)[0]) => (
+                  <div
+                    key={ann.id}
+                    className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${colorBadge[ann.color] ?? colorBadge.yellow}`}
+                    onClick={() => {
+                      if (ann.chapter_index !== chapterIndex) {
+                        goToChapter(ann.chapter_index);
+                        setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                      } else {
+                        setScrollTargetSentence(undefined);
+                        setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                      }
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
+                        &ldquo;{ann.sentence_text}&rdquo;
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAnnotationPanel({
+                            sentenceText: ann.sentence_text,
+                            chapterIndex: ann.chapter_index,
+                            position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+                          });
+                        }}
+                        className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
+                        title="Edit annotation"
+                      >
+                        ✏️
+                      </button>
                     </div>
-                  ) : annotations.length === 0 ? (
-                    <div className="text-center text-stone-400 mt-10 text-sm">
-                      <p className="text-3xl mb-2">📝</p>
-                      <p>No annotations yet.</p>
-                      <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
-                    </div>
-                  ) : (
-                    <>
-                      {Object.keys(
-                        annotations.reduce<Record<number, true>>((acc, a) => { acc[a.chapter_index] = true; return acc; }, {})
-                      ).map(Number).sort((a, b) => a - b).map((ch) => (
-                        <div key={ch}>
-                          <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2">
-                            Chapter {ch + 1}
-                          </h3>
-                          <div className="space-y-2">
-                            {annotations.filter((a) => a.chapter_index === ch).map((ann) => {
-                              const colorBadge: Record<string, string> = {
-                                yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
-                                blue: "bg-blue-100 border-blue-300 text-blue-800",
-                                green: "bg-green-100 border-green-300 text-green-800",
-                                pink: "bg-pink-100 border-pink-300 text-pink-800",
-                              };
-                              return (
-                                <div
-                                  key={ann.id}
-                                  className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${colorBadge[ann.color] ?? colorBadge.yellow}`}
-                                  onClick={() => {
-                                    if (ann.chapter_index !== chapterIndex) {
-                                      goToChapter(ann.chapter_index);
-                                      setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
-                                    } else {
-                                      setScrollTargetSentence(undefined);
-                                      setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
-                                    }
-                                    setSidebarOpen(false);
-                                  }}
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
-                                      &ldquo;{ann.sentence_text}&rdquo;
-                                    </p>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setAnnotationPanel({
-                                          sentenceText: ann.sentence_text,
-                                          chapterIndex: ann.chapter_index,
-                                          position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-                                        });
-                                      }}
-                                      className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
-                                      title="Edit annotation"
-                                    >
-                                      ✏️
-                                    </button>
-                                  </div>
-                                  {ann.note_text && (
-                                    <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">
-                                      {ann.note_text}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                  {/* Footer link */}
-                  <div className="border-t border-amber-100 pb-2 pt-3 flex gap-3 justify-between shrink-0">
-                    <a
-                      href={`/notes/${bookId}`}
-                      className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
-                    >
-                      Book notes →
-                    </a>
-                    <a
-                      href="/notes"
-                      className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
-                    >
-                      All books
-                    </a>
+                    {ann.note_text && (
+                      <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">
+                        {ann.note_text}
+                      </p>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+                return (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* Filter toggle */}
+                    <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-0.5">
+                      {(["chapter", "all"] as const).map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => setNotesView(v)}
+                          className={`flex-1 text-xs py-1 rounded-md font-medium transition-colors ${
+                            notesView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                          }`}
+                        >
+                          {v === "chapter" ? "This chapter" : "All chapters"}
+                        </button>
+                      ))}
+                    </div>
+                    {annotationsLoading && annotations.length === 0 ? (
+                      <div className="flex justify-center mt-10">
+                        <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                      </div>
+                    ) : filteredNotes.length === 0 ? (
+                      <div className="text-center text-stone-400 mt-10 text-sm">
+                        <p className="text-3xl mb-2">📝</p>
+                        <p>{notesView === "chapter" ? "No annotations in this chapter yet." : "No annotations yet."}</p>
+                        <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
+                      </div>
+                    ) : notesView === "chapter" ? (
+                      <div className="space-y-2">
+                        {filteredNotes.map(renderCard)}
+                      </div>
+                    ) : (
+                      <>
+                        {Object.keys(
+                          annotations.reduce<Record<number, true>>((acc, a) => { acc[a.chapter_index] = true; return acc; }, {})
+                        ).map(Number).sort((a, b) => a - b).map((ch) => {
+                          const isCollapsed = collapsedNoteChapters.has(ch);
+                          return (
+                            <div key={ch}>
+                              <button
+                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2"
+                                onClick={() => setCollapsedNoteChapters((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(ch)) next.delete(ch); else next.add(ch);
+                                  return next;
+                                })}
+                              >
+                                <span>{isCollapsed ? "▶" : "▼"}</span>
+                                <span>Chapter {ch + 1}</span>
+                              </button>
+                              {!isCollapsed && (
+                                <div className="space-y-2">
+                                  {annotations.filter((a) => a.chapter_index === ch).map(renderCard)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                    {/* Footer link */}
+                    <div className="border-t border-amber-100 pb-2 pt-3 flex gap-3 justify-between shrink-0">
+                      <a
+                        href={`/notes/${bookId}`}
+                        className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+                      >
+                        Book notes →
+                      </a>
+                      <a
+                        href="/notes"
+                        className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                      >
+                        All books
+                      </a>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Vocab tab */}
               {sidebarTab === "vocab" && (() => {

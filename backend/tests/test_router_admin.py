@@ -907,6 +907,25 @@ async def test_admin_retry_failed_without_filters_retries_all(admin_client, admi
 
 # ── Language normalization in admin translation endpoints ─────────────────────
 
+async def test_queue_settings_normalizes_auto_translate_languages(admin_client, admin_db):
+    """PUT /admin/queue/settings must normalize auto_translate_languages so
+    'ZH-CN' is stored and returned as 'zh'. Unnormalized stored values would
+    show 'ZH-CN' in the admin UI while the queue uses 'zh', confusing admins."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"auto_translate_languages": ["ZH-CN", "EN"]},
+    )
+    assert res.status_code == 200
+
+    get_res = await admin_client.get("/api/admin/queue/settings")
+    assert get_res.status_code == 200
+    langs = get_res.json()["auto_translate_languages"]
+    assert "zh" in langs, f"Expected 'zh' in {langs}, got unnormalized 'ZH-CN'"
+    assert "ZH-CN" not in langs
+    assert "en" in langs
+    assert "EN" not in langs
+
+
 async def test_retranslate_normalizes_language(admin_client, admin_db):
     """POST /admin/translations/{id}/{idx}/ZH-CN/retranslate must treat
     'ZH-CN' the same as 'zh' so the saved translation is found by readers."""

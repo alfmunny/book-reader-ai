@@ -905,7 +905,11 @@ async def queue_set_settings(
     if req.auto_translate_languages is not None:
         await set_setting(
             SETTING_AUTO_LANGS,
-            json.dumps([lang for lang in req.auto_translate_languages if lang]),
+            json.dumps([
+                lang.lower().split("-")[0]
+                for lang in req.auto_translate_languages
+                if lang
+            ]),
         )
     if req.rpm is not None:
         await set_setting(SETTING_RPM, str(req.rpm))

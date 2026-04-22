@@ -641,7 +641,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  });
+  }, [chapterIndex, chapters]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);

@@ -211,15 +211,15 @@ export default function InsightChat({
   // ── 4. Manual refresh ────────────────────────────────────────────────
   useEffect(() => {
     if (refreshTick === 0 || !chapterText || !bookTitle || !hasGeminiKey) return;
+    let cancelled = false;
     autoScrollRef.current = true;
     setChatLoading(true);
     onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
-      .then((r) => setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]))
-      .catch((e) => {
-        setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
-      })
-      .finally(() => setChatLoading(false));
+      .then((r) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]); })
+      .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]); })
+      .finally(() => { if (!cancelled) setChatLoading(false); });
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 

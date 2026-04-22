@@ -398,3 +398,38 @@ describe("InsightChat — chapter header divider rendering", () => {
     expect(screen.getByText("Chapter I")).toBeInTheDocument();
   });
 });
+
+// ── Manual refresh cancellation ───────────────────────────────────────────────
+
+describe("InsightChat — manual refresh cancellation", () => {
+  it("stale refresh response does not appear when refresh fires twice quickly", async () => {
+    let resolveFirst: (v: { insight: string }) => void;
+    let resolveSecond: (v: { insight: string }) => void;
+    mockGetInsight
+      .mockReturnValueOnce(new Promise((r) => { resolveFirst = r; }))
+      .mockReturnValueOnce(new Promise((r) => { resolveSecond = r; }));
+
+    // isVisible=false so the chapter auto-insight doesn't fire (avoids consuming first mock)
+    render(<InsightChat {...BASE} isVisible={false} />);
+    await act(async () => await flushPromises());
+
+    const refreshBtn = screen.getByTitle("Append a fresh insight");
+
+    // First click — starts first refresh effect (promise pending)
+    fireEvent.click(refreshBtn);
+    await act(async () => await flushPromises()); // let effect 1 run and suspend on first promise
+    // Second click immediately — cleanup fires (cancelled=true for effect 1), effect 2 starts
+    fireEvent.click(refreshBtn);
+    await act(async () => await flushPromises());
+
+    // Resolve the first (stale) promise — should be ignored because cancelled=true
+    await act(async () => { resolveFirst!({ insight: "Stale insight" }); });
+    await act(async () => await flushPromises());
+    expect(screen.queryByText("Stale insight")).not.toBeInTheDocument();
+
+    // Resolve the second (current) promise — should appear
+    await act(async () => { resolveSecond!({ insight: "Fresh insight" }); });
+    await act(async () => await flushPromises());
+    expect(screen.getByText("Fresh insight")).toBeInTheDocument();
+  });
+});

@@ -157,7 +157,10 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
     token = auth_header.removeprefix("Bearer ").strip()
     payload = decode_jwt(token)
-    user_id = int(payload["sub"])
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
+    user_id = int(sub)
     user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")

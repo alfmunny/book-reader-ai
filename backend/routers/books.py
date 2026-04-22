@@ -258,7 +258,11 @@ async def request_chapter_translation(
 
     # 4. Require user's own Gemini key — do not drain the admin queue key.
     raw_key = user.get("gemini_key")
-    if not (raw_key and decrypt_api_key(raw_key)):
+    try:
+        decrypted_key = decrypt_api_key(raw_key) if raw_key else None
+    except HTTPException:
+        decrypted_key = None
+    if not decrypted_key:
         raise HTTPException(
             status_code=403,
             detail="A Gemini API key is required to translate chapters. Please add one in your profile settings.",

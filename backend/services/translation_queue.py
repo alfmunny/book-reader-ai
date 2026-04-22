@@ -582,7 +582,12 @@ async def queue_status_for_chapter(
 
 
 async def clear_queue(status: str | None = None) -> int:
-    """Delete ALL queue rows, or only rows matching a specific status.
+    """Delete queue rows, optionally filtered by status.
+
+    Running items are always excluded: the worker will still complete their
+    translation and call mark_queue_row_done. Deleting a running row would give
+    a false sense of cancellation and, worse, mark_queue_row_done would then
+    silently delete any re-enqueued pending row for the same (book, chapter, lang).
 
     Handy for the admin "Clear queue" / "Clear failed" buttons.
     """
@@ -592,7 +597,9 @@ async def clear_queue(status: str | None = None) -> int:
                 "DELETE FROM translation_queue WHERE status=?", (status,),
             )
         else:
-            cursor = await db.execute("DELETE FROM translation_queue")
+            cursor = await db.execute(
+                "DELETE FROM translation_queue WHERE status != 'running'",
+            )
         await db.commit()
         return cursor.rowcount
 

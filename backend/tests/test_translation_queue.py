@@ -449,6 +449,31 @@ async def test_clear_queue_all_and_by_status(tmp_db):
     assert await list_queue() == []
 
 
+async def test_clear_queue_preserves_running_items(tmp_db):
+    """Regression #319: clear_queue() must not delete running items.
+
+    A running row represents in-flight work the worker will still complete.
+    Deleting it lets mark_queue_row_done silently destroy a re-enqueued
+    pending row, voiding the admin's retranslation intent.
+    """
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    # Simulate chapter 0 being actively translated by the worker.
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE chapter_index=0",
+        )
+        await db.commit()
+
+    removed = await clear_queue()
+    # Pending chapter 1 should be deleted; running chapter 0 must survive.
+    assert removed == 1
+    remaining = await list_queue()
+    assert len(remaining) == 1
+    assert remaining[0]["chapter_index"] == 0
+    assert remaining[0]["status"] == "running"
+
+
 async def test_worker_idles_without_api_key(tmp_db):
     """With no queue_api_key configured, the worker must idle — not crash."""
     await set_setting(SETTING_ENABLED, "1")

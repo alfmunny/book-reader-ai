@@ -7,6 +7,7 @@ import {
   askQuestion,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
+import { PaperclipIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -65,7 +66,7 @@ function ContextChip({
   return (
     <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
       <div className="flex items-start gap-1.5">
-        <span className="shrink-0 mt-px text-amber-400">📎</span>
+        <PaperclipIcon className="w-3.5 h-3.5 shrink-0 mt-px text-amber-400" />
         <div className="flex-1 min-w-0">
           <span className="italic leading-relaxed">
             &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;

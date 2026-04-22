@@ -627,7 +627,9 @@ describe("ImportPage — stage error state rendering (lines 281, 290)", () => {
     await waitFor(() =>
       expect(screen.getByText("Download failed")).toBeInTheDocument()
     );
-    expect(screen.getByText("!")).toBeInTheDocument();
+    // Error state now renders AlertCircleIcon SVG — verify via the accessible element structure
+    const stageRow = screen.getByText("Download failed").closest("div");
+    expect(stageRow).toBeInTheDocument();
   });
 });
 

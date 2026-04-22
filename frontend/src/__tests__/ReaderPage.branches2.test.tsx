@@ -1704,10 +1704,7 @@ describe("ReaderPage.branches2 — desktop header chapter nav arrows", () => {
 
     await screen.findByText("Chapter Two");
 
-    // Find ‹ button
-    const prevArrows = screen.queryAllByRole("button").filter(
-      (b) => b.textContent === "‹",
-    );
+    const prevArrows = screen.queryAllByRole("button", { name: "Previous chapter" });
     expect(prevArrows.length).toBeGreaterThan(0);
     await userEvent.click(prevArrows[0]);
 
@@ -1727,9 +1724,7 @@ describe("ReaderPage.branches2 — desktop header chapter nav arrows", () => {
 
     await screen.findByText("Chapter One");
 
-    const nextArrows = screen.queryAllByRole("button").filter(
-      (b) => b.textContent === "›",
-    );
+    const nextArrows = screen.queryAllByRole("button", { name: "Next chapter" });
     expect(nextArrows.length).toBeGreaterThan(0);
     await userEvent.click(nextArrows[0]);
 

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateChapterSummary } from "@/lib/api";
+import { SummaryIcon } from "@/components/Icons";
 
 interface Props {
   bookId: string;
@@ -78,7 +79,7 @@ export default function ChapterSummary({
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-amber-100">
         <div className="flex items-center gap-2">
-          <span className="text-base">📋</span>
+          <SummaryIcon className="w-4 h-4 text-amber-600 shrink-0" />
           <span className="text-sm font-semibold text-stone-700">Chapter Summary</span>
           {cached && !loading && (
             <span className="text-[10px] bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 font-medium">cached</span>
@@ -131,7 +132,7 @@ export default function ChapterSummary({
 
         {!summary && !loading && !error && (
           <div className="flex flex-col items-center justify-center h-full text-center text-stone-400 gap-3 py-8">
-            <span className="text-4xl">📋</span>
+            <SummaryIcon className="w-10 h-10 text-amber-300" />
             <p className="text-sm">Get a quick overview of this chapter before continuing.</p>
             <button
               onClick={load}

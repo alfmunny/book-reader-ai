@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon } from "@/components/Icons";
 
 interface Definition {
   partOfSpeech: string;
@@ -172,7 +173,7 @@ export default function WordActionDrawer({
                 }}
                 className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors"
               >
-                🔊 Read
+                <SpeakerIcon className="w-4 h-4 shrink-0" /> Read
               </button>
             )}
             {onSaveWord && (
@@ -190,7 +191,7 @@ export default function WordActionDrawer({
                     : "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100"
                 }`}
               >
-                {saved ? "✓ Saved" : "💾 Save"}
+                {saved ? <><CheckCircleIcon className="w-4 h-4 shrink-0" /> Saved</> : <><SaveIcon className="w-4 h-4 shrink-0" /> Save</>}
               </button>
             )}
             {onAnnotate && (
@@ -201,7 +202,7 @@ export default function WordActionDrawer({
                 }}
                 className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors"
               >
-                📝 Note
+                <NoteIcon className="w-4 h-4 shrink-0" /> Note
               </button>
             )}
           </div>

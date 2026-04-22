@@ -1224,6 +1224,43 @@ describe("ReaderPage — keyboard navigation", () => {
   });
 });
 
+describe("ReaderPage — keyboard shortcuts panel", () => {
+  it("? key opens the shortcuts panel", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+    await screen.findByTestId("reader-chapter-heading");
+
+    fireEvent.keyDown(document, { key: "?" });
+
+    await waitFor(() => {
+      expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument();
+    });
+  });
+
+  it("Escape key closes the shortcuts panel", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+    await screen.findByTestId("reader-chapter-heading");
+
+    fireEvent.keyDown(document, { key: "?" });
+    await waitFor(() => expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument());
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByText("Keyboard Shortcuts")).not.toBeInTheDocument());
+  });
+
+  it("keyboard shortcuts button is present in header", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+    await screen.findByTestId("reader-chapter-heading");
+
+    expect(screen.getByRole("button", { name: "Keyboard shortcuts" })).toBeInTheDocument();
+  });
+});
+
 describe("ReaderPage — reading progress bar", () => {
   it("progress bar width reflects chapter index", async () => {
     // Start at chapter 1 of 3, so ~33%

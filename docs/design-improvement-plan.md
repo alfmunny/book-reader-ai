@@ -128,7 +128,15 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 - [ ] **UX-004**: Mobile tab bar with 5 tabs (Library, Discover, Notes, Word List, Admin) clips on 375px screens
 - [ ] **UX-005**: Translation sidebar panels open/close without animation on desktop — could use smooth slide transition
 - [ ] **UX-006**: No keyboard shortcut shown anywhere — discoverable features hidden
-- [ ] **UX-007**: "Remove from library" × button is 24px — below 44px touch target minimum on mobile
+- [x] **UX-007**: "Remove from library" × button is 24px — below 44px touch target minimum on mobile *(fixed Wave 7.1)*
+- [x] **UX-008**: Reading stats buried in Profile page — move to Home tab as personal dashboard *(fixed PR #290)*
+- [x] **UX-009**: `WordActionDrawer` action buttons use emoji (`🔊 💾 📝`) — should be SVG icons *(fixed Wave 8.2)*
+- [x] **UX-010**: `SentenceActionPopup` action buttons use emoji (`🔊 📝 💬`) — inconsistent with icon system *(fixed Wave 8.3)*
+- [x] **UX-011**: `ChapterSummary` uses `📋` emoji in header and empty state — replace with `SummaryIcon` SVG *(fixed Wave 8.4)*
+- [x] **UX-012**: `InsightChat` context snippet uses `📎` emoji — replace with `PaperclipIcon` SVG *(fixed Wave 8.5)*
+- [ ] **UX-013**: Profile page gender selector shows `♀ Female / ♂ Male` Unicode symbols — replace with text-only labels
+- [ ] **UX-014**: Import page status cells use `✓` / `…` / `!` text characters as status icons — replace with SVG
+- [ ] **UX-015**: Vocabulary page back button uses `←` text character — replace with `ArrowLeftIcon` SVG
 
 ---
 
@@ -176,3 +184,15 @@ These are structural changes requiring more careful implementation and testing:
 | 7.3 | UX-005: No slide animation on translation sidebar | Medium | Added `transition-[width] duration-200` to desktop sidebar container | ✅ Done |
 | 7.4 | UX-004: Mobile tab bar 5-tab clip at 375px | Medium | `overflow-x-auto scrollbar-none` — implemented in Wave 2.4 | ✅ Done |
 | 7.5 | UX-006: Keyboard shortcut discoverability | Low | Add `?` shortcut panel or tooltip hints on hover | ⏳ Open |
+
+## Wave 8 — Round 3 Emoji Removal + UX Polish
+
+| # | Change | Impact | File(s) | Status |
+|---|--------|--------|---------|--------|
+| 8.1 | UX-006: Keyboard shortcuts panel (`?` button in reader header) + FocusIcon SVG (replaces 🎯) | Medium | reader/[bookId]/page.tsx, Icons.tsx | ✅ Done |
+| 8.2 | UX-002: Chapter select styled with `appearance-none` + ChevronDown overlay + SVG prev/next buttons | Medium | reader/[bookId]/page.tsx, Icons.tsx | ✅ Done |
+| 8.3 | Wave 5.3: Notes count badges — pill style (amber bg, border, rounded-full) | Low | notes/[bookId]/page.tsx | ✅ Done |
+| 8.4 | UX-009: WordActionDrawer: SVG icons (SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon) | High | WordActionDrawer.tsx, Icons.tsx | ✅ Done |
+| 8.5 | UX-010: SentenceActionPopup: SVG icons (SpeakerIcon, NoteIcon, ChatIcon) | High | SentenceActionPopup.tsx | ✅ Done |
+| 8.6 | UX-011: ChapterSummary: SummaryIcon replaces 📋 in header and empty state | Medium | ChapterSummary.tsx | ✅ Done |
+| 8.7 | UX-012: InsightChat: PaperclipIcon replaces 📎 context snippet decorator | Low | InsightChat.tsx, Icons.tsx | ✅ Done |

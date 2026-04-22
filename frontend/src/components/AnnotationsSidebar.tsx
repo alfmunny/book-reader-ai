@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Annotation } from "@/lib/api";
+import { ArrowRightIcon } from "@/components/Icons";
 
 const COLOR_BADGE: Record<string, string> = {
   yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
@@ -145,9 +146,9 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <a
               href={bookId ? `/notes/${bookId}` : "/notes"}
               onClick={() => setOpen(false)}
-              className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+              className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
             >
-              {bookId ? "Book notes →" : "All notes →"}
+              {bookId ? "Book notes" : "All notes"} <ArrowRightIcon className="w-3 h-3 shrink-0" />
             </a>
             <a
               href="/notes"

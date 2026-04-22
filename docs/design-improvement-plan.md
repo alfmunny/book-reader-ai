@@ -122,21 +122,21 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 
 ## UX Issues (Opened for Later)
 
-- [ ] **UX-001**: Reader header button overflow on mid-size screens — needs a "More" overflow menu or collapsible toolbar
-- [ ] **UX-002**: Chapter select dropdown is native HTML `<select>` — consider custom dropdown or at minimum better styling
+- [x] **UX-001**: Reader header button overflow on mid-size screens *(fixed Wave 7.2: icon-only on md, icon+text on lg)*
+- [x] **UX-002**: Chapter select dropdown — `appearance-none` + ChevronDown overlay + SVG prev/next *(fixed Wave 8.2)*
 - [ ] **UX-003**: Long-press annotation on mobile conflicts with native text selection — needs review
-- [ ] **UX-004**: Mobile tab bar with 5 tabs (Library, Discover, Notes, Word List, Admin) clips on 375px screens
-- [ ] **UX-005**: Translation sidebar panels open/close without animation on desktop — could use smooth slide transition
-- [ ] **UX-006**: No keyboard shortcut shown anywhere — discoverable features hidden
+- [x] **UX-004**: Mobile tab bar with 5 tabs clips on 375px screens *(fixed Wave 7.4: `overflow-x-auto scrollbar-none`)*
+- [x] **UX-005**: Translation sidebar panels open/close without animation *(fixed Wave 7.3: `transition-[width] duration-200`)*
+- [x] **UX-006**: No keyboard shortcut shown anywhere *(fixed Wave 8.1: `?` button opens shortcuts panel in reader)*
 - [x] **UX-007**: "Remove from library" × button is 24px — below 44px touch target minimum on mobile *(fixed Wave 7.1)*
 - [x] **UX-008**: Reading stats buried in Profile page — move to Home tab as personal dashboard *(fixed PR #290)*
 - [x] **UX-009**: `WordActionDrawer` action buttons use emoji (`🔊 💾 📝`) — should be SVG icons *(fixed Wave 8.2)*
 - [x] **UX-010**: `SentenceActionPopup` action buttons use emoji (`🔊 📝 💬`) — inconsistent with icon system *(fixed Wave 8.3)*
 - [x] **UX-011**: `ChapterSummary` uses `📋` emoji in header and empty state — replace with `SummaryIcon` SVG *(fixed Wave 8.4)*
 - [x] **UX-012**: `InsightChat` context snippet uses `📎` emoji — replace with `PaperclipIcon` SVG *(fixed Wave 8.5)*
-- [ ] **UX-013**: Profile page gender selector shows `♀ Female / ♂ Male` Unicode symbols — replace with text-only labels
-- [ ] **UX-014**: Import page status cells use `✓` / `…` / `!` text characters as status icons — replace with SVG
-- [ ] **UX-015**: Vocabulary page back button uses `←` text character — replace with `ArrowLeftIcon` SVG
+- [x] **UX-013**: Profile page gender selector shows `♀ Female / ♂ Male` — text-only labels *(fixed Wave 8.6)*
+- [x] **UX-014**: Import page status cells use `✓` / `…` / `!` — SVG icons via CheckCircle/Retry/AlertCircle/CircleDot *(fixed Wave 8.7)*
+- [x] **UX-015**: Vocabulary page back button uses `←` — replaced with `ArrowLeftIcon` SVG *(fixed Wave 8.8)*
 
 ---
 

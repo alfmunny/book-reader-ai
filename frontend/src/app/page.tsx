@@ -5,7 +5,7 @@ import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks"
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon } from "@/components/Icons";
+import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -418,8 +418,116 @@ export default function Home() {
         {/* ════════════ Discover Tab ════════════ */}
         {tab === "discover" && (
           <div className="space-y-10">
+
+            {/* ── Landing hero (unauthenticated visitors only) ── */}
+            {status === "unauthenticated" && (
+              <section className="pt-4 pb-2">
+                {/* Headline */}
+                <div className="text-center mb-8">
+                  <h2 className="font-serif text-3xl md:text-4xl font-bold text-ink leading-tight mb-3">
+                    Read the world&rsquo;s greatest books<br className="hidden sm:block" /> in your language
+                  </h2>
+                  <p className="text-amber-800 text-base md:text-lg max-w-xl mx-auto mb-6">
+                    70,000+ free classics from Project Gutenberg — with AI translation, vocabulary building, and reading insights.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                    <button
+                      onClick={() => router.push("/login")}
+                      className="rounded-lg bg-amber-700 px-7 py-3 text-white font-semibold text-base hover:bg-amber-800 transition-colors shadow-sm min-w-[160px]"
+                    >
+                      Sign in free
+                    </button>
+                    <button
+                      onClick={() => document.getElementById("discover-search")?.scrollIntoView({ behavior: "smooth" })}
+                      className="rounded-lg border border-amber-300 px-7 py-3 text-amber-800 font-medium text-base hover:bg-amber-50 transition-colors min-w-[160px] flex items-center justify-center gap-2"
+                    >
+                      Browse library <ArrowRightIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Translation preview */}
+                <div className="rounded-2xl border border-amber-200 bg-white overflow-hidden mb-8" style={{ boxShadow: "var(--shadow-card)" }}>
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-amber-100 bg-amber-50/60">
+                    <GlobeIcon className="w-4 h-4 text-amber-600" aria-hidden="true" />
+                    <span className="text-xs font-medium text-amber-800">AI Translation — Faust by Goethe (German → English)</span>
+                  </div>
+                  <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-amber-100">
+                    <div className="px-5 py-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-500 mb-2">Original · Deutsch</p>
+                      <p className="font-serif text-sm leading-relaxed text-ink/80">
+                        Habe nun, ach! Philosophie,<br />
+                        Juristerei und Medizin,<br />
+                        Und leider auch Theologie<br />
+                        Durchaus studiert, mit heißem Bemühn.<br />
+                        Da steh ich nun, ich armer Tor!<br />
+                        Und bin so klug als wie zuvor.
+                      </p>
+                    </div>
+                    <div className="px-5 py-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-500 mb-2">Translation · English</p>
+                      <p className="font-serif text-sm leading-relaxed text-ink">
+                        I have, alas! Philosophy,<br />
+                        Medicine, Jurisprudence too,<br />
+                        And to my cost Theology,<br />
+                        With ardent labour studied through.<br />
+                        And here I stand, with all my lore,<br />
+                        Poor fool, no wiser than before.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature cards */}
+                <div className="grid sm:grid-cols-3 gap-4 mb-6">
+                  {[
+                    {
+                      icon: <GlobeIcon className="w-5 h-5 text-amber-600" aria-hidden="true" />,
+                      title: "AI Translation",
+                      body: "Read any classic in your native language. Switch languages mid-chapter without losing your place.",
+                    },
+                    {
+                      icon: <VocabIcon className="w-5 h-5 text-amber-600" aria-hidden="true" />,
+                      title: "Vocabulary Builder",
+                      body: "Tap any word to save it. Build a personal reading vocabulary as you go, book by book.",
+                    },
+                    {
+                      icon: <InsightIcon className="w-5 h-5 text-amber-600" aria-hidden="true" />,
+                      title: "AI Reading Insights",
+                      body: "Ask questions about what you just read and get instant answers grounded in the text.",
+                    },
+                  ].map(({ icon, title, body }) => (
+                    <div key={title} className="rounded-xl border border-amber-200 bg-white p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {icon}
+                        <h3 className="font-semibold text-sm text-ink">{title}</h3>
+                      </div>
+                      <p className="text-xs text-amber-800 leading-relaxed">{body}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Secondary features row */}
+                <div className="flex flex-wrap justify-center gap-4 text-xs text-amber-700 mb-2">
+                  {[
+                    { icon: <SummaryIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Chapter Summaries" },
+                    { icon: <SpeakerIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Text-to-Speech" },
+                    { icon: <NoteIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Annotations" },
+                    { icon: <BookOpenIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Reading Stats" },
+                  ].map(({ icon, label }) => (
+                    <span key={label} className="flex items-center gap-1.5">
+                      {icon}
+                      {label}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="border-t border-amber-100 mt-8" />
+              </section>
+            )}
+
             {/* Search section */}
-            <section>
+            <section id="discover-search">
               <h2 className="font-serif font-semibold text-ink text-lg mb-1">Search</h2>
               <p className="text-sm text-amber-700 mb-3">
                 70,000+ free public domain classics from Project Gutenberg

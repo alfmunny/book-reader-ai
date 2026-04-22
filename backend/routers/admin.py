@@ -213,6 +213,8 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
         await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM translation_queue WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM word_occurrences WHERE book_id = ?", (book_id,))
+        await db.execute("DELETE FROM annotations WHERE book_id = ?", (book_id,))
+        await db.execute("DELETE FROM book_insights WHERE book_id = ?", (book_id,))
         await db.commit()
     # Invalidate the in-memory chapter split so a future import of the same
     # id doesn't accidentally reuse stale chapter boundaries.

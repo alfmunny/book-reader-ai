@@ -286,6 +286,20 @@ async def delete_user(user_id: int) -> None:
         await db.execute("DELETE FROM user_reading_progress WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM reading_history WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM book_uploads WHERE user_id = ?", (user_id,))
+        # Cascade deletions for uploaded books owned by this user.
+        # SQLite FK enforcement is OFF so ON DELETE CASCADE never fires automatically.
+        _owned = "SELECT id FROM books WHERE owner_user_id = ?"
+        await db.execute(f"DELETE FROM translations WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM audio_cache WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM chapter_summaries WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM translation_queue WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM word_occurrences WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM annotations WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM book_insights WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM user_reading_progress WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM reading_history WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM book_uploads WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute("DELETE FROM books WHERE owner_user_id = ?", (user_id,))
         await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         await db.commit()
 

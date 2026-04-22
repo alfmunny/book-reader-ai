@@ -88,6 +88,7 @@ async def plan_work(
     Skips: books already in target_language, chapters without cached text,
     empty chapters, and any chapter already present in the translations table.
     """
+    target_language = target_language.lower().split("-")[0]
     all_books = await list_cached_books()
     plans: list[BookPlan] = []
 
@@ -293,6 +294,7 @@ class BulkTranslationManager:
         book_ids: list[int] | None = None,
     ) -> JobState:
         """Start a new bulk translation job. Raises RuntimeError if one is running."""
+        target_language = target_language.lower().split("-")[0]
         async with self._lock:
             if self.is_running():
                 raise RuntimeError("A bulk translation job is already running")

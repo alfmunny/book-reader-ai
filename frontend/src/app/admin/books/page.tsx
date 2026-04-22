@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
 import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
+import { ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
 
 interface TranslationStat {
   chapters: number;
@@ -282,10 +283,11 @@ export default function BooksPage() {
                     setExpandedBookId(isExpanded ? null : b.id);
                     setExpandedLang(null);
                   }}
-                  className="text-stone-400 hover:text-amber-700 text-sm w-4 text-center"
+                  className="text-stone-400 hover:text-amber-700 flex items-center"
                   title={isExpanded ? "Collapse" : "Expand"}
+                  aria-label={isExpanded ? "Collapse" : "Expand"}
                 >
-                  {isExpanded ? "▼" : "▶"}
+                  {isExpanded ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
                 </button>
 
                 <div className="flex-1 min-w-0">
@@ -339,9 +341,9 @@ export default function BooksPage() {
                             {lang} · {count}
                             {pending + running + failed > 0 && (
                               <span className="ml-1 opacity-70">
-                                {running > 0 && `▶${running}`}
-                                {pending > 0 && `⏳${pending}`}
-                                {failed > 0 && `!${failed}`}
+                                {running > 0 && `▸${running}`}
+                                {pending > 0 && `·${pending}`}
+                                {failed > 0 && `×${failed}`}
                               </span>
                             )}
                           </span>
@@ -421,9 +423,10 @@ export default function BooksPage() {
                             <div className="px-3 py-2 flex items-center gap-2">
                               <button
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
-                                className="text-xs text-stone-400 hover:text-amber-700 w-4 text-center"
+                                className="text-xs text-stone-400 hover:text-amber-700 flex items-center"
+                                aria-label={isLangExpanded ? "Collapse" : "Expand"}
                               >
-                                {isLangExpanded ? "▼" : "▶"}
+                                {isLangExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                               </button>
                               <span className="text-sm font-medium text-ink">{lang}</span>
                               <span className="text-xs text-stone-500">

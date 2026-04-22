@@ -94,7 +94,7 @@ async function renderWithLangExpanded() {
   await waitFor(() => screen.getByText("zh"));
   const allBtns = screen.getAllByRole("button");
   const langArrow = allBtns.find(
-    (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+    (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
   );
   if (langArrow) await userEvent.click(langArrow);
 
@@ -252,7 +252,7 @@ describe("AdminBooksPage — queue status badges", () => {
     await flushPromises();
 
     await waitFor(() =>
-      expect(screen.getByText(/▶1/)).toBeInTheDocument(),
+      expect(screen.getByText(/▸1/)).toBeInTheDocument(),
     );
   });
 
@@ -278,7 +278,7 @@ describe("AdminBooksPage — queue status badges", () => {
     await flushPromises();
 
     await waitFor(() =>
-      expect(screen.getByText(/⏳3/)).toBeInTheDocument(),
+      expect(screen.getByText(/·3/)).toBeInTheDocument(),
     );
   });
 });

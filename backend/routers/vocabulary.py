@@ -64,6 +64,13 @@ async def remove_word(word: str, user: dict = Depends(get_current_user)):
 
 # ── Obsidian export ───────────────────────────────────────────────────────────
 
+def _sanitize_filename(name: str) -> str:
+    """Replace characters that are invalid in GitHub filenames or URL paths."""
+    for ch in r'/\:*?"<>|':
+        name = name.replace(ch, "_")
+    return name.strip("_ ") or "untitled"
+
+
 async def _github_put(
     token: str,
     repo: str,
@@ -306,7 +313,7 @@ async def export_obsidian(
             book, words_for_book, annotations, connected, book_insights,
             bid, export_date, ann_translations,
         )
-        filename = f"{title}.md"
+        filename = f"{_sanitize_filename(title)}.md"
         return await _github_put(
             github_token, repo, obs_path, filename, content, f"Update {filename}"
         )
@@ -333,7 +340,7 @@ async def export_obsidian(
             for entry in all_vocab:
                 word = entry["word"]
                 word_md = _build_word_markdown(word, entry["occurrences"])
-                filename = f"{word}.md"
+                filename = f"{_sanitize_filename(word)}.md"
                 url = await _github_put(
                     github_token, repo, vocab_path, filename, word_md, f"Update {filename}"
                 )

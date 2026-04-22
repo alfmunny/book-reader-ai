@@ -620,12 +620,12 @@ async def delete_queue_for_book(
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         if target_language:
             cursor = await db.execute(
-                "DELETE FROM translation_queue WHERE book_id=? AND target_language=?",
+                "DELETE FROM translation_queue WHERE book_id=? AND target_language=? AND status != 'running'",
                 (book_id, target_language),
             )
         else:
             cursor = await db.execute(
-                "DELETE FROM translation_queue WHERE book_id=?", (book_id,),
+                "DELETE FROM translation_queue WHERE book_id=? AND status != 'running'", (book_id,),
             )
         await db.commit()
         return cursor.rowcount

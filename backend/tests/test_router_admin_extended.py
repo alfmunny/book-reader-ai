@@ -823,3 +823,63 @@ async def test_retranslate_all_with_corrupted_key_falls_back_to_google(admin_cli
 
     assert res.status_code == 200
     assert captured and all(p == "google" for p in captured)
+
+
+# ── Retranslate preserves old translation on failure (regression #306) ────────
+
+async def test_retranslate_preserves_old_translation_on_failure(admin_client, admin_db):
+    """When translation fails, the old cached translation must not be deleted.
+
+    Previously: DELETE old translation → try translate → on failure, old is gone.
+    Fixed: translate first; save_translation (INSERT OR REPLACE) overwrites on success;
+    on failure, old row is never touched.
+    """
+    await save_book(200, BOOK_META, BOOK_TEXT)
+    await save_translation(200, 0, "fr", ["original paragraph"])
+
+    from services.db import get_cached_translation
+
+    async def always_fail(text, src, tgt, provider="google", gemini_key=None):
+        raise Exception("simulated network error")
+
+    with patch("routers.admin.do_translate", side_effect=always_fail):
+        # The unhandled exception propagates through the ASGI transport in tests.
+        with pytest.raises(Exception, match="simulated network error"):
+            await admin_client.post("/api/admin/translations/200/0/fr/retranslate")
+
+    # Old translation must survive regardless of the translate failure
+    cached = await get_cached_translation(200, 0, "fr")
+    assert cached == ["original paragraph"], (
+        "Old translation was deleted before confirming the new one succeeded"
+    )
+
+
+async def test_retranslate_all_preserves_old_translations_on_failure(admin_client, admin_db):
+    """When translation fails for every chapter, old translations must not be deleted.
+
+    Previously: DELETE ALL → loop → all fail → old translations gone.
+    Fixed: no upfront DELETE; save_translation only called on success.
+    """
+    await save_book(200, BOOK_META, BOOK_TEXT)
+    await save_translation(200, 0, "fr", ["original ch0"])
+    await save_translation(200, 1, "fr", ["original ch1"])
+
+    from services.db import get_cached_translation
+
+    async def always_fail(text, src, tgt, provider="google", gemini_key=None):
+        raise Exception("simulated network error")
+
+    with patch("routers.admin.do_translate", side_effect=always_fail):
+        res = await admin_client.post(
+            "/api/admin/translations/200/retranslate-all",
+            json={"target_language": "fr"},
+        )
+
+    assert res.status_code == 200
+    # All chapters failed to translate — original rows must remain intact
+    assert await get_cached_translation(200, 0, "fr") == ["original ch0"], (
+        "Chapter 0 old translation was deleted before confirming new one succeeded"
+    )
+    assert await get_cached_translation(200, 1, "fr") == ["original ch1"], (
+        "Chapter 1 old translation was deleted before confirming new one succeeded"
+    )

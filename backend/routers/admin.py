@@ -414,18 +414,10 @@ async def retranslate(
 
     chapter_text = chapters[chapter_index].text
 
-    # 2. Delete old cached translation
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "DELETE FROM translations WHERE book_id=? AND chapter_index=? AND target_language=?",
-            (book_id, chapter_index, target_language),
-        )
-        await db.commit()
-
-    # 3. Detect source language from book metadata
+    # 2. Detect source language from book metadata
     source_language = (book.get("languages") or ["en"])[0]
 
-    # 4. Resolve provider — use admin's Gemini key if available, else Google
+    # 3. Resolve provider — use admin's Gemini key if available, else Google
     raw_key = admin.get("gemini_key")
     try:
         decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
@@ -433,7 +425,7 @@ async def retranslate(
         decrypted_key = None  # corrupted key → fall back to Google
     provider = "gemini" if decrypted_key else "google"
 
-    # 5. Translate
+    # 4. Translate
     try:
         paragraphs = await do_translate(
             chapter_text,
@@ -451,7 +443,7 @@ async def retranslate(
         else:
             raise
 
-    # 6. Cache the new translation
+    # 5. Cache the new translation
     await save_translation(book_id, chapter_index, target_language, paragraphs)
 
     return {
@@ -524,7 +516,12 @@ async def retranslate_all(
     req: BulkRetranslateRequest,
     admin: dict = Depends(_require_admin),
 ):
-    """Delete and retranslate ALL chapters of a book for a target language."""
+    """Retranslate ALL chapters of a book for a target language.
+
+    save_translation uses INSERT OR REPLACE, so each successful chapter
+    overwrites the old row atomically. Old translations survive if their
+    chapter fails — no upfront DELETE needed.
+    """
     target_language = req.target_language.lower().split("-")[0]
     book = await get_cached_book(book_id)
     if not book or not book.get("text"):
@@ -540,14 +537,6 @@ async def retranslate_all(
     except HTTPException:
         decrypted_key = None  # corrupted key → fall back to Google
     provider = "gemini" if decrypted_key else "google"
-
-    # Delete all existing translations for this language
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "DELETE FROM translations WHERE book_id=? AND target_language=?",
-            (book_id, target_language),
-        )
-        await db.commit()
 
     results = []
     for i, ch in enumerate(chapters):

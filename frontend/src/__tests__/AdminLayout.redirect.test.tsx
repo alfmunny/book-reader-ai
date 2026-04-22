@@ -2,7 +2,7 @@
  * AdminLayout — auth guards: non-admin redirect and API error redirect.
  */
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { render, waitFor, screen, fireEvent } from "@testing-library/react";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -51,3 +51,20 @@ test("shows spinner while loading (before getMe resolves)", () => {
   const { container } = render(<AdminLayout><div>child</div></AdminLayout>);
   expect(container.querySelector(".animate-spin")).toBeTruthy();
 });
+
+test("renders authenticated layout with tabs when user is admin", async () => {
+  mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
+  render(<AdminLayout><div>child content</div></AdminLayout>);
+  await waitFor(() => screen.getByText("child content"));
+  expect(screen.getByText("← Library")).toBeInTheDocument();
+  expect(screen.getByText("Users")).toBeInTheDocument();
+});
+
+test("clicking ← Library navigates to / (line 76)", async () => {
+  mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
+  render(<AdminLayout><div>child</div></AdminLayout>);
+  await waitFor(() => screen.getByText("← Library"));
+  fireEvent.click(screen.getByText("← Library"));
+  expect(mockPush).toHaveBeenCalledWith("/");
+});
+

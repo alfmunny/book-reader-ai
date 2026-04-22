@@ -500,6 +500,45 @@ async def test_delete_queue_for_book_preserves_running_items(tmp_db):
     assert remaining[0]["status"] == "running"
 
 
+async def test_worker_does_not_save_translation_for_deleted_book(tmp_db):
+    """Regression #327: worker must not save translations after book is deleted.
+
+    delete_book fires during the Gemini call window (30-60s). The pre-translation
+    get_cached_book check already passed — without a post-translation guard,
+    save_translation writes orphaned rows for a non-existent book. If the admin
+    then re-imports the same book, enqueue_for_book finds the stale translations
+    and silently skips re-translation.
+    """
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.db as db_module
+
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    await enqueue(1, 0, "zh")
+
+    async def fake_translate_then_delete(api_key, chapters, src, tgt, *, model=None, **kwargs):
+        # Simulate delete_book firing while Gemini is processing
+        async with aiosqlite.connect(db_module.DB_PATH) as db:
+            await db.execute("DELETE FROM books WHERE id=1")
+            await db.execute("DELETE FROM translations WHERE book_id=1")
+            await db.execute("DELETE FROM translation_queue WHERE book_id=1")
+            await db.commit()
+        return {idx: ["translated paragraph"] for idx, _ in chapters}
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate_then_delete):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT COUNT(*) FROM translations WHERE book_id=1") as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0, "worker must not save translations for a deleted book"
+
+
 async def test_worker_idles_without_api_key(tmp_db):
     """With no queue_api_key configured, the worker must idle — not crash."""
     await set_setting(SETTING_ENABLED, "1")

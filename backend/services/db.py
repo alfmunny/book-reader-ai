@@ -121,11 +121,11 @@ async def get_or_create_user(google_id: str, email: str, name: str, picture: str
              "admin" if is_first else "user",
              1 if is_first else 0),
         )
-        await db.commit()
         async with db.execute(
             "SELECT * FROM users WHERE google_id = ?", (google_id,)
         ) as cursor:
             row = await cursor.fetchone()
+        await db.commit()
         return dict(row)
 
 
@@ -175,9 +175,9 @@ async def get_or_create_user_github(github_id: str, email: str, name: str, pictu
              "admin" if is_first else "user",
              1 if is_first else 0),
         )
-        await db.commit()
         async with db.execute("SELECT * FROM users WHERE github_id = ?", (github_id,)) as cursor:
             row = await cursor.fetchone()
+        await db.commit()
         return dict(row)
 
 
@@ -199,9 +199,9 @@ async def get_or_create_user_apple(apple_id: str, email: str, name: str) -> dict
                     "UPDATE users SET email=COALESCE(NULLIF(?,''), email), name=COALESCE(NULLIF(?,''), name) WHERE apple_id=?",
                     (email, name, apple_id),
                 )
-                await db.commit()
             async with db.execute("SELECT * FROM users WHERE apple_id = ?", (apple_id,)) as cursor:
                 row = await cursor.fetchone()
+            await db.commit()
             return dict(row)
 
         # Try linking to existing account by email
@@ -229,9 +229,9 @@ async def get_or_create_user_apple(apple_id: str, email: str, name: str) -> dict
              "admin" if is_first else "user",
              1 if is_first else 0),
         )
-        await db.commit()
         async with db.execute("SELECT * FROM users WHERE apple_id = ?", (apple_id,)) as cursor:
             row = await cursor.fetchone()
+        await db.commit()
         return dict(row)
 
 

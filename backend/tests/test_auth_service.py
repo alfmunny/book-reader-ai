@@ -89,3 +89,137 @@ async def test_verify_google_id_token_audience_mismatch(monkeypatch):
         with pytest.raises(HTTPException) as exc:
             await verify_google_id_token("token")
     assert exc.value.status_code == 401
+
+
+# ── OAuth commit-before-read regression (#359) ───────────────────────────────
+
+def _make_order_tracking_aiosqlite(real_aiosqlite, events):
+    """Return a fake aiosqlite module that records SELECT/COMMIT order."""
+    orig_connect = real_aiosqlite.connect
+
+    def patched_connect(database, **kwargs):
+        real_cm = orig_connect(database, **kwargs)
+
+        class TrackedConn:
+            def __init__(self):
+                self._conn = None
+
+            async def __aenter__(self):
+                self._conn = await real_cm.__aenter__()
+                return self
+
+            async def __aexit__(self, *args):
+                return await real_cm.__aexit__(*args)
+
+            @property
+            def row_factory(self):
+                return self._conn.row_factory
+
+            @row_factory.setter
+            def row_factory(self, v):
+                self._conn.row_factory = v
+
+            def execute(self, sql, *args, **kwargs):
+                if sql.strip().upper().startswith("SELECT"):
+                    events.append("SELECT")
+                return self._conn.execute(sql, *args, **kwargs)
+
+            async def commit(self):
+                events.append("COMMIT")
+                return await self._conn.commit()
+
+        return TrackedConn()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = real_aiosqlite.Row
+
+    return FakeAiosqlite
+
+
+async def test_get_or_create_user_new_user_select_before_commit(tmp_db, monkeypatch):
+    """Regression #359: new-user INSERT in get_or_create_user must SELECT before COMMIT."""
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import get_or_create_user
+
+    events: list[str] = []
+    monkeypatch.setattr(db_module, "aiosqlite", _make_order_tracking_aiosqlite(_real_aiosqlite, events))
+
+    await get_or_create_user("gid-new", "new@example.com", "New User", "")
+
+    insert_select = [e for e in events if e in ("SELECT", "COMMIT")]
+    assert "COMMIT" in insert_select and "SELECT" in insert_select
+    last_select = max(i for i, e in enumerate(insert_select) if e == "SELECT")
+    last_commit = max(i for i, e in enumerate(insert_select) if e == "COMMIT")
+    assert last_select < last_commit, (
+        "SELECT must run before COMMIT in get_or_create_user new-user path (#359)"
+    )
+
+
+async def test_get_or_create_user_github_new_user_select_before_commit(tmp_db, monkeypatch):
+    """Regression #359: new-user INSERT in get_or_create_user_github must SELECT before COMMIT."""
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import get_or_create_user_github
+
+    events: list[str] = []
+    monkeypatch.setattr(db_module, "aiosqlite", _make_order_tracking_aiosqlite(_real_aiosqlite, events))
+
+    await get_or_create_user_github("gh-new", "gh-new@example.com", "GH New", "")
+
+    insert_select = [e for e in events if e in ("SELECT", "COMMIT")]
+    assert "COMMIT" in insert_select and "SELECT" in insert_select
+    last_select = max(i for i, e in enumerate(insert_select) if e == "SELECT")
+    last_commit = max(i for i, e in enumerate(insert_select) if e == "COMMIT")
+    assert last_select < last_commit, (
+        "SELECT must run before COMMIT in get_or_create_user_github new-user path (#359)"
+    )
+
+
+async def test_get_or_create_user_apple_new_user_select_before_commit(tmp_db, monkeypatch):
+    """Regression #359: new-user INSERT in get_or_create_user_apple must SELECT before COMMIT."""
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import get_or_create_user_apple
+
+    events: list[str] = []
+    monkeypatch.setattr(db_module, "aiosqlite", _make_order_tracking_aiosqlite(_real_aiosqlite, events))
+
+    await get_or_create_user_apple("ap-new", "ap-new@example.com", "Apple New")
+
+    insert_select = [e for e in events if e in ("SELECT", "COMMIT")]
+    assert "COMMIT" in insert_select and "SELECT" in insert_select
+    last_select = max(i for i, e in enumerate(insert_select) if e == "SELECT")
+    last_commit = max(i for i, e in enumerate(insert_select) if e == "COMMIT")
+    assert last_select < last_commit, (
+        "SELECT must run before COMMIT in get_or_create_user_apple new-user path (#359)"
+    )
+
+
+async def test_get_or_create_user_apple_existing_user_update_select_before_commit(tmp_db, monkeypatch):
+    """Regression #359: existing-user UPDATE in get_or_create_user_apple must SELECT before COMMIT.
+
+    Apple's COALESCE UPDATE can't be reproduced with manual dict construction,
+    so it re-SELECTs after the UPDATE — that SELECT must happen before COMMIT.
+    """
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import get_or_create_user_apple
+
+    # Create user first (without monkeypatch, so setup is clean)
+    await get_or_create_user_apple("ap-existing", "ap-existing@example.com", "")
+
+    events: list[str] = []
+    monkeypatch.setattr(db_module, "aiosqlite", _make_order_tracking_aiosqlite(_real_aiosqlite, events))
+
+    # Second call: existing user, with email/name to trigger the COALESCE UPDATE
+    await get_or_create_user_apple("ap-existing", "", "Apple Existing Updated")
+
+    update_events = [e for e in events if e in ("SELECT", "COMMIT")]
+    assert "COMMIT" in update_events and "SELECT" in update_events
+    last_select = max(i for i, e in enumerate(update_events) if e == "SELECT")
+    last_commit = max(i for i, e in enumerate(update_events) if e == "COMMIT")
+    assert last_select < last_commit, (
+        "SELECT must run before COMMIT in get_or_create_user_apple existing-user UPDATE path (#359)"
+    )

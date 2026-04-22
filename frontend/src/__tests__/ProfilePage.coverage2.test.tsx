@@ -58,7 +58,7 @@ test("clicking ← Library navigates to /", async () => {
   render(<ProfilePage />);
   await act(async () => await flushPromises());
 
-  fireEvent.click(screen.getByRole("button", { name: /← Library/i }));
+  fireEvent.click(screen.getByRole("button", { name: /Library/i }));
   expect(mockPush).toHaveBeenCalledWith("/");
 });
 
@@ -91,6 +91,10 @@ test("clicking Admin Panel navigates to /admin", async () => {
 
 test("changing obsidianRepo input updates its value", async () => {
   render(<ProfilePage />);
+  await act(async () => await flushPromises());
+
+  fireEvent.click(screen.getByRole("button", { name: /Obsidian Export/i }));
+
   await waitFor(() => {
     expect((screen.getByPlaceholderText(/username\/obsidian-notes/i) as HTMLInputElement).value).toBe("u/v");
   });
@@ -105,6 +109,10 @@ test("changing obsidianRepo input updates its value", async () => {
 
 test("changing obsidianPath input updates its value", async () => {
   render(<ProfilePage />);
+  await act(async () => await flushPromises());
+
+  fireEvent.click(screen.getByRole("button", { name: /Obsidian Export/i }));
+
   await waitFor(() => {
     expect((screen.getByPlaceholderText(/All Notes\/002/i) as HTMLInputElement).value).toBe("Notes");
   });
@@ -124,8 +132,10 @@ test("obsidianRepo defaults to empty string when API returns null", async () => 
   render(<ProfilePage />);
   await act(async () => await flushPromises());
 
+  fireEvent.click(screen.getByRole("button", { name: /Obsidian Export/i }));
+
   // Both inputs should default to empty / fallback strings
-  const repoInput = screen.getByPlaceholderText(/username\/obsidian-notes/i) as HTMLInputElement;
+  const repoInput = await waitFor(() => screen.getByPlaceholderText(/username\/obsidian-notes/i)) as HTMLInputElement;
   expect(repoInput.value).toBe("");
 
   const pathInput = screen.getByPlaceholderText(/All Notes\/002/i) as HTMLInputElement;

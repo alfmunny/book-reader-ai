@@ -3,6 +3,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings } from "@/lib/api";
+import { ArrowLeftIcon } from "@/components/Icons";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 import ReadingStats from "@/components/ReadingStats";
 
@@ -30,6 +31,7 @@ export default function ProfilePage() {
   const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   // ── Obsidian settings state ────────────────────────────────────────────────
+  const [obsidianOpen, setObsidianOpen] = useState(false);
   const [obsidianToken, setObsidianToken] = useState("");
   const [hasObsidianToken, setHasObsidianToken] = useState(false);
   const [obsidianRepo, setObsidianRepo] = useState("");
@@ -158,7 +160,7 @@ export default function ProfilePage() {
           onClick={() => router.push("/")}
           className="text-amber-700 hover:text-amber-900 text-sm"
         >
-          ← Library
+          <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
         </button>
         <h1 className="font-serif font-bold text-ink">Profile &amp; Settings</h1>
       </header>
@@ -259,82 +261,102 @@ export default function ProfilePage() {
         </section>
 
         {/* ── Obsidian Export Settings ────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-4">
-          <div>
-            <h2 className="font-serif text-lg font-semibold text-ink mb-1">Obsidian Export</h2>
-            <p className="text-sm text-stone-500">
-              Configure GitHub integration so vocabulary can be pushed to your Obsidian vault.
-            </p>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-ink">
-                GitHub Token
-              </label>
-              {hasObsidianToken && (
-                <span className="flex items-center gap-2">
-                  <span className="text-xs text-emerald-600 font-medium">Token configured ✓</span>
-                  <button
-                    onClick={handleRemoveObsidianToken}
-                    disabled={obsidianSaving}
-                    className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
-                </span>
-              )}
-            </div>
-            <input
-              type="password"
-              placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
-              value={obsidianToken}
-              onChange={(e) => setObsidianToken(e.target.value)}
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-            <p className="text-xs text-stone-400 mt-1">
-              Requires <code>contents:write</code> permission on your vault repo.
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1">
-              Obsidian Repo
-            </label>
-            <input
-              type="text"
-              placeholder="username/obsidian-notes"
-              value={obsidianRepo}
-              onChange={(e) => setObsidianRepo(e.target.value)}
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1">
-              Vault Path
-            </label>
-            <input
-              type="text"
-              placeholder="All Notes/002 Literature Notes/000 Books"
-              value={obsidianPath}
-              onChange={(e) => setObsidianPath(e.target.value)}
-              className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-          </div>
-
+        <section className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
+          {/* Accordion header */}
           <button
-            onClick={handleSaveObsidian}
-            disabled={obsidianSaving}
-            className="rounded-lg bg-amber-700 text-white px-5 py-2 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            onClick={() => setObsidianOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-amber-50/50 transition-colors"
+            aria-expanded={obsidianOpen}
           >
-            {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
+            <div>
+              <h2 className="font-serif text-lg font-semibold text-ink">Obsidian Export</h2>
+              <p className="text-xs text-stone-400 mt-0.5">
+                {hasObsidianToken
+                  ? "GitHub token configured — vault sync ready"
+                  : "Configure GitHub integration to push vocab to Obsidian"}
+              </p>
+            </div>
+            <span
+              className={`text-amber-600 transition-transform duration-200 ${obsidianOpen ? "rotate-90" : ""}`}
+              aria-hidden="true"
+            >
+              ▶
+            </span>
           </button>
 
-          {obsidianMsg && (
-            <p className={`text-sm ${obsidianMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
-              {obsidianMsg.text}
-            </p>
+          {/* Collapsible body */}
+          {obsidianOpen && (
+            <div className="px-6 pb-6 space-y-4 border-t border-amber-100">
+              <div className="pt-4">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-ink">
+                    GitHub Token
+                  </label>
+                  {hasObsidianToken && (
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs text-emerald-600 font-medium">Token configured ✓</span>
+                      <button
+                        onClick={handleRemoveObsidianToken}
+                        disabled={obsidianSaving}
+                        className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
+                  value={obsidianToken}
+                  onChange={(e) => setObsidianToken(e.target.value)}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Requires <code>contents:write</code> permission on your vault repo.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">
+                  Obsidian Repo
+                </label>
+                <input
+                  type="text"
+                  placeholder="username/obsidian-notes"
+                  value={obsidianRepo}
+                  onChange={(e) => setObsidianRepo(e.target.value)}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">
+                  Vault Path
+                </label>
+                <input
+                  type="text"
+                  placeholder="All Notes/002 Literature Notes/000 Books"
+                  value={obsidianPath}
+                  onChange={(e) => setObsidianPath(e.target.value)}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <button
+                onClick={handleSaveObsidian}
+                disabled={obsidianSaving}
+                className="rounded-lg bg-amber-700 text-white px-5 py-2 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+              >
+                {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
+              </button>
+
+              {obsidianMsg && (
+                <p className={`text-sm ${obsidianMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
+                  {obsidianMsg.text}
+                </p>
+              )}
+            </div>
           )}
         </section>
 

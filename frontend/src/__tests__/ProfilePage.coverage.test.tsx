@@ -284,6 +284,9 @@ describe("ProfilePage — Obsidian saving state (line 136)", () => {
     saveObsidianSettings.mockReturnValue(new Promise(() => {}));
 
     render(<ProfilePage />);
+    // Open accordion first
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: /Obsidian Export/i }));
     await waitFor(() =>
       screen.getByRole("button", { name: /save obsidian settings/i }),
     );
@@ -303,6 +306,9 @@ describe("ProfilePage — Obsidian saving state (line 136)", () => {
     saveObsidianSettings.mockRejectedValueOnce("oops");
 
     render(<ProfilePage />);
+    // Open accordion first
+    await act(async () => {});
+    fireEvent.click(screen.getByRole("button", { name: /Obsidian Export/i }));
     await waitFor(() =>
       screen.getByRole("button", { name: /save obsidian settings/i }),
     );

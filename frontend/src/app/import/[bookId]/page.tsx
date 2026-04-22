@@ -348,33 +348,23 @@ export default function BookImportPage() {
                 <span className="font-medium text-ink">{tl}</span>
               </p>
 
-              <div className="space-y-2 mb-4 text-xs text-stone-600">
-                <div className="flex gap-2">
-                  <span className="text-amber-700 font-medium w-4">▸</span>
-                  <div>
-                    <span className="font-medium text-ink">Gemini Flash</span>
-                    {" — "}
-                    <span className="font-medium">{fmtCost(cost.usd)}</span>
-                    {" on paid tier "}
-                    <span className="text-stone-400">
-                      (~{fmtNum(cost.tokens)} output tokens · $2.50/M)
-                    </span>
-                    <br />
-                    <span className="text-emerald-700">
-                      Free on Gemini free tier
-                    </span>
-                    {" — translation runs in the background via the queue."}
+              <div className="space-y-2 mb-4">
+                {/* Primary option — Gemini */}
+                <div className="rounded-lg bg-white border border-amber-200 px-3 py-2.5 text-xs">
+                  <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                    <span className="font-semibold text-ink">Gemini Flash</span>
+                    <span className="font-semibold text-amber-700">{fmtCost(cost.usd)}</span>
                   </div>
+                  <p className="text-stone-400">
+                    ~{fmtNum(cost.tokens)} output tokens · $2.50/M on paid tier.{" "}
+                    <span className="text-emerald-600 font-medium">Free on free tier.</span>
+                    {" Runs in background."}
+                  </p>
                 </div>
-                <div className="flex gap-2">
-                  <span className="text-stone-400 font-medium w-4">▸</span>
-                  <div>
-                    <span className="font-medium text-ink">
-                      Google Translate
-                    </span>
-                    {" — always free, lower quality. "}
-                    Available chapter-by-chapter in the reader sidebar.
-                  </div>
+                {/* Secondary option — Google Translate */}
+                <div className="rounded-lg bg-stone-50 border border-stone-200 px-3 py-2 text-xs text-stone-500">
+                  <span className="font-medium text-stone-600">Google Translate</span>
+                  {" — always free, lower quality. Available chapter-by-chapter in the reader sidebar."}
                 </div>
               </div>
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
-import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon } from "@/components/Icons";
+import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon } from "@/components/Icons";
 
 interface BookSummary {
   bookId: number;
@@ -104,7 +104,7 @@ export default function NotesOverviewPage() {
             onClick={() => router.push("/")}
             className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0"
           >
-            ← Library
+            <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
           </button>
           <div className="flex-1">
             <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>

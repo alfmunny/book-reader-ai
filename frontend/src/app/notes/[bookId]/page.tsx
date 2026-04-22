@@ -19,6 +19,7 @@ import {
 } from "@/lib/api";
 
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
+import { ArrowLeftIcon } from "@/components/Icons";
 
 type ViewMode = "section" | "chapter";
 
@@ -613,7 +614,7 @@ export default function BookNotesPage() {
             onClick={() => router.push("/notes")}
             className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0"
           >
-            ← Notes
+            <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Notes
           </button>
 
           <div className="flex-1 min-w-0">

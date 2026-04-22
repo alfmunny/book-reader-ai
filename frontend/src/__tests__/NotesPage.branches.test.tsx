@@ -110,7 +110,7 @@ describe("NotesPage overview — book card sources", () => {
     mockUseSession.mockReturnValue({ data: { backendToken: "tok" }, status: "authenticated" });
     render(<NotesPage />);
     await flushPromises();
-    fireEvent.click(screen.getByRole("button", { name: /← Library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Library/i }));
     expect(mockRouterPush).toHaveBeenCalledWith("/");
   });
 });

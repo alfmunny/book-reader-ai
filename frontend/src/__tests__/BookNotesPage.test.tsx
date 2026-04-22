@@ -302,6 +302,6 @@ test("← Notes button navigates to /notes", async () => {
   mockGetAnnotations.mockResolvedValue([]);
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/No notes yet/i));
-  fireEvent.click(screen.getByRole("button", { name: /← Notes/i }));
+  fireEvent.click(screen.getByRole("button", { name: /Notes/i }));
   expect(mockPush).toHaveBeenCalledWith("/notes");
 });

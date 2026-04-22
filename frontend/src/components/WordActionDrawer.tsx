@@ -59,7 +59,8 @@ export default function WordActionDrawer({
         return r.json();
       })
       .then((data) => {
-        const entry = data[0];
+        const entry = data?.[0];
+        if (!entry) { setError("No definition found"); return; }
         setResult({
           word: entry.word,
           phonetic: entry.phonetic || entry.phonetics?.[0]?.text,

@@ -241,6 +241,7 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
                     "Wait for it to finish before deleting."
                 ),
             )
+        await db.execute("DELETE FROM book_uploads WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
         await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))

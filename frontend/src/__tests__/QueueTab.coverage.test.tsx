@@ -968,3 +968,60 @@ describe("initial loading skeleton", () => {
     resolveStatus(makeStatus());
   });
 });
+
+// ── Issue #273: retry and remove must alert on error ─────────────────────────
+
+describe("QueueTab — retry/remove error handling (issue #273)", () => {
+  beforeEach(() => {
+    window.confirm = jest.fn(() => true);
+    window.alert = jest.fn();
+  });
+
+  it("shows alert when retry API call fails", async () => {
+    const failedItem = makeItem({ id: 9, status: "failed" });
+    const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
+      if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
+      if (path === "/admin/queue/settings") return Promise.resolve(BASE_SETTINGS);
+      if (path === "/admin/queue/cost-estimate") return Promise.resolve(NO_COST);
+      if (path.startsWith("/admin/queue/items") && opts?.method === "POST")
+        return Promise.reject(new Error("Server error"));
+      if (path.startsWith("/admin/queue/items")) return Promise.resolve([failedItem]);
+      return Promise.resolve({});
+    });
+
+    await renderAndWait(adminFetch);
+
+    const retryBtn = await screen.findByRole("button", { name: /retry/i });
+    await userEvent.click(retryBtn);
+
+    await waitFor(() =>
+      expect(window.alert).toHaveBeenCalledWith(
+        expect.stringContaining("Server error"),
+      ),
+    );
+  });
+
+  it("shows alert when delete API call fails", async () => {
+    const item = makeItem({ id: 7 });
+    const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
+      if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
+      if (path === "/admin/queue/settings") return Promise.resolve(BASE_SETTINGS);
+      if (path === "/admin/queue/cost-estimate") return Promise.resolve(NO_COST);
+      if (path.startsWith("/admin/queue/items") && opts?.method === "DELETE")
+        return Promise.reject(new Error("Not found"));
+      if (path.startsWith("/admin/queue/items")) return Promise.resolve([item]);
+      return Promise.resolve({});
+    });
+
+    await renderAndWait(adminFetch);
+
+    const delBtn = await screen.findByRole("button", { name: /del/i });
+    await userEvent.click(delBtn);
+
+    await waitFor(() =>
+      expect(window.alert).toHaveBeenCalledWith(
+        expect.stringContaining("Not found"),
+      ),
+    );
+  });
+});

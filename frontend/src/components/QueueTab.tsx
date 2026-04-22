@@ -357,14 +357,22 @@ export default function QueueTab({ adminFetch }: Props) {
   }
 
   async function retry(item: QueueItem) {
-    await adminFetch(`/admin/queue/items/${item.id}/retry`, { method: "POST" });
-    await refresh();
+    try {
+      await adminFetch(`/admin/queue/items/${item.id}/retry`, { method: "POST" });
+      await refresh();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Retry failed");
+    }
   }
 
   async function remove(item: QueueItem) {
     if (!confirm(`Remove queue item #${item.id}?`)) return;
-    await adminFetch(`/admin/queue/items/${item.id}`, { method: "DELETE" });
-    await refresh();
+    try {
+      await adminFetch(`/admin/queue/items/${item.id}`, { method: "DELETE" });
+      await refresh();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Delete failed");
+    }
   }
 
   async function clearAll() {

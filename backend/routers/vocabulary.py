@@ -6,7 +6,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from services.auth import get_current_user, encrypt_api_key, decrypt_api_key
+from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
     save_word,
     get_vocabulary,
@@ -38,8 +38,10 @@ async def save(req: WordSave, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Word cannot be empty")
     if not req.sentence_text or not req.sentence_text.strip():
         raise HTTPException(status_code=400, detail="sentence_text cannot be empty")
-    if not await get_cached_book(req.book_id):
+    book = await get_cached_book(req.book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
     return await save_word(
         user["id"],
         req.word,

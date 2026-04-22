@@ -2,9 +2,12 @@
 Tests for routers/vocabulary.py — save/get/delete words and Obsidian export.
 """
 
+import json
 import pytest
+import aiosqlite
 from unittest.mock import AsyncMock, patch
-from services.db import save_book, save_word, update_obsidian_settings
+from services.db import save_book, save_word, update_obsidian_settings, get_or_create_user
+import services.db as db_module
 from services.auth import encrypt_api_key
 
 _BOOK_META = {
@@ -329,6 +332,41 @@ async def test_export_without_settings_returns_400(client, test_user):
     resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
     assert resp.status_code == 400
     assert "not configured" in resp.json()["detail"]
+
+
+# ── Access control for private uploaded books ─────────────────────────────────
+
+async def _insert_private_book(book_id: int, owner_user_id: int) -> None:
+    chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT OR REPLACE INTO books
+               (id, title, authors, languages, subjects, download_count,
+                cover, text, images, source, owner_user_id)
+               VALUES (?, 'Private Book', '[]', '["en"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (book_id, chapters, owner_user_id),
+        )
+        await db.commit()
+
+
+async def test_save_word_blocked_for_non_owner_of_uploaded_book(client, test_user, tmp_db):
+    """POST /vocabulary for a private uploaded book must return 403 for non-owners.
+
+    Without check_book_access the endpoint only checks existence (404 vs 200);
+    any authenticated user can save vocabulary entries for another user's private book."""
+    from services.db import set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("voc-owner-gid", "voc-owner@ex.com", "VocOwner", "")
+    await _insert_private_book(8801, owner["id"])
+    resp = await client.post("/api/vocabulary", json={
+        "word": "secret",
+        "book_id": 8801,
+        "chapter_index": 0,
+        "sentence_text": "A secret sentence.",
+    })
+    assert resp.status_code == 403, (
+        f"Expected 403 for non-owner saving vocab for private book, got {resp.status_code}: {resp.text}"
+    )
 
 
 async def test_export_github_api_error_returns_502(client, test_user):

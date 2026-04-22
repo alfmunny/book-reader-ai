@@ -2,6 +2,8 @@
 Tests for services/book_chapters.py — split_with_html_preference and clear_cache.
 """
 
+import asyncio
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
@@ -158,3 +160,43 @@ async def test_clear_cache_specific_does_not_affect_other_books():
     clear_cache(40)
     assert 40 not in book_chapters_module._chapter_cache
     assert 41 in book_chapters_module._chapter_cache
+
+
+# ── Concurrency ───────────────────────────────────────────────────────────────
+
+async def test_concurrent_calls_return_identical_chapter_list():
+    """Two concurrent cache-miss calls must resolve to the same chapter list.
+
+    Without a lock, one call can take the HTML path (returning 3 chapters) and
+    the other can take the text-fallback path (returning 2 chapters), causing
+    translation index misalignment between the reader and the queue worker.
+    """
+    html_chapters = _make_chapters("HTML Ch 1", "HTML Ch 2", "HTML Ch 3")
+    text_chapters = _make_chapters("Text Ch 1", "Text Ch 2")
+
+    call_count = {"n": 0}
+
+    async def _slow_html_fetch(_book_id):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            # First caller: yield so the second caller enters before HTML arrives
+            await asyncio.sleep(0)
+            return "<html>...</html>"
+        # Second caller: HTML not available
+        return None
+
+    with (
+        patch("services.book_chapters.get_book_html", side_effect=_slow_html_fetch),
+        patch("services.book_chapters.build_chapters_from_html", return_value=html_chapters),
+        patch("services.book_chapters.build_chapters", return_value=text_chapters),
+    ):
+        results = await asyncio.gather(
+            split_with_html_preference(50, "plain text"),
+            split_with_html_preference(50, "plain text"),
+        )
+
+    # Both callers must return the same list
+    assert results[0] is results[1], (
+        f"Concurrent calls returned different chapter lists: "
+        f"{[c.title for c in results[0]]} vs {[c.title for c in results[1]]}"
+    )

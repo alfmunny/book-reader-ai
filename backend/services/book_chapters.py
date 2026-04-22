@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import defaultdict
 
 from services.gutenberg import get_book_html
 from services.splitter import Chapter, build_chapters, build_chapters_from_html
@@ -28,6 +29,11 @@ logger = logging.getLogger(__name__)
 # reader previously had its own cache in routers/books.py — merged here
 # so reader + worker share the same result.
 _chapter_cache: dict[int, list[Chapter]] = {}
+
+# One lock per book_id: serializes concurrent cache-miss requests so the
+# second waiter reuses the result written by the first instead of running
+# a different split path and returning a divergent chapter list.
+_split_locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
 async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
@@ -45,21 +51,28 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
     if cached is not None:
         return cached
 
-    try:
-        html = await get_book_html(book_id)
-        if html:
-            chapters = await asyncio.to_thread(build_chapters_from_html, html)
-            if len(chapters) >= 2:
-                _chapter_cache[book_id] = chapters
-                return chapters
-    except Exception:
-        logger.exception(
-            "HTML split failed for book %s, falling back to text", book_id,
-        )
+    async with _split_locks[book_id]:
+        # Double-check: a concurrent request may have populated the cache
+        # while we were waiting for the lock.
+        cached = _chapter_cache.get(book_id)
+        if cached is not None:
+            return cached
 
-    chapters = await asyncio.to_thread(build_chapters, text)
-    _chapter_cache[book_id] = chapters
-    return chapters
+        try:
+            html = await get_book_html(book_id)
+            if html:
+                chapters = await asyncio.to_thread(build_chapters_from_html, html)
+                if len(chapters) >= 2:
+                    _chapter_cache[book_id] = chapters
+                    return chapters
+        except Exception:
+            logger.exception(
+                "HTML split failed for book %s, falling back to text", book_id,
+            )
+
+        chapters = await asyncio.to_thread(build_chapters, text)
+        _chapter_cache[book_id] = chapters
+        return chapters
 
 
 def clear_cache(book_id: int | None = None) -> None:

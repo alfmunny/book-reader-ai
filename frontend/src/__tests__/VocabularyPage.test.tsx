@@ -11,9 +11,10 @@ jest.mock("next-auth/react", () => ({
 }));
 
 // Mock next/navigation
+const mockUseSearchParams = jest.fn(() => ({ get: () => null }));
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
-  useSearchParams: () => ({ get: () => null }),
+  useSearchParams: () => mockUseSearchParams(),
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -124,4 +125,29 @@ test("shows empty state when no words", async () => {
   render(<VocabularyPage />);
   await flushPromises();
   expect(await screen.findByText(/No saved words yet/i)).toBeInTheDocument();
+});
+
+// ── Flash highlight on target word ───────────────────────────────────────────
+
+test("target word card gets animate-vocab-flash class when ?word= matches", async () => {
+  mockUseSearchParams.mockReturnValue({ get: (k: string) => (k === "word" ? "ephemeral" : null) });
+
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ephemeral");
+
+  // The card wrapping the target word should have the flash class
+  const card = screen.getByText("ephemeral").closest("[class*='rounded-xl']");
+  expect(card?.className).toContain("animate-vocab-flash");
+});
+
+test("non-target word cards do NOT get animate-vocab-flash", async () => {
+  mockUseSearchParams.mockReturnValue({ get: (k: string) => (k === "word" ? "ephemeral" : null) });
+
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ardent");
+
+  const card = screen.getByText("ardent").closest("[class*='rounded-xl']");
+  expect(card?.className).not.toContain("animate-vocab-flash");
 });

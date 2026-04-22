@@ -130,4 +130,40 @@ export async function mockBackend(page: Page) {
       route.fulfill({ json: { ok: true } });
     }
   });
+
+  await page.route("**/api/vocabulary$", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({
+        json: [
+          {
+            id: 1,
+            word: "universally",
+            lemma: "universal",
+            language: "en",
+            occurrences: [{ book_id: 1342, book_title: "Pride and Prejudice", chapter_index: 0, sentence_text: "It is a truth universally acknowledged" }],
+          },
+          {
+            id: 2,
+            word: "acknowledged",
+            lemma: "acknowledge",
+            language: "en",
+            occurrences: [{ book_id: 1342, book_title: "Pride and Prejudice", chapter_index: 1, sentence_text: "that a single man" }],
+          },
+        ],
+      });
+    } else {
+      route.fulfill({ json: { ok: true } });
+    }
+  });
+
+  await page.route(/\/api\/vocabulary\/definition\//, (route) =>
+    route.fulfill({
+      json: {
+        lemma: "universal",
+        language: "en",
+        definitions: [{ pos: "adjective", text: "relating to or done by all" }],
+        url: "https://en.wiktionary.org/wiki/universal",
+      },
+    })
+  );
 }

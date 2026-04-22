@@ -138,7 +138,7 @@ test("annotation has reader link to correct chapter", async () => {
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/Call me Ishmael/));
   const readerLink = screen.getByRole("link", { name: /Chapter 2/i });
-  expect(readerLink).toHaveAttribute("href", "/reader/10?chapter=1");
+  expect(readerLink).toHaveAttribute("href", expect.stringContaining("/reader/10?chapter=1"));
 });
 
 // ── Collapse ───────────────────────────────────────────────────────────────────

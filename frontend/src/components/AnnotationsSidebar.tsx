@@ -106,13 +106,25 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                           <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
                             &ldquo;{ann.sentence_text}&rdquo;
                           </p>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onEdit(ann); setOpen(false); }}
-                            className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
-                            title="Edit annotation"
-                          >
-                            ✏️
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                            {bookId && (
+                              <a
+                                href={`/notes/${bookId}#annotation-${ann.id}`}
+                                onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+                                className="text-xs opacity-60 hover:opacity-100"
+                                title="View in notes page"
+                              >
+                                📄
+                              </a>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onEdit(ann); setOpen(false); }}
+                              className="text-xs opacity-60 hover:opacity-100"
+                              title="Edit annotation"
+                            >
+                              ✏️
+                            </button>
+                          </div>
                         </div>
                         {ann.note_text && (
                           <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">

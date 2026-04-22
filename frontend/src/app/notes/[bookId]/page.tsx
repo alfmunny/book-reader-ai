@@ -1,14 +1,13 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   getAnnotations,
   getInsights,
   getVocabulary,
   getBookChapters,
+  updateAnnotation,
   deleteAnnotation,
   deleteInsight,
   exportVocabularyToObsidian,
@@ -21,7 +20,7 @@ import {
 
 type ViewMode = "section" | "chapter";
 
-// ── Markdown generation ────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function chapterLabel(chapters: BookChapter[], idx: number): string {
   const t = chapters[idx]?.title?.trim();
@@ -32,6 +31,8 @@ function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
+// ── Markdown export (kept for ↗ Export button) ────────────────────────────────
+
 function buildMarkdown(
   mode: ViewMode,
   meta: BookMeta,
@@ -41,109 +42,79 @@ function buildMarkdown(
   vocab: VocabularyWord[],
   bookId: number,
 ): string {
-  const title = meta.title;
-  const author = (meta.authors ?? []).join(", ");
   const lines: string[] = [];
-
-  lines.push(`# ${title}`);
+  lines.push(`# ${meta.title}`);
+  const author = (meta.authors ?? []).join(", ");
   if (author) lines.push(`*${author}*`);
   lines.push("");
 
   const bookVocab = vocab.filter((v) => v.occurrences.some((o) => o.book_id === bookId));
 
+  const groupByChapter = <T,>(items: T[], getIdx: (t: T) => number) => {
+    const map = new Map<number, T[]>();
+    for (const item of items) {
+      const k = getIdx(item);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(item);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a - b);
+  };
+
   if (mode === "section") {
-    // ── Annotations ──────────────────────────────────────────────────────────
     if (annotations.length > 0) {
-      lines.push("## Annotations");
-      lines.push("");
-      const byChapter = groupByChapterIdx(annotations, (a) => a.chapter_index);
-      for (const [ch, anns] of sortedEntries(byChapter)) {
-        lines.push(`### ${chapterLabel(chapters, ch)}`);
-        lines.push("");
+      lines.push("## Annotations", "");
+      for (const [ch, anns] of groupByChapter(annotations, (a) => a.chapter_index)) {
+        lines.push(`### ${chapterLabel(chapters, ch)}`, "");
         for (const a of anns) {
-          lines.push(`> "${a.sentence_text}"`);
-          lines.push("");
-          if (a.note_text) { lines.push(a.note_text); lines.push(""); }
+          lines.push(`> "${a.sentence_text}"`, "");
+          if (a.note_text) { lines.push(a.note_text, ""); }
         }
       }
     }
-
-    // ── Insights ─────────────────────────────────────────────────────────────
     if (insights.length > 0) {
-      lines.push("## AI Insights");
-      lines.push("");
+      lines.push("## AI Insights", "");
       const bookLevel = insights.filter((i) => i.chapter_index === null);
-      const byChapter = groupByChapterIdx(
-        insights.filter((i) => i.chapter_index !== null),
-        (i) => i.chapter_index as number,
-      );
+      const byChapter = groupByChapter(insights.filter((i) => i.chapter_index !== null), (i) => i.chapter_index as number);
       if (bookLevel.length > 0) {
-        lines.push("### Book-level");
-        lines.push("");
+        lines.push("### Book-level", "");
         for (const i of bookLevel) {
-          if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
-          lines.push(`**Q:** ${i.question}`);
-          lines.push(`**A:** ${i.answer}`);
-          lines.push("");
+          if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`, ""); }
+          lines.push(`**Q:** ${i.question}`, `**A:** ${i.answer}`, "");
         }
       }
-      for (const [ch, ins] of sortedEntries(byChapter)) {
-        lines.push(`### ${chapterLabel(chapters, ch)}`);
-        lines.push("");
+      for (const [ch, ins] of byChapter) {
+        lines.push(`### ${chapterLabel(chapters, ch)}`, "");
         for (const i of ins) {
-          if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
-          lines.push(`**Q:** ${i.question}`);
-          lines.push(`**A:** ${i.answer}`);
-          lines.push("");
+          if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`, ""); }
+          lines.push(`**Q:** ${i.question}`, `**A:** ${i.answer}`, "");
         }
       }
     }
-
-    // ── Vocabulary ────────────────────────────────────────────────────────────
     if (bookVocab.length > 0) {
-      lines.push("## Vocabulary");
-      lines.push("");
+      lines.push("## Vocabulary", "");
       for (const v of bookVocab) {
-        const occs = v.occurrences.filter((o) => o.book_id === bookId);
-        for (const o of occs) {
-          const ch = chapterLabel(chapters, o.chapter_index);
-          lines.push(`- **${v.word}** *(${ch})* — "${truncate(o.sentence_text, 90)}"`);
+        for (const o of v.occurrences.filter((o) => o.book_id === bookId)) {
+          lines.push(`- **${v.word}** *(${chapterLabel(chapters, o.chapter_index)})* — "${truncate(o.sentence_text, 90)}"`);
         }
       }
       lines.push("");
     }
   } else {
-    // ── Chapter view ──────────────────────────────────────────────────────────
     const chSet = new Set<number>();
     annotations.forEach((a) => chSet.add(a.chapter_index));
     insights.filter((i) => i.chapter_index !== null).forEach((i) => chSet.add(i.chapter_index as number));
     bookVocab.forEach((v) => v.occurrences.filter((o) => o.book_id === bookId).forEach((o) => chSet.add(o.chapter_index)));
-
-    const sortedChapters = Array.from(chSet).sort((a, b) => a - b);
-    const bookLevelInsights = insights.filter((i) => i.chapter_index === null);
-
-    for (const ch of sortedChapters) {
-      lines.push(`## ${chapterLabel(chapters, ch)}`);
-      lines.push("");
-
-      const chAnns = annotations.filter((a) => a.chapter_index === ch);
-      for (const a of chAnns) {
-        lines.push(`> "${a.sentence_text}"`);
-        lines.push("");
-        if (a.note_text) { lines.push(a.note_text); lines.push(""); }
+    for (const ch of Array.from(chSet).sort((a, b) => a - b)) {
+      lines.push(`## ${chapterLabel(chapters, ch)}`, "");
+      for (const a of annotations.filter((a) => a.chapter_index === ch)) {
+        lines.push(`> "${a.sentence_text}"`, "");
+        if (a.note_text) { lines.push(a.note_text, ""); }
       }
-
-      const chIns = insights.filter((i) => i.chapter_index === ch);
-      for (const i of chIns) {
-        if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
-        lines.push(`**Q:** ${i.question}`);
-        lines.push(`**A:** ${i.answer}`);
-        lines.push("");
+      for (const i of insights.filter((i) => i.chapter_index === ch)) {
+        if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`, ""); }
+        lines.push(`**Q:** ${i.question}`, `**A:** ${i.answer}`, "");
       }
-
-      const chVoc = bookVocab.filter((v) =>
-        v.occurrences.some((o) => o.book_id === bookId && o.chapter_index === ch),
-      );
+      const chVoc = bookVocab.filter((v) => v.occurrences.some((o) => o.book_id === bookId && o.chapter_index === ch));
       if (chVoc.length > 0) {
         lines.push("**Words:**");
         for (const v of chVoc) {
@@ -153,76 +124,214 @@ function buildMarkdown(
         lines.push("");
       }
     }
-
+    const bookLevelInsights = insights.filter((i) => i.chapter_index === null);
     if (bookLevelInsights.length > 0) {
-      lines.push("## Book-level Insights");
-      lines.push("");
+      lines.push("## Book-level Insights", "");
       for (const i of bookLevelInsights) {
-        if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`); lines.push(""); }
-        lines.push(`**Q:** ${i.question}`);
-        lines.push(`**A:** ${i.answer}`);
-        lines.push("");
+        if (i.context_text) { lines.push(`> "${truncate(i.context_text, 200)}"`, ""); }
+        lines.push(`**Q:** ${i.question}`, `**A:** ${i.answer}`, "");
       }
     }
   }
-
-  return lines.join("\n");
+  return lines.join("\n") + "\n";
 }
 
-function groupByChapterIdx<T>(items: T[], getIdx: (t: T) => number): Map<number, T[]> {
-  const map = new Map<number, T[]>();
-  for (const item of items) {
-    const k = getIdx(item);
-    if (!map.has(k)) map.set(k, []);
-    map.get(k)!.push(item);
-  }
-  return map;
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function CollapseHeading({
+  label,
+  count,
+  isCollapsed,
+  onToggle,
+  level = 2,
+}: {
+  label: string;
+  count?: number;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  level?: 2 | 3;
+}) {
+  const Tag = `h${level}` as "h2" | "h3";
+  return (
+    <button
+      onClick={onToggle}
+      className={`w-full flex items-center gap-2 text-left group ${
+        level === 2
+          ? "mt-8 mb-3 pb-1.5 border-b border-amber-200"
+          : "mt-5 mb-2"
+      }`}
+    >
+      <span className="text-amber-400 text-xs shrink-0">{isCollapsed ? "▶" : "▼"}</span>
+      <Tag className={level === 2
+        ? "text-lg font-serif font-semibold text-ink group-hover:text-amber-800 transition-colors"
+        : "text-sm font-semibold text-amber-800 uppercase tracking-wide group-hover:text-amber-900 transition-colors"
+      }>
+        {label}
+      </Tag>
+      {count !== undefined && (
+        <span className="text-xs text-stone-400 font-normal font-sans ml-1">{count}</span>
+      )}
+    </button>
+  );
 }
 
-function sortedEntries<T>(map: Map<number, T[]>): [number, T[]][] {
-  return Array.from(map.entries()).sort(([a], [b]) => a - b);
+function AnnotationCard({
+  ann,
+  chapters,
+  bookId,
+  isEditing,
+  editNote,
+  onEdit,
+  onEditChange,
+  onSave,
+  onCancel,
+  onDelete,
+  isDeleting,
+}: {
+  ann: Annotation;
+  chapters: BookChapter[];
+  bookId: number;
+  isEditing: boolean;
+  editNote: string;
+  onEdit: () => void;
+  onEditChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  return (
+    <div
+      id={`annotation-${ann.id}`}
+      className="border-l-4 border-amber-300 pl-4 my-3 scroll-mt-24"
+    >
+      <p className="italic text-stone-600 leading-relaxed text-sm">
+        &ldquo;{ann.sentence_text}&rdquo;
+      </p>
+
+      {isEditing ? (
+        <div className="mt-2 space-y-2">
+          <textarea
+            value={editNote}
+            onChange={(e) => onEditChange(e.target.value)}
+            className="w-full text-sm border border-amber-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+            rows={3}
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={onSave}
+              className="px-3 py-1 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors"
+            >
+              Save
+            </button>
+            <button
+              onClick={onCancel}
+              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        ann.note_text && (
+          <p className="mt-1.5 text-sm text-ink">{ann.note_text}</p>
+        )
+      )}
+
+      {!isEditing && (
+        <div className="flex items-center gap-3 mt-2">
+          <a
+            href={`/reader/${bookId}?chapter=${ann.chapter_index}`}
+            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+          >
+            → {chapterLabel(chapters, ann.chapter_index)}
+          </a>
+          <button
+            onClick={onEdit}
+            className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+            title="Edit note"
+          >
+            ✏️
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={isDeleting}
+            className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+            title="Delete annotation"
+          >
+            {isDeleting ? "…" : "🗑"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
-// ── Markdown components ────────────────────────────────────────────────────────
+function InsightCard({
+  ins,
+  chapters,
+  onDelete,
+  isDeleting,
+}: {
+  ins: BookInsight;
+  chapters: BookChapter[];
+  onDelete: () => void;
+  isDeleting: boolean;
+}) {
+  return (
+    <div className="my-3 space-y-1.5">
+      {ins.context_text && (
+        <blockquote className="border-l-4 border-amber-200 pl-4 italic text-stone-500 text-sm leading-relaxed">
+          &ldquo;{truncate(ins.context_text, 200)}&rdquo;
+        </blockquote>
+      )}
+      <p className="text-sm text-ink">
+        <span className="font-semibold">Q:</span> {ins.question}
+      </p>
+      <p className="text-sm text-ink leading-relaxed">{ins.answer}</p>
+      <div className="flex items-center gap-3 pt-0.5">
+        {ins.chapter_index !== null && (
+          <span className="text-xs text-stone-400">{chapterLabel(chapters, ins.chapter_index)}</span>
+        )}
+        <button
+          onClick={onDelete}
+          disabled={isDeleting}
+          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+          title="Delete insight"
+        >
+          {isDeleting ? "…" : "🗑"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
-const mdComponents = {
-  h1: ({ children }: any) => (
-    <h1 className="text-2xl font-serif font-bold text-ink mt-2 mb-1">{children}</h1>
-  ),
-  h2: ({ children }: any) => (
-    <h2 className="text-lg font-serif font-semibold text-ink mt-8 mb-3 pb-1.5 border-b border-amber-200">
-      {children}
-    </h2>
-  ),
-  h3: ({ children }: any) => (
-    <h3 className="text-sm font-semibold text-amber-800 uppercase tracking-wide mt-6 mb-2">
-      {children}
-    </h3>
-  ),
-  blockquote: ({ children }: any) => (
-    <blockquote className="border-l-4 border-amber-300 pl-4 my-3 italic text-stone-600 leading-relaxed">
-      {children}
-    </blockquote>
-  ),
-  p: ({ children }: any) => (
-    <p className="my-2 text-ink leading-relaxed text-sm">{children}</p>
-  ),
-  strong: ({ children }: any) => (
-    <strong className="font-semibold text-ink">{children}</strong>
-  ),
-  em: ({ children }: any) => (
-    <em className="italic text-stone-500">{children}</em>
-  ),
-  ul: ({ children }: any) => (
-    <ul className="my-2 ml-4 space-y-1 list-none">{children}</ul>
-  ),
-  li: ({ children }: any) => (
-    <li className="text-ink text-sm leading-relaxed flex gap-2 before:content-['·'] before:text-amber-400 before:font-bold">
-      <span>{children}</span>
+function VocabRow({
+  word,
+  occurrence,
+  chapters,
+}: {
+  word: string;
+  occurrence: { chapter_index: number; sentence_text: string };
+  chapters: BookChapter[];
+}) {
+  return (
+    <li className="flex gap-2 text-sm leading-relaxed before:content-['·'] before:text-amber-400 before:font-bold before:shrink-0">
+      <span>
+        <a
+          href={`/vocabulary?word=${encodeURIComponent(word)}`}
+          className="font-semibold text-amber-700 hover:text-amber-900 hover:underline"
+        >
+          {word}
+        </a>{" "}
+        <span className="text-stone-400 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
+        {" — "}
+        <span className="italic text-stone-600">&ldquo;{truncate(occurrence.sentence_text, 90)}&rdquo;</span>
+      </span>
     </li>
-  ),
-  hr: () => <hr className="my-8 border-amber-100" />,
-};
+  );
+}
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
@@ -239,8 +348,23 @@ export default function BookNotesPage() {
   const [insights, setInsights] = useState<BookInsight[]>([]);
   const [vocab, setVocab] = useState<VocabularyWord[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Collapse state
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  // Inline edit
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editNote, setEditNote] = useState("");
+
+  // Delete loading sets
+  const [deletingAnns, setDeletingAnns] = useState<Set<number>>(new Set());
+  const [deletingIns, setDeletingIns] = useState<Set<number>>(new Set());
+
+  // Export
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  const didScrollRef = useRef(false);
 
   useEffect(() => {
     if (status === "unauthenticated") { router.replace("/login"); return; }
@@ -261,10 +385,80 @@ export default function BookNotesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, bookId]);
 
-  const markdown = useMemo(() => {
-    if (!meta) return "";
-    return buildMarkdown(viewMode, meta, chapters, annotations, insights, vocab, bookId);
-  }, [viewMode, meta, chapters, annotations, insights, vocab, bookId]);
+  // Scroll to anchor on first load
+  useEffect(() => {
+    if (loading || didScrollRef.current) return;
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    if (!hash) return;
+    didScrollRef.current = true;
+    const el = document.getElementById(hash.slice(1));
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+  }, [loading]);
+
+  const bookVocab = vocab.filter((v) => v.occurrences.some((o) => o.book_id === bookId));
+
+  function toggleCollapse(key: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
+  function allSectionKeys(): string[] {
+    const keys: string[] = ["ann", "insights", "vocab"];
+    const chSet = new Set<number>();
+    annotations.forEach((a) => chSet.add(a.chapter_index));
+    insights.filter((i) => i.chapter_index !== null).forEach((i) => chSet.add(i.chapter_index as number));
+    bookVocab.forEach((v) => v.occurrences.filter((o) => o.book_id === bookId).forEach((o) => chSet.add(o.chapter_index)));
+    chSet.forEach((ch) => keys.push(`ch-${ch}`));
+    return keys;
+  }
+
+  const isAllCollapsed = allSectionKeys().every((k) => collapsed.has(k));
+
+  function toggleCollapseAll() {
+    if (isAllCollapsed) {
+      setCollapsed(new Set());
+    } else {
+      setCollapsed(new Set(allSectionKeys()));
+    }
+  }
+
+  // Edit handlers
+  function startEdit(ann: Annotation) {
+    setEditingId(ann.id);
+    setEditNote(ann.note_text);
+  }
+
+  async function saveEdit() {
+    if (editingId === null) return;
+    try {
+      const updated = await updateAnnotation(editingId, { note_text: editNote });
+      setAnnotations((prev) => prev.map((a) => (a.id === editingId ? { ...a, note_text: updated.note_text } : a)));
+    } catch { /* ignore */ }
+    setEditingId(null);
+  }
+
+  async function handleDeleteAnnotation(id: number) {
+    if (!window.confirm("Delete this annotation?")) return;
+    setDeletingAnns((prev) => new Set(prev).add(id));
+    try {
+      await deleteAnnotation(id);
+      setAnnotations((prev) => prev.filter((a) => a.id !== id));
+    } catch { /* ignore */ }
+    setDeletingAnns((prev) => { const s = new Set(prev); s.delete(id); return s; });
+  }
+
+  async function handleDeleteInsight(id: number) {
+    if (!window.confirm("Delete this insight?")) return;
+    setDeletingIns((prev) => new Set(prev).add(id));
+    try {
+      await deleteInsight(id);
+      setInsights((prev) => prev.filter((i) => i.id !== id));
+    } catch { /* ignore */ }
+    setDeletingIns((prev) => { const s = new Set(prev); s.delete(id); return s; });
+  }
 
   async function handleExport() {
     setExporting(true);
@@ -281,7 +475,230 @@ export default function BookNotesPage() {
 
   const annCount = annotations.length;
   const insCount = insights.length;
-  const vocCount = vocab.filter((v) => v.occurrences.some((o) => o.book_id === bookId)).length;
+  const vocCount = bookVocab.length;
+
+  // Shared rendering helpers
+  function renderAnnotation(ann: Annotation) {
+    return (
+      <AnnotationCard
+        key={ann.id}
+        ann={ann}
+        chapters={chapters}
+        bookId={bookId}
+        isEditing={editingId === ann.id}
+        editNote={editNote}
+        onEdit={() => startEdit(ann)}
+        onEditChange={setEditNote}
+        onSave={saveEdit}
+        onCancel={() => setEditingId(null)}
+        onDelete={() => handleDeleteAnnotation(ann.id)}
+        isDeleting={deletingAnns.has(ann.id)}
+      />
+    );
+  }
+
+  function renderInsight(ins: BookInsight) {
+    return (
+      <InsightCard
+        key={ins.id}
+        ins={ins}
+        chapters={chapters}
+        onDelete={() => handleDeleteInsight(ins.id)}
+        isDeleting={deletingIns.has(ins.id)}
+      />
+    );
+  }
+
+  // ── Section view ─────────────────────────────────────────────────────────────
+  function renderSectionView() {
+    const byChapterAnn = new Map<number, Annotation[]>();
+    for (const a of annotations) {
+      (byChapterAnn.get(a.chapter_index) ?? (byChapterAnn.set(a.chapter_index, []) && byChapterAnn.get(a.chapter_index)))!.push(a);
+    }
+    const annChapters = Array.from(byChapterAnn.keys()).sort((a, b) => a - b);
+
+    const byChapterIns = new Map<number, BookInsight[]>();
+    const bookLevelIns: BookInsight[] = [];
+    for (const i of insights) {
+      if (i.chapter_index === null) { bookLevelIns.push(i); continue; }
+      (byChapterIns.get(i.chapter_index) ?? (byChapterIns.set(i.chapter_index, []) && byChapterIns.get(i.chapter_index)))!.push(i);
+    }
+    const insChapters = Array.from(byChapterIns.keys()).sort((a, b) => a - b);
+
+    return (
+      <div>
+        {/* Annotations */}
+        {annCount > 0 && (
+          <section>
+            <CollapseHeading
+              label="Annotations"
+              count={annCount}
+              isCollapsed={collapsed.has("ann")}
+              onToggle={() => toggleCollapse("ann")}
+            />
+            {!collapsed.has("ann") && (
+              <div>
+                {annChapters.map((ch) => (
+                  <div key={ch}>
+                    <CollapseHeading
+                      label={chapterLabel(chapters, ch)}
+                      count={byChapterAnn.get(ch)!.length}
+                      isCollapsed={collapsed.has(`ann-ch-${ch}`)}
+                      onToggle={() => toggleCollapse(`ann-ch-${ch}`)}
+                      level={3}
+                    />
+                    {!collapsed.has(`ann-ch-${ch}`) && (
+                      <div className="pl-2">
+                        {byChapterAnn.get(ch)!.map(renderAnnotation)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Insights */}
+        {insCount > 0 && (
+          <section>
+            <CollapseHeading
+              label="AI Insights"
+              count={insCount}
+              isCollapsed={collapsed.has("insights")}
+              onToggle={() => toggleCollapse("insights")}
+            />
+            {!collapsed.has("insights") && (
+              <div>
+                {bookLevelIns.length > 0 && (
+                  <div>
+                    <CollapseHeading
+                      label="Book-level"
+                      count={bookLevelIns.length}
+                      isCollapsed={collapsed.has("ins-book")}
+                      onToggle={() => toggleCollapse("ins-book")}
+                      level={3}
+                    />
+                    {!collapsed.has("ins-book") && (
+                      <div className="pl-2">{bookLevelIns.map(renderInsight)}</div>
+                    )}
+                  </div>
+                )}
+                {insChapters.map((ch) => (
+                  <div key={ch}>
+                    <CollapseHeading
+                      label={chapterLabel(chapters, ch)}
+                      count={byChapterIns.get(ch)!.length}
+                      isCollapsed={collapsed.has(`ins-ch-${ch}`)}
+                      onToggle={() => toggleCollapse(`ins-ch-${ch}`)}
+                      level={3}
+                    />
+                    {!collapsed.has(`ins-ch-${ch}`) && (
+                      <div className="pl-2">
+                        {byChapterIns.get(ch)!.map(renderInsight)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Vocabulary */}
+        {vocCount > 0 && (
+          <section>
+            <CollapseHeading
+              label="Vocabulary"
+              count={vocCount}
+              isCollapsed={collapsed.has("vocab")}
+              onToggle={() => toggleCollapse("vocab")}
+            />
+            {!collapsed.has("vocab") && (
+              <ul className="my-2 ml-4 space-y-1 list-none">
+                {bookVocab.map((v) =>
+                  v.occurrences
+                    .filter((o) => o.book_id === bookId)
+                    .map((occ, i) => (
+                      <VocabRow
+                        key={`${v.word}-${i}`}
+                        word={v.word}
+                        occurrence={occ}
+                        chapters={chapters}
+                      />
+                    ))
+                )}
+              </ul>
+            )}
+          </section>
+        )}
+      </div>
+    );
+  }
+
+  // ── Chapter view ──────────────────────────────────────────────────────────────
+  function renderChapterView() {
+    const chSet = new Set<number>();
+    annotations.forEach((a) => chSet.add(a.chapter_index));
+    insights.filter((i) => i.chapter_index !== null).forEach((i) => chSet.add(i.chapter_index as number));
+    bookVocab.forEach((v) => v.occurrences.filter((o) => o.book_id === bookId).forEach((o) => chSet.add(o.chapter_index)));
+    const sortedChapters = Array.from(chSet).sort((a, b) => a - b);
+    const bookLevelIns = insights.filter((i) => i.chapter_index === null);
+
+    return (
+      <div>
+        {sortedChapters.map((ch) => {
+          const chAnns = annotations.filter((a) => a.chapter_index === ch);
+          const chIns = insights.filter((i) => i.chapter_index === ch);
+          const chVoc = bookVocab.filter((v) =>
+            v.occurrences.some((o) => o.book_id === bookId && o.chapter_index === ch),
+          );
+          const total = chAnns.length + chIns.length + chVoc.length;
+          const key = `ch-${ch}`;
+          return (
+            <section key={ch}>
+              <CollapseHeading
+                label={chapterLabel(chapters, ch)}
+                count={total}
+                isCollapsed={collapsed.has(key)}
+                onToggle={() => toggleCollapse(key)}
+              />
+              {!collapsed.has(key) && (
+                <div className="pl-2 space-y-1">
+                  {chAnns.map(renderAnnotation)}
+                  {chIns.map(renderInsight)}
+                  {chVoc.length > 0 && (
+                    <ul className="mt-2 ml-4 space-y-1 list-none">
+                      {chVoc.map((v) => {
+                        const occ = v.occurrences.find((o) => o.book_id === bookId && o.chapter_index === ch);
+                        return occ ? (
+                          <VocabRow key={v.word} word={v.word} occurrence={occ} chapters={chapters} />
+                        ) : null;
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
+
+        {bookLevelIns.length > 0 && (
+          <section>
+            <CollapseHeading
+              label="Book-level Insights"
+              count={bookLevelIns.length}
+              isCollapsed={collapsed.has("ch-book")}
+              onToggle={() => toggleCollapse("ch-book")}
+            />
+            {!collapsed.has("ch-book") && (
+              <div className="pl-2">{bookLevelIns.map(renderInsight)}</div>
+            )}
+          </section>
+        )}
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-parchment">
@@ -300,6 +717,16 @@ export default function BookNotesPage() {
               {annCount} annotations · {insCount} insights · {vocCount} words
             </p>
           </div>
+
+          {/* Collapse all toggle */}
+          {(annCount + insCount + vocCount) > 0 && !loading && (
+            <button
+              onClick={toggleCollapseAll}
+              className="text-xs text-stone-400 hover:text-stone-600 shrink-0 transition-colors"
+            >
+              {isAllCollapsed ? "Expand all" : "Collapse all"}
+            </button>
+          )}
 
           {/* View toggle */}
           <div className="flex rounded-lg border border-amber-200 overflow-hidden text-xs font-medium shrink-0">
@@ -356,10 +783,16 @@ export default function BookNotesPage() {
             </button>
           </div>
         ) : (
-          <div data-testid="notes-markdown">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {markdown}
-            </ReactMarkdown>
+          <div data-testid="notes-content">
+            {meta && (
+              <div className="mb-6">
+                <h1 className="text-2xl font-serif font-bold text-ink">{meta.title}</h1>
+                {(meta.authors ?? []).length > 0 && (
+                  <p className="text-sm text-stone-500 italic mt-0.5">{meta.authors.join(", ")}</p>
+                )}
+              </div>
+            )}
+            {viewMode === "section" ? renderSectionView() : renderChapterView()}
           </div>
         )}
       </div>

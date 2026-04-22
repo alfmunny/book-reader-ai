@@ -339,12 +339,16 @@ function VocabularyPageContent() {
                                 {f.word !== group.lemma && (
                                   <span className="text-xs text-amber-600 font-medium mr-1.5">{f.word}</span>
                                 )}
-                                <a
-                                  href={`/reader/${occ.book_id}?chapter=${occ.chapter_index}`}
-                                  className="text-amber-700 font-medium hover:underline"
-                                >
-                                  {occ.book_title}
-                                </a>{" "}
+                                {occ.book_title ? (
+                                  <a
+                                    href={`/reader/${occ.book_id}?chapter=${occ.chapter_index}`}
+                                    className="text-amber-700 font-medium hover:underline"
+                                  >
+                                    {occ.book_title}
+                                  </a>
+                                ) : (
+                                  <span className="text-stone-400 font-medium">(deleted book)</span>
+                                )}{" "}
                                 <span className="text-stone-400">{`Ch.${occ.chapter_index + 1}`}</span>
                                 {" — "}
                                 <span className="italic">&ldquo;{occ.sentence_text}&rdquo;</span>

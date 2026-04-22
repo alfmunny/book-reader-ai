@@ -131,6 +131,14 @@ async def test_apple_links_to_existing_google_user_by_email():
     assert apple_user["id"] == google_user["id"]
 
 
+async def test_apple_existing_by_email_returns_updated_profile():
+    # Regression: linking Apple ID to an existing account must return the
+    # post-UPDATE profile (with apple_id set), not the stale pre-UPDATE row.
+    await get_or_create_user("g202", "apple-link@example.com", "Google User", "")
+    result = await get_or_create_user_apple("ap4b", "apple-link@example.com", "")
+    assert result["apple_id"] == "ap4b"
+
+
 async def test_apple_no_email_skips_linking():
     await get_or_create_user("g201", "existing@example.com", "Existing", "")
     new_user = await get_or_create_user_apple("ap5", "", "NoEmail")
@@ -325,6 +333,24 @@ async def test_delete_word():
     deleted = await delete_word(user["id"], "Kindergarten")
     assert deleted is True
     assert await get_vocabulary(user["id"]) == []
+
+
+async def test_delete_word_cascades_to_word_occurrences():
+    import aiosqlite
+    user = await get_or_create_user("g44b", "vocab5b@example.com", "V5b", "")
+    await save_word(user["id"], "Weltanschauung", 99, 0, "A Weltanschauung emerged.")
+    vocab = await get_vocabulary(user["id"])
+    vocab_id = vocab[0]["id"]
+    assert len(vocab[0]["occurrences"]) == 1
+
+    await delete_word(user["id"], "Weltanschauung")
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM word_occurrences WHERE vocabulary_id = ?", (vocab_id,)
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
 
 
 async def test_delete_word_nonexistent_returns_false():

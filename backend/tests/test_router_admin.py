@@ -8,7 +8,8 @@ import services.db as db_module
 import routers.admin as admin_module
 from services.db import (
     init_db, get_or_create_user, get_user_by_id, save_book,
-    save_translation, set_user_approved,
+    save_translation, set_user_approved, create_annotation, save_insight,
+    upsert_reading_progress,
 )
 from services.auth import get_current_user, create_jwt
 from main import app
@@ -163,6 +164,88 @@ async def test_delete_book(admin_client, admin_db):
     await save_book(100, BOOK_META, BOOK_TEXT)
     res = await admin_client.delete("/api/admin/books/100")
     assert res.status_code == 200
+
+
+async def test_delete_book_removes_queue_entries(admin_client, admin_db):
+    """Regression: delete_book must also delete translation_queue entries.
+
+    If queue entries are left behind with status='skipped' (set by the worker
+    when it finds the book missing), a subsequent re-import of the same book_id
+    cannot enqueue new translations — INSERT OR IGNORE is blocked by the old
+    skipped rows. The re-imported book would never be translated.
+    """
+    from services.translation_queue import enqueue, queue_status_for_chapter
+
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await enqueue(100, 0, "de")  # Add a pending queue entry
+
+    # Confirm the entry exists before deletion
+    status = await queue_status_for_chapter(100, 0, "de")
+    assert status["queued"]
+
+    # Delete the book
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    # Queue entry should be gone — not just skipped, but deleted
+    status = await queue_status_for_chapter(100, 0, "de")
+    assert not status["queued"]
+
+
+async def test_delete_book_removes_word_occurrences(admin_client, admin_db):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "INSERT INTO vocabulary (user_id, word) VALUES (1, 'ephemeral')"
+        )
+        await db.execute(
+            "INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)"
+            " VALUES (1, 100, 0, 'The ephemeral moment.')"
+        )
+        await db.commit()
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM word_occurrences WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
+async def test_delete_book_removes_annotations(admin_client, admin_db, admin_user):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await create_annotation(admin_user["id"], 100, 0, "A great line.", "The full quote.", "yellow")
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM annotations WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
+async def test_delete_book_removes_book_insights(admin_client, admin_db, admin_user):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_insight(admin_user["id"], 100, 0, "What is the theme?", "The theme is...", None)
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
+async def test_delete_book_removes_reading_progress(admin_client, admin_db, admin_user):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await upsert_reading_progress(admin_user["id"], 100, 2)
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM user_reading_progress WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
 
 
 # ── Translations ─────────────────────────────────────────────────────────────

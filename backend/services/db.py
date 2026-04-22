@@ -214,7 +214,9 @@ async def get_or_create_user_apple(apple_id: str, email: str, name: str) -> dict
                     (apple_id, row["id"]),
                 )
                 await db.commit()
-                return dict(row)
+                updated = dict(row)
+                updated["apple_id"] = apple_id
+                return updated
 
         # New user
         async with db.execute("SELECT COUNT(*) FROM users") as cursor:
@@ -692,6 +694,11 @@ async def get_vocabulary(user_id: int) -> list[dict]:
 
 async def delete_word(user_id: int, word: str) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """DELETE FROM word_occurrences WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
+            (user_id, word),
+        )
         cursor = await db.execute(
             "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
             (user_id, word),

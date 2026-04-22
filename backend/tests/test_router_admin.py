@@ -254,6 +254,51 @@ async def test_delete_user_removes_book_uploads(admin_client, admin_db, admin_us
     assert count == 0, "orphaned book_uploads rows left after delete_user"
 
 
+async def test_delete_user_prunes_orphaned_vocabulary_from_other_readers(admin_client, admin_db):
+    """Regression #438: deleting a book owner must prune vocabulary entries in
+    other users that have no remaining word_occurrences after the book is removed.
+    """
+    import json as _json
+    owner = await get_or_create_user(
+        google_id="vocab-orphan-owner", email="vocab-owner@test.com", name="Owner", picture=""
+    )
+    reader = await get_or_create_user(
+        google_id="vocab-orphan-reader", email="vocab-reader@test.com", name="Reader", picture=""
+    )
+    chapters = _json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "unique"}]})
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+               download_count, cover, text, images, source, owner_user_id)
+               VALUES (9970, 'OwnedBook', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (chapters, owner["id"]),
+        )
+        await db.execute(
+            "INSERT OR IGNORE INTO vocabulary (user_id, word) VALUES (?, ?)",
+            (reader["id"], "unique"),
+        )
+        async with db.execute(
+            "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
+            (reader["id"], "unique"),
+        ) as cur:
+            (vocab_id,) = await cur.fetchone()
+        await db.execute(
+            "INSERT OR IGNORE INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) VALUES (?, ?, ?, ?)",
+            (vocab_id, 9970, 0, "unique sentence"),
+        )
+        await db.commit()
+
+    res = await admin_client.delete(f"/api/admin/users/{owner['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM vocabulary WHERE id = ?", (vocab_id,)
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 0, "orphaned vocabulary entry remains after owner deleted"
+
+
 # ── Books ────────────────────────────────────────────────────────────────────
 
 async def test_get_books(admin_client, admin_db):

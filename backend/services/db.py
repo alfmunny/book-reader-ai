@@ -294,6 +294,10 @@ async def delete_user(user_id: int) -> None:
         await db.execute(f"DELETE FROM chapter_summaries WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM translation_queue WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM word_occurrences WHERE book_id IN ({_owned})", (user_id,))
+        # Prune vocabulary entries that now have no occurrences (owned books just deleted).
+        await db.execute(
+            "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
         await db.execute(f"DELETE FROM annotations WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM book_insights WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM user_reading_progress WHERE book_id IN ({_owned})", (user_id,))
@@ -388,6 +392,8 @@ async def save_translation(
     try:
         from services.translation_queue import mark_queue_row_done
         await mark_queue_row_done(book_id, chapter_index, target_language)
+    except ImportError:
+        pass  # FastAPI not installed (offline pretranslate context) — queue cleanup not needed
     except Exception:
         import logging
         logging.getLogger(__name__).warning(

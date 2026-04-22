@@ -166,4 +166,20 @@ export async function mockBackend(page: Page) {
       },
     })
   );
+
+  // Default: insights returns empty array; DELETE returns ok
+  await page.route(/\/api\/insights/, (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ json: [] });
+    } else if (route.request().method() === "DELETE") {
+      route.fulfill({ json: { ok: true } });
+    } else {
+      route.fallback();
+    }
+  });
+
+  // Default: obsidian export returns no URL (tests override as needed)
+  await page.route(/\/api\/vocabulary\/export/, (route) =>
+    route.fulfill({ json: { urls: [] } })
+  );
 }

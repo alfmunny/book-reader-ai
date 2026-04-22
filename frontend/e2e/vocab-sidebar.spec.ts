@@ -44,6 +44,36 @@ test("vocab sidebar 'All chapters' toggle shows words from every chapter", async
   await expect(page.getByRole("button", { name: "acknowledge acknowledged" })).toBeVisible();
 });
 
+test("vocab sidebar: clicking an occurrence closes the sidebar", async ({ page }) => {
+  await page.goto("/reader/1342");
+
+  const vocabBtn = page.getByTitle("Vocabulary", { exact: true });
+  await vocabBtn.click();
+
+  // The filter toggle is the landmark for "sidebar is open"
+  await expect(page.getByRole("button", { name: "This chapter" })).toBeVisible();
+
+  // Click the context occurrence for "universally" (chapter 0, same chapter as reader)
+  // Occurrence button is the only <button> containing this quoted sentence text
+  await page.getByRole("button", { name: /It is a truth universally acknowledged/ }).click();
+
+  // Sidebar closes
+  await expect(page.getByRole("button", { name: "This chapter" })).not.toBeVisible();
+});
+
+test("vocab sidebar: 'All chapters' view shows chapter labels on occurrences", async ({ page }) => {
+  await page.goto("/reader/1342");
+
+  const vocabBtn = page.getByTitle("Vocabulary", { exact: true });
+  await vocabBtn.click();
+
+  await page.getByRole("button", { name: "All chapters" }).click();
+
+  // "universally" is chapter_index=0 → Ch.1; "acknowledged" is chapter_index=1 → Ch.2
+  await expect(page.getByText("Ch.1")).toBeVisible();
+  await expect(page.getByText("Ch.2")).toBeVisible();
+});
+
 test("vocab page: target word card has amber highlight ring", async ({ page }) => {
   await page.goto("/vocabulary?word=universally");
 

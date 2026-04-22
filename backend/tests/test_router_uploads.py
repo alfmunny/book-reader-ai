@@ -10,6 +10,7 @@ from services.db import (
     get_or_create_user, get_user_by_id,
     save_translation, create_annotation, save_insight,
     save_chapter_summary, upsert_reading_progress, save_word,
+    set_user_role,
 )
 import services.db as db_module
 from services.auth import get_current_user, get_optional_user
@@ -56,6 +57,8 @@ async def test_upload_txt_file_creates_draft_book(client, test_user):
 
 
 async def test_upload_quota_returns_count(client, test_user):
+    # test_user is auto-admin in a fresh db; demote to expose the quota limit
+    await set_user_role(test_user["id"], "user")
     resp = await client.get("/api/books/upload/quota")
     assert resp.status_code == 200
     data = resp.json()
@@ -69,7 +72,8 @@ async def test_upload_quota_returns_count(client, test_user):
 
 
 async def test_upload_quota_exceeded_returns_429(client, test_user):
-    # Patch the quota check function to simulate limit reached
+    # test_user is auto-admin in a fresh db; demote so the quota limit applies
+    await set_user_role(test_user["id"], "user")
     with patch("routers.uploads._user_upload_count", new_callable=AsyncMock, return_value=10):
         resp = await client.post("/api/books/upload", files=_txt_upload())
     assert resp.status_code == 429

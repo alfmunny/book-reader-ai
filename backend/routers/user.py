@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from services.auth import get_current_user, encrypt_api_key, decrypt_api_key
+from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
     set_user_gemini_key, get_user_by_id, get_reading_progress,
     get_obsidian_settings, update_obsidian_settings, get_cached_book,
@@ -63,8 +63,10 @@ async def update_reading_progress(
     req: ProgressUpdate,
     user: dict = Depends(get_current_user),
 ):
-    if not await get_cached_book(book_id):
+    book = await get_cached_book(book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
     if req.chapter_index < 0:
         raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     await upsert_progress_and_log_event(user["id"], book_id, req.chapter_index)

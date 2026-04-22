@@ -4,7 +4,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
-import { getSettings, saveSettings, FontSize, Theme } from "@/lib/settings";
+import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
+import TypographyPanel from "@/components/TypographyPanel";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
@@ -232,7 +233,18 @@ export default function ReaderPage() {
   // Reader display settings
   const [fontSize, setFontSize] = useState<FontSize>("base");
   const [theme, setTheme] = useState<Theme>("light");
+  const [lineHeight, setLineHeight] = useState<LineHeight>("normal");
+  const [contentWidth, setContentWidth] = useState<ContentWidth>("normal");
+  const [fontFamily, setFontFamily] = useState<FontFamily>("serif");
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  // Immersive reading state
+  const [focusMode, setFocusMode] = useState(false);
+  const [paragraphFocus, setParagraphFocus] = useState(false);
+  const [focusParagraphIdx, setFocusParagraphIdx] = useState(0);
+  const [paragraphTimings, setParagraphTimings] = useState<{ startTime: number; stopTime: number }[]>([]);
+  const [ttsStopAt, setTtsStopAt] = useState<number | undefined>();
+  const [showTypographyPanel, setShowTypographyPanel] = useState(false);
 
   // Read settings on mount (translationLang uses lazy useState above)
   useEffect(() => {
@@ -240,17 +252,27 @@ export default function ReaderPage() {
     // translationProvider setting is retained for back-compat but no longer read here.
     setFontSize(s.fontSize);
     setTheme(s.theme);
+    setLineHeight(s.lineHeight ?? "normal");
+    setContentWidth(s.contentWidth ?? "normal");
+    setFontFamily(s.fontFamily ?? "serif");
+    setParagraphFocus(s.paragraphFocus ?? false);
   }, []);
 
-  // Apply theme and font size to the document
+  // Apply theme and display settings to the document
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-font-size", fontSize);
+    document.documentElement.setAttribute("data-line-height", lineHeight);
+    document.documentElement.setAttribute("data-content-width", contentWidth);
+    document.documentElement.setAttribute("data-font-family", fontFamily);
     return () => {
       document.documentElement.removeAttribute("data-theme");
       document.documentElement.removeAttribute("data-font-size");
+      document.documentElement.removeAttribute("data-line-height");
+      document.documentElement.removeAttribute("data-content-width");
+      document.documentElement.removeAttribute("data-font-family");
     };
-  }, [theme, fontSize]);
+  }, [theme, fontSize, lineHeight, contentWidth, fontFamily]);
 
   // Track scroll progress
   useEffect(() => {
@@ -640,11 +662,18 @@ export default function ReaderPage() {
       } else if (e.key === "ArrowRight" && chapterIndex < chapters.length - 1) {
         e.preventDefault();
         goToChapter(chapterIndex + 1);
+      } else if (e.key === "f" || e.key === "F") {
+        e.preventDefault();
+        setFocusMode((v) => !v);
+        setShowTypographyPanel(false);
+      } else if (e.key === "Escape") {
+        if (focusMode) { e.preventDefault(); setFocusMode(false); }
+        setShowTypographyPanel(false);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [chapterIndex, chapters]);
+  }, [chapterIndex, chapters, focusMode]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);
@@ -681,6 +710,22 @@ export default function ReaderPage() {
     } catch {
       // silently ignore (user may not be logged in)
     }
+  }
+
+  // Paragraph focus handlers
+  function handleParagraphVisible(idx: number) {
+    if (!ttsIsPlaying) setFocusParagraphIdx(idx);
+  }
+  function handleActiveParagraphChange(idx: number) {
+    if (ttsIsPlaying) setFocusParagraphIdx(idx);
+  }
+  function readFocusedParagraph() {
+    const timing = paragraphTimings[focusParagraphIdx];
+    if (!timing) return;
+    const startTime = Number.isFinite(timing.startTime) ? timing.startTime : 0;
+    const stopTime = Number.isFinite(timing.stopTime) ? timing.stopTime : undefined;
+    setTtsStopAt(stopTime);
+    ttsSeekRef.current(startTime);
   }
 
   // Obsidian export handler
@@ -737,10 +782,57 @@ export default function ReaderPage() {
         </div>
       )}
 
+      {/* ── Focus Mode HUD (desktop) ────────────────────────────────────── */}
+      {focusMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="pointer-events-auto mt-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-amber-200 rounded-full px-3 py-1.5 shadow-lg text-xs text-ink">
+            <button
+              onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
+              disabled={chapterIndex === 0}
+              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
+            >← Prev</button>
+            <span className="text-stone-400 mx-0.5">|</span>
+            <span className="text-stone-600 max-w-[180px] truncate font-medium">
+              {chapters[chapterIndex]?.title || `Ch. ${chapterIndex + 1}`}
+            </span>
+            <span className="text-stone-400 mx-0.5">|</span>
+            <button
+              onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
+              disabled={chapterIndex === chapters.length - 1}
+              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
+            >Next →</button>
+            {paragraphFocus && (
+              <>
+                <span className="text-stone-400 mx-0.5">|</span>
+                <button
+                  onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
+                  className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors"
+                  title={ttsIsPlaying ? "Playing…" : "Read focused paragraph"}
+                >
+                  {ttsIsPlaying ? "⏸ Playing" : "▶ Read para"}
+                </button>
+              </>
+            )}
+            <span className="text-stone-400 mx-0.5">|</span>
+            <button
+              onClick={() => setShowTypographyPanel((v) => !v)}
+              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold"
+              title="Typography"
+            >Aa</button>
+            <span className="text-stone-400 mx-0.5">|</span>
+            <button
+              onClick={() => setFocusMode(false)}
+              className="px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors"
+              title="Exit focus mode (F)"
+            >✕ Focus</button>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className={`border-b border-amber-200 bg-white/70 backdrop-blur shrink-0 transition-all duration-300 ${
         !toolbarVisible ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
-      } md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b`}>
+      } ${focusMode ? "" : "md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b"}`}>
         {/* Row 1: nav + title + controls */}
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
@@ -801,17 +893,35 @@ export default function ReaderPage() {
             )}
           </div>
 
-          {/* Font size — desktop only */}
-          <button
-            onClick={cycleFontSize}
-            title={`Font size: ${fontSize} — click to cycle`}
-            className="hidden md:flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs font-bold text-amber-700 transition-colors"
-          >
-            <span className="font-serif">A</span>
-            <span className="hidden lg:inline text-[9px] text-amber-500 font-sans font-normal">
-              {fontSize === "sm" ? "S" : fontSize === "base" ? "M" : fontSize === "lg" ? "L" : "XL"}
-            </span>
-          </button>
+          {/* Typography panel — desktop only */}
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => setShowTypographyPanel((v) => !v)}
+              title="Typography settings"
+              className={`flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold transition-colors ${
+                showTypographyPanel || paragraphFocus
+                  ? "bg-amber-100 border-amber-400 text-amber-800"
+                  : "border-amber-300 hover:bg-amber-100 text-amber-700"
+              }`}
+            >
+              <span className="font-serif">Aa</span>
+            </button>
+            {showTypographyPanel && (
+              <TypographyPanel
+                fontSize={fontSize}
+                lineHeight={lineHeight}
+                contentWidth={contentWidth}
+                fontFamily={fontFamily}
+                paragraphFocus={paragraphFocus}
+                onFontSize={setFontSize}
+                onLineHeight={setLineHeight}
+                onContentWidth={setContentWidth}
+                onFontFamily={setFontFamily}
+                onParagraphFocus={setParagraphFocus}
+                onClose={() => setShowTypographyPanel(false)}
+              />
+            )}
+          </div>
 
           {/* Theme — desktop only */}
           <button
@@ -944,6 +1054,19 @@ export default function ReaderPage() {
               Obsidian
             </button>
           )}
+
+          {/* Focus mode toggle — desktop only */}
+          <button
+            onClick={() => { setFocusMode((v) => !v); setShowTypographyPanel(false); }}
+            title="Focus mode (F)"
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              focusMode
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            🎯 Focus
+          </button>
 
           {/* Profile — always rightmost */}
           <button
@@ -1080,9 +1203,13 @@ export default function ReaderPage() {
                   scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
                   vocabWords={vocabWordsSet}
                   onSegmentClick={(startTime) => {
-                    // Called only when TTS is playing (seek)
                     ttsSeekRef.current(startTime);
                   }}
+                  focusParagraphIdx={paragraphFocus ? focusParagraphIdx : undefined}
+                  paragraphFocusEnabled={paragraphFocus}
+                  onParagraphVisible={handleParagraphVisible}
+                  onActiveParagraphChange={handleActiveParagraphChange}
+                  onParagraphTimingsUpdate={setParagraphTimings}
                 />
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
@@ -1233,6 +1360,8 @@ export default function ReaderPage() {
               onSeekRegister={(seekFn) => {
                 ttsSeekRef.current = seekFn;
               }}
+              stopAtTime={paragraphFocus ? ttsStopAt : undefined}
+              onStopAtReached={() => setTtsStopAt(undefined)}
             />
           </div>
         </div>

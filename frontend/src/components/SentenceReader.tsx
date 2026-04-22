@@ -291,6 +291,16 @@ interface Props {
   scrollTargetWord?: string;
   /** Vocabulary words to show with a subtle dotted underline in all segments. */
   vocabWords?: Set<string>;
+  /** When set, dims all paragraphs except this index. */
+  focusParagraphIdx?: number;
+  /** When true, fires onParagraphVisible as the user scrolls. */
+  paragraphFocusEnabled?: boolean;
+  /** Fired when a paragraph scrolls into the viewport center (scroll-driven). */
+  onParagraphVisible?: (idx: number) => void;
+  /** Fired when audio playback crosses into a new paragraph. */
+  onActiveParagraphChange?: (idx: number) => void;
+  /** Fired when paragraph start/stop times are computed or updated. */
+  onParagraphTimingsUpdate?: (timings: { startTime: number; stopTime: number }[]) => void;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -394,6 +404,11 @@ export default function SentenceReader({
   showAnnotations = true,
   scrollTargetWord,
   vocabWords,
+  focusParagraphIdx,
+  paragraphFocusEnabled = false,
+  onParagraphVisible,
+  onActiveParagraphChange,
+  onParagraphTimingsUpdate,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
   const [expandedNoteFlatIdx, setExpandedNoteFlatIdx] = useState<number | null>(null);
@@ -447,6 +462,64 @@ export default function SentenceReader({
       activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [currentIdx, isPlaying]);
+
+  // Expose paragraph timings to parent whenever paragraphs recompute (chunks load)
+  useEffect(() => {
+    if (!onParagraphTimingsUpdate) return;
+    onParagraphTimingsUpdate(
+      paragraphs.map((p, i) => ({
+        startTime: p.segments[0]?.startTime ?? 0,
+        stopTime: paragraphs[i + 1]?.segments[0]?.startTime ?? Infinity,
+      }))
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paragraphs]);
+
+  // Track which paragraph contains the currently-playing segment and notify parent
+  const currentParagraphIdx = useMemo(() => {
+    if (currentIdx < 0) return -1;
+    for (let i = 0; i < paragraphs.length; i++) {
+      if (paragraphs[i].segments.some((s) => s.flatIdx === currentIdx)) return i;
+    }
+    return -1;
+  }, [currentIdx, paragraphs]);
+
+  const prevActiveParagraphRef = useRef(-1);
+  useEffect(() => {
+    if (currentParagraphIdx >= 0 && currentParagraphIdx !== prevActiveParagraphRef.current) {
+      prevActiveParagraphRef.current = currentParagraphIdx;
+      onActiveParagraphChange?.(currentParagraphIdx);
+    }
+  }, [currentParagraphIdx, onActiveParagraphChange]);
+
+  // Scroll-based paragraph focus: fire onParagraphVisible with the paragraph
+  // nearest the viewport center while the user scrolls (and on mount)
+  useEffect(() => {
+    if (!paragraphFocusEnabled || !onParagraphVisible) return;
+    const container = document.getElementById("reader-scroll");
+    if (!container) return;
+
+    function update() {
+      const containerRect = container!.getBoundingClientRect();
+      const center = containerRect.top + containerRect.height / 2;
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      containerRef.current?.querySelectorAll<HTMLElement>("[data-para-idx]").forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const dist = Math.abs(rect.top + rect.height / 2 - center);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = Number(el.getAttribute("data-para-idx"));
+        }
+      });
+      onParagraphVisible!(bestIdx);
+    }
+
+    container.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => container.removeEventListener("scroll", update);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paragraphFocusEnabled, paragraphs]);
 
   // Scroll to and flash the target sentence when scrollTargetSentence changes.
   // We capture the sentence in a closure so rapid re-triggers (< 80ms apart)
@@ -657,10 +730,14 @@ export default function SentenceReader({
           </div>
         ) : null;
 
+        const focusClass = focusParagraphIdx !== undefined
+          ? (pIdx === focusParagraphIdx ? "para-active" : "para-dim")
+          : "";
+
         // ── No translation: render original only ──
         if (!hasTranslations) {
           return (
-            <div key={pIdx}>
+            <div key={pIdx} data-para-idx={pIdx} className={focusClass}>
               {originalContent}
               {noteCard}
             </div>
@@ -670,7 +747,7 @@ export default function SentenceReader({
         // ── Translation: parallel (side by side) ──
         if (isParallel) {
           return (
-            <div key={pIdx} className="py-4 first:pt-0 last:pb-0">
+            <div key={pIdx} data-para-idx={pIdx} className={`py-4 first:pt-0 last:pb-0 ${focusClass}`}>
               <div className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2">
                 <div>
                   {originalContent}
@@ -696,7 +773,7 @@ export default function SentenceReader({
 
         // ── Translation: inline (below) ──
         return (
-          <div key={pIdx}>
+          <div key={pIdx} data-para-idx={pIdx} className={focusClass}>
             {originalContent}
             {noteCard}
             {translationLoading && textParaIdx === 0 && !translationText && (

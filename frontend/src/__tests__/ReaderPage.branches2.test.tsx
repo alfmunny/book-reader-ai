@@ -16,7 +16,7 @@
  *   1571-1572 mobile notes panel: same-chapter annotation click
  */
 import React from "react";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // ─── next-auth ────────────────────────────────────────────────────────────────
@@ -1387,17 +1387,20 @@ describe("ReaderPage.branches2 — theme cycling through sepia and dark", () => 
 
 // ─── Font size: xl → sm wrap-around ──────────────────────────────────────────
 
-describe("ReaderPage.branches2 — font size: xl wraps to sm", () => {
-  it("cycles xl → sm when font size is xl", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, fontSize: "xl" });
+describe("ReaderPage.branches2 — font size: xl via typography panel", () => {
+  it("sets font size to xl via typography panel", async () => {
+    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, fontSize: "base" });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    const fontBtn = await screen.findByTitle(/font size/i);
-    await userEvent.click(fontBtn); // xl → sm
+    const aaBtn = await screen.findByTitle("Typography settings");
+    await userEvent.click(aaBtn);
+    const panel = await screen.findByTestId("typography-panel");
+    const xlBtn = within(panel).getByText("XL");
+    await userEvent.click(xlBtn);
 
-    expect(mockSaveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ fontSize: "sm" }));
+    expect(mockSaveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ fontSize: "xl" }));
   });
 });
 

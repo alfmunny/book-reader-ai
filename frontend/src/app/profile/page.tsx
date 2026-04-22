@@ -48,6 +48,10 @@ export default function ProfilePage() {
     translationProvider: "auto",
     fontSize: "base",
     theme: "light",
+    lineHeight: "normal",
+    contentWidth: "normal",
+    fontFamily: "serif",
+    paragraphFocus: false,
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 

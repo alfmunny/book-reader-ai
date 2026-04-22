@@ -20,6 +20,10 @@ interface Props {
   onLoadingChange?: (isLoading: boolean) => void;
   onChunksUpdate?: (chunks: ChunkSnapshot[]) => void;
   onSeekRegister?: (seekAndPlay: (time: number) => void) => void;
+  /** Auto-pause when globalCurrentTime reaches this value. */
+  stopAtTime?: number;
+  /** Called when stopAtTime is reached and audio is auto-paused. */
+  onStopAtReached?: () => void;
 }
 
 type Status = "idle" | "loading" | "paused" | "playing" | "error";
@@ -47,6 +51,8 @@ export default function TTSControls({
   onLoadingChange,
   onChunksUpdate,
   onSeekRegister,
+  stopAtTime,
+  onStopAtReached,
 }: Props) {
   const [status, setStatus] = useState<Status>("idle");
   const [rate, setRate] = useState(1.0);
@@ -70,10 +76,14 @@ export default function TTSControls({
   const onLoadingChangeRef = useRef(onLoadingChange);
   const onChunksUpdateRef = useRef(onChunksUpdate);
   const onSeekRegisterRef = useRef(onSeekRegister);
+  const onStopAtReachedRef = useRef(onStopAtReached);
+  const stopAtTimeRef = useRef(stopAtTime);
   useEffect(() => { onPlaybackUpdateRef.current = onPlaybackUpdate; }, [onPlaybackUpdate]);
   useEffect(() => { onLoadingChangeRef.current = onLoadingChange; }, [onLoadingChange]);
   useEffect(() => { onChunksUpdateRef.current = onChunksUpdate; }, [onChunksUpdate]);
   useEffect(() => { onSeekRegisterRef.current = onSeekRegister; }, [onSeekRegister]);
+  useEffect(() => { onStopAtReachedRef.current = onStopAtReached; }, [onStopAtReached]);
+  useEffect(() => { stopAtTimeRef.current = stopAtTime; }, [stopAtTime]);
 
   useEffect(() => {
     onLoadingChangeRef.current?.(status === "loading");
@@ -255,7 +265,15 @@ export default function TTSControls({
         audio.addEventListener("timeupdate", () => {
           if (myGen !== genRef.current) return;
           if (chunksRef.current[activeIndexRef.current]?.audio === audio) {
-            setGlobalCurrentTime(computeGlobalCurrentTime());
+            const t = computeGlobalCurrentTime();
+            setGlobalCurrentTime(t);
+            const stopAt = stopAtTimeRef.current;
+            if (stopAt !== undefined && Number.isFinite(stopAt) && t >= stopAt) {
+              audio.pause();
+              setStatus("paused");
+              saveAudioPosition(bookId, chapterIndex, t);
+              onStopAtReachedRef.current?.();
+            }
           }
         });
 

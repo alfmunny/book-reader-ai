@@ -65,7 +65,11 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
         if text and text.lstrip().startswith("{"):
             try:
                 data = json.loads(text)
-                if not data.get("draft") and "chapters" in data:
+                if "chapters" in data:
+                    if data.get("draft"):
+                        # Draft: not yet confirmed — no translatable chapters.
+                        # Do NOT cache; the caller should reject draft books explicitly.
+                        return []
                     chapters: list[Chapter] = [
                         Chapter(title=ch["title"], text=ch["text"])
                         for ch in data["chapters"]

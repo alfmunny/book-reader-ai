@@ -242,7 +242,22 @@ async def request_chapter_translation(
     if not book_meta:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    # 0b. Guard: reject same-language translation.
+    # 0c. Guard: reject draft uploaded books — chapters not yet confirmed.
+    if book_meta.get("source") == "upload":
+        try:
+            import json as _json
+            _data = _json.loads(book_meta.get("text") or "{}")
+            if _data.get("draft"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Book chapters not yet confirmed. Confirm the chapter structure before translating.",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    # 0d. Guard: reject same-language translation.
     source = (book_meta.get("languages") or [None])[0]
     if source and source.lower().split("-")[0] == target_language:
         raise HTTPException(

@@ -484,3 +484,35 @@ async def test_split_with_html_preference_handles_uploaded_book_json():
     assert chapters[0].title == "Chapter One"
     assert "first chapter" in chapters[0].text
     assert chapters[2].title == "Chapter Three"
+
+
+async def test_translation_status_draft_book_reports_zero_chapters(client, test_user):
+    """Regression #380: translation-status must report total_chapters=0 for a
+    draft uploaded book (not yet confirmed by the user)."""
+    # Upload but do NOT confirm → book stays in draft state
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+
+    resp = await client.get(f"/api/books/{book_id}/translation-status?target_language=zh")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_chapters"] == 0, (
+        f"Draft uploaded book must report total_chapters=0, got {data['total_chapters']} (#380)"
+    )
+
+
+async def test_request_translation_rejects_draft_book(client, test_user):
+    """Regression #380: POST /books/{id}/chapters/{ch}/translation must return
+    400 for a draft uploaded book — chapters not yet confirmed."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    book_id = upload_resp.json()["book_id"]
+
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/0/translation",
+        json={"target_language": "zh"},
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for draft book translation request, got {resp.status_code} (#380)"
+    )
+    assert "draft" in resp.json()["detail"].lower() or "confirm" in resp.json()["detail"].lower()

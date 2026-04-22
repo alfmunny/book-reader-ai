@@ -29,6 +29,22 @@ def no_wiktionary_http(monkeypatch):
     monkeypatch.setattr(db_module, "_update_lemma", AsyncMock(return_value=None))
 
 
+@pytest.fixture(autouse=True)
+def clear_chapter_cache():
+    """Reset the in-memory chapter-split cache between tests.
+
+    The cache is a process-level dict keyed by book_id. Without this,
+    a test that confirms an uploaded book (id=1) populates the cache,
+    and a later test that uploads a *draft* book (also id=1 in a fresh
+    temp DB) receives stale confirmed chapters — causing wrong
+    total_chapters counts.
+    """
+    from services.book_chapters import clear_cache
+    clear_cache()
+    yield
+    clear_cache()
+
+
 @pytest.fixture
 async def tmp_db(monkeypatch, tmp_path):
     path = str(tmp_path / "test.db")

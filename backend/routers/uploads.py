@@ -177,6 +177,10 @@ async def confirm_chapters(
 ):
     """Confirm chapter splits for an uploaded book. Writes chapters to DB and makes book readable."""
     async with aiosqlite.connect(_db.DB_PATH) as db:
+        # BEGIN IMMEDIATE acquires a write reservation immediately so a second
+        # concurrent confirm cannot read draft=True after this connection has
+        # written draft=False (#451).
+        await db.execute("BEGIN IMMEDIATE")
         async with db.execute(
             "SELECT text, owner_user_id, source FROM books WHERE id=?", (book_id,)
         ) as cur:

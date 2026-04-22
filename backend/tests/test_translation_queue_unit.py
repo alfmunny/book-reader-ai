@@ -213,6 +213,32 @@ async def test_enqueue_preserves_lower_priority():
     assert row[0] == 10  # MIN(100, 10) = 10
 
 
+async def test_enqueue_reset_failed_does_not_touch_running_row():
+    """enqueue(reset_failed=True) must not reset a row that is currently running.
+
+    Without the WHERE guard, the UPSERT unconditionally sets status='pending',
+    turning a live in-flight row into a pending row. The worker's _mark_done
+    then deletes it by primary key, silently destroying the re-enqueued work.
+    """
+    import aiosqlite
+    await enqueue(7, 0, "es")
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE book_id=7"
+        )
+        await db.commit()
+
+    count = await enqueue(7, 0, "es", reset_failed=True)
+    assert count == 0  # no-op: running row must be untouched
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE book_id=7 AND chapter_index=0"
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row[0] == "running"
+
+
 # ── enqueue_for_book ──────────────────────────────────────────────────────────
 
 async def test_enqueue_for_book_returns_zero_when_no_target_langs():

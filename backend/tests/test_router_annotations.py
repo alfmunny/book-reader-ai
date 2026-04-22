@@ -14,10 +14,15 @@ _BOOK_META = {
     "cover": "",
 }
 BOOK_ID = 8001
+_CH = "word " * 200
+_BOOK_TEXT = (
+    f"CHAPTER I\n\n{_CH}\n\nCHAPTER II\n\n{_CH}\n\nCHAPTER III\n\n{_CH}"
+    f"\n\nCHAPTER IV\n\n{_CH}\n\nCHAPTER V\n\n{_CH}\n\nCHAPTER VI\n\n{_CH}"
+)
 
 
 async def test_create_annotation(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
         "chapter_index": 2,
@@ -36,7 +41,7 @@ async def test_create_annotation(client, test_user):
 
 
 async def test_create_annotation_defaults(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
         "chapter_index": 0,
@@ -49,7 +54,7 @@ async def test_create_annotation_defaults(client, test_user):
 
 
 async def test_get_annotations_for_book(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await create_annotation(test_user["id"], BOOK_ID, 0, "Sentence 1", "note1", "blue")
     await create_annotation(test_user["id"], BOOK_ID, 1, "Sentence 2", "note2", "red")
 
@@ -68,7 +73,7 @@ async def test_get_annotations_returns_own_only(client, test_user):
     other = await get_or_create_user(
         google_id="other-g", email="other@example.com", name="Other", picture=""
     )
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await create_annotation(test_user["id"], BOOK_ID, 0, "My sentence", "mine", "yellow")
     await create_annotation(other["id"], BOOK_ID, 0, "Other sentence", "theirs", "green")
 
@@ -80,7 +85,7 @@ async def test_get_annotations_returns_own_only(client, test_user):
 
 
 async def test_update_annotation(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Text", "old note", "yellow")
 
     resp = await client.patch(f"/api/annotations/{ann['id']}", json={
@@ -99,7 +104,7 @@ async def test_update_annotation_note_text_only(client, test_user):
     Regression: AnnotationUpdate previously required both fields, so the
     notes-page save (which only sends note_text) always returned 422.
     """
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Text", "old", "blue")
 
     resp = await client.patch(f"/api/annotations/{ann['id']}", json={"note_text": "new note"})
@@ -123,7 +128,7 @@ async def test_update_annotation_own_only(client, test_user):
     other = await get_or_create_user(
         google_id="other-g2", email="other2@example.com", name="Other2", picture=""
     )
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     ann = await create_annotation(other["id"], BOOK_ID, 0, "Their text", "", "yellow")
 
     resp = await client.patch(f"/api/annotations/{ann['id']}", json={
@@ -134,7 +139,7 @@ async def test_update_annotation_own_only(client, test_user):
 
 
 async def test_delete_annotation(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     ann = await create_annotation(test_user["id"], BOOK_ID, 0, "To delete", "", "yellow")
 
     resp = await client.delete(f"/api/annotations/{ann['id']}")
@@ -156,7 +161,7 @@ async def test_delete_annotation_own_only(client, test_user):
     other = await get_or_create_user(
         google_id="other-g3", email="other3@example.com", name="Other3", picture=""
     )
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     ann = await create_annotation(other["id"], BOOK_ID, 0, "Theirs", "", "yellow")
 
     resp = await client.delete(f"/api/annotations/{ann['id']}")
@@ -179,8 +184,8 @@ async def test_get_all_returns_annotations_across_books(client, test_user):
     """GET /api/annotations/all returns all of the user's annotations with book_title."""
     from services.db import save_book
 
-    await save_book(8101, {**_BOOK_META, "title": "Book A"}, "text")
-    await save_book(8102, {**_BOOK_META, "title": "Book B"}, "text")
+    await save_book(8101, {**_BOOK_META, "title": "Book A"}, _BOOK_TEXT)
+    await save_book(8102, {**_BOOK_META, "title": "Book B"}, _BOOK_TEXT)
     await create_annotation(test_user["id"], 8101, 0, "Sentence A", "note A", "yellow")
     await create_annotation(test_user["id"], 8102, 1, "Sentence B", "note B", "blue")
 
@@ -200,7 +205,7 @@ async def test_get_all_returns_own_annotations_only(client, test_user):
     other = await get_or_create_user(
         google_id="other-all-ann-g", email="other-all-ann@example.com", name="Other", picture=""
     )
-    await save_book(8103, _BOOK_META, "text")
+    await save_book(8103, _BOOK_META, _BOOK_TEXT)
     await create_annotation(test_user["id"], 8103, 0, "My sentence", "mine", "yellow")
     await create_annotation(other["id"], 8103, 0, "Their sentence", "theirs", "green")
 
@@ -234,7 +239,7 @@ async def test_create_annotation_rejects_empty_sentence(client, test_user):
 
     An annotation with no text context is meaningless and represents a
     client error."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
         "chapter_index": 0,
@@ -247,13 +252,33 @@ async def test_create_annotation_rejects_negative_chapter_index(client, test_use
     """POST /annotations with chapter_index < 0 must return 400.
     Negative indices are not valid book positions and would produce
     invisible orphan rows (no reader query matches chapter -1)."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
         "chapter_index": -1,
         "sentence_text": "Some highlighted text.",
     })
     assert resp.status_code == 400
+
+
+async def test_create_annotation_rejects_out_of_range_chapter_index(client, test_user):
+    """POST /annotations with chapter_index >= book chapter count must return 400.
+
+    Without the upper bound guard, out-of-range indices produce orphaned rows
+    that are never retrieved (no reader ever shows a chapter beyond the last one).
+
+    Uses book_id=99001 (above Gutenberg range) so get_book_html returns None."""
+    from services.db import save_book as _sb
+    from unittest.mock import AsyncMock, patch
+    await _sb(99001, {**_BOOK_META}, "Only one chapter here, no chapter markers.")
+    with patch("services.book_chapters.get_book_html", new_callable=AsyncMock, return_value=None):
+        resp = await client.post("/api/annotations", json={
+            "book_id": 99001,
+            "chapter_index": 1,
+            "sentence_text": "A sentence.",
+        })
+    assert resp.status_code == 400, resp.text
+    assert "out of range" in resp.json()["detail"].lower()
 
 
 async def test_create_annotation_select_runs_before_commit(tmp_db, test_user, monkeypatch):
@@ -268,7 +293,7 @@ async def test_create_annotation_select_runs_before_commit(tmp_db, test_user, mo
     import services.db as db_module
     from services.db import save_book, create_annotation
 
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
 
     events: list[str] = []
     orig_connect = _real_aiosqlite.connect
@@ -327,7 +352,7 @@ async def test_update_annotation_select_runs_before_commit(tmp_db, test_user, mo
     import services.db as db_module
     from services.db import save_book, create_annotation, update_annotation
 
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Sentence", "v1", "yellow")
 
     events: list[str] = []

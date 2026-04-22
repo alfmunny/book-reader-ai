@@ -19,10 +19,15 @@ _BOOK_META = {
     "cover": "",
 }
 BOOK_ID = 9001
+_CH = "word " * 200
+_BOOK_TEXT = (
+    f"CHAPTER I\n\n{_CH}\n\nCHAPTER II\n\n{_CH}\n\nCHAPTER III\n\n{_CH}"
+    f"\n\nCHAPTER IV\n\n{_CH}\n\nCHAPTER V\n\n{_CH}\n\nCHAPTER VI\n\n{_CH}"
+)
 
 
 async def test_save_word(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/vocabulary", json={
         "word": "leviathan",
         "book_id": BOOK_ID,
@@ -37,7 +42,7 @@ async def test_save_word(client, test_user):
 
 async def test_save_word_deduplicates_occurrence(client, test_user):
     """Saving the same word+book+sentence twice should not create duplicate occurrences."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     payload = {
         "word": "whale",
         "book_id": BOOK_ID,
@@ -60,7 +65,7 @@ async def test_get_vocabulary_empty(client, test_user):
 
 
 async def test_get_vocabulary_with_occurrences(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_word(test_user["id"], "ahab", BOOK_ID, 5, "Captain Ahab spoke.")
 
     resp = await client.get("/api/vocabulary")
@@ -82,7 +87,7 @@ async def test_get_vocabulary_own_only(client, test_user):
     other = await get_or_create_user(
         google_id="voc-other", email="vocother@example.com", name="Other", picture=""
     )
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_word(other["id"], "secret", BOOK_ID, 0, "A secret word.")
 
     resp = await client.get("/api/vocabulary")
@@ -90,7 +95,7 @@ async def test_get_vocabulary_own_only(client, test_user):
 
 
 async def test_delete_word(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_word(test_user["id"], "cetacean", BOOK_ID, 0, "A cetacean species.")
 
     resp = await client.delete("/api/vocabulary/cetacean")
@@ -112,7 +117,7 @@ async def test_delete_word_own_only(client, test_user):
     other = await get_or_create_user(
         google_id="voc-other2", email="vocother2@example.com", name="Other2", picture=""
     )
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_word(other["id"], "pirate", BOOK_ID, 0, "A pirate's life.")
 
     resp = await client.delete("/api/vocabulary/pirate")
@@ -134,7 +139,7 @@ async def test_save_word_normalizes_case(client, test_user):
 
     SQLite UNIQUE(user_id, word) is case-sensitive, so without explicit
     lowercasing they produce two separate rows."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await client.post("/api/vocabulary", json={
         "word": "Apple", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Apple pie."
     })
@@ -148,7 +153,7 @@ async def test_save_word_normalizes_case(client, test_user):
 
 async def test_delete_word_case_insensitive(client, test_user):
     """DELETE /vocabulary/Apple must remove 'apple' saved as lowercase."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await save_word(test_user["id"], "apple", BOOK_ID, 0, "An apple.")
     resp = await client.delete("/api/vocabulary/Apple")
     assert resp.status_code == 200
@@ -163,7 +168,7 @@ async def test_save_word_rejects_empty_word(client, test_user):
     can never delete it via DELETE /vocabulary/ (no path segment) and
     the UNIQUE(user_id, word) constraint allows exactly one empty entry
     per user, polluting the vocabulary silently."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/vocabulary", json={
         "word": "", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Some text."
     })
@@ -172,7 +177,7 @@ async def test_save_word_rejects_empty_word(client, test_user):
 
 async def test_save_word_strips_and_rejects_whitespace_only_word(client, test_user):
     """POST /vocabulary with whitespace-only word must return 400."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/vocabulary", json={
         "word": "   ", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Some text."
     })
@@ -198,7 +203,7 @@ async def test_save_word_rejects_empty_sentence(client, test_user):
 
     An occurrence with no sentence context cannot be displayed and
     represents a client error."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/vocabulary", json={
         "word": "spectre",
         "book_id": BOOK_ID,
@@ -210,7 +215,7 @@ async def test_save_word_rejects_empty_sentence(client, test_user):
 
 async def test_save_word_rejects_whitespace_only_sentence(client, test_user):
     """POST /vocabulary with whitespace-only sentence_text must return 400."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.post("/api/vocabulary", json={
         "word": "spectre",
         "book_id": BOOK_ID,
@@ -218,6 +223,27 @@ async def test_save_word_rejects_whitespace_only_sentence(client, test_user):
         "sentence_text": "   ",
     })
     assert resp.status_code == 400
+
+
+async def test_save_word_rejects_out_of_range_chapter_index(client, test_user):
+    """POST /vocabulary with chapter_index >= book chapter count must return 400.
+
+    Out-of-range indices produce orphaned word_occurrences that break vocab
+    dedup and cleanup logic which relies on valid chapter positions.
+
+    Uses book_id=99002 (above Gutenberg range) so get_book_html returns None."""
+    from services.db import save_book as _sb
+    from unittest.mock import AsyncMock, patch
+    await _sb(99002, {**_BOOK_META}, "No chapter markers — single chunk.")
+    with patch("services.book_chapters.get_book_html", new_callable=AsyncMock, return_value=None):
+        resp = await client.post("/api/vocabulary", json={
+            "word": "leviathan",
+            "book_id": 99002,
+            "chapter_index": 1,
+            "sentence_text": "The great leviathan swam past.",
+        })
+    assert resp.status_code == 400, resp.text
+    assert "out of range" in resp.json()["detail"].lower()
 
 
 # ── Atomicity regression ─────────────────────────────────────────────────────
@@ -237,7 +263,7 @@ async def test_save_word_is_atomic(test_user, tmp_db):
     """
     import aiosqlite
 
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
 
     original_connect = aiosqlite.connect
 
@@ -291,7 +317,7 @@ async def test_save_word_is_atomic(test_user, tmp_db):
 # ── Export endpoint ───────────────────────────────────────────────────────────
 
 async def _setup_export(test_user, book_id=BOOK_ID):
-    await save_book(book_id, _BOOK_META, "text")
+    await save_book(book_id, _BOOK_META, _BOOK_TEXT)
     await save_word(test_user["id"], "leviathan", book_id, 3, "The great leviathan.")
     enc_token = encrypt_api_key("ghp_test_token")
     await update_obsidian_settings(

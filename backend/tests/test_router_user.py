@@ -8,6 +8,11 @@ from services.auth import encrypt_api_key, decrypt_api_key
 
 _BOOK_META = {"title": "Test Book", "authors": ["Author"], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
 BOOK_ID = 9999
+_CH = "word " * 200
+_BOOK_TEXT = (
+    f"CHAPTER I\n\n{_CH}\n\nCHAPTER II\n\n{_CH}\n\nCHAPTER III\n\n{_CH}"
+    f"\n\nCHAPTER IV\n\n{_CH}\n\nCHAPTER V\n\n{_CH}\n\nCHAPTER VI\n\n{_CH}"
+)
 
 
 async def test_get_me_returns_profile(client, test_user):
@@ -63,7 +68,7 @@ async def test_reading_progress_empty_initially(client, test_user):
 
 
 async def test_reading_progress_save_and_retrieve(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "Chapter text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 3})
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
@@ -76,7 +81,7 @@ async def test_reading_progress_save_and_retrieve(client, test_user):
 
 
 async def test_reading_progress_upserts(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "Chapter text")
+    await save_book(BOOK_ID, _BOOK_META, _BOOK_TEXT)
     await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 1})
     await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 5})
 
@@ -104,6 +109,21 @@ async def test_reading_progress_rejects_negative_chapter_index(client, test_user
     await save_book(BOOK_ID, _META, "text")
     resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": -1})
     assert resp.status_code == 400
+
+
+async def test_reading_progress_rejects_out_of_range_chapter_index(client, test_user):
+    """PUT reading-progress with chapter_index >= book chapter count must return 400.
+
+    Storing an out-of-range index corrupts the user's resume position (the reader
+    never shows a chapter beyond the last one).
+
+    Uses book_id=99003 (above Gutenberg range) so get_book_html returns None."""
+    from unittest.mock import AsyncMock, patch
+    await save_book(99003, _BOOK_META, "No chapter markers — single chunk.")
+    with patch("services.book_chapters.get_book_html", new_callable=AsyncMock, return_value=None):
+        resp = await client.put("/api/user/reading-progress/99003", json={"chapter_index": 1})
+    assert resp.status_code == 400, resp.text
+    assert "out of range" in resp.json()["detail"].lower()
 
 
 async def test_get_obsidian_settings_returns_defaults_initially(client, test_user):

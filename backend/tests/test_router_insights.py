@@ -5,10 +5,15 @@ from httpx import AsyncClient
 from services.db import save_book, save_insight
 
 _META = {"title": "Test", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
+_CH = "word " * 200
+_BOOK_TEXT = (
+    f"CHAPTER I\n\n{_CH}\n\nCHAPTER II\n\n{_CH}\n\nCHAPTER III\n\n{_CH}"
+    f"\n\nCHAPTER IV\n\n{_CH}\n\nCHAPTER V\n\n{_CH}\n\nCHAPTER VI\n\n{_CH}"
+)
 
 
 async def test_post_creates_insight_and_returns_it(client: AsyncClient):
-    await save_book(1, _META, "text")
+    await save_book(1, _META, _BOOK_TEXT)
     payload = {
         "book_id": 1,
         "chapter_index": 2,
@@ -26,7 +31,7 @@ async def test_post_creates_insight_and_returns_it(client: AsyncClient):
 
 
 async def test_post_with_null_chapter_index(client: AsyncClient):
-    await save_book(5, _META, "text")
+    await save_book(5, _META, _BOOK_TEXT)
     payload = {
         "book_id": 5,
         "chapter_index": None,
@@ -41,8 +46,8 @@ async def test_post_with_null_chapter_index(client: AsyncClient):
 
 
 async def test_get_returns_insights_for_book_id(client: AsyncClient):
-    await save_book(10, _META, "text")
-    await save_book(99, _META, "text")
+    await save_book(10, _META, _BOOK_TEXT)
+    await save_book(99, _META, _BOOK_TEXT)
     for i in range(2):
         await client.post(
             "/api/insights",
@@ -62,7 +67,7 @@ async def test_get_returns_insights_for_book_id(client: AsyncClient):
 
 async def test_get_returns_only_current_users_insights(client: AsyncClient, test_user):
     """A second authenticated client should not see the first user's insights."""
-    await save_book(7, _META, "text")
+    await save_book(7, _META, _BOOK_TEXT)
 
     await client.post(
         "/api/insights",
@@ -86,7 +91,7 @@ async def test_get_returns_only_current_users_insights(client: AsyncClient, test
 
 
 async def test_delete_returns_ok(client: AsyncClient):
-    await save_book(3, _META, "text")
+    await save_book(3, _META, _BOOK_TEXT)
     resp = await client.post(
         "/api/insights",
         json={"book_id": 3, "question": "Delete me", "answer": "Yes"},
@@ -122,8 +127,8 @@ async def test_delete_returns_404_if_wrong_user(client: AsyncClient, test_user):
 
 async def test_get_all_returns_insights_across_books(client: AsyncClient, test_user):
     """GET /api/insights/all returns all of the user's insights with book_title."""
-    await save_book(20, _META, "text")
-    await save_book(21, _META, "text")
+    await save_book(20, _META, _BOOK_TEXT)
+    await save_book(21, _META, _BOOK_TEXT)
     await client.post("/api/insights", json={"book_id": 20, "question": "Q-A", "answer": "A-A"})
     await client.post("/api/insights", json={"book_id": 21, "question": "Q-B", "answer": "A-B"})
 
@@ -138,7 +143,7 @@ async def test_get_all_returns_insights_across_books(client: AsyncClient, test_u
 
 async def test_get_all_returns_own_insights_only(client: AsyncClient, test_user):
     """GET /api/insights/all must not return other users' insights."""
-    await save_book(30, _META, "text")
+    await save_book(30, _META, _BOOK_TEXT)
     from services.db import get_or_create_user
 
     other = await get_or_create_user(
@@ -179,7 +184,7 @@ async def test_post_insight_rejects_nonexistent_book(client: AsyncClient):
 
 async def test_post_insight_rejects_empty_question(client: AsyncClient):
     """POST /insights with empty question must return 400."""
-    await save_book(1, _META, "text")
+    await save_book(1, _META, _BOOK_TEXT)
     resp = await client.post(
         "/api/insights",
         json={"book_id": 1, "question": "", "answer": "Some answer."},
@@ -189,7 +194,7 @@ async def test_post_insight_rejects_empty_question(client: AsyncClient):
 
 async def test_post_insight_rejects_empty_answer(client: AsyncClient):
     """POST /insights with empty answer must return 400."""
-    await save_book(1, _META, "text")
+    await save_book(1, _META, _BOOK_TEXT)
     resp = await client.post(
         "/api/insights",
         json={"book_id": 1, "question": "What is the theme?", "answer": ""},
@@ -201,12 +206,31 @@ async def test_post_insight_rejects_negative_chapter_index(client: AsyncClient):
     """POST /insights with chapter_index < 0 must return 400.
     A negative chapter_index is not a valid position and produces an
     invisible orphan row (no reader query matches chapter -1)."""
-    await save_book(1, _META, "text")
+    await save_book(1, _META, _BOOK_TEXT)
     resp = await client.post(
         "/api/insights",
         json={"book_id": 1, "question": "Q?", "answer": "A.", "chapter_index": -5},
     )
     assert resp.status_code == 400
+
+
+async def test_post_insight_rejects_out_of_range_chapter_index(client: AsyncClient):
+    """POST /insights with chapter_index >= book chapter count must return 400.
+
+    Out-of-range indices produce orphaned insight rows that never appear in
+    the reader — the chapter tab is hidden for chapters beyond the last one.
+
+    Uses book_id=99004 (above Gutenberg range) so get_book_html returns None,
+    ensuring the text splitter runs and the single-chunk text yields 1 chapter."""
+    from unittest.mock import AsyncMock, patch
+    await save_book(99004, _META, "No chapter markers — single chunk.")
+    with patch("services.book_chapters.get_book_html", new_callable=AsyncMock, return_value=None):
+        resp = await client.post(
+            "/api/insights",
+            json={"book_id": 99004, "question": "Q?", "answer": "A.", "chapter_index": 1},
+        )
+    assert resp.status_code == 400, resp.text
+    assert "out of range" in resp.json()["detail"].lower()
 
 
 async def test_save_insight_select_runs_before_commit(tmp_db, test_user, monkeypatch):
@@ -220,7 +244,7 @@ async def test_save_insight_select_runs_before_commit(tmp_db, test_user, monkeyp
     import services.db as db_module
     from services.db import save_book, save_insight
 
-    await save_book(1, _META, "text")
+    await save_book(1, _META, _BOOK_TEXT)
 
     events: list[str] = []
     orig_connect = _real_aiosqlite.connect

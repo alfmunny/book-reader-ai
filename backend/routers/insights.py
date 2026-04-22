@@ -20,12 +20,18 @@ async def create(req: InsightCreate, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="question cannot be empty")
     if not req.answer or not req.answer.strip():
         raise HTTPException(status_code=400, detail="answer cannot be empty")
-    if req.chapter_index is not None and req.chapter_index < 0:
-        raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     book = await get_cached_book(req.book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
+    if req.chapter_index is not None:
+        from services.book_chapters import split_with_html_preference
+        _chapters = await split_with_html_preference(req.book_id, book.get("text") or "")
+        if req.chapter_index < 0 or req.chapter_index >= len(_chapters):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+            )
     return await save_insight(
         user["id"],
         req.book_id,

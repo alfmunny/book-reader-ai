@@ -216,6 +216,9 @@ async def confirm_chapters(
         )
         await db.commit()
 
+    # Invalidate any stale chapter-split cache from draft-state accesses.
+    from services.book_chapters import clear_cache as _clear_chapter_cache
+    _clear_chapter_cache(book_id)
     return {"ok": True, "chapter_count": len(final_chapters)}
 
 

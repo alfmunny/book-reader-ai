@@ -649,3 +649,30 @@ async def test_retry_translation_rejects_nonexistent_book(client):
         json={"target_language": "de"},
     )
     assert resp.status_code == 404
+
+
+async def test_get_chapter_translation_normalizes_language(client):
+    """GET .../translation?target_language=ZH must find a cached 'zh' row.
+
+    Without normalization the lookup uses 'ZH' as-is and misses the 'zh' entry."""
+    from services.db import save_translation
+    await save_translation(9999, 0, "zh", ["翻译"])
+    resp = await client.get("/api/books/9999/chapters/0/translation?target_language=ZH")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ready"
+    assert resp.json()["paragraphs"] == ["翻译"]
+
+
+async def test_chapter_translation_normalizes_language_for_cache_hit(anon_client):
+    """POST .../translation with 'ZH-CN' must hit a cached 'zh' entry.
+
+    Without normalization the cache lookup uses 'ZH-CN' and misses 'zh',
+    forcing an unnecessary re-enqueue."""
+    from services.db import save_translation
+    await save_translation(9999, 0, "zh", ["翻译"])
+    resp = await anon_client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "ZH-CN"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ready"

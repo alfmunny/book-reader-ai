@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 from services.db import (
     get_or_create_user, get_user_by_id,
     save_translation, create_annotation, save_insight,
-    save_chapter_summary, upsert_reading_progress,
+    save_chapter_summary, upsert_reading_progress, save_word,
 )
 import services.db as db_module
 from services.auth import get_current_user, get_optional_user
@@ -369,6 +369,36 @@ def _make_bypass_status_check_uploads(real_aiosqlite):
         Row = real_aiosqlite.Row
 
     return FakeAiosqlite()
+
+
+async def test_delete_uploaded_book_sweeps_vocabulary_orphans(client, test_user, tmp_db):
+    """Regression #377: delete_uploaded_book must sweep vocabulary entries that
+    have no remaining word_occurrences after the book's occurrences are removed."""
+    book_id = await _upload_and_confirm(client)
+
+    with patch("services.db._update_lemma", new_callable=AsyncMock):
+        await save_word(test_user["id"], "ephem", book_id, 0, "An ephemeral moment.")
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM vocabulary WHERE user_id=? AND word='ephem'",
+            (test_user["id"],),
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 1, "pre-condition: vocabulary row must exist before delete"
+
+    del_resp = await client.delete(f"/api/books/upload/{book_id}")
+    assert del_resp.status_code == 200
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM vocabulary WHERE user_id=? AND word='ephem'",
+            (test_user["id"],),
+        ) as cur:
+            (orphan_count,) = await cur.fetchone()
+    assert orphan_count == 0, (
+        "orphaned vocabulary entries must be swept after delete_uploaded_book (#377)"
+    )
 
 
 async def test_delete_uploaded_book_sql_guard_preserves_running_queue_row(

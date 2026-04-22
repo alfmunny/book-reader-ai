@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="16" height="16">
+  <rect width="512" height="512" rx="88" fill="#0C0300"/>
+  <!-- Hat crown — simplified triangle -->
+  <path d="M 256 90 L 194 250 L 318 250 Z"
+        fill="#F59E0B"/>
+  <!-- Hat brim — filled for visibility at 16px -->
+  <rect x="160" y="250" width="192" height="24" rx="4" fill="#F59E0B"/>
+  <!-- Eye — filled amber dot -->
+  <circle cx="256" cy="310" r="28" fill="#FCD34D"/>
+</svg>

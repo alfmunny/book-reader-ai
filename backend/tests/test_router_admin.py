@@ -10,6 +10,7 @@ from services.db import (
     init_db, get_or_create_user, get_user_by_id, save_book,
     save_translation, set_user_approved, create_annotation, save_insight,
     upsert_reading_progress, save_word, get_vocabulary,
+    save_chapter_summary, get_chapter_summary,
 )
 from services.auth import get_current_user, create_jwt
 from main import app
@@ -310,6 +311,26 @@ async def test_delete_book_removes_reading_progress(admin_client, admin_db, admi
         ) as cur:
             count = (await cur.fetchone())[0]
     assert count == 0
+
+
+async def test_delete_book_removes_chapter_summaries(admin_client, admin_db):
+    """Regression for #282: delete_book must remove cached chapter summaries.
+
+    If summaries are left behind, a re-import of the same book_id would serve
+    stale AI-generated summaries for the old chapter structure.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_chapter_summary(100, 0, "The hero's journey begins.", model="gemini-flash")
+    await save_chapter_summary(100, 1, "Conflict escalates.", model="gemini-flash")
+
+    await admin_client.delete("/api/admin/books/100")
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM chapter_summaries WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0, "chapter_summaries must be removed when the book is deleted"
 
 
 # ── Translations ─────────────────────────────────────────────────────────────

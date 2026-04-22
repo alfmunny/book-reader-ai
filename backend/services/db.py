@@ -692,6 +692,11 @@ async def get_vocabulary(user_id: int) -> list[dict]:
 
 async def delete_word(user_id: int, word: str) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """DELETE FROM word_occurrences WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
+            (user_id, word),
+        )
         cursor = await db.execute(
             "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
             (user_id, word),

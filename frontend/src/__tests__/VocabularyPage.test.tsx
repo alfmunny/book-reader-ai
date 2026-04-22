@@ -129,7 +129,7 @@ test("delete button calls deleteVocabularyWord and removes word", async () => {
 });
 
 test("export button calls exportVocabularyToObsidian with no book_id", async () => {
-  mockExportVocabularyToObsidian.mockResolvedValue({ url: "https://github.com/example/pr/1" });
+  mockExportVocabularyToObsidian.mockResolvedValue({ urls: ["https://github.com/example/pr/1"] });
 
   render(<VocabularyPage />);
   await flushPromises();
@@ -140,6 +140,37 @@ test("export button calls exportVocabularyToObsidian with no book_id", async () 
 
   await waitFor(() => {
     expect(mockExportVocabularyToObsidian).toHaveBeenCalledWith(undefined);
+  });
+});
+
+test("export shows URL link when export succeeds", async () => {
+  mockExportVocabularyToObsidian.mockResolvedValue({ urls: ["https://github.com/example/pr/1"] });
+
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ephemeral");
+
+  const exportBtn = screen.getByTestId("export-all-btn");
+  await userEvent.click(exportBtn);
+
+  await waitFor(() => {
+    const link = screen.getByRole("link", { name: "https://github.com/example/pr/1" });
+    expect(link).toHaveAttribute("href", "https://github.com/example/pr/1");
+  });
+});
+
+test("export shows error message when export fails", async () => {
+  mockExportVocabularyToObsidian.mockRejectedValue(new Error("GitHub API error"));
+
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ephemeral");
+
+  const exportBtn = screen.getByTestId("export-all-btn");
+  await userEvent.click(exportBtn);
+
+  await waitFor(() => {
+    expect(screen.getByText("GitHub API error")).toBeInTheDocument();
   });
 });
 

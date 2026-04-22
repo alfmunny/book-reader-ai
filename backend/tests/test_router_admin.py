@@ -218,6 +218,37 @@ async def test_delete_user_removes_reading_history(admin_client, admin_db, admin
     assert count == 0, "orphaned reading_history rows left after delete_user"
 
 
+async def test_delete_user_removes_book_uploads(admin_client, admin_db, admin_user):
+    """Regression #403: delete_user must also remove book_uploads rows.
+
+    SQLite FK enforcement is OFF so ON DELETE CASCADE never fires. Without an
+    explicit DELETE, orphaned book_uploads rows inflate upload quota counts."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    user2 = await get_or_create_user(
+        google_id="del-uploads-user", email="uploads@test.com", name="Uploads", picture=""
+    )
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            """INSERT INTO book_uploads (book_id, user_id, filename, file_size, format)
+               VALUES (100, ?, 'test.txt', 1024, 'txt')""",
+            (user2["id"],),
+        )
+        await db.commit()
+
+    res = await admin_client.delete(f"/api/admin/users/{user2['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(admin_db) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM book_uploads WHERE user_id = ?", (user2["id"],)
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 0, (
+        "orphaned book_uploads rows left after delete_user (#403); "
+        "these inflate upload quota and can never be cleaned via normal API use"
+    )
+
+
 # ── Books ────────────────────────────────────────────────────────────────────
 
 async def test_get_books(admin_client, admin_db):

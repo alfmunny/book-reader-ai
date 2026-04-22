@@ -260,7 +260,7 @@ describe("AdminBooksPage — retryFailedForLang non-Error catch (line 208)", () 
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     await waitFor(() =>

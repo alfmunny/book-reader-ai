@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
 import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
-import { ChevronDownIcon, ChevronRightIcon } from "@/components/Icons";
+import { ChevronDownIcon, ChevronRightIcon, RetryIcon } from "@/components/Icons";
 
 interface TranslationStat {
   chapters: number;
@@ -352,9 +352,10 @@ export default function BooksPage() {
                               onClick={() => retryFailedForLang(b, lang, failed)}
                               disabled={retryingFailed === retryKey}
                               title={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
-                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                              aria-label={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
+                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center"
                             >
-                              {retryingFailed === retryKey ? "…" : "↻"}
+                              <RetryIcon className={`w-3 h-3 ${retryingFailed === retryKey ? "animate-spin" : ""}`} />
                             </button>
                           )}
                         </span>

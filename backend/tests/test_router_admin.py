@@ -1427,3 +1427,147 @@ async def test_retranslate_all_rejects_409_when_any_chapter_is_running(admin_cli
     # Chapter 0 translation must be untouched
     from services.db import get_cached_translation
     assert await get_cached_translation(100, 0, "de") == ["Chapter 0 old."]
+
+
+# ── SQL-level running-item guards (#367) ─────────────────────────────────────
+
+def _make_bypass_status_check_aiosqlite(real_aiosqlite, item_id):
+    """Return a fake aiosqlite module that makes the status SELECT return 'failed'
+    for the specific item_id, bypassing the Python 409 guard. All other DB
+    operations (including the UPDATE/DELETE) run against the real database.
+    This simulates the race where the row becomes 'running' between the
+    Python check and the SQL write.
+    """
+    orig_connect = real_aiosqlite.connect
+    _select_done = [False]
+
+    class FakeStatusRow:
+        def __getitem__(self, k): return "failed"
+
+    class FakeCursor:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def fetchone(self): return FakeStatusRow()
+
+    class SpyConn:
+        def __init__(self, real):
+            self._r = real
+
+        @property
+        def row_factory(self): return self._r.row_factory
+
+        @row_factory.setter
+        def row_factory(self, v): self._r.row_factory = v
+
+        def execute(self, sql, *args, **kwargs):
+            s = sql.strip().upper()
+            # Intercept only the first "SELECT status" query so the Python 409
+            # guard is bypassed, but the actual UPDATE/DELETE still runs.
+            if s.startswith("SELECT") and "status" in sql.lower() and not _select_done[0]:
+                _select_done[0] = True
+                return FakeCursor()
+            return self._r.execute(sql, *args, **kwargs)
+
+        async def commit(self): await self._r.commit()
+
+        async def __aenter__(self): return self
+
+        async def __aexit__(self, *a): return await self._r.__aexit__(*a)
+
+    def patched_connect(database, **kw):
+        real_cm = orig_connect(database, **kw)
+
+        class WrappedCM:
+            async def __aenter__(self_):
+                conn = await real_cm.__aenter__()
+                return SpyConn(conn)
+
+            async def __aexit__(self_, *a):
+                return await real_cm.__aexit__(*a)
+
+        return WrappedCM()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = real_aiosqlite.Row
+
+    return FakeAiosqlite()
+
+
+async def test_queue_retry_item_sql_guard_prevents_running_reset(admin_client, admin_db, monkeypatch):
+    """Regression #367: queue_retry_item UPDATE must use AND status != 'running'.
+
+    Race: between the Python 409 check and the SQL UPDATE, the worker can
+    transition a row to 'running'. Without the SQL guard, the UPDATE resets
+    it to 'pending'; _mark_done then deletes the re-enqueued row silently.
+
+    This test bypasses the Python check and calls the real UPDATE SQL against
+    a running row. With the fix, updated=0. Without the fix, updated=1.
+    """
+    import aiosqlite as _real_aio
+    import routers.admin as admin_mod
+
+    async with aiosqlite.connect(admin_db) as db:
+        cursor = await db.execute(
+            """INSERT INTO translation_queue
+               (book_id, chapter_index, target_language, status, priority)
+               VALUES (1, 0, 'de', 'running', 100)"""
+        )
+        item_id = cursor.lastrowid
+        await db.commit()
+
+    monkeypatch.setattr(
+        admin_mod, "aiosqlite",
+        _make_bypass_status_check_aiosqlite(_real_aio, item_id),
+    )
+
+    res = await admin_client.post(f"/api/admin/queue/items/{item_id}/retry")
+    assert res.status_code == 200
+    assert res.json().get("updated") == 0, (
+        "SQL guard (AND status != 'running') must prevent resetting a running row to pending (#367)"
+    )
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE id=?", (item_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    assert row is not None and row[0] == "running", "Running row must not be reset to pending"
+
+
+async def test_queue_delete_item_sql_guard_prevents_running_delete(admin_client, admin_db, monkeypatch):
+    """Regression #367: queue_delete_item DELETE must use AND status != 'running'.
+
+    Same race as queue_retry_item. Without the SQL guard, the DELETE fires on
+    a now-running row, giving false cancellation (worker still saves the result).
+    With the fix, deleted=0 and the row remains for the worker to complete.
+    """
+    import aiosqlite as _real_aio
+    import routers.admin as admin_mod
+
+    async with aiosqlite.connect(admin_db) as db:
+        cursor = await db.execute(
+            """INSERT INTO translation_queue
+               (book_id, chapter_index, target_language, status, priority)
+               VALUES (1, 0, 'de', 'running', 100)"""
+        )
+        item_id = cursor.lastrowid
+        await db.commit()
+
+    monkeypatch.setattr(
+        admin_mod, "aiosqlite",
+        _make_bypass_status_check_aiosqlite(_real_aio, item_id),
+    )
+
+    res = await admin_client.delete(f"/api/admin/queue/items/{item_id}")
+    assert res.status_code == 200
+    assert res.json().get("deleted") == 0, (
+        "SQL guard (AND status != 'running') must prevent deleting a running row (#367)"
+    )
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE id=?", (item_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    assert row is not None and row[0] == "running", "Running row must not be deleted"

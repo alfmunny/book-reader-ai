@@ -33,7 +33,7 @@ function truncate(s: string, n: number): string {
 
 // ── Markdown export (kept for ↗ Export button) ────────────────────────────────
 
-function buildMarkdown(
+export function buildMarkdown(
   mode: ViewMode,
   meta: BookMeta,
   chapters: BookChapter[],

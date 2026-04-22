@@ -16,7 +16,6 @@ import pytest
 import aiosqlite
 from unittest.mock import AsyncMock, patch
 from services.db import save_book, save_translation, get_cached_translation, set_user_gemini_key, set_setting, get_or_create_user
-import services.db as db_module
 from services.auth import encrypt_api_key
 
 
@@ -647,20 +646,8 @@ async def test_summary_concurrent_requests_call_gemini_once(client, test_user, t
 
 # ── Access control for private uploaded books ────────────────────────────────
 
-async def _insert_private_book_ai(book_id: int, owner_user_id: int) -> None:
-    chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
-    async with aiosqlite.connect(db_module.DB_PATH) as db:
-        await db.execute(
-            """INSERT OR REPLACE INTO books
-               (id, title, authors, languages, subjects, download_count,
-                cover, text, images, source, owner_user_id)
-               VALUES (?, 'Private Book', '[]', '["de"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
-            (book_id, chapters, owner_user_id),
-        )
-        await db.commit()
 
-
-async def test_translate_cache_get_blocked_for_non_owner(client, test_user, tmp_db):
+async def test_translate_cache_get_blocked_for_non_owner(client, test_user, tmp_db, insert_private_book):
     """GET /ai/translate/cache for a private uploaded book returns 403 for non-owners.
 
     Without check_book_access the endpoint returns cached translation paragraphs
@@ -668,7 +655,7 @@ async def test_translate_cache_get_blocked_for_non_owner(client, test_user, tmp_
     from services.db import set_user_role
     await set_user_role(test_user["id"], "user")
     owner = await get_or_create_user("ai-owner-gid1", "ai-owner1@ex.com", "AIOwner1", "")
-    await _insert_private_book_ai(8901, owner["id"])
+    await insert_private_book(8901, owner["id"])
     await save_translation(8901, 0, "en", ["Private translation content."])
     resp = await client.get(
         "/api/ai/translate/cache?book_id=8901&chapter_index=0&target_language=en"
@@ -679,7 +666,7 @@ async def test_translate_cache_get_blocked_for_non_owner(client, test_user, tmp_
     )
 
 
-async def test_translate_post_cache_hit_blocked_for_non_owner(client, test_user, tmp_db):
+async def test_translate_post_cache_hit_blocked_for_non_owner(client, test_user, tmp_db, insert_private_book):
     """POST /ai/translate with book_id of a private uploaded book returns 403 for non-owners.
 
     Without check_book_access the endpoint returns the cached translated chapter
@@ -687,7 +674,7 @@ async def test_translate_post_cache_hit_blocked_for_non_owner(client, test_user,
     from services.db import set_user_role
     await set_user_role(test_user["id"], "user")
     owner = await get_or_create_user("ai-owner-gid2", "ai-owner2@ex.com", "AIOwner2", "")
-    await _insert_private_book_ai(8902, owner["id"])
+    await insert_private_book(8902, owner["id"])
     await save_translation(8902, 0, "en", ["Private translated paragraph."])
     resp = await client.post("/api/ai/translate", json={
         "text": "Es war einmal.",

@@ -43,6 +43,10 @@ async def list_all_insights(user: dict = Depends(get_current_user)):
 
 @router.get("")
 async def list_insights(book_id: int, user: dict = Depends(get_current_user)):
+    book = await get_cached_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
     return await get_insights(user["id"], book_id)
 
 

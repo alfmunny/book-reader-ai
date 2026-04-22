@@ -413,3 +413,19 @@ async def test_create_annotation_blocked_for_non_owner_upload(client, test_user,
         "sentence_text": "some text",
     })
     assert resp.status_code == 403, resp.text
+
+
+async def test_get_annotations_blocked_for_non_owner_upload(client, test_user, tmp_db):
+    """GET /annotations on someone else's uploaded book must return 403 (#397)."""
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("ann-get-owner-gid", "ann-get-owner@ex.com", "AnnGetOwner", "")
+    await _insert_private_book(8802, owner["id"])
+    resp = await client.get("/api/annotations", params={"book_id": 8802})
+    assert resp.status_code == 403, resp.text
+
+
+async def test_get_annotations_returns_404_for_nonexistent_book(client, test_user, tmp_db):
+    """GET /annotations for a book that doesn't exist must return 404 (#397)."""
+    resp = await client.get("/api/annotations", params={"book_id": 999888})
+    assert resp.status_code == 404, resp.text

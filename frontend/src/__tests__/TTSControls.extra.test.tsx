@@ -805,3 +805,66 @@ describe("saveAudioPosition on chapter unmount (line 96)", () => {
     expect(true).toBe(true);
   });
 });
+
+// ── onControlsRegister: pause and play callbacks exposed to parent ────────────
+
+describe("onControlsRegister exposes pause and play to parent", () => {
+  it("registers pause and play on mount", async () => {
+    const onControlsRegister = jest.fn();
+    render(<TTSControls {...DEFAULT_PROPS} onControlsRegister={onControlsRegister} />);
+    await waitFor(() => expect(onControlsRegister).toHaveBeenCalledTimes(1));
+    const controls = onControlsRegister.mock.calls[0][0];
+    expect(typeof controls.pause).toBe("function");
+    expect(typeof controls.play).toBe("function");
+  });
+
+  it("calling registered pause while playing halts audio", async () => {
+    let controls: { pause: () => void; play: () => void } | null = null;
+    mockGetChunks.mockResolvedValue(["Chunk."]);
+    mockSynthesize.mockResolvedValue({ url: "blob:audio", wordBoundaries: [] });
+
+    render(
+      <TTSControls
+        {...DEFAULT_PROPS}
+        onControlsRegister={(c) => { controls = c; }}
+      />
+    );
+
+    const playBtn = screen.getAllByRole("button").find((b) => b.textContent?.includes("Read"))!;
+    await act(async () => {
+      fireEvent.click(playBtn);
+      await new Promise((r) => setTimeout(r, 100));
+    });
+
+    await waitFor(() => expect(controls).not.toBeNull());
+
+    await act(async () => {
+      controls!.pause();
+      await flushPromises();
+    });
+
+    await waitFor(() => expect(screen.getByText(/Read/)).toBeInTheDocument());
+  });
+
+  it("calling registered play while paused starts playback", async () => {
+    let controls: { pause: () => void; play: () => void } | null = null;
+    mockGetChunks.mockResolvedValue(["Chunk."]);
+    mockSynthesize.mockResolvedValue({ url: "blob:audio", wordBoundaries: [] });
+
+    render(
+      <TTSControls
+        {...DEFAULT_PROPS}
+        onControlsRegister={(c) => { controls = c; }}
+      />
+    );
+
+    await waitFor(() => expect(controls).not.toBeNull());
+
+    await act(async () => {
+      controls!.play();
+      await new Promise((r) => setTimeout(r, 100));
+    });
+
+    expect(mockGetChunks).toHaveBeenCalled();
+  });
+});

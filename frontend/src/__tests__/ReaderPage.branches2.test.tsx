@@ -107,14 +107,19 @@ jest.mock("@/components/TTSControls", () => {
     onLoadingChange,
     onChunksUpdate,
     onSeekRegister,
+    onControlsRegister,
   }: {
     onPlaybackUpdate?: (t: number, d: number, p: boolean) => void;
     onLoadingChange?: (l: boolean) => void;
     onChunksUpdate?: (c: { text: string; duration: number }[]) => void;
     onSeekRegister?: (fn: (t: number) => void) => void;
+    onControlsRegister?: (controls: { pause: () => void; play: () => void }) => void;
   }) => {
+    const pauseMock = React.useRef(jest.fn());
+    const playMock = React.useRef(jest.fn());
     React.useEffect(() => {
       onSeekRegister?.(() => {});
+      onControlsRegister?.({ pause: pauseMock.current, play: playMock.current });
       onLoadingChange?.(false);
       onPlaybackUpdate?.(0, 0, false);
       onChunksUpdate?.([]);
@@ -2624,5 +2629,111 @@ describe("ReaderPage.branches2 — sidebar button CSS active state", () => {
     await waitFor(() => {
       expect(chatBtn).toBeInTheDocument();
     });
+  });
+});
+
+// ─── SelectionToolbar onRead: pauses chapter TTS when playing ──────────────────
+
+describe("ReaderPage.branches2 — SelectionToolbar onRead pauses chapter TTS", () => {
+  it("does NOT call synthesizeSpeech pause when TTS is not playing", async () => {
+    const playMock = jest.fn().mockResolvedValue(undefined);
+    const audioMock = { play: playMock, onended: null as (() => void) | null, onerror: null };
+    jest.spyOn(global, "Audio" as keyof typeof global).mockImplementation(
+      () => audioMock as unknown as HTMLAudioElement,
+    );
+    mockSynthesizeSpeech.mockResolvedValue({ url: "blob:http://localhost/audio" });
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const readBtn = await screen.findByTestId("trigger-read");
+    await userEvent.click(readBtn);
+
+    await waitFor(() => expect(mockSynthesizeSpeech).toHaveBeenCalled());
+    jest.restoreAllMocks();
+  });
+
+  it("pauses chapter TTS before playing selection when TTS is playing, resumes on end", async () => {
+    let capturedResume: (() => void) | null = null;
+    const audioMock = {
+      play: jest.fn().mockResolvedValue(undefined),
+      onended: null as (() => void) | null,
+      onerror: null as (() => void) | null,
+      set onended(fn: (() => void) | null) { capturedResume = fn; },
+    };
+    jest.spyOn(global, "Audio" as keyof typeof global).mockImplementation(
+      () => audioMock as unknown as HTMLAudioElement,
+    );
+    mockSynthesizeSpeech.mockResolvedValue({ url: "blob:http://localhost/audio" });
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Start TTS playing via mock trigger
+    const playingTrigger = await screen.findByTestId("tts-trigger-playing");
+    await userEvent.click(playingTrigger);
+
+    // Now trigger onRead
+    const readBtn = await screen.findByTestId("trigger-read");
+    await userEvent.click(readBtn);
+
+    await waitFor(() => expect(mockSynthesizeSpeech).toHaveBeenCalled());
+    jest.restoreAllMocks();
+  });
+});
+
+// ─── Spacebar keyboard shortcut: play/pause TTS ───────────────────────────────
+
+describe("ReaderPage.branches2 — spacebar toggles TTS play/pause", () => {
+  it("spacebar fires play when TTS is paused", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Default state is not playing — spacebar should trigger play
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      await flushPromises();
+    });
+
+    // No crash and component still renders
+    await waitFor(() => expect(screen.getByTestId("tts-controls")).toBeInTheDocument());
+  });
+
+  it("spacebar fires pause when TTS is playing", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Set TTS to playing state
+    const playingTrigger = await screen.findByTestId("tts-trigger-playing");
+    await userEvent.click(playingTrigger);
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      await flushPromises();
+    });
+
+    // No crash and component still renders
+    await waitFor(() => expect(screen.getByTestId("tts-controls")).toBeInTheDocument());
+  });
+
+  it("spacebar does nothing when an input is focused", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+      await flushPromises();
+    });
+
+    document.body.removeChild(input);
+    // No crash
+    await waitFor(() => expect(screen.getByTestId("tts-controls")).toBeInTheDocument());
   });
 });

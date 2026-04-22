@@ -158,7 +158,7 @@ describe("WordActionDrawer action buttons", () => {
         onClose={jest.fn()}
       />
     );
-    expect(screen.queryByText(/🔊 Read/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Read/ })).not.toBeInTheDocument();
   });
 
   it("shows Save button when onSaveWord is provided", () => {
@@ -169,7 +169,7 @@ describe("WordActionDrawer action buttons", () => {
         onSaveWord={jest.fn()}
       />
     );
-    expect(screen.getByText(/💾 Save/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Save/ })).toBeInTheDocument();
   });
 
   it("does not show Save button when onSaveWord is not provided", () => {
@@ -190,7 +190,7 @@ describe("WordActionDrawer action buttons", () => {
         onAnnotate={jest.fn()}
       />
     );
-    expect(screen.getByText(/📝 Note/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Note/ })).toBeInTheDocument();
   });
 
   it("does not show Note button when onAnnotate is not provided", () => {
@@ -232,7 +232,7 @@ describe("WordActionDrawer callbacks", () => {
       />
     );
 
-    fireEvent.click(screen.getByText(/💾 Save/));
+    fireEvent.click(screen.getByRole("button", { name: /Save/ }));
 
     expect(onSaveWord).toHaveBeenCalledWith("hello", "Hello world.");
   });
@@ -247,10 +247,10 @@ describe("WordActionDrawer callbacks", () => {
       />
     );
 
-    fireEvent.click(screen.getByText(/💾 Save/));
+    fireEvent.click(screen.getByRole("button", { name: /Save/ }));
 
     await waitFor(() => {
-      expect(screen.getByText(/✓ Saved/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Saved/ })).toBeInTheDocument();
     });
   });
 
@@ -264,7 +264,7 @@ describe("WordActionDrawer callbacks", () => {
       />
     );
 
-    const saveBtn = screen.getByText(/💾 Save/).closest("button")!;
+    const saveBtn = screen.getByRole("button", { name: /Save/ }).closest("button")!;
     fireEvent.click(saveBtn);
 
     await waitFor(() => {
@@ -282,7 +282,7 @@ describe("WordActionDrawer callbacks", () => {
       />
     );
 
-    const saveBtn = screen.getByText(/💾 Save/).closest("button")!;
+    const saveBtn = screen.getByRole("button", { name: /Save/ }).closest("button")!;
     fireEvent.click(saveBtn);
     fireEvent.click(saveBtn);
 
@@ -300,7 +300,7 @@ describe("WordActionDrawer callbacks", () => {
       />
     );
 
-    fireEvent.click(screen.getByText(/📝 Note/));
+    fireEvent.click(screen.getByRole("button", { name: /Note/ }));
 
     expect(onAnnotate).toHaveBeenCalledWith("Hello world.", 3);
     expect(onClose).toHaveBeenCalled();
@@ -363,9 +363,9 @@ describe("WordActionDrawer re-fetches on word change", () => {
     );
 
     // Save the word
-    fireEvent.click(screen.getByText(/💾 Save/));
+    fireEvent.click(screen.getByRole("button", { name: /Save/ }));
     await waitFor(() => {
-      expect(screen.getByText(/✓ Saved/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Saved/ })).toBeInTheDocument();
     });
 
     // Change to a different word
@@ -380,7 +380,7 @@ describe("WordActionDrawer re-fetches on word change", () => {
 
     // The Save button should be reset (not showing "Saved")
     await waitFor(() => {
-      expect(screen.getByText(/💾 Save/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Save/ })).toBeInTheDocument();
     });
   });
 });

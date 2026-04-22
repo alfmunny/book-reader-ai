@@ -15,7 +15,7 @@ import AnnotationToolbar from "@/components/AnnotationToolbar";
 import VocabularyToast from "@/components/VocabularyToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -245,6 +245,7 @@ export default function ReaderPage() {
   const [paragraphTimings, setParagraphTimings] = useState<{ startTime: number; stopTime: number }[]>([]);
   const [ttsStopAt, setTtsStopAt] = useState<number | undefined>();
   const [showTypographyPanel, setShowTypographyPanel] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Read settings on mount (translationLang uses lazy useState above)
   useEffect(() => {
@@ -666,9 +667,13 @@ export default function ReaderPage() {
         e.preventDefault();
         setFocusMode((v) => !v);
         setShowTypographyPanel(false);
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
       } else if (e.key === "Escape") {
         if (focusMode) { e.preventDefault(); setFocusMode(false); }
         setShowTypographyPanel(false);
+        setShowShortcuts(false);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
@@ -871,24 +876,33 @@ export default function ReaderPage() {
                 <button
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
-                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
-                >‹</button>
-                <select
-                  className="text-xs rounded border border-amber-300 px-2 py-1.5 text-ink bg-white max-w-[160px]"
-                  value={chapterIndex}
-                  onChange={(e) => goToChapter(Number(e.target.value))}
+                  aria-label="Previous chapter"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
                 >
-                  {chapters.map((ch, i) => (
-                    <option key={i} value={i}>
-                      {i + 1}. {ch.title || `Section ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
+                  <ArrowLeftIcon className="w-3.5 h-3.5" />
+                </button>
+                <div className="relative">
+                  <select
+                    className="appearance-none text-xs rounded-lg border border-amber-300 pl-2.5 pr-7 py-1.5 text-ink bg-white max-w-[160px] cursor-pointer hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-colors"
+                    value={chapterIndex}
+                    onChange={(e) => goToChapter(Number(e.target.value))}
+                  >
+                    {chapters.map((ch, i) => (
+                      <option key={i} value={i}>
+                        {i + 1}. {ch.title || `Section ${i + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500" />
+                </div>
                 <button
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
-                  className="px-2 py-1 rounded border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-sm flex items-center justify-center"
-                >›</button>
+                  aria-label="Next chapter"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                >
+                  <ArrowRightIcon className="w-3.5 h-3.5" />
+                </button>
               </>
             )}
           </div>
@@ -1059,14 +1073,53 @@ export default function ReaderPage() {
           <button
             onClick={() => { setFocusMode((v) => !v); setShowTypographyPanel(false); }}
             title="Focus mode (F)"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               focusMode
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
             }`}
           >
-            🎯 Focus
+            <FocusIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden lg:inline">Focus</span>
           </button>
+
+          {/* Keyboard shortcuts help — desktop only */}
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => setShowShortcuts((v) => !v)}
+              title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts"
+              className={`flex shrink-0 items-center justify-center w-7 h-7 rounded-lg border text-xs font-medium transition-colors ${
+                showShortcuts
+                  ? "bg-amber-100 border-amber-400 text-amber-800"
+                  : "border-amber-300 text-amber-500 hover:bg-amber-50 hover:text-amber-700"
+              }`}
+            >
+              <KeyboardIcon className="w-3.5 h-3.5" />
+            </button>
+            {showShortcuts && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-lg z-50 p-3 animate-fade-in">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-2">Keyboard Shortcuts</p>
+                <div className="space-y-1.5">
+                  {[
+                    { keys: ["←", "→"], label: "Previous / Next chapter" },
+                    { keys: ["F"], label: "Toggle focus mode" },
+                    { keys: ["?"], label: "Show this panel" },
+                    { keys: ["Esc"], label: "Close panels" },
+                  ].map(({ keys, label }) => (
+                    <div key={label} className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-stone-500">{label}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {keys.map((k) => (
+                          <kbd key={k} className="inline-flex items-center justify-center min-w-[22px] h-5 px-1 rounded border border-stone-200 bg-stone-50 text-[10px] font-mono text-stone-600">{k}</kbd>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Profile — always rightmost */}
           <button
@@ -1914,17 +1967,20 @@ export default function ReaderPage() {
               aria-label={ttsIsPlaying ? "Pause" : "Read aloud"}
             >{ttsIsPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}</button>
 
-            <select
-              className="h-10 text-xs rounded-lg border border-amber-200 px-1 text-amber-700 bg-white max-w-[110px] truncate"
-              value={chapterIndex}
-              onChange={(e) => goToChapter(Number(e.target.value))}
-            >
-              {chapters.map((ch, i) => (
-                <option key={i} value={i}>
-                  {i + 1}. {ch.title || `§${i + 1}`}
-                </option>
-              ))}
-            </select>
+            <div className="relative flex-1 min-w-0 max-w-[110px]">
+              <select
+                className="appearance-none h-10 w-full text-xs rounded-lg border border-amber-200 pl-2 pr-6 text-amber-700 bg-white truncate cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-300 transition-colors"
+                value={chapterIndex}
+                onChange={(e) => goToChapter(Number(e.target.value))}
+              >
+                {chapters.map((ch, i) => (
+                  <option key={i} value={i}>
+                    {i + 1}. {ch.title || `§${i + 1}`}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500" />
+            </div>
 
             {session?.backendToken && (
               <button

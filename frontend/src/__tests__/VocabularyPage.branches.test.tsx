@@ -70,7 +70,7 @@ describe("VocabularyPage — Library back button (line 72)", () => {
     await flushPromises();
 
     await screen.findByText("apple");
-    await userEvent.click(screen.getByText("← Library"));
+    await userEvent.click(screen.getByText("Library"));
     expect(mockPush).toHaveBeenCalledWith("/");
   });
 });

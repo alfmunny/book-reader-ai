@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { SpeakerIcon, NoteIcon, ChatIcon } from "@/components/Icons";
 
 interface Props {
   sentenceText: string;
@@ -50,14 +51,14 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
         onClick={() => { onRead(); onClose(); }}
         className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[36px]"
       >
-        🔊 Read
+        <SpeakerIcon className="w-3.5 h-3.5 shrink-0" /> Read
       </button>
       {onNote && (
         <button
           onClick={() => { onNote(); onClose(); }}
           className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[36px]"
         >
-          📝 Note
+          <NoteIcon className="w-3.5 h-3.5 shrink-0" /> Note
         </button>
       )}
       {onChat && (
@@ -65,7 +66,7 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
           onClick={() => { onChat(); onClose(); }}
           className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[36px]"
         >
-          💬 Chat
+          <ChatIcon className="w-3.5 h-3.5 shrink-0" /> Chat
         </button>
       )}
     </div>

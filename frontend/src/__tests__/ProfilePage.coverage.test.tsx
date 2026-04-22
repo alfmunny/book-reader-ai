@@ -192,8 +192,8 @@ describe("ProfilePage — Preferences section rendering", () => {
   it("renders TTS gender radio buttons", async () => {
     render(<ProfilePage />);
     await act(async () => {});
-    const femaleRadio = screen.getByRole("radio", { name: /♀ female/i });
-    const maleRadio = screen.getByRole("radio", { name: /♂ male/i });
+    const femaleRadio = screen.getByRole("radio", { name: /female/i });
+    const maleRadio = screen.getByRole("radio", { name: /^male$/i });
     expect(femaleRadio).toBeInTheDocument();
     expect(maleRadio).toBeInTheDocument();
     expect((femaleRadio as HTMLInputElement).checked).toBe(true);
@@ -238,7 +238,7 @@ describe("ProfilePage — TTS gender radio change (line 375)", () => {
     render(<ProfilePage />);
     await act(async () => {});
 
-    const maleRadio = screen.getByRole("radio", { name: /♂ male/i }) as HTMLInputElement;
+    const maleRadio = screen.getByRole("radio", { name: /^male$/i }) as HTMLInputElement;
     expect(maleRadio.checked).toBe(false);
 
     fireEvent.click(maleRadio);

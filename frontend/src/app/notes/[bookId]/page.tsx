@@ -56,7 +56,9 @@ function CollapseHeading({
         {label}
       </Tag>
       {count !== undefined && (
-        <span className="text-xs text-stone-400 font-normal font-sans ml-1">{count}</span>
+        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-medium text-amber-700 font-sans ml-1 shrink-0">
+          {count}
+        </span>
       )}
     </button>
   );

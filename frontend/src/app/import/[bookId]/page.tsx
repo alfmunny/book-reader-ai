@@ -9,6 +9,7 @@ import {
   ApiError,
 } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
+import { CheckCircleIcon, AlertCircleIcon, RetryIcon, CircleDotIcon } from "@/components/Icons";
 
 type Stage = "fetching" | "splitting";
 
@@ -275,12 +276,12 @@ export default function BookImportPage() {
                 const s = stages[stage];
                 const icon =
                   s.status === "done"
-                    ? "✓"
+                    ? <CheckCircleIcon className="w-4 h-4" />
                     : s.status === "active"
-                      ? "…"
+                      ? <RetryIcon className="w-4 h-4 animate-spin" />
                       : s.status === "error"
-                        ? "!"
-                        : "·";
+                        ? <AlertCircleIcon className="w-4 h-4" />
+                        : <CircleDotIcon className="w-4 h-4" />;
                 const iconColor =
                   s.status === "done"
                     ? "text-emerald-600"
@@ -296,7 +297,7 @@ export default function BookImportPage() {
                   <div key={stage}>
                     <div className="flex items-baseline gap-3 mb-1">
                       <span
-                        className={`font-bold text-base w-4 text-center ${iconColor}`}
+                        className={`flex items-center justify-center w-4 h-4 shrink-0 ${iconColor}`}
                       >
                         {icon}
                       </span>

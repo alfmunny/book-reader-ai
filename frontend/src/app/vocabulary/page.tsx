@@ -10,7 +10,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowLeftIcon } from "@/components/Icons";
 
 interface LemmaGroup {
   lemma: string;
@@ -221,7 +221,7 @@ function VocabularyPageContent() {
           onClick={() => router.push("/")}
           className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center"
         >
-          ← Library
+          <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>

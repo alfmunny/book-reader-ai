@@ -442,7 +442,7 @@ export default function ProfilePage() {
                     onChange={() => updatePref("ttsGender", g)}
                     className="accent-amber-700"
                   />
-                  <span className="text-sm font-medium text-ink capitalize">{g === "female" ? "♀ Female" : "♂ Male"}</span>
+                  <span className="text-sm font-medium text-ink capitalize">{g === "female" ? "Female" : "Male"}</span>
                 </label>
               ))}
             </div>

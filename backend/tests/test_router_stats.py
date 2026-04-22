@@ -148,6 +148,32 @@ async def test_progress_update_logs_reading_event(client, test_user, tmp_db):
     assert stats_resp.json()["totals"]["books_started"] == 1
 
 
+async def test_progress_and_event_written_by_combined_function(test_user, tmp_db):
+    """upsert_progress_and_log_event must atomically save both the bookmark and
+    the analytics event in a single transaction.  This test would fail (ImportError)
+    if the combined function did not exist — i.e. if progress and event were still
+    written via two separate service calls."""
+    from services.db import upsert_progress_and_log_event  # ImportError before the fix
+
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await upsert_progress_and_log_event(test_user["id"], BOOK_ID, 7)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT chapter_index FROM user_reading_progress WHERE user_id=? AND book_id=?",
+            (test_user["id"], BOOK_ID),
+        ) as cur:
+            progress_row = await cur.fetchone()
+        async with db.execute(
+            "SELECT count(*) FROM reading_history WHERE user_id=? AND book_id=?",
+            (test_user["id"], BOOK_ID),
+        ) as cur:
+            event_count = (await cur.fetchone())[0]
+
+    assert progress_row is not None and progress_row[0] == 7
+    assert event_count == 1, "Analytics event must be saved in the same transaction as progress"
+
+
 async def test_progress_update_multiple_chapters_all_logged(client, test_user, tmp_db):
     await save_book(BOOK_ID, _BOOK_META, "text")
     for ch in range(4):

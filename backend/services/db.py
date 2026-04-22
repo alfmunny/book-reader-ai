@@ -532,6 +532,31 @@ async def log_reading_event(user_id: int, book_id: int, chapter_index: int) -> N
         await db.commit()
 
 
+async def upsert_progress_and_log_event(
+    user_id: int, book_id: int, chapter_index: int
+) -> None:
+    """Atomically save reading position and append an analytics event.
+
+    Both writes share a single connection and commit so they either both
+    persist or both roll back — eliminating the window where progress is
+    saved but the streak/heatmap event is silently dropped.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO user_reading_progress (user_id, book_id, chapter_index, last_read)
+               VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+               ON CONFLICT(user_id, book_id) DO UPDATE SET
+                 chapter_index=excluded.chapter_index,
+                 last_read=excluded.last_read""",
+            (user_id, book_id, chapter_index),
+        )
+        await db.execute(
+            "INSERT INTO reading_history (user_id, book_id, chapter_index) VALUES (?, ?, ?)",
+            (user_id, book_id, chapter_index),
+        )
+        await db.commit()
+
+
 async def get_user_stats(user_id: int) -> dict:
     """Return aggregated reading statistics for a user."""
     from datetime import date, timedelta

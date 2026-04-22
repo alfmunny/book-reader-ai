@@ -388,6 +388,17 @@ async def test_stats(admin_client, admin_db):
     assert data["users_total"] >= 1
 
 
+async def test_stats_includes_audio_fields(admin_client, admin_db):
+    """Regression for #269: stats endpoint must return audio_chunks_cached and audio_cache_mb."""
+    res = await admin_client.get("/api/admin/stats")
+    assert res.status_code == 200
+    data = res.json()
+    assert "audio_chunks_cached" in data, "audio_chunks_cached missing from /admin/stats"
+    assert "audio_cache_mb" in data, "audio_cache_mb missing from /admin/stats"
+    assert isinstance(data["audio_chunks_cached"], int)
+    assert isinstance(data["audio_cache_mb"], (int, float))
+
+
 # ── Retranslate ──────────────────────────────────────────────────────────────
 
 async def test_retranslate_creates_new_translation(admin_client, admin_user):

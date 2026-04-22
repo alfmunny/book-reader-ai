@@ -218,6 +218,42 @@ async def test_delete_user_removes_reading_history(admin_client, admin_db, admin
     assert count == 0, "orphaned reading_history rows left after delete_user"
 
 
+async def test_delete_user_removes_book_uploads(admin_client, admin_db, admin_user):
+    """Regression #403: delete_user must also remove book_uploads rows.
+
+    PRAGMA foreign_keys is disabled so ON DELETE CASCADE on book_uploads.user_id
+    is never enforced; delete_user must include an explicit DELETE FROM book_uploads.
+    """
+    import json as _json
+    user2 = await get_or_create_user(
+        google_id="del-uploads-user", email="uploads@test.com", name="Uploads", picture=""
+    )
+    chapters = _json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "text"}]})
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+               download_count, cover, text, images, source, owner_user_id)
+               VALUES (9901, 'Upload', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (chapters, user2["id"]),
+        )
+        await db.execute(
+            """INSERT INTO book_uploads (book_id, user_id, filename, file_size, format)
+               VALUES (9901, ?, 'test.epub', 1000, 'epub')""",
+            (user2["id"],),
+        )
+        await db.commit()
+
+    res = await admin_client.delete(f"/api/admin/users/{user2['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM book_uploads WHERE user_id = ?", (user2["id"],)
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 0, "orphaned book_uploads rows left after delete_user"
+
+
 # ── Books ────────────────────────────────────────────────────────────────────
 
 async def test_get_books(admin_client, admin_db):

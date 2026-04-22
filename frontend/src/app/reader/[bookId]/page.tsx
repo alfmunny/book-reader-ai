@@ -311,6 +311,7 @@ export default function ReaderPage() {
   // Fetch vocabulary words for this book
   useEffect(() => {
     if (!session?.backendToken) return;
+    setVocabWords([]);
     getVocabulary().then((words) => {
       setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
     }).catch(() => {});

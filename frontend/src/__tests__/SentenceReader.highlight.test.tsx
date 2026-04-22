@@ -117,6 +117,51 @@ test("no highlighting when vocabWords is empty set", () => {
   expect(container.querySelector("mark")).toBeNull();
 });
 
+// ── substring jump-target (text-selection annotations) ───────────────────────
+
+test("segment containing the scrollTargetSentence as a substring gets data-jump-target", () => {
+  // Text-selection annotations store a partial sentence; the full segment text
+  // must still be matched as a jump target so the scroll works.
+  const fullSegment = "It is a truth universally acknowledged, that a single man must be in want.";
+  const partialTarget = "universally acknowledged";
+
+  const { container } = render(
+    <SentenceReader
+      text={fullSegment}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={() => {}}
+      scrollTargetSentence={partialTarget}
+    />,
+  );
+
+  // The segment should have data-jump-target="true" even though the target is
+  // only a substring — this was the bug: exact-equality check missed substrings.
+  const jumpTarget = container.querySelector("[data-jump-target]");
+  expect(jumpTarget).not.toBeNull();
+});
+
+test("short string (< 10 chars) does not trigger substring jump-target to avoid false positives", () => {
+  const fullSegment = "It is a truth universally acknowledged.";
+  const shortTarget = "truth";  // length 5 < 10
+
+  const { container } = render(
+    <SentenceReader
+      text={fullSegment}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={() => {}}
+      scrollTargetSentence={shortTarget}
+    />,
+  );
+
+  // "truth" < 10 chars — should NOT match as jump target (exact match only for short strings)
+  const jumpTarget = container.querySelector("[data-jump-target]");
+  expect(jumpTarget).toBeNull();
+});
+
 // ── Trailing text after last match ────────────────────────────────────────────
 
 test("text after the last match is rendered as plain string", () => {

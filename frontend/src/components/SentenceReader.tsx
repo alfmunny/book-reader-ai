@@ -581,7 +581,10 @@ export default function SentenceReader({
         // Render a segment span with annotation underline + note dot
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
-          const isJumpTarget = flashTarget !== null && seg.text === flashTarget;
+          const isJumpTarget = flashTarget !== null && (
+            seg.text === flashTarget ||
+            (flashTarget.length >= 10 && seg.text.includes(flashTarget))
+          );
           const annotation = showAnnotations ? getAnnotation(seg.text) : undefined;
           const annotationClass = annotation
             ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)

@@ -213,6 +213,25 @@ test("cancelling edit hides textarea without saving", async () => {
   expect(mockUpdateAnnotation).not.toHaveBeenCalled();
 });
 
+test("edit panel stays open when save API call fails", async () => {
+  // Regression: previously setEditingId(null) ran outside the try block,
+  // so on failure the panel closed and the user's edit was silently discarded.
+  mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
+  mockUpdateAnnotation.mockRejectedValue(new Error("network error"));
+  render(<BookNotesPage />);
+  await waitFor(() => screen.getByText(/Call me Ishmael/));
+
+  fireEvent.click(screen.getByTitle("Edit note"));
+  const textarea = screen.getByRole("textbox");
+  fireEvent.change(textarea, { target: { value: "Should not be lost" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+  await waitFor(() => expect(mockUpdateAnnotation).toHaveBeenCalled());
+  // Edit panel must remain open so the user can retry or cancel manually
+  expect(screen.getByRole("textbox")).toBeInTheDocument();
+  expect(screen.getByRole("textbox")).toHaveValue("Should not be lost");
+});
+
 // ── Delete annotation ──────────────────────────────────────────────────────────
 
 test("deleting annotation removes it from the list", async () => {

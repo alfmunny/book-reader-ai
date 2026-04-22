@@ -453,8 +453,8 @@ export default function BookNotesPage() {
     try {
       const updated = await updateAnnotation(editingId, { note_text: editNote });
       setAnnotations((prev) => prev.map((a) => (a.id === editingId ? { ...a, note_text: updated.note_text } : a)));
-    } catch { /* ignore */ }
-    setEditingId(null);
+      setEditingId(null);
+    } catch { /* keep edit open on failure */ }
   }
 
   async function handleDeleteAnnotation(id: number) {

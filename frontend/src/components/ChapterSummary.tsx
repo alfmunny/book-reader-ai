@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateChapterSummary } from "@/lib/api";
@@ -27,11 +27,10 @@ export default function ChapterSummary({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cached, setCached] = useState(false);
-
-  // Track which chapter the summary was generated for so we reset on navigation.
-  const [summaryChapter, setSummaryChapter] = useState<number | null>(null);
+  const genRef = useRef(0);
 
   const load = useCallback(async () => {
+    const gen = ++genRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -43,10 +42,11 @@ export default function ChapterSummary({
         author,
         chapterTitle,
       );
+      if (gen !== genRef.current) return;
       setSummary(data.summary);
       setCached(data.cached);
-      setSummaryChapter(chapterIndex);
     } catch (e: unknown) {
+      if (gen !== genRef.current) return;
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("503")) {
         setError("Chapter summaries are not available — the admin hasn't configured a Gemini API key yet.");
@@ -54,19 +54,18 @@ export default function ChapterSummary({
         setError("Failed to generate summary. Please try again.");
       }
     } finally {
-      setLoading(false);
+      if (gen === genRef.current) setLoading(false);
     }
   }, [bookId, chapterIndex, chapterText, bookTitle, author, chapterTitle]);
 
-  // Reset when navigating to a different chapter.
+  // Reset state and invalidate any in-flight load when navigating to a different chapter.
   useEffect(() => {
-    if (summaryChapter !== null && summaryChapter !== chapterIndex) {
-      setSummary(null);
-      setCached(false);
-      setSummaryChapter(null);
-      setError(null);
-    }
-  }, [chapterIndex, summaryChapter]);
+    genRef.current++;
+    setSummary(null);
+    setCached(false);
+    setError(null);
+    setLoading(false);
+  }, [chapterIndex]);
 
   // Auto-load once when the tab becomes visible.
   useEffect(() => {

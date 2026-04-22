@@ -57,3 +57,38 @@ async def test_google_login_missing_optional_fields(client):
 
     assert resp.status_code == 200
     assert resp.json()["user"]["email"] == ""
+
+
+# ── GitHub login ──────────────────────────────────────────────────────────────
+
+async def test_github_login_returns_token_and_user(client):
+    resp = await client.post("/api/auth/github", json={
+        "github_id": "gh-123",
+        "email": "gh@example.com",
+        "name": "GH User",
+        "picture": "https://avatars.github.com/1",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "token" in data
+    assert data["user"]["email"] == "gh@example.com"
+    assert data["user"]["name"] == "GH User"
+    assert "hasGeminiKey" in data["user"]
+
+
+async def test_github_login_missing_github_id_returns_400(client):
+    resp = await client.post("/api/auth/github", json={
+        "github_id": "",
+        "email": "gh@example.com",
+    })
+    assert resp.status_code == 400
+    assert "github_id is required" in resp.json()["detail"]
+
+
+async def test_github_login_idempotent(client, tmp_db):
+    payload = {"github_id": "gh-456", "email": "repeat@example.com", "name": "Repeat"}
+    resp1 = await client.post("/api/auth/github", json=payload)
+    resp2 = await client.post("/api/auth/github", json=payload)
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert resp1.json()["user"]["id"] == resp2.json()["user"]["id"]

@@ -287,8 +287,13 @@ export default function ReaderPage() {
         setChapters(data.chapters);
         setMeta(data.meta);
         const savedChapter = getLastChapter(Number(bookId));
-        setChapterIndex(Math.min(savedChapter, data.chapters.length - 1));
-        recordRecentBook(data.meta, savedChapter);
+        // ?chapter=N from deep-links takes priority over last-read progress
+        const urlChapter = searchParams?.get("chapter");
+        const urlChapterIdx = urlChapter !== null ? parseInt(urlChapter, 10) : NaN;
+        const targetChapter = !isNaN(urlChapterIdx) ? urlChapterIdx : savedChapter;
+        const clampedTarget = Math.min(targetChapter, data.chapters.length - 1);
+        setChapterIndex(clampedTarget);
+        recordRecentBook(data.meta, clampedTarget);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -307,6 +312,7 @@ export default function ReaderPage() {
   // Fetch vocabulary words for this book
   useEffect(() => {
     if (!session?.backendToken) return;
+    setVocabWords([]);
     getVocabulary().then((words) => {
       setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
     }).catch(() => {});
@@ -636,7 +642,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  });
+  }, [chapterIndex, chapters]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);

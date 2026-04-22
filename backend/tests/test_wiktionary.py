@@ -197,3 +197,74 @@ async def test_lookup_falls_back_to_en_if_lang_missing():
 
         result = await lookup("word", "fr")
         assert len(result["definitions"]) == 1
+
+
+# ── lookup edge cases ─────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_lookup_skips_empty_definitions_after_html_strip():
+    """Definitions that are empty after HTML stripping are skipped."""
+    json_data = {
+        "en": [
+            {
+                "partOfSpeech": "noun",
+                "definitions": [
+                    {"definition": "<span></span>"},   # becomes empty after strip → skipped
+                    {"definition": "A real definition."},
+                ],
+            }
+        ]
+    }
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=_make_mock_response(200, json_data))
+
+        result = await lookup("word", "en")
+        assert len(result["definitions"]) == 1
+        assert result["definitions"][0]["text"] == "A real definition."
+
+
+@pytest.mark.asyncio
+async def test_lookup_invalid_json_returns_empty():
+    """If resp.json() raises, lookup returns empty definitions."""
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        bad_resp = MagicMock()
+        bad_resp.status_code = 200
+        bad_resp.json.side_effect = ValueError("not json")
+        mock_client.get = AsyncMock(return_value=bad_resp)
+
+        result = await lookup("word", "en")
+        assert result["definitions"] == []
+
+
+@pytest.mark.asyncio
+async def test_lookup_lemma_only_extracted_from_first_definition():
+    """Lemma extraction (via _extract_lemma) is attempted only on the first definition."""
+    json_data = {
+        "de": [
+            {
+                "partOfSpeech": "verb",
+                "definitions": [
+                    {"definition": "simple past of <b>go</b>"},
+                    {"definition": "another form of <b>walk</b>"},  # should NOT update lemma
+                ],
+            }
+        ]
+    }
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=_make_mock_response(200, json_data))
+
+        result = await lookup("went", "de")
+        # Lemma from first definition only
+        assert result["lemma"] == "go"
+        # Second definition body still present
+        assert len(result["definitions"]) == 2

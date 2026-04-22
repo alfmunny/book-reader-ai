@@ -115,3 +115,45 @@ async def test_delete_returns_404_if_wrong_user(client: AsyncClient, test_user):
 
     del_resp = await client.delete(f"/api/insights/{insight_id}")
     assert del_resp.status_code == 404
+
+
+async def test_get_all_returns_insights_across_books(client: AsyncClient, test_user):
+    """GET /api/insights/all returns all of the user's insights with book_title."""
+    await client.post("/api/insights", json={"book_id": 20, "question": "Q-A", "answer": "A-A"})
+    await client.post("/api/insights", json={"book_id": 21, "question": "Q-B", "answer": "A-B"})
+
+    resp = await client.get("/api/insights/all")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 2
+    book_ids = {i["book_id"] for i in items}
+    assert book_ids == {20, 21}
+    assert all("book_title" in i for i in items)
+
+
+async def test_get_all_returns_own_insights_only(client: AsyncClient, test_user):
+    """GET /api/insights/all must not return other users' insights."""
+    from services.db import save_insight, get_or_create_user
+
+    other = await get_or_create_user(
+        google_id="other-all-g", email="other-all@example.com", name="Other", picture=""
+    )
+    await client.post("/api/insights", json={"book_id": 30, "question": "Mine", "answer": "yes"})
+    await save_insight(other["id"], 30, None, "Theirs", "no")
+
+    resp = await client.get("/api/insights/all")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["question"] == "Mine"
+
+
+async def test_insights_require_auth(anon_client):
+    resp = await anon_client.get("/api/insights?book_id=1")
+    assert resp.status_code == 401
+
+    resp = await anon_client.get("/api/insights/all")
+    assert resp.status_code == 401
+
+    resp = await anon_client.post("/api/insights", json={"book_id": 1, "question": "Q", "answer": "A"})
+    assert resp.status_code == 401

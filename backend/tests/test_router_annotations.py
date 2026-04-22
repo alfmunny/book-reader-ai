@@ -93,6 +93,22 @@ async def test_update_annotation(client, test_user):
     assert data["color"] == "blue"
 
 
+async def test_update_annotation_note_text_only(client, test_user):
+    """PATCH with only note_text must work — color should remain unchanged.
+
+    Regression: AnnotationUpdate previously required both fields, so the
+    notes-page save (which only sends note_text) always returned 422.
+    """
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Text", "old", "blue")
+
+    resp = await client.patch(f"/api/annotations/{ann['id']}", json={"note_text": "new note"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["note_text"] == "new note"
+    assert data["color"] == "blue"  # unchanged
+
+
 async def test_update_annotation_not_found_returns_404(client, test_user):
     resp = await client.patch("/api/annotations/99999", json={
         "note_text": "x",
@@ -156,4 +172,45 @@ async def test_annotations_require_auth(anon_client):
         "chapter_index": 0,
         "sentence_text": "x",
     })
+    assert resp.status_code == 401
+
+
+async def test_get_all_returns_annotations_across_books(client, test_user):
+    """GET /api/annotations/all returns all of the user's annotations with book_title."""
+    from services.db import save_book
+
+    await save_book(8101, {**_BOOK_META, "title": "Book A"}, "text")
+    await save_book(8102, {**_BOOK_META, "title": "Book B"}, "text")
+    await create_annotation(test_user["id"], 8101, 0, "Sentence A", "note A", "yellow")
+    await create_annotation(test_user["id"], 8102, 1, "Sentence B", "note B", "blue")
+
+    resp = await client.get("/api/annotations/all")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 2
+    book_ids = {a["book_id"] for a in items}
+    assert book_ids == {8101, 8102}
+    assert all("book_title" in a for a in items)
+
+
+async def test_get_all_returns_own_annotations_only(client, test_user):
+    """GET /api/annotations/all must not include other users' annotations."""
+    from services.db import save_book, get_or_create_user
+
+    other = await get_or_create_user(
+        google_id="other-all-ann-g", email="other-all-ann@example.com", name="Other", picture=""
+    )
+    await save_book(8103, _BOOK_META, "text")
+    await create_annotation(test_user["id"], 8103, 0, "My sentence", "mine", "yellow")
+    await create_annotation(other["id"], 8103, 0, "Their sentence", "theirs", "green")
+
+    resp = await client.get("/api/annotations/all")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) == 1
+    assert items[0]["sentence_text"] == "My sentence"
+
+
+async def test_get_all_requires_auth(anon_client):
+    resp = await anon_client.get("/api/annotations/all")
     assert resp.status_code == 401

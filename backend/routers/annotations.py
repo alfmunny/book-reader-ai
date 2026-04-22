@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user
@@ -19,8 +19,8 @@ class AnnotationCreate(BaseModel):
 
 
 class AnnotationUpdate(BaseModel):
-    note_text: str
-    color: AnnotationColor
+    note_text: Optional[str] = None
+    color: Optional[AnnotationColor] = None
 
 
 @router.post("")
@@ -51,7 +51,10 @@ async def update(
     req: AnnotationUpdate,
     user: dict = Depends(get_current_user),
 ):
-    result = await update_annotation(annotation_id, user["id"], req.note_text, req.color)
+    result = await update_annotation(
+        annotation_id, user["id"],
+        note_text=req.note_text, color=req.color,
+    )
     if result is None:
         raise HTTPException(status_code=404, detail="Annotation not found")
     return result

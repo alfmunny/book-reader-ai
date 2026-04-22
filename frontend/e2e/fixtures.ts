@@ -131,7 +131,7 @@ export async function mockBackend(page: Page) {
     }
   });
 
-  await page.route("**/api/vocabulary$", (route) => {
+  await page.route(/\/api\/vocabulary$/, (route) => {
     if (route.request().method() === "GET") {
       route.fulfill({
         json: [

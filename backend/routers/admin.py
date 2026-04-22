@@ -958,10 +958,26 @@ async def queue_enqueue_book(
 async def queue_delete_item(
     item_id: int, _admin: dict = Depends(_require_admin),
 ):
-    deleted = await delete_queue_item(item_id)
-    if deleted == 0:
-        raise HTTPException(status_code=404, detail="Queue item not found")
-    return {"ok": True, "deleted": deleted}
+    # Reject deletion of running items: the worker will still save its result,
+    # so silently "succeeding" here gives the admin a false sense of cancellation (#296).
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE id=?", (item_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Queue item not found")
+        if row["status"] == "running":
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot delete a running item; wait for it to finish or fail",
+            )
+        cursor = await db.execute(
+            "DELETE FROM translation_queue WHERE id=?", (item_id,)
+        )
+        await db.commit()
+    return {"ok": True, "deleted": cursor.rowcount}
 
 
 @router.delete("/queue")

@@ -716,6 +716,27 @@ async def test_delete_queue_item_not_found_returns_404(admin_client):
     assert res.status_code == 404
 
 
+async def test_delete_running_queue_item_returns_409(admin_client, admin_db):
+    """Regression #296: deleting a running item must be rejected (409), not silently accepted.
+
+    Without this guard the queue row is removed but the worker continues
+    writing the translation, so the admin's cancellation intent is silently ignored.
+    """
+    async with aiosqlite.connect(admin_db) as db:
+        cursor = await db.execute(
+            """INSERT INTO translation_queue
+               (book_id, chapter_index, target_language, status, priority)
+               VALUES (999, 0, 'de', 'running', 100)""",
+        )
+        item_id = cursor.lastrowid
+        await db.commit()
+
+    res = await admin_client.delete(f"/api/admin/queue/items/{item_id}")
+    assert res.status_code == 409, (
+        "Deleting a running queue item must return 409 Conflict, not 200"
+    )
+
+
 async def test_retry_queue_item_not_found_returns_404(admin_client):
     """POST /admin/queue/items/{id}/retry for a non-existent item must return 404."""
     res = await admin_client.post("/api/admin/queue/items/99999/retry")

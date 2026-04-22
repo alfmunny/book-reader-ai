@@ -244,6 +244,8 @@ class SaveTranslationRequest(BaseModel):
 @router.put("/translate/cache")
 async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depends(get_current_user)):
     """Save a completed progressive translation to the backend cache."""
+    if not req.paragraphs:
+        raise HTTPException(status_code=400, detail="paragraphs must not be empty")
     if not await get_cached_book(req.book_id):
         raise HTTPException(status_code=404, detail="Book not found")
     target_language = req.target_language.lower().split("-")[0]

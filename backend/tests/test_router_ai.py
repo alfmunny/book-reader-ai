@@ -200,6 +200,31 @@ async def test_translate_cache_put_rejects_nonexistent_book(client, test_user):
     assert resp.status_code == 404
 
 
+async def test_translate_cache_put_rejects_empty_paragraphs(client, test_user):
+    """Regression #331: PUT /translate/cache must reject empty paragraphs.
+
+    An empty list overwrites a good cached translation; request_chapter_translation
+    then returns status='ready' with no paragraphs, leaving the reader with a
+    blank page and no way to trigger re-translation.
+    """
+    from services.db import save_book, save_translation, get_cached_translation
+    _BOOK_META = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"],
+                  "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(50, _BOOK_META, "text")
+    # Seed a valid cached translation to verify it is NOT overwritten
+    await save_translation(50, 0, "zh", ["existing paragraph"])
+
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 50, "chapter_index": 0, "target_language": "zh",
+        "paragraphs": [],
+    })
+    assert resp.status_code == 400
+
+    # Existing translation must still be intact
+    cached = await get_cached_translation(50, 0, "zh")
+    assert cached == ["existing paragraph"]
+
+
 async def test_translate_cache_put_saves(client, test_user):
     """PUT /translate/cache saves paragraphs for later retrieval."""
     from services.db import save_book

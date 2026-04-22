@@ -520,3 +520,39 @@ async def test_request_translation_rejects_draft_book(client, test_user):
         f"Expected 400 for draft book translation request, got {resp.status_code} (#380)"
     )
     assert "draft" in resp.json()["detail"].lower() or "confirm" in resp.json()["detail"].lower()
+
+
+async def test_double_confirm_second_request_returns_400(client, test_user, tmp_db):
+    """Concurrent confirm requests: second confirm must return 400, not silently overwrite.
+
+    Regression for #451: the read-validate-write pattern was non-atomic; two concurrent
+    requests could both pass the draft==True check and both succeed. With BEGIN IMMEDIATE
+    the second request reads draft==False after the first commits and gets 400.
+    """
+    import asyncio
+
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+    detected = upload_resp.json()["detected_chapters"]
+    chapters_to_confirm = [
+        {"title": ch["title"], "original_index": ch["index"]}
+        for ch in detected
+    ]
+
+    # Fire two confirm requests concurrently
+    results = await asyncio.gather(
+        client.post(
+            f"/api/books/{book_id}/chapters/confirm",
+            json={"chapters": chapters_to_confirm},
+        ),
+        client.post(
+            f"/api/books/{book_id}/chapters/confirm",
+            json={"chapters": chapters_to_confirm},
+        ),
+        return_exceptions=True,
+    )
+    statuses = sorted(r.status_code for r in results if not isinstance(r, Exception))
+    assert statuses == [200, 400], (
+        f"Expected one 200 and one 400 from concurrent confirms, got statuses: {statuses}"
+    )

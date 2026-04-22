@@ -358,6 +358,25 @@ async def test_delete_book_removes_chapter_summaries(admin_client, admin_db):
     assert count == 0, "chapter_summaries must be removed when the book is deleted"
 
 
+async def test_delete_book_removes_reading_history(admin_client, admin_db, admin_user):
+    """Regression for #289: delete_book must remove reading_history rows.
+
+    Orphaned rows would contaminate analytics for a re-imported book with the same ID.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await log_reading_event(admin_user["id"], 100, 0)
+    await log_reading_event(admin_user["id"], 100, 1)
+
+    await admin_client.delete("/api/admin/books/100")
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM reading_history WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0, "reading_history rows must be removed when the book is deleted"
+
+
 # ── Translations ─────────────────────────────────────────────────────────────
 
 async def test_get_translations(admin_client, admin_db):

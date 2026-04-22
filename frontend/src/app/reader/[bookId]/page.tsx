@@ -681,7 +681,10 @@ export default function ReaderPage() {
         goToChapter(chapterIndex + 1);
       } else if (e.key === "f" || e.key === "F") {
         e.preventDefault();
-        setFocusMode((v) => !v);
+        setFocusMode((v) => {
+          if (!v) setSidebarOpen(false);
+          return !v;
+        });
         setShowTypographyPanel(false);
       } else if (e.key === "?") {
         e.preventDefault();
@@ -854,7 +857,11 @@ export default function ReaderPage() {
             )}
             <span className="text-stone-400 mx-0.5">|</span>
             <button
-              onClick={() => setShowTypographyPanel((v) => !v)}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setTypographyAnchorPos({ x: rect.right, y: rect.bottom });
+                setShowTypographyPanel((v) => !v);
+              }}
               className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold"
               title="Typography"
             >Aa</button>
@@ -870,7 +877,7 @@ export default function ReaderPage() {
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className={`border-b border-amber-200 bg-white/70 backdrop-blur shrink-0 transition-all duration-300 ${
-        !toolbarVisible ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
+        (!toolbarVisible || focusMode) ? "max-h-0 overflow-hidden opacity-0 border-b-0" : "max-h-[300px] opacity-100"
       } ${focusMode ? "" : "md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b"}`}>
         {/* Row 1: nav + title + controls */}
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
@@ -1096,7 +1103,13 @@ export default function ReaderPage() {
 
           {/* Focus mode toggle — desktop only */}
           <button
-            onClick={() => { setFocusMode((v) => !v); setShowTypographyPanel(false); }}
+            onClick={() => {
+              setFocusMode((v) => {
+                if (!v) setSidebarOpen(false);
+                return !v;
+              });
+              setShowTypographyPanel(false);
+            }}
             title="Focus mode (F)"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
               focusMode

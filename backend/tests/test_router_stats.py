@@ -11,13 +11,33 @@ Covers:
 """
 
 import pytest
+import datetime as _real_dt
 from datetime import date, timedelta
+from unittest.mock import patch
 from services.db import (
     save_book, upsert_reading_progress, log_reading_event,
     get_user_stats, save_word, create_annotation, save_insight,
 )
 import aiosqlite
 import services.db as db_module
+
+# ── Helpers for UTC regression test ──────────────────────────────────────────
+# Simulate: UTC date = 2026-04-21, server-local date = 2026-04-20 (UTC-n timezone).
+_fake_utc_now = _real_dt.datetime(2026, 4, 21, 12, 0, 0, tzinfo=_real_dt.timezone.utc)
+
+
+class _FakeDate(_real_dt.date):
+    @classmethod
+    def today(cls):
+        return _real_dt.date(2026, 4, 20)  # one day behind UTC
+
+
+class _FakeDatetime(_real_dt.datetime):
+    @classmethod
+    def now(cls, tz=None):
+        if tz is not None:
+            return _fake_utc_now
+        return _real_dt.datetime.now()
 
 _BOOK_META = {
     "title": "Test Book",
@@ -184,3 +204,30 @@ async def test_progress_update_multiple_chapters_all_logged(client, test_user, t
     today = date.today().isoformat()
     activity = {a["date"]: a["count"] for a in resp.json()["activity"]}
     assert activity.get(today, 0) >= 4
+
+
+# ── UTC vs local timezone regression ─────────────────────────────────────────
+
+async def test_streak_uses_utc_not_local_date(test_user, tmp_db):
+    """Regression #292: streak must compare against UTC date, not server-local date.
+
+    Simulates a server in UTC-n: the event's UTC date is 2026-04-21 but the
+    server's local date.today() returns 2026-04-20.  The streak must still be 1
+    because the event is 'today' in UTC — the same reference frame SQLite uses.
+    """
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO reading_history (user_id, book_id, chapter_index, read_at)"
+            " VALUES (?, ?, 0, ?)",
+            (test_user["id"], BOOK_ID, "2026-04-21 12:00:00"),
+        )
+        await db.commit()
+
+    with patch("datetime.date", _FakeDate), patch("datetime.datetime", _FakeDatetime):
+        stats = await get_user_stats(test_user["id"])
+
+    assert stats["streak"] == 1, (
+        "Streak must use UTC date (2026-04-21); "
+        "date.today() returning 2026-04-20 must not break it"
+    )

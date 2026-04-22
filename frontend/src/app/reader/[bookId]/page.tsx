@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -14,6 +14,7 @@ import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import QuickHighlightPanel from "@/components/QuickHighlightPanel";
 import VocabularyToast from "@/components/VocabularyToast";
+import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
@@ -69,6 +70,9 @@ export default function ReaderPage() {
 
   // Obsidian export toast
   const [obsidianToast, setObsidianToast] = useState<string | null>(null);
+
+  // Annotation delete undo toast
+  const [deletedAnnotationToast, setDeletedAnnotationToast] = useState<Annotation | null>(null);
 
   // TTS Read-button playback state — fed by TTSControls via callback props.
   const [ttsCurrentTime, setTtsCurrentTime] = useState(0);
@@ -1391,7 +1395,9 @@ export default function ReaderPage() {
                 });
               }}
               onDeleted={(id) => {
+                const ann = annotations.find((a) => a.id === id);
                 setAnnotations((prev) => prev.filter((a) => a.id !== id));
+                if (ann) setDeletedAnnotationToast(ann);
               }}
             />
           )}
@@ -1417,7 +1423,9 @@ export default function ReaderPage() {
                 });
               }}
               onDeleted={(id) => {
+                const ann = annotations.find((a) => a.id === id);
                 setAnnotations((prev) => prev.filter((a) => a.id !== id));
+                if (ann) setDeletedAnnotationToast(ann);
               }}
               onOpenNote={() => {
                 setQuickHighlightPanel(null);
@@ -1441,6 +1449,29 @@ export default function ReaderPage() {
                 handleWordSave(vocabTooltip.word, vocabTooltip.context);
                 setVocabTooltip(null);
               }}
+            />
+          )}
+
+          {/* Annotation delete undo toast */}
+          {deletedAnnotationToast && (
+            <UndoToast
+              message="Highlight deleted"
+              onUndo={() => {
+                const ann = deletedAnnotationToast;
+                setDeletedAnnotationToast(null);
+                if (ann && session?.backendToken) {
+                  createAnnotation({
+                    book_id: ann.book_id,
+                    chapter_index: ann.chapter_index,
+                    sentence_text: ann.sentence_text,
+                    note_text: ann.note_text,
+                    color: ann.color,
+                  }).then((restored) => {
+                    setAnnotations((prev) => [...prev, restored]);
+                  }).catch(() => {});
+                }
+              }}
+              onDone={() => setDeletedAnnotationToast(null)}
             />
           )}
 

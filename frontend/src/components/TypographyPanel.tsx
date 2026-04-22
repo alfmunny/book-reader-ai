@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { FontSize, LineHeight, ContentWidth, FontFamily, saveSettings } from "@/lib/settings";
 
 interface Props {
@@ -14,6 +14,8 @@ interface Props {
   onFontFamily: (v: FontFamily) => void;
   onParagraphFocus: (v: boolean) => void;
   onClose: () => void;
+  /** When provided, panel renders as position:fixed anchored to this point. */
+  anchorPos?: { x: number; y: number };
 }
 
 type Option<T> = { value: T; label: string };
@@ -82,6 +84,7 @@ export default function TypographyPanel({
   onFontFamily,
   onParagraphFocus,
   onClose,
+  anchorPos,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -102,10 +105,20 @@ export default function TypographyPanel({
     };
   }
 
+  const fixedStyle: React.CSSProperties = anchorPos
+    ? {
+        position: "fixed",
+        top: anchorPos.y + 4,
+        left: Math.max(8, Math.min(anchorPos.x - 256, window.innerWidth - 264)),
+        zIndex: 1000,
+      }
+    : {};
+
   return (
     <div
       ref={panelRef}
-      className="absolute top-full right-0 mt-1 z-50 bg-white border border-amber-200 rounded-xl shadow-lg p-4 w-64 animate-fade-in"
+      style={fixedStyle}
+      className={`${anchorPos ? "" : "absolute top-full right-0 mt-1 z-50 "}bg-white border border-amber-200 rounded-xl shadow-lg p-4 w-64 animate-fade-in`}
       data-testid="typography-panel"
     >
       <div className="space-y-4">

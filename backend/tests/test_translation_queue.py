@@ -9,6 +9,7 @@ import services.db as db_module
 from services.db import init_db, save_book, get_cached_translation, set_setting
 from services.translation_queue import (
     clear_queue,
+    delete_queue_for_book,
     enqueue,
     enqueue_for_book,
     list_queue,
@@ -466,6 +467,31 @@ async def test_clear_queue_preserves_running_items(tmp_db):
         await db.commit()
 
     removed = await clear_queue()
+    # Pending chapter 1 should be deleted; running chapter 0 must survive.
+    assert removed == 1
+    remaining = await list_queue()
+    assert len(remaining) == 1
+    assert remaining[0]["chapter_index"] == 0
+    assert remaining[0]["status"] == "running"
+
+
+async def test_delete_queue_for_book_preserves_running_items(tmp_db):
+    """Regression #325: delete_queue_for_book() must not delete running items.
+
+    Deleting a running row gives false cancellation: mark_queue_row_done
+    (called by save_translation) deletes by composite key, so it would
+    silently destroy a re-enqueued pending row for the same chapter.
+    """
+    await enqueue(1, 0, "zh")
+    await enqueue(1, 1, "zh")
+    # Simulate chapter 0 being actively translated by the worker.
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE chapter_index=0",
+        )
+        await db.commit()
+
+    removed = await delete_queue_for_book(1, target_language="zh")
     # Pending chapter 1 should be deleted; running chapter 0 must survive.
     assert removed == 1
     remaining = await list_queue()

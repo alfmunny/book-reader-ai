@@ -99,6 +99,28 @@ test("right-edge rect clamps tooltip left position", async () => {
   Object.defineProperty(window, "innerWidth", { value: origInnerWidth, configurable: true });
 });
 
+test("pressing Escape calls onClose (line 41)", async () => {
+  render(<VocabWordTooltip {...BASE} />);
+  await flushPromises();
+
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+
+  expect(BASE.onClose).toHaveBeenCalledTimes(1);
+});
+
+test("pressing a non-Escape key does NOT call onClose (line 41 false branch)", async () => {
+  render(<VocabWordTooltip {...BASE} />);
+  await flushPromises();
+
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+
+  expect(BASE.onClose).not.toHaveBeenCalled();
+});
+
 test("bottom-overflow rect positions tooltip above selection", async () => {
   const origInnerHeight = window.innerHeight;
   Object.defineProperty(window, "innerHeight", { value: 400, configurable: true });

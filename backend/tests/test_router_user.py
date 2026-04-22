@@ -134,3 +134,38 @@ async def test_obsidian_settings_require_auth(anon_client):
 
     resp = await anon_client.patch("/api/user/obsidian-settings", json={"obsidian_repo": "r/v", "obsidian_path": "p"})
     assert resp.status_code == 401
+
+
+async def test_get_obsidian_settings_has_github_token_field(client, test_user):
+    """GET /obsidian-settings must report whether a token is configured
+    so the frontend can show a 'configured' indicator without leaking the token."""
+    from services.db import update_obsidian_settings
+    from services.auth import encrypt_api_key
+
+    resp = await client.get("/api/user/obsidian-settings")
+    assert resp.status_code == 200
+    assert resp.json()["has_github_token"] is False
+
+    await update_obsidian_settings(test_user["id"], encrypt_api_key("ghp_abc"), "u/r", None)
+
+    resp = await client.get("/api/user/obsidian-settings")
+    assert resp.json()["has_github_token"] is True
+
+
+async def test_patch_obsidian_settings_clears_token_with_empty_string(client, test_user):
+    """Sending github_token='' must clear the stored token — users have
+    no other way to revoke their GitHub credentials from the app."""
+    from services.db import update_obsidian_settings, get_obsidian_settings
+    from services.auth import encrypt_api_key
+
+    await update_obsidian_settings(test_user["id"], encrypt_api_key("ghp_abc"), "u/r", None)
+
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "github_token": "",
+        "obsidian_repo": "u/r",
+        "obsidian_path": "",
+    })
+    assert resp.status_code == 200
+
+    settings = await get_obsidian_settings(test_user["id"])
+    assert settings["github_token"] is None, "empty-string token must clear the stored token"

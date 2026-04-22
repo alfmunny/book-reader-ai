@@ -30,6 +30,7 @@ export default function ProfilePage() {
 
   // ── Obsidian settings state ────────────────────────────────────────────────
   const [obsidianToken, setObsidianToken] = useState("");
+  const [hasObsidianToken, setHasObsidianToken] = useState(false);
   const [obsidianRepo, setObsidianRepo] = useState("");
   const [obsidianPath, setObsidianPath] = useState("All Notes/002 Literature Notes/000 Books");
   const [obsidianSaving, setObsidianSaving] = useState(false);
@@ -62,6 +63,7 @@ export default function ProfilePage() {
     getObsidianSettings().then((s) => {
       setObsidianRepo(s.obsidian_repo ?? "");
       setObsidianPath(s.obsidian_path ?? "All Notes/002 Literature Notes/000 Books");
+      setHasObsidianToken(s.has_github_token ?? false);
     }).catch(() => {});
   }, [session?.backendToken]);
 
@@ -105,10 +107,29 @@ export default function ProfilePage() {
         obsidian_repo: obsidianRepo.trim(),
         obsidian_path: obsidianPath.trim(),
       });
+      if (obsidianToken.trim()) setHasObsidianToken(true);
       setObsidianToken("");
       setObsidianMsg({ text: "Obsidian settings saved.", ok: true });
     } catch (e: unknown) {
       setObsidianMsg({ text: e instanceof Error ? e.message : "Failed to save", ok: false });
+    } finally {
+      setObsidianSaving(false);
+    }
+  }
+
+  async function handleRemoveObsidianToken() {
+    setObsidianSaving(true);
+    setObsidianMsg(null);
+    try {
+      await saveObsidianSettings({
+        github_token: "",
+        obsidian_repo: obsidianRepo.trim(),
+        obsidian_path: obsidianPath.trim(),
+      });
+      setHasObsidianToken(false);
+      setObsidianMsg({ text: "GitHub token removed.", ok: true });
+    } catch (e: unknown) {
+      setObsidianMsg({ text: e instanceof Error ? e.message : "Failed to remove token", ok: false });
     } finally {
       setObsidianSaving(false);
     }
@@ -246,12 +267,26 @@ export default function ProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-ink mb-1">
-              GitHub Token
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-ink">
+                GitHub Token
+              </label>
+              {hasObsidianToken && (
+                <span className="flex items-center gap-2">
+                  <span className="text-xs text-emerald-600 font-medium">Token configured ✓</span>
+                  <button
+                    onClick={handleRemoveObsidianToken}
+                    disabled={obsidianSaving}
+                    className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </span>
+              )}
+            </div>
             <input
               type="password"
-              placeholder="ghp_… (never shown back)"
+              placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
               value={obsidianToken}
               onChange={(e) => setObsidianToken(e.target.value)}
               className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"

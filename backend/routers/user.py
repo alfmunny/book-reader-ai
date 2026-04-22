@@ -72,6 +72,7 @@ async def get_obsidian(user: dict = Depends(get_current_user)):
     return {
         "obsidian_repo": settings.get("obsidian_repo") or "",
         "obsidian_path": settings.get("obsidian_path") or "",
+        "has_github_token": bool(settings.get("github_token")),
     }
 
 
@@ -87,11 +88,13 @@ async def patch_obsidian(
     user: dict = Depends(get_current_user),
 ):
     existing = await get_obsidian_settings(user["id"])
-    # Only update the token if a new one was supplied; keep the encrypted one otherwise
-    if req.github_token is not None and req.github_token.strip():
+    # None = not supplied → keep existing; "" = explicit clear → set NULL; non-empty = update
+    if req.github_token is None:
+        token_enc = existing.get("github_token")
+    elif req.github_token.strip():
         token_enc = encrypt_api_key(req.github_token.strip())
     else:
-        token_enc = existing.get("github_token")
+        token_enc = None
     await update_obsidian_settings(
         user["id"],
         github_token_encrypted=token_enc,

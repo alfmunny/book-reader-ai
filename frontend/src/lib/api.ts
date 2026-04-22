@@ -659,6 +659,7 @@ export function deleteInsight(id: number) {
 export interface ObsidianSettings {
   obsidian_repo: string;
   obsidian_path: string;
+  has_github_token: boolean;
 }
 
 export function getObsidianSettings() {

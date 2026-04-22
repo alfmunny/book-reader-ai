@@ -51,6 +51,7 @@ export default function ReaderPage() {
     position: { x: number; y: number };
   } | null>(null);
   const [scrollTargetSentence, setScrollTargetSentence] = useState<string | undefined>();
+  const didUrlScrollRef = useRef(false);
 
   // Vocabulary toast
   const [vocabToastWord, setVocabToastWord] = useState<string | null>(null);
@@ -306,6 +307,20 @@ export default function ReaderPage() {
       setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
     }).catch(() => {});
   }, [bookId, session?.backendToken]);
+
+  // On initial chapter load, scroll to sentence specified in ?sentence= URL param
+  useEffect(() => {
+    if (loading || didUrlScrollRef.current) return;
+    const sentence = searchParams?.get("sentence");
+    if (!sentence) return;
+    didUrlScrollRef.current = true;
+    const decoded = decodeURIComponent(sentence);
+    setTimeout(() => {
+      setScrollTargetSentence(undefined);
+      setTimeout(() => setScrollTargetSentence(decoded), 50);
+    }, 500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const bookLanguage = meta?.languages[0] || "en";
 
@@ -1027,6 +1042,8 @@ export default function ReaderPage() {
                   } : undefined}
                   showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
+                  scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
+                  vocabWords={new Set(vocabWords.map((v) => v.word.toLowerCase()))}
                   onSegmentClick={(startTime) => {
                     // Called only when TTS is playing (seek)
                     ttsSeekRef.current(startTime);
@@ -1363,19 +1380,50 @@ export default function ReaderPage() {
                         <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
                       </div>
                     ) : (
-                      <div className="space-y-1.5">
-                        {filteredVocab.map((w) => (
-                          <button
-                            key={w.id}
-                            onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
-                            className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors text-left"
-                          >
-                            <span className="text-sm font-medium text-ink">{w.word}</span>
-                            <span className="text-[10px] text-stone-400 shrink-0">
-                              {w.occurrences.filter((o) => o.book_id === Number(bookId)).length}×
-                            </span>
-                          </button>
-                        ))}
+                      <div className="space-y-2">
+                        {filteredVocab.map((w) => {
+                          const lemma = w.lemma || w.word;
+                          const isForm = w.lemma && w.lemma.toLowerCase() !== w.word.toLowerCase();
+                          const relevantOccs = vocabView === "chapter"
+                            ? w.occurrences.filter((o) => o.book_id === Number(bookId) && o.chapter_index === chapterIndex)
+                            : w.occurrences.filter((o) => o.book_id === Number(bookId));
+                          return (
+                            <div key={w.id} className="rounded-lg bg-amber-50 border border-amber-200 overflow-hidden">
+                              {/* Lemma header */}
+                              <button
+                                onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-amber-100 transition-colors text-left"
+                              >
+                                <span className="text-sm font-semibold text-ink">{lemma}</span>
+                                {isForm && (
+                                  <span className="text-[10px] text-amber-600 shrink-0 italic">{w.word}</span>
+                                )}
+                              </button>
+                              {/* Context occurrences */}
+                              {relevantOccs.map((occ, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => {
+                                    if (occ.chapter_index !== chapterIndex) {
+                                      goToChapter(occ.chapter_index);
+                                      setTimeout(() => setScrollTargetSentence(occ.sentence_text), 400);
+                                    } else {
+                                      setScrollTargetSentence(undefined);
+                                      setTimeout(() => setScrollTargetSentence(occ.sentence_text), 10);
+                                    }
+                                    setSidebarOpen(false);
+                                  }}
+                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors"
+                                >
+                                  {vocabView === "book" && (
+                                    <span className="text-[10px] text-stone-400 mr-1">Ch.{occ.chapter_index + 1}</span>
+                                  )}
+                                  <span className="text-xs text-stone-500 italic line-clamp-2">&ldquo;{occ.sentence_text}&rdquo;</span>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

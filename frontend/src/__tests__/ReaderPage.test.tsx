@@ -39,6 +39,7 @@ const mockEnqueueBookTranslation = jest.fn();
 const mockDeleteTranslationCache = jest.fn();
 const mockSaveReadingProgress = jest.fn();
 const mockSaveVocabularyWord = jest.fn();
+const mockGetWordDefinition = jest.fn();
 const mockExportVocabularyToObsidian = jest.fn();
 const mockSaveInsight = jest.fn();
 const mockSynthesizeSpeech = jest.fn();
@@ -57,6 +58,7 @@ jest.mock("@/lib/api", () => ({
   deleteTranslationCache: (...a: unknown[]) => mockDeleteTranslationCache(...a),
   saveReadingProgress: (...a: unknown[]) => mockSaveReadingProgress(...a),
   saveVocabularyWord: (...a: unknown[]) => mockSaveVocabularyWord(...a),
+  getWordDefinition: (...a: unknown[]) => mockGetWordDefinition(...a),
   exportVocabularyToObsidian: (...a: unknown[]) => mockExportVocabularyToObsidian(...a),
   saveInsight: (...a: unknown[]) => mockSaveInsight(...a),
   synthesizeSpeech: (...a: unknown[]) => mockSynthesizeSpeech(...a),
@@ -141,6 +143,12 @@ jest.mock("@/components/VocabularyToast", () => {
   const VocabularyToast = () => null;
   VocabularyToast.displayName = "VocabularyToast";
   return { __esModule: true, default: VocabularyToast };
+});
+
+jest.mock("@/components/VocabWordTooltip", () => {
+  const VocabWordTooltip = () => <div data-testid="vocab-word-tooltip" />;
+  VocabWordTooltip.displayName = "VocabWordTooltip";
+  return { __esModule: true, default: VocabWordTooltip };
 });
 
 // ─── Data fixtures ────────────────────────────────────────────────────────────
@@ -1442,5 +1450,86 @@ describe("ReaderPage — book translation status banner", () => {
       const statusEl = screen.queryByText(/chapters translated/);
       if (statusEl) expect(statusEl).toBeInTheDocument();
     });
+  });
+});
+
+// ── Vocab sidebar chapter filter ──────────────────────────────────────────────
+
+describe("ReaderPage — vocab sidebar chapter filter", () => {
+  it("shows 'This chapter' and 'All chapters' toggle buttons", async () => {
+    const bid = bookIdCounter;
+    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });
+    mockGetVocabulary.mockResolvedValue([]);
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const vocabBtn = await screen.findByTitle("Vocabulary");
+    await userEvent.click(vocabBtn);
+
+    expect(await screen.findByText("This chapter")).toBeInTheDocument();
+    expect(screen.getByText("All chapters")).toBeInTheDocument();
+  });
+
+  it("defaults to chapter view — hides words from other chapters", async () => {
+    const bid = bookIdCounter;
+    const words = [
+      { id: 1, word: "inChapter", occurrences: [{ book_id: bid, chapter_index: 0, sentence_text: "s" }] },
+      { id: 2, word: "otherChapter", occurrences: [{ book_id: bid, chapter_index: 2, sentence_text: "s" }] },
+    ];
+    mockGetVocabulary.mockResolvedValue(words);
+    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const vocabBtn = await screen.findByTitle("Vocabulary");
+    await userEvent.click(vocabBtn);
+
+    expect(await screen.findByText("inChapter")).toBeInTheDocument();
+    expect(screen.queryByText("otherChapter")).not.toBeInTheDocument();
+  });
+
+  it("switching to 'All chapters' shows words from every chapter", async () => {
+    const bid = bookIdCounter;
+    const words = [
+      { id: 1, word: "inChapter", occurrences: [{ book_id: bid, chapter_index: 0, sentence_text: "s" }] },
+      { id: 2, word: "otherChapter", occurrences: [{ book_id: bid, chapter_index: 2, sentence_text: "s" }] },
+    ];
+    mockGetVocabulary.mockResolvedValue(words);
+    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const vocabBtn = await screen.findByTitle("Vocabulary");
+    await userEvent.click(vocabBtn);
+
+    // Switch to "All chapters"
+    const allBtn = await screen.findByText("All chapters");
+    await userEvent.click(allBtn);
+
+    expect(await screen.findByText("inChapter")).toBeInTheDocument();
+    expect(await screen.findByText("otherChapter")).toBeInTheDocument();
+  });
+
+  it("shows count label reflecting filtered words", async () => {
+    const bid = bookIdCounter;
+    const words = [
+      { id: 1, word: "wordOne", occurrences: [{ book_id: bid, chapter_index: 0, sentence_text: "s" }] },
+      { id: 2, word: "wordTwo", occurrences: [{ book_id: bid, chapter_index: 0, sentence_text: "s" }] },
+      { id: 3, word: "wordThree", occurrences: [{ book_id: bid, chapter_index: 1, sentence_text: "s" }] },
+    ];
+    mockGetVocabulary.mockResolvedValue(words);
+    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const vocabBtn = await screen.findByTitle("Vocabulary");
+    await userEvent.click(vocabBtn);
+
+    // Chapter view: 2 words
+    expect(await screen.findByText("2 words")).toBeInTheDocument();
+
+    // All chapters: 3 words
+    await userEvent.click(screen.getByText("All chapters"));
+    expect(await screen.findByText("3 words")).toBeInTheDocument();
   });
 });

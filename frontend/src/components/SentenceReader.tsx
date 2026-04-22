@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation, WordBoundary } from "@/lib/api";
 
 // ── Text parsing ────────────────────────────────────────────────────────────
@@ -287,6 +287,10 @@ interface Props {
   }) => void;
   /** When false, annotation underlines and note dots are hidden. Default true. */
   showAnnotations?: boolean;
+  /** Word to highlight (amber pulse) inside the flash-target sentence. */
+  scrollTargetWord?: string;
+  /** Vocabulary words to show with a subtle dotted underline in all segments. */
+  vocabWords?: Set<string>;
 }
 
 const ANNOTATION_COLOR_CLASS: Record<string, string> = {
@@ -310,6 +314,67 @@ const NOTE_CARD_CLASS: Record<string, string> = {
   pink: "bg-pink-50 text-pink-800 border-pink-200",
 };
 
+/** Render segment text with target-word pulse and vocab-word dotted underlines. */
+function buildSegContent(
+  text: string,
+  targetWord: string | undefined,
+  vocabWords: Set<string> | undefined,
+): React.ReactNode {
+  if (!targetWord && !vocabWords?.size) return text;
+
+  type Match = { start: number; end: number; type: "target" | "vocab" };
+  const matches: Match[] = [];
+
+  const addMatches = (needle: string, type: Match["type"]) => {
+    const lc = text.toLowerCase();
+    const nl = needle.toLowerCase();
+    let i = 0;
+    while (i < lc.length) {
+      const idx = lc.indexOf(nl, i);
+      if (idx === -1) break;
+      const pre = idx === 0 || !/\w/.test(text[idx - 1]);
+      const post = idx + nl.length >= text.length || !/\w/.test(text[idx + nl.length]);
+      if (pre && post) matches.push({ start: idx, end: idx + nl.length, type });
+      i = idx + nl.length;
+    }
+  };
+
+  if (targetWord) addMatches(targetWord, "target");
+  vocabWords?.forEach((w) => addMatches(w, "vocab"));
+
+  if (!matches.length) return text;
+
+  matches.sort((a, b) => a.start - b.start);
+  const deduped: Match[] = [];
+  let lastEnd = 0;
+  for (const m of matches) {
+    if (m.start >= lastEnd) { deduped.push(m); lastEnd = m.end; }
+  }
+
+  const nodes: React.ReactNode[] = [];
+  let pos = 0;
+  for (const m of deduped) {
+    if (m.start > pos) nodes.push(text.slice(pos, m.start));
+    const word = text.slice(m.start, m.end);
+    if (m.type === "target") {
+      nodes.push(
+        <mark key={m.start} className="bg-amber-300 text-inherit rounded px-0.5 not-italic animate-pulse">
+          {word}
+        </mark>,
+      );
+    } else {
+      nodes.push(
+        <span key={m.start} className="underline decoration-amber-400 decoration-dotted decoration-2 underline-offset-2">
+          {word}
+        </span>,
+      );
+    }
+    pos = m.end;
+  }
+  if (pos < text.length) nodes.push(text.slice(pos));
+  return <>{nodes}</>;
+}
+
 export default function SentenceReader({
   text,
   duration,
@@ -327,6 +392,8 @@ export default function SentenceReader({
   scrollTargetSentence,
   onWordTap,
   showAnnotations = true,
+  scrollTargetWord,
+  vocabWords,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
   const [expandedNoteFlatIdx, setExpandedNoteFlatIdx] = useState<number | null>(null);
@@ -539,7 +606,7 @@ export default function SentenceReader({
               onPointerMove={handlePointerMove}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
-              {seg.text}
+              {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords)}
               {annotation?.note_text && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}

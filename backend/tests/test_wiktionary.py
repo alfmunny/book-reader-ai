@@ -15,6 +15,38 @@ def test_strip_html_empty():
     assert _strip_html("") == ""
 
 
+def test_strip_html_removes_style_block_with_css():
+    """CSS inside <style> must not appear in output — this is the bug fix for
+    Wiktionary returning inline <style> blocks whose class names bled into text."""
+    html = (
+        'to assist'
+        '<style>.mw-parser-output .object-usage-tag{font-style:italic}'
+        '.mw-parser-output .deprecated{color:var(--wikt,olivedrab)}</style>'
+        '{with dative}'
+    )
+    result = _strip_html(html)
+    assert ".mw-parser-output" not in result
+    assert "font-style" not in result
+    assert "to assist" in result
+    assert "{with dative}" in result
+
+
+def test_strip_html_removes_script_block():
+    html = 'safe text<script>alert("xss")</script> more text'
+    result = _strip_html(html)
+    assert "alert" not in result
+    assert "safe text" in result
+    assert "more text" in result
+
+
+def test_strip_html_multiline_style_block():
+    html = 'word<style>\n.cls { color: red; }\n</style>definition'
+    result = _strip_html(html)
+    assert "color" not in result
+    assert "word" in result
+    assert "definition" in result
+
+
 # ── _extract_lemma ─────────────────────────────────────────────────────────────
 
 def test_extract_lemma_bold_tag():

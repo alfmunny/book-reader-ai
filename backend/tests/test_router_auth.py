@@ -13,6 +13,13 @@ FAKE_GOOGLE_INFO = {
     "picture": "https://pic.example.com/a.jpg",
 }
 
+FAKE_GITHUB_PROFILE = {
+    "id": "gh-123",
+    "email": "gh@example.com",
+    "name": "GH User",
+    "picture": "https://avatars.github.com/1",
+}
+
 
 async def test_google_login_returns_token_and_user(client):
     with patch("routers.auth.verify_google_id_token", new_callable=AsyncMock, return_value=FAKE_GOOGLE_INFO):
@@ -62,12 +69,8 @@ async def test_google_login_missing_optional_fields(client):
 # ── GitHub login ──────────────────────────────────────────────────────────────
 
 async def test_github_login_returns_token_and_user(client):
-    resp = await client.post("/api/auth/github", json={
-        "github_id": "gh-123",
-        "email": "gh@example.com",
-        "name": "GH User",
-        "picture": "https://avatars.github.com/1",
-    })
+    with patch("routers.auth.verify_github_access_token", new_callable=AsyncMock, return_value=FAKE_GITHUB_PROFILE):
+        resp = await client.post("/api/auth/github", json={"access_token": "ghp_valid"})
     assert resp.status_code == 200
     data = resp.json()
     assert "token" in data
@@ -76,19 +79,31 @@ async def test_github_login_returns_token_and_user(client):
     assert "hasGeminiKey" in data["user"]
 
 
-async def test_github_login_missing_github_id_returns_400(client):
-    resp = await client.post("/api/auth/github", json={
-        "github_id": "",
-        "email": "gh@example.com",
-    })
+async def test_github_login_missing_access_token_returns_400(client):
+    resp = await client.post("/api/auth/github", json={"access_token": ""})
     assert resp.status_code == 400
-    assert "github_id is required" in resp.json()["detail"]
+    assert "access_token is required" in resp.json()["detail"]
+
+
+async def test_github_login_invalid_token_returns_401(client):
+    from fastapi import HTTPException as FastAPIHTTPException
+    with patch(
+        "routers.auth.verify_github_access_token",
+        new_callable=AsyncMock,
+        side_effect=FastAPIHTTPException(status_code=401, detail="Invalid GitHub access token"),
+    ):
+        resp = await client.post("/api/auth/github", json={"access_token": "bad-token"})
+    assert resp.status_code == 401
+    assert "Invalid GitHub access token" in resp.json()["detail"]
 
 
 async def test_github_login_idempotent(client, tmp_db):
-    payload = {"github_id": "gh-456", "email": "repeat@example.com", "name": "Repeat"}
-    resp1 = await client.post("/api/auth/github", json=payload)
-    resp2 = await client.post("/api/auth/github", json=payload)
+    with patch("routers.auth.verify_github_access_token", new_callable=AsyncMock,
+               return_value={"id": "gh-456", "email": "repeat@example.com", "name": "Repeat", "picture": ""}):
+        resp1 = await client.post("/api/auth/github", json={"access_token": "ghp_tok1"})
+    with patch("routers.auth.verify_github_access_token", new_callable=AsyncMock,
+               return_value={"id": "gh-456", "email": "repeat@example.com", "name": "Repeat", "picture": ""}):
+        resp2 = await client.post("/api/auth/github", json={"access_token": "ghp_tok2"})
     assert resp1.status_code == 200
     assert resp2.status_code == 200
     assert resp1.json()["user"]["id"] == resp2.json()["user"]["id"]

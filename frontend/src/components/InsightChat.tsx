@@ -63,7 +63,7 @@ function ContextChip({
   const needsToggle = text.length > CTX_COLLAPSE_AT;
   const shown = !needsToggle || expanded ? text : text.slice(0, CTX_COLLAPSE_AT);
   return (
-    <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 font-serif">
+    <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
       <div className="flex items-start gap-1.5">
         <span className="shrink-0 mt-px text-amber-400">📎</span>
         <div className="flex-1 min-w-0">
@@ -540,7 +540,7 @@ function MsgContextBlock({
   return (
     <div className="flex items-start gap-1.5 rounded-lg bg-amber-50/80 border border-amber-100 px-2.5 py-1.5">
       <span className="text-amber-400 text-xs shrink-0 mt-px">📎</span>
-      <p className="text-xs text-amber-700 font-serif italic leading-relaxed flex-1">
+      <p className="text-xs text-amber-700 italic leading-relaxed flex-1">
         &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
         {needsToggle && (
           <button

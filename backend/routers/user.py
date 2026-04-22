@@ -3,9 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key
 from services.db import (
-    set_user_gemini_key, get_user_by_id, get_reading_progress, upsert_reading_progress,
+    set_user_gemini_key, get_user_by_id, get_reading_progress,
     get_obsidian_settings, update_obsidian_settings, get_cached_book,
-    log_reading_event, get_user_stats,
+    upsert_progress_and_log_event, get_user_stats,
 )
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -67,8 +67,7 @@ async def update_reading_progress(
         raise HTTPException(status_code=404, detail="Book not found")
     if req.chapter_index < 0:
         raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
-    await upsert_reading_progress(user["id"], book_id, req.chapter_index)
-    await log_reading_event(user["id"], book_id, req.chapter_index)
+    await upsert_progress_and_log_event(user["id"], book_id, req.chapter_index)
     return {"ok": True}
 
 

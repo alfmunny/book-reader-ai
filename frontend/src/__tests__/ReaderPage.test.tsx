@@ -493,7 +493,7 @@ describe("ReaderPage — sidebar tabs", () => {
     const notesBtn = await screen.findByTitle("Annotations & notes");
     await userEvent.click(notesBtn);
 
-    expect(await screen.findByText("No annotations yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No annotations in this chapter yet.")).toBeInTheDocument();
   });
 
   it("opens vocab sidebar when 📚 Vocab button is clicked", async () => {
@@ -1100,6 +1100,10 @@ describe("ReaderPage — notes sidebar content", () => {
     const notesBtn = await screen.findByTitle("Annotations & notes");
     await userEvent.click(notesBtn);
 
+    // Switch to "All chapters" to see chapter group headings
+    const allChaptersBtn = await screen.findByRole("button", { name: "All chapters" });
+    await userEvent.click(allChaptersBtn);
+
     expect(await screen.findByText("Chapter 1")).toBeInTheDocument();
     expect(screen.getByText("Chapter 2")).toBeInTheDocument();
   });
@@ -1363,13 +1367,16 @@ describe("ReaderPage — mobile bottom bar interactions", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    // The mobile Notes button (aria-label="Notes") is in the mobile bottom bar
-    // Use getByRole with exact aria-label
-    const mobileNotesBtn = await screen.findByRole("button", { name: "Notes" });
-    expect(mobileNotesBtn).toBeInTheDocument();
+    // Find the mobile Notes button specifically by its aria-label="Notes"
+    let mobileNotesBtn: HTMLElement | undefined;
+    await waitFor(() => {
+      const allBtns = screen.queryAllByRole("button");
+      mobileNotesBtn = allBtns.find((b) => b.getAttribute("aria-label") === "Notes");
+      expect(mobileNotesBtn).toBeDefined();
+    });
 
-    await userEvent.click(mobileNotesBtn);
-    // Notes expanded panel should appear — "No annotations yet." in it
+    await userEvent.click(mobileNotesBtn!);
+    // Mobile expand panel appears — "No annotations yet." in it
     const noAnnotationsEls = await screen.findAllByText("No annotations yet.");
     expect(noAnnotationsEls.length).toBeGreaterThanOrEqual(1);
   });
@@ -1627,6 +1634,61 @@ describe("ReaderPage — vocab sidebar chapter filter", () => {
     // All chapters: 3 words
     await userEvent.click(screen.getByText("All chapters"));
     expect(await screen.findByText("3 words")).toBeInTheDocument();
+  });
+});
+
+// ── Notes sidebar chapter filter ──────────────────────────────────────────────
+
+describe("ReaderPage — notes sidebar chapter filter", () => {
+  it("shows 'This chapter' and 'All chapters' toggle buttons in notes sidebar", async () => {
+    mockGetAnnotations.mockResolvedValue([]);
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const notesBtn = await screen.findByTitle("Annotations & notes");
+    await userEvent.click(notesBtn);
+
+    expect(await screen.findByText("This chapter")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All chapters" })).toBeInTheDocument();
+  });
+
+  it("defaults to 'This chapter' view and shows chapter-filtered empty state", async () => {
+    mockGetAnnotations.mockResolvedValue([]);
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const notesBtn = await screen.findByTitle("Annotations & notes");
+    await userEvent.click(notesBtn);
+
+    expect(await screen.findByText("No annotations in this chapter yet.")).toBeInTheDocument();
+  });
+
+  it("switching to 'All chapters' shows annotations from all chapters grouped by chapter", async () => {
+    const annotations = [
+      { id: 1, book_id: 42, chapter_index: 0, sentence_text: "First.", color: "yellow", note_text: "", created_at: "2024-01-01" },
+      { id: 2, book_id: 42, chapter_index: 1, sentence_text: "Second.", color: "blue", note_text: "", created_at: "2024-01-02" },
+    ];
+    mockGetAnnotations.mockResolvedValue(annotations);
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    const notesBtn = await screen.findByTitle("Annotations & notes");
+    await userEvent.click(notesBtn);
+
+    // Default "This chapter" view shows only chapter 0 annotation
+    expect(await screen.findByText(/First\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Second\./)).not.toBeInTheDocument();
+
+    // Switch to "All chapters" — both annotations appear with chapter headings
+    const allChaptersBtn = screen.getByRole("button", { name: "All chapters" });
+    await userEvent.click(allChaptersBtn);
+
+    expect(await screen.findByText("Chapter 1")).toBeInTheDocument();
+    expect(screen.getByText("Chapter 2")).toBeInTheDocument();
+    expect(screen.getByText(/Second\./)).toBeInTheDocument();
   });
 });
 

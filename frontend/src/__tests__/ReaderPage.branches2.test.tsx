@@ -599,7 +599,7 @@ describe("ReaderPage.branches2 — AnnotationToolbar onDeleted", () => {
       await userEvent.click(deleteBtn);
 
       await waitFor(() => {
-        expect(screen.queryByText("No annotations yet.")).toBeInTheDocument();
+        expect(screen.queryByText("No annotations in this chapter yet.")).toBeInTheDocument();
       });
     }
   });

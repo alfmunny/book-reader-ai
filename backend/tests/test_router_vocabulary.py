@@ -126,6 +126,33 @@ async def test_vocabulary_requires_auth(anon_client):
     assert resp.status_code == 401
 
 
+async def test_save_word_normalizes_case(client, test_user):
+    """'Apple' and 'apple' must deduplicate to one vocabulary entry.
+
+    SQLite UNIQUE(user_id, word) is case-sensitive, so without explicit
+    lowercasing they produce two separate rows."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await client.post("/api/vocabulary", json={
+        "word": "Apple", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Apple pie."
+    })
+    await client.post("/api/vocabulary", json={
+        "word": "apple", "book_id": BOOK_ID, "chapter_index": 1, "sentence_text": "An apple a day."
+    })
+    vocab = (await client.get("/api/vocabulary")).json()
+    apple_entries = [v for v in vocab if v["word"].lower() == "apple"]
+    assert len(apple_entries) == 1, "mixed-case saves must deduplicate to one entry"
+
+
+async def test_delete_word_case_insensitive(client, test_user):
+    """DELETE /vocabulary/Apple must remove 'apple' saved as lowercase."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "apple", BOOK_ID, 0, "An apple.")
+    resp = await client.delete("/api/vocabulary/Apple")
+    assert resp.status_code == 200
+    vocab = (await client.get("/api/vocabulary")).json()
+    assert not any(v["word"].lower() == "apple" for v in vocab)
+
+
 async def test_save_word_rejects_nonexistent_book(client, test_user):
     """POST /vocabulary for a book that doesn't exist must return 404.
 

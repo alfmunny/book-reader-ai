@@ -296,7 +296,7 @@ async def test_delete_annotation_wrong_user_returns_false():
 async def test_save_word_creates_entry():
     user = await get_or_create_user("g40", "vocab@example.com", "Vocab", "")
     result = await save_word(user["id"], "Schadenfreude", 1, 0, "He felt Schadenfreude.")
-    assert result["word"] == "Schadenfreude"
+    assert result["word"] == "schadenfreude"
     assert result["user_id"] == user["id"]
 
 
@@ -320,7 +320,7 @@ async def test_get_vocabulary_includes_occurrences():
     user = await get_or_create_user("g43", "vocab4@example.com", "V4", "")
     await save_word(user["id"], "Zeitgeist", 42, 3, "The Zeitgeist was clear.")
     vocab = await get_vocabulary(user["id"])
-    assert vocab[0]["word"] == "Zeitgeist"
+    assert vocab[0]["word"] == "zeitgeist"
     occ = vocab[0]["occurrences"][0]
     assert occ["book_id"] == 42
     assert occ["chapter_index"] == 3

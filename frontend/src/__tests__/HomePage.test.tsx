@@ -194,6 +194,18 @@ describe("HomePage — signed-in state", () => {
     expect(screen.getByRole("button", { name: "Your Notes" })).toBeInTheDocument();
   });
 
+  it("shows 'Your Word List' tab when authenticated", async () => {
+    await renderHome();
+    expect(screen.getByRole("button", { name: "Your Word List" })).toBeInTheDocument();
+  });
+
+  it("navigates to /vocabulary when 'Your Word List' is clicked", async () => {
+    const user = userEvent.setup();
+    await renderHome();
+    await user.click(screen.getByRole("button", { name: "Your Word List" }));
+    expect(mockPush).toHaveBeenCalledWith("/vocabulary");
+  });
+
   it("calls getMe and getReadingProgress on mount", async () => {
     await renderHome();
     await waitFor(() => expect(mockGetMe).toHaveBeenCalled());

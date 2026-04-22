@@ -1036,6 +1036,36 @@ async def test_move_translation_clears_queue_at_destination(admin_client, admin_
     assert count == 0
 
 
+async def test_move_translation_rejects_when_destination_is_running(admin_client, admin_db):
+    """Regression #328: move must return 409 if the destination chapter's queue
+    row is running — otherwise the worker overwrites the admin-moved translation."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 1, "en", ["From slot 1."])
+    # Seed a running row at the destination
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority, status)
+               VALUES (100, 0, 'en', 100, 'running')""",
+        )
+        await conn.commit()
+
+    res = await admin_client.post(
+        "/api/admin/translations/100/1/en/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 409
+    # Running row must still be in the queue (not deleted)
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT status FROM translation_queue "
+            "WHERE book_id=100 AND chapter_index=0 AND target_language='en'",
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row is not None
+    assert row[0] == "running"
+
+
 async def test_admin_retry_failed_without_filters_retries_all(admin_client, admin_db):
     await _seed_failed(100, 0, "zh")
     await _seed_failed(200, 0, "fr")

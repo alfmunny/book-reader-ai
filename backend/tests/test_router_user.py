@@ -86,6 +86,13 @@ async def test_reading_progress_upserts(client, test_user):
     assert entries[0]["chapter_index"] == 5
 
 
+async def test_reading_progress_rejects_nonexistent_book(client, test_user):
+    """PUT reading-progress for a book that doesn't exist must return 404,
+    not silently insert an orphaned row (FK enforcement is OFF in SQLite)."""
+    resp = await client.put("/api/user/reading-progress/88888", json={"chapter_index": 1})
+    assert resp.status_code == 404
+
+
 async def test_get_obsidian_settings_returns_defaults_initially(client, test_user):
     resp = await client.get("/api/user/obsidian-settings")
     assert resp.status_code == 200

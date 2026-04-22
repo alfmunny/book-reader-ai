@@ -12,12 +12,14 @@ Focuses on:
 
 import pytest
 from unittest.mock import AsyncMock, patch
-from services.db import save_translation, get_cached_translation, set_user_gemini_key
+from services.db import save_book, save_translation, get_cached_translation, set_user_gemini_key
 from services.auth import encrypt_api_key
 
 
 CHAPTER_TEXT = "Es war einmal ein König."
 TRANSLATED = ["Once upon a time there was a king."]
+_BOOK_META = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"],
+              "subjects": [], "download_count": 0, "cover": ""}
 
 
 async def _set_key(test_user):
@@ -71,6 +73,7 @@ async def test_translate_cache_hit_works_without_key(client):
 
 async def test_translate_cache_miss_without_key_uses_google_free(client):
     """Without a Gemini key, translation falls back to Google Translate (free)."""
+    await save_book(1342, _BOOK_META, "text")
     with patch("services.translate._google_translate", new_callable=AsyncMock, return_value=TRANSLATED):
         resp = await client.post("/api/ai/translate", json={
             "text": CHAPTER_TEXT,
@@ -86,6 +89,7 @@ async def test_translate_cache_miss_without_key_uses_google_free(client):
 
 async def test_translate_cache_miss_with_key_uses_gemini(client, test_user):
     await _set_key(test_user)
+    await save_book(1342, _BOOK_META, "text")
 
     with patch("services.translate._gemini_translate", new_callable=AsyncMock, return_value=TRANSLATED):
         resp = await client.post("/api/ai/translate", json={
@@ -281,6 +285,40 @@ async def test_tts_accepts_male_gender(client):
     ) as mock_synth:
         await client.post("/api/ai/tts", json={"text": "x", "language": "en", "rate": 1.0, "gender": "male"})
     assert mock_synth.call_args.kwargs["gender"] == "male"
+
+
+async def test_translate_rejects_nonexistent_book(client, test_user):
+    """POST /ai/translate with a non-existent book_id must return 404.
+
+    Without this check, the translation is saved as an orphaned row referencing
+    a non-existent book (SQLite FK enforcement is OFF)."""
+    resp = await client.post("/api/ai/translate", json={
+        "text": CHAPTER_TEXT,
+        "source_language": "de",
+        "target_language": "en",
+        "book_id": 999999,
+        "chapter_index": 0,
+    })
+    assert resp.status_code == 404
+
+
+async def test_translate_rejects_negative_chapter_index(client, test_user):
+    """POST /ai/translate with chapter_index < 0 must return 400.
+
+    A negative chapter_index would create a translation row with a nonsense
+    index that can never correspond to a real chapter."""
+    from services.db import save_book
+    _META = {"title": "T", "authors": [], "languages": ["de"], "subjects": [],
+              "download_count": 0, "cover": ""}
+    await save_book(88, _META, "text")
+    resp = await client.post("/api/ai/translate", json={
+        "text": CHAPTER_TEXT,
+        "source_language": "de",
+        "target_language": "en",
+        "book_id": 88,
+        "chapter_index": -1,
+    })
+    assert resp.status_code == 400
 
 
 # ── /api/ai/tts/chunks endpoint ───────────────────────────────────────────────

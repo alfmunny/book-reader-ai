@@ -93,6 +93,19 @@ async def test_reading_progress_rejects_nonexistent_book(client, test_user):
     assert resp.status_code == 404
 
 
+async def test_reading_progress_rejects_negative_chapter_index(client, test_user):
+    """PUT reading-progress with chapter_index < 0 must return 400.
+
+    Negative indices are not valid chapter positions. Storing them would
+    silently corrupt the user's resume position."""
+    from services.db import save_book
+    _META = {"title": "T", "authors": [], "languages": ["en"], "subjects": [],
+              "download_count": 0, "cover": ""}
+    await save_book(BOOK_ID, _META, "text")
+    resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": -1})
+    assert resp.status_code == 400
+
+
 async def test_get_obsidian_settings_returns_defaults_initially(client, test_user):
     resp = await client.get("/api/user/obsidian-settings")
     assert resp.status_code == 200

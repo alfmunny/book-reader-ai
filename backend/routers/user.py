@@ -64,6 +64,8 @@ async def update_reading_progress(
 ):
     if not await get_cached_book(book_id):
         raise HTTPException(status_code=404, detail="Book not found")
+    if req.chapter_index < 0:
+        raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     await upsert_reading_progress(user["id"], book_id, req.chapter_index)
     return {"ok": True}
 

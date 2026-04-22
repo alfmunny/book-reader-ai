@@ -164,6 +164,8 @@ async def chapter_queue_status(
     on-demand translate to avoid duplicating work the background worker is
     already scheduled to do.
     """
+    if not await get_cached_book(book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
     from services.translation_queue import queue_status_for_chapter
     return await queue_status_for_chapter(book_id, chapter_index, target_language)
 

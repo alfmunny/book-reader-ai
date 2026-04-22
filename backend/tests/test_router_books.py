@@ -408,8 +408,20 @@ async def test_translation_status_with_translations(client):
 
 # ── Chapter queue-status endpoint ────────────────────────────────────────────
 
+async def test_chapter_queue_status_nonexistent_book_returns_404(client):
+    """GET queue-status for a book that isn't cached must return 404.
+
+    Without this check the endpoint returns 200/{queued:false} for any
+    book_id — indistinguishable from a real book with nothing queued."""
+    resp = await client.get(
+        "/api/books/99999/chapters/0/queue-status?target_language=zh"
+    )
+    assert resp.status_code == 404
+
+
 async def test_chapter_queue_status_no_row(client):
-    """Chapter not in queue → queued=False, status=null."""
+    """Chapter not in queue → queued=False, status=null (book must exist)."""
+    await save_book(1342, MOCK_META, "text")
     resp = await client.get(
         "/api/books/1342/chapters/0/queue-status?target_language=en"
     )

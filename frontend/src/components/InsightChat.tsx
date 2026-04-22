@@ -308,8 +308,12 @@ export default function InsightChat({
             setChatFontSize(next);
             saveSettings({ chatFontSize: next });
           }}
-          title="Toggle font size"
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700 text-xs font-bold"
+          title={`Toggle font size (${chatFontSize === "xs" ? "small" : "medium"})`}
+          className={`shrink-0 w-7 h-7 flex items-center justify-center rounded text-xs font-bold transition-colors ${
+            chatFontSize === "sm"
+              ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+              : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+          }`}
         >
           {chatFontSize === "xs" ? "A" : "a"}
         </button>

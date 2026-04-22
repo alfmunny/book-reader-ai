@@ -548,13 +548,13 @@ async def test_save_word_different_sentence_same_chapter_creates_second_occurren
     await client.post("/api/vocabulary", json={
         "word": "tempest",
         "book_id": BOOK_ID,
-        "chapter_index": 2,
+        "chapter_index": 0,
         "sentence_text": "The tempest raged.",
     })
     await client.post("/api/vocabulary", json={
         "word": "tempest",
         "book_id": BOOK_ID,
-        "chapter_index": 2,
+        "chapter_index": 0,
         "sentence_text": "A tempest approached.",
     })
 
@@ -566,7 +566,10 @@ async def test_save_word_different_sentence_same_chapter_creates_second_occurren
 
 async def test_save_word_same_sentence_different_chapter_creates_separate_occurrences(client, test_user):
     """Same word in different chapters creates separate occurrences."""
-    await save_book(BOOK_ID, _BOOK_META, "text")
+    from services.book_chapters import clear_cache as _clear
+    _two_ch = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(BOOK_ID, _BOOK_META, _two_ch)
+    _clear()
 
     await client.post("/api/vocabulary", json={
         "word": "horizon",
@@ -577,7 +580,7 @@ async def test_save_word_same_sentence_different_chapter_creates_separate_occurr
     await client.post("/api/vocabulary", json={
         "word": "horizon",
         "book_id": BOOK_ID,
-        "chapter_index": 5,
+        "chapter_index": 1,
         "sentence_text": "The horizon stretched far.",
     })
 
@@ -587,7 +590,7 @@ async def test_save_word_same_sentence_different_chapter_creates_separate_occurr
     assert len(entry["occurrences"]) == 2
     chapters = {occ["chapter_index"] for occ in entry["occurrences"]}
     assert 0 in chapters
-    assert 5 in chapters
+    assert 1 in chapters
 
 
 # ── GET /vocabulary/definition/{word} ────────────────────────────────────────

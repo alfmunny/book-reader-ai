@@ -20,7 +20,7 @@ async def test_create_annotation(client, test_user):
     await save_book(BOOK_ID, _BOOK_META, "text")
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
-        "chapter_index": 2,
+        "chapter_index": 0,
         "sentence_text": "It was the best of times.",
         "note_text": "Famous opener",
         "color": "yellow",
@@ -28,7 +28,7 @@ async def test_create_annotation(client, test_user):
     assert resp.status_code == 200
     data = resp.json()
     assert data["book_id"] == BOOK_ID
-    assert data["chapter_index"] == 2
+    assert data["chapter_index"] == 0
     assert data["sentence_text"] == "It was the best of times."
     assert data["note_text"] == "Famous opener"
     assert data["color"] == "yellow"
@@ -412,3 +412,17 @@ async def test_get_annotations_returns_404_for_missing_book(client, test_user, t
     """GET /annotations?book_id=N returns 404 when book doesn't exist (#397)."""
     resp = await client.get("/api/annotations?book_id=999998")
     assert resp.status_code == 404, resp.text
+
+
+async def test_create_annotation_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """POST /annotations rejects chapter_index beyond the book's chapter count (issue #450)."""
+    from services.book_chapters import clear_cache as _clear
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9882, {**_BOOK_META, "id": 9882}, text)
+    _clear()
+    resp = await client.post(
+        "/api/annotations",
+        json={"book_id": 9882, "chapter_index": 999, "sentence_text": "some sentence"},
+    )
+    assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
+    assert "out of range" in resp.json()["detail"].lower()

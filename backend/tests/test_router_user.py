@@ -63,8 +63,8 @@ async def test_reading_progress_empty_initially(client, test_user):
 
 
 async def test_reading_progress_save_and_retrieve(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "Chapter text")
-    resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 3})
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 0})
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
 
@@ -72,11 +72,14 @@ async def test_reading_progress_save_and_retrieve(client, test_user):
     entries = resp.json()["entries"]
     assert len(entries) == 1
     assert entries[0]["book_id"] == BOOK_ID
-    assert entries[0]["chapter_index"] == 3
+    assert entries[0]["chapter_index"] == 0
 
 
 async def test_reading_progress_upserts(client, test_user):
-    await save_book(BOOK_ID, _BOOK_META, "Chapter text")
+    from services.book_chapters import clear_cache as _clear
+    _multi = "\n\n".join(f"CHAPTER {i}\n\n" + "word " * 200 for i in range(1, 7))
+    await save_book(BOOK_ID, _BOOK_META, _multi)
+    _clear()
     await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 1})
     await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": 5})
 
@@ -250,3 +253,15 @@ async def test_update_reading_progress_blocked_for_non_owner(client, test_user, 
         f"Expected 403 for non-owner updating reading progress of private book, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+async def test_reading_progress_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """PUT /user/reading-progress/{book_id} rejects chapter_index beyond book's chapter count (issue #450)."""
+    from services.book_chapters import clear_cache as _clear
+    _META3 = {"title": "T3", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9884, {**_META3, "id": 9884}, text)
+    _clear()
+    resp = await client.put("/api/user/reading-progress/9884", json={"chapter_index": 999})
+    assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
+    assert "out of range" in resp.json()["detail"].lower()

@@ -26,7 +26,7 @@ async def test_save_word(client, test_user):
     resp = await client.post("/api/vocabulary", json={
         "word": "leviathan",
         "book_id": BOOK_ID,
-        "chapter_index": 3,
+        "chapter_index": 0,
         "sentence_text": "The great leviathan swam past.",
     })
     assert resp.status_code == 200
@@ -41,7 +41,7 @@ async def test_save_word_deduplicates_occurrence(client, test_user):
     payload = {
         "word": "whale",
         "book_id": BOOK_ID,
-        "chapter_index": 1,
+        "chapter_index": 0,
         "sentence_text": "Call me Ishmael.",
     }
     await client.post("/api/vocabulary", json=payload)
@@ -539,3 +539,17 @@ async def test_save_word_select_runs_before_commit(tmp_db, test_user, monkeypatc
         "SELECT must run before COMMIT in save_word to avoid returning data "
         "from a concurrent _update_lemma write (#351)"
     )
+
+
+async def test_save_vocabulary_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """POST /vocabulary rejects chapter_index beyond the book's chapter count (issue #450)."""
+    from services.book_chapters import clear_cache as _clear
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9885, {**_BOOK_META, "id": 9885}, text)
+    _clear()
+    resp = await client.post(
+        "/api/vocabulary",
+        json={"word": "Wort", "book_id": 9885, "chapter_index": 999, "sentence_text": "Ein Satz."},
+    )
+    assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
+    assert "out of range" in resp.json()["detail"].lower()

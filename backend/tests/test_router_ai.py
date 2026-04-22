@@ -133,8 +133,24 @@ async def test_translate_cache_get_returns_404_when_missing(client):
     assert resp.status_code == 404
 
 
-async def test_translate_cache_put_saves(client):
+async def test_translate_cache_put_rejects_nonexistent_book(client, test_user):
+    """PUT /translate/cache for a non-existent book must return 404.
+
+    Without this check a user can save an orphaned translation row that
+    references a book_id not in the books table (SQLite FK OFF)."""
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 77777, "chapter_index": 0, "target_language": "fr",
+        "paragraphs": ["Bonjour"],
+    })
+    assert resp.status_code == 404
+
+
+async def test_translate_cache_put_saves(client, test_user):
     """PUT /translate/cache saves paragraphs for later retrieval."""
+    from services.db import save_book
+    _BOOK_META = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"],
+                  "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(2, _BOOK_META, "text")
     resp = await client.put("/api/ai/translate/cache", json={
         "book_id": 2, "chapter_index": 1, "target_language": "fr",
         "paragraphs": ["Bonjour"],

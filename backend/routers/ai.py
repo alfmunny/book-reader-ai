@@ -7,6 +7,7 @@ from services.auth import get_current_user, decrypt_api_key
 from services.db import (
     get_cached_translation,
     save_translation,
+    get_cached_book,
 )
 from services import gemini
 from services.tts import synthesize, chunk_text
@@ -162,6 +163,8 @@ class SaveTranslationRequest(BaseModel):
 @router.put("/translate/cache")
 async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depends(get_current_user)):
     """Save a completed progressive translation to the backend cache."""
+    if not await get_cached_book(req.book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
     await save_translation(
         req.book_id, req.chapter_index, req.target_language, req.paragraphs,
         provider=req.provider, model=req.model,

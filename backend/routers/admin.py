@@ -649,10 +649,21 @@ async def stats(_admin: dict = Depends(_require_admin)):
     books = await list_cached_books()
 
     translation_count = 0
+    audio_chunks = 0
+    audio_mb: float = 0.0
     async with aiosqlite.connect(DB_PATH) as db:
         try:
             async with db.execute("SELECT COUNT(*) FROM translations") as cur:
                 translation_count = (await cur.fetchone())[0]
+        except Exception:
+            pass
+        try:
+            async with db.execute(
+                "SELECT COUNT(*), COALESCE(SUM(LENGTH(audio)), 0) FROM audio_cache"
+            ) as cur:
+                row = await cur.fetchone()
+                audio_chunks = row[0]
+                audio_mb = round(row[1] / 1_048_576, 2)
         except Exception:
             pass
 
@@ -662,6 +673,8 @@ async def stats(_admin: dict = Depends(_require_admin)):
         "users_pending": sum(1 for u in users if not u.get("approved")),
         "books_cached": len(books),
         "translations_cached": translation_count,
+        "audio_chunks_cached": audio_chunks,
+        "audio_cache_mb": audio_mb,
     }
 
 

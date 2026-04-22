@@ -326,17 +326,36 @@ async def seed_popular_status(_admin: dict = Depends(_require_admin)):
 
 @router.get("/audio")
 async def get_audio_cache(_admin: dict = Depends(_require_admin)):
-    return []
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT book_id, chapter_index, chunk_index, provider, voice, "
+            "content_type, LENGTH(audio) AS audio_bytes, created_at FROM audio_cache "
+            "ORDER BY book_id, chapter_index, chunk_index"
+        ) as cur:
+            rows = await cur.fetchall()
+    return [dict(r) for r in rows]
 
 
 @router.delete("/audio/{book_id}")
 async def delete_book_audio(book_id: int, _admin: dict = Depends(_require_admin)):
-    return {"ok": True, "deleted": 0}
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
+        deleted = db.total_changes
+        await db.commit()
+    return {"ok": True, "deleted": deleted}
 
 
 @router.delete("/audio/{book_id}/{chapter_index}")
 async def delete_chapter_audio(book_id: int, chapter_index: int, _admin: dict = Depends(_require_admin)):
-    return {"ok": True, "deleted": 0}
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM audio_cache WHERE book_id=? AND chapter_index=?",
+            (book_id, chapter_index),
+        )
+        deleted = db.total_changes
+        await db.commit()
+    return {"ok": True, "deleted": deleted}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

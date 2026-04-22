@@ -287,7 +287,11 @@ export default function ReaderPage() {
         setChapters(data.chapters);
         setMeta(data.meta);
         const savedChapter = getLastChapter(Number(bookId));
-        setChapterIndex(Math.min(savedChapter, data.chapters.length - 1));
+        // ?chapter=N from deep-links takes priority over last-read progress
+        const urlChapter = searchParams?.get("chapter");
+        const urlChapterIdx = urlChapter !== null ? parseInt(urlChapter, 10) : NaN;
+        const targetChapter = !isNaN(urlChapterIdx) ? urlChapterIdx : savedChapter;
+        setChapterIndex(Math.min(targetChapter, data.chapters.length - 1));
         recordRecentBook(data.meta, savedChapter);
       })
       .catch((e) => setError(e.message))

@@ -210,10 +210,14 @@ beforeAll(async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // Reset search params to default (no chapter param) so mockReturnValue from
+  // previous tests doesn't leak — clearAllMocks() clears calls but not implementations
+  mockUseSearchParams.mockImplementation(() => ({ get: () => null }));
 
   // Use a fresh unique bookId each test to sidestep the module-level chaptersCache
   bookIdCounter += 1;
   mockUseParams.mockReturnValue({ bookId: String(bookIdCounter) });
+  mockUseSearchParams.mockImplementation(() => ({ get: () => null }));
   mockGetLastChapter.mockReturnValue(0);
 
   mockUseSession.mockReturnValue({ data: SAMPLE_SESSION, status: "authenticated" });

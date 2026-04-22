@@ -352,6 +352,25 @@ async def delete_book_translations(book_id: int, _admin: dict = Depends(_require
     return {"ok": True, "deleted": cursor.rowcount}
 
 
+@router.delete("/translations/{book_id}/{target_language}")
+async def delete_language_translations(
+    book_id: int,
+    target_language: str,
+    _admin: dict = Depends(_require_admin),
+):
+    """Delete all cached translations for one language of a book."""
+    target_language = target_language.lower().split("-")[0]
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM translations WHERE book_id=? AND target_language=?",
+            (book_id, target_language),
+        )
+        await db.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="No translations found for this language")
+    return {"ok": True, "deleted": cursor.rowcount}
+
+
 @router.delete("/translations/{book_id}/{chapter_index}/{target_language}")
 async def delete_translation(
     book_id: int,

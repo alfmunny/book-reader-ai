@@ -464,7 +464,7 @@ export default function BooksPage() {
                                   if (!confirm(`Delete all ${count} cached ${lang} translations for "${b.title}"?`))
                                     return;
                                   act(() =>
-                                    adminFetch(`/admin/translations/${b.id}`, {
+                                    adminFetch(`/admin/translations/${b.id}/${lang}`, {
                                       method: "DELETE",
                                     }),
                                   );

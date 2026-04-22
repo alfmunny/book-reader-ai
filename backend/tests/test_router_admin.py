@@ -362,6 +362,35 @@ async def test_delete_book_translations_no_translations_returns_404(admin_client
     assert res.status_code == 404
 
 
+async def test_delete_language_translations(admin_client, admin_db):
+    """DELETE /translations/{book_id}/{lang} deletes only that language (issue #271)."""
+    await save_translation(100, 0, "zh", ["中文"])
+    await save_translation(100, 1, "zh", ["中文2"])
+    await save_translation(100, 0, "de", ["Deutsch"])
+    res = await admin_client.delete("/api/admin/translations/100/zh")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 2
+    # German translation must still exist
+    remaining = await admin_client.get("/api/admin/translations")
+    langs = {t["target_language"] for t in remaining.json() if t["book_id"] == 100}
+    assert "zh" not in langs
+    assert "de" in langs
+
+
+async def test_delete_language_translations_not_found(admin_client):
+    """DELETE /translations/{book_id}/{lang} with no rows returns 404 (issue #271)."""
+    res = await admin_client.delete("/api/admin/translations/99999/zh")
+    assert res.status_code == 404
+
+
+async def test_delete_language_translations_normalizes_language(admin_client, admin_db):
+    """DELETE /translations/{book_id}/{lang} normalises e.g. ZH-CN → zh (issue #271)."""
+    await save_translation(100, 0, "zh", ["中文"])
+    res = await admin_client.delete("/api/admin/translations/100/ZH-CN")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 1
+
+
 # ── Audio ────────────────────────────────────────────────────────────────────
 
 async def test_get_audio_empty(admin_client, admin_db):

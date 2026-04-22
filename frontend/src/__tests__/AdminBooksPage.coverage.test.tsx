@@ -497,7 +497,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
 // Line 373: "Delete all" translations per-lang button
 // ─────────────────────────────────────────────────────────────────────────────
 describe("AdminBooksPage — Delete all translations per-lang (line 373)", () => {
-  it("calls DELETE /admin/translations/:id when Delete all confirmed", async () => {
+  it("calls DELETE /admin/translations/:id/:lang when Delete all confirmed", async () => {
     jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
@@ -519,7 +519,7 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(
-        "/admin/translations/1",
+        "/admin/translations/1/zh",
         expect.objectContaining({ method: "DELETE" }),
       ),
     );

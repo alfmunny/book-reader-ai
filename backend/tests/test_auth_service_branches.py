@@ -187,3 +187,36 @@ async def test_get_optional_user_valid_approved_user_returns_user():
     assert result is not None
     assert result["id"] == 42
     assert result["email"] == "alice@example.com"
+
+
+# ── Missing "sub" claim ───────────────────────────────────────────────────────
+
+def _make_token_without_sub() -> str:
+    """Craft a validly-signed JWT that intentionally omits the 'sub' claim."""
+    from jose import jwt as jose_jwt
+    return jose_jwt.encode(
+        {"email": "nosub@example.com"},
+        auth_module.JWT_SECRET,
+        algorithm=auth_module.JWT_ALGORITHM,
+    )
+
+
+async def test_get_current_user_raises_401_for_token_missing_sub():
+    """Regression: a JWT signed with correct secret but missing 'sub' must return
+    401, not crash with KeyError → 500."""
+    token = _make_token_without_sub()
+    request = _make_request(token=token)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_user(request)
+
+    assert exc_info.value.status_code == 401
+
+
+async def test_get_optional_user_returns_none_for_token_missing_sub():
+    """get_optional_user must return None (not raise) for a token missing 'sub'."""
+    token = _make_token_without_sub()
+    request = _make_request(token=token)
+
+    result = await get_optional_user(request)
+    assert result is None

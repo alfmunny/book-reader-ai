@@ -4,9 +4,12 @@ Shared fixtures for router/integration tests.
 Provides:
   - `client`  — AsyncClient pointed at a fresh test app with a temp DB
   - `auth_headers` — Bearer token for a pre-created test user
+  - `insert_private_book` — factory that inserts an upload-sourced book owned by a given user
 """
 
+import json
 import pytest
+import aiosqlite
 from unittest.mock import AsyncMock, patch
 import services.db as db_module
 from services.db import init_db, get_or_create_user, get_user_by_id
@@ -84,3 +87,25 @@ async def anon_client(tmp_db):
 def auth_headers(test_user):
     token = create_jwt(test_user["id"], test_user["email"])
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def insert_private_book():
+    """Return a coroutine that inserts an upload-sourced private book owned by the given user.
+
+    Usage in tests::
+
+        await insert_private_book(book_id=8801, owner_user_id=owner["id"])
+    """
+    async def _impl(book_id: int, owner_user_id: int) -> None:
+        chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
+        async with aiosqlite.connect(db_module.DB_PATH) as db:
+            await db.execute(
+                """INSERT OR REPLACE INTO books
+                   (id, title, authors, languages, subjects, download_count,
+                    cover, text, images, source, owner_user_id)
+                   VALUES (?, 'Private', '[]', '["en"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+                (book_id, chapters, owner_user_id),
+            )
+            await db.commit()
+    return _impl

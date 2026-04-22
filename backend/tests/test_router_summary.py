@@ -159,30 +159,13 @@ async def test_summary_non_admin_delete_forbidden(client, test_user, tmp_db):
 
 # ── Upload book access control ─────────────────────────────────────────────
 
-import json as _json_sum
-import aiosqlite as _aio_sum
-import services.db as _db_sum
 
-
-async def _insert_private_book_sum(book_id: int, owner_user_id: int) -> None:
-    chapters = _json_sum.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
-    async with _aio_sum.connect(_db_sum.DB_PATH) as db:
-        await db.execute(
-            """INSERT OR REPLACE INTO books
-               (id, title, authors, languages, subjects, download_count,
-                cover, text, images, source, owner_user_id)
-               VALUES (?, 'Private', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
-            (book_id, chapters, owner_user_id),
-        )
-        await db.commit()
-
-
-async def test_ai_summary_blocked_for_non_owner_upload(client, test_user, tmp_db):
+async def test_ai_summary_blocked_for_non_owner_upload(client, test_user, tmp_db, insert_private_book):
     """Requesting an AI summary for someone else's uploaded book returns 403."""
     from services.db import get_or_create_user
     await set_user_role(test_user["id"], "user")
     owner = await get_or_create_user("sum-owner-gid", "sum-owner@ex.com", "SumOwner", "")
-    await _insert_private_book_sum(8801, owner["id"])
+    await insert_private_book(8801, owner["id"])
     resp = await client.post("/api/ai/summary", json={
         "book_id": 8801,
         "chapter_index": 0,

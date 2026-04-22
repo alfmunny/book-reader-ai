@@ -130,6 +130,16 @@ function parseIntoSegments(
             break;
           }
         }
+        // Normalized whitespace fallback — handles mismatches from line-joining
+        // (e.g. \n → space in chunkText vs lines.join(" ") in segment).
+        const normSeg = seg.replace(/\s+/g, " ").trim();
+        const normChunkSlice = chunkText.slice(cursor).replace(/\s+/g, " ");
+        const normPos = normChunkSlice.indexOf(normSeg);
+        if (normPos >= 0) {
+          segmentChunkIdx[s] = chunkIdx;
+          cursor = Math.min(cursor + normPos + normSeg.length, chunkText.length);
+          break;
+        }
         // Not in this chunk — move to the next
         chunkIdx++;
         cursor = 0;
@@ -620,7 +630,7 @@ export default function SentenceReader({
           }
           return loaded
             ? "hover:bg-amber-50"
-            : "text-stone-400 cursor-default";
+            : "text-stone-400";
         };
 
         // Long press (500ms) → open word action drawer

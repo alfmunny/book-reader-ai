@@ -23,6 +23,8 @@ import {
   deleteGeminiKey,
   retryChapterTranslation,
   enqueueBookTranslation,
+  getObsidianSettings,
+  saveObsidianSettings,
 } from "@/lib/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -311,4 +313,41 @@ test("enqueueBookTranslation POSTs to /books/{id}/translations/enqueue-all", asy
   expect(url).toContain("/books/1342/translations/enqueue-all");
   expect(opts.method).toBe("POST");
   expect(JSON.parse(opts.body).target_language).toBe("zh");
+});
+
+// ── Obsidian settings ─────────────────────────────────────────────────────────
+
+test("getObsidianSettings calls GET /user/obsidian-settings", async () => {
+  mockFetch({ obsidian_repo: "user/vault", obsidian_path: "Notes/Books" });
+  const result = await getObsidianSettings();
+  expect(result.obsidian_repo).toBe("user/vault");
+  expect(result.obsidian_path).toBe("Notes/Books");
+  expect((global.fetch as jest.Mock).mock.calls[0][0]).toContain("/user/obsidian-settings");
+});
+
+test("saveObsidianSettings sends PATCH to /user/obsidian-settings with token", async () => {
+  mockFetch({ ok: true });
+  await saveObsidianSettings({
+    github_token: "ghp_test",
+    obsidian_repo: "user/vault",
+    obsidian_path: "Notes/Books",
+  });
+  const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(url).toContain("/user/obsidian-settings");
+  expect(opts.method).toBe("PATCH");
+  const body = JSON.parse(opts.body);
+  expect(body.github_token).toBe("ghp_test");
+  expect(body.obsidian_repo).toBe("user/vault");
+  expect(body.obsidian_path).toBe("Notes/Books");
+});
+
+test("saveObsidianSettings omits github_token when not provided", async () => {
+  mockFetch({ ok: true });
+  await saveObsidianSettings({
+    obsidian_repo: "user/vault",
+    obsidian_path: "Notes/Books",
+  });
+  const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+  expect(body.github_token).toBeUndefined();
+  expect(body.obsidian_repo).toBe("user/vault");
 });

@@ -48,6 +48,17 @@ describe("isRecommended", () => {
   });
 });
 
+describe("labelForModel — fallback branches", () => {
+  it("returns model string when model is not in the list (line 95 model branch)", () => {
+    expect(labelForModel("custom-unknown-model")).toBe("custom-unknown-model");
+  });
+
+  it("returns the label for the empty-string (default) model entry", () => {
+    // The "" value is now a named entry in GEMINI_MODEL_OPTIONS with a real label
+    expect(labelForModel("")).toContain("Default");
+  });
+});
+
 describe("presetMatchingChain", () => {
   it("returns null for a chain that matches no preset", () => {
     expect(presetMatchingChain(["gemini-2.5-pro"])).toBeNull();

@@ -81,6 +81,29 @@ test("shows book title and chapter for each occurrence", async () => {
   expect(screen.getByText("Ch.3")).toBeInTheDocument();
 });
 
+test("occurrence with null book_title (deleted book) shows fallback text instead of blank link", async () => {
+  mockGetVocabulary.mockResolvedValue([
+    {
+      id: 1,
+      word: "ephemeral",
+      occurrences: [
+        {
+          book_id: 999,
+          book_title: null,
+          chapter_index: 0,
+          sentence_text: "The ephemeral moment passed.",
+        },
+      ],
+    },
+  ]);
+  render(<VocabularyPage />);
+  await screen.findByText("ephemeral");
+  expect(screen.getByText("(deleted book)")).toBeInTheDocument();
+  // Should NOT render a clickable link for a deleted book
+  const link = screen.queryByRole("link", { name: "(deleted book)" });
+  expect(link).not.toBeInTheDocument();
+});
+
 test("groups words alphabetically under correct letter heading", async () => {
   render(<VocabularyPage />);
   await flushPromises();

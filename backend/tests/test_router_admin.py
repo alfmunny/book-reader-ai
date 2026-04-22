@@ -191,6 +191,26 @@ async def test_delete_book_removes_queue_entries(admin_client, admin_db):
     assert not status["queued"]
 
 
+async def test_delete_book_removes_word_occurrences(admin_client, admin_db):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "INSERT INTO vocabulary (user_id, word) VALUES (1, 'ephemeral')"
+        )
+        await db.execute(
+            "INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)"
+            " VALUES (1, 100, 0, 'The ephemeral moment.')"
+        )
+        await db.commit()
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM word_occurrences WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
 # ── Translations ─────────────────────────────────────────────────────────────
 
 async def test_get_translations(admin_client, admin_db):

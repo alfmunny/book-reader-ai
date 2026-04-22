@@ -419,3 +419,41 @@ async def test_delete_insight_wrong_user_returns_false():
     ins = await save_insight(u1["id"], 1, 0, "Q", "A")
     result = await delete_insight(ins["id"], u2["id"])
     assert result is False
+
+
+# ── delete_user cleanup ────────────────────────────────────────────────────────
+
+import aiosqlite as _aio_del
+import services.db as _db_del
+
+
+async def test_delete_user_removes_book_uploads_rows():
+    """Regression #403: delete_user must DELETE from book_uploads.
+
+    SQLite FK enforcement is OFF so ON DELETE CASCADE never fires; without an
+    explicit DELETE the rows persist after the owning user is removed."""
+    user = await get_or_create_user("g403", "del403@example.com", "Del403", "")
+    async with _aio_del.connect(_db_del.DB_PATH) as db:
+        # Insert a book (upload source) owned by this user
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+               download_count, cover, text, images, source, owner_user_id)
+               VALUES (403001, 'Upload', '[]', '[]', '[]', 0, '', '{}', '[]',
+               'upload', ?)""",
+            (user["id"],),
+        )
+        await db.execute(
+            """INSERT INTO book_uploads (book_id, user_id, filename, file_size, format)
+               VALUES (403001, ?, 'test.epub', 1024, 'epub')""",
+            (user["id"],),
+        )
+        await db.commit()
+
+    await delete_user(user["id"])
+
+    async with _aio_del.connect(_db_del.DB_PATH) as db:
+        cur = await db.execute(
+            "SELECT COUNT(*) FROM book_uploads WHERE user_id = ?", (user["id"],)
+        )
+        count = (await cur.fetchone())[0]
+    assert count == 0, "book_uploads rows must be deleted when the owning user is deleted (#403)"

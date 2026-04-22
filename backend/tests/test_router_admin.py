@@ -254,6 +254,42 @@ async def test_delete_user_removes_book_uploads(admin_client, admin_db, admin_us
     assert count == 0, "orphaned book_uploads rows left after delete_user"
 
 
+async def test_delete_user_removes_owned_uploaded_books(admin_client, admin_db, admin_user):
+    """Regression #416: delete_user must also delete books owned by the user.
+
+    When a user uploads a book, a row with owner_user_id = user.id is created in
+    books. On delete, SQLite FK enforcement is OFF so ON DELETE CASCADE never fires.
+    Without an explicit DELETE, those book rows (and all child data) persist forever
+    — permanently inaccessible (check_book_access returns 403) and taking up storage.
+    """
+    import json as _json
+    user2 = await get_or_create_user(
+        google_id="del-owned-books-user", email="ownedbooks@test.com", name="OwnedBooks", picture=""
+    )
+    chapters = _json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "text"}]})
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+               download_count, cover, text, images, source, owner_user_id)
+               VALUES (9902, 'Owned Upload', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (chapters, user2["id"]),
+        )
+        await db.commit()
+
+    res = await admin_client.delete(f"/api/admin/users/{user2['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM books WHERE owner_user_id = ?", (user2["id"],)
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 0, (
+        "orphaned books rows left after delete_user (#416); "
+        "uploaded books must be deleted when their owner is deleted"
+    )
+
+
 # ── Books ────────────────────────────────────────────────────────────────────
 
 async def test_get_books(admin_client, admin_db):

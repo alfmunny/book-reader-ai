@@ -286,6 +286,27 @@ async def delete_user(user_id: int) -> None:
         await db.execute("DELETE FROM user_reading_progress WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM reading_history WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM book_uploads WHERE user_id = ?", (user_id,))
+        # Delete all data belonging to books this user uploaded — FK cascade is OFF.
+        owned_books = "(SELECT id FROM books WHERE owner_user_id = ?)"
+        await db.execute(f"DELETE FROM translations WHERE book_id IN {owned_books}", (user_id,))
+        await db.execute(f"DELETE FROM audio_cache WHERE book_id IN {owned_books}", (user_id,))
+        await db.execute(f"DELETE FROM chapter_summaries WHERE book_id IN {owned_books}", (user_id,))
+        await db.execute(
+            f"DELETE FROM translation_queue WHERE book_id IN {owned_books} AND status != 'running'",
+            (user_id,),
+        )
+        await db.execute(
+            f"DELETE FROM word_occurrences WHERE book_id IN {owned_books}", (user_id,)
+        )
+        await db.execute(f"DELETE FROM annotations WHERE book_id IN {owned_books}", (user_id,))
+        await db.execute(f"DELETE FROM book_insights WHERE book_id IN {owned_books}", (user_id,))
+        await db.execute(
+            f"DELETE FROM reading_history WHERE book_id IN {owned_books}", (user_id,)
+        )
+        await db.execute(
+            f"DELETE FROM user_reading_progress WHERE book_id IN {owned_books}", (user_id,)
+        )
+        await db.execute("DELETE FROM books WHERE owner_user_id = ?", (user_id,))
         await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
         await db.commit()
 

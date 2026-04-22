@@ -560,7 +560,7 @@ async def upsert_progress_and_log_event(
 
 async def get_user_stats(user_id: int) -> dict:
     """Return aggregated reading statistics for a user."""
-    from datetime import date, timedelta
+    from datetime import date, timedelta, datetime, timezone
 
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -604,12 +604,13 @@ async def get_user_stats(user_id: int) -> dict:
 
     # ── Streak (consecutive days ending today or yesterday) ───────────────────
     dates_set = {a["date"] for a in activity}
-    today = date.today().isoformat()
-    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    _utc_today = datetime.now(timezone.utc).date()
+    today = _utc_today.isoformat()
+    yesterday = (_utc_today - timedelta(days=1)).isoformat()
 
     streak = 0
     if today in dates_set or yesterday in dates_set:
-        check = date.today() if today in dates_set else date.today() - timedelta(days=1)
+        check = _utc_today if today in dates_set else _utc_today - timedelta(days=1)
         while check.isoformat() in dates_set:
             streak += 1
             check -= timedelta(days=1)

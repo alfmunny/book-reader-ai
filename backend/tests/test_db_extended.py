@@ -327,6 +327,24 @@ async def test_delete_word():
     assert await get_vocabulary(user["id"]) == []
 
 
+async def test_delete_word_cascades_to_word_occurrences():
+    import aiosqlite
+    user = await get_or_create_user("g44b", "vocab5b@example.com", "V5b", "")
+    await save_word(user["id"], "Weltanschauung", 99, 0, "A Weltanschauung emerged.")
+    vocab = await get_vocabulary(user["id"])
+    vocab_id = vocab[0]["id"]
+    assert len(vocab[0]["occurrences"]) == 1
+
+    await delete_word(user["id"], "Weltanschauung")
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM word_occurrences WHERE vocabulary_id = ?", (vocab_id,)
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
 async def test_delete_word_nonexistent_returns_false():
     user = await get_or_create_user("g45", "vocab6@example.com", "V6", "")
     result = await delete_word(user["id"], "nonexistent")

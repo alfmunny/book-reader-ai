@@ -340,7 +340,9 @@ async def delete_book_translations(book_id: int, _admin: dict = Depends(_require
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
         await db.commit()
-        return {"ok": True, "deleted": cursor.rowcount}
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="No translations found for this book")
+    return {"ok": True, "deleted": cursor.rowcount}
 
 
 @router.delete("/translations/{book_id}/{chapter_index}/{target_language}")
@@ -953,6 +955,8 @@ async def queue_delete_item(
     item_id: int, _admin: dict = Depends(_require_admin),
 ):
     deleted = await delete_queue_item(item_id)
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail="Queue item not found")
     return {"ok": True, "deleted": deleted}
 
 
@@ -997,6 +1001,8 @@ async def queue_retry_item(
         )
         await db.commit()
     queue_worker().wake()
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Queue item not found")
     return {"ok": True, "updated": cursor.rowcount}
 
 

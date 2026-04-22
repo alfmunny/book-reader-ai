@@ -342,6 +342,15 @@ async def test_delete_specific_translation_not_found_returns_404(admin_client):
     assert res.status_code == 404
 
 
+async def test_delete_book_translations_no_translations_returns_404(admin_client):
+    """DELETE /admin/translations/{book_id} with no translations must return 404.
+
+    The sibling specific-translation endpoint already checks rowcount; bulk
+    delete must be consistent."""
+    res = await admin_client.delete("/api/admin/translations/99999")
+    assert res.status_code == 404
+
+
 # ── Audio ────────────────────────────────────────────────────────────────────
 
 async def test_get_audio_empty(admin_client, admin_db):
@@ -584,6 +593,18 @@ async def test_seed_popular_refuses_concurrent_start(admin_client, admin_db, mon
 
         # Clean up — stop the job
         await admin_client.post("/api/admin/books/seed-popular/stop")
+
+
+async def test_delete_queue_item_not_found_returns_404(admin_client):
+    """DELETE /admin/queue/items/{id} for a non-existent item must return 404."""
+    res = await admin_client.delete("/api/admin/queue/items/99999")
+    assert res.status_code == 404
+
+
+async def test_retry_queue_item_not_found_returns_404(admin_client):
+    """POST /admin/queue/items/{id}/retry for a non-existent item must return 404."""
+    res = await admin_client.post("/api/admin/queue/items/99999/retry")
+    assert res.status_code == 404
 
 
 async def test_enqueue_book_nonexistent_returns_404(admin_client):

@@ -124,7 +124,7 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 
 - [x] **UX-001**: Reader header button overflow on mid-size screens *(fixed Wave 7.2: icon-only on md, icon+text on lg)*
 - [x] **UX-002**: Chapter select dropdown — `appearance-none` + ChevronDown overlay + SVG prev/next *(fixed Wave 8.2)*
-- [ ] **UX-003**: Long-press annotation on mobile conflicts with native text selection — needs review
+- [x] **UX-003**: Long-press annotation on mobile conflicts with native text selection — fixed: `e.preventDefault()` on `pointerType === "touch"` in `handlePointerDown` and `handleSegLongPress`
 - [x] **UX-004**: Mobile tab bar with 5 tabs clips on 375px screens *(fixed Wave 7.4: `overflow-x-auto scrollbar-none`)*
 - [x] **UX-005**: Translation sidebar panels open/close without animation *(fixed Wave 7.3: `transition-[width] duration-200`)*
 - [x] **UX-006**: No keyboard shortcut shown anywhere *(fixed Wave 8.1: `?` button opens shortcuts panel in reader)*

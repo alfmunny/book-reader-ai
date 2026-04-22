@@ -35,6 +35,7 @@ jest.mock("@/lib/api", () => ({
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
   getReadingProgress: (...args: unknown[]) => mockGetReadingProgress(...args),
+  getUserStats: () => Promise.resolve({ streak: 0, longest_streak: 0, totals: { books_started: 0, vocabulary_words: 0, annotations: 0, insights: 0 }, activity: [] }),
 }));
 
 const mockGetRecentBooks = jest.fn();
@@ -148,9 +149,8 @@ describe("HomePage — timeAgo d ago branch (line 35)", () => {
     await act(flushPromises);
     await act(flushPromises);
 
-    // Badge should show "2d ago" (or similar)
-    const badge = screen.getByText(/\dd ago/i);
-    expect(badge).toBeInTheDocument();
+    // Badge should show "2d ago" (or similar) — appears in both Continue Reading card and book grid
+    expect(screen.getAllByText(/\dd ago/i).length).toBeGreaterThan(0);
   });
 
   it("shows 'just now' for books read less than 1 minute ago", async () => {
@@ -176,7 +176,7 @@ describe("HomePage — timeAgo d ago branch (line 35)", () => {
     await act(flushPromises);
     await act(flushPromises);
 
-    expect(screen.getByText(/just now/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/just now/i).length).toBeGreaterThan(0);
   });
 
   it("shows 'h ago' for books read 2 hours ago", async () => {
@@ -202,7 +202,7 @@ describe("HomePage — timeAgo d ago branch (line 35)", () => {
     await act(flushPromises);
     await act(flushPromises);
 
-    expect(screen.getByText(/2h ago/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/2h ago/i).length).toBeGreaterThan(0);
   });
 });
 

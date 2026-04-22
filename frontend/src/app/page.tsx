@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { searchBooks, getPopularBooks, getMe, getReadingProgress, BookMeta } from "@/lib/api";
+import { searchBooks, getPopularBooks, getMe, getReadingProgress, getUserStats, UserStats, BookMeta } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
-import { BookCoverPlaceholderIcon } from "@/components/Icons";
+import ReadingStats from "@/components/ReadingStats";
+import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -46,8 +47,10 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedBook, setSelectedBook] = useState<BookMeta | null>(null);
 
-  // ── Library state ──
+  // ── Library / Home state ──
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [statsExpanded, setStatsExpanded] = useState(false);
 
   useEffect(() => {
     const books = getRecentBooks();
@@ -66,6 +69,7 @@ export default function Home() {
     getMe().then((me) => {
       setIsAdmin(me.role === "admin");
     }).catch(() => {});
+    getUserStats().then(setUserStats).catch(() => {});
     getReadingProgress().then((entries) => {
       const local = getRecentBooks();
       let changed = false;
@@ -198,7 +202,7 @@ export default function Home() {
       <nav className="border-b border-amber-200 bg-white/40 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {([
-            { key: "library" as Tab, label: "Your Library", count: recentBooks.length || undefined },
+            { key: "library" as Tab, label: "Home", count: recentBooks.length || undefined },
             { key: "discover" as Tab, label: "Discover" },
           ]).map(({ key, label, count }) => (
             <button
@@ -251,25 +255,132 @@ export default function Home() {
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
-        {/* ════════════ Library Tab ════════════ */}
+        {/* ════════════ Home Tab ════════════ */}
         {tab === "library" && (
-          <>
+          <div className="space-y-8">
+
+            {/* Greeting */}
+            {status === "authenticated" && session?.backendUser?.name && (
+              <p className="font-serif text-xl text-ink">
+                Welcome back, {session.backendUser.name.split(" ")[0]}
+              </p>
+            )}
+
+            {/* Continue Reading */}
+            {recentBooks.length > 0 && (
+              <section>
+                <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
+                  Continue Reading
+                </p>
+                <button
+                  aria-label="Continue reading"
+                  onClick={() => router.push(`/reader/${recentBooks[0].id}`)}
+                  className="w-full text-left rounded-xl border border-amber-200 bg-white p-3 flex items-center gap-3 hover:-translate-y-0.5 transition-all duration-200"
+                  style={{ boxShadow: "var(--shadow-card)" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+                >
+                  {recentBooks[0].cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={recentBooks[0].cover} alt="" className="w-12 h-16 object-cover rounded-lg shrink-0" />
+                  ) : (
+                    <div className="w-12 h-16 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-100 flex items-center justify-center shrink-0">
+                      <BookCoverPlaceholderIcon className="w-6 h-8 text-amber-500" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-serif font-semibold text-sm text-ink line-clamp-1">{recentBooks[0].title}</p>
+                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{recentBooks[0].authors?.join(", ")}</p>
+                    <p className="text-xs text-stone-400 mt-1">
+                      Chapter {recentBooks[0].lastChapter + 1} · {timeAgo(recentBooks[0].lastRead)}
+                    </p>
+                  </div>
+                  <ArrowRightIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                </button>
+              </section>
+            )}
+
+            {/* Stats strip */}
+            {status === "authenticated" && userStats && (
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 flex-1">
+                    Your Progress
+                  </p>
+                  <button
+                    onClick={() => setStatsExpanded((v) => !v)}
+                    className="text-xs text-amber-600 hover:text-amber-800 transition-colors"
+                  >
+                    {statsExpanded ? "Hide activity" : "Show activity"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {userStats.streak > 0 && (
+                    <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                      <FireIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                      <div>
+                        <p className="text-lg font-bold text-amber-900 leading-none">{userStats.streak}</p>
+                        <p className="text-[10px] text-stone-400 mt-0.5">day streak</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                    <BookOpenIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.books_started}</p>
+                      <p className="text-[10px] text-stone-400 mt-0.5">books started</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                    <VocabIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.vocabulary_words}</p>
+                      <p className="text-[10px] text-stone-400 mt-0.5">words saved</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                    <NoteIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.annotations}</p>
+                      <p className="text-[10px] text-stone-400 mt-0.5">annotations</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Collapsible full activity view */}
+                {statsExpanded && (
+                  <div className="mt-4">
+                    <ReadingStats active heatmapOnly />
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Book grid */}
             {recentBooks.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {recentBooks.map((book) => (
-                  <BookCard
-                    key={book.id}
-                    book={book}
-                    onClick={() => handleBookClick(book)}
-                    badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
-                    onRemove={() => {
-                      if (!confirm(`Remove "${book.title}" from your library?`)) return;
-                      removeRecentBook(book.id);
-                      setRecentBooks(getRecentBooks());
-                    }}
-                  />
-                ))}
-              </div>
+              <section>
+                {recentBooks.length > 1 && (
+                  <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+                    Your Library
+                  </p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {recentBooks.map((book) => (
+                    <BookCard
+                      key={book.id}
+                      book={book}
+                      onClick={() => handleBookClick(book)}
+                      badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
+                      onRemove={() => {
+                        if (!confirm(`Remove "${book.title}" from your library?`)) return;
+                        removeRecentBook(book.id);
+                        setRecentBooks(getRecentBooks());
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
             ) : (
               <div className="text-center py-20">
                 <div className="inline-flex items-end justify-center gap-1.5 mb-6 opacity-30">
@@ -293,7 +404,7 @@ export default function Home() {
                 </button>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ════════════ Discover Tab ════════════ */}

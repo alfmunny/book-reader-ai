@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings } from "@/lib/api";
 import { ArrowLeftIcon } from "@/components/Icons";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
-import ReadingStats from "@/components/ReadingStats";
 
 const LANGUAGES = [
   { code: "en", label: "English" },
@@ -494,13 +493,6 @@ export default function ProfilePage() {
           </button>
         </section>
 
-        {/* ── Reading Statistics ───────────────────────────────────────────── */}
-        {session?.backendToken && (
-          <section className="bg-white rounded-2xl border border-amber-100 p-6">
-            <h2 className="font-serif text-lg font-semibold text-ink mb-5">Reading Statistics</h2>
-            <ReadingStats active={!!session?.backendToken} />
-          </section>
-        )}
       </div>
     </div>
   );

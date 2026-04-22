@@ -24,12 +24,14 @@ const mockGetPopularBooks = jest.fn();
 const mockGetMe = jest.fn();
 const mockSearchBooks = jest.fn();
 const mockGetReadingProgress = jest.fn();
+const mockGetUserStats = jest.fn();
 
 jest.mock("@/lib/api", () => ({
   getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
   getReadingProgress: (...args: unknown[]) => mockGetReadingProgress(...args),
+  getUserStats: (...args: unknown[]) => mockGetUserStats(...args),
 }));
 
 // ─── @/lib/recentBooks ───────────────────────────────────────────────────────
@@ -111,6 +113,7 @@ beforeEach(() => {
   mockGetPopularBooks.mockResolvedValue(makePopularResponse());
   mockSearchBooks.mockResolvedValue({ books: [] });
   mockGetReadingProgress.mockResolvedValue([]);
+  mockGetUserStats.mockResolvedValue({ streak: 0, longest_streak: 0, totals: { books_started: 0, vocabulary_words: 0, annotations: 0, insights: 0 }, activity: [] });
   mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
 });
 
@@ -153,7 +156,7 @@ describe("HomePage — initial render", () => {
 
   it("renders Library and Discover tab buttons", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: /Your Library/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Home/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Discover/i })).toBeInTheDocument();
   });
 });
@@ -256,14 +259,15 @@ describe("HomePage — Library tab with books", () => {
 
   it("shows library books when recent books exist", async () => {
     await renderHome();
-    expect(screen.getByText("Moby Dick")).toBeInTheDocument();
+    // Moby Dick appears in Continue Reading card + grid; Hamlet appears in grid only
+    expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(0);
     expect(screen.getByText("Hamlet")).toBeInTheDocument();
   });
 
   it("shows Library tab active when recent books exist", async () => {
     await renderHome();
     // Library tab is active by default when books exist
-    expect(screen.getByText("Moby Dick")).toBeInTheDocument();
+    expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(0);
   });
 
   it("shows book count badge in Library tab", async () => {
@@ -274,14 +278,15 @@ describe("HomePage — Library tab with books", () => {
   it("clicking a book card opens BookDetailModal", async () => {
     const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByText("Moby Dick"));
+    // Use Hamlet (grid-only, single occurrence) to avoid the Continue Reading card
+    await user.click(screen.getByText("Hamlet"));
     expect(await screen.findByTestId("book-detail-modal")).toBeInTheDocument();
   });
 
   it("closing BookDetailModal removes it", async () => {
     const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByText("Moby Dick"));
+    await user.click(screen.getByText("Hamlet"));
     await user.click(await screen.findByRole("button", { name: "Close" }));
     expect(screen.queryByTestId("book-detail-modal")).not.toBeInTheDocument();
   });
@@ -289,9 +294,9 @@ describe("HomePage — Library tab with books", () => {
   it("clicking Read in modal navigates to reader (book in library)", async () => {
     const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByText("Moby Dick"));
+    await user.click(screen.getByText("Hamlet"));
     await user.click(await screen.findByRole("button", { name: "Read" }));
-    expect(mockPush).toHaveBeenCalledWith("/reader/1");
+    expect(mockPush).toHaveBeenCalledWith("/reader/2");
   });
 
   it("shows 'Your library is empty' message when no recent books", async () => {
@@ -304,7 +309,7 @@ describe("HomePage — Library tab with books", () => {
     await act(flushPromises);
     // Tab should switch to discover automatically, but manual click to Library shows empty
     // Switch to library tab
-    await userEvent.click(screen.getByRole("button", { name: /Your Library/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Home/i }));
     expect(screen.getByText("Your library is empty")).toBeInTheDocument();
   });
 
@@ -317,7 +322,7 @@ describe("HomePage — Library tab with books", () => {
     const user = userEvent.setup();
     render(<Home />);
     await act(flushPromises);
-    await user.click(screen.getByRole("button", { name: /Your Library/i }));
+    await user.click(screen.getByRole("button", { name: /Home/i }));
     await user.click(screen.getByRole("button", { name: "Discover Books" }));
     expect(screen.getByRole("button", { name: /Search/i })).toBeInTheDocument();
   });
@@ -499,11 +504,11 @@ describe("HomePage — tab switching", () => {
   it("clicking Library tab shows library content", async () => {
     const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByRole("button", { name: /Your Library/i }));
+    await user.click(screen.getByRole("button", { name: /Home/i }));
     // Library tab is now active; heading or empty state visible
     expect(
       screen.getByText("Your library is empty") ||
-      screen.queryByText(/Your Library/i)
+      screen.queryByText(/Home/i)
     ).toBeTruthy();
   });
 });
@@ -513,5 +518,69 @@ describe("HomePage — unauthenticated always sees discover", () => {
     await renderHome();
     // Search section should be visible (discover tab is active)
     expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
+  });
+});
+
+describe("HomePage — Home dashboard (UX-008)", () => {
+  const RECENT_BOOKS = [
+    { id: 1, title: "Moby Dick", authors: ["Melville"], languages: ["en"], lastChapter: 2, lastRead: Date.now() - 60000 },
+    { id: 2, title: "Hamlet", authors: ["Shakespeare"], languages: ["en"], lastChapter: 0, lastRead: Date.now() - 3600000 },
+  ];
+
+  beforeEach(() => {
+    mockGetRecentBooks.mockReturnValue(RECENT_BOOKS);
+    mockUseSession.mockReturnValue({
+      data: { backendToken: "tok", backendUser: { id: 1, name: "Alice Smith", picture: "" } },
+      status: "authenticated",
+    });
+    mockGetReadingProgress.mockResolvedValue([]);
+  });
+
+  it("shows personalized greeting with first name", async () => {
+    await renderHome();
+    expect(screen.getByText(/Welcome back, Alice/i)).toBeInTheDocument();
+  });
+
+  it("shows Continue Reading card for most recent book", async () => {
+    await renderHome();
+    expect(screen.getByText("Continue Reading")).toBeInTheDocument();
+    // Moby Dick is recentBooks[0] — appears in both the Continue Reading card and the grid
+    expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(1);
+  });
+
+  it("clicking Continue Reading card navigates directly to reader", async () => {
+    const user = userEvent.setup();
+    await renderHome();
+    // The Continue Reading button is the first interactive element with the book title
+    const continueBtn = screen.getByRole("button", { name: /Continue Reading/i });
+    await user.click(continueBtn);
+    expect(mockPush).toHaveBeenCalledWith("/reader/1");
+  });
+
+  it("shows stats strip with user progress when stats loaded", async () => {
+    mockGetUserStats.mockResolvedValue({
+      streak: 5,
+      longest_streak: 10,
+      totals: { books_started: 3, vocabulary_words: 42, annotations: 7, insights: 2 },
+      activity: [],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getByText("Your Progress")).toBeInTheDocument());
+    expect(screen.getByText("5")).toBeInTheDocument(); // streak count
+    expect(screen.getByText("3")).toBeInTheDocument(); // books started
+  });
+
+  it("'Show activity' toggle reveals and hides the heatmap", async () => {
+    await renderHome();
+    await waitFor(() => expect(screen.getByText("Your Progress")).toBeInTheDocument());
+    const toggle = screen.getByRole("button", { name: /Show activity/i });
+    await userEvent.click(toggle);
+    expect(screen.getByRole("button", { name: /Hide activity/i })).toBeInTheDocument();
+  });
+
+  it("tab is labelled Home not Your Library", async () => {
+    await renderHome();
+    expect(screen.getByRole("button", { name: /^Home/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Your Library/i })).not.toBeInTheDocument();
   });
 });

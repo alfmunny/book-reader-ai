@@ -108,7 +108,7 @@ function parseIntoSegments(
       const seg = allTexts[s];
       // Find this segment within the remaining chunk text
       while (chunkIdx < chunks.length) {
-        const chunkText = chunks[chunkIdx].text.replace(/\n/g, " ");
+        const chunkText = chunks[chunkIdx].text.replace(/\r?\n/g, " ");
         const pos = chunkText.indexOf(seg, cursor);
         if (pos >= 0) {
           segmentChunkIdx[s] = chunkIdx;
@@ -167,7 +167,7 @@ function parseIntoSegments(
         // Path a: locate each segment's start position in the (newline-normalised)
         // chunk text, count preceding words, and map to the corresponding word
         // boundary's offset_ms for exact TTS timing.
-        const normalised = chunk.text.replace(/\n/g, " ");
+        const normalised = chunk.text.replace(/\r?\n/g, " ");
         let cursor = 0;
         for (const idx of segIndices) {
           const seg = allTexts[idx];
@@ -428,13 +428,14 @@ export default function SentenceReader({
     [paragraphs]
   );
 
-  // Current segment: last one whose startTime ≤ currentTime
+  // Current segment: last one whose startTime ≤ currentTime.
+  // Do NOT break early on Infinity values — unmatched segments create holes
+  // in the sorted order, so scanning all segments is required.
   const currentIdx = useMemo(() => {
     if (duration === 0 || currentTime === 0) return -1;
     let best = -1;
     for (let i = 0; i < allSegments.length; i++) {
       if (allSegments[i].startTime <= currentTime) best = i;
-      else break;
     }
     return best;
   }, [allSegments, currentTime, duration]);

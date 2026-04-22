@@ -102,4 +102,85 @@ describe("SentenceReader timing estimation", () => {
     const active = container.querySelector(".bg-amber-300");
     expect(active?.textContent).toContain("Second chunk");
   });
+
+  it("highlight advances past a mid-sequence Infinity segment (unloaded middle chunk)", () => {
+    // Regression: when a middle chunk has duration=0 (not yet loaded), its segments
+    // get startTime=Infinity. The previous `else break` in currentIdx caused the
+    // highlight to freeze on the last loaded segment before that Infinity.
+    // Setup: chunk 0 loaded (2s), chunk 1 NOT loaded (0s), chunk 2 loaded (2s).
+    // At t=2.5 the highlight should advance to "Third sentence" (chunk 2),
+    // not stay frozen on "First sentence" (chunk 0).
+    const sentA = "First sentence here.";
+    const sentB = "Middle sentence here.";
+    const sentC = "Third sentence here.";
+    // Separate paragraphs so each sentence is its own chunk
+    const text = `${sentA}\n\n${sentB}\n\n${sentC}`;
+    const chunks: ChunkInfo[] = [
+      { text: sentA, duration: 2 },   // loaded
+      { text: sentB, duration: 0 },   // NOT yet loaded — startTime = Infinity
+      { text: sentC, duration: 2 },   // loaded; starts at chunkStartTime = 2
+    ];
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={text}
+        duration={4}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // Without the fix, highlight freezes on sentA at t=2.5 (else-break stops at Infinity).
+    // With the fix, sentC (startTime=2) is correctly highlighted.
+    rerender(
+      <SentenceReader
+        text={text}
+        duration={4}
+        currentTime={2.5}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+    const active = container.querySelector(".bg-amber-300");
+    expect(active?.textContent).toContain("Third sentence");
+  });
+
+  it("handles \\r\\n line endings in chunk text without breaking indexOf matching", () => {
+    // Regression: chunks[].text.replace(/\n/g, " ") left \\r, causing indexOf
+    // to fail for segments after Windows-style line endings in Gutenberg text.
+    const sentA = "Il avait les cheveux.";
+    const sentB = "Quoiqu il ne fut pas.";
+    // Simulate Windows \\r\\n inside the chunk text (as if the source file had CRLF)
+    const chunkWithCrlf = `${sentA}\r\n${sentB}`;
+    const chunks: ChunkInfo[] = [{ text: chunkWithCrlf, duration: 4 }];
+    const text = `${sentA}\n${sentB}`;  // same text, Unix line endings
+
+    const { container, rerender } = render(
+      <SentenceReader
+        text={text}
+        duration={4}
+        currentTime={3}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    rerender(
+      <SentenceReader
+        text={text}
+        duration={4}
+        currentTime={3}
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+    // Both sentences should be matched; at t=3 the second sentence should be highlighted.
+    const active = container.querySelector(".bg-amber-300");
+    expect(active?.textContent).toContain("Quoiqu");
+  });
 });

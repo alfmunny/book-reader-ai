@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
@@ -77,6 +77,10 @@ export default function ReaderPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
+  const vocabWordsSet = useMemo(
+    () => new Set(vocabWords.map((v) => v.word.toLowerCase())),
+    [vocabWords],
+  );
   const [vocabView, setVocabView] = useState<"chapter" | "book">("chapter");
   // Word definition tooltip (shown when "Word" is clicked in SelectionToolbar)
   const [vocabTooltip, setVocabTooltip] = useState<{ word: string; context: string; rect: DOMRect } | null>(null);
@@ -1043,7 +1047,7 @@ export default function ReaderPage() {
                   showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
                   scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
-                  vocabWords={new Set(vocabWords.map((v) => v.word.toLowerCase()))}
+                  vocabWords={vocabWordsSet}
                   onSegmentClick={(startTime) => {
                     // Called only when TTS is playing (seek)
                     ttsSeekRef.current(startTime);

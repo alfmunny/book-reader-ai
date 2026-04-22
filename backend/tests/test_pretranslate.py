@@ -183,3 +183,72 @@ def test_ollama_provider_tag():
     t.base_url = "http://localhost:11434"
     assert t.provider_tag() == "ollama"
     assert t.model_tag() == "llama3:8b"
+
+
+# ── _upload_batch ─────────────────────────────────────────────────────────────
+
+def _make_entries(n: int = 2) -> list[dict]:
+    return [
+        {
+            "book_id": 11,
+            "chapter_index": i,
+            "target_language": "de",
+            "paragraphs": [f"Übersetzung {i}"],
+            "provider": "marian",
+            "model": "Helsinki-NLP/opus-mt-en-de",
+            "title_translation": None,
+        }
+        for i in range(n)
+    ]
+
+
+def test_upload_batch_success():
+    mock_resp = MagicMock()
+    mock_resp.ok = True
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"ok": True, "imported": 2}
+
+    with patch("requests.post", return_value=mock_resp) as mock_post:
+        result = pt._upload_batch(_make_entries(2), "https://example.com", "token123")
+
+    assert result == 2
+    call_kwargs = mock_post.call_args
+    assert call_kwargs[0][0] == "https://example.com/api/admin/translations/import"
+    headers = call_kwargs[1]["headers"]
+    assert headers["Authorization"] == "Bearer token123"
+
+
+def test_upload_batch_404_raises():
+    mock_resp = MagicMock()
+    mock_resp.ok = False
+    mock_resp.status_code = 404
+    mock_resp.text = "Not Found"
+
+    with patch("requests.post", return_value=mock_resp):
+        with pytest.raises(RuntimeError, match="404"):
+            pt._upload_batch(_make_entries(1), "https://example.com", "token")
+
+
+def test_upload_batch_401_raises():
+    mock_resp = MagicMock()
+    mock_resp.ok = False
+    mock_resp.status_code = 401
+    mock_resp.text = "Unauthorized"
+
+    with patch("requests.post", return_value=mock_resp):
+        with pytest.raises(RuntimeError, match="401"):
+            pt._upload_batch(_make_entries(1), "https://example.com", "bad-token")
+
+
+def test_upload_batch_strips_trailing_slash():
+    mock_resp = MagicMock()
+    mock_resp.ok = True
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"ok": True, "imported": 1}
+
+    with patch("requests.post", return_value=mock_resp) as mock_post:
+        pt._upload_batch(_make_entries(1), "https://example.com/", "tok")
+
+    url = mock_post.call_args[0][0]
+    assert not url.endswith("//")
+    assert url == "https://example.com/api/admin/translations/import"

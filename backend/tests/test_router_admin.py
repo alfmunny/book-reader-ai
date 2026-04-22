@@ -8,7 +8,7 @@ import services.db as db_module
 import routers.admin as admin_module
 from services.db import (
     init_db, get_or_create_user, get_user_by_id, save_book,
-    save_translation, set_user_approved,
+    save_translation, set_user_approved, create_annotation, save_insight,
 )
 from services.auth import get_current_user, create_jwt
 from main import app
@@ -206,6 +206,30 @@ async def test_delete_book_removes_word_occurrences(admin_client, admin_db):
     async with aiosqlite.connect(admin_db) as db:
         async with db.execute(
             "SELECT COUNT(*) FROM word_occurrences WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
+async def test_delete_book_removes_annotations(admin_client, admin_db, admin_user):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await create_annotation(admin_user["id"], 100, 0, "A great line.", "The full quote.", "yellow")
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM annotations WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
+async def test_delete_book_removes_book_insights(admin_client, admin_db, admin_user):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_insight(admin_user["id"], 100, 0, "What is the theme?", "The theme is...", None)
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE book_id = 100"
         ) as cur:
             count = (await cur.fetchone())[0]
     assert count == 0

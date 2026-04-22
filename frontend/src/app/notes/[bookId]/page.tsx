@@ -19,7 +19,7 @@ import {
 } from "@/lib/api";
 
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
-import { ArrowLeftIcon } from "@/components/Icons";
+import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon } from "@/components/Icons";
 
 type ViewMode = "section" | "chapter";
 
@@ -48,7 +48,7 @@ function CollapseHeading({
           : "mt-5 mb-2"
       }`}
     >
-      <span className="text-amber-400 text-xs shrink-0">{isCollapsed ? "▶" : "▼"}</span>
+      {isCollapsed ? <ChevronRightIcon className="w-3 h-3 text-amber-400 shrink-0" /> : <ChevronDownIcon className="w-3 h-3 text-amber-400 shrink-0" />}
       <Tag className={level === 2
         ? "text-lg font-serif font-semibold text-ink group-hover:text-amber-800 transition-colors"
         : "text-sm font-semibold text-amber-800 uppercase tracking-wide group-hover:text-amber-900 transition-colors"
@@ -132,24 +132,26 @@ function AnnotationCard({
         <div className="flex items-center gap-3 mt-2">
           <a
             href={`/reader/${bookId}?chapter=${ann.chapter_index}&sentence=${encodeURIComponent(ann.sentence_text)}`}
-            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
           >
-            → {chapterLabel(chapters, ann.chapter_index)}
+            <ArrowRightIcon className="w-3 h-3 shrink-0" /> {chapterLabel(chapters, ann.chapter_index)}
           </a>
           <button
             onClick={onEdit}
-            className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+            className="text-stone-400 hover:text-stone-600 transition-colors"
             title="Edit note"
+            aria-label="Edit note"
           >
-            ✏️
+            <EditIcon className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onDelete}
             disabled={isDeleting}
-            className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+            className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
             title="Delete annotation"
+            aria-label="Delete annotation"
           >
-            {isDeleting ? "…" : "🗑"}
+            {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" /> : <TrashIcon className="w-3.5 h-3.5" />}
           </button>
         </div>
       )}
@@ -189,18 +191,19 @@ function InsightCard({
         {readerHref && (
           <a
             href={readerHref}
-            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
           >
-            → {chapterLabel(chapters, ins.chapter_index as number)}
+            <ArrowRightIcon className="w-3 h-3 shrink-0" /> {chapterLabel(chapters, ins.chapter_index as number)}
           </a>
         )}
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="text-xs text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+          className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
           title="Delete insight"
+          aria-label="Delete insight"
         >
-          {isDeleting ? "…" : "🗑"}
+          {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" /> : <TrashIcon className="w-3.5 h-3.5" />}
         </button>
       </div>
     </div>

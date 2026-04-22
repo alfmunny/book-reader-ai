@@ -209,7 +209,7 @@ describe("AdminBooksPage — handleMove non-Error catch (line 190)", () => {
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));
@@ -260,7 +260,7 @@ describe("AdminBooksPage — retryFailedForLang non-Error catch (line 208)", () 
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     await waitFor(() =>
@@ -385,7 +385,7 @@ describe("AdminBooksPage — language row expand/collapse toggle (line 423)", ()
     // Find the lang arrow and click it to expand
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) {
       await userEvent.click(langArrow);
@@ -394,7 +394,7 @@ describe("AdminBooksPage — language row expand/collapse toggle (line 423)", ()
 
       // Click again to collapse
       const collapsedArrow = screen.getAllByRole("button").find(
-        (b) => b.textContent === "▼" && !b.title,
+        (b) => b.getAttribute("aria-label") === "Collapse" && !b.title,
       );
       if (collapsedArrow) {
         await userEvent.click(collapsedArrow);
@@ -519,7 +519,7 @@ describe("AdminBooksPage — empty chapter rows message (line 480)", () => {
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -548,7 +548,7 @@ describe("AdminBooksPage — moveInput onChange (lines 512-518)", () => {
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));

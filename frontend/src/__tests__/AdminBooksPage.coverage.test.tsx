@@ -202,7 +202,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     // Expand zh language row
     await waitFor(() => screen.getByText("zh"));
     const langExpandBtns = screen.getAllByRole("button", {
-      name: (name) => name === "▶" || name === "▼",
+      name: (name) => name === "Expand" || name === "Collapse",
     });
     // The language expand chevron is inside the expanded book section
     const innerExpand = langExpandBtns.find(
@@ -228,7 +228,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     // Click the small arrow to expand the language
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -271,7 +271,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -359,7 +359,7 @@ describe("AdminBooksPage — book expansion and metadata (lines 161-210)", () =>
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -445,7 +445,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     await waitFor(() =>
@@ -468,7 +468,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
@@ -484,7 +484,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     await waitFor(() =>
@@ -639,7 +639,7 @@ describe("AdminBooksPage — chapter-level delete (lines 530-543)", () => {
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));
@@ -689,7 +689,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));

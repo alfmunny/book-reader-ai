@@ -281,7 +281,7 @@ describe("AdminBooksPage — moveInput ?? '' false branch (lines 512, 518)", () 
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.textContent === "▶" || b.textContent === "▼") && !b.title,
+      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));

@@ -1077,7 +1077,7 @@ async def queue_delete_item(
                 detail="Cannot delete a running item; wait for it to finish or fail",
             )
         cursor = await db.execute(
-            "DELETE FROM translation_queue WHERE id=?", (item_id,)
+            "DELETE FROM translation_queue WHERE id=? AND status != 'running'", (item_id,)
         )
         await db.commit()
     return {"ok": True, "deleted": cursor.rowcount}
@@ -1135,7 +1135,7 @@ async def queue_retry_item(
                SET status='pending', attempts=0, last_error=NULL,
                    priority=100,
                    updated_at=CURRENT_TIMESTAMP
-               WHERE id=?""",
+               WHERE id=? AND status != 'running'""",
             (item_id,),
         )
         await db.commit()

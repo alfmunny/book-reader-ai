@@ -59,13 +59,14 @@ async def upload_book(
     """Upload a .txt or .epub file. Returns book_id + detected chapters for editing."""
     from services.book_parser import parse_txt, parse_epub
 
-    # Quota check
-    count = await _user_upload_count(user["id"])
-    if count >= MAX_BOOKS_PER_USER:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Upload limit reached ({MAX_BOOKS_PER_USER} books). Delete a book to upload more.",
-        )
+    # Quota check — admins are exempt
+    if user.get("role") != "admin":
+        count = await _user_upload_count(user["id"])
+        if count >= MAX_BOOKS_PER_USER:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Upload limit reached ({MAX_BOOKS_PER_USER} books). Delete a book to upload more.",
+            )
 
     # Format check
     filename = file.filename or ""
@@ -123,9 +124,10 @@ async def upload_book(
 
 @router.get("/upload/quota")
 async def upload_quota(user: dict = Depends(get_current_user)):
-    """Return the user's upload quota usage."""
+    """Return the user's upload quota usage. max is null for admins (no limit)."""
     count = await _user_upload_count(user["id"])
-    return {"used": count, "max": MAX_BOOKS_PER_USER}
+    max_books = None if user.get("role") == "admin" else MAX_BOOKS_PER_USER
+    return {"used": count, "max": max_books}
 
 
 @router.get("/{book_id}/chapters/draft")

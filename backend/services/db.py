@@ -536,16 +536,25 @@ async def get_annotations(user_id: int, book_id: int) -> list[dict]:
 async def update_annotation(
     annotation_id: int,
     user_id: int,
-    note_text: str,
-    color: str,
+    note_text: str | None = None,
+    color: str | None = None,
 ) -> dict | None:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        await db.execute(
-            "UPDATE annotations SET note_text = ?, color = ? WHERE id = ? AND user_id = ?",
-            (note_text, color, annotation_id, user_id),
-        )
-        await db.commit()
+        clauses, params = [], []
+        if note_text is not None:
+            clauses.append("note_text = ?")
+            params.append(note_text)
+        if color is not None:
+            clauses.append("color = ?")
+            params.append(color)
+        if clauses:
+            params.extend([annotation_id, user_id])
+            await db.execute(
+                f"UPDATE annotations SET {', '.join(clauses)} WHERE id = ? AND user_id = ?",
+                params,
+            )
+            await db.commit()
         async with db.execute(
             "SELECT * FROM annotations WHERE id = ? AND user_id = ?",
             (annotation_id, user_id),

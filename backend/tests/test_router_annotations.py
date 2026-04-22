@@ -93,6 +93,22 @@ async def test_update_annotation(client, test_user):
     assert data["color"] == "blue"
 
 
+async def test_update_annotation_note_text_only(client, test_user):
+    """PATCH with only note_text must work — color should remain unchanged.
+
+    Regression: AnnotationUpdate previously required both fields, so the
+    notes-page save (which only sends note_text) always returned 422.
+    """
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Text", "old", "blue")
+
+    resp = await client.patch(f"/api/annotations/{ann['id']}", json={"note_text": "new note"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["note_text"] == "new note"
+    assert data["color"] == "blue"  # unchanged
+
+
 async def test_update_annotation_not_found_returns_404(client, test_user):
     resp = await client.patch("/api/annotations/99999", json={
         "note_text": "x",

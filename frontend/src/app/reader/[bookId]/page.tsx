@@ -12,6 +12,7 @@ import TranslationView from "@/components/TranslationView";
 import SentenceReader from "@/components/SentenceReader";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
+import QuickHighlightPanel from "@/components/QuickHighlightPanel";
 import VocabularyToast from "@/components/VocabularyToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
@@ -53,6 +54,13 @@ export default function ReaderPage() {
     chapterIndex: number;
     position: { x: number; y: number };
   } | null>(null);
+  const [quickHighlightPanel, setQuickHighlightPanel] = useState<{
+    sentenceText: string;
+    chapterIndex: number;
+    position: { x: number; y: number };
+    existingAnnotation?: Annotation;
+  } | null>(null);
+  const [typographyAnchorPos, setTypographyAnchorPos] = useState<{ x: number; y: number } | null>(null);
   const [scrollTargetSentence, setScrollTargetSentence] = useState<string | undefined>();
   const didUrlScrollRef = useRef(false);
 
@@ -910,7 +918,11 @@ export default function ReaderPage() {
           {/* Typography panel — desktop only */}
           <div className="relative hidden md:block">
             <button
-              onClick={() => setShowTypographyPanel((v) => !v)}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                setTypographyAnchorPos({ x: rect.right, y: rect.bottom });
+                setShowTypographyPanel((v) => !v);
+              }}
               title="Typography settings"
               className={`flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold transition-colors ${
                 showTypographyPanel || paragraphFocus
@@ -933,6 +945,7 @@ export default function ReaderPage() {
                 onFontFamily={setFontFamily}
                 onParagraphFocus={setParagraphFocus}
                 onClose={() => setShowTypographyPanel(false)}
+                anchorPos={typographyAnchorPos ?? undefined}
               />
             )}
           </div>
@@ -1251,6 +1264,14 @@ export default function ReaderPage() {
                   onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
                     setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
                   } : undefined}
+                  onAnnotationClick={session?.backendToken ? (annotation, position) => {
+                    setQuickHighlightPanel({
+                      sentenceText: annotation.sentence_text,
+                      chapterIndex: annotation.chapter_index,
+                      position,
+                      existingAnnotation: annotation,
+                    });
+                  } : undefined}
                   showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
                   scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
@@ -1301,11 +1322,15 @@ export default function ReaderPage() {
                 });
             }}
             onHighlight={session?.backendToken ? (text) => {
-              setAnnotationPanel({
-                sentenceText: text,
-                chapterIndex,
-                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-              });
+              let position = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+              try {
+                const sel = window.getSelection();
+                const rect = sel?.rangeCount ? sel.getRangeAt(0).getBoundingClientRect() : null;
+                if (rect && (rect.width > 0 || rect.height > 0)) {
+                  position = { x: rect.left + rect.width / 2, y: rect.bottom };
+                }
+              } catch { /* ignore — selection not available in test environments */ }
+              setQuickHighlightPanel({ sentenceText: text, chapterIndex, position });
             } : undefined}
             onNote={session?.backendToken ? (text) => {
               setAnnotationPanel({
@@ -1323,7 +1348,7 @@ export default function ReaderPage() {
             onVocab={session?.backendToken ? (word, context, rect) => setVocabTooltip({ word, context, rect }) : undefined}
           />
 
-          {/* Annotation toolbar */}
+          {/* Annotation toolbar (full note editor) */}
           {annotationPanel && (
             <AnnotationToolbar
               sentenceText={annotationPanel.sentenceText}
@@ -1349,6 +1374,40 @@ export default function ReaderPage() {
               }}
               onDeleted={(id) => {
                 setAnnotations((prev) => prev.filter((a) => a.id !== id));
+              }}
+            />
+          )}
+
+          {/* Quick highlight panel — color-only, instant save */}
+          {quickHighlightPanel && (
+            <QuickHighlightPanel
+              sentenceText={quickHighlightPanel.sentenceText}
+              chapterIndex={quickHighlightPanel.chapterIndex}
+              bookId={Number(bookId)}
+              position={quickHighlightPanel.position}
+              existingAnnotation={quickHighlightPanel.existingAnnotation}
+              onClose={() => setQuickHighlightPanel(null)}
+              onSaved={(annotation) => {
+                setAnnotations((prev) => {
+                  const idx = prev.findIndex((a) => a.id === annotation.id);
+                  if (idx >= 0) {
+                    const next = [...prev];
+                    next[idx] = annotation;
+                    return next;
+                  }
+                  return [...prev, annotation];
+                });
+              }}
+              onDeleted={(id) => {
+                setAnnotations((prev) => prev.filter((a) => a.id !== id));
+              }}
+              onOpenNote={() => {
+                setQuickHighlightPanel(null);
+                setAnnotationPanel({
+                  sentenceText: quickHighlightPanel.sentenceText,
+                  chapterIndex: quickHighlightPanel.chapterIndex,
+                  position: quickHighlightPanel.position,
+                });
               }}
             />
           )}

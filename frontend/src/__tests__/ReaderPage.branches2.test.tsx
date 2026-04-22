@@ -234,6 +234,46 @@ jest.mock("@/components/AnnotationToolbar", () => {
   return { __esModule: true, default: AnnotationToolbar };
 });
 
+// ─── QuickHighlightPanel: exposes onClose / onSaved / onDeleted / onOpenNote ───
+jest.mock("@/components/QuickHighlightPanel", () => {
+  const QuickHighlightPanel = ({
+    onClose,
+    onSaved,
+    onDeleted,
+    onOpenNote,
+    existingAnnotation,
+  }: {
+    onClose?: () => void;
+    onSaved?: (ann: unknown) => void;
+    onDeleted?: (id: number) => void;
+    onOpenNote?: () => void;
+    existingAnnotation?: { id: number };
+  }) => (
+    <div data-testid="quick-highlight-panel">
+      <button data-testid="qhp-close" onClick={() => onClose?.()}>close</button>
+      <button
+        data-testid="qhp-save"
+        onClick={() =>
+          onSaved?.({
+            id: existingAnnotation?.id ?? 98,
+            sentence_text: "highlight text",
+            chapter_index: 0,
+            color: "blue",
+            note_text: "",
+            book_id: 42,
+          })
+        }
+      >
+        pick-color
+      </button>
+      <button data-testid="qhp-delete" onClick={() => onDeleted?.(existingAnnotation?.id ?? 98)}>delete</button>
+      <button data-testid="qhp-open-note" onClick={() => onOpenNote?.()}>add-note</button>
+    </div>
+  );
+  QuickHighlightPanel.displayName = "QuickHighlightPanel";
+  return { __esModule: true, default: QuickHighlightPanel };
+});
+
 jest.mock("@/components/TranslationView", () => {
   const TranslationView = () => null;
   TranslationView.displayName = "TranslationView";
@@ -251,14 +291,16 @@ jest.mock("@/components/VocabularyToast", () => {
   return { __esModule: true, default: VocabularyToast };
 });
 
-// ─── SentenceReader: exposes onAnnotate / onSegmentClick ─────────────────────
+// ─── SentenceReader: exposes onAnnotate / onSegmentClick / onAnnotationClick ──
 jest.mock("@/components/SentenceReader", () => {
   const SentenceReader = ({
     onAnnotate,
     onSegmentClick,
+    onAnnotationClick,
   }: {
     onAnnotate?: (sentenceText: string, ci: number, position: { x: number; y: number }) => void;
     onSegmentClick?: (startTime: number) => void;
+    onAnnotationClick?: (ann: unknown, position: { x: number; y: number }) => void;
   }) => (
     <div data-testid="sentence-reader">
       <button
@@ -269,6 +311,17 @@ jest.mock("@/components/SentenceReader", () => {
       </button>
       <button data-testid="trigger-segment-click" onClick={() => onSegmentClick?.(1.5)}>
         segment
+      </button>
+      <button
+        data-testid="trigger-annotation-click"
+        onClick={() =>
+          onAnnotationClick?.(
+            { id: 77, sentence_text: "annotated", chapter_index: 0, color: "yellow", note_text: "", book_id: 42 },
+            { x: 150, y: 250 },
+          )
+        }
+      >
+        annotation-click
       </button>
     </div>
   );
@@ -556,7 +609,7 @@ describe("ReaderPage.branches2 — AnnotationToolbar onDeleted", () => {
 // ─── SelectionToolbar opens annotation panel (lines 1054-1072) ───────────────
 
 describe("ReaderPage.branches2 — SelectionToolbar opens annotation panel", () => {
-  it("highlight button opens annotation panel", async () => {
+  it("highlight button opens quick highlight panel", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
@@ -564,7 +617,7 @@ describe("ReaderPage.branches2 — SelectionToolbar opens annotation panel", () 
     const highlightBtn = await screen.findByTestId("trigger-highlight");
     await userEvent.click(highlightBtn);
 
-    expect(await screen.findByTestId("annotation-toolbar")).toBeInTheDocument();
+    expect(await screen.findByTestId("quick-highlight-panel")).toBeInTheDocument();
   });
 
   it("note button opens annotation panel", async () => {

@@ -67,6 +67,7 @@ export default function TTSControls({
   const chunksRef = useRef<ChunkState[]>([]);
   const activeIndexRef = useRef<number>(0);
 
+  const statusRef = useRef<Status>("idle");
   const abortRef = useRef<AbortController | null>(null);
   const genRef = useRef(0);
 
@@ -86,6 +87,7 @@ export default function TTSControls({
   useEffect(() => { stopAtTimeRef.current = stopAtTime; }, [stopAtTime]);
 
   useEffect(() => {
+    statusRef.current = status;
     onLoadingChangeRef.current?.(status === "loading");
   }, [status]);
   useEffect(() => {
@@ -332,10 +334,14 @@ export default function TTSControls({
 
   async function seekTo(globalTime: number) {
     if (chunksRef.current.length === 0) {
-      await loadAndPlay(globalTime);
+      // Only start loading+playing if audio was already playing
+      if (statusRef.current === "playing") {
+        await loadAndPlay(globalTime);
+      }
       return;
     }
 
+    const wasPlaying = statusRef.current === "playing";
     let cumulative = 0;
     for (let i = 0; i < chunksRef.current.length; i++) {
       const chunk = chunksRef.current[i];
@@ -349,11 +355,15 @@ export default function TTSControls({
         chunk.audio.currentTime = Math.min(offset, chunk.duration);
         activeIndexRef.current = i;
         chunk.audio.playbackRate = rate;
-        try {
-          await chunk.audio.play();
-          setStatus("playing");
-        } catch {
-          // ignore — user-gesture rules etc.
+        if (wasPlaying) {
+          try {
+            await chunk.audio.play();
+            setStatus("playing");
+          } catch {
+            // ignore — user-gesture rules etc.
+          }
+        } else {
+          setStatus("paused");
         }
         setGlobalCurrentTime(globalTime);
         saveAudioPosition(bookId, chapterIndex, globalTime);

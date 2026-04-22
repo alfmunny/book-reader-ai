@@ -559,8 +559,37 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
     expect(audioInstances.length).toBeGreaterThan(0);
   });
 
-  it("seekTo with no chunks triggers loadAndPlay(globalTime)", async () => {
-    // Don't click play; call onSeekRegister seek function directly
+  it("seekTo with no chunks and playing status triggers loadAndPlay(globalTime)", async () => {
+    // Start playing first, then seek — only then should loadAndPlay be triggered
+    let seekFn: ((t: number) => void) | null = null;
+    mockGetChunks.mockResolvedValue(["Seek text."]);
+    mockSynthesize.mockResolvedValue({ url: "blob:audio", wordBoundaries: [] });
+
+    render(
+      <TTSControls
+        {...DEFAULT_PROPS}
+        onSeekRegister={(fn) => {
+          seekFn = fn;
+        }}
+      />
+    );
+
+    await waitFor(() => expect(seekFn).toBeTruthy());
+
+    // Click play to enter "playing" state so loadAndPlay is triggered on seek
+    const playBtn = Array.from(document.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("Read")
+    )!;
+    await act(async () => {
+      fireEvent.click(playBtn);
+      await new Promise((r) => setTimeout(r, 100));
+    });
+
+    expect(mockGetChunks).toHaveBeenCalled();
+  });
+
+  it("seekTo with no chunks while paused does NOT trigger loadAndPlay", async () => {
+    // Seeking while paused should not start loading — seek is a no-op until playing
     let seekFn: ((t: number) => void) | null = null;
     mockGetChunks.mockResolvedValue(["Seek text."]);
     mockSynthesize.mockResolvedValue({ url: "blob:audio", wordBoundaries: [] });
@@ -581,7 +610,8 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
       await new Promise((r) => setTimeout(r, 100));
     });
 
-    expect(mockGetChunks).toHaveBeenCalled();
+    // loadAndPlay should NOT be triggered since status is "paused"
+    expect(mockGetChunks).not.toHaveBeenCalled();
   });
 
   it("pause saves audio position via saveAudioPosition", async () => {

@@ -268,6 +268,15 @@ interface Props {
     chapterIndex: number,
     position: { x: number; y: number },
   ) => void;
+  /**
+   * Called when the user clicks an already-annotated segment.
+   * Provides the annotation and the click position so the parent can open
+   * an inline color-picker / delete panel without navigating away.
+   */
+  onAnnotationClick?: (
+    annotation: Annotation,
+    position: { x: number; y: number },
+  ) => void;
   /** Chapter index — used with onAnnotate. */
   chapterIndex?: number;
   /** Existing annotations to highlight matching segments. */
@@ -397,6 +406,7 @@ export default function SentenceReader({
   translationDisplayMode = "parallel",
   translationLoading = false,
   onAnnotate,
+  onAnnotationClick,
   chapterIndex = 0,
   annotations,
   scrollTargetSentence,
@@ -679,6 +689,11 @@ export default function SentenceReader({
                 if (disabled || !isSegmentLoaded(seg)) return;
                 // Ignore clicks that are the tail of a text-selection drag
                 if (window.getSelection()?.toString().length) return;
+                const ann = showAnnotations ? getAnnotation(seg.text) : undefined;
+                if (ann && onAnnotationClick) {
+                  onAnnotationClick(ann, { x: e.clientX, y: e.clientY });
+                  return;
+                }
                 if (isPlaying || duration > 0) {
                   onSegmentClick(seg.startTime, seg.text);
                 }

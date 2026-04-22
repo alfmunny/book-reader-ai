@@ -688,3 +688,27 @@ async def test_translate_post_cache_hit_blocked_for_non_owner(client, test_user,
         f"got {resp.status_code}: {resp.text}"
     )
 
+
+# ── chapter_index bounds checks on /ai/summary ───────────────────────────────
+
+async def test_ai_summary_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #448: POST /ai/summary with chapter_index beyond chapter count
+    must return 400, not silently attempt to generate a summary for a non-existent chapter.
+    """
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9881, {"id": 9881, "title": "T", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}, text)
+    _clear()
+
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": 9881,
+        "chapter_index": 999,
+        "chapter_text": "some text",
+        "book_title": "T",
+        "author": "Unknown",
+    })
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999, got {resp.status_code}: {resp.text}"
+    )
+

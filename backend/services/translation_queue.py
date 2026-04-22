@@ -595,7 +595,8 @@ async def clear_queue(status: str | None = None) -> int:
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         if status:
             cursor = await db.execute(
-                "DELETE FROM translation_queue WHERE status=?", (status,),
+                "DELETE FROM translation_queue WHERE status=? AND status != 'running'",
+                (status,),
             )
         else:
             cursor = await db.execute(

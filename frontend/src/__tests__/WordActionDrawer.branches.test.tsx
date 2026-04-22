@@ -251,3 +251,15 @@ describe("WordActionDrawer — null meanings fallback", () => {
     );
   });
 });
+
+// ── Issue #265: empty array response doesn't crash ────────────────────────────
+describe("WordActionDrawer — empty API response (issue #265)", () => {
+  it("shows error message instead of crashing when API returns empty array", async () => {
+    jest.useRealTimers();
+    setupFetchMock(true, []); // 200 OK but empty array
+    render(<WordActionDrawer action={BASE_ACTION} onClose={jest.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText(/no definition found/i)).toBeInTheDocument();
+    });
+  });
+});

@@ -202,7 +202,7 @@ export default function InsightChat({
     onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
       .then((r) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]); })
-      .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]); })
+      .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]); })
       .finally(() => { if (!cancelled) setChatLoading(false); });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,7 +217,7 @@ export default function InsightChat({
     onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
       .then((r) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]); })
-      .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]); })
+      .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]); })
       .finally(() => { if (!cancelled) setChatLoading(false); });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -278,7 +278,7 @@ export default function InsightChat({
       const r = await askQuestion(text, passage, bookTitle, author, langRef.current);
       setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
     } catch (e: any) {
-      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e.message}` }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]);
     } finally {
       setChatLoading(false);
     }

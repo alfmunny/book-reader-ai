@@ -722,6 +722,28 @@ async def test_retry_queue_item_not_found_returns_404(admin_client):
     assert res.status_code == 404
 
 
+async def test_retry_running_item_returns_409(admin_client, admin_db):
+    """Regression #294: retrying a running item must be rejected (409), not silently accepted.
+
+    If the endpoint resets status='pending' while the worker holds the row as
+    'running', _mark_done() will DELETE the newly-re-enqueued row when the
+    translation finishes — the retry is silently lost.
+    """
+    async with aiosqlite.connect(admin_db) as db:
+        cursor = await db.execute(
+            """INSERT INTO translation_queue
+               (book_id, chapter_index, target_language, status, priority)
+               VALUES (999, 0, 'de', 'running', 100)""",
+        )
+        item_id = cursor.lastrowid
+        await db.commit()
+
+    res = await admin_client.post(f"/api/admin/queue/items/{item_id}/retry")
+    assert res.status_code == 409, (
+        "Retrying a running queue item must return 409 Conflict, not 200"
+    )
+
+
 async def test_enqueue_book_nonexistent_returns_404(admin_client):
     """POST /admin/queue/enqueue-book for a non-existent book must return 404.
 

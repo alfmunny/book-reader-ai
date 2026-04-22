@@ -995,7 +995,22 @@ async def queue_retry_item(
 ):
     # Reset priority too — without this, a row that was bumped to the back
     # on failure would be retried but still sit behind everything else.
+    # Guard against retrying a running item: _mark_done() deletes rows by ID,
+    # so resetting status='pending' while the worker holds the row as 'running'
+    # would cause _mark_done() to silently delete the re-enqueued item (#294).
     async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT status FROM translation_queue WHERE id=?", (item_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Queue item not found")
+        if row["status"] == "running":
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot retry a running item; wait for it to finish or fail",
+            )
         cursor = await db.execute(
             """UPDATE translation_queue
                SET status='pending', attempts=0, last_error=NULL,
@@ -1006,8 +1021,6 @@ async def queue_retry_item(
         )
         await db.commit()
     queue_worker().wake()
-    if cursor.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Queue item not found")
     return {"ok": True, "updated": cursor.rowcount}
 
 

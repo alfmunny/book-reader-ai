@@ -249,6 +249,19 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
     if not await get_cached_book(req.book_id):
         raise HTTPException(status_code=404, detail="Book not found")
     target_language = req.target_language.lower().split("-")[0]
+    # Reject if a queue worker is actively translating this chapter — the
+    # worker's save_translation (INSERT OR REPLACE) would overwrite whatever
+    # we write here when it finishes. (#341)
+    from services.translation_queue import queue_status_for_chapter
+    status = await queue_status_for_chapter(req.book_id, req.chapter_index, target_language)
+    if status["status"] == "running":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"A translation job is currently running for chapter {req.chapter_index}. "
+                "Wait for it to finish before saving."
+            ),
+        )
     await save_translation(
         req.book_id, req.chapter_index, target_language, req.paragraphs,
         provider=req.provider, model=req.model,

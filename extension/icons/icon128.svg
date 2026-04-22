@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="128" height="128">
+  <rect width="512" height="512" rx="88" fill="#0C0300"/>
+  <!-- Hat crown -->
+  <path d="M 256 68 L 194 246 L 318 246 Z"
+        fill="none" stroke="#F59E0B" stroke-width="6"
+        stroke-linejoin="round"/>
+  <!-- Hat brim -->
+  <path d="M 166 246 L 346 246 L 340 270 L 172 270 Z"
+        fill="none" stroke="#F59E0B" stroke-width="6"
+        stroke-linejoin="round"/>
+  <!-- Feather -->
+  <path d="M 310 222 C 330 204, 352 188, 368 172"
+        fill="none" stroke="#F59E0B" stroke-width="4"
+        stroke-linecap="round"/>
+  <!-- Eye -->
+  <circle cx="256" cy="268" r="42" fill="#F59E0B" opacity="0.15"/>
+  <circle cx="256" cy="268" r="14" fill="#FCD34D"/>
+  <circle cx="256" cy="268" r="6"  fill="#FEF3C7"/>
+  <!-- Book left page -->
+  <path d="M 256 286 L 256 454 L 62 442 L 62 290 Z"
+        fill="none" stroke="#F59E0B" stroke-width="6"
+        stroke-linejoin="round"/>
+  <!-- Book right page -->
+  <path d="M 256 286 L 450 290 L 450 442 L 256 454 Z"
+        fill="none" stroke="#F59E0B" stroke-width="6"
+        stroke-linejoin="round"/>
+  <!-- Spine -->
+  <line x1="256" y1="286" x2="256" y2="454"
+        stroke="#F59E0B" stroke-width="4" opacity="0.8"/>
+</svg>

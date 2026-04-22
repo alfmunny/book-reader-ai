@@ -641,7 +641,7 @@ async def save_word(
     sentence_text: str,
 ) -> dict:
     import asyncio
-    word = word.lower()
+    word = word.strip().lower()
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         await db.execute(
@@ -703,7 +703,7 @@ async def get_vocabulary(user_id: int) -> list[dict]:
 
 
 async def delete_word(user_id: int, word: str) -> bool:
-    word = word.lower()
+    word = word.strip().lower()
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             """DELETE FROM word_occurrences WHERE vocabulary_id IN (

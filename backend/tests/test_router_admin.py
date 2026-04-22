@@ -779,6 +779,28 @@ async def test_import_translations_requires_admin(admin_db, admin_user):
     assert res.status_code == 403
 
 
+async def test_import_translations_rejects_nonexistent_book(admin_client, admin_db):
+    """POST /admin/translations/import must return 404 when any entry references a
+    non-existent book_id.
+
+    SQLite FK enforcement is OFF, so save_translation would otherwise silently
+    create orphaned rows referencing a non-existent book."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={
+            "entries": [
+                {
+                    "book_id": 777777,
+                    "chapter_index": 0,
+                    "target_language": "zh",
+                    "paragraphs": ["Translated text."],
+                },
+            ],
+        },
+    )
+    assert res.status_code == 404
+
+
 async def test_move_translation_shifts_chapter_index(admin_client, admin_db):
     """POST /admin/translations/{id}/{idx}/{lang}/move reassigns an existing
     cached translation to a different chapter_index without retranslating.

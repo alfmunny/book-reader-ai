@@ -214,7 +214,9 @@ async def get_or_create_user_apple(apple_id: str, email: str, name: str) -> dict
                     (apple_id, row["id"]),
                 )
                 await db.commit()
-                return dict(row)
+                updated = dict(row)
+                updated["apple_id"] = apple_id
+                return updated
 
         # New user
         async with db.execute("SELECT COUNT(*) FROM users") as cursor:

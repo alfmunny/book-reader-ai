@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
 test("vocab sidebar opens with 'This chapter' and 'All chapters' toggles", async ({ page }) => {
   await page.goto("/reader/1342");
 
-  const vocabBtn = page.getByTitle("Vocabulary");
+  const vocabBtn = page.getByTitle("Vocabulary", { exact: true });
   await vocabBtn.click();
 
   await expect(page.getByRole("button", { name: "This chapter" })).toBeVisible();
@@ -21,35 +21,36 @@ test("vocab sidebar opens with 'This chapter' and 'All chapters' toggles", async
 test("vocab sidebar chapter filter: default shows only chapter-0 word", async ({ page }) => {
   await page.goto("/reader/1342");
 
-  const vocabBtn = page.getByTitle("Vocabulary");
+  const vocabBtn = page.getByTitle("Vocabulary", { exact: true });
   await vocabBtn.click();
 
-  // "universally" is chapter 0 — should be visible in default "This chapter" view
-  await expect(page.getByRole("button", { name: /universally/i })).toBeVisible();
-  // "acknowledged" is chapter 1 — should be hidden
-  await expect(page.getByRole("button", { name: /acknowledged/i })).not.toBeVisible();
+  // Word card header buttons start with the lemma — "universal universally" for chapter-0 word
+  await expect(page.getByRole("button", { name: "universal universally" })).toBeVisible();
+  // "acknowledged" word card (chapter 1) should be absent — its header is "acknowledge acknowledged"
+  await expect(page.getByRole("button", { name: "acknowledge acknowledged" })).not.toBeVisible();
 });
 
 test("vocab sidebar 'All chapters' toggle shows words from every chapter", async ({ page }) => {
   await page.goto("/reader/1342");
 
-  const vocabBtn = page.getByTitle("Vocabulary");
+  const vocabBtn = page.getByTitle("Vocabulary", { exact: true });
   await vocabBtn.click();
 
   // Switch to all chapters
   await page.getByRole("button", { name: "All chapters" }).click();
 
-  await expect(page.getByRole("button", { name: /universally/i })).toBeVisible();
-  await expect(page.getByRole("button", { name: /acknowledged/i })).toBeVisible();
+  // Both word cards should now be visible
+  await expect(page.getByRole("button", { name: "universal universally" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "acknowledge acknowledged" })).toBeVisible();
 });
 
 test("vocab page: target word card has amber highlight ring", async ({ page }) => {
   await page.goto("/vocabulary?word=universally");
 
-  // Wait for the word card to appear
-  await expect(page.getByText("universal").first()).toBeVisible({ timeout: 5000 });
+  // Wait for the lemma card to appear (lemma "universal" for form "universally")
+  await expect(page.getByText("universal").first()).toBeVisible({ timeout: 10000 });
 
-  // The card should have the ring-2 highlight class
-  const card = page.locator("[class*='ring-2']").first();
+  // The card should have the ring-2 ring-amber-300 highlight class (isTarget = true)
+  const card = page.locator(".ring-2.ring-amber-300").first();
   await expect(card).toBeVisible();
 });

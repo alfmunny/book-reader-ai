@@ -98,18 +98,22 @@ async def patch_obsidian(
     req: ObsidianSettingsUpdate,
     user: dict = Depends(get_current_user),
 ):
-    existing = await get_obsidian_settings(user["id"])
-    # None = not supplied → keep existing; "" = explicit clear → set NULL; non-empty = update
+    # None = not supplied → skip the column entirely (avoids a stale-read race).
+    # "" = explicit clear → set NULL.  non-empty = encrypt and store.
     if req.github_token is None:
-        token_enc = existing.get("github_token")
-    elif req.github_token.strip():
-        token_enc = encrypt_api_key(req.github_token.strip())
+        await update_obsidian_settings(
+            user["id"],
+            github_token_encrypted=None,
+            repo=req.obsidian_repo.strip() or None,
+            path=req.obsidian_path.strip() or None,
+            token_explicitly_set=False,
+        )
     else:
-        token_enc = None
-    await update_obsidian_settings(
-        user["id"],
-        github_token_encrypted=token_enc,
-        repo=req.obsidian_repo.strip() or None,
-        path=req.obsidian_path.strip() or None,
-    )
+        token_enc = encrypt_api_key(req.github_token.strip()) if req.github_token.strip() else None
+        await update_obsidian_settings(
+            user["id"],
+            github_token_encrypted=token_enc,
+            repo=req.obsidian_repo.strip() or None,
+            path=req.obsidian_path.strip() or None,
+        )
     return {"ok": True}

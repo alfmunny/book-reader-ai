@@ -189,3 +189,45 @@ async def test_patch_obsidian_settings_clears_token_with_empty_string(client, te
 
     settings = await get_obsidian_settings(test_user["id"])
     assert settings["github_token"] is None, "empty-string token must clear the stored token"
+
+
+async def test_patch_obsidian_settings_token_not_clobbered_by_stale_read(client, test_user, monkeypatch):
+    """Regression #344: PATCH without github_token must not overwrite a token
+    that was written between the read and write of a concurrent request.
+
+    With the bug: the handler reads the old token, a concurrent write upgrades
+    it to v2, then the handler writes back the stale v1 — silently deleting the
+    user's GitHub credential.
+    With the fix: when github_token is absent the handler never reads or writes
+    the github_token column at all, so the DB value is always preserved.
+    """
+    from services.db import update_obsidian_settings, get_obsidian_settings
+    from services.auth import encrypt_api_key, decrypt_api_key
+    import routers.user as user_router_module
+
+    # Set v1 token in DB.
+    await update_obsidian_settings(test_user["id"], encrypt_api_key("token-v1"), "r/v", "/p")
+
+    # Simulate a concurrent request that already wrote token-v2 BEFORE our
+    # handler's write, but AFTER its read — by monkeypatching get_obsidian_settings
+    # in the router namespace to return stale v1 data while the DB has v2.
+    await update_obsidian_settings(test_user["id"], encrypt_api_key("token-v2"), "r/v", "/p")
+
+    async def stale_get(user_id):
+        return {"github_token": encrypt_api_key("token-v1"), "obsidian_repo": "r/v", "obsidian_path": "/p"}
+
+    monkeypatch.setattr(user_router_module, "get_obsidian_settings", stale_get)
+
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "r/v-updated",
+    })
+    assert resp.status_code == 200
+
+    # Undo only our patch so get_obsidian_settings goes back to the real impl.
+    monkeypatch.setattr(user_router_module, "get_obsidian_settings", get_obsidian_settings)
+    settings = await get_obsidian_settings(test_user["id"])
+    # With the bug: token would be v1 (stale read overwrote v2).
+    # With the fix: token stays v2 because the UPDATE skips the github_token column.
+    assert decrypt_api_key(settings["github_token"]) == "token-v2", \
+        "concurrent token update must not be silently overwritten by a PATCH that omits github_token"
+    assert settings["obsidian_repo"] == "r/v-updated"

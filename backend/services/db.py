@@ -869,12 +869,21 @@ async def update_obsidian_settings(
     github_token_encrypted: str | None,
     repo: str | None,
     path: str | None,
+    *,
+    token_explicitly_set: bool = True,
 ) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET github_token = ?, obsidian_repo = ?, obsidian_path = ? WHERE id = ?",
-            (github_token_encrypted, repo, path, user_id),
-        )
+        if token_explicitly_set:
+            await db.execute(
+                "UPDATE users SET github_token = ?, obsidian_repo = ?, obsidian_path = ? WHERE id = ?",
+                (github_token_encrypted, repo, path, user_id),
+            )
+        else:
+            # github_token omitted intentionally — avoid a non-atomic read-then-write race.
+            await db.execute(
+                "UPDATE users SET obsidian_repo = ?, obsidian_path = ? WHERE id = ?",
+                (repo, path, user_id),
+            )
         await db.commit()
 
 

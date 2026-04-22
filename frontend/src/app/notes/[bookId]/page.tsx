@@ -19,7 +19,7 @@ import {
 } from "@/lib/api";
 
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
-import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon } from "@/components/Icons";
+import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, ExternalLinkIcon } from "@/components/Icons";
 
 type ViewMode = "section" | "chapter";
 
@@ -661,7 +661,7 @@ export default function BookNotesPage() {
             disabled={exporting}
             className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors"
           >
-            {exporting ? "Exporting…" : "↗ Export"}
+            {exporting ? <><RetryIcon className="w-3.5 h-3.5 shrink-0 animate-spin" /> Exporting…</> : <><ExternalLinkIcon className="w-3.5 h-3.5 shrink-0" /> Export</>}
           </button>
         </div>
 

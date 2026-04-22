@@ -445,7 +445,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     await waitFor(() =>
@@ -468,7 +468,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
@@ -484,7 +484,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const retryBtn = await screen.findByRole("button", { name: "↻" });
+    const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
 
     await waitFor(() =>

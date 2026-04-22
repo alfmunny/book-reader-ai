@@ -140,7 +140,7 @@ test("notes page: annotation chapter link points to reader URL with sentence", a
 
   await page.goto("/notes/1342");
 
-  const link = page.getByRole("link", { name: /→ Chapter/ });
+  const link = page.getByRole("link", { name: /Chapter/ });
   await expect(link).toBeVisible();
 
   const href = await link.getAttribute("href");

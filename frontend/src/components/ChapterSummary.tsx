@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateChapterSummary } from "@/lib/api";
-import { SummaryIcon } from "@/components/Icons";
+import { SummaryIcon, RetryIcon } from "@/components/Icons";
 
 interface Props {
   bookId: string;
@@ -89,9 +89,9 @@ export default function ChapterSummary({
           <button
             onClick={load}
             title="Regenerate summary"
-            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
           >
-            {summary ? "↻ Refresh" : "Generate"}
+            {summary ? <><RetryIcon className="w-3 h-3 shrink-0" /> Refresh</> : "Generate"}
           </button>
         )}
       </div>

@@ -791,7 +791,8 @@ async def save_word(
             "INSERT OR IGNORE INTO vocabulary (user_id, word) VALUES (?, ?)",
             (user_id, word),
         )
-        await db.commit()
+        # SQLite makes uncommitted writes visible to subsequent reads on the
+        # same connection, so no intermediate commit is needed before the SELECT.
         async with db.execute(
             "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
             (user_id, word),
@@ -805,7 +806,7 @@ async def save_word(
                VALUES (?, ?, ?, ?)""",
             (vocab_id, book_id, chapter_index, sentence_text),
         )
-        await db.commit()
+        await db.commit()  # single atomic commit for both inserts
 
         async with db.execute("SELECT * FROM vocabulary WHERE id = ?", (vocab_id,)) as cursor:
             row = await cursor.fetchone()

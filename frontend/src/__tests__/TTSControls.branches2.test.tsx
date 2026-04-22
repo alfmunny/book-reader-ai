@@ -114,7 +114,7 @@ async function loadAndStart(chunkTexts = ["Chunk one."]) {
 
   const playBtn = screen
     .getAllByRole("button")
-    .find((b) => b.textContent?.includes("▶"))!;
+    .find((b) => b.textContent?.includes("Read"))!;
 
   await act(async () => {
     fireEvent.click(playBtn);
@@ -142,7 +142,7 @@ describe("TTSControls — saveAudioPosition on chapter change cleanup (line 96)"
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -189,7 +189,7 @@ describe("TTSControls — saveAudioPosition on chapter change cleanup (line 96)"
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -225,7 +225,7 @@ describe("TTSControls — gender change with empty text sets status idle (line 1
 
     // Verify initial status is "paused" (text is non-empty)
     expect(
-      screen.getByRole("button", { name: /▶ Read/i })
+      screen.getByRole("button", { name: /Read/i })
     ).not.toBeDisabled();
 
     // Now rerender with empty text so status would be "idle" IF gender changes
@@ -241,7 +241,7 @@ describe("TTSControls — gender change with empty text sets status idle (line 1
     // Now text="" → status="idle"
     // The Read button should be disabled (idle state)
     const btns = screen.getAllByRole("button");
-    const readBtn = btns.find((b) => b.textContent?.includes("▶ Read"));
+    const readBtn = btns.find((b) => b.textContent?.includes("Read"));
     if (readBtn) expect(readBtn).toBeDisabled();
   });
 
@@ -254,7 +254,7 @@ describe("TTSControls — gender change with empty text sets status idle (line 1
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
     await act(async () => {
       fireEvent.click(playBtn);
       await new Promise((r) => setTimeout(r, 150));
@@ -273,7 +273,7 @@ describe("TTSControls — gender change with empty text sets status idle (line 1
 
     // Should be "paused" (text non-empty)
     await waitFor(() =>
-      expect(screen.getByText(/▶ Read/)).toBeInTheDocument()
+      expect(screen.getByText(/Read/)).toBeInTheDocument()
     );
   });
 });
@@ -297,15 +297,15 @@ describe("TTSControls — toggleGender from male (line 355)", () => {
     const genderBtn = screen.getAllByRole("button").find(
       (b) => b.getAttribute("title")?.toLowerCase().includes("voice")
     )!;
-    expect(genderBtn.textContent).toContain("♀");
+    expect(genderBtn.textContent).toContain("F");
 
     // Toggle to male
     fireEvent.click(genderBtn);
-    expect(genderBtn.textContent).toContain("♂");
+    expect(genderBtn.textContent).toContain("M");
 
     // Toggle back to female
     fireEvent.click(genderBtn);
-    expect(genderBtn.textContent).toContain("♀");
+    expect(genderBtn.textContent).toContain("F");
   });
 });
 
@@ -319,7 +319,7 @@ describe("TTSControls — formatTime handles edge values (line 366)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -347,7 +347,7 @@ describe("TTSControls — error state with empty errorMsg (line 404)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -358,11 +358,11 @@ describe("TTSControls — error state with empty errorMsg (line 404)", () => {
 
     // In error state, the retry button should be shown
     await waitFor(() =>
-      expect(screen.getByText(/↻ Retry/)).toBeInTheDocument()
+      expect(screen.getByText(/Retry/)).toBeInTheDocument()
     );
 
     // The retry button's title should fall back to "Audio failed" since errorMsg is ""
-    const retryBtn = screen.getByText(/↻ Retry/);
+    const retryBtn = screen.getByText(/Retry/);
     // errorMsg is "" (falsy) → title = "Audio failed"
     expect(retryBtn.closest("button")?.getAttribute("title")).toBe("Audio failed");
   });
@@ -378,7 +378,7 @@ describe("TTSControls — non-Error thrown during load (line 293)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -406,7 +406,7 @@ describe("TTSControls — gen stale after getTtsChunks (line 172)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     // Start loading
     await act(async () => {
@@ -457,7 +457,7 @@ describe("TTSControls — audio.duration defaults to 0 when NaN/0 (line 225)", (
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -495,7 +495,7 @@ describe("TTSControls — pause() with no active chunk (line 302)", () => {
     const { rerender } = render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -549,7 +549,7 @@ describe("TTSControls — formatTime with Infinity duration (line 366)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -589,7 +589,7 @@ describe("TTSControls — gen stale mid-loop (line 186)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -673,7 +673,7 @@ describe("TTSControls — loadAndPlay seekToGlobal with existing chunks (line 15
     // First: load chunks by playing
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -712,7 +712,7 @@ describe("TTSControls — loadAndPlay seekToGlobal with existing chunks (line 15
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -748,7 +748,7 @@ describe("TTSControls — loadAndPlay seekToGlobal with existing chunks (line 15
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -764,7 +764,7 @@ describe("TTSControls — loadAndPlay seekToGlobal with existing chunks (line 15
       });
 
       // Play again — hits the "chunks already loaded, no seekToGlobal" branch
-      const playAgain = screen.queryByText(/▶ Read/);
+      const playAgain = screen.queryByText(/Read/);
       if (playAgain) {
         await act(async () => {
           fireEvent.click(playAgain);

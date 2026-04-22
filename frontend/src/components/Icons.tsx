@@ -163,6 +163,58 @@ export function ExportIcon({ className = "w-4 h-4" }: IconProps) {
   );
 }
 
+export function CheckCircleIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  );
+}
+
+export function RetryIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="1 4 1 10 7 10"/>
+      <path d="M3.51 15a9 9 0 1 0 .49-3.79"/>
+    </svg>
+  );
+}
+
+export function InsightIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  );
+}
+
+export function VocabIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="9" x2="20" y2="9"/>
+      <line x1="4" y1="15" x2="20" y2="15"/>
+      <line x1="10" y1="3" x2="8" y2="21"/>
+      <line x1="16" y1="3" x2="14" y2="21"/>
+    </svg>
+  );
+}
+
+export function EmptyNotesIcon({ className = "w-12 h-12" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <rect x="12" y="8" width="40" height="48" rx="4" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeOpacity="0.2" strokeWidth="1.5"/>
+      <rect x="20" y="18" width="24" height="2" rx="1" fill="currentColor" fillOpacity="0.25"/>
+      <rect x="20" y="24" width="20" height="2" rx="1" fill="currentColor" fillOpacity="0.18"/>
+      <rect x="20" y="30" width="22" height="2" rx="1" fill="currentColor" fillOpacity="0.18"/>
+      <rect x="20" y="36" width="16" height="2" rx="1" fill="currentColor" fillOpacity="0.12"/>
+      <path d="M30 46 L34 42 L38 46" stroke="currentColor" strokeOpacity="0.3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 export function BookCoverPlaceholderIcon({ className = "w-8 h-8" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 48 64" fill="none" aria-hidden="true">

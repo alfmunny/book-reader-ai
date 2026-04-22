@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { getWordDefinition, WordDefinition } from "@/lib/api";
+import { CloseIcon, CheckCircleIcon } from "@/components/Icons";
 
 interface Props {
   word: string;
@@ -68,7 +69,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-amber-100">
         <span className="font-semibold text-ink text-sm">{word}</span>
-        <button onClick={onClose} className="text-stone-400 hover:text-stone-600 text-base leading-none px-1">×</button>
+        <button onClick={onClose} aria-label="Close" className="text-stone-400 hover:text-stone-600 p-0.5 rounded transition-colors"><CloseIcon className="w-3.5 h-3.5" /></button>
       </div>
 
       {/* Body */}
@@ -122,7 +123,9 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
               : "bg-amber-600 text-white hover:bg-amber-700"
           }`}
         >
-          {saved ? "Saved ✓" : "Save to vocab"}
+          {saved ? (
+            <span className="flex items-center gap-1"><CheckCircleIcon className="w-3.5 h-3.5" />Saved</span>
+          ) : "Save to vocab"}
         </button>
       </div>
     </div>

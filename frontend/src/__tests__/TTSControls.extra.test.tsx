@@ -116,7 +116,7 @@ async function playAndLoad(chunks = ["Chunk one.", "Chunk two."]) {
   const { container } = render(<TTSControls {...DEFAULT_PROPS} />);
   const buttons = screen.getAllByRole("button");
   const playBtn =
-    buttons.find((b) => b.textContent?.includes("▶")) ?? buttons[0];
+    buttons.find((b) => b.textContent?.includes("Read")) ?? buttons[0];
 
   await act(async () => {
     fireEvent.click(playBtn);
@@ -138,7 +138,7 @@ describe("gender change resets state when not idle (lines 109-116)", () => {
 
     const buttons = screen.getAllByRole("button");
     const playBtn =
-      buttons.find((b) => b.textContent?.includes("▶")) ?? buttons[0];
+      buttons.find((b) => b.textContent?.includes("Read")) ?? buttons[0];
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -152,21 +152,21 @@ describe("gender change resets state when not idle (lines 109-116)", () => {
 
     // Cancel the load (which unblocks by AbortError path) so we get to paused
     // Then we can test the gender toggle from paused state
-    const cancelBtn = screen.getByText(/Preparing.*×/);
+    const cancelBtn = screen.getByText(/Preparing/);
     await act(async () => {
       fireEvent.click(cancelBtn);
       await flushPromises();
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/▶ Read/)).toBeInTheDocument()
+      expect(screen.getByText(/Read/)).toBeInTheDocument()
     );
 
     // Now change to playing state — mock successful synthesis
     mockGetChunks.mockResolvedValue(["Chunk after cancel."]);
     mockSynthesize.mockResolvedValue({ url: "blob:audio2", wordBoundaries: [] });
 
-    const playBtn2 = screen.getByText(/▶ Read/);
+    const playBtn2 = screen.getByText(/Read/);
     await act(async () => {
       fireEvent.click(playBtn2);
       await new Promise((r) => setTimeout(r, 100));
@@ -184,7 +184,7 @@ describe("gender change resets state when not idle (lines 109-116)", () => {
 
     // Status should revert to paused (text is non-empty)
     await waitFor(() =>
-      expect(screen.getByText(/▶ Read/)).toBeInTheDocument()
+      expect(screen.getByText(/Read/)).toBeInTheDocument()
     );
   });
 
@@ -203,7 +203,7 @@ describe("gender change resets state when not idle (lines 109-116)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
     await act(async () => {
       fireEvent.click(playBtn);
       await flushPromises();
@@ -232,7 +232,7 @@ describe("computeGlobalCurrentTime uses previous chunk durations (line 136)", ()
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
     await act(async () => {
       fireEvent.click(playBtn);
       await new Promise((r) => setTimeout(r, 100));
@@ -253,7 +253,7 @@ describe("loadAndPlay when chunks already exist (lines 153-159)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     // First play — loads chunks
     await act(async () => {
@@ -270,7 +270,7 @@ describe("loadAndPlay when chunks already exist (lines 153-159)", () => {
     }
 
     // Play again — should reuse loaded chunks (loadAndPlay hits lines 153-159)
-    const playBtn2 = screen.queryByText(/▶ Read/);
+    const playBtn2 = screen.queryByText(/Read/);
     if (playBtn2) {
       await act(async () => {
         fireEvent.click(playBtn2);
@@ -301,7 +301,7 @@ describe("URL revoked when generation changes mid-load (lines 207-208)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
     await act(async () => {
       fireEvent.click(playBtn);
       await flushPromises();
@@ -326,8 +326,8 @@ describe("URL revoked when generation changes mid-load (lines 207-208)", () => {
     // The main check is that no crash occurs and the component is still stable
     // After gender toggle the component should be in paused or playing state (not error/loading)
     await waitFor(() => {
-      const hasPlay = screen.queryByText(/▶ Read/);
-      const hasPause = screen.queryByText(/⏸ Pause/);
+      const hasPlay = screen.queryByText(/Read/);
+      const hasPause = screen.queryByText(/Pause/);
       expect(hasPlay || hasPause).toBeTruthy();
     });
   });
@@ -343,7 +343,7 @@ describe("audio ended event handlers (lines 236-250)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -371,7 +371,7 @@ describe("audio ended event handlers (lines 236-250)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -385,7 +385,7 @@ describe("audio ended event handlers (lines 236-250)", () => {
 
     // After last chunk ends, should show play button (paused) and clearAudioPosition called
     await waitFor(() =>
-      expect(screen.getByText(/▶ Read/)).toBeInTheDocument()
+      expect(screen.getByText(/Read/)).toBeInTheDocument()
     );
     expect(mockClearAudioPosition).toHaveBeenCalledWith(
       DEFAULT_PROPS.bookId,
@@ -408,7 +408,7 @@ describe("timeupdate handler only fires for active chunk (lines 254-256)", () =>
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -437,7 +437,7 @@ describe("savedPos and seekToGlobal in loadAndPlay (lines 263, 265)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -462,7 +462,7 @@ describe("AbortError during load (lines 287-289)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -471,7 +471,7 @@ describe("AbortError during load (lines 287-289)", () => {
 
     // Should show ▶ Read (paused), not an error
     await waitFor(() =>
-      expect(screen.getByText(/▶ Read/)).toBeInTheDocument()
+      expect(screen.getByText(/Read/)).toBeInTheDocument()
     );
     expect(screen.queryByText(/TTS failed/)).not.toBeInTheDocument();
   });
@@ -482,7 +482,7 @@ describe("AbortError during load (lines 287-289)", () => {
 
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -493,14 +493,14 @@ describe("AbortError during load (lines 287-289)", () => {
       expect(screen.getByText(/Preparing/)).toBeInTheDocument()
     );
 
-    const cancelBtn = screen.getByText(/Preparing.*×/);
+    const cancelBtn = screen.getByText(/Preparing/);
     await act(async () => {
       fireEvent.click(cancelBtn);
       await flushPromises();
     });
 
     await waitFor(() =>
-      expect(screen.getByText(/▶ Read/)).toBeInTheDocument()
+      expect(screen.getByText(/Read/)).toBeInTheDocument()
     );
   });
 });
@@ -515,7 +515,7 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -537,7 +537,7 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -591,7 +591,7 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -615,7 +615,7 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -649,7 +649,7 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -669,7 +669,7 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -691,7 +691,7 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -715,7 +715,7 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
     render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);
@@ -724,14 +724,14 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
     jest.useRealTimers();
 
     await waitFor(() =>
-      expect(screen.getByText(/↻ Retry/)).toBeInTheDocument()
+      expect(screen.getByText(/Retry/)).toBeInTheDocument()
     );
 
     // Now set up a successful resolve and click retry
     mockGetChunks.mockResolvedValue(["New chunk."]);
     mockSynthesize.mockResolvedValue({ url: "blob:audio", wordBoundaries: [] });
 
-    const retryBtn = screen.getByText(/↻ Retry/);
+    const retryBtn = screen.getByText(/Retry/);
     await act(async () => {
       fireEvent.click(retryBtn);
       await new Promise((r) => setTimeout(r, 100));
@@ -751,7 +751,7 @@ describe("saveAudioPosition on chapter unmount (line 96)", () => {
     const { rerender, unmount } = render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
-      .find((b) => b.textContent?.includes("▶"))!;
+      .find((b) => b.textContent?.includes("Read"))!;
 
     await act(async () => {
       fireEvent.click(playBtn);

@@ -133,9 +133,9 @@ describe("VocabWordTooltip — save behaviour", () => {
 });
 
 describe("VocabWordTooltip — dismiss behaviour", () => {
-  it("calls onClose when × button is clicked", async () => {
+  it("calls onClose when close button is clicked", async () => {
     render(<VocabWordTooltip {...BASE} />);
-    await userEvent.click(screen.getByRole("button", { name: "×" }));
+    await userEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(BASE.onClose).toHaveBeenCalledTimes(1);
   });
 

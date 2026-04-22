@@ -68,6 +68,58 @@ Book Reader AI uses a warm parchment/amber palette (`#f5f0e8` background, `#2c24
 
 ---
 
+## Research Round 2 — Findings (2026-04-22)
+
+Second pass covered: vocabulary page, notes page, profile page, import page, AnnotationToolbar, TTSControls, InsightChat, VocabWordTooltip, VocabularyToast.
+
+### New Weaknesses Found
+
+| Severity | Issue | Location |
+|----------|-------|----------|
+| 🔴 High | `⏸ Pause` / `▶ Read` / `↻ Retry` text symbols in TTS bar | TTSControls.tsx |
+| 🔴 High | `📝 💬 📚` emoji as semantic badges in Notes page | notes/page.tsx |
+| 🔴 High | `💾` emoji in VocabularyToast (save confirmation) | VocabularyToast.tsx |
+| 🔴 High | `📒` emoji in Notes empty state | notes/page.tsx |
+| 🟡 Major | `✕` character for close in AnnotationToolbar (not SVG) | AnnotationToolbar.tsx |
+| 🟡 Major | VocabularyToast has no `aria-live` — screen readers miss it | VocabularyToast.tsx |
+| 🟡 Major | InsightChat font-size toggle (A/a) has no visible active state | InsightChat.tsx |
+| 🟡 Major | `♀ F` / `♂ M` gender toggle in TTS — symbols render oddly | TTSControls.tsx |
+| 🟡 Major | Profile page Obsidian section too long, no accordion/tabs | profile/page.tsx |
+| 🟡 Major | Import page cost panel: visual hierarchy unclear, mixed colors | import/[bookId]/page.tsx |
+| 🟠 Minor | Vocabulary page empty state uses `📖` emoji | vocabulary/page.tsx |
+| 🟠 Minor | Notes page "← Library" back button is text-only (inconsistent) | notes/page.tsx |
+| 🟠 Minor | VocabWordTooltip `×` close is a text character | VocabWordTooltip.tsx |
+| 🟠 Minor | Notes metadata badges (`📝 3 annotations`) styling is flat | notes/page.tsx |
+
+### Wave 4 — Remaining Emoji Removal (this session)
+| # | Change | Impact | File(s) |
+|---|--------|--------|---------|
+| 4.1 | TTSControls: SVG icons for Play/Pause/Cancel, text labels for gender | High | TTSControls.tsx |
+| 4.2 | VocabularyToast: SVG check icon + `aria-live` region | High | VocabularyToast.tsx |
+| 4.3 | Notes page: SVG icons for annotation/insight/vocab badges | High | notes/page.tsx |
+| 4.4 | Notes empty state: SVG illustration instead of 📒 emoji | Medium | notes/page.tsx |
+| 4.5 | AnnotationToolbar: SVG close button | Low | AnnotationToolbar.tsx |
+| 4.6 | VocabWordTooltip: SVG close button | Low | VocabWordTooltip.tsx |
+| 4.7 | Add SaveIcon + new icons needed by Wave 4 to Icons.tsx | Low | Icons.tsx |
+
+### Wave 5 — Polish & Accessibility
+| # | Change | Impact | File(s) |
+|---|--------|--------|---------|
+| 5.1 | InsightChat: highlight active font-size toggle state | Medium | InsightChat.tsx |
+| 5.2 | Profile page: collapse Obsidian section under accordion | Medium | profile/page.tsx |
+| 5.3 | Notes metadata badges: pill-style with colored dot instead of emoji | Low | notes/page.tsx |
+| 5.4 | Import page: unify cost panel color hierarchy (remove emerald, use amber only) | Low | import/[bookId]/page.tsx |
+| 5.5 | Notes back button: consistent with reader (SVG arrow + "Library" text) | Low | notes/page.tsx |
+
+### Wave 6 — Page-level Improvements
+| # | Change | Impact | File(s) |
+|---|--------|--------|---------|
+| 6.1 | Vocabulary page: SVG empty state illustration | Medium | vocabulary/page.tsx |
+| 6.2 | Notes page: stat summary row with icon+count pills in header | Low | notes/page.tsx |
+| 6.3 | Profile page: section header dividers for better visual grouping | Low | profile/page.tsx |
+
+---
+
 ## UX Issues (Opened for Later)
 
 - [ ] **UX-001**: Reader header button overflow on mid-size screens — needs a "More" overflow menu or collapsible toolbar

@@ -65,16 +65,20 @@ test("shows a book card for each book with annotations", async () => {
   expect(screen.getByText("Moby Dick")).toBeInTheDocument();
 });
 
-test("shows annotation count on book card", async () => {
+test("shows annotation count badge on book card", async () => {
   mockGetAllAnnotations.mockResolvedValue([
     makeAnnotation({ id: 1, book_id: 10, book_title: "Pride and Prejudice" }),
     makeAnnotation({ id: 2, book_id: 10, book_title: "Pride and Prejudice" }),
   ]);
-  render(<NotesPage />);
-  await waitFor(() => expect(screen.getByText(/2 annotations/i)).toBeInTheDocument());
+  const { container } = render(<NotesPage />);
+  await waitFor(() => expect(screen.getByText("Pride and Prejudice")).toBeInTheDocument());
+  // Badge shows count "2" in an amber pill; check it appears in the card
+  const pills = container.querySelectorAll(".bg-amber-50");
+  const countPill = Array.from(pills).find((el) => el.textContent?.trim() === "2");
+  expect(countPill).toBeTruthy();
 });
 
-test("shows insight count on book card when insights exist", async () => {
+test("shows insight count badge on book card when insights exist", async () => {
   mockGetAllAnnotations.mockResolvedValue([]);
   mockGetAllInsights.mockResolvedValue([
     {
@@ -83,10 +87,12 @@ test("shows insight count on book card when insights exist", async () => {
       book_title: "Pride and Prejudice",
     } as BookInsightWithBook,
   ]);
-  render(<NotesPage />);
+  const { container } = render(<NotesPage />);
   await waitFor(() => expect(screen.getByText("Pride and Prejudice")).toBeInTheDocument());
-  // "1 insight" in the book card (singular); header says "1 insights"
-  expect(screen.getAllByText(/1 insight/i).length).toBeGreaterThan(0);
+  // Badge shows count "1" in a sky pill; header has stat summary
+  const pills = container.querySelectorAll(".bg-sky-50");
+  const countPill = Array.from(pills).find((el) => el.textContent?.trim() === "1");
+  expect(countPill).toBeTruthy();
 });
 
 test("clicking a book card navigates to /notes/[bookId]", async () => {

@@ -106,6 +106,24 @@ async def test_change_role(admin_client, admin_db):
     assert updated["role"] == "admin"
 
 
+async def test_approve_nonexistent_user_returns_404(admin_client):
+    """Approving a user that doesn't exist must return 404, not 200."""
+    res = await admin_client.put("/api/admin/users/99999/approve", json={"approved": True})
+    assert res.status_code == 404
+
+
+async def test_change_role_nonexistent_user_returns_404(admin_client):
+    """Changing role for a user that doesn't exist must return 404, not 200."""
+    res = await admin_client.put("/api/admin/users/99999/role", json={"role": "admin"})
+    assert res.status_code == 404
+
+
+async def test_remove_nonexistent_user_returns_404(admin_client):
+    """Deleting a user that doesn't exist must return 404, not 200."""
+    res = await admin_client.delete("/api/admin/users/99999")
+    assert res.status_code == 404
+
+
 async def test_change_role_invalid(admin_client):
     res = await admin_client.put("/api/admin/users/1/role", json={"role": "superuser"})
     assert res.status_code == 400
@@ -310,6 +328,12 @@ async def test_delete_specific_translation(admin_client, admin_db):
     res = await admin_client.delete("/api/admin/translations/100/0/en")
     assert res.status_code == 200
     assert res.json()["deleted"] == 1
+
+
+async def test_delete_specific_translation_not_found_returns_404(admin_client):
+    """DELETE specific translation that doesn't exist must return 404, not 200."""
+    res = await admin_client.delete("/api/admin/translations/99999/0/de")
+    assert res.status_code == 404
 
 
 # ── Audio ────────────────────────────────────────────────────────────────────

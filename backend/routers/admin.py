@@ -12,6 +12,7 @@ from services.bulk_translate import manager as bulk_manager, plan_work, group_ch
 from services.db import (
     DB_PATH,
     list_users,
+    get_user_by_id,
     set_user_approved,
     set_user_role,
     delete_user,
@@ -71,6 +72,8 @@ class ApproveRequest(BaseModel):
 
 @router.put("/users/{user_id}/approve")
 async def approve_user(user_id: int, req: ApproveRequest, _admin: dict = Depends(_require_admin)):
+    if not await get_user_by_id(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
     await set_user_approved(user_id, req.approved)
     return {"ok": True}
 
@@ -85,6 +88,8 @@ async def change_role(user_id: int, req: RoleRequest, admin: dict = Depends(_req
         raise HTTPException(status_code=400, detail="Role must be 'admin' or 'user'")
     if user_id == admin["id"] and req.role != "admin":
         raise HTTPException(status_code=400, detail="Cannot demote yourself")
+    if not await get_user_by_id(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
     await set_user_role(user_id, req.role)
     return {"ok": True}
 
@@ -93,6 +98,8 @@ async def change_role(user_id: int, req: RoleRequest, admin: dict = Depends(_req
 async def remove_user(user_id: int, admin: dict = Depends(_require_admin)):
     if user_id == admin["id"]:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    if not await get_user_by_id(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
     await delete_user(user_id)
     return {"ok": True}
 
@@ -348,7 +355,9 @@ async def delete_translation(
             (book_id, chapter_index, target_language),
         )
         await db.commit()
-        return {"ok": True, "deleted": cursor.rowcount}
+    if cursor.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Translation not found")
+    return {"ok": True, "deleted": cursor.rowcount}
 
 
 @router.post("/translations/{book_id}/{chapter_index}/{target_language}/retranslate")

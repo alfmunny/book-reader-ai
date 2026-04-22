@@ -511,8 +511,7 @@ async def test_queue_delete_item(admin_client, admin_db):
 
 async def test_queue_delete_nonexistent_item(admin_client, admin_db):
     res = await admin_client.delete("/api/admin/queue/items/99999")
-    assert res.status_code == 200
-    assert res.json()["deleted"] == 0
+    assert res.status_code == 404
 
 
 # ── Queue clear ──────────────────────────────────────────────────────────────
@@ -603,8 +602,7 @@ async def test_queue_retry_item(admin_client, admin_db):
 
 async def test_queue_retry_nonexistent_item(admin_client, admin_db):
     res = await admin_client.post("/api/admin/queue/items/99999/retry")
-    assert res.status_code == 200
-    assert res.json()["updated"] == 0
+    assert res.status_code == 404
 
 
 # ── Queue cost estimate ──────────────────────────────────────────────────────

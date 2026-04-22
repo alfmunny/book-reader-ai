@@ -42,6 +42,7 @@ jest.mock("next/navigation", () => ({
 const mockGetBookChapters = jest.fn();
 const mockGetMe = jest.fn();
 const mockGetAnnotations = jest.fn();
+const mockCreateAnnotation = jest.fn();
 const mockGetVocabulary = jest.fn();
 const mockGetBookTranslationStatus = jest.fn();
 const mockGetChapterTranslation = jest.fn();
@@ -60,6 +61,7 @@ jest.mock("@/lib/api", () => ({
   getBookChapters: (...a: unknown[]) => mockGetBookChapters(...a),
   getMe: (...a: unknown[]) => mockGetMe(...a),
   getAnnotations: (...a: unknown[]) => mockGetAnnotations(...a),
+  createAnnotation: (...a: unknown[]) => mockCreateAnnotation(...a),
   getVocabulary: (...a: unknown[]) => mockGetVocabulary(...a),
   getBookTranslationStatus: (...a: unknown[]) => mockGetBookTranslationStatus(...a),
   getChapterTranslation: (...a: unknown[]) => mockGetChapterTranslation(...a),
@@ -294,6 +296,18 @@ jest.mock("@/components/VocabularyToast", () => {
   );
   VocabularyToast.displayName = "VocabularyToast";
   return { __esModule: true, default: VocabularyToast };
+});
+
+// ─── UndoToast: exposes onUndo / onDone ──────────────────────────────────────
+jest.mock("@/components/UndoToast", () => {
+  const UndoToast = ({ onUndo, onDone }: { message?: string; onUndo?: () => void; onDone?: () => void }) => (
+    <div data-testid="undo-toast">
+      <button data-testid="undo-btn" onClick={() => onUndo?.()}>Undo</button>
+      <button data-testid="undo-done" onClick={() => onDone?.()}>done</button>
+    </div>
+  );
+  UndoToast.displayName = "UndoToast";
+  return { __esModule: true, default: UndoToast };
 });
 
 // ─── SentenceReader: exposes onAnnotate / onSegmentClick / onAnnotationClick ──
@@ -2654,12 +2668,10 @@ describe("ReaderPage.branches2 — SelectionToolbar onRead pauses chapter TTS", 
   });
 
   it("pauses chapter TTS before playing selection when TTS is playing, resumes on end", async () => {
-    let capturedResume: (() => void) | null = null;
     const audioMock = {
       play: jest.fn().mockResolvedValue(undefined),
       onended: null as (() => void) | null,
       onerror: null as (() => void) | null,
-      set onended(fn: (() => void) | null) { capturedResume = fn; },
     };
     jest.spyOn(global, "Audio" as keyof typeof global).mockImplementation(
       () => audioMock as unknown as HTMLAudioElement,
@@ -2735,5 +2747,79 @@ describe("ReaderPage.branches2 — spacebar toggles TTS play/pause", () => {
     document.body.removeChild(input);
     // No crash
     await waitFor(() => expect(screen.getByTestId("tts-controls")).toBeInTheDocument());
+  });
+});
+
+// ─── Annotation delete undo toast ─────────────────────────────────────────────
+
+describe("ReaderPage.branches2 — annotation delete shows undo toast", () => {
+  // id: 77 matches what SentenceReader mock sends in trigger-annotation-click
+  const SAMPLE_ANN = {
+    id: 77,
+    book_id: 42,
+    chapter_index: 0,
+    sentence_text: "Test sentence",
+    note_text: "",
+    color: "yellow",
+  };
+
+  beforeEach(() => {
+    mockGetAnnotations.mockResolvedValue([SAMPLE_ANN]);
+    mockCreateAnnotation.mockResolvedValue({ ...SAMPLE_ANN, id: 100 });
+  });
+
+  it("shows UndoToast when QuickHighlightPanel onDeleted fires", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Open quick highlight panel via annotation click trigger
+    const annClickTrigger = await screen.findByTestId("trigger-annotation-click");
+    await userEvent.click(annClickTrigger);
+
+    // Click delete in QuickHighlightPanel
+    const deleteBtn = await screen.findByTestId("qhp-delete");
+    await userEvent.click(deleteBtn);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("undo-toast")).toBeInTheDocument()
+    );
+  });
+
+  it("clicking Undo calls createAnnotation to restore the annotation", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Open quick highlight panel
+    const annClickTrigger = await screen.findByTestId("trigger-annotation-click");
+    await userEvent.click(annClickTrigger);
+
+    const deleteBtn = await screen.findByTestId("qhp-delete");
+    await userEvent.click(deleteBtn);
+
+    await waitFor(() => expect(screen.getByTestId("undo-toast")).toBeInTheDocument());
+
+    const undoBtn = screen.getByTestId("undo-btn");
+    await userEvent.click(undoBtn);
+
+    await waitFor(() => expect(mockCreateAnnotation).toHaveBeenCalled());
+  });
+
+  it("shows UndoToast when AnnotationToolbar onDeleted fires", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await flushPromises();
+
+    // Open annotation toolbar via long-press trigger
+    const longPressTrigger = await screen.findByTestId("trigger-annotate");
+    await userEvent.click(longPressTrigger);
+
+    const deleteBtn = await screen.findByTestId("annotation-delete");
+    await userEvent.click(deleteBtn);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("undo-toast")).toBeInTheDocument()
+    );
   });
 });

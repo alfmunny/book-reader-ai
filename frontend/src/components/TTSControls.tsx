@@ -270,6 +270,7 @@ export default function TTSControls({
         });
         audio.addEventListener("timeupdate", () => {
           if (myGen !== genRef.current) return;
+          if (audio.paused) return; // skip seek-triggered updates on paused audio
           if (chunksRef.current[activeIndexRef.current]?.audio === audio) {
             const t = computeGlobalCurrentTime();
             setGlobalCurrentTime(t);

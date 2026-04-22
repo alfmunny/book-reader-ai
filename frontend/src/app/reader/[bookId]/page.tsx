@@ -942,7 +942,7 @@ export default function ReaderPage() {
           </div>
 
           {/* Typography panel — desktop only */}
-          <div className="relative hidden md:block">
+          <div className="hidden md:block">
             <button
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -958,22 +958,6 @@ export default function ReaderPage() {
             >
               <span className="font-serif">Aa</span>
             </button>
-            {showTypographyPanel && (
-              <TypographyPanel
-                fontSize={fontSize}
-                lineHeight={lineHeight}
-                contentWidth={contentWidth}
-                fontFamily={fontFamily}
-                paragraphFocus={paragraphFocus}
-                onFontSize={setFontSize}
-                onLineHeight={setLineHeight}
-                onContentWidth={setContentWidth}
-                onFontFamily={setFontFamily}
-                onParagraphFocus={setParagraphFocus}
-                onClose={() => setShowTypographyPanel(false)}
-                anchorPos={typographyAnchorPos ?? undefined}
-              />
-            )}
           </div>
 
           {/* Theme — desktop only */}
@@ -2169,6 +2153,25 @@ export default function ReaderPage() {
             ><ChatIcon className="w-5 h-5" /></button>
           </div>
         </div>
+      )}
+
+      {/* TypographyPanel lives outside the header so focus-mode opacity-0 on the
+          header does not clip this fixed-position overlay. */}
+      {showTypographyPanel && (
+        <TypographyPanel
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          contentWidth={contentWidth}
+          fontFamily={fontFamily}
+          paragraphFocus={paragraphFocus}
+          onFontSize={setFontSize}
+          onLineHeight={setLineHeight}
+          onContentWidth={setContentWidth}
+          onFontFamily={setFontFamily}
+          onParagraphFocus={setParagraphFocus}
+          onClose={() => setShowTypographyPanel(false)}
+          anchorPos={typographyAnchorPos ?? undefined}
+        />
       )}
 
       <AuthPromptModal

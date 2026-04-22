@@ -126,7 +126,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
         </button>
       )}
       {onHighlight && (
-        <button onClick={() => handleAction(onHighlight)} className={btnClass}>
+        <button onClick={() => { if (!onHighlight || !selection) return; onHighlight(selection.context || selection.text); window.getSelection()?.removeAllRanges(); setSelection(null); }} className={btnClass}>
           <HighlightIcon className="w-3.5 h-3.5 shrink-0" />
           Highlight
         </button>

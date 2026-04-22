@@ -942,6 +942,7 @@ async def test_import_stream_blocked_for_non_owner_of_uploaded_book(anon_client,
     )
 
 
+
 async def test_gutenberg_book_still_accessible_to_any_user(client, test_user, tmp_db):
     await save_book(9910, MOCK_META, "some text")
     resp = await client.get("/api/books/9910")

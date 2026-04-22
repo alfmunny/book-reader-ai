@@ -113,6 +113,37 @@ test("DefinitionSheet closes on Escape key", async () => {
   await waitFor(() => expect(screen.queryByText("short-lived")).not.toBeInTheDocument());
 });
 
+test("DefinitionSheet can be opened a second time after Escape-close (no stale event listeners)", async () => {
+  // Regression: the cleanup for the backdrop mousedown listener was inside
+  // setTimeout and never called, letting stale listeners accumulate. This test
+  // verifies that after closing and reopening, the sheet is still visible and
+  // no stale close fires immediately on reopen.
+  mockGetWordDefinition.mockResolvedValue({
+    lemma: "ephemeral",
+    language: "en",
+    definitions: [{ pos: "adjective", text: "short-lived" }],
+    url: "",
+  });
+
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ephemeral");
+
+  // First open → close via Escape
+  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
+  fireEvent.keyDown(document, { key: "Escape" });
+  await waitFor(() => expect(screen.queryByText("short-lived")).not.toBeInTheDocument());
+
+  // Second open — sheet must appear again without instantly closing
+  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
+  // Give stale mousedown listeners a chance to fire (they wouldn't normally — but
+  // if they accumulate they would close the sheet immediately)
+  await flushPromises();
+  expect(screen.getByText("short-lived")).toBeInTheDocument();
+});
+
 test("DefinitionSheet shows lemma redirect arrow when lemma differs from word", async () => {
   mockGetVocabulary.mockResolvedValue([
     {

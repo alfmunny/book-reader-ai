@@ -54,14 +54,17 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
   }, [onClose]);
 
   useEffect(() => {
+    let onDown: ((e: MouseEvent) => void) | undefined;
     const t = setTimeout(() => {
-      function onDown(e: MouseEvent) {
+      onDown = (e: MouseEvent) => {
         if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-      }
+      };
       document.addEventListener("mousedown", onDown);
-      return () => document.removeEventListener("mousedown", onDown);
     }, 100);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      if (onDown) document.removeEventListener("mousedown", onDown);
+    };
   }, [onClose]);
 
   return (

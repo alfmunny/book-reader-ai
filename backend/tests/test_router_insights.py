@@ -275,30 +275,13 @@ async def test_save_insight_select_runs_before_commit(tmp_db, test_user, monkeyp
 
 # ── Upload book access control ─────────────────────────────────────────────
 
-import json as _json_ins
-import aiosqlite as _aio_ins
-import services.db as _db_ins
 
-
-async def _insert_private_book_ins(book_id: int, owner_user_id: int) -> None:
-    chapters = _json_ins.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
-    async with _aio_ins.connect(_db_ins.DB_PATH) as db:
-        await db.execute(
-            """INSERT OR REPLACE INTO books
-               (id, title, authors, languages, subjects, download_count,
-                cover, text, images, source, owner_user_id)
-               VALUES (?, 'Private', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
-            (book_id, chapters, owner_user_id),
-        )
-        await db.commit()
-
-
-async def test_create_insight_blocked_for_non_owner_upload(client, test_user, tmp_db):
+async def test_create_insight_blocked_for_non_owner_upload(client, test_user, tmp_db, insert_private_book):
     """Creating an insight on someone else's uploaded book returns 403."""
     from services.db import get_or_create_user, set_user_role
     await set_user_role(test_user["id"], "user")
     owner = await get_or_create_user("ins-owner-gid", "ins-owner@ex.com", "InsOwner", "")
-    await _insert_private_book_ins(8901, owner["id"])
+    await insert_private_book(8901, owner["id"])
     resp = await client.post("/api/insights", json={
         "book_id": 8901,
         "question": "What is it about?",
@@ -307,12 +290,12 @@ async def test_create_insight_blocked_for_non_owner_upload(client, test_user, tm
     assert resp.status_code == 403, resp.text
 
 
-async def test_get_insights_blocked_for_non_owner_upload(client, test_user, tmp_db):
+async def test_get_insights_blocked_for_non_owner_upload(client, test_user, tmp_db, insert_private_book):
     """GET /insights?book_id=N returns 403 for non-owner of a private uploaded book (#397)."""
     from services.db import get_or_create_user, set_user_role
     await set_user_role(test_user["id"], "user")
     owner = await get_or_create_user("ins-owner-get-gid", "ins-owner-get@ex.com", "InsOwnerGet", "")
-    await _insert_private_book_ins(8902, owner["id"])
+    await insert_private_book(8902, owner["id"])
     resp = await client.get("/api/insights?book_id=8902")
     assert resp.status_code == 403, resp.text
 

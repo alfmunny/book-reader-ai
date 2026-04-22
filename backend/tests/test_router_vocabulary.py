@@ -336,20 +336,8 @@ async def test_export_without_settings_returns_400(client, test_user):
 
 # ── Access control for private uploaded books ─────────────────────────────────
 
-async def _insert_private_book(book_id: int, owner_user_id: int) -> None:
-    chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
-    async with aiosqlite.connect(db_module.DB_PATH) as db:
-        await db.execute(
-            """INSERT OR REPLACE INTO books
-               (id, title, authors, languages, subjects, download_count,
-                cover, text, images, source, owner_user_id)
-               VALUES (?, 'Private Book', '[]', '["en"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
-            (book_id, chapters, owner_user_id),
-        )
-        await db.commit()
 
-
-async def test_save_word_blocked_for_non_owner_of_uploaded_book(client, test_user, tmp_db):
+async def test_save_word_blocked_for_non_owner_of_uploaded_book(client, test_user, tmp_db, insert_private_book):
     """POST /vocabulary for a private uploaded book must return 403 for non-owners.
 
     Without check_book_access the endpoint only checks existence (404 vs 200);
@@ -357,7 +345,7 @@ async def test_save_word_blocked_for_non_owner_of_uploaded_book(client, test_use
     from services.db import set_user_role
     await set_user_role(test_user["id"], "user")
     owner = await get_or_create_user("voc-owner-gid", "voc-owner@ex.com", "VocOwner", "")
-    await _insert_private_book(8801, owner["id"])
+    await insert_private_book(8801, owner["id"])
     resp = await client.post("/api/vocabulary", json={
         "word": "secret",
         "book_id": 8801,

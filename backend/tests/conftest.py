@@ -6,8 +6,10 @@ Provides:
   - `auth_headers` — Bearer token for a pre-created test user
 """
 
+import json
 import pytest
 from unittest.mock import AsyncMock, patch
+import aiosqlite
 import services.db as db_module
 from services.db import init_db, get_or_create_user, get_user_by_id
 from services.auth import create_jwt, get_current_user, get_optional_user
@@ -84,3 +86,24 @@ async def anon_client(tmp_db):
 def auth_headers(test_user):
     token = create_jwt(test_user["id"], test_user["email"])
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def insert_private_book():
+    """Factory that inserts a private uploaded book row into the test DB.
+
+    Usage: await insert_private_book(book_id, owner_user_id)
+    """
+    async def _insert(book_id: int, owner_user_id: int) -> None:
+        chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
+        async with aiosqlite.connect(db_module.DB_PATH) as db:
+            await db.execute(
+                """INSERT OR REPLACE INTO books
+                   (id, title, authors, languages, subjects, download_count,
+                    cover, text, images, source, owner_user_id)
+                   VALUES (?, 'Private Book', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+                (book_id, chapters, owner_user_id),
+            )
+            await db.commit()
+
+    return _insert

@@ -120,7 +120,12 @@ test("header shows summary counts", async () => {
   mockGetAllAnnotations.mockResolvedValue([
     makeAnnotation({ id: 1 }), makeAnnotation({ id: 2 }),
   ]);
-  render(<NotesPage />);
-  // The header stat shows e.g. "2 ann · 0 insights · 0 words"
-  await waitFor(() => expect(screen.getAllByText(/2 ann/).length).toBeGreaterThan(0));
+  const { container } = render(<NotesPage />);
+  // The header stat shows icon+count pills; amber pill for annotations
+  await waitFor(() => {
+    const header = container.querySelector("header");
+    const pills = header?.querySelectorAll(".bg-amber-50");
+    const countPill = Array.from(pills || []).find((el) => el.textContent?.trim() === "2");
+    expect(countPill).toBeTruthy();
+  });
 });

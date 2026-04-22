@@ -230,3 +230,25 @@ export function BookCoverPlaceholderIcon({ className = "w-8 h-8" }: IconProps) {
     </svg>
   );
 }
+
+export function EmptyVocabIcon({ className = "w-14 h-14" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 56 56" fill="none" aria-hidden="true">
+      {/* Open book base */}
+      <path d="M28 14 C28 14 16 10 8 12 L8 44 C16 42 28 46 28 46 C28 46 40 42 48 44 L48 12 C40 10 28 14 28 14Z" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1.5" strokeLinejoin="round"/>
+      <line x1="28" y1="14" x2="28" y2="46" stroke="currentColor" strokeOpacity="0.25" strokeWidth="1.5"/>
+      {/* Left page lines */}
+      <rect x="11" y="18" width="13" height="1.5" rx="0.75" fill="currentColor" fillOpacity="0.3"/>
+      <rect x="11" y="22" width="10" height="1.5" rx="0.75" fill="currentColor" fillOpacity="0.2"/>
+      <rect x="11" y="26" width="13" height="1.5" rx="0.75" fill="currentColor" fillOpacity="0.2"/>
+      {/* Right page lines — show question marks for "no definition" */}
+      <rect x="32" y="18" width="13" height="1.5" rx="0.75" fill="currentColor" fillOpacity="0.15"/>
+      <rect x="32" y="22" width="8" height="1.5" rx="0.75" fill="currentColor" fillOpacity="0.1"/>
+      <rect x="32" y="26" width="11" height="1.5" rx="0.75" fill="currentColor" fillOpacity="0.1"/>
+      {/* + badge indicating "add words" */}
+      <circle cx="42" cy="40" r="8" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeOpacity="0.3" strokeWidth="1.5"/>
+      <line x1="42" y1="36.5" x2="42" y2="43.5" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="38.5" y1="40" x2="45.5" y2="40" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}

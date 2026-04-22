@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
-import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon } from "@/components/Icons";
+import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, WordIcon } from "@/components/Icons";
 
 interface BookSummary {
   bookId: number;
@@ -110,9 +110,17 @@ export default function NotesOverviewPage() {
             <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>
           </div>
           {!loading && (
-            <span className="text-xs text-stone-400 shrink-0">
-              {totalAnn} ann · {totalIns} insights · {totalVoc} words
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                <NoteIcon className="w-3 h-3" />{totalAnn}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-2 py-0.5">
+                <InsightIcon className="w-3 h-3" />{totalIns}
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+                <WordIcon className="w-3 h-3" />{totalVoc}
+              </span>
+            </div>
           )}
         </div>
       </header>

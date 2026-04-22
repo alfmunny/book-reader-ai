@@ -153,8 +153,8 @@ test("Your Library shows chapter badge from recent-read data", async ({ page }) 
   });
   await page.reload();
 
-  // Click the Library tab to ensure it's active
-  await page.getByRole("button", { name: "Your Library" }).click();
+  // Click the Home tab to ensure it's active
+  await page.getByRole("button", { name: "Home" }).click();
   // Badge format: "Ch. 5 · just now" (1-indexed display)
   await expect(page.getByText(/Ch\. 5/)).toBeVisible();
 });

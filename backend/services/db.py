@@ -679,12 +679,12 @@ async def create_annotation(
                DO UPDATE SET note_text = excluded.note_text, color = excluded.color""",
             (user_id, book_id, chapter_index, sentence_text, note_text, color),
         )
-        await db.commit()
         async with db.execute(
             "SELECT * FROM annotations WHERE user_id = ? AND book_id = ? AND chapter_index = ? AND sentence_text = ?",
             (user_id, book_id, chapter_index, sentence_text),
         ) as c:
             row = await c.fetchone()
+        await db.commit()
     return dict(row)
 
 
@@ -720,12 +720,12 @@ async def update_annotation(
                 f"UPDATE annotations SET {', '.join(clauses)} WHERE id = ? AND user_id = ?",
                 params,
             )
-            await db.commit()
         async with db.execute(
             "SELECT * FROM annotations WHERE id = ? AND user_id = ?",
             (annotation_id, user_id),
         ) as cursor:
             row = await cursor.fetchone()
+        await db.commit()
     return dict(row) if row else None
 
 

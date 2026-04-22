@@ -254,3 +254,128 @@ async def test_create_annotation_rejects_negative_chapter_index(client, test_use
         "sentence_text": "Some highlighted text.",
     })
     assert resp.status_code == 400
+
+
+async def test_create_annotation_select_runs_before_commit(tmp_db, test_user, monkeypatch):
+    """Regression #349: SELECT must execute before COMMIT in create_annotation.
+
+    If COMMIT precedes SELECT, a concurrent write on another connection can
+    land between the two operations, causing the function to return data it did
+    not write (stale-return race). Placing SELECT inside the transaction
+    guarantees it only sees the current connection's own uncommitted write.
+    """
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import save_book, create_annotation
+
+    await save_book(BOOK_ID, _BOOK_META, "text")
+
+    events: list[str] = []
+    orig_connect = _real_aiosqlite.connect
+
+    def patched_connect(database, **kwargs):
+        real_cm = orig_connect(database, **kwargs)
+
+        class TrackedConn:
+            def __init__(self):
+                self._conn = None
+
+            async def __aenter__(self):
+                self._conn = await real_cm.__aenter__()
+                return self
+
+            async def __aexit__(self, *args):
+                return await real_cm.__aexit__(*args)
+
+            @property
+            def row_factory(self):
+                return self._conn.row_factory
+
+            @row_factory.setter
+            def row_factory(self, v):
+                self._conn.row_factory = v
+
+            def execute(self, sql, *args, **kwargs):
+                if sql.strip().upper().startswith("SELECT"):
+                    events.append("SELECT")
+                return self._conn.execute(sql, *args, **kwargs)
+
+            async def commit(self):
+                events.append("COMMIT")
+                return await self._conn.commit()
+
+        return TrackedConn()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = _real_aiosqlite.Row
+
+    monkeypatch.setattr(db_module, "aiosqlite", FakeAiosqlite)
+
+    await create_annotation(test_user["id"], BOOK_ID, 0, "Sentence", "my-note", "yellow")
+
+    assert "COMMIT" in events and "SELECT" in events, "both operations must fire"
+    assert events.index("SELECT") < events.index("COMMIT"), (
+        "SELECT must run before COMMIT so the return value reflects this "
+        "connection's own write, not a concurrent modification (#349)"
+    )
+
+
+async def test_update_annotation_select_runs_before_commit(tmp_db, test_user, monkeypatch):
+    """Regression #349: SELECT must execute before COMMIT in update_annotation."""
+    import aiosqlite as _real_aiosqlite
+    import services.db as db_module
+    from services.db import save_book, create_annotation, update_annotation
+
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Sentence", "v1", "yellow")
+
+    events: list[str] = []
+    orig_connect = _real_aiosqlite.connect
+
+    def patched_connect(database, **kwargs):
+        real_cm = orig_connect(database, **kwargs)
+
+        class TrackedConn:
+            def __init__(self):
+                self._conn = None
+
+            async def __aenter__(self):
+                self._conn = await real_cm.__aenter__()
+                return self
+
+            async def __aexit__(self, *args):
+                return await real_cm.__aexit__(*args)
+
+            @property
+            def row_factory(self):
+                return self._conn.row_factory
+
+            @row_factory.setter
+            def row_factory(self, v):
+                self._conn.row_factory = v
+
+            def execute(self, sql, *args, **kwargs):
+                if sql.strip().upper().startswith("SELECT"):
+                    events.append("SELECT")
+                return self._conn.execute(sql, *args, **kwargs)
+
+            async def commit(self):
+                events.append("COMMIT")
+                return await self._conn.commit()
+
+        return TrackedConn()
+
+    class FakeAiosqlite:
+        connect = staticmethod(patched_connect)
+        Row = _real_aiosqlite.Row
+
+    monkeypatch.setattr(db_module, "aiosqlite", FakeAiosqlite)
+
+    await update_annotation(ann["id"], test_user["id"], note_text="v2")
+
+    assert "COMMIT" in events and "SELECT" in events, "both operations must fire"
+    assert events.index("SELECT") < events.index("COMMIT"), (
+        "SELECT must run before COMMIT so update_annotation returns its own "
+        "write, not a concurrent modification (#349)"
+    )

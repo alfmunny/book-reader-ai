@@ -348,9 +348,15 @@ async def delete_book_translations(book_id: int, _admin: dict = Depends(_require
     """Delete all translations for a book."""
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="No translations found for this book")
+        # Clear non-running queue rows so enqueue() can re-add chapters.
+        # Running rows are left alone — the worker holds them. (#335)
+        await db.execute(
+            "DELETE FROM translation_queue WHERE book_id=? AND status != 'running'",
+            (book_id,),
+        )
         await db.commit()
-    if cursor.rowcount == 0:
-        raise HTTPException(status_code=404, detail="No translations found for this book")
     return {"ok": True, "deleted": cursor.rowcount}
 
 
@@ -367,9 +373,14 @@ async def delete_language_translations(
             "DELETE FROM translations WHERE book_id=? AND target_language=?",
             (book_id, target_language),
         )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="No translations found for this language")
+        await db.execute(
+            "DELETE FROM translation_queue "
+            "WHERE book_id=? AND target_language=? AND status != 'running'",
+            (book_id, target_language),
+        )
         await db.commit()
-    if cursor.rowcount == 0:
-        raise HTTPException(status_code=404, detail="No translations found for this language")
     return {"ok": True, "deleted": cursor.rowcount}
 
 
@@ -387,9 +398,14 @@ async def delete_translation(
             "DELETE FROM translations WHERE book_id=? AND chapter_index=? AND target_language=?",
             (book_id, chapter_index, target_language),
         )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Translation not found")
+        await db.execute(
+            "DELETE FROM translation_queue "
+            "WHERE book_id=? AND chapter_index=? AND target_language=? AND status != 'running'",
+            (book_id, chapter_index, target_language),
+        )
         await db.commit()
-    if cursor.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Translation not found")
     return {"ok": True, "deleted": cursor.rowcount}
 
 

@@ -577,3 +577,20 @@ async def test_enqueue_all_same_language_returns_400(client):
         json={"target_language": "en"},
     )
     assert resp.status_code == 400
+
+
+async def test_chapter_translation_corrupted_gemini_key_returns_403(client, test_user):
+    """Regression: a corrupted (non-Fernet) Gemini key must return 403, not 500.
+
+    books.py line 261 calls decrypt_api_key() without a try/except, so an
+    InvalidToken raises HTTPException(500) instead of falling through to 403.
+    """
+    from services.db import set_user_gemini_key
+    # Store a raw string that is not valid Fernet ciphertext
+    await set_user_gemini_key(test_user["id"], "not-valid-fernet-ciphertext")
+    resp = await client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 403
+    assert "Gemini" in resp.json()["detail"]

@@ -220,3 +220,14 @@ async def get_optional_user(request: Request) -> dict | None:
         return user
     except Exception:
         return None
+
+
+def check_book_access(book: dict | None, user: dict | None) -> None:
+    """Raise 403 if book is an uploaded private book and user is not the owner or admin."""
+    if not book or book.get("source") != "upload":
+        return
+    owner_id = book.get("owner_user_id")
+    if owner_id is None:
+        return
+    if user is None or (user["id"] != owner_id and user.get("role") != "admin"):
+        raise HTTPException(status_code=403, detail="Not your book")

@@ -13,6 +13,7 @@ from routers.admin import router as admin_router
 from routers.annotations import router as annotations_router
 from routers.vocabulary import router as vocabulary_router
 from routers.insights import router as insights_router
+from routers.uploads import router as uploads_router
 from services.db import init_db
 
 
@@ -92,6 +93,7 @@ app.include_router(admin_router, prefix="/api")
 app.include_router(annotations_router, prefix="/api")
 app.include_router(vocabulary_router, prefix="/api")
 app.include_router(insights_router, prefix="/api")
+app.include_router(uploads_router, prefix="/api")
 
 
 @app.get("/api/health")

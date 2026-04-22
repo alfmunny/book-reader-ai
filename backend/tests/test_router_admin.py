@@ -9,7 +9,7 @@ import routers.admin as admin_module
 from services.db import (
     init_db, get_or_create_user, get_user_by_id, save_book,
     save_translation, set_user_approved, create_annotation, save_insight,
-    upsert_reading_progress,
+    upsert_reading_progress, save_word, get_vocabulary,
 )
 from services.auth import get_current_user, create_jwt
 from main import app
@@ -767,3 +767,37 @@ async def test_admin_retry_failed_without_filters_retries_all(admin_client, admi
         ) as cursor:
             (count,) = await cursor.fetchone()
     assert count == 0
+
+
+async def test_delete_book_removes_orphaned_vocabulary(admin_client, admin_db, admin_user):
+    """Vocab entries whose only occurrences were in the deleted book must be
+    removed; a word shared with another book must survive."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_book(
+        200,
+        {**BOOK_META, "id": 200, "title": "Second Book"},
+        BOOK_TEXT,
+    )
+
+    with patch("services.db._update_lemma", new_callable=AsyncMock):
+        # "orphan" only appears in book 100
+        await save_word(admin_user["id"], "orphan", 100, 0, "An orphan word.")
+        # "shared" appears in both books
+        await save_word(admin_user["id"], "shared", 100, 0, "A shared word in book 100.")
+        await save_word(admin_user["id"], "shared", 200, 0, "A shared word in book 200.")
+
+    vocab_before = await get_vocabulary(admin_user["id"])
+    words_before = {v["word"] for v in vocab_before}
+    assert "orphan" in words_before
+    assert "shared" in words_before
+
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    vocab_after = await get_vocabulary(admin_user["id"])
+    words_after = {v["word"] for v in vocab_after}
+
+    # Orphaned word (only in deleted book) must be gone
+    assert "orphan" not in words_after, "orphaned vocab entry survived delete_book"
+    # Shared word (also in book 200) must survive
+    assert "shared" in words_after

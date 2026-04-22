@@ -213,6 +213,9 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
         await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM translation_queue WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM word_occurrences WHERE book_id = ?", (book_id,))
+        await db.execute(
+            "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
         await db.execute("DELETE FROM annotations WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM book_insights WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM user_reading_progress WHERE book_id = ?", (book_id,))

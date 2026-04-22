@@ -905,6 +905,118 @@ async def test_admin_retry_failed_without_filters_retries_all(admin_client, admi
     assert count == 0
 
 
+# ── Language normalization in admin translation endpoints ─────────────────────
+
+async def test_retranslate_normalizes_language(admin_client, admin_db):
+    """POST /admin/translations/{id}/{idx}/ZH-CN/retranslate must treat
+    'ZH-CN' the same as 'zh' so the saved translation is found by readers."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    with patch(
+        "routers.admin.do_translate",
+        new_callable=AsyncMock,
+        return_value=["第一段。"],
+    ):
+        res = await admin_client.post("/api/admin/translations/100/0/ZH-CN/retranslate")
+    assert res.status_code == 200
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["第一段。"]
+
+
+async def test_retranslate_all_normalizes_language(admin_client, admin_db):
+    """POST /admin/translations/{id}/retranslate-all with target_language='ZH-CN'
+    must save translations under 'zh', not 'ZH-CN'."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    with patch(
+        "routers.admin.do_translate",
+        new_callable=AsyncMock,
+        return_value=["第一段。"],
+    ):
+        res = await admin_client.post(
+            "/api/admin/translations/100/retranslate-all",
+            json={"target_language": "ZH-CN"},
+        )
+    assert res.status_code == 200
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["第一段。"]
+
+
+async def test_move_translation_normalizes_language(admin_client, admin_db):
+    """POST /admin/translations/{id}/{idx}/ZH-CN/move must find translations
+    stored under the normalized key 'zh'."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 1, "zh", ["Chapter two in Chinese."])
+    res = await admin_client.post(
+        "/api/admin/translations/100/1/ZH-CN/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 200
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["Chapter two in Chinese."]
+    assert await get_cached_translation(100, 1, "zh") is None
+
+
+async def test_import_translations_normalizes_language(admin_client, admin_db):
+    """POST /admin/translations/import with target_language='ZH-CN' must
+    store the row under 'zh' so GET /ai/translate/cache?target_language=zh hits it."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={
+            "entries": [{
+                "book_id": 100,
+                "chapter_index": 0,
+                "target_language": "ZH-CN",
+                "paragraphs": ["第一段。"],
+            }],
+        },
+    )
+    assert res.status_code == 200
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "zh") == ["第一段。"]
+    assert await get_cached_translation(100, 0, "ZH-CN") is None
+
+
+async def test_queue_delete_book_normalizes_language(admin_client, admin_db):
+    """DELETE /admin/queue/book/{id}?target_language=ZH-CN must delete rows
+    stored under 'zh'."""
+    await _seed_failed(100, 0, "zh")
+    res = await admin_client.delete(
+        "/api/admin/queue/book/100?target_language=ZH-CN"
+    )
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 1
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE book_id=100"
+        ) as cursor:
+            (count,) = await cursor.fetchone()
+    assert count == 0
+
+
+async def test_queue_retry_failed_normalizes_language(admin_client, admin_db):
+    """POST /admin/queue/retry-failed with target_language='ZH-CN' must
+    revive rows stored under 'zh'."""
+    await _seed_failed(100, 0, "zh")
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"target_language": "ZH-CN"},
+    )
+    assert res.status_code == 200
+    assert res.json()["updated"] == 1
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT status FROM translation_queue WHERE book_id=100 AND target_language='zh'",
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row is not None and row[0] == "pending"
+
+
 async def test_delete_book_removes_orphaned_vocabulary(admin_client, admin_db, admin_user):
     """Vocab entries whose only occurrences were in the deleted book must be
     removed; a word shared with another book must survive."""

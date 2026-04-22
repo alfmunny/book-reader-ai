@@ -382,7 +382,7 @@ async def test_translation_status_cached_book_no_translations(client):
     assert resp.status_code == 200
     data = resp.json()
     assert data["translated_chapters"] == 0
-    assert data["bulk_active"] is False
+    assert "bulk_active" not in data
 
 
 async def test_translation_status_with_translations(client):

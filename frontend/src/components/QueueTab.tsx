@@ -46,9 +46,12 @@ interface WorkerState {
   last_completed_at: string | null;
   last_error: string;
   started_at: string | null;
+  ended_at?: string | null;
   requests_made: number;
   chapters_done: number;
   chapters_failed: number;
+  total_chapters?: number;
+  skipped_chapters?: number;
   waiting_reason: string;
   retry_attempt?: number;
   retry_max?: number;
@@ -145,6 +148,27 @@ export default function QueueTab({ adminFetch }: Props) {
   // indicator so the panels don't pop in one-by-one looking broken.
   const [initialLoaded, setInitialLoaded] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Dry-run / plan state
+  const [dryRunLang, setDryRunLang] = useState("zh");
+  const [dryRunning, setDryRunning] = useState(false);
+  const [dryRunResult, setDryRunResult] = useState<{
+    preview: Record<string, string[]>;
+    total_chapters: number;
+    total_books: number;
+    preview_book_title?: string;
+  } | null>(null);
+  const [planning, setPlanning] = useState(false);
+  const [planResult, setPlanResult] = useState<{
+    total_books: number;
+    total_chapters: number;
+    total_batches: number;
+    total_words: number;
+    estimated_minutes_at_rpm: number;
+    estimated_days_at_rpd: number;
+    books: { id: number; title: string; source_language: string; chapters_to_translate: number }[];
+  } | null>(null);
+  const [dryRunError, setDryRunError] = useState("");
 
   // Form state — mirrors settings but editable.
   const [langs, setLangs] = useState("");
@@ -358,6 +382,40 @@ export default function QueueTab({ adminFetch }: Props) {
     }
   }
 
+  async function runDryRun() {
+    setDryRunning(true);
+    setDryRunError("");
+    setDryRunResult(null);
+    try {
+      const result = await adminFetch("/admin/queue/dry-run", {
+        method: "POST",
+        body: JSON.stringify({ target_language: dryRunLang }),
+      });
+      setDryRunResult(result);
+    } catch (e: unknown) {
+      setDryRunError(e instanceof Error ? e.message : "Dry run failed");
+    } finally {
+      setDryRunning(false);
+    }
+  }
+
+  async function runPlan() {
+    setPlanning(true);
+    setDryRunError("");
+    setPlanResult(null);
+    try {
+      const result = await adminFetch("/admin/queue/plan", {
+        method: "POST",
+        body: JSON.stringify({ target_language: dryRunLang }),
+      });
+      setPlanResult(result);
+    } catch (e: unknown) {
+      setDryRunError(e instanceof Error ? e.message : "Plan failed");
+    } finally {
+      setPlanning(false);
+    }
+  }
+
   const s = status?.state;
   const counts = status?.counts || {};
   const totalPending = counts.pending || 0;
@@ -544,6 +602,146 @@ export default function QueueTab({ adminFetch }: Props) {
                 ))}
             </ul>
           </details>
+        )}
+      </div>
+
+      {/* Session stats — shown when worker has done work this session */}
+      {s && (s.chapters_done > 0 || s.skipped_chapters !== undefined) && (
+        <div className="bg-white rounded-xl border border-amber-200 p-4">
+          <h3 className="font-medium text-ink text-sm mb-3">Session stats</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
+              <div className="text-lg font-bold text-emerald-700">{s.chapters_done}</div>
+              <div className="text-xs text-stone-500">Translated</div>
+            </div>
+            {(s.total_chapters ?? 0) > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
+                <div className="text-lg font-bold text-ink">{s.total_chapters}</div>
+                <div className="text-xs text-stone-500">Remaining</div>
+              </div>
+            )}
+            {(s.skipped_chapters ?? 0) > 0 && (
+              <div className="rounded-lg bg-stone-50 border border-stone-100 px-3 py-2">
+                <div className="text-lg font-bold text-stone-600">{s.skipped_chapters}</div>
+                <div className="text-xs text-stone-500">Skipped</div>
+              </div>
+            )}
+            {s.chapters_failed > 0 && (
+              <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2">
+                <div className="text-lg font-bold text-red-700">{s.chapters_failed}</div>
+                <div className="text-xs text-stone-500">Failed</div>
+              </div>
+            )}
+          </div>
+          {s.ended_at && (
+            <p className="text-xs text-stone-400 mt-2">Last completed {relTime(s.ended_at)}</p>
+          )}
+        </div>
+      )}
+
+      {/* Dry-run / Plan preview */}
+      <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-3">
+        <h3 className="font-medium text-ink text-sm">Preview &amp; plan</h3>
+        <div className="flex gap-2 items-center">
+          <select
+            value={dryRunLang}
+            onChange={(e) => { setDryRunLang(e.target.value); setDryRunResult(null); setPlanResult(null); }}
+            className="rounded border border-amber-300 px-2 py-1 text-sm bg-white"
+          >
+            {[
+              { code: "zh", label: "Chinese (zh)" },
+              { code: "en", label: "English (en)" },
+              { code: "de", label: "German (de)" },
+              { code: "fr", label: "French (fr)" },
+              { code: "es", label: "Spanish (es)" },
+              { code: "ja", label: "Japanese (ja)" },
+            ].map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+          <button
+            onClick={runPlan}
+            disabled={planning || dryRunning}
+            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+          >
+            {planning ? "Planning…" : "Show plan"}
+          </button>
+          <button
+            onClick={runDryRun}
+            disabled={dryRunning || planning}
+            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+          >
+            {dryRunning ? "Translating…" : "Dry run (preview quality)"}
+          </button>
+        </div>
+
+        {dryRunError && (
+          <div className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{dryRunError}</div>
+        )}
+
+        {planResult && (
+          <div className="border-t border-amber-100 pt-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+              {[
+                { label: "Books", value: planResult.total_books },
+                { label: "Chapters", value: planResult.total_chapters },
+                { label: "Batches (≈ req)", value: planResult.total_batches },
+                { label: "Words", value: planResult.total_words.toLocaleString() },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-center">
+                  <div className="text-base font-bold text-ink">{value}</div>
+                  <div className="text-xs text-stone-500">{label}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-stone-500 mb-2">
+              ~<strong>{planResult.estimated_minutes_at_rpm} min</strong> at configured RPM
+              {" · "}~<strong>{planResult.estimated_days_at_rpd} days</strong> at RPD
+            </p>
+            {planResult.books.length > 0 && (
+              <div className="max-h-40 overflow-y-auto border border-amber-100 rounded text-xs">
+                <table className="w-full">
+                  <thead className="bg-amber-50">
+                    <tr>
+                      <th className="text-left px-2 py-1 text-stone-600">Book</th>
+                      <th className="text-right px-2 py-1 text-stone-600">Chapters</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planResult.books.map((b) => (
+                      <tr key={b.id} className="border-t border-amber-50">
+                        <td className="px-2 py-1 text-ink">{b.title}</td>
+                        <td className="px-2 py-1 text-right text-stone-600">{b.chapters_to_translate}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {dryRunResult && Object.keys(dryRunResult.preview).length > 0 && (
+          <div className="border-t border-amber-100 pt-3">
+            <p className="text-xs text-stone-500 mb-2">
+              Preview: <strong>{dryRunResult.preview_book_title || "book"}</strong>
+              {" · "}{dryRunResult.total_chapters} chapters total across {dryRunResult.total_books} book(s)
+            </p>
+            <div className="space-y-3 max-h-64 overflow-y-auto bg-amber-50/50 rounded-lg p-3">
+              {Object.entries(dryRunResult.preview).map(([idx, paragraphs]) => (
+                <div key={idx} className="text-sm font-serif">
+                  <div className="text-xs text-amber-600 mb-1">Chapter {Number(idx) + 1}</div>
+                  {paragraphs.map((p, i) => (
+                    <p key={i} className="mb-1 text-ink">{p}</p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {dryRunResult && Object.keys(dryRunResult.preview).length === 0 && (
+          <p className="text-xs text-stone-500">No chapters need translation for this language.</p>
         )}
       </div>
 

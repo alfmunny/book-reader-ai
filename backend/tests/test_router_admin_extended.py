@@ -638,11 +638,11 @@ async def test_queue_enqueue_all_with_languages(admin_client, admin_db):
     assert "enqueued" in data
 
 
-# ── Bulk translate plan ──────────────────────────────────────────────────────
+# ── Queue plan endpoint ──────────────────────────────────────────────────────
 
-async def test_bulk_translate_plan_empty(admin_client, admin_db):
+async def test_queue_plan_empty(admin_client, admin_db):
     res = await admin_client.post(
-        "/api/admin/bulk-translate/plan",
+        "/api/admin/queue/plan",
         json={"target_language": "zh"},
     )
     assert res.status_code == 200
@@ -653,11 +653,11 @@ async def test_bulk_translate_plan_empty(admin_client, admin_db):
     assert "estimated_days_at_rpd" in data
 
 
-async def test_bulk_translate_plan_with_books(admin_client, admin_db):
+async def test_queue_plan_with_books(admin_client, admin_db):
     await save_book(200, BOOK_META, BOOK_TEXT)
 
     res = await admin_client.post(
-        "/api/admin/bulk-translate/plan",
+        "/api/admin/queue/plan",
         json={"target_language": "zh"},
     )
     assert res.status_code == 200
@@ -670,43 +670,72 @@ async def test_bulk_translate_plan_with_books(admin_client, admin_db):
     assert "chapters_to_translate" in book_entry
 
 
-# ── Bulk translate status and history ────────────────────────────────────────
-
-async def test_bulk_translate_status_no_job(admin_client, admin_db):
-    res = await admin_client.get("/api/admin/bulk-translate/status")
+async def test_queue_plan_normalizes_language(admin_client, admin_db):
+    await save_book(200, BOOK_META, BOOK_TEXT)
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": "ZH-CN"},
+    )
     assert res.status_code == 200
     data = res.json()
-    assert "running" in data
-    # When no job has ever run, state could be None or have values
-    assert "state" in data
+    assert data["total_books"] >= 1
 
 
-async def test_bulk_translate_history_empty(admin_client, admin_db):
-    res = await admin_client.get("/api/admin/bulk-translate/history")
-    assert res.status_code == 200
-    assert isinstance(res.json(), list)
+# ── Queue dry-run endpoint ───────────────────────────────────────────────────
 
-
-async def test_bulk_translate_start_without_gemini_key_returns_400(admin_client, admin_db):
-    """Bulk translate requires a Gemini API key on the admin account."""
+async def test_queue_dry_run_no_api_key_returns_400(admin_client, admin_db):
     res = await admin_client.post(
-        "/api/admin/bulk-translate/start",
+        "/api/admin/queue/dry-run",
         json={"target_language": "zh"},
     )
     assert res.status_code == 400
-    assert "Gemini API key" in res.json()["detail"]
+    assert "API key" in res.json()["detail"]
 
 
-async def test_bulk_translate_stop(admin_client, admin_db):
-    with patch("routers.admin.bulk_manager") as mock_bulk_factory:
-        mock_mgr = MagicMock()
-        mock_mgr.stop = AsyncMock()
-        mock_bulk_factory.return_value = mock_mgr
+async def test_queue_dry_run_no_books_returns_empty(admin_client, admin_db):
+    from services.db import set_setting
+    from services.auth import encrypt_api_key
+    from services.translation_queue import SETTING_API_KEY
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
 
-        res = await admin_client.post("/api/admin/bulk-translate/stop")
+    res = await admin_client.post(
+        "/api/admin/queue/dry-run",
+        json={"target_language": "zh"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_chapters"] == 0
+    assert data["total_books"] == 0
+    assert data["preview"] == {}
+
+
+async def test_queue_dry_run_calls_translate_and_returns_preview(admin_client, admin_db):
+    from services.db import set_setting
+    from services.auth import encrypt_api_key
+    from services.translation_queue import SETTING_API_KEY
+    from unittest.mock import AsyncMock, patch
+
+    await save_book(200, BOOK_META, BOOK_TEXT)
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+
+    fake_translations = {0: ["Translation of chapter 0."]}
+
+    with patch(
+        "routers.admin.translate_chapters_batch",
+        new_callable=AsyncMock,
+        return_value=fake_translations,
+    ):
+        res = await admin_client.post(
+            "/api/admin/queue/dry-run",
+            json={"target_language": "zh"},
+        )
 
     assert res.status_code == 200
-    assert res.json()["ok"] is True
+    data = res.json()
+    assert data["total_books"] >= 1
+    assert data["total_chapters"] >= 1
+    assert "preview" in data
+    assert "preview_book_title" in data
 
 
 # ── Non-admin access is blocked ──────────────────────────────────────────────

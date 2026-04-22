@@ -483,7 +483,6 @@ async def test_seed_popular_skips_already_cached(admin_client, admin_db, monkeyp
 
     # Fresh manager so tests don't share state
     monkeypatch.setattr("services.seed_popular._manager", SeedPopularManager())
-    monkeypatch.setattr("routers.admin.bulk_manager", bulk_manager := __import__("services.bulk_translate").bulk_translate.manager)  # unchanged
 
     manifest = [{
         "id": 100, "title": "Test Book",

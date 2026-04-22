@@ -102,7 +102,6 @@ async def translation_status(book_id: int, target_language: str):
     """
     import aiosqlite
     from services.db import count_translations_for_book, DB_PATH
-    from services.bulk_translate import manager as bulk_manager
 
     target_language = target_language.lower().split("-")[0]
     cached = await get_cached_book(book_id)
@@ -130,15 +129,6 @@ async def translation_status(book_id: int, target_language: str):
             async for row in cursor:
                 queue_counts[row[0]] = row[1]
 
-    # Is a bulk job currently touching this book?
-    bulk_active = False
-    bulk_state = await bulk_manager().status()
-    if bulk_state and bulk_state.status == "running":
-        bulk_active = (
-            bulk_state.current_book_id == book_id
-            and bulk_state.target_language == target_language
-        )
-
     return {
         "book_id": book_id,
         "target_language": target_language,
@@ -148,7 +138,6 @@ async def translation_status(book_id: int, target_language: str):
         "queue_running": queue_counts.get("running", 0),
         "queue_failed": queue_counts.get("failed", 0),
         "queue_done": queue_counts.get("done", 0),
-        "bulk_active": bulk_active,
     }
 
 

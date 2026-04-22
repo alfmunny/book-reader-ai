@@ -8,7 +8,6 @@ import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
-from services.bulk_translate import manager as bulk_manager, plan_work, group_chapters_for_batch
 from services.db import (
     DB_PATH,
     list_users,
@@ -23,10 +22,15 @@ from services.db import (
     get_setting,
     set_setting,
 )
+from services.gemini import translate_chapters_batch, TRANSLATOR_MODEL
 from services.gutenberg import get_book_meta, get_book_text
+from services.model_limits import limits_for
 from services.splitter import build_chapters
 from services.translate import translate_text as do_translate
 from services.translation_queue import (
+    DEFAULT_MAX_OUTPUT_TOKENS,
+    DEFAULT_RPD,
+    DEFAULT_RPM,
     SETTING_API_KEY,
     SETTING_AUTO_LANGS,
     SETTING_ENABLED,
@@ -35,8 +39,11 @@ from services.translation_queue import (
     SETTING_MODEL_CHAIN,
     SETTING_RPD,
     SETTING_RPM,
+    ChapterWork,
     estimate_queue_cost,
     get_model_chain,
+    group_chapters_for_batch,
+    plan_work_for_queue,
     clear_queue,
     delete_queue_for_book,
     delete_queue_item,
@@ -659,153 +666,6 @@ async def stats(_admin: dict = Depends(_require_admin)):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# BULK TRANSLATION JOB
-# ══════════════════════════════════════════════════════════════════════════════
-
-class StartBulkTranslateRequest(BaseModel):
-    target_language: str
-    dry_run: bool = False
-    rpm: int = 12
-    rpd: int = 1400
-    book_ids: list[int] | None = None
-    model: str | None = None  # override the default Gemini model if specified
-
-
-@router.post("/bulk-translate/plan")
-async def bulk_translate_plan(
-    req: StartBulkTranslateRequest,
-    _admin: dict = Depends(_require_admin),
-):
-    """Dry-inspect: compute what a real run would do, without calling any API."""
-    plans = await plan_work(req.target_language, book_ids=req.book_ids)
-    total_chapters = sum(len(p.chapters) for p in plans)
-
-    # Estimate batches (upper bound on requests)
-    total_batches = 0
-    total_words = 0
-    for p in plans:
-        batches = group_chapters_for_batch(p.chapters)
-        total_batches += len(batches)
-        total_words += sum(len(c.chapter_text.split()) for c in p.chapters)
-
-    return {
-        "total_books": len(plans),
-        "total_chapters": total_chapters,
-        "total_batches": total_batches,
-        "total_words": total_words,
-        "books": [
-            {
-                "id": p.book_id,
-                "title": p.book_title,
-                "source_language": p.source_language,
-                "chapters_to_translate": len(p.chapters),
-            }
-            for p in plans
-        ],
-        # Rough time estimate at RPM and RPD limits
-        "estimated_minutes_at_rpm": round(total_batches / max(1, req.rpm), 1),
-        "estimated_days_at_rpd": round(total_batches / max(1, req.rpd), 2),
-    }
-
-
-@router.post("/bulk-translate/start")
-async def bulk_translate_start(
-    req: StartBulkTranslateRequest,
-    admin: dict = Depends(_require_admin),
-):
-    """Kick off a background translation job using the admin's Gemini key.
-
-    If dry_run=True, the first batch is translated for quality preview and
-    nothing is saved to the DB.
-    """
-    raw_key = admin.get("gemini_key")
-    if not raw_key:
-        raise HTTPException(
-            status_code=400,
-            detail="Bulk translation requires a Gemini API key on the admin account",
-        )
-    try:
-        api_key = decrypt_api_key(raw_key)
-    except HTTPException:
-        raise HTTPException(
-            status_code=400,
-            detail="Your Gemini API key could not be decrypted. Please remove it and add it again in your profile.",
-        )
-
-    try:
-        kwargs: dict = dict(
-            target_language=req.target_language,
-            api_key=api_key,
-            rpm=req.rpm,
-            rpd=req.rpd,
-            dry_run=req.dry_run,
-            book_ids=req.book_ids,
-        )
-        if req.model:
-            kwargs["model"] = req.model
-        state = await bulk_manager().start(**kwargs)
-    except RuntimeError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-    return {"id": state.id, "status": state.status, "dry_run": state.dry_run}
-
-
-@router.post("/bulk-translate/stop")
-async def bulk_translate_stop(_admin: dict = Depends(_require_admin)):
-    await bulk_manager().stop()
-    return {"ok": True}
-
-
-@router.get("/bulk-translate/status")
-async def bulk_translate_status(_admin: dict = Depends(_require_admin)):
-    """Return the most recent job's live state + running flag."""
-    state = await bulk_manager().status()
-    running = bulk_manager().is_running()
-    if not state:
-        return {"running": False, "state": None}
-    return {
-        "running": running,
-        "state": {
-            "id": state.id,
-            "status": state.status,
-            "target_language": state.target_language,
-            "provider": state.provider,
-            "model": state.model,
-            "dry_run": state.dry_run,
-            "total_chapters": state.total_chapters,
-            "completed_chapters": state.completed_chapters,
-            "failed_chapters": state.failed_chapters,
-            "skipped_chapters": state.skipped_chapters,
-            "requests_made": state.requests_made,
-            "current_book_id": state.current_book_id,
-            "current_book_title": state.current_book_title,
-            "current_chapter_index": state.current_chapter_index,
-            "last_error": state.last_error,
-            "started_at": state.started_at,
-            "ended_at": state.ended_at,
-        },
-        "preview": bulk_manager().preview(),
-    }
-
-
-@router.get("/bulk-translate/history")
-async def bulk_translate_history(_admin: dict = Depends(_require_admin)):
-    """List past and current bulk-translate runs, newest first."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            """SELECT id, status, target_language, provider, model, dry_run,
-                      total_chapters, completed_chapters, failed_chapters,
-                      started_at, ended_at
-               FROM bulk_translation_jobs ORDER BY id DESC LIMIT 50"""
-        ) as cursor:
-            rows = [dict(row) async for row in cursor]
-    for r in rows:
-        r["dry_run"] = bool(r["dry_run"])
-    return rows
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # ALWAYS-ON TRANSLATION QUEUE
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -830,9 +690,12 @@ async def queue_status(_admin: dict = Depends(_require_admin)):
             "last_completed_at": s.last_completed_at,
             "last_error": s.last_error,
             "started_at": s.started_at,
+            "ended_at": s.ended_at,
             "requests_made": s.requests_made,
             "chapters_done": s.chapters_done,
             "chapters_failed": s.chapters_failed,
+            "total_chapters": s.total_chapters,
+            "skipped_chapters": s.skipped_chapters,
             "waiting_reason": s.waiting_reason,
             "retry_attempt": s.retry_attempt,
             "retry_max": s.retry_max,
@@ -855,6 +718,99 @@ async def queue_start(_admin: dict = Depends(_require_admin)):
 async def queue_stop(_admin: dict = Depends(_require_admin)):
     await queue_worker().stop()
     return {"ok": True}
+
+
+class QueuePlanRequest(BaseModel):
+    target_language: str
+    book_ids: list[int] | None = None
+
+
+@router.post("/queue/plan")
+async def queue_plan(req: QueuePlanRequest, _admin: dict = Depends(_require_admin)):
+    """Compute how many chapters still need translation without touching the queue."""
+    target_language = req.target_language.lower().split("-")[0]
+    plans = await plan_work_for_queue(target_language, book_ids=req.book_ids)
+    total_chapters = sum(len(p["chapters"]) for p in plans)
+    total_batches = 0
+    total_words = 0
+    for p in plans:
+        batches = group_chapters_for_batch(p["chapters"])
+        total_batches += len(batches)
+        total_words += sum(len(c.chapter_text.split()) for c in p["chapters"])
+    rpm_raw = await get_setting(SETTING_RPM)
+    rpd_raw = await get_setting(SETTING_RPD)
+    rpm = int(rpm_raw) if rpm_raw else DEFAULT_RPM
+    rpd = int(rpd_raw) if rpd_raw else DEFAULT_RPD
+    return {
+        "total_books": len(plans),
+        "total_chapters": total_chapters,
+        "total_batches": total_batches,
+        "total_words": total_words,
+        "estimated_minutes_at_rpm": round(total_batches / max(1, rpm), 1),
+        "estimated_days_at_rpd": round(total_batches / max(1, rpd), 2),
+        "books": [
+            {
+                "id": p["book_id"],
+                "title": p["book_title"],
+                "source_language": p["source_language"],
+                "chapters_to_translate": len(p["chapters"]),
+            }
+            for p in plans
+        ],
+    }
+
+
+@router.post("/queue/dry-run")
+async def queue_dry_run(req: QueuePlanRequest, _admin: dict = Depends(_require_admin)):
+    """Translate the first batch of the first untranslated book without saving.
+
+    Uses the queue's configured API key and model chain so the preview
+    reflects exactly the quality the live worker would produce.
+    """
+    target_language = req.target_language.lower().split("-")[0]
+    encrypted = await get_setting(SETTING_API_KEY)
+    if not encrypted:
+        raise HTTPException(status_code=400, detail="No Gemini API key configured in queue settings")
+    try:
+        api_key = decrypt_api_key(encrypted)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to decrypt queue API key")
+
+    plans = await plan_work_for_queue(target_language, book_ids=req.book_ids)
+    if not plans:
+        return {"preview": {}, "total_chapters": 0, "total_books": 0}
+
+    total_chapters = sum(len(p["chapters"]) for p in plans)
+    chain = await get_model_chain()
+    max_output_tokens = max(
+        (limits_for(m)["max_output_tokens"] for m in chain),
+        default=DEFAULT_MAX_OUTPUT_TOKENS,
+    )
+
+    first_plan = plans[0]
+    batches = group_chapters_for_batch(first_plan["chapters"], max_output_tokens=max_output_tokens)
+    if not batches:
+        return {"preview": {}, "total_chapters": total_chapters, "total_books": len(plans)}
+
+    first_batch = batches[0]
+    chapters = [(c.chapter_index, c.chapter_text) for c in first_batch]
+    try:
+        translations = await translate_chapters_batch(
+            api_key, chapters,
+            first_plan["source_language"], target_language,
+            model=chain[0] or TRANSLATOR_MODEL,
+            max_output_tokens=max_output_tokens,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Translation failed: {e}")
+
+    return {
+        "preview": translations,
+        "total_chapters": total_chapters,
+        "total_books": len(plans),
+        "preview_book_title": first_plan["book_title"],
+        "preview_chapter_count": len(first_batch),
+    }
 
 
 @router.get("/queue/settings")

@@ -169,7 +169,7 @@ async def get_chapter_translation(
     book_id: int,
     chapter_index: int,
     target_language: str,
-    user: dict = Depends(get_current_user),
+    user: dict | None = Depends(get_optional_user),
 ):
     """Return the cached translation if available, 404 otherwise. Never enqueues."""
     target_language = target_language.lower().split("-")[0]

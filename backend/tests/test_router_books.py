@@ -524,10 +524,22 @@ async def test_get_chapter_translation_not_cached(client):
     assert resp.status_code == 404
 
 
-async def test_get_chapter_translation_requires_login(anon_client):
-    """GET requires authentication."""
+async def test_get_chapter_translation_no_cache_returns_404_for_guest(anon_client):
+    """GET returns 404 (not 401) when no cached translation exists — public endpoint."""
     resp = await anon_client.get("/api/books/9999/chapters/0/translation?target_language=de")
-    assert resp.status_code == 401
+    assert resp.status_code == 404
+
+
+async def test_get_chapter_translation_cached_served_to_guest(anon_client):
+    """GET serves cached translation to unauthenticated users."""
+    from services.db import save_translation
+    await save_book(9999, MOCK_META, "text")
+    await save_translation(9999, 0, "es", ["Hola mundo"])
+    resp = await anon_client.get("/api/books/9999/chapters/0/translation?target_language=es")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["paragraphs"] == ["Hola mundo"]
 
 
 async def test_chapter_translation_requires_gemini_key(client):

@@ -84,3 +84,53 @@ async def test_reading_progress_upserts(client, test_user):
     entries = resp.json()["entries"]
     assert len(entries) == 1
     assert entries[0]["chapter_index"] == 5
+
+
+async def test_get_obsidian_settings_returns_defaults_initially(client, test_user):
+    resp = await client.get("/api/user/obsidian-settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["obsidian_repo"] == ""
+    # obsidian_path has a DB DEFAULT — assert it's a string (not None/error)
+    assert isinstance(data["obsidian_path"], str)
+
+
+async def test_patch_obsidian_settings_saves_and_retrieves(client, test_user):
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "github_token": "ghp_test_token",
+        "obsidian_repo": "user/vault",
+        "obsidian_path": "Notes/Books",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+    resp = await client.get("/api/user/obsidian-settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["obsidian_repo"] == "user/vault"
+    assert data["obsidian_path"] == "Notes/Books"
+
+
+async def test_patch_obsidian_settings_preserves_token_when_not_supplied(client, test_user):
+    """PATCH without github_token must not wipe the existing encrypted token."""
+    from services.auth import encrypt_api_key, decrypt_api_key
+    from services.db import update_obsidian_settings, get_obsidian_settings
+
+    await update_obsidian_settings(test_user["id"], encrypt_api_key("existing-token"), "r/v", "/p")
+
+    await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "r/v-updated",
+        "obsidian_path": "/p-updated",
+    })
+
+    settings = await get_obsidian_settings(test_user["id"])
+    assert decrypt_api_key(settings["github_token"]) == "existing-token"
+    assert settings["obsidian_repo"] == "r/v-updated"
+
+
+async def test_obsidian_settings_require_auth(anon_client):
+    resp = await anon_client.get("/api/user/obsidian-settings")
+    assert resp.status_code == 401
+
+    resp = await anon_client.patch("/api/user/obsidian-settings", json={"obsidian_repo": "r/v", "obsidian_path": "p"})
+    assert resp.status_code == 401

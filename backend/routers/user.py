@@ -1,7 +1,11 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key
-from services.db import set_user_gemini_key, get_user_by_id, get_reading_progress, upsert_reading_progress
+from services.db import (
+    set_user_gemini_key, get_user_by_id, get_reading_progress, upsert_reading_progress,
+    get_obsidian_settings, update_obsidian_settings,
+)
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -59,4 +63,39 @@ async def update_reading_progress(
     user: dict = Depends(get_current_user),
 ):
     await upsert_reading_progress(user["id"], book_id, req.chapter_index)
+    return {"ok": True}
+
+
+@router.get("/obsidian-settings")
+async def get_obsidian(user: dict = Depends(get_current_user)):
+    settings = await get_obsidian_settings(user["id"])
+    return {
+        "obsidian_repo": settings.get("obsidian_repo") or "",
+        "obsidian_path": settings.get("obsidian_path") or "",
+    }
+
+
+class ObsidianSettingsUpdate(BaseModel):
+    github_token: Optional[str] = None
+    obsidian_repo: str = ""
+    obsidian_path: str = ""
+
+
+@router.patch("/obsidian-settings")
+async def patch_obsidian(
+    req: ObsidianSettingsUpdate,
+    user: dict = Depends(get_current_user),
+):
+    existing = await get_obsidian_settings(user["id"])
+    # Only update the token if a new one was supplied; keep the encrypted one otherwise
+    if req.github_token is not None and req.github_token.strip():
+        token_enc = encrypt_api_key(req.github_token.strip())
+    else:
+        token_enc = existing.get("github_token")
+    await update_obsidian_settings(
+        user["id"],
+        github_token_encrypted=token_enc,
+        repo=req.obsidian_repo.strip() or None,
+        path=req.obsidian_path.strip() or None,
+    )
     return {"ok": True}

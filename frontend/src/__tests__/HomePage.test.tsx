@@ -139,13 +139,17 @@ describe("HomePage — initial render", () => {
 
   it("shows Sign in button when unauthenticated", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: /Sign in/i })).toBeInTheDocument();
+    // Both the header "Sign in" and the hero "Sign in free" buttons are present
+    // for unauthenticated visitors; check at least one navigates to /login.
+    const signInBtns = screen.getAllByRole("button", { name: /Sign in/i });
+    expect(signInBtns.length).toBeGreaterThanOrEqual(1);
   });
 
   it("navigates to /login when Sign in is clicked", async () => {
     const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByRole("button", { name: /Sign in/i }));
+    // Click the header's "Sign in" button (exact text, not the hero's "Sign in free")
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
     expect(mockPush).toHaveBeenCalledWith("/login");
   });
 

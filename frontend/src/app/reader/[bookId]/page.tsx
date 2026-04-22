@@ -846,7 +846,7 @@ export default function ReaderPage() {
             onClick={() => router.push("/")}
             className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] flex items-center"
           >
-            ← <span className="hidden sm:inline ml-1">Library</span>
+            <ArrowLeftIcon className="w-4 h-4 shrink-0" /><span className="hidden sm:inline ml-1">Library</span>
           </button>
 
           <div className="min-w-0 flex-1">

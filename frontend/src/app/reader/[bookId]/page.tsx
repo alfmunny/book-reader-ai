@@ -958,22 +958,8 @@ export default function ReaderPage() {
             >
               <span className="font-serif">Aa</span>
             </button>
-            {showTypographyPanel && (
-              <TypographyPanel
-                fontSize={fontSize}
-                lineHeight={lineHeight}
-                contentWidth={contentWidth}
-                fontFamily={fontFamily}
-                paragraphFocus={paragraphFocus}
-                onFontSize={setFontSize}
-                onLineHeight={setLineHeight}
-                onContentWidth={setContentWidth}
-                onFontFamily={setFontFamily}
-                onParagraphFocus={setParagraphFocus}
-                onClose={() => setShowTypographyPanel(false)}
-                anchorPos={typographyAnchorPos ?? undefined}
-              />
-            )}
+{/* TypographyPanel rendered at page root — NOT inside the header,
+              so it is unaffected by the header's opacity-0 in focus/immersive mode. */}
           </div>
 
           {/* Theme — desktop only */}
@@ -1189,6 +1175,24 @@ export default function ReaderPage() {
           )}
         </div>
       </header>
+
+      {/* TypographyPanel is outside the header so focus-mode opacity-0 doesn't hide it (#398) */}
+      {showTypographyPanel && (
+        <TypographyPanel
+          fontSize={fontSize}
+          lineHeight={lineHeight}
+          contentWidth={contentWidth}
+          fontFamily={fontFamily}
+          paragraphFocus={paragraphFocus}
+          onFontSize={setFontSize}
+          onLineHeight={setLineHeight}
+          onContentWidth={setContentWidth}
+          onFontFamily={setFontFamily}
+          onParagraphFocus={setParagraphFocus}
+          onClose={() => setShowTypographyPanel(false)}
+          anchorPos={typographyAnchorPos ?? undefined}
+        />
+      )}
 
       {/* ── Banners (hidden in immersive mode on mobile) ──────────────── */}
       <div className={`shrink-0 transition-all duration-300 ${

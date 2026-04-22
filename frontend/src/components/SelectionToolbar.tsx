@@ -104,6 +104,15 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     setSelection(null);
   }
 
+  function handleHighlight(fn?: (text: string) => void) {
+    if (!fn || !selection) return;
+    // Annotations are sentence-granularity — store the full sentence (context)
+    // so the highlight colors exactly one sentence, not a partial substring match (#400).
+    fn(selection.context || selection.text);
+    window.getSelection()?.removeAllRanges();
+    setSelection(null);
+  }
+
   function handleVocabAction() {
     if (!onVocab || !selection) return;
     onVocab(selection.text, selection.context || selection.text, selection.rect);
@@ -126,7 +135,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
         </button>
       )}
       {onHighlight && (
-        <button onClick={() => handleAction(onHighlight)} className={btnClass}>
+        <button onClick={() => handleHighlight(onHighlight)} className={btnClass}>
           <HighlightIcon className="w-3.5 h-3.5 shrink-0" />
           Highlight
         </button>

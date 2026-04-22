@@ -818,108 +818,6 @@ export default function ReaderPage() {
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
 
-          {/* ── Feature buttons (desktop) — all LEFT of profile ────────── */}
-
-          {/* Insight chat toggle */}
-          <button
-            onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
-            title="Toggle insight chat"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && (sidebarTab === "chat")
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            💬 Insight
-          </button>
-
-          {/* Translate toggle — opens sidebar with translation controls */}
-          <button
-            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
-            title="Translation"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-              sidebarOpen && sidebarTab === "translate"
-                ? "bg-amber-700 text-white border-amber-700"
-                : translationEnabled
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            🌐 Translate
-          </button>
-
-          {/* Notes sidebar toggle — desktop only */}
-          {session?.backendToken && (
-            <button
-              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
-              title="Annotations & notes"
-              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                sidebarOpen && sidebarTab === "notes"
-                  ? "bg-amber-700 text-white border-amber-700"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              📝 Notes
-              {annotations.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
-                  {annotations.length}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Show/hide annotation marks — desktop only */}
-          {session?.backendToken && (
-            <button
-              onClick={() => {
-                setShowAnnotations((v) => {
-                  const next = !v;
-                  localStorage.setItem("reader-show-annotations", String(next));
-                  return next;
-                });
-              }}
-              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
-              className={`hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                showAnnotations
-                  ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
-              }`}
-            >
-              {showAnnotations ? "🔖 Marks on" : "🔖 Marks off"}
-            </button>
-          )}
-
-          {/* Vocabulary sidebar — desktop only */}
-          {session?.backendToken && (
-            <button
-              onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
-              title="Vocabulary"
-              className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                sidebarOpen && sidebarTab === "vocab"
-                  ? "bg-amber-700 text-white border-amber-700"
-                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
-              }`}
-            >
-              📚 Vocab
-              {vocabWords.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
-                  {vocabWords.length}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Export vocabulary to Obsidian — desktop only */}
-          {session?.backendToken && (
-            <button
-              onClick={handleObsidianExport}
-              title="Export vocabulary to Obsidian"
-              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
-            >
-              ↗ Obsidian
-            </button>
-          )}
-
           {/* Profile — always rightmost */}
           <button
             onClick={() => router.push("/profile")}
@@ -935,6 +833,109 @@ export default function ReaderPage() {
               </span>
             )}
           </button>
+        </div>
+
+        {/* ── Feature buttons row — desktop only, scrolls if too narrow ── */}
+        <div data-testid="reader-feature-row" className="hidden md:flex items-center gap-2 overflow-x-auto px-4 pb-2">
+          {/* Insight chat toggle */}
+          <button
+            onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
+            title="Toggle insight chat"
+            className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && (sidebarTab === "chat")
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            💬 Insight
+          </button>
+
+          {/* Translate toggle — opens sidebar with translation controls */}
+          <button
+            onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
+            title="Translation"
+            className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "translate"
+                ? "bg-amber-700 text-white border-amber-700"
+                : translationEnabled
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            🌐 Translate
+          </button>
+
+          {/* Notes sidebar toggle */}
+          {session?.backendToken && (
+            <button
+              onClick={() => { setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true); }}
+              title="Annotations & notes"
+              className={`relative flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "notes"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              📝 Notes
+              {annotations.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {annotations.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Show/hide annotation marks */}
+          {session?.backendToken && (
+            <button
+              onClick={() => {
+                setShowAnnotations((v) => {
+                  const next = !v;
+                  localStorage.setItem("reader-show-annotations", String(next));
+                  return next;
+                });
+              }}
+              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+              className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                showAnnotations
+                  ? "bg-amber-100 text-amber-900 border-amber-400"
+                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
+              }`}
+            >
+              {showAnnotations ? "🔖 Marks on" : "🔖 Marks off"}
+            </button>
+          )}
+
+          {/* Vocabulary sidebar */}
+          {session?.backendToken && (
+            <button
+              onClick={() => { setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true); }}
+              title="Vocabulary"
+              className={`relative flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                sidebarOpen && sidebarTab === "vocab"
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50"
+              }`}
+            >
+              📚 Vocab
+              {vocabWords.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+                  {vocabWords.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Export vocabulary to Obsidian — lg+ only */}
+          {session?.backendToken && (
+            <button
+              onClick={handleObsidianExport}
+              title="Export vocabulary to Obsidian"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+            >
+              ↗ Obsidian
+            </button>
+          )}
         </div>
       </header>
 

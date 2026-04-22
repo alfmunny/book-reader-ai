@@ -472,6 +472,164 @@ async def test_bootstrap_marks_006_add_apple_id_when_column_exists(tmp_db):
                 "006_add_apple_id must be bootstrapped in schema_migrations"
 
 
+# ── 011/016/017 bootstrap regressions ────────────────────────────────────────
+
+async def test_bootstrap_marks_011_when_title_translation_exists(tmp_db):
+    """Regression: a legacy DB that already has title_translation in translations
+    must not re-apply 011_translation_title.sql (ALTER TABLE ADD COLUMN crashes)."""
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, images TEXT)")
+        await db.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_id TEXT UNIQUE NOT NULL,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # translations table already has title_translation (as if 011 was applied manually)
+        await db.execute("""
+            CREATE TABLE translations (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                target_language TEXT NOT NULL, paragraphs TEXT NOT NULL,
+                title_translation TEXT,
+                PRIMARY KEY (book_id, chapter_index, target_language)
+            )
+        """)
+        await db.execute("CREATE TABLE audiobooks (book_id INTEGER PRIMARY KEY, librivox_id TEXT NOT NULL)")
+        await db.execute("""
+            CREATE TABLE audio_cache (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                chunk_index INTEGER NOT NULL DEFAULT 0,
+                provider TEXT NOT NULL, voice TEXT NOT NULL,
+                content_type TEXT NOT NULL, audio BLOB NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
+            )
+        """)
+        await db.commit()
+
+    applied = await run_migrations(tmp_db)
+    assert "011_translation_title" not in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT version FROM schema_migrations WHERE version='011_translation_title'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, \
+                "011_translation_title must be bootstrapped in schema_migrations"
+
+
+async def test_bootstrap_marks_016_when_context_text_exists(tmp_db):
+    """Regression: a legacy DB that already has context_text in book_insights
+    must not re-apply 016_insight_context.sql."""
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, images TEXT)")
+        await db.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_id TEXT UNIQUE NOT NULL,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE translations (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                target_language TEXT NOT NULL, paragraphs TEXT NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, target_language)
+            )
+        """)
+        await db.execute("CREATE TABLE audiobooks (book_id INTEGER PRIMARY KEY, librivox_id TEXT NOT NULL)")
+        await db.execute("""
+            CREATE TABLE audio_cache (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                chunk_index INTEGER NOT NULL DEFAULT 0,
+                provider TEXT NOT NULL, voice TEXT NOT NULL,
+                content_type TEXT NOT NULL, audio BLOB NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
+            )
+        """)
+        # book_insights already has context_text (as if 016 was applied manually)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS book_insights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, book_id INTEGER NOT NULL,
+                chapter_index INTEGER NOT NULL, insight TEXT NOT NULL,
+                context_text TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.commit()
+
+    applied = await run_migrations(tmp_db)
+    assert "016_insight_context" not in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT version FROM schema_migrations WHERE version='016_insight_context'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, \
+                "016_insight_context must be bootstrapped in schema_migrations"
+
+
+async def test_bootstrap_marks_017_when_lemma_exists(tmp_db):
+    """Regression: a legacy DB that already has lemma/language in vocabulary
+    must not re-apply 017_vocabulary_lemma_language.sql."""
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, images TEXT)")
+        await db.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_id TEXT UNIQUE NOT NULL,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE translations (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                target_language TEXT NOT NULL, paragraphs TEXT NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, target_language)
+            )
+        """)
+        await db.execute("CREATE TABLE audiobooks (book_id INTEGER PRIMARY KEY, librivox_id TEXT NOT NULL)")
+        await db.execute("""
+            CREATE TABLE audio_cache (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                chunk_index INTEGER NOT NULL DEFAULT 0,
+                provider TEXT NOT NULL, voice TEXT NOT NULL,
+                content_type TEXT NOT NULL, audio BLOB NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
+            )
+        """)
+        # vocabulary already has lemma/language (as if 017 was applied manually)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS vocabulary (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                lemma TEXT,
+                language TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, word)
+            )
+        """)
+        await db.commit()
+
+    applied = await run_migrations(tmp_db)
+    assert "017_vocabulary_lemma_language" not in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT version FROM schema_migrations WHERE version='017_vocabulary_lemma_language'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, \
+                "017_vocabulary_lemma_language must be bootstrapped in schema_migrations"
+
+
 # ── No migrations directory ──────────────────────────────────────────────────
 
 async def test_missing_migrations_dir_returns_empty(tmp_db, monkeypatch):

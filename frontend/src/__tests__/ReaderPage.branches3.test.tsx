@@ -913,10 +913,12 @@ describe("ReaderPage.branches3 — vocab occurrence in different chapter (lines 
       .find((b) => b.textContent?.includes("The seabird sang")) as HTMLElement;
     expect(occBtn).toBeTruthy();
 
-    // Use fireEvent to directly trigger the click without userEvent simulation overhead
     await act(async () => { fireEvent.click(occBtn); });
 
     // goToChapter(1) calls router.replace — proves lines 1418-1419 executed
-    expect(mockReplace).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith(
+      expect.stringContaining("chapter=1"),
+      expect.anything(),
+    );
   });
 });

@@ -704,16 +704,74 @@ async def test_delete_book_translations_rejects_409_when_running(admin_client, a
 
 # ── Audio ────────────────────────────────────────────────────────────────────
 
+async def _insert_audio(db_path: str, book_id: int, chapter_index: int, chunk_index: int = 0):
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO audio_cache "
+            "(book_id, chapter_index, chunk_index, provider, voice, content_type, audio) "
+            "VALUES (?, ?, ?, 'tts', 'en-US', 'audio/mpeg', ?)",
+            (book_id, chapter_index, chunk_index, b"audio-data"),
+        )
+        await db.commit()
+
+
 async def test_get_audio_empty(admin_client, admin_db):
     res = await admin_client.get("/api/admin/audio")
     assert res.status_code == 200
     assert res.json() == []
 
 
+async def test_get_audio_returns_cached_entries(admin_client, admin_db):
+    """GET /admin/audio must return rows from audio_cache, not a hard-coded empty list (#455)."""
+    await _insert_audio(admin_db, book_id=10, chapter_index=0)
+    await _insert_audio(admin_db, book_id=10, chapter_index=1)
+    await _insert_audio(admin_db, book_id=20, chapter_index=0)
+    res = await admin_client.get("/api/admin/audio")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) >= 3, f"Expected at least 3 audio rows, got {len(data)}: {data}"
+
+
 async def test_delete_book_audio(admin_client, admin_db):
     res = await admin_client.delete("/api/admin/audio/999")
     assert res.status_code == 200
     assert res.json()["deleted"] == 0
+
+
+async def test_delete_book_audio_removes_rows(admin_client, admin_db):
+    """DELETE /admin/audio/{book_id} must actually delete rows from audio_cache (#455)."""
+    await _insert_audio(admin_db, book_id=77, chapter_index=0)
+    await _insert_audio(admin_db, book_id=77, chapter_index=1)
+    await _insert_audio(admin_db, book_id=99, chapter_index=0)
+
+    res = await admin_client.delete("/api/admin/audio/77")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 2, f"Expected 2 deleted, got: {res.json()}"
+
+    # Book 99 audio must be unaffected
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute("SELECT COUNT(*) FROM audio_cache WHERE book_id=99") as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 1, "audio for book 99 was incorrectly deleted"
+
+
+async def test_delete_chapter_audio_removes_rows(admin_client, admin_db):
+    """DELETE /admin/audio/{book_id}/{chapter_index} must delete only that chapter's rows (#455)."""
+    await _insert_audio(admin_db, book_id=55, chapter_index=0, chunk_index=0)
+    await _insert_audio(admin_db, book_id=55, chapter_index=0, chunk_index=1)
+    await _insert_audio(admin_db, book_id=55, chapter_index=1, chunk_index=0)
+
+    res = await admin_client.delete("/api/admin/audio/55/0")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 2, f"Expected 2 deleted, got: {res.json()}"
+
+    # Chapter 1 must be unaffected
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM audio_cache WHERE book_id=55 AND chapter_index=1"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 1, "audio for chapter 1 was incorrectly deleted"
 
 
 # ── Stats ────────────────────────────────────────────────────────────────────

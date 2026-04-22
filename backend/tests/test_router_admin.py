@@ -165,6 +165,32 @@ async def test_delete_book(admin_client, admin_db):
     assert res.status_code == 200
 
 
+async def test_delete_book_removes_queue_entries(admin_client, admin_db):
+    """Regression: delete_book must also delete translation_queue entries.
+
+    If queue entries are left behind with status='skipped' (set by the worker
+    when it finds the book missing), a subsequent re-import of the same book_id
+    cannot enqueue new translations — INSERT OR IGNORE is blocked by the old
+    skipped rows. The re-imported book would never be translated.
+    """
+    from services.translation_queue import enqueue, queue_status_for_chapter
+
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await enqueue(100, 0, "de")  # Add a pending queue entry
+
+    # Confirm the entry exists before deletion
+    status = await queue_status_for_chapter(100, 0, "de")
+    assert status["queued"]
+
+    # Delete the book
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    # Queue entry should be gone — not just skipped, but deleted
+    status = await queue_status_for_chapter(100, 0, "de")
+    assert not status["queued"]
+
+
 # ── Translations ─────────────────────────────────────────────────────────────
 
 async def test_get_translations(admin_client, admin_db):

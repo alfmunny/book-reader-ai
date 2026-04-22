@@ -139,8 +139,8 @@ describe("BookDetailModal — cover image rendering (line 92)", () => {
     });
   });
 
-  it("renders book emoji when book.cover is empty", () => {
-    render(<BookDetailModal {...BASE_PROPS} />);
+  it("renders SVG placeholder when book.cover is empty", () => {
+    const { container } = render(<BookDetailModal {...BASE_PROPS} />);
 
     // No img element for the cover
     const imgs = document.querySelectorAll("img");
@@ -149,7 +149,7 @@ describe("BookDetailModal — cover image rendering (line 92)", () => {
     );
     expect(coverImg).toBeUndefined();
 
-    expect(screen.getByText("📖")).toBeInTheDocument();
+    expect(container.querySelector("svg")).toBeInTheDocument();
   });
 });
 

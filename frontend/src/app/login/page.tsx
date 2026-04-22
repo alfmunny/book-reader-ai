@@ -12,6 +12,8 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         {/* Logo / branding */}
         <div className="text-center mb-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon.svg" alt="" className="w-16 h-16 rounded-2xl mx-auto mb-4 shadow-sm" />
           <h1 className="font-serif text-4xl font-bold text-ink mb-2">Book Reader AI</h1>
           <p className="text-amber-700 text-sm">Public domain classics with AI assistance</p>
         </div>

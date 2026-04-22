@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BookMeta, getBookTranslationStatus, TranslationStatus } from "@/lib/api";
 import { RecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
+import { BookCoverPlaceholderIcon, CloseIcon } from "@/components/Icons";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English", de: "German", fr: "French", es: "Spanish",
@@ -54,11 +55,11 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
       >
         {/* Header: cover + metadata + close */}
         <div className="flex items-start gap-4 mb-5">
-          <div className="w-16 h-24 shrink-0 rounded-lg border border-amber-100 bg-amber-50 overflow-hidden flex items-center justify-center text-3xl">
+          <div className="w-16 h-24 shrink-0 rounded-lg border border-amber-100 overflow-hidden flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100">
             {book.cover
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
-              : "📖"}
+              : <BookCoverPlaceholderIcon className="w-8 h-12 text-amber-600" />}
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="font-serif font-bold text-ink text-lg leading-tight mb-1">
@@ -81,7 +82,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
             aria-label="Close"
             className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-600 transition-colors"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
 

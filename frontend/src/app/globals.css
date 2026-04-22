@@ -2,14 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+  --color-bg: #f5f0e8;
+  --color-text: #2c2416;
+  --color-surface: #ffffff;
+  --color-accent: #b45309;       /* amber-700 */
+  --color-accent-soft: #fef3c7;  /* amber-50 */
+  --color-border: #fcd34d;       /* amber-300 */
+  --color-muted: #92400e;        /* amber-800 */
+  --shadow-card: 0 1px 3px 0 rgb(44 36 22 / 0.08), 0 1px 2px -1px rgb(44 36 22 / 0.06);
+  --shadow-card-hover: 0 4px 12px 0 rgb(44 36 22 / 0.12), 0 2px 4px -2px rgb(44 36 22 / 0.08);
+}
+
 /* ── Theme: Light (default parchment) ── */
 body, [data-theme="light"] {
-  background-color: #f5f0e8;
-  color: #2c2416;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 /* ── Theme: Dark ── */
 [data-theme="dark"] {
+  --color-bg: #1a1a2e;
+  --color-text: #e0dcd4;
+  --color-surface: #252540;
+  --color-border: #4a4a6a;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-card-hover: 0 4px 12px 0 rgb(0 0 0 / 0.4);
   background-color: #1a1a2e;
   color: #e0dcd4;
 }
@@ -95,6 +114,9 @@ body, [data-theme="light"] {
 .animate-fade-in {
   animation: fade-in 0.15s ease-out;
 }
+
+/* Hide scrollbar while keeping scroll behavior */
+.scrollbar-none::-webkit-scrollbar { display: none; }
 
 /* Vocab word highlight flash */
 @keyframes vocab-flash {

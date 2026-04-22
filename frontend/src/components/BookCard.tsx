@@ -1,5 +1,6 @@
 "use client";
 import { BookMeta } from "@/lib/api";
+import { BookCoverPlaceholderIcon } from "@/components/Icons";
 
 interface Props {
   book: BookMeta;
@@ -29,7 +30,10 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
       )}
       <button
         onClick={onClick}
-        className="text-left rounded-xl border border-amber-200 bg-white shadow-sm hover:shadow-md transition-shadow p-3 flex flex-col w-full"
+        className="text-left rounded-xl border border-amber-200 bg-white p-3 flex flex-col w-full transition-all duration-200 hover:-translate-y-0.5"
+        style={{ boxShadow: "var(--shadow-card)" }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
       >
         {book.cover ? (
           <img
@@ -38,8 +42,11 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
             className="w-full h-40 object-cover rounded-lg mb-2"
           />
         ) : (
-          <div className="w-full h-40 bg-amber-50 rounded-lg mb-2 flex items-center justify-center text-4xl border border-amber-100">
-            📖
+          <div className="w-full h-40 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg mb-2 flex flex-col items-center justify-center border border-amber-100 overflow-hidden relative">
+            <BookCoverPlaceholderIcon className="w-10 h-14 text-amber-600" />
+            <p className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 text-[10px] text-amber-700/60 text-center font-serif leading-tight line-clamp-2">
+              {book.title}
+            </p>
           </div>
         )}
         <p className="font-serif font-semibold text-sm text-ink line-clamp-2 flex-1">

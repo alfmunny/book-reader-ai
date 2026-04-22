@@ -178,6 +178,7 @@ async def get_chapter_translation(
     _user: dict = Depends(get_current_user),
 ):
     """Return the cached translation if available, 404 otherwise. Never enqueues."""
+    target_language = target_language.lower().split("-")[0]
     from services.db import get_cached_translation_with_meta
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if not cached:
@@ -219,11 +220,13 @@ async def request_chapter_translation(
         enqueue, queue_status_for_chapter, worker,
     )
 
+    target_language = req.target_language.lower().split("-")[0]
+
     # 0. Already cached? Served to anyone — no auth required for cache hits.
     # Book existence is not checked for cache hits (book may have been removed
     # after translation was stored).
     cached = await get_cached_translation_with_meta(
-        book_id, chapter_index, req.target_language,
+        book_id, chapter_index, target_language,
     )
     if cached:
         return {
@@ -241,7 +244,7 @@ async def request_chapter_translation(
 
     # 0b. Guard: reject same-language translation.
     source = (book_meta.get("languages") or [None])[0]
-    if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
+    if source and source.lower().split("-")[0] == target_language:
         raise HTTPException(
             status_code=400,
             detail="Cannot translate to the same language as the original.",
@@ -256,7 +259,7 @@ async def request_chapter_translation(
 
     # 3. Already queued / running?
     qstatus = await queue_status_for_chapter(
-        book_id, chapter_index, req.target_language,
+        book_id, chapter_index, target_language,
     )
     if qstatus["queued"]:
         return {
@@ -282,13 +285,13 @@ async def request_chapter_translation(
     # admin per-book enqueue (priority=50) because a user is watching.
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
     await enqueue(
-        book_id, chapter_index, req.target_language,
+        book_id, chapter_index, target_language,
         priority=10,
         queued_by=queued_by,
     )
     worker().wake()
     fresh = await queue_status_for_chapter(
-        book_id, chapter_index, req.target_language,
+        book_id, chapter_index, target_language,
     )
     return {
         "status": fresh["status"],
@@ -312,11 +315,12 @@ async def enqueue_all_chapters(
     below the active reader's priority=10 so the chapter they're
     currently staring at still wins.
     """
+    target_language = req.target_language.lower().split("-")[0]
     book_meta = await get_cached_book(book_id)
     if not book_meta:
         raise HTTPException(status_code=404, detail="Book not found")
     source = (book_meta.get("languages") or [None])[0]
-    if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
+    if source and source.lower().split("-")[0] == target_language:
         raise HTTPException(
             status_code=400,
             detail="Cannot translate to the same language as the original.",
@@ -327,7 +331,7 @@ async def enqueue_all_chapters(
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
     enqueued = await enqueue_for_book(
         book_id,
-        target_languages=[req.target_language],
+        target_languages=[target_language],
         priority=20,
         queued_by=queued_by,
     )
@@ -354,16 +358,17 @@ async def retry_chapter_translation(
 
     from services.translation_queue import enqueue, queue_status_for_chapter, worker
 
+    target_language = req.target_language.lower().split("-")[0]
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
     await enqueue(
-        book_id, chapter_index, req.target_language,
+        book_id, chapter_index, target_language,
         priority=10,
         reset_failed=True,
         queued_by=queued_by,
     )
     worker().wake()
     fresh = await queue_status_for_chapter(
-        book_id, chapter_index, req.target_language,
+        book_id, chapter_index, target_language,
     )
     return {
         "status": fresh["status"],

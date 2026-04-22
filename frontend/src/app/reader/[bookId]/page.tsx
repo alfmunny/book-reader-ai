@@ -1359,7 +1359,7 @@ export default function ReaderPage() {
         {/* Insight/Vocab/Translate sidebar — desktop only */}
         <div
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
-          className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200"
+          className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200 transition-[width] duration-200"
         >
           {sidebarOpen && (
             <>

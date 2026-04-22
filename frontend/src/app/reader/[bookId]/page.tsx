@@ -18,7 +18,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -1665,9 +1665,9 @@ export default function ReaderPage() {
                           });
                         }}
                         className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
-                        title="Edit annotation"
+                        aria-label="Edit annotation"
                       >
-                        ✏️
+                        <EditIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
                     {ann.note_text && (
@@ -1699,7 +1699,7 @@ export default function ReaderPage() {
                       </div>
                     ) : filteredNotes.length === 0 ? (
                       <div className="text-center text-stone-400 mt-10 text-sm">
-                        <p className="text-3xl mb-2">📝</p>
+                        <NoteIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p>{notesView === "chapter" ? "No annotations in this chapter yet." : "No annotations yet."}</p>
                         <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
                       </div>
@@ -2096,7 +2096,7 @@ export default function ReaderPage() {
             <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
               {annotations.length === 0 ? (
                 <div className="text-center text-stone-400 py-4 text-sm">
-                  <p className="text-2xl mb-1">📝</p>
+                  <NoteIcon className="w-6 h-6 mx-auto mb-1 opacity-40" />
                   <p>No annotations yet.</p>
                   <p className="text-xs mt-1">Long-press text to add one.</p>
                 </div>

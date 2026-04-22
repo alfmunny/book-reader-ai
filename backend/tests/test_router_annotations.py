@@ -379,3 +379,37 @@ async def test_update_annotation_select_runs_before_commit(tmp_db, test_user, mo
         "SELECT must run before COMMIT so update_annotation returns its own "
         "write, not a concurrent modification (#349)"
     )
+
+
+# ── Upload book access control ─────────────────────────────────────────────
+
+import json as _json_ann
+import aiosqlite as _aio_ann
+import services.db as _db_ann
+
+
+async def _insert_private_book(book_id: int, owner_user_id: int) -> None:
+    chapters = _json_ann.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
+    async with _aio_ann.connect(_db_ann.DB_PATH) as db:
+        await db.execute(
+            """INSERT OR REPLACE INTO books
+               (id, title, authors, languages, subjects, download_count,
+                cover, text, images, source, owner_user_id)
+               VALUES (?, 'Private', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (book_id, chapters, owner_user_id),
+        )
+        await db.commit()
+
+
+async def test_create_annotation_blocked_for_non_owner_upload(client, test_user, tmp_db):
+    """Creating an annotation on someone else's uploaded book returns 403."""
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("ann-owner-gid", "ann-owner@ex.com", "AnnOwner", "")
+    await _insert_private_book(8801, owner["id"])
+    resp = await client.post("/api/annotations", json={
+        "book_id": 8801,
+        "chapter_index": 0,
+        "sentence_text": "some text",
+    })
+    assert resp.status_code == 403, resp.text

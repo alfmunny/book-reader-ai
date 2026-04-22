@@ -223,3 +223,45 @@ async def test_get_or_create_user_apple_existing_user_update_select_before_commi
     assert last_select < last_commit, (
         "SELECT must run before COMMIT in get_or_create_user_apple existing-user UPDATE path (#359)"
     )
+
+
+# ── check_book_access unit tests ─────────────────────────────────────────────
+
+def test_check_book_access_passes_for_gutenberg_book():
+    from services.auth import check_book_access
+    check_book_access({"source": "gutenberg", "owner_user_id": None}, {"id": 1, "role": "user"})
+
+
+def test_check_book_access_passes_for_none_book():
+    from services.auth import check_book_access
+    check_book_access(None, {"id": 1, "role": "user"})
+
+
+def test_check_book_access_passes_for_owner():
+    from services.auth import check_book_access
+    check_book_access({"source": "upload", "owner_user_id": 7}, {"id": 7, "role": "user"})
+
+
+def test_check_book_access_passes_for_admin():
+    from services.auth import check_book_access
+    check_book_access({"source": "upload", "owner_user_id": 7}, {"id": 99, "role": "admin"})
+
+
+def test_check_book_access_raises_for_non_owner():
+    from fastapi import HTTPException
+    from services.auth import check_book_access
+    try:
+        check_book_access({"source": "upload", "owner_user_id": 7}, {"id": 99, "role": "user"})
+        assert False, "Should have raised"
+    except HTTPException as e:
+        assert e.status_code == 403
+
+
+def test_check_book_access_raises_for_anonymous():
+    from fastapi import HTTPException
+    from services.auth import check_book_access
+    try:
+        check_book_access({"source": "upload", "owner_user_id": 7}, None)
+        assert False, "Should have raised"
+    except HTTPException as e:
+        assert e.status_code == 403

@@ -1,7 +1,7 @@
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from services.auth import get_current_user
+from services.auth import get_current_user, check_book_access
 from services.db import create_annotation, get_annotations, get_all_annotations, update_annotation, delete_annotation, get_cached_book
 
 router = APIRouter(prefix="/annotations", tags=["annotations"])
@@ -29,8 +29,10 @@ async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="sentence_text cannot be empty")
     if req.chapter_index < 0:
         raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
-    if not await get_cached_book(req.book_id):
+    book = await get_cached_book(req.book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
     return await create_annotation(
         user["id"],
         req.book_id,

@@ -14,7 +14,7 @@ from services.db import (
     list_cached_books,
 )
 from services.splitter import build_chapters, build_chapters_from_html
-from services.auth import get_current_user, get_optional_user, decrypt_api_key
+from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ async def popular_books(
 
 
 @router.get("/{book_id}/translation-status")
-async def translation_status(book_id: int, target_language: str):
+async def translation_status(book_id: int, target_language: str, user: dict | None = Depends(get_optional_user)):
     """Return book-level translation progress for the reader banner.
 
     Includes:
@@ -107,6 +107,7 @@ async def translation_status(book_id: int, target_language: str):
     cached = await get_cached_book(book_id)
     if not cached:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(cached, user)
     total_chapters = 0
     if cached.get("text"):
         # Use the shared resolver so total_chapters matches what the reader
@@ -146,7 +147,7 @@ async def chapter_queue_status(
     book_id: int,
     chapter_index: int,
     target_language: str,
-    _user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ):
     """Per-chapter queue lookup for the reader page.
 
@@ -155,8 +156,10 @@ async def chapter_queue_status(
     already scheduled to do.
     """
     target_language = target_language.lower().split("-")[0]
-    if not await get_cached_book(book_id):
+    book = await get_cached_book(book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
     from services.translation_queue import queue_status_for_chapter
     return await queue_status_for_chapter(book_id, chapter_index, target_language)
 
@@ -166,10 +169,14 @@ async def get_chapter_translation(
     book_id: int,
     chapter_index: int,
     target_language: str,
-    _user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ):
     """Return the cached translation if available, 404 otherwise. Never enqueues."""
     target_language = target_language.lower().split("-")[0]
+    book = await get_cached_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
     from services.db import get_cached_translation_with_meta
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if not cached:
@@ -213,9 +220,12 @@ async def request_chapter_translation(
 
     target_language = req.target_language.lower().split("-")[0]
 
-    # 0. Already cached? Served to anyone — no auth required for cache hits.
-    # Book existence is not checked for cache hits (book may have been removed
-    # after translation was stored).
+    # 0. Check book existence and access first — uploaded books are private.
+    book_meta = await get_cached_book(book_id)
+    if book_meta:
+        check_book_access(book_meta, user)
+
+    # 0a. Already cached? Served to owner/admin after access check.
     cached = await get_cached_translation_with_meta(
         book_id, chapter_index, target_language,
     )
@@ -228,8 +238,7 @@ async def request_chapter_translation(
             "title_translation": cached.get("title_translation"),
         }
 
-    # 0a. Book must exist before we can enqueue a new translation.
-    book_meta = await get_cached_book(book_id)
+    # 0b. Book must exist before we can enqueue a new translation.
     if not book_meta:
         raise HTTPException(status_code=404, detail="Book not found")
 
@@ -310,6 +319,7 @@ async def enqueue_all_chapters(
     book_meta = await get_cached_book(book_id)
     if not book_meta:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book_meta, user)
     source = (book_meta.get("languages") or [None])[0]
     if source and source.lower().split("-")[0] == target_language:
         raise HTTPException(
@@ -344,8 +354,10 @@ async def retry_chapter_translation(
     explicit action: admin or reader clicks a button. Resets the queue row
     to pending + attempts=0 and bumps priority to 10 (reader-initiated).
     """
-    if not await get_cached_book(book_id):
+    book = await get_cached_book(book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
 
     from services.translation_queue import enqueue, queue_status_for_chapter, worker
 
@@ -384,11 +396,7 @@ async def retry_chapter_translation(
 async def book_meta(book_id: int, user: dict | None = Depends(get_optional_user)):
     cached = await get_cached_book(book_id)
     if cached:
-        # Privacy check: uploaded books are only visible to owner or admin
-        owner_id = cached.get("owner_user_id")
-        if owner_id is not None:
-            if user is None or (user["id"] != owner_id and user.get("role") != "admin"):
-                raise HTTPException(status_code=403, detail="Not your book")
+        check_book_access(cached, user)
         return {k: v for k, v in cached.items() if k not in ("text", "cached_at", "images")}
     try:
         return await get_book_meta(book_id)
@@ -411,10 +419,7 @@ async def book_chapters(book_id: int, user: dict | None = Depends(get_optional_u
 
     # Handle uploaded books (chapters stored as JSON in text field)
     if cached and cached.get("source") == "upload":
-        owner_id = cached.get("owner_user_id")
-        if owner_id is not None:
-            if user is None or (user["id"] != owner_id and user.get("role") != "admin"):
-                raise HTTPException(status_code=403, detail="Not your book")
+        check_book_access(cached, user)
         text = cached.get("text", "")
         try:
             import json as _json

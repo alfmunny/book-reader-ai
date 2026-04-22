@@ -509,6 +509,7 @@ async def test_import_stream_public_without_login(anon_client):
 async def test_get_chapter_translation_cached(client):
     """GET returns cached translation when it exists."""
     from services.db import save_translation
+    await save_book(9999, MOCK_META, "text")
     await save_translation(9999, 0, "de", ["Übersetzung"])
     resp = await client.get("/api/books/9999/chapters/0/translation?target_language=de")
     assert resp.status_code == 200
@@ -656,6 +657,7 @@ async def test_get_chapter_translation_normalizes_language(client):
 
     Without normalization the lookup uses 'ZH' as-is and misses the 'zh' entry."""
     from services.db import save_translation
+    await save_book(9999, MOCK_META, "text")
     await save_translation(9999, 0, "zh", ["翻译"])
     resp = await client.get("/api/books/9999/chapters/0/translation?target_language=ZH")
     assert resp.status_code == 200
@@ -816,3 +818,110 @@ async def test_reader_retry_rejects_running_item(client):
             row = await cursor.fetchone()
     assert row["status"] == "running"
     assert row["attempts"] == 1
+
+
+# ── Upload book access control integration tests ───────────────────────────
+
+import json as _json_books
+import aiosqlite as _aio_books
+import services.db as _db_books
+
+
+async def _insert_upload_book(book_id: int, owner_user_id: int) -> None:
+    chapters = _json_books.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private content"}]})
+    async with _aio_books.connect(_db_books.DB_PATH) as db:
+        await db.execute(
+            """INSERT OR REPLACE INTO books
+               (id, title, authors, languages, subjects, download_count,
+                cover, text, images, source, owner_user_id)
+               VALUES (?, 'Private Book', '[]', '["en"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (book_id, chapters, owner_user_id),
+        )
+        await db.commit()
+
+
+async def test_upload_book_meta_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid", "owner@ex.com", "Owner", "")
+    await _insert_upload_book(9901, owner["id"])
+    resp = await client.get("/api/books/9901")
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_chapters_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid2", "owner2@ex.com", "Owner2", "")
+    await _insert_upload_book(9902, owner["id"])
+    resp = await client.get("/api/books/9902/chapters")
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_translation_status_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid3", "owner3@ex.com", "Owner3", "")
+    await _insert_upload_book(9903, owner["id"])
+    resp = await client.get("/api/books/9903/translation-status?target_language=en")
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_queue_status_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid4", "owner4@ex.com", "Owner4", "")
+    await _insert_upload_book(9904, owner["id"])
+    resp = await client.get("/api/books/9904/chapters/0/queue-status?target_language=en")
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_get_translation_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role, save_translation
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid5", "owner5@ex.com", "Owner5", "")
+    await _insert_upload_book(9905, owner["id"])
+    await save_translation(9905, 0, "de", ["Übersetzung"])
+    resp = await client.get("/api/books/9905/chapters/0/translation?target_language=de")
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_post_translation_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid6", "owner6@ex.com", "Owner6", "")
+    await _insert_upload_book(9906, owner["id"])
+    resp = await client.post("/api/books/9906/chapters/0/translation", json={"target_language": "de"})
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_enqueue_all_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid7", "owner7@ex.com", "Owner7", "")
+    await _insert_upload_book(9907, owner["id"])
+    resp = await client.post("/api/books/9907/translations/enqueue-all", json={"target_language": "de"})
+    assert resp.status_code == 403, resp.text
+
+
+async def test_upload_book_retry_translation_blocked_for_non_owner(client, test_user, tmp_db):
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("owner-gid8", "owner8@ex.com", "Owner8", "")
+    await _insert_upload_book(9908, owner["id"])
+    resp = await client.post(
+        "/api/books/9908/chapters/0/translation/retry", json={"target_language": "de"}
+    )
+    assert resp.status_code == 403, resp.text
+
+
+async def test_gutenberg_book_still_accessible_to_any_user(client, test_user, tmp_db):
+    await save_book(9910, MOCK_META, "some text")
+    resp = await client.get("/api/books/9910")
+    assert resp.status_code == 200, resp.text
+
+
+async def test_owner_can_access_own_upload_book(client, test_user, tmp_db):
+    await _insert_upload_book(9911, test_user["id"])
+    resp = await client.get("/api/books/9911")
+    assert resp.status_code == 200, resp.text

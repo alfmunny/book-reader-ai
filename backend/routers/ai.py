@@ -5,7 +5,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
-from services.auth import get_current_user, decrypt_api_key
+from services.auth import get_current_user, decrypt_api_key, check_book_access
 from services.db import (
     get_cached_translation,
     save_translation,
@@ -156,8 +156,10 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
     Summaries are shared across all users — the first reader pays the Gemini cost,
     subsequent requests return the cached result instantly.
     """
-    if not await get_cached_book(req.book_id):
+    book = await get_cached_book(req.book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, _user)
 
     cached = await get_chapter_summary(req.book_id, req.chapter_index)
     if cached:
@@ -246,8 +248,10 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
     """Save a completed progressive translation to the backend cache."""
     if not req.paragraphs:
         raise HTTPException(status_code=400, detail="paragraphs must not be empty")
-    if not await get_cached_book(req.book_id):
+    book = await get_cached_book(req.book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, _user)
     target_language = req.target_language.lower().split("-")[0]
     # Reject if a queue worker is actively translating this chapter — the
     # worker's save_translation (INSERT OR REPLACE) would overwrite whatever

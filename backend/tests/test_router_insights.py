@@ -195,3 +195,15 @@ async def test_post_insight_rejects_empty_answer(client: AsyncClient):
         json={"book_id": 1, "question": "What is the theme?", "answer": ""},
     )
     assert resp.status_code == 400
+
+
+async def test_post_insight_rejects_negative_chapter_index(client: AsyncClient):
+    """POST /insights with chapter_index < 0 must return 400.
+    A negative chapter_index is not a valid position and produces an
+    invisible orphan row (no reader query matches chapter -1)."""
+    await save_book(1, _META, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 1, "question": "Q?", "answer": "A.", "chapter_index": -5},
+    )
+    assert resp.status_code == 400

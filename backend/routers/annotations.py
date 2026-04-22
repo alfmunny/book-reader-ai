@@ -27,6 +27,8 @@ class AnnotationUpdate(BaseModel):
 async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
     if not req.sentence_text or not req.sentence_text.strip():
         raise HTTPException(status_code=400, detail="sentence_text cannot be empty")
+    if req.chapter_index < 0:
+        raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     if not await get_cached_book(req.book_id):
         raise HTTPException(status_code=404, detail="Book not found")
     return await create_annotation(

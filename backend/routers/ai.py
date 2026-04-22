@@ -1,3 +1,5 @@
+import asyncio
+from collections import defaultdict
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -15,6 +17,11 @@ from services import gemini
 from services.tts import synthesize, chunk_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+# One lock per (book_id, chapter_index) — serializes concurrent summary requests
+# so the second waiter hits the cache written by the first, not Gemini again.
+# Note: in-process only; sufficient for single-process deployment.
+_summary_locks: dict[tuple, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -156,29 +163,36 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
     if cached:
         return {"summary": cached["content"], "cached": True, "model": cached["model"]}
 
-    # Use the queue API key so no personal key is required.
-    from services.db import get_setting
-    from services.auth import decrypt_api_key as _decrypt
-    raw = await get_setting("queue_api_key")
-    if not raw:
-        raise HTTPException(
-            status_code=503,
-            detail="Chapter summaries are not available yet — the admin has not configured a Gemini API key.",
-        )
-    try:
-        api_key = _decrypt(raw)
-    except Exception:
-        raise HTTPException(status_code=503, detail="Summary service configuration error.")
+    async with _summary_locks[(req.book_id, req.chapter_index)]:
+        # Double-check: a concurrent request may have written the summary while
+        # we were waiting for the lock.
+        cached = await get_chapter_summary(req.book_id, req.chapter_index)
+        if cached:
+            return {"summary": cached["content"], "cached": True, "model": cached["model"]}
 
-    try:
-        content = await gemini.generate_chapter_summary(
-            api_key, req.chapter_text, req.book_title, req.author, req.chapter_title
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Use the queue API key so no personal key is required.
+        from services.db import get_setting
+        from services.auth import decrypt_api_key as _decrypt
+        raw = await get_setting("queue_api_key")
+        if not raw:
+            raise HTTPException(
+                status_code=503,
+                detail="Chapter summaries are not available yet — the admin has not configured a Gemini API key.",
+            )
+        try:
+            api_key = _decrypt(raw)
+        except Exception:
+            raise HTTPException(status_code=503, detail="Summary service configuration error.")
 
-    await save_chapter_summary(req.book_id, req.chapter_index, content, model=gemini.MODEL)
-    return {"summary": content, "cached": False, "model": gemini.MODEL}
+        try:
+            content = await gemini.generate_chapter_summary(
+                api_key, req.chapter_text, req.book_title, req.author, req.chapter_title
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        await save_chapter_summary(req.book_id, req.chapter_index, content, model=gemini.MODEL)
+        return {"summary": content, "cached": False, "model": gemini.MODEL}
 
 
 @router.delete("/summary")

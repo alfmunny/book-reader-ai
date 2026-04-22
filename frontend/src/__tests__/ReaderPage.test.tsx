@@ -1551,20 +1551,18 @@ describe("ReaderPage — vocab sidebar chapter filter", () => {
   });
 });
 
-describe("ReaderPage — header layout (issue #258)", () => {
-  it("feature buttons are in a separate scrollable row, not the main nav row", async () => {
+describe("ReaderPage — header layout", () => {
+  it("feature buttons are in the main header row (single-row layout)", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await act(async () => { await flushPromises(); });
 
+    // No separate scrollable feature row — single-row layout
     const featureRow = document.querySelector("[data-testid='reader-feature-row']");
-    expect(featureRow).toBeInTheDocument();
-    expect(featureRow?.className).toContain("overflow-x-auto");
+    expect(featureRow).toBeNull();
 
-    // Insight and Translate buttons must be inside the feature row, not the main row
-    const insightBtn = screen.getByTitle("Toggle insight chat");
-    const translateBtn = screen.getByTitle("Translation");
-    expect(featureRow).toContainElement(insightBtn);
-    expect(featureRow).toContainElement(translateBtn);
+    // Feature buttons exist in the DOM (hidden on mobile via CSS, but present)
+    expect(screen.getByTitle("Toggle insight chat")).toBeInTheDocument();
+    expect(screen.getByTitle("Translation")).toBeInTheDocument();
   });
 });

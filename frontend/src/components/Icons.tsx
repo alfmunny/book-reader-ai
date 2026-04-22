@@ -153,6 +153,17 @@ export function WordIcon({ className = "w-4 h-4" }: IconProps) {
   );
 }
 
+export function SummaryIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <line x1="9" y1="7" x2="15" y2="7"/>
+      <line x1="9" y1="11" x2="15" y2="11"/>
+      <line x1="9" y1="15" x2="12" y2="15"/>
+    </svg>
+  );
+}
+
 export function ExportIcon({ className = "w-4 h-4" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

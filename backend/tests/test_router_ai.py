@@ -240,6 +240,35 @@ async def test_translate_cache_put_saves(client, test_user):
     assert cached == ["Bonjour"]
 
 
+async def test_translate_cache_put_rejects_409_when_running(client, test_user, tmp_db):
+    """Regression #341: PUT /translate/cache must return 409 when a queue worker
+    is actively translating the same chapter — the worker would overwrite the
+    saved translation via save_translation INSERT OR REPLACE when it finishes."""
+    import aiosqlite
+    from services.db import save_book, save_translation, get_cached_translation
+    from services.translation_queue import enqueue
+    _BOOK_META_LOCAL = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"],
+                        "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(60, _BOOK_META_LOCAL, "text")
+    await save_translation(60, 0, "zh", ["existing paragraph"])
+    await enqueue(60, 0, "zh")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE book_id=60 AND chapter_index=0 AND target_language='zh'"
+        )
+        await db.commit()
+
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 60, "chapter_index": 0, "target_language": "zh",
+        "paragraphs": ["new paragraph"],
+    })
+    assert resp.status_code == 409
+
+    # Existing translation must be untouched
+    cached = await get_cached_translation(60, 0, "zh")
+    assert cached == ["existing paragraph"]
+
+
 # ── Insight ───────────────────────────────────────────────────────────────────
 
 async def test_insight_without_key_returns_400(client):

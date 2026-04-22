@@ -106,6 +106,13 @@ function parseIntoSegments(
     let cursor = 0;            // index into the current chunk's text
     for (let s = 0; s < allTexts.length; s++) {
       const seg = allTexts[s];
+      // Snapshot the search position before we try matching this segment.
+      // If all matching attempts fail (chunkIdx reaches chunks.length), we
+      // restore to the snapshot so subsequent segments are not blocked by the
+      // cascade (chunkIdx stuck at chunks.length → all remaining segs = -1).
+      const snapChunkIdx = chunkIdx;
+      const snapCursor = cursor;
+
       // Find this segment within the remaining chunk text
       while (chunkIdx < chunks.length) {
         const chunkText = chunks[chunkIdx].text.replace(/\r?\n/g, " ");
@@ -131,12 +138,14 @@ function parseIntoSegments(
           }
         }
         // Normalized whitespace fallback — handles mismatches from line-joining
-        // (e.g. \n → space in chunkText vs lines.join(" ") in segment).
+        // (e.g. trailing spaces before \n become extra spaces after replace).
         const normSeg = seg.replace(/\s+/g, " ").trim();
         const normChunkSlice = chunkText.slice(cursor).replace(/\s+/g, " ");
         const normPos = normChunkSlice.indexOf(normSeg);
         if (normPos >= 0) {
           segmentChunkIdx[s] = chunkIdx;
+          // cursor approximation: normPos is in the normalized string, so this
+          // slightly underestimates the real end, but never overshoots (safe).
           cursor = Math.min(cursor + normPos + normSeg.length, chunkText.length);
           break;
         }
@@ -144,7 +153,16 @@ function parseIntoSegments(
         chunkIdx++;
         cursor = 0;
       }
-      // Out of chunks → leave -1 (won't get a startTime, won't be coloured-as-loaded)
+
+      // Cascade guard: if we exhausted all chunks without a match, restore the
+      // snapshot so the next segment can continue searching from where we were.
+      // Assign this segment to the snapshot chunk (best-effort; likely the chunk
+      // where it starts or the immediately preceding chunk).
+      if (chunkIdx >= chunks.length && segmentChunkIdx[s] === -1) {
+        segmentChunkIdx[s] = snapChunkIdx;
+        chunkIdx = snapChunkIdx;
+        cursor = snapCursor;
+      }
     }
   }
 

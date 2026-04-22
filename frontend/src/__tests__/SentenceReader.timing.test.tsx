@@ -183,4 +183,50 @@ describe("SentenceReader timing estimation", () => {
     const active = container.querySelector(".bg-amber-300");
     expect(active?.textContent).toContain("Quoiqu");
   });
+
+  it("cascade guard: sentence spanning chunk boundary does not grey out subsequent sentences", () => {
+    // Regression for issue #401: a short sentence that spans a chunk boundary
+    // (i.e. starts at the end of chunk 0 and ends in chunk 1) fails ALL matching
+    // attempts — exact, prefix (< 50 chars), and normalized. Previously chunkIdx
+    // advanced to chunks.length causing ALL subsequent segments to get chunkIdx=-1
+    // (greyed out). The cascade guard resets chunkIdx so later sentences are found.
+    //
+    // Simulate: chunk 0 ends mid-sentence; chunk 1 has the rest. The segment text
+    // is assembled from both halves (not present in either chunk alone).
+    const sentA = "You will rejoice to hear that no disaster has accompanied us."; // in chunk 0
+    const crossBoundarySent = "Go."; // short, starts end-of-chunk-0, ends chunk-1 → not in either
+    const sentC = "I arrived here yesterday with great relief."; // in chunk 1
+
+    // chunk 0 contains sentA and the very beginning of crossBoundarySent ("Go")
+    // chunk 1 contains the end of crossBoundarySent (".") and sentC
+    const chunk0 = `${sentA} Go`;              // "Go" not terminated → not findable as "Go."
+    const chunk1 = `.\n${sentC}`;             // ends with "." but "Go." spans the boundary
+
+    const chunks: ChunkInfo[] = [
+      { text: chunk0, duration: 5 },
+      { text: chunk1, duration: 5 },
+    ];
+
+    // Chapter text: all three sentences as one block
+    const text = `${sentA} ${crossBoundarySent} ${sentC}`;
+
+    const { container } = render(
+      <SentenceReader
+        text={text}
+        duration={10}
+        currentTime={8}  // well into chunk 1 where sentC should be active
+        isPlaying={true}
+        onSegmentClick={noop}
+        chunks={chunks}
+      />
+    );
+
+    // sentC must NOT be greyed out — the cascade guard should have kept chunkIdx
+    // in range so sentC is matched to chunk 1.
+    const allSegs = Array.from(container.querySelectorAll("[data-seg]"));
+    const sentCEl = allSegs.find((el) => el.textContent?.includes("arrived here yesterday"));
+    // Must be found and not have the grey class
+    expect(sentCEl).not.toBeNull();
+    expect(sentCEl?.className).not.toContain("text-stone-400");
+  });
 });

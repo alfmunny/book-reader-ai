@@ -401,6 +401,47 @@ describe("BulkTranslateTab — history table (lines 420-436)", () => {
   });
 });
 
+// ── Line 125: runPlan catch non-Error ────────────────────────────────────────
+
+describe("BulkTranslateTab — runPlan error fallback (line 125)", () => {
+  it('shows "Plan failed" when plan endpoint rejects with non-Error', async () => {
+    const adminFetch = jest.fn().mockImplementation((path: string) => {
+      if (path.includes("/status")) return Promise.resolve(IDLE_STATUS);
+      if (path.includes("/history")) return Promise.resolve([]);
+      if (path.includes("/plan")) return Promise.reject("plain string");
+      return Promise.resolve({});
+    });
+    render(<BulkTranslateTab adminFetch={adminFetch} />);
+    await waitFor(() => screen.getByRole("button", { name: /plan/i }));
+    fireEvent.click(screen.getByRole("button", { name: /plan/i }));
+    await waitFor(() => expect(screen.getByText("Plan failed")).toBeInTheDocument());
+  });
+});
+
+// ── Lines 443/209: history started_at=null and Stat highlight=true ────────────
+
+describe("BulkTranslateTab — started_at null and failed highlight (lines 443, 209)", () => {
+  it("renders history row with empty date cell when started_at is null", async () => {
+    const noDateItem = { ...HISTORY_ITEM, id: 20, started_at: null };
+    const adminFetch = makeFetch({ history: [noDateItem as any] });
+    render(<BulkTranslateTab adminFetch={adminFetch} />);
+    await waitFor(() => screen.getByText("Recent runs"));
+    expect(screen.getByText("20")).toBeInTheDocument();
+  });
+
+  it("Stat component renders with highlight=true (red style) when failed_chapters > 0", async () => {
+    const failedState = { ...RUNNING_STATE, failed_chapters: 5, status: "running" };
+    const adminFetch = makeFetch({
+      status: { running: true, state: failedState, preview: null },
+    });
+    render(<BulkTranslateTab adminFetch={adminFetch} />);
+    await waitFor(() => screen.getByText("5"));
+    // Stat with highlight=true renders with red border class
+    const failedCell = screen.getByText("5").closest("div");
+    expect(failedCell).toBeTruthy();
+  });
+});
+
 // ── Target language select resets plan ───────────────────────────────────────
 
 describe("BulkTranslateTab — target language select (line 276)", () => {

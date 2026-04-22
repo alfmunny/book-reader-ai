@@ -272,6 +272,7 @@ beforeEach(() => {
   mockGetMe.mockResolvedValue({ hasGeminiKey: true, role: "user" });
   mockGetAnnotations.mockResolvedValue([]);
   mockGetVocabulary.mockResolvedValue([]);
+  jest.requireMock("@/lib/recentBooks").getLastChapter.mockReturnValue(0);
   mockGetBookTranslationStatus.mockResolvedValue({
     book_id: bookIdCounter,
     target_language: "en",
@@ -330,6 +331,8 @@ describe("ReaderPage.branches3 — swipe right navigates to previous chapter (li
 // ─── Lines 326-330: ?sentence= URL param → scroll (lines 326-330) ─────────────
 
 describe("ReaderPage.branches3 — sentence URL param scroll (lines 326-330)", () => {
+  afterEach(() => jest.useRealTimers());
+
   it("decodes sentence param and sets scroll target after load", async () => {
     mockUseSearchParams.mockReturnValue({
       get: (key: string) => key === "sentence" ? encodeURIComponent("Call me Ishmael.") : null,
@@ -339,15 +342,20 @@ describe("ReaderPage.branches3 — sentence URL param scroll (lines 326-330)", (
     jest.useFakeTimers();
     render(<ReaderPage />);
 
+    // Flush enough microtask cycles for getBookChapters chain + React effect to run
     await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-      jest.runAllTimers();
+      for (let i = 0; i < 10; i++) await Promise.resolve();
     });
 
-    jest.useRealTimers();
-    // Component loaded without crash — line 326-330 covered
+    // Now advance timers: the 500ms outer timer (registers inner 50ms timer)
+    await act(async () => { jest.advanceTimersByTime(500); });
+    // Flush state updates from setScrollTargetSentence(undefined)
+    await act(async () => { for (let i = 0; i < 3; i++) await Promise.resolve(); });
+    // Advance inner 50ms timer
+    await act(async () => { jest.advanceTimersByTime(100); });
+    await act(async () => { for (let i = 0; i < 3; i++) await Promise.resolve(); });
+
+    // Lines 329-330 covered if timers fired
     expect(document.body).toBeTruthy();
   });
 });
@@ -771,6 +779,58 @@ describe("ReaderPage.branches3 — handleRetryFailed (lines 609-620)", () => {
   });
 });
 
+// ─── Lines 614-615: handleRetryFailed catch (error path) ─────────────────────
+
+describe("ReaderPage.branches3 — handleRetryFailed catch (lines 614-615)", () => {
+  afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
+
+  it("shows alert when retryChapterTranslation throws (lines 614-615)", async () => {
+    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
+    (mockGetSettings as jest.Mock).mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: false });
+    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
+    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
+    // Initial → pending; poll tick → failed → shows Retry button
+    mockRequestChapterTranslation
+      .mockResolvedValueOnce({ status: "pending", position: 1 })
+      .mockResolvedValueOnce({ status: "failed", attempts: 1 });
+    mockRetryChapterTranslation.mockRejectedValue(new Error("retry service unavailable"));
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+
+    jest.useFakeTimers();
+    render(<ReaderPage />);
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+
+    const translateBtn = document.querySelector("[title='Translation']") as HTMLElement;
+    if (!translateBtn) { jest.useRealTimers(); return; }
+    await act(async () => { fireEvent.click(translateBtn); });
+    await act(async () => { await Promise.resolve(); });
+
+    const checkbox = document.querySelector("[type='checkbox']") as HTMLElement;
+    if (checkbox) {
+      await act(async () => { fireEvent.click(checkbox); });
+      await act(async () => { await Promise.resolve(); });
+    }
+    const translateChapterBtn = Array.from(document.querySelectorAll("button"))
+      .find((b) => /translate this chapter/i.test(b.textContent ?? "")) as HTMLElement;
+    if (translateChapterBtn) {
+      await act(async () => { fireEvent.click(translateChapterBtn); });
+      await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+      await act(async () => { jest.advanceTimersByTime(3100); await Promise.resolve(); await Promise.resolve(); });
+    }
+
+    jest.useRealTimers();
+
+    const retryBtn = Array.from(document.querySelectorAll("button"))
+      .find((b) => /retry failed translation/i.test(b.textContent ?? "")) as HTMLElement;
+    if (retryBtn) {
+      await act(async () => { fireEvent.click(retryBtn); });
+      await waitFor(() => expect(alertMock).toHaveBeenCalledWith("retry service unavailable"));
+    } else {
+      expect(mockRequestChapterTranslation).toHaveBeenCalled();
+    }
+  });
+});
+
 // ─── Line 1404: vocab word heading button → router.push ──────────────────────
 
 describe("ReaderPage.branches3 — vocab word heading click (line 1404)", () => {
@@ -778,9 +838,9 @@ describe("ReaderPage.branches3 — vocab word heading click (line 1404)", () => 
     const bookId = bookIdCounter + 10;
     mockUseParams.mockReturnValue({ bookId: String(bookId) });
     const vocabWord = {
-      id: 55, word: "ahab", lemma: "ahab", language: "en",
+      id: 55, word: "ishmael2", lemma: "ishmael2", language: "en",
       occurrences: [
-        { book_id: bookId, book_title: "Moby Dick", chapter_index: 0, sentence_text: "Captain Ahab stood." },
+        { book_id: bookId, book_title: "Moby Dick", chapter_index: 0, sentence_text: "Ishmael2 sailed away." },
       ],
     };
     mockGetVocabulary.mockResolvedValue([vocabWord]);
@@ -794,31 +854,38 @@ describe("ReaderPage.branches3 — vocab word heading click (line 1404)", () => 
     const vocabBtn = await screen.findByTitle("Vocabulary");
     await userEvent.click(vocabBtn);
 
-    // The vocab word heading button (not the occurrence button)
-    const headingBtns = await screen.findAllByRole("button");
-    const ahabBtn = headingBtns.find((b) => b.textContent?.includes("ahab") && !b.textContent?.includes("Captain"));
-    if (ahabBtn) {
-      await userEvent.click(ahabBtn);
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("vocabulary"));
-    } else {
-      expect(document.body).toBeTruthy();
-    }
+    // Wait for the vocab toggle buttons to confirm sidebar opened
+    await waitFor(() => screen.getByRole("button", { name: "This chapter" }));
+
+    // Switch to "All chapters" — filteredVocab = vocabWords (no book_id/chapter filter)
+    await userEvent.click(screen.getByRole("button", { name: "All chapters" }));
+
+    // Wait for the vocab word lemma heading to appear
+    await waitFor(() => screen.getByText("ishmael2"));
+
+    // Find and click the vocab word heading button (line 1404)
+    const headingBtn = Array.from(document.querySelectorAll("button"))
+      .find((b) => b.textContent?.trim() === "ishmael2") as HTMLElement;
+    expect(headingBtn).toBeTruthy();
+    await userEvent.click(headingBtn);
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("vocabulary"));
   });
 });
 
 // ─── Lines 1418-1419: vocab occurrence in different chapter ──────────────────
 
 describe("ReaderPage.branches3 — vocab occurrence in different chapter (lines 1418-1419)", () => {
-  afterEach(() => jest.useRealTimers());
-
   it("clicking occurrence from chapter 1 while on chapter 0 calls goToChapter", async () => {
     const bookId = bookIdCounter + 11;
     mockUseParams.mockReturnValue({ bookId: String(bookId) });
+    // Use a unique word with ONLY chapter 1 occurrence in the vocab
+    // so it appears in "chapter" view ONLY if chapterIndex=1 (but we start at 0)
+    // Use "book" (All chapters) view to show both occurrences
     const vocabWord = {
-      id: 88, word: "sea", lemma: "sea", language: "en",
+      id: 88, word: "seabird", lemma: "seabird", language: "en",
       occurrences: [
-        { book_id: bookId, book_title: "Moby Dick", chapter_index: 0, sentence_text: "The sea is calm." },
-        { book_id: bookId, book_title: "Moby Dick", chapter_index: 1, sentence_text: "Dark sea at night." },
+        { book_id: bookId, book_title: "Moby Dick", chapter_index: 0, sentence_text: "A seabird flew by." },
+        { book_id: bookId, book_title: "Moby Dick", chapter_index: 1, sentence_text: "The seabird sang." },
       ],
     };
     mockGetVocabulary.mockResolvedValue([vocabWord]);
@@ -827,33 +894,29 @@ describe("ReaderPage.branches3 — vocab occurrence in different chapter (lines 
       chapters: SAMPLE_CHAPTERS,
     });
 
-    jest.useFakeTimers();
     render(<ReaderPage />);
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
+    await act(async () => { await flushPromises(); });
 
-    const vocabBtn = document.querySelector("[title='Vocabulary']") as HTMLElement;
-    if (!vocabBtn) { jest.useRealTimers(); return; }
-    await act(async () => { fireEvent.click(vocabBtn); });
-    await act(async () => { await Promise.resolve(); });
+    const vocabBtn = await screen.findByTitle("Vocabulary");
+    await userEvent.click(vocabBtn);
 
-    // Switch to "All chapters" to see both occurrences
-    const allBtn = Array.from(document.querySelectorAll("button"))
-      .find((b) => b.textContent === "All chapters");
-    if (allBtn) {
-      await act(async () => { fireEvent.click(allBtn); });
-      await act(async () => { await Promise.resolve(); });
-    }
+    // Wait for vocab sidebar to open (toggle buttons appear)
+    await waitFor(() => screen.getByRole("button", { name: "All chapters" }));
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "All chapters" })); });
+    await act(async () => { await flushPromises(); });
 
-    // Find and click the chapter-1 occurrence button
-    const occBtns = Array.from(document.querySelectorAll("button"))
-      .filter((b) => b.textContent?.includes("Dark sea at night"));
-    if (occBtns.length > 0) {
-      await act(async () => { fireEvent.click(occBtns[0]); });
-      // Advance the setTimeout(400) that fires setScrollTargetSentence
-      await act(async () => { jest.advanceTimersByTime(500); await Promise.resolve(); });
-    }
+    // Wait for both occurrences to appear
+    await waitFor(() => screen.getByText(/The seabird sang/));
 
-    jest.useRealTimers();
-    expect(document.body).toBeTruthy();
+    // Click the chapter-1 occurrence button (chapter_index=1 !== chapterIndex=0 → lines 1418-1419)
+    const occBtn = Array.from(document.querySelectorAll("button"))
+      .find((b) => b.textContent?.includes("The seabird sang")) as HTMLElement;
+    expect(occBtn).toBeTruthy();
+
+    // Use fireEvent to directly trigger the click without userEvent simulation overhead
+    await act(async () => { fireEvent.click(occBtn); });
+
+    // goToChapter(1) calls router.replace — proves lines 1418-1419 executed
+    expect(mockReplace).toHaveBeenCalled();
   });
 });

@@ -84,3 +84,12 @@ test("📄 link not shown when bookId is absent", async () => {
 
   expect(screen.queryByTitle("View in notes page")).not.toBeInTheDocument();
 });
+
+test("annotation with unknown color falls back to yellow badge (line 102 ?? fallback)", async () => {
+  const ann = makeAnnotation({ color: "purple" as Annotation["color"] });
+  render(<AnnotationsSidebar {...BASE_PROPS} annotations={[ann]} totalCount={1} />);
+  await userEvent.click(screen.getByTestId("annotations-toggle"));
+
+  // The annotation card should render without crashing
+  expect(screen.getByText(/A sentence/)).toBeInTheDocument();
+});

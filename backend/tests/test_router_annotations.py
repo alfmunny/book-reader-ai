@@ -227,3 +227,17 @@ async def test_create_annotation_rejects_nonexistent_book(client, test_user):
         "sentence_text": "Orphan sentence.",
     })
     assert resp.status_code == 404
+
+
+async def test_create_annotation_rejects_empty_sentence(client, test_user):
+    """POST /annotations with empty sentence_text must return 400.
+
+    An annotation with no text context is meaningless and represents a
+    client error."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/annotations", json={
+        "book_id": BOOK_ID,
+        "chapter_index": 0,
+        "sentence_text": "",
+    })
+    assert resp.status_code == 400

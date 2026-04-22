@@ -751,7 +751,7 @@ export default function SentenceReader({
         let originalContent: React.ReactNode;
         if (para.isVerse) {
           originalContent = (
-            <div className="font-serif text-base text-ink leading-relaxed">
+            <div className="font-serif text-base text-ink">
               {para.segments.map((seg) => (
                 <span key={seg.flatIdx} className="block">
                   {renderSeg(seg)}
@@ -761,7 +761,7 @@ export default function SentenceReader({
           );
         } else {
           originalContent = (
-            <p className="font-serif text-base text-ink leading-relaxed">
+            <p className="font-serif text-base text-ink">
               {para.segments.map((seg, sIdx) =>
                 renderSeg(seg, "", sIdx < para.segments.length - 1)
               )}

@@ -2,8 +2,11 @@
 Tests for routers/user.py — profile and Gemini key management.
 """
 
+import json
 import pytest
-from services.db import get_user_by_id, set_user_gemini_key, save_book
+import aiosqlite
+from services.db import get_user_by_id, set_user_gemini_key, save_book, get_or_create_user
+import services.db as db_module
 from services.auth import encrypt_api_key, decrypt_api_key
 
 _BOOK_META = {"title": "Test Book", "authors": ["Author"], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
@@ -231,3 +234,34 @@ async def test_patch_obsidian_settings_token_not_clobbered_by_stale_read(client,
     assert decrypt_api_key(settings["github_token"]) == "token-v2", \
         "concurrent token update must not be silently overwritten by a PATCH that omits github_token"
     assert settings["obsidian_repo"] == "r/v-updated"
+
+
+# ── Access control for private uploaded books ─────────────────────────────────
+
+async def _insert_private_book_user(book_id: int, owner_user_id: int) -> None:
+    chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT OR REPLACE INTO books
+               (id, title, authors, languages, subjects, download_count,
+                cover, text, images, source, owner_user_id)
+               VALUES (?, 'Private Book', '[]', '["en"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (book_id, chapters, owner_user_id),
+        )
+        await db.commit()
+
+
+async def test_update_reading_progress_blocked_for_non_owner(client, test_user, tmp_db):
+    """PUT /user/reading-progress/{book_id} must return 403 for non-owners of private books.
+
+    Without check_book_access the endpoint only checks existence; any authenticated
+    user can record reading progress (and reading history) for another user's private book."""
+    from services.db import set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("rp-owner-gid", "rp-owner@ex.com", "RPOwner", "")
+    await _insert_private_book_user(8701, owner["id"])
+    resp = await client.put("/api/user/reading-progress/8701", json={"chapter_index": 2})
+    assert resp.status_code == 403, (
+        f"Expected 403 for non-owner updating reading progress of private book, "
+        f"got {resp.status_code}: {resp.text}"
+    )

@@ -86,6 +86,15 @@ SYSTEM_TRANSLATOR = """You are a skilled literary translator. Translate the prov
 IMPORTANT: Preserve the exact line structure of the input. Each line break (\\n) in the original must produce a line break in the translation. Each blank line between stanzas or paragraphs must be preserved as a blank line. Do NOT merge lines or reflow text.
 Return ONLY the translation — no explanations, no commentary."""
 
+SYSTEM_SUMMARY = """You are a concise literary summarizer. Given a chapter from a classic book, produce a structured summary with these exact sections:
+
+**Overview** — 2-3 sentences capturing the chapter's main arc.
+**Key Events** — 3-5 bullet points of the most important plot developments.
+**Characters** — who appears and what they do (skip if no named characters).
+**Themes** — 1-2 recurring motifs or literary themes present in this chapter.
+
+Be concise. Focus on plot and character. Do not include spoilers beyond this chapter. Use markdown."""
+
 
 def _lang(response_language: str) -> str:
     if response_language and response_language != "en":
@@ -105,6 +114,20 @@ async def generate_insight(
         "Share one fascinating insight about this passage."
     )
     return await _generate(api_key, SYSTEM_INSIGHT + _lang(response_language), prompt, 600)
+
+
+async def generate_chapter_summary(
+    api_key: str, chapter_text: str, book_title: str, author: str, chapter_title: str = ""
+) -> str:
+    # Use first 4000 chars to stay well within token limits; summaries cover entire chapter structure.
+    excerpt = chapter_text[:4000].strip()
+    chapter_label = f' — {chapter_title}' if chapter_title else ''
+    prompt = (
+        f'Book: "{book_title}"{chapter_label} by {author}\n\n'
+        f"Chapter text:\n---\n{excerpt}\n---\n\n"
+        "Produce a structured summary of this chapter."
+    )
+    return await _generate(api_key, SYSTEM_SUMMARY, prompt, 600)
 
 
 async def answer_question(

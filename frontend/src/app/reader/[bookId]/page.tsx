@@ -13,6 +13,7 @@ import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import VocabularyToast from "@/components/VocabularyToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
+import ChapterSummary from "@/components/ChapterSummary";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -75,7 +76,7 @@ export default function ReaderPage() {
 
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate" | "summary">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const vocabWordsSet = useMemo(
     () => new Set(vocabWords.map((v) => v.word.toLowerCase())),
@@ -818,6 +819,8 @@ export default function ReaderPage() {
             {theme === "light" ? "☀" : theme === "sepia" ? "📖" : "🌙"}
           </button>
 
+
+
           {/* Profile — always rightmost */}
           <button
             onClick={() => router.push("/profile")}
@@ -863,6 +866,19 @@ export default function ReaderPage() {
             }`}
           >
             🌐 Translate
+          </button>
+
+          {/* Chapter Summary toggle */}
+          <button
+            onClick={() => { setSidebarTab("summary"); setSidebarOpen((v) => sidebarTab === "summary" ? !v : true); }}
+            title="Chapter summary"
+            className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              sidebarOpen && sidebarTab === "summary"
+                ? "bg-amber-700 text-white border-amber-700"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            📋 Summary
           </button>
 
           {/* Notes sidebar toggle */}
@@ -1595,6 +1611,19 @@ export default function ReaderPage() {
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* Summary tab */}
+              {sidebarTab === "summary" && (
+                <ChapterSummary
+                  bookId={bookId}
+                  chapterIndex={chapterIndex}
+                  chapterText={current?.text ?? ""}
+                  chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
+                  bookTitle={meta?.title ?? ""}
+                  author={meta?.authors[0] ?? ""}
+                  isVisible={sidebarOpen && sidebarTab === "summary"}
+                />
               )}
             </>
           )}

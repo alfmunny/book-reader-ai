@@ -187,6 +187,21 @@ export function getInsight(chapter_text: string, book_title: string, author: str
   });
 }
 
+export function generateChapterSummary(
+  book_id: number,
+  chapter_index: number,
+  chapter_text: string,
+  book_title: string,
+  author: string,
+  chapter_title = "",
+) {
+  return request<{ summary: string; cached: boolean; model?: string }>("/ai/summary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ book_id, chapter_index, chapter_text, book_title, author, chapter_title }),
+  });
+}
+
 export function translateText(
   text: string,
   source_language: string,

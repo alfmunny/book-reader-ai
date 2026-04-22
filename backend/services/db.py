@@ -475,6 +475,29 @@ async def set_setting(key: str, value: str) -> None:
         await db.commit()
 
 
+async def get_chapter_summary(book_id: int, chapter_index: int) -> dict | None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT content, model, created_at FROM chapter_summaries WHERE book_id=? AND chapter_index=?",
+            (book_id, chapter_index),
+        ) as cursor:
+            row = await cursor.fetchone()
+    return dict(row) if row else None
+
+
+async def save_chapter_summary(book_id: int, chapter_index: int, content: str, model: str | None = None) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO chapter_summaries (book_id, chapter_index, content, model)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(book_id, chapter_index) DO UPDATE
+               SET content=excluded.content, model=excluded.model, created_at=CURRENT_TIMESTAMP""",
+            (book_id, chapter_index, content, model),
+        )
+        await db.commit()
+
+
 async def get_reading_progress(user_id: int) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row

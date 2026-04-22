@@ -165,7 +165,7 @@ GET  /vocabulary/flashcards/stats     → {total, due_today, streak, reviewed_to
 
 ---
 
-## Feature 3: Reading Statistics Dashboard ✅ (implementing now)
+## Feature 3: Reading Statistics Dashboard ✅ (implemented — PR #268)
 
 ### Overview
 A lightweight personal stats view shown on the Profile page. Shows how much a user has read, saved, and annotated — with a GitHub-style activity heatmap and a daily reading streak.

@@ -24,6 +24,8 @@ from services.db import (
     set_setting,
     get_reading_progress,
     upsert_reading_progress,
+    get_chapter_summary,
+    save_chapter_summary,
 )
 
 
@@ -265,3 +267,33 @@ async def test_init_db_creates_parent_directory(monkeypatch, tmp_path):
     # Sanity-check the schema by running a real query
     user = await get_or_create_user(google_id="x", email="a@b.com", name="A", picture="")
     assert user["id"] is not None
+
+
+# ── Chapter summaries ─────────────────────────────────────────────────────────
+
+async def test_get_chapter_summary_returns_none_when_missing():
+    result = await get_chapter_summary(9999, 0)
+    assert result is None
+
+
+async def test_save_and_get_chapter_summary():
+    await save_chapter_summary(1234, 5, "A great chapter summary.", model="test-model")
+    result = await get_chapter_summary(1234, 5)
+    assert result is not None
+    assert result["content"] == "A great chapter summary."
+    assert result["model"] == "test-model"
+
+
+async def test_save_chapter_summary_overwrites():
+    await save_chapter_summary(1234, 7, "First version.", model="model-a")
+    await save_chapter_summary(1234, 7, "Updated version.", model="model-b")
+    result = await get_chapter_summary(1234, 7)
+    assert result["content"] == "Updated version."
+    assert result["model"] == "model-b"
+
+
+async def test_save_chapter_summary_without_model():
+    await save_chapter_summary(1234, 8, "No model specified.")
+    result = await get_chapter_summary(1234, 8)
+    assert result is not None
+    assert result["model"] is None

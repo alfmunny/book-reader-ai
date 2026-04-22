@@ -7,6 +7,8 @@ from services.auth import get_current_user, decrypt_api_key
 from services.db import (
     get_cached_translation,
     save_translation,
+    get_chapter_summary,
+    save_chapter_summary,
     get_cached_book,
 )
 from services import gemini
@@ -57,6 +59,15 @@ class ReferencesRequest(BaseModel):
     chapter_title: str = ""
     chapter_excerpt: str = ""
     response_language: str = "en"
+
+
+class SummaryRequest(BaseModel):
+    book_id: int
+    chapter_index: int
+    chapter_text: str
+    book_title: str
+    author: str
+    chapter_title: str = ""
 
 
 class TranslateRequest(BaseModel):
@@ -129,6 +140,61 @@ async def references(req: ReferencesRequest, user: dict = Depends(get_current_us
         return {"references": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/summary")
+async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
+    """Return a cached chapter summary or generate one with the queue Gemini key.
+
+    Summaries are shared across all users — the first reader pays the Gemini cost,
+    subsequent requests return the cached result instantly.
+    """
+    if not await get_cached_book(req.book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    cached = await get_chapter_summary(req.book_id, req.chapter_index)
+    if cached:
+        return {"summary": cached["content"], "cached": True, "model": cached["model"]}
+
+    # Use the queue API key so no personal key is required.
+    from services.db import get_setting
+    from services.auth import decrypt_api_key as _decrypt
+    raw = await get_setting("queue_api_key")
+    if not raw:
+        raise HTTPException(
+            status_code=503,
+            detail="Chapter summaries are not available yet — the admin has not configured a Gemini API key.",
+        )
+    try:
+        api_key = _decrypt(raw)
+    except Exception:
+        raise HTTPException(status_code=503, detail="Summary service configuration error.")
+
+    try:
+        content = await gemini.generate_chapter_summary(
+            api_key, req.chapter_text, req.book_title, req.author, req.chapter_title
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    await save_chapter_summary(req.book_id, req.chapter_index, content, model=gemini.MODEL)
+    return {"summary": content, "cached": False, "model": gemini.MODEL}
+
+
+@router.delete("/summary")
+async def delete_summary(book_id: int, chapter_index: int, user: dict = Depends(get_current_user)):
+    """Admin-only: delete a cached summary so it will be regenerated on next request."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    from services.db import DB_PATH
+    import aiosqlite
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "DELETE FROM chapter_summaries WHERE book_id=? AND chapter_index=?",
+            (book_id, chapter_index),
+        )
+        await db.commit()
+    return {"ok": True}
 
 
 @router.get("/translate/cache")

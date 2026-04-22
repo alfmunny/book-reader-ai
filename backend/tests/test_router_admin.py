@@ -1245,3 +1245,55 @@ async def test_delete_book_removes_orphaned_vocabulary(admin_client, admin_db, a
     assert "orphan" not in words_after, "orphaned vocab entry survived delete_book"
     # Shared word (also in book 200) must survive
     assert "shared" in words_after
+
+
+# ── Retranslate running-row guard ─────────────────────────────────────────────
+
+async def test_retranslate_rejects_409_when_chapter_is_running(admin_client, admin_db):
+    """Regression #333: retranslate must reject 409 when a queue worker is
+    actively translating the same chapter, to prevent the worker from
+    overwriting the admin's fresh result when it finishes."""
+    from services.translation_queue import enqueue
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "de", ["Old translation."])
+    await enqueue(100, 0, "de")
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE book_id=100 AND chapter_index=0",
+        )
+        await db.commit()
+
+    with patch("routers.admin.do_translate", new_callable=AsyncMock, return_value=["New."]):
+        res = await admin_client.post("/api/admin/translations/100/0/de/retranslate")
+
+    assert res.status_code == 409
+    # Existing translation must be untouched
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "de") == ["Old translation."]
+
+
+async def test_retranslate_all_rejects_409_when_any_chapter_is_running(admin_client, admin_db):
+    """Regression #333: retranslate-all must reject 409 before translating
+    any chapter if a running queue row exists for one of them."""
+    from services.translation_queue import enqueue
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await save_translation(100, 0, "de", ["Chapter 0 old."])
+    await enqueue(100, 0, "de")
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "UPDATE translation_queue SET status='running' WHERE book_id=100 AND chapter_index=0",
+        )
+        await db.commit()
+
+    with patch("routers.admin.do_translate", new_callable=AsyncMock, return_value=["New."]):
+        res = await admin_client.post(
+            "/api/admin/translations/100/retranslate-all",
+            json={"target_language": "de"},
+        )
+
+    assert res.status_code == 409
+    detail = res.json()["detail"]
+    assert "0" in detail  # blocked chapter index mentioned
+    # Chapter 0 translation must be untouched
+    from services.db import get_cached_translation
+    assert await get_cached_translation(100, 0, "de") == ["Chapter 0 old."]

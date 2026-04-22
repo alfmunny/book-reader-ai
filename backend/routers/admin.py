@@ -414,6 +414,24 @@ async def retranslate(
 
     chapter_text = chapters[chapter_index].text
 
+    # Reject if a queue worker is actively translating this chapter — the
+    # worker's save_translation (INSERT OR REPLACE) would silently overwrite
+    # whatever we write here. (#333)
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT 1 FROM translation_queue "
+            "WHERE book_id=? AND chapter_index=? AND target_language=? AND status='running'",
+            (book_id, chapter_index, target_language),
+        ) as cur:
+            if await cur.fetchone():
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"A translation job is currently running for chapter {chapter_index}. "
+                        "Wait for it to finish before retranslating."
+                    ),
+                )
+
     # 2. Detect source language from book metadata
     source_language = (book.get("languages") or ["en"])[0]
 
@@ -530,6 +548,27 @@ async def retranslate_all(
     from services.book_chapters import split_with_html_preference
     chapters = await split_with_html_preference(book_id, book["text"])
     source_language = (book.get("languages") or ["en"])[0]
+
+    # Pre-check: reject before translating any chapter if any have a running
+    # queue job. The worker would overwrite whatever we write. (#333)
+    chapter_indices = list(range(len(chapters)))
+    async with aiosqlite.connect(DB_PATH) as db:
+        placeholders = ",".join("?" * len(chapter_indices))
+        async with db.execute(
+            f"SELECT chapter_index FROM translation_queue "
+            f"WHERE book_id=? AND target_language=? AND status='running' "
+            f"AND chapter_index IN ({placeholders})",
+            [book_id, target_language, *chapter_indices],
+        ) as cur:
+            running = [row[0] for row in await cur.fetchall()]
+    if running:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Translation job(s) currently running for chapter(s) {sorted(running)}. "
+                "Wait for them to finish before retranslating."
+            ),
+        )
 
     raw_key = admin.get("gemini_key")
     try:

@@ -474,7 +474,8 @@ async def import_stream(
 
             # ── 2. Split chapters ───────────────────────────────────────────
             yield _sse("stage", {"stage": "splitting", "message": "Splitting chapters…"})
-            chapters = build_chapters(text)
+            from services.book_chapters import split_with_html_preference
+            chapters = await split_with_html_preference(book_id, text)
             total_words = sum(len(c.text.split()) for c in chapters)
             yield _sse("chapters", {
                 "total": len(chapters),

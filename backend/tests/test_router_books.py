@@ -345,8 +345,13 @@ async def test_retry_chapter_translation_inserts_if_no_row(client):
     still succeeds and creates a pending row."""
     import aiosqlite
     import services.db as db_module
+    from services.book_chapters import clear_cache as _clear
 
-    await save_book(1342, MOCK_META, "text")
+    text = "\n\n".join(
+        f"CHAPTER {i}\n\n" + "word " * 200 for i in range(1, 4)
+    )
+    await save_book(1342, MOCK_META, text)
+    _clear()
     resp = await client.post(
         "/api/books/1342/chapters/2/translation/retry",
         json={"target_language": "fr"},

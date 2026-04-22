@@ -769,3 +769,50 @@ async def test_import_stream_uses_html_splitter_chapter_count(client):
         "(HTML splitter); build_chapters on the plain text would return 2"
     )
     clear_cache(book_id)
+
+
+# ── reader retry running-guard (issue #316) ───────────────────────────────────
+
+async def test_reader_retry_rejects_running_item(client):
+    """POST /chapters/{idx}/translation/retry must return 409 when the row is
+    already 'running'.
+
+    Before the fix, enqueue(reset_failed=True) silently reset 'running' → 'pending'
+    in-place, then mark_queue_row_done (called by the worker on success) deleted the
+    re-queued pending row — making the retry a no-op and corrupting the attempt counter.
+
+    After the fix the endpoint returns 409, consistent with the admin
+    queue_retry_item endpoint (PR #295).
+    """
+    import aiosqlite
+    import services.db as db_module
+
+    await save_book(1342, MOCK_META, "text")
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            """INSERT INTO translation_queue
+                   (book_id, chapter_index, target_language, priority, status, attempts)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (1342, 0, "zh", 10, "running", 1),
+        )
+        await conn.commit()
+
+    resp = await client.post(
+        "/api/books/1342/chapters/0/translation/retry",
+        json={"target_language": "zh"},
+    )
+    assert resp.status_code == 409, (
+        f"Expected 409 for running item, got {resp.status_code}: {resp.text}"
+    )
+    assert "running" in resp.json()["detail"].lower()
+
+    # Row must remain 'running' — not reset
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        async with conn.execute(
+            "SELECT status, attempts FROM translation_queue "
+            "WHERE book_id=1342 AND chapter_index=0 AND target_language='zh'",
+        ) as cursor:
+            row = await cursor.fetchone()
+    assert row["status"] == "running"
+    assert row["attempts"] == 1

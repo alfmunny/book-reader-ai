@@ -350,6 +350,18 @@ async def retry_chapter_translation(
     from services.translation_queue import enqueue, queue_status_for_chapter, worker
 
     target_language = req.target_language.lower().split("-")[0]
+
+    # Guard: reject retry of a running item. enqueue(reset_failed=True) resets
+    # status='pending' in-place — same row ID. When the worker finishes it calls
+    # mark_queue_row_done which DELETEs by (book,ch,lang), silently eating the
+    # retry. Consistent with the admin queue_retry_item guard (PR #295, issue #294).
+    current = await queue_status_for_chapter(book_id, chapter_index, target_language)
+    if current.get("status") == "running":
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot retry a running translation; wait for it to finish or fail",
+        )
+
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"
     await enqueue(
         book_id, chapter_index, target_language,

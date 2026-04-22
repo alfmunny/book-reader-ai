@@ -956,6 +956,15 @@ class TranslationQueueWorker:
                 chain=chain,
                 max_output_tokens=max_output_tokens,
             )
+            # Guard: delete_book may have fired during the Gemini call.
+            # Re-check existence before saving to avoid orphaned translation
+            # rows that would silently block re-translation after re-import.
+            if not await get_cached_book(book_id):
+                batch_rows = [rows_by_idx[c.chapter_index] for c in batch
+                              if c.chapter_index in rows_by_idx]
+                await self._mark_skipped(batch_rows, reason="book deleted during translation")
+                mark_handled(batch_rows)
+                continue
             for c in batch:
                 row = rows_by_idx[c.chapter_index]
                 paragraphs = translations.get(c.chapter_index)

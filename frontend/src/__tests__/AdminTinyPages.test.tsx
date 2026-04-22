@@ -74,3 +74,32 @@ describe("Admin queue page (admin/queue/page.tsx)", () => {
     expect(screen.getByTestId("queue-tab")).toBeInTheDocument();
   });
 });
+
+describe("Admin bulk redirect page (admin/bulk/page.tsx)", () => {
+  let BulkRedirect: React.ComponentType;
+
+  beforeAll(async () => {
+    const mod = await import("@/app/admin/bulk/page");
+    BulkRedirect = mod.default;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("renders without crashing", () => {
+    render(<BulkRedirect />);
+  });
+
+  it("calls router.replace('/admin/queue') on mount", async () => {
+    render(<BulkRedirect />);
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith("/admin/queue");
+    });
+  });
+
+  it("renders nothing visible (returns null)", () => {
+    const { container } = render(<BulkRedirect />);
+    expect(container.firstChild).toBeNull();
+  });
+});

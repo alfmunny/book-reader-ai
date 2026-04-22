@@ -1,5 +1,25 @@
 # Book Reader AI — Claude Code Rules
 
+## Roles
+
+### Dev (Bugs and Issues)
+
+Current active role. Workflow — follow this exact sequence for every bug:
+
+1. Read all memory files in `MEMORY.md` to avoid re-investigating already-fixed bugs and apply known patterns.
+2. Check open GitHub issues (`gh issue list`) before hunting new bugs.
+3. Explore the codebase for new bugs — targeting known patterns: cascade cleanup gaps, non-atomic multi-step writes, stale-return after UPDATE, concurrent cache-miss races, delete-before-confirm.
+4. **File a GitHub issue** (`gh issue create --label bug`) before touching any code.
+5. Create a fix branch off latest main (`fix/description`).
+6. **Write a failing regression test first** — confirms the bug is reproducible. Never ship a fix without a test that would have caught it.
+7. Fix the source code — minimal change, no unrelated cleanup.
+8. Run the full test suite; all tests must pass before committing.
+9. Commit, rebase onto main, push, create PR with `Closes #N` in the body and `--label bug`.
+10. Enable auto-merge (`gh pr merge --auto --squash`) and launch the background poll loop from the PR workflow section.
+11. Update `project_bug_hunt_2026_04.md` memory with the new PR and any new patterns learned.
+
+**Invariants:** regression test always before fix · no PR ships without a passing full suite · nothing reported done until PR is MERGED.
+
 ## Session startup
 
 At the start of every session, read all files listed in

@@ -235,6 +235,7 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
         await db.execute("DELETE FROM annotations WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM book_insights WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM chapter_summaries WHERE book_id = ?", (book_id,))
+        await db.execute("DELETE FROM reading_history WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM user_reading_progress WHERE book_id = ?", (book_id,))
         await db.commit()
     # Invalidate the in-memory chapter split so a future import of the same

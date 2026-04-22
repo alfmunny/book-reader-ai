@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { getMe } from "@/lib/api";
 import { adminFetch, type Stats } from "@/lib/adminFetch";
+import { ArrowLeftIcon, RetryIcon } from "@/components/Icons";
 
 type TabKey = "users" | "books" | "audio" | "queue";
 
@@ -72,12 +73,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <main className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <button onClick={() => router.push("/")} className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center">
-          ← Library
+        <button onClick={() => router.push("/")} className="inline-flex items-center gap-1.5 text-amber-700 hover:text-amber-900 text-sm min-h-[44px]">
+          <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
         </button>
         <h1 className="font-serif font-bold text-ink text-lg md:text-xl">Admin Panel</h1>
-        <button onClick={loadStats} className="ml-auto text-sm text-amber-600 hover:text-amber-900 min-h-[44px] flex items-center">
-          ↻ Refresh
+        <button onClick={loadStats} className="inline-flex items-center gap-1.5 ml-auto text-sm text-amber-600 hover:text-amber-900 min-h-[44px]">
+          <RetryIcon className="w-4 h-4 shrink-0" /> Refresh
         </button>
       </header>
 

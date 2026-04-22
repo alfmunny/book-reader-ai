@@ -196,3 +196,21 @@ These are structural changes requiring more careful implementation and testing:
 | 8.5 | UX-010: SentenceActionPopup: SVG icons (SpeakerIcon, NoteIcon, ChatIcon) | High | SentenceActionPopup.tsx | ✅ Done |
 | 8.6 | UX-011: ChapterSummary: SummaryIcon replaces 📋 in header and empty state | Medium | ChapterSummary.tsx | ✅ Done |
 | 8.7 | UX-012: InsightChat: PaperclipIcon replaces 📎 context snippet decorator | Low | InsightChat.tsx, Icons.tsx | ✅ Done |
+
+## Wave 9 — Notes, Admin, Sidebar SVG Icons (PR #315)
+
+| # | Change | Impact | File(s) | Status |
+|---|--------|--------|---------|--------|
+| 9.1 | notes/[bookId]/page.tsx: ▶/▼→ChevronRight/Down, ✏️→EditIcon, 🗑→TrashIcon, →→ArrowRightIcon | High | notes/[bookId]/page.tsx, Icons.tsx | ✅ Done |
+| 9.2 | admin/books/page.tsx: ▼/▶→ChevronDown/Right on expand buttons, ⏳→· in status badge | Medium | admin/books/page.tsx | ✅ Done |
+| 9.3 | AnnotationsSidebar.tsx: "notes →"→"notes" + ArrowRightIcon | Low | AnnotationsSidebar.tsx | ✅ Done |
+| 9.4 | Icons.tsx: adds EditIcon, TrashIcon, ChevronRightIcon, CheckIcon | Low | Icons.tsx | ✅ Done |
+
+## Wave 10 — Reader HUD, Admin Layout, Home Pagination (PR #316)
+
+| # | Change | Impact | File(s) | Status |
+|---|--------|--------|---------|--------|
+| 10.1 | reader/[bookId]/page.tsx: × dismiss→CloseIcon, ✕ Focus→CloseIcon, ← Prev/Next →→ArrowLeft/Right, ↗→ExternalLinkIcon | Medium | reader/[bookId]/page.tsx, Icons.tsx | ✅ Done |
+| 10.2 | admin/layout.tsx: ← Library→ArrowLeftIcon, ↻ Refresh→RetryIcon | Low | admin/layout.tsx | ✅ Done |
+| 10.3 | page.tsx: ← Prev/Next →→ArrowLeft/Right in Discover pagination | Low | page.tsx | ✅ Done |
+| 10.4 | Icons.tsx: adds ExternalLinkIcon | Low | Icons.tsx | ✅ Done |

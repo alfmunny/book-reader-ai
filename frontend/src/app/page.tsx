@@ -5,7 +5,7 @@ import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks"
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon } from "@/components/Icons";
+import { FireIcon, ArrowRightIcon, ArrowLeftIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -618,9 +618,9 @@ export default function Home() {
                       <button
                         onClick={() => setPopularPage((p) => p - 1)}
                         disabled={popularPage === 1}
-                        className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
                       >
-                        ← Prev
+                        <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Prev
                       </button>
                       <span className="text-sm text-amber-700">
                         Page {popularPage} of {Math.ceil(popularTotal / PER_PAGE)}
@@ -628,9 +628,9 @@ export default function Home() {
                       <button
                         onClick={() => setPopularPage((p) => p + 1)}
                         disabled={popularPage >= Math.ceil(popularTotal / PER_PAGE)}
-                        className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
                       >
-                        Next →
+                        Next <ArrowRightIcon className="w-4 h-4 shrink-0" />
                       </button>
                     </div>
                   )}

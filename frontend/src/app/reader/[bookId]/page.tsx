@@ -15,7 +15,7 @@ import AnnotationToolbar from "@/components/AnnotationToolbar";
 import VocabularyToast from "@/components/VocabularyToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ExternalLinkIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -779,10 +779,10 @@ export default function ReaderPage() {
           </span>
           <button
             onClick={() => setGeminiReminderVisible(false)}
-            className="shrink-0 text-amber-500 hover:text-amber-700 text-lg leading-none"
+            className="shrink-0 text-amber-500 hover:text-amber-700"
             aria-label="Dismiss"
           >
-            ×
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -794,8 +794,9 @@ export default function ReaderPage() {
             <button
               onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
               disabled={chapterIndex === 0}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
-            >← Prev</button>
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
+              aria-label="Previous chapter"
+            ><ArrowLeftIcon className="w-3 h-3 shrink-0" /> Prev</button>
             <span className="text-stone-400 mx-0.5">|</span>
             <span className="text-stone-600 max-w-[180px] truncate font-medium">
               {chapters[chapterIndex]?.title || `Ch. ${chapterIndex + 1}`}
@@ -804,8 +805,9 @@ export default function ReaderPage() {
             <button
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
               disabled={chapterIndex === chapters.length - 1}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
-            >Next →</button>
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
+              aria-label="Next chapter"
+            >Next <ArrowRightIcon className="w-3 h-3 shrink-0" /></button>
             {paragraphFocus && (
               <>
                 <span className="text-stone-400 mx-0.5">|</span>
@@ -829,7 +831,7 @@ export default function ReaderPage() {
               onClick={() => setFocusMode(false)}
               className="px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors"
               title="Exit focus mode (F)"
-            >✕ Focus</button>
+            ><CloseIcon className="w-3 h-3 shrink-0" /> Focus</button>
           </div>
         </div>
       )}
@@ -858,7 +860,8 @@ export default function ReaderPage() {
                     rel="noopener noreferrer"
                     className="shrink-0 text-xs text-amber-500 hover:text-amber-700"
                     title="View on Project Gutenberg"
-                  >↗</a>
+                    aria-label="View on Project Gutenberg"
+                  ><ExternalLinkIcon className="w-3.5 h-3.5" /></a>
                 </div>
                 <p className="text-xs text-amber-700 truncate">{meta.authors.join(", ")}</p>
               </>

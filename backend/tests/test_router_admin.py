@@ -9,6 +9,7 @@ import routers.admin as admin_module
 from services.db import (
     init_db, get_or_create_user, get_user_by_id, save_book,
     save_translation, set_user_approved, create_annotation, save_insight,
+    upsert_reading_progress,
 )
 from services.auth import get_current_user, create_jwt
 from main import app
@@ -230,6 +231,18 @@ async def test_delete_book_removes_book_insights(admin_client, admin_db, admin_u
     async with aiosqlite.connect(admin_db) as db:
         async with db.execute(
             "SELECT COUNT(*) FROM book_insights WHERE book_id = 100"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0
+
+
+async def test_delete_book_removes_reading_progress(admin_client, admin_db, admin_user):
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await upsert_reading_progress(admin_user["id"], 100, 2)
+    await admin_client.delete("/api/admin/books/100")
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM user_reading_progress WHERE book_id = 100"
         ) as cur:
             count = (await cur.fetchone())[0]
     assert count == 0

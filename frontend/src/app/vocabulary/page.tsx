@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -120,7 +120,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
   );
 }
 
-export default function VocabularyPage() {
+function VocabularyPageContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -365,5 +365,13 @@ export default function VocabularyPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function VocabularyPage() {
+  return (
+    <Suspense>
+      <VocabularyPageContent />
+    </Suspense>
   );
 }

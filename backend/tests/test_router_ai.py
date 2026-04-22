@@ -346,3 +346,45 @@ async def test_references_error_returns_500(client, test_user):
         })
     assert resp.status_code == 500
 
+
+# ── Corrupted Gemini key ──────────────────────────────────────────────────────
+
+_CORRUPT_KEY = "not-a-valid-fernet-token"
+
+
+async def test_translate_with_corrupted_key_falls_back_to_google(client, test_user):
+    """A corrupted (un-decryptable) Gemini key must not crash with 500 — auto
+    provider should silently fall back to Google Translate."""
+    await set_user_gemini_key(test_user["id"], _CORRUPT_KEY)
+    with patch("services.translate._google_translate", new_callable=AsyncMock, return_value=TRANSLATED):
+        resp = await client.post("/api/ai/translate", json={
+            "text": CHAPTER_TEXT,
+            "source_language": "de",
+            "target_language": "en",
+        })
+    assert resp.status_code == 200
+    assert resp.json()["provider"] == "google"
+
+
+async def test_translate_with_corrupted_key_explicit_gemini_returns_400(client, test_user):
+    """Explicitly requesting Gemini with a corrupted key returns 400, not 500."""
+    await set_user_gemini_key(test_user["id"], _CORRUPT_KEY)
+    resp = await client.post("/api/ai/translate", json={
+        "text": CHAPTER_TEXT,
+        "source_language": "de",
+        "target_language": "en",
+        "provider": "gemini",
+    })
+    assert resp.status_code == 400
+
+
+async def test_insight_with_corrupted_key_returns_400(client, test_user):
+    """Corrupted Gemini key on insight endpoint returns 400 not 500."""
+    await set_user_gemini_key(test_user["id"], _CORRUPT_KEY)
+    resp = await client.post("/api/ai/insight", json={
+        "chapter_text": "Some text",
+        "book_title": "Faust",
+        "author": "Goethe",
+    })
+    assert resp.status_code == 400
+

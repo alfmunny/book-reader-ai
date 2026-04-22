@@ -24,7 +24,13 @@ def _require_gemini_key(user: dict) -> str:
             status_code=400,
             detail="Gemini API key required. Please add it in your profile.",
         )
-    return decrypt_api_key(raw)
+    try:
+        return decrypt_api_key(raw)
+    except HTTPException:
+        raise HTTPException(
+            status_code=400,
+            detail="Your Gemini API key could not be decrypted. Please remove it and add it again in your profile.",
+        )
 
 
 # ── Request models ────────────────────────────────────────────────────────────
@@ -179,7 +185,11 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
 
         # Resolve "auto" to a concrete provider
         raw_key = user.get("gemini_key")
-        decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+        try:
+            decrypted_key: str | None = decrypt_api_key(raw_key) if raw_key else None
+        except HTTPException:
+            # Key is present but corrupted; treat as no key so auto falls back to Google.
+            decrypted_key = None
 
         if req.provider == "auto":
             chosen = "gemini" if decrypted_key else "google"

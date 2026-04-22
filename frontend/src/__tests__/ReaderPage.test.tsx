@@ -1550,3 +1550,21 @@ describe("ReaderPage — vocab sidebar chapter filter", () => {
     expect(await screen.findByText("3 words")).toBeInTheDocument();
   });
 });
+
+describe("ReaderPage — header layout (issue #258)", () => {
+  it("feature buttons are in a separate scrollable row, not the main nav row", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+    render(<ReaderPage />);
+    await act(async () => { await flushPromises(); });
+
+    const featureRow = document.querySelector("[data-testid='reader-feature-row']");
+    expect(featureRow).toBeInTheDocument();
+    expect(featureRow?.className).toContain("overflow-x-auto");
+
+    // Insight and Translate buttons must be inside the feature row, not the main row
+    const insightBtn = screen.getByTitle("Toggle insight chat");
+    const translateBtn = screen.getByTitle("Translation");
+    expect(featureRow).toContainElement(insightBtn);
+    expect(featureRow).toContainElement(translateBtn);
+  });
+});

@@ -411,6 +411,67 @@ async def test_migrations_applied_in_filename_order(tmp_db, tmp_migrations, monk
     assert applied == ["001_m", "002_m", "003_m"]
 
 
+# ── 006_add_apple_id bootstrap regression ────────────────────────────────────
+
+async def test_bootstrap_marks_006_add_apple_id_when_column_exists(tmp_db):
+    """Regression: a legacy DB that already has apple_id must not re-apply
+    006_add_apple_id.sql — that ALTER TABLE ADD COLUMN would crash with
+    'duplicate column name: apple_id'.
+
+    Root cause: 006_add_apple_id was missing from bootstrap_checks while
+    006_bulk_translation_jobs was present, so any existing DB with apple_id
+    would crash on startup."""
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "CREATE TABLE books (id INTEGER PRIMARY KEY, title TEXT, images TEXT)"
+        )
+        await db.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                google_id TEXT UNIQUE NOT NULL,
+                email TEXT, name TEXT, picture TEXT, gemini_key TEXT,
+                role TEXT DEFAULT 'user', approved INTEGER DEFAULT 0,
+                github_id TEXT, apple_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_apple_id
+            ON users(apple_id) WHERE apple_id IS NOT NULL
+        """)
+        await db.execute("""
+            CREATE TABLE translations (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                target_language TEXT NOT NULL, paragraphs TEXT NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, target_language)
+            )
+        """)
+        await db.execute(
+            "CREATE TABLE audiobooks (book_id INTEGER PRIMARY KEY, librivox_id TEXT NOT NULL)"
+        )
+        await db.execute("""
+            CREATE TABLE audio_cache (
+                book_id INTEGER NOT NULL, chapter_index INTEGER NOT NULL,
+                chunk_index INTEGER NOT NULL DEFAULT 0,
+                provider TEXT NOT NULL, voice TEXT NOT NULL,
+                content_type TEXT NOT NULL, audio BLOB NOT NULL,
+                PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
+            )
+        """)
+        await db.commit()
+
+    # Must NOT raise "duplicate column name: apple_id"
+    applied = await run_migrations(tmp_db)
+    assert "006_add_apple_id" not in applied  # bootstrapped, not re-applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT version FROM schema_migrations WHERE version='006_add_apple_id'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, \
+                "006_add_apple_id must be bootstrapped in schema_migrations"
+
+
 # ── No migrations directory ──────────────────────────────────────────────────
 
 async def test_missing_migrations_dir_returns_empty(tmp_db, monkeypatch):

@@ -561,6 +561,9 @@ export default function SentenceReader({
   // Long-press handlers (shared across segments)
   function handlePointerDown(e: React.PointerEvent, seg: Segment) {
     if (!onAnnotate) return;
+    // Prevent the browser's native text-selection loupe on touch devices so
+    // the 400ms hold cleanly triggers annotation without a competing selection.
+    if (e.pointerType === "touch") e.preventDefault();
     const startX = e.clientX;
     const startY = e.clientY;
     longPressStartPos.current = { x: startX, y: startY };
@@ -617,6 +620,9 @@ export default function SentenceReader({
             handlePointerDown(e, seg);
             return;
           }
+          // Prevent the browser's native text-selection loupe on touch so
+          // the hold gesture cleanly triggers the word-tap drawer.
+          if (e.pointerType === "touch") e.preventDefault();
           const startX = e.clientX;
           const startY = e.clientY;
           longPressStartPos.current = { x: startX, y: startY };

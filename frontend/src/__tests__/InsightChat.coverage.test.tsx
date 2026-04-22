@@ -87,6 +87,18 @@ describe("InsightChat — getInsight failure (line 158)", () => {
       expect(screen.getByText(/Error: Gemini quota exceeded/)).toBeInTheDocument()
     );
   });
+
+  it("shows string error text instead of 'Error: undefined' when non-Error is thrown (issue #266)", async () => {
+    mockGetInsight.mockRejectedValue("quota exceeded"); // plain string, not Error
+
+    render(<InsightChat {...BASE} />);
+
+    await waitFor(() => {
+      // Should show the string content, NOT "Error: undefined"
+      expect(screen.queryByText(/Error: undefined/)).not.toBeInTheDocument();
+      expect(screen.getByText(/quota exceeded/)).toBeInTheDocument();
+    });
+  });
 });
 
 // ── Lines 167-175: manual refresh via ↺ button ───────────────────────────────

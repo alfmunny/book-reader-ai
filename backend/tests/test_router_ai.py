@@ -26,6 +26,29 @@ async def _set_key(test_user):
 
 # ── Translation ───────────────────────────────────────────────────────────────
 
+async def test_translate_normalizes_language_codes(client):
+    """target_language must be normalized before cache lookup and save.
+
+    Translation stored under 'zh' must be a cache hit when the client
+    sends 'ZH' or 'zh-CN'.  Without normalization, 'tgt' is computed but
+    discarded — the raw req.target_language hits the DB and misses."""
+    await save_translation(1342, 0, "zh", TRANSLATED)
+
+    with patch("routers.ai.gemini") as mock_gemini:
+        resp = await client.post("/api/ai/translate", json={
+            "text": CHAPTER_TEXT,
+            "source_language": "de",
+            "target_language": "ZH",  # uppercase — must normalize to "zh"
+            "book_id": 1342,
+            "chapter_index": 0,
+        })
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["cached"] is True, "uppercase 'ZH' must hit cache stored as 'zh'"
+    mock_gemini.translate_text.assert_not_called()
+
+
 async def test_translate_cache_hit_works_without_key(client):
     """Cache hits return the stored result without hitting Gemini at all."""
     await save_translation(1342, 0, "en", TRANSLATED)

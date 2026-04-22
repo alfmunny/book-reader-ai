@@ -156,6 +156,46 @@ test("resets summary when chapterIndex changes", async () => {
   });
 });
 
+// ── Stale response guard ───────────────────────────────────────────────────
+
+test("stale chapter response does not overwrite the correct summary on fast navigation", async () => {
+  // ch3Promise resolves slowly (simulates an in-flight Gemini call for chapter 3)
+  let resolveCh3!: (v: { summary: string; cached: boolean }) => void;
+  const ch3Promise = new Promise<{ summary: string; cached: boolean }>(
+    (res) => { resolveCh3 = res; }
+  );
+  // ch4 resolves immediately when called
+  const ch4Result = { summary: "Chapter 4 summary text", cached: false };
+
+  mockGenerate
+    .mockImplementationOnce(() => ch3Promise)  // first call: chapter 3
+    .mockResolvedValueOnce(ch4Result);          // second call: chapter 4
+
+  const { rerender } = render(<ChapterSummary {...DEFAULT_PROPS} chapterIndex={3} />);
+
+  // Chapter 3 load is in flight; navigate to chapter 4.
+  // The chapterIndex effect resets loading=false and bumps the generation counter,
+  // which allows chapter 4's auto-load to start and invalidates chapter 3's response.
+  rerender(<ChapterSummary {...DEFAULT_PROPS} chapterIndex={4} />);
+
+  // Chapter 4 summary loads correctly (after the chapterIndex reset unblocks auto-load)
+  await waitFor(() => {
+    expect(screen.getByText(/Chapter 4 summary text/)).toBeInTheDocument();
+  });
+
+  // Now resolve the stale chapter 3 response — generation counter discards it
+  await act(async () => {
+    resolveCh3({ summary: "Chapter 3 stale summary", cached: false });
+    await new Promise(r => setTimeout(r, 0));
+  });
+
+  // Chapter 3's stale content must NOT appear
+  expect(screen.queryByText(/Chapter 3 stale summary/)).not.toBeInTheDocument();
+  expect(screen.getByText(/Chapter 4 summary text/)).toBeInTheDocument();
+  // API called exactly twice (once per chapter)
+  expect(mockGenerate).toHaveBeenCalledTimes(2);
+});
+
 // ── Empty state ────────────────────────────────────────────────────────────
 
 test("shows generate button when not yet loaded and not visible", async () => {

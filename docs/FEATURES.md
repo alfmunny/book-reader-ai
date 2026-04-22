@@ -264,3 +264,107 @@ A distraction-free reading experience with typography customisation and paragrap
 After reading a chapter, ask 3-5 AI-generated multiple-choice questions to test comprehension. Results stored per user/chapter.
 
 Estimated: 4 hours. Requires approval for DB schema.
+
+---
+
+## Session 4 — 2026-04-22
+
+### Implementing this session
+- [x] Feature 6: Guest Reading Experience
+- [ ] Feature 7: User-Uploaded Books (.txt / .epub)
+- [ ] Feature 8: Pre-Translation Tooling (design only — v1 chosen)
+
+---
+
+## Feature 6: Guest Reading Experience ✅ (merged)
+
+### Overview
+Non-logged-in users can browse and read any book, and view existing cached translations for free. They cannot generate new translations or access AI features. Reading progress lives in `localStorage` only.
+
+### What shipped
+- `GET /books/{id}/chapters/{idx}/translation` now serves cached translations without auth (`get_optional_user`)
+- `AuthPromptModal`: bottom-sheet sign-in prompt triggered by locked features on mobile
+- Reader: Notes and Vocab toolbar buttons visible for guests — clicking opens sign-in modal instead of hiding
+- Reader: Mobile Notes bar button always shown; auth prompt for guests
+- Reader: Mobile auto-shows auth modal when translation requires login (no cache + guest)
+- Reader: Profile button replaced with "Sign in" link for unauthenticated users
+
+### What guests can do
+| Feature | Guest | Logged-in |
+|---|---|---|
+| Read any book | ✅ | ✅ |
+| View cached translations | ✅ | ✅ |
+| Generate new translations | ❌ → sign-in prompt | ✅ |
+| TTS playback | ✅ | ✅ |
+| Reading progress | localStorage (chapter index) | Server + localStorage |
+| Vocabulary / Annotations | ❌ → sign-in prompt | ✅ |
+| AI Chat / Insights / Summary | ❌ → sign-in prompt | ✅ |
+
+### Tests
+- Backend: `test_get_chapter_translation_no_cache_returns_404_for_guest`, `test_get_chapter_translation_cached_served_to_guest`
+- Frontend: `AuthPromptModal.test.tsx` — 6 tests
+
+---
+
+## Feature 7: User-Uploaded Books (.txt / .epub) — IN PROGRESS
+
+### Overview
+Logged-in users can upload their own books as `.txt` or `.epub` files. Each uploaded book is private — only the uploader and admins can read it. Auto-detection followed by a manual chapter editor before the book is readable.
+
+### Constraints
+- Max 10 books per user
+- Max file size: 3 MB (.txt), 15 MB (.epub)
+- Accepted: `.txt`, `.epub`
+
+### Database (migration 021)
+```sql
+ALTER TABLE books ADD COLUMN source TEXT NOT NULL DEFAULT 'gutenberg';
+ALTER TABLE books ADD COLUMN owner_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+
+CREATE TABLE book_uploads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL, file_size INTEGER NOT NULL, format TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### API Endpoints
+- `POST /books/upload` — parse file, store draft, return detected chapters
+- `GET /books/{id}/chapters/draft` — return detected chapter list for editing
+- `POST /books/{id}/chapters/confirm` — write final chapters, make book readable
+- `GET /books/upload/quota` — `{used, max, bytes_used, bytes_max}`
+- `DELETE /books/upload/{id}` — delete uploaded book
+
+### Chapter Detection
+- **epub**: `ebooklib` spine/TOC — each spine item = one chapter
+- **txt**: regex heuristics (`CHAPTER I`, `Chapter 1`, all-caps short lines, Roman numerals)
+- Hard cap: 200 chapters max; <2 detected → split every 5000 words
+
+### Chapter Editor UI (`/upload/[bookId]/chapters`)
+Two-panel layout: chapter list (left) + text preview (right).
+Each chapter row shows title, first line preview, word count.
+Actions: merge with next, add split, edit title.
+Word count warnings: >8000 words (amber) or <100 words (amber).
+
+---
+
+## Feature 8: Pre-Translation Tooling — Design (v1 decided)
+
+### Decision: MarianMT (primary) + Ollama (fallback)
+
+Helsinki-NLP/MarianMT for common EU language pairs (en→de/fr/es/it/ru/nl/pt/pl/zh/ja), Ollama fallback for others. Both free, offline, no API keys.
+
+### Script: `scripts/pretranslate.py`
+
+```bash
+python scripts/pretranslate.py --book-id 1342 --lang de           # MarianMT default
+python scripts/pretranslate.py --all --lang fr --provider ollama  # Ollama
+python scripts/pretranslate.py --book-id 1342 --lang de --dry-run # preview only
+python scripts/pretranslate.py --book-id 1342 --lang de --force   # overwrite cache
+```
+
+**Dependencies:** `transformers`, `sentencepiece`, `torch` (CPU), `requests` (for Ollama).  
+**Chunking:** split at sentence boundaries to stay under MarianMT's 512-token limit.  
+**Estimated effort:** ~6 hours.

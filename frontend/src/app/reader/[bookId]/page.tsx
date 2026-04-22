@@ -811,10 +811,10 @@ export default function ReaderPage() {
                 <span className="text-stone-400 mx-0.5">|</span>
                 <button
                   onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
-                  className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors"
                   title={ttsIsPlaying ? "Playing…" : "Read focused paragraph"}
                 >
-                  {ttsIsPlaying ? "⏸ Playing" : "▶ Read para"}
+                  {ttsIsPlaying ? <><PauseIcon className="w-3 h-3 shrink-0" /> Playing</> : <><PlayIcon className="w-3 h-3 shrink-0" /> Read para</>}
                 </button>
               </>
             )}

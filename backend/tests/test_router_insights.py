@@ -305,3 +305,19 @@ async def test_create_insight_blocked_for_non_owner_upload(client, test_user, tm
         "answer": "Private stuff.",
     })
     assert resp.status_code == 403, resp.text
+
+
+async def test_get_insights_blocked_for_non_owner_upload(client, test_user, tmp_db):
+    """GET /insights?book_id=N returns 403 for non-owner of a private uploaded book (#397)."""
+    from services.db import get_or_create_user, set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("ins-owner-get-gid", "ins-owner-get@ex.com", "InsOwnerGet", "")
+    await _insert_private_book_ins(8902, owner["id"])
+    resp = await client.get("/api/insights?book_id=8902")
+    assert resp.status_code == 403, resp.text
+
+
+async def test_get_insights_returns_404_for_missing_book(client, test_user, tmp_db):
+    """GET /insights?book_id=N returns 404 when book doesn't exist (#397)."""
+    resp = await client.get("/api/insights?book_id=999999")
+    assert resp.status_code == 404, resp.text

@@ -224,6 +224,12 @@ async def test_delete_book(admin_client, admin_db):
     assert res.status_code == 200
 
 
+async def test_delete_book_nonexistent_returns_404(admin_client):
+    """DELETE /admin/books/{id} for a non-existent book must return 404, not 200."""
+    res = await admin_client.delete("/api/admin/books/99999")
+    assert res.status_code == 404
+
+
 async def test_delete_book_removes_queue_entries(admin_client, admin_db):
     """Regression: delete_book must also delete translation_queue entries.
 
@@ -578,6 +584,18 @@ async def test_seed_popular_refuses_concurrent_start(admin_client, admin_db, mon
 
         # Clean up — stop the job
         await admin_client.post("/api/admin/books/seed-popular/stop")
+
+
+async def test_enqueue_book_nonexistent_returns_404(admin_client):
+    """POST /admin/queue/enqueue-book for a non-existent book must return 404.
+
+    Without this check enqueue_for_book returns 0 (no chapters to enqueue)
+    and the endpoint silently returns 200 with enqueued=0."""
+    res = await admin_client.post("/api/admin/queue/enqueue-book", json={
+        "book_id": 99999,
+        "target_languages": ["de"],
+    })
+    assert res.status_code == 404
 
 
 # ── Retry-failed bulk endpoint ───────────────────────────────────────────────

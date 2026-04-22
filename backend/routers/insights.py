@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from services.auth import get_current_user
-from services.db import save_insight, get_insights, get_all_insights, delete_insight
+from services.db import save_insight, get_insights, get_all_insights, delete_insight, get_cached_book
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -16,6 +16,8 @@ class InsightCreate(BaseModel):
 
 @router.post("")
 async def create(req: InsightCreate, user: dict = Depends(get_current_user)):
+    if not await get_cached_book(req.book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
     return await save_insight(
         user["id"],
         req.book_id,

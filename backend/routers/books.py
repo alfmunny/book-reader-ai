@@ -215,17 +215,9 @@ async def request_chapter_translation(
         enqueue, queue_status_for_chapter, worker,
     )
 
-    # 0. Guard: reject same-language translation.
-    book_meta = await get_cached_book(book_id)
-    if book_meta:
-        source = (book_meta.get("languages") or [None])[0]
-        if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot translate to the same language as the original.",
-            )
-
-    # 1. Already cached? Served to anyone — no auth required for cache hits.
+    # 0. Already cached? Served to anyone — no auth required for cache hits.
+    # Book existence is not checked for cache hits (book may have been removed
+    # after translation was stored).
     cached = await get_cached_translation_with_meta(
         book_id, chapter_index, req.target_language,
     )
@@ -238,7 +230,20 @@ async def request_chapter_translation(
             "title_translation": cached.get("title_translation"),
         }
 
-    # 2. New translation requires login.
+    # 0a. Book must exist before we can enqueue a new translation.
+    book_meta = await get_cached_book(book_id)
+    if not book_meta:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    # 0b. Guard: reject same-language translation.
+    source = (book_meta.get("languages") or [None])[0]
+    if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot translate to the same language as the original.",
+        )
+
+    # 1. New translation requires login.
     if user is None:
         raise HTTPException(
             status_code=401,
@@ -304,13 +309,14 @@ async def enqueue_all_chapters(
     currently staring at still wins.
     """
     book_meta = await get_cached_book(book_id)
-    if book_meta:
-        source = (book_meta.get("languages") or [None])[0]
-        if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot translate to the same language as the original.",
-            )
+    if not book_meta:
+        raise HTTPException(status_code=404, detail="Book not found")
+    source = (book_meta.get("languages") or [None])[0]
+    if source and source.lower().split("-")[0] == req.target_language.lower().split("-")[0]:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot translate to the same language as the original.",
+        )
 
     from services.translation_queue import enqueue_for_book, worker
 
@@ -339,6 +345,9 @@ async def retry_chapter_translation(
     explicit action: admin or reader clicks a button. Resets the queue row
     to pending + attempts=0 and bumps priority to 10 (reader-initiated).
     """
+    if not await get_cached_book(book_id):
+        raise HTTPException(status_code=404, detail="Book not found")
+
     from services.translation_queue import enqueue, queue_status_for_chapter, worker
 
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"

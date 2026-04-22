@@ -126,6 +126,20 @@ async def test_vocabulary_requires_auth(anon_client):
     assert resp.status_code == 401
 
 
+async def test_save_word_rejects_nonexistent_book(client, test_user):
+    """POST /vocabulary for a book that doesn't exist must return 404.
+
+    SQLite FK enforcement is OFF so the INSERT would otherwise silently
+    succeed and store an orphaned word occurrence."""
+    resp = await client.post("/api/vocabulary", json={
+        "word": "ghost",
+        "book_id": 777777,
+        "chapter_index": 0,
+        "sentence_text": "A ghost of a chance.",
+    })
+    assert resp.status_code == 404
+
+
 # ── Export endpoint ───────────────────────────────────────────────────────────
 
 async def _setup_export(test_user, book_id=BOOK_ID):

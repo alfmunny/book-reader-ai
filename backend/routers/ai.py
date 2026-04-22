@@ -180,9 +180,10 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
     if src == tgt:
         raise HTTPException(status_code=400, detail="Source and target language are the same.")
     try:
-        # Check shared DB cache first — cache hits don't need any key
+        # Check shared DB cache first — cache hits don't need any key.
+        # Use normalized codes so "ZH" and "zh-CN" both hit a "zh" cache entry.
         if req.book_id is not None and req.chapter_index is not None:
-            cached = await get_cached_translation(req.book_id, req.chapter_index, req.target_language)
+            cached = await get_cached_translation(req.book_id, req.chapter_index, tgt)
             if cached:
                 return {"paragraphs": cached, "cached": True}
 
@@ -211,8 +212,8 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
         try:
             paragraphs = await do_translate(
                 req.text,
-                req.source_language,
-                req.target_language,
+                src,
+                tgt,
                 provider=chosen,
                 gemini_key=decrypted_key,
             )
@@ -222,8 +223,8 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             if chosen == "gemini":
                 paragraphs = await do_translate(
                     req.text,
-                    req.source_language,
-                    req.target_language,
+                    src,
+                    tgt,
                     provider="google",
                 )
                 chosen = "google"
@@ -231,10 +232,10 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             else:
                 raise
 
-        # Save to shared cache, tagged with provider so the reader can show origin
+        # Save to shared cache with normalized language codes so any casing variant hits it.
         if req.book_id is not None and req.chapter_index is not None:
             await save_translation(
-                req.book_id, req.chapter_index, req.target_language, paragraphs,
+                req.book_id, req.chapter_index, tgt, paragraphs,
                 provider=chosen,
             )
 

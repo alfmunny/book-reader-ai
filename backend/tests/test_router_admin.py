@@ -342,6 +342,17 @@ async def test_delete_specific_translation_not_found_returns_404(admin_client):
     assert res.status_code == 404
 
 
+async def test_delete_specific_translation_normalizes_language(admin_client, admin_db):
+    """DELETE .../ZH-CN must delete a row stored under 'zh'.
+
+    Without normalization the lookup uses 'ZH-CN' as-is and returns 404
+    even though the translation exists."""
+    await save_translation(100, 0, "zh", ["翻译"])
+    res = await admin_client.delete("/api/admin/translations/100/0/ZH-CN")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 1
+
+
 async def test_delete_book_translations_no_translations_returns_404(admin_client):
     """DELETE /admin/translations/{book_id} with no translations must return 404.
 

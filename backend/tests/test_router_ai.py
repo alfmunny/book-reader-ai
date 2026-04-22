@@ -160,6 +160,33 @@ async def test_translate_cache_get_returns_404_when_missing(client):
     assert resp.status_code == 404
 
 
+async def test_translate_cache_get_normalizes_language(client):
+    """GET /translate/cache?target_language=ZH must hit a 'zh' row.
+
+    Without normalization the lookup uses 'ZH' as-is and misses 'zh'."""
+    await save_translation(5, 0, "zh", ["翻译"])
+    resp = await client.get("/api/ai/translate/cache?book_id=5&chapter_index=0&target_language=ZH")
+    assert resp.status_code == 200
+    assert resp.json()["paragraphs"] == ["翻译"]
+
+
+async def test_translate_cache_put_normalizes_language(client, test_user):
+    """PUT /translate/cache with 'ZH-CN' must save under 'zh'.
+
+    Without normalization, a later GET with 'zh' would miss the entry."""
+    from services.db import save_book as _save_book, get_cached_translation
+    _META = {"title": "T", "authors": [], "languages": ["de"], "subjects": [],
+              "download_count": 0, "cover": ""}
+    await _save_book(7, _META, "text")
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 7, "chapter_index": 0, "target_language": "ZH-CN",
+        "paragraphs": ["翻译"],
+    })
+    assert resp.status_code == 200
+    cached = await get_cached_translation(7, 0, "zh")
+    assert cached == ["翻译"], "PUT with 'ZH-CN' must be stored under normalized 'zh'"
+
+
 async def test_translate_cache_put_rejects_nonexistent_book(client, test_user):
     """PUT /translate/cache for a non-existent book must return 404.
 

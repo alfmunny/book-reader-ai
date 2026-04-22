@@ -139,6 +139,7 @@ async def translate_cache(
     _user: dict = Depends(get_current_user),
 ):
     """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""
+    target_language = target_language.lower().split("-")[0]
     from services.db import get_cached_translation_with_meta
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if cached:
@@ -165,8 +166,9 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
     """Save a completed progressive translation to the backend cache."""
     if not await get_cached_book(req.book_id):
         raise HTTPException(status_code=404, detail="Book not found")
+    target_language = req.target_language.lower().split("-")[0]
     await save_translation(
-        req.book_id, req.chapter_index, req.target_language, req.paragraphs,
+        req.book_id, req.chapter_index, target_language, req.paragraphs,
         provider=req.provider, model=req.model,
     )
     return {"ok": True}

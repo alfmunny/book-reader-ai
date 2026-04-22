@@ -15,7 +15,7 @@ test("home page renders header and search input", async ({ page }) => {
   await expect(page.getByPlaceholder(/Search by title or author/)).toBeVisible();
 });
 
-test("Your Library shows books from localStorage recentBooks", async ({ page }) => {
+test("Home tab shows books from localStorage recentBooks", async ({ page }) => {
   // Seed a recent book in localStorage (simulates a book the user has opened)
   await page.goto("/");
   await page.evaluate((book) => {
@@ -25,8 +25,8 @@ test("Your Library shows books from localStorage recentBooks", async ({ page }) 
   }, MOCK_BOOK);
   await page.reload();
 
-  // Click the Library tab to ensure it's active
-  await page.getByRole("button", { name: "Your Library" }).click();
+  // Click the Home tab to ensure it's active
+  await page.getByRole("button", { name: "Home" }).click();
   await expect(page.getByText("Pride and Prejudice").first()).toBeVisible();
   await expect(page.getByText(/Ch\. 3/)).toBeVisible(); // badge with chapter
 });
@@ -62,14 +62,10 @@ test("clicking a library book navigates to reader page", async ({ page }) => {
   }, MOCK_BOOK);
   await page.reload();
 
-  // Explicitly open the Library tab in case the session effect flipped to Discover
-  await page.getByRole("button", { name: "Your Library" }).click();
-  // Click the book card — this opens the detail modal
-  const bookCard = page.getByRole("button").filter({ hasText: "Jane Austen" });
-  await expect(bookCard).toBeVisible();
-  await bookCard.click();
-  // Click the CTA in the modal to navigate
-  await page.getByRole("button", { name: /Continue Reading|Start Reading/ }).click();
+  // Explicitly open the Home tab in case the session effect flipped to Discover
+  await page.getByRole("button", { name: "Home" }).click();
+  // The Continue Reading button at the top navigates directly to the reader
+  await page.getByRole("button", { name: "Continue reading" }).click();
   await page.waitForURL(/\/reader\/1342/);
   expect(page.url()).toContain("/reader/1342");
 });

@@ -29,6 +29,7 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
         </button>
       )}
       <button
+        data-testid="book-card"
         onClick={onClick}
         className="text-left rounded-xl border border-amber-200 bg-white p-3 flex flex-col w-full transition-all duration-200 hover:-translate-y-0.5"
         style={{ boxShadow: "var(--shadow-card)" }}

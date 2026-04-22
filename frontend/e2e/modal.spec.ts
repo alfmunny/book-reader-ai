@@ -39,8 +39,9 @@ test("modal shows Continue Reading for a book in the library", async ({ page }) 
   }, MOCK_BOOK);
   await page.reload();
 
-  await page.getByRole("button", { name: "Your Library" }).click();
-  const bookCard = page.getByRole("button").filter({ hasText: "Jane Austen" });
+  await page.getByRole("button", { name: "Home" }).click();
+  // Use data-testid to target the grid BookCard, not the Continue Reading banner
+  const bookCard = page.getByTestId("book-card").filter({ hasText: "Jane Austen" });
   await bookCard.click();
 
   await expect(page.getByRole("button", { name: /Continue Reading.*Ch\. 4/ })).toBeVisible();

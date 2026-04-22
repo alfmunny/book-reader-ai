@@ -764,7 +764,11 @@ export default function ReaderPage() {
     const startTime = Number.isFinite(timing.startTime) ? timing.startTime : 0;
     const stopTime = Number.isFinite(timing.stopTime) ? timing.stopTime : undefined;
     setTtsStopAt(stopTime);
+    // seekTo repositions audio.currentTime and activeIndexRef synchronously
+    // (the sync part runs before any await), then play() starts playback from
+    // that position. Without play(), seekTo only repositions and stays paused.
     ttsSeekRef.current(startTime);
+    ttsControlsRef.current?.play();
   }
 
   // Obsidian export handler

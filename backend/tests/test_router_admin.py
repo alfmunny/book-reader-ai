@@ -2182,3 +2182,73 @@ async def test_queue_settings_too_many_languages_returns_422(admin_client, admin
     assert res.status_code == 422, (
         f"Expected 422 for too many languages, got {res.status_code}: {res.text}"
     )
+
+
+# ── Admin uploads panel (issue #432) ─────────────────────────────────────────
+
+async def test_get_uploads_returns_empty_list(admin_client, admin_db):
+    """GET /admin/uploads returns [] when no books have been uploaded."""
+    res = await admin_client.get("/api/admin/uploads")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+async def test_get_uploads_returns_uploaded_books(admin_client, admin_db, admin_user):
+    """GET /admin/uploads returns upload records with book and uploader info."""
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "INSERT INTO books (id, title, source, owner_user_id) VALUES (200, 'Uploaded Novel', 'upload', ?)",
+            (admin_user["id"],),
+        )
+        await db.execute(
+            "INSERT INTO book_uploads (book_id, user_id, filename, file_size, format) "
+            "VALUES (200, ?, 'novel.epub', 102400, 'epub')",
+            (admin_user["id"],),
+        )
+        await db.commit()
+
+    res = await admin_client.get("/api/admin/uploads")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 1
+    row = data[0]
+    assert row["book_id"] == 200
+    assert row["title"] == "Uploaded Novel"
+    assert row["filename"] == "novel.epub"
+    assert row["file_size"] == 102400
+    assert row["uploader_email"] == admin_user["email"]
+
+
+async def test_get_uploads_filter_by_user(admin_client, admin_db, admin_user):
+    """GET /admin/uploads?user_id=N returns only that user's uploads."""
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute(
+            "INSERT INTO users (google_id, email, name, picture) VALUES ('other-g', 'other@test.com', 'Other', '')"
+        )
+        async with db.execute("SELECT id FROM users WHERE google_id='other-g'") as cur:
+            other_id = (await cur.fetchone())[0]
+        await db.execute(
+            "INSERT INTO books (id, title, source, owner_user_id) VALUES (201, 'Admin Book', 'upload', ?)",
+            (admin_user["id"],),
+        )
+        await db.execute(
+            "INSERT INTO book_uploads (book_id, user_id, filename, file_size, format) "
+            "VALUES (201, ?, 'admin.epub', 1024, 'epub')",
+            (admin_user["id"],),
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, source, owner_user_id) VALUES (202, 'Other Book', 'upload', ?)",
+            (other_id,),
+        )
+        await db.execute(
+            "INSERT INTO book_uploads (book_id, user_id, filename, file_size, format) "
+            "VALUES (202, ?, 'other.epub', 2048, 'epub')",
+            (other_id,),
+        )
+        await db.commit()
+
+    res = await admin_client.get(f"/api/admin/uploads?user_id={admin_user['id']}")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 1
+    assert data[0]["book_id"] == 201

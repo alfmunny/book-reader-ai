@@ -1289,3 +1289,43 @@ async def queue_enqueue_all(admin: dict = Depends(_require_admin)):
         total += await enqueue_for_book(b["id"], target_languages=langs, queued_by=by)
     queue_worker().wake()
     return {"ok": True, "enqueued": total, "books_scanned": len(books)}
+
+
+@router.get("/uploads")
+async def get_uploads(
+    user_id: int | None = Query(default=None),
+    _admin: dict = Depends(_require_admin),
+):
+    """Return all user-uploaded books with uploader information.
+
+    Optionally filter by user_id.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        if user_id is not None:
+            async with db.execute(
+                """
+                SELECT bu.book_id, b.title, bu.filename, bu.file_size, bu.format,
+                       bu.uploaded_at, u.email AS uploader_email, u.name AS uploader_name
+                FROM book_uploads bu
+                JOIN books b ON b.id = bu.book_id
+                JOIN users u ON u.id = bu.user_id
+                WHERE bu.user_id = ?
+                ORDER BY bu.uploaded_at DESC
+                """,
+                (user_id,),
+            ) as cursor:
+                rows = await cursor.fetchall()
+        else:
+            async with db.execute(
+                """
+                SELECT bu.book_id, b.title, bu.filename, bu.file_size, bu.format,
+                       bu.uploaded_at, u.email AS uploader_email, u.name AS uploader_name
+                FROM book_uploads bu
+                JOIN books b ON b.id = bu.book_id
+                JOIN users u ON u.id = bu.user_id
+                ORDER BY bu.uploaded_at DESC
+                """,
+            ) as cursor:
+                rows = await cursor.fetchall()
+    return [dict(row) for row in rows]

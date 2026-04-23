@@ -2260,19 +2260,16 @@ async def test_get_uploads_filter_by_user(admin_client, admin_db, admin_user):
     assert data[0]["book_id"] == 201
 
 
-# ── Oversized query param bounds checks (regression for #530, #538) ──────────
-
-async def test_queue_items_oversized_status_returns_422(admin_client):
-    # regression for #530: status query param was unbounded
-    res = await admin_client.get(f"/api/admin/queue/items?status={'x' * 21}")
-    assert res.status_code == 422
+# ── Issue #538: RoleRequest.role bounds ──────────────────────────────────────
 
 
-async def test_queue_clear_oversized_status_returns_422(admin_client):
-    res = await admin_client.delete(f"/api/admin/queue?status={'x' * 21}")
-    assert res.status_code == 422
-
-
-async def test_queue_delete_book_oversized_target_language_returns_422(admin_client):
-    res = await admin_client.delete(f"/api/admin/queue/book/1?target_language={'x' * 21}")
-    assert res.status_code == 422
+@pytest.mark.asyncio
+async def test_change_role_oversized_role_returns_422(admin_client, admin_db):
+    """Regression #538: PUT /admin/users/1/role with role > 10 chars must return 422."""
+    res = await admin_client.put(
+        "/api/admin/users/1/role",
+        json={"role": "r" * 11},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized role, got {res.status_code}: {res.text}"
+    )

@@ -588,7 +588,7 @@ class ImportTranslationEntry(BaseModel):
 
 
 class ImportTranslationsRequest(BaseModel):
-    entries: list[ImportTranslationEntry]
+    entries: list[ImportTranslationEntry] = Field(..., max_length=5000)
 
 
 @router.post("/translations/import")
@@ -1099,7 +1099,7 @@ async def queue_items(
 
 class EnqueueBookRequest(BaseModel):
     book_id: int
-    target_languages: list[Annotated[str, Field(max_length=20)]] | None = None
+    target_languages: list[Annotated[str, Field(max_length=20)]] | None = Field(default=None, max_length=100)
     priority: int = 50   # lower than default so admin enqueues jump the line
     reset_failed: bool = False
 

@@ -2301,3 +2301,22 @@ async def test_move_translation_oversized_target_language_returns_422(admin_clie
         json={"new_chapter_index": 1},
     )
     assert res.status_code == 422
+
+
+# ── Unbounded list params (regression for #626) ───────────────────────────────
+
+async def test_import_translations_oversized_entries_returns_422(admin_client):
+    oversized = [
+        {"book_id": 1, "chapter_index": i, "target_language": "en", "paragraphs": ["text"]}
+        for i in range(5001)
+    ]
+    res = await admin_client.post("/api/admin/translations/import", json={"entries": oversized})
+    assert res.status_code == 422
+
+
+async def test_enqueue_book_oversized_target_languages_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/queue/enqueue-book",
+        json={"book_id": 1, "target_languages": ["en"] * 101},
+    )
+    assert res.status_code == 422

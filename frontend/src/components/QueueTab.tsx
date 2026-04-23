@@ -1302,14 +1302,14 @@ export default function QueueTab({ adminFetch }: Props) {
                   {it.status === "failed" && (
                     <button
                       onClick={() => retry(it)}
-                      className="px-1.5 py-0.5 rounded border border-amber-300 text-amber-700"
+                      className="px-1.5 py-0.5 rounded border border-amber-300 text-amber-700 min-h-[44px] flex items-center"
                     >
                       Retry
                     </button>
                   )}
                   <button
                     onClick={() => remove(it)}
-                    className="px-1.5 py-0.5 rounded border border-red-200 text-red-500"
+                    className="px-1.5 py-0.5 rounded border border-red-200 text-red-500 min-h-[44px] flex items-center"
                   >
                     Del
                   </button>

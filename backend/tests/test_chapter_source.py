@@ -68,3 +68,41 @@ async def test_chapters_endpoint_marks_epub_when_blob_stored(client, test_user):
     resp = await client.get("/api/books/4011/chapters")
     assert resp.status_code == 200
     assert resp.json()["chapter_source"] == "epub"
+
+
+def test_html_body_text_preserves_div_chapter_wrapper_in_epub():
+    """Regression for book 69327 (Kafka, Der Prozess): modern Gutenberg
+    prose EPUBs wrap each chapter body in <div class="div1 chapter">. The
+    EPUB splitter must not skip that wrapper as a "nested chapter div" —
+    that's the top-level body, not a sub-chapter. The HTML path (which
+    iterates every chapter div via XPath) still needs the skip, so the
+    behaviour is controlled by an opt-in flag."""
+    from lxml import html as lxml_html
+    from services.splitter import _html_body_text
+
+    html = """
+    <body>
+      <div class="body">
+        <div class="div1 chapter" id="ch1">
+          <h2>ERSTES KAPITEL</h2>
+          <div class="divBody">
+            <p class="first">Jemand mußte Josef K. verleumdet haben, denn ohne daß er etwas Böses getan hätte, wurde er eines Morgens verhaftet.</p>
+            <p>Die Köchin der Frau Grubach kam diesmal nicht.</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    """
+    body = lxml_html.fromstring(html)
+
+    # EPUB path (default): chapter-body wrapper is NOT skipped, prose survives.
+    text = _html_body_text(body, skip_first_heading=True)
+    assert "Jemand mußte Josef K. verleumdet haben" in text, text
+    assert "Die Köchin der Frau Grubach" in text, text
+
+    # HTML path: nested chapter divs ARE skipped (the XPath caller already
+    # iterates them separately).
+    text_html_path = _html_body_text(
+        body, skip_first_heading=True, skip_nested_chapter_divs=True,
+    )
+    assert "Jemand mußte Josef K." not in text_html_path, text_html_path

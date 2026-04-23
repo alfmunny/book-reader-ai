@@ -210,6 +210,16 @@ async def delete_summary(book_id: int, chapter_index: int, user: dict = Depends(
     """Admin-only: delete a cached summary so it will be regenerated on next request."""
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
+    book = await get_cached_book(book_id)
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found")
+    from services.book_chapters import split_with_html_preference as _split
+    _chapters = await _split(book_id, book.get("text") or "")
+    if chapter_index < 0 or chapter_index >= len(_chapters):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+        )
     from services.db import DB_PATH
     import aiosqlite
     async with aiosqlite.connect(DB_PATH) as db:

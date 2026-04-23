@@ -8,7 +8,7 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 
 class InsightCreate(BaseModel):
     book_id: int
-    chapter_index: int | None = None
+    chapter_index: int | None = Field(default=None, ge=0)
     question: str = Field(..., max_length=2000)
     answer: str = Field(..., max_length=20000)
     context_text: str | None = Field(default=None, max_length=5000)

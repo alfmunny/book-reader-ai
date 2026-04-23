@@ -12,7 +12,7 @@ AnnotationColor = Literal["yellow", "blue", "green", "pink"]
 
 class AnnotationCreate(BaseModel):
     book_id: int
-    chapter_index: int
+    chapter_index: int = Field(..., ge=0)
     sentence_text: str = Field(..., max_length=5000)
     note_text: str = Field(default="", max_length=10000)
     color: AnnotationColor = "yellow"

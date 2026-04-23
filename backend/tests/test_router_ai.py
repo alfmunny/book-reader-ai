@@ -439,10 +439,9 @@ async def test_translate_rejects_nonexistent_book(client, test_user):
 
 
 async def test_translate_rejects_negative_chapter_index(client, test_user):
-    """POST /ai/translate with chapter_index < 0 must return 400.
+    """POST /ai/translate with chapter_index < 0 must return 422 (Pydantic ge=0).
 
-    A negative chapter_index would create a translation row with a nonsense
-    index that can never correspond to a real chapter."""
+    A negative chapter_index is not a valid position — rejected at validation layer."""
     from services.db import save_book
     _META = {"title": "T", "authors": [], "languages": ["de"], "subjects": [],
               "download_count": 0, "cover": ""}
@@ -454,7 +453,7 @@ async def test_translate_rejects_negative_chapter_index(client, test_user):
         "book_id": 88,
         "chapter_index": -1,
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 # ── /api/ai/tts/chunks endpoint ───────────────────────────────────────────────
@@ -1119,3 +1118,37 @@ async def test_translate_cache_get_oversized_target_language_returns_422(client,
         f"/api/ai/translate/cache?book_id=1&chapter_index=0&target_language={'x' * 21}"
     )
     assert resp.status_code == 422
+
+
+# ── chapter_index ge=0 bounds (#717) ─────────────────────────────────────────
+
+async def test_summary_request_negative_chapter_index_returns_422(client, test_user):
+    """Regression #717: POST /ai/summary with chapter_index < 0 must return 422."""
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": 1, "chapter_index": -1,
+        "chapter_text": "text", "book_title": "T", "author": "A",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_translate_request_negative_chapter_index_returns_422(client, test_user):
+    """Regression #717: POST /ai/translate with chapter_index < 0 must return 422."""
+    resp = await client.post("/api/ai/translate", json={
+        "text": "hello", "source_language": "de", "target_language": "en",
+        "book_id": 1, "chapter_index": -1,
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_translate_cache_get_negative_chapter_index_returns_422(client, test_user):
+    """Regression #717: GET /ai/translate/cache with chapter_index < 0 must return 422."""
+    resp = await client.get(
+        "/api/ai/translate/cache?book_id=1&chapter_index=-1&target_language=en"
+    )
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_delete_summary_negative_chapter_index_returns_422(client, test_user):
+    """Regression #717: DELETE /ai/summary with chapter_index < 0 must return 422."""
+    resp = await client.delete("/api/ai/summary?book_id=1&chapter_index=-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

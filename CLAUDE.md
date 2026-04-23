@@ -109,6 +109,12 @@ Always work highest priority first. Re-check priority each time you pick the nex
 - Approve design docs (Path B) before implementation begins
 - Keep `product/review-state.md` updated every cycle
 
+**Polling cadence (when running as a `/loop`):**
+- **Default: 180s (3 min) between cycles.** Tighter than CI (~2–3 min) so PRs are caught before auto-merge fires; under the 5-min prompt-cache TTL so context stays warm.
+- **Quiet periods** (nothing new for 2 cycles running): back off to 900s (15 min) to save tokens. Resume 180s as soon as new activity appears.
+- **Bursts** (≥3 new PRs in the last cycle): stay at 180s or drop to 120s until the queue is reviewed.
+- Sized for a team of 3 active code roles (Dev + UI/UX + Architect). If `dev2` is running, treat as 4 roles and keep 180s as the floor.
+
 **Startup sequence:**
 1. Read all memory files in `MEMORY.md`
 2. Run `git worktree list` — warn user if `in-progress` issues exist but no worktrees are set up

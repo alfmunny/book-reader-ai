@@ -1,23 +1,58 @@
 #!/usr/bin/env bash
-# start-roles.sh — launch and manage book-reader-ai role sessions in tmux
+# start-roles.sh — launch and manage multi-role Claude Code sessions in tmux
+#
+# Works with any git repo. Defaults to the repo containing this script.
 #
 # Usage:
-#   bash scripts/start-roles.sh [--bypass]          # start all 4 roles in separate windows
-#   bash scripts/start-roles.sh overview [--bypass] # collapse into a 2×2 overview pane
-#   bash scripts/start-roles.sh restore             # spread overview panes back to windows
-#   bash scripts/start-roles.sh stop                # gracefully stop the session
-#   bash scripts/start-roles.sh restart [--bypass]  # stop then start fresh
-#   bash scripts/start-roles.sh dev2 [--bypass]     # add a second Dev window
+#   bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass]
+#
+# Subcommands:
+#   (none)              Start all 4 roles in separate tmux windows
+#   overview            Collapse roles into a 2×2 overview pane
+#   restore             Spread overview panes back to separate windows
+#   stop                Gracefully stop the session
+#   restart [--bypass]  Stop then start fresh
+#   dev2    [--bypass]  Add a second Dev window to a running session
+#   --help | -h | help  Show this help
 #
 # Requires: tmux, claude (Claude Code CLI), gh (GitHub CLI)
 
 set -euo pipefail
 
-REPO="/Users/alfmunny/Projects/AI/book-reader-ai"
-REPO_DEV="$REPO-dev"
-REPO_UIUX="$REPO-uiux"
-REPO_ARCH="$REPO-arch"
-SESSION="book-ai"
+# ── Resolve default repo from script location ─────────────────────────────────
+# Assumes this file lives at <repo>/scripts/start-roles.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_REPO="$(dirname "$SCRIPT_DIR")"
+
+# ── Parse args ────────────────────────────────────────────────────────────────
+
+BYPASS=""
+SUBCOMMAND=""
+REPO="$DEFAULT_REPO"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --bypass)      BYPASS="--dangerously-skip-permissions"; shift ;;
+    --help|-h|help) SUBCOMMAND="help"; shift ;;
+    --repo)        REPO="$(cd "$2" && pwd)"; shift 2 ;;
+    overview|restore|stop|restart|dev2) SUBCOMMAND="$1"; shift ;;
+    *) shift ;;
+  esac
+done
+
+# ── Derive session name and paths from repo ───────────────────────────────────
+
+SLUG="$(basename "$REPO")"
+SESSION="$SLUG"
+REPO_DEV="${REPO}-dev"
+REPO_UIUX="${REPO}-uiux"
+REPO_ARCH="${REPO}-arch"
+
+# Claude Code memory path: ~/.claude/projects/<repo-path-/-→->/memory/MEMORY.md
+MEMORY_PATH="$HOME/.claude/projects/$(echo "$REPO" | tr '/' '-')/memory/MEMORY.md"
+
+# Base claude command (bypass flag only — model is passed per-role)
+CLAUDE_BASE="claude${BYPASS:+ $BYPASS}"
 
 # ── Model assignments per role ─────────────────────────────────────────────────
 # PM:    Sonnet — nuanced design reviews, PR comments, issue triage
@@ -30,27 +65,12 @@ MODEL_DEV="claude-sonnet-4-6"
 MODEL_UIUX="claude-haiku-4-5-20251001"
 MODEL_ARCH="claude-opus-4-7"
 
-# ── Parse args ────────────────────────────────────────────────────────────────
-
-BYPASS=""
-SUBCOMMAND=""
-for arg in "$@"; do
-  case "$arg" in
-    --bypass)  BYPASS="--dangerously-skip-permissions" ;;
-    --help|-h|help) SUBCOMMAND="help" ;;
-    overview|restore|stop|restart|dev2) SUBCOMMAND="$arg" ;;
-  esac
-done
-
-# Base claude command (bypass flag only — model is passed per-role)
-CLAUDE_BASE="claude${BYPASS:+ $BYPASS}"
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 die()      { echo "ERROR: $*" >&2; exit 1; }
 running()  { tmux has-session -t "$SESSION" 2>/dev/null; }
 
-# Create a worktree at <path> pointing to origin/main if it doesn't exist yet
+# Create a worktree pointing to origin/main if the directory doesn't exist yet
 ensure_worktree() {
   local wt="$1"
   if [ ! -d "$wt" ]; then
@@ -67,26 +87,26 @@ check_deps() {
   gh auth status    >/dev/null 2>&1 || die "gh not authenticated — run: gh auth login"
 }
 
-# Write role prompts to /tmp to avoid shell-quoting nightmares in send-keys
+# Write role prompts to /tmp (namespaced by SLUG so multiple repos can run at once)
 write_prompts() {
-  cat > /tmp/book-ai-pm.txt << 'PROMPT'
-/loop Act as product manager for book-reader-ai. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait.
+  cat > "/tmp/${SLUG}-pm.txt" << PROMPT
+/loop Act as product manager for ${SLUG}. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait.
 PROMPT
 
-  cat > /tmp/book-ai-dev.txt << 'PROMPT'
-You are a Dev session for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists (git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list), pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion — regression test first, fix, full test suite, PR with auto-merge enabled. After each PR merges, pick the next issue without waiting for me. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks, missing .exists() guards, and unhandled edge cases — file one bug issue, immediately claim and fix it, then repeat.
+  cat > "/tmp/${SLUG}-dev.txt" << PROMPT
+You are a Dev session for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in ${MEMORY_PATH}. Then start immediately: verify your worktree exists (git -C ${REPO} worktree list), pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion — regression test first, fix, full test suite, PR with auto-merge enabled. After each PR merges, pick the next issue without waiting for me. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks, missing .exists() guards, and unhandled edge cases — file one bug issue, immediately claim and fix it, then repeat.
 PROMPT
 
-  cat > /tmp/book-ai-uiux.txt << 'PROMPT'
-You are the UI/UX Dev for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists (git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list), pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion — test first, implement, PR. After each PR merges, pick the next issue without waiting for me. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file one ux issue, immediately claim and fix it, then repeat.
+  cat > "/tmp/${SLUG}-uiux.txt" << PROMPT
+You are the UI/UX Dev for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in ${MEMORY_PATH}. Then start immediately: verify your worktree exists (git -C ${REPO} worktree list), pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion — test first, implement, PR. After each PR merges, pick the next issue without waiting for me. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file one ux issue, immediately claim and fix it, then repeat.
 PROMPT
 
-  cat > /tmp/book-ai-arch.txt << 'PROMPT'
-You are the Architect for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Architect role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists (git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list), pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B complex features). After each task completes, pick the next without waiting for me. If no architecture issues exist, identify the highest-value unimplemented feature by reviewing docs/FEATURES.md and the open issue list — file a new architecture issue, claim it, and begin a design doc. Do not implement without PM sign-off on the design doc.
+  cat > "/tmp/${SLUG}-arch.txt" << PROMPT
+You are the Architect for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md and follow the Architect role rules. Read all memory files listed in ${MEMORY_PATH}. Then start immediately: verify your worktree exists (git -C ${REPO} worktree list), pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B complex features). After each task completes, pick the next without waiting for me. If no architecture issues exist, identify the highest-value unimplemented feature by reviewing docs/FEATURES.md and the open issue list — file a new architecture issue, claim it, and begin a design doc. Do not implement without PM sign-off on the design doc.
 PROMPT
 }
 
-# Launch a single-window role (used for all 4 roles and dev2)
+# Launch a single-window role
 # Usage: start_window <name> <prompt_file> <model> [workdir]
 start_window() {
   local name="$1"
@@ -98,7 +118,7 @@ start_window() {
     "cd '$workdir' && $CLAUDE_BASE --model '$model' \"\$(cat '$prompt_file')\"" Enter
 }
 
-# ── stop: send graceful exit signals then kill ────────────────────────────────
+# ── stop ──────────────────────────────────────────────────────────────────────
 
 cmd_stop() {
   running || { echo "Session '$SESSION' is not running."; exit 0; }
@@ -118,7 +138,7 @@ cmd_stop() {
   echo "Session '$SESSION' stopped."
 }
 
-# ── overview: join all 4 role panes into a 2×2 window ────────────────────────
+# ── overview ──────────────────────────────────────────────────────────────────
 
 cmd_overview() {
   running || die "Session '$SESSION' is not running — start it first."
@@ -128,7 +148,6 @@ cmd_overview() {
     exit 0
   fi
   echo "Creating overview window..."
-  # Use the pm window as the base (rename it) — no empty extra pane
   tmux rename-window -t "${SESSION}:pm" "overview"
   for role in dev uiux arch; do
     if tmux list-windows -t "$SESSION" -F "#{window_name}" 2>/dev/null | grep -q "^${role}$"; then
@@ -136,7 +155,6 @@ cmd_overview() {
     fi
   done
   tmux select-layout -t "${SESSION}:overview" tiled
-  # Pane labels: index 0=PM, 1=Dev, 2=UI/UX, 3=Arch
   tmux set-option -t "${SESSION}" pane-border-status top
   tmux set-option -t "${SESSION}" pane-border-format \
     " #{?#{==:#{pane_index},0},PM,#{?#{==:#{pane_index},1},Dev,#{?#{==:#{pane_index},2},UI/UX,Arch}}} "
@@ -145,7 +163,7 @@ cmd_overview() {
   echo "  Run: bash scripts/start-roles.sh restore   ← spread back to separate windows"
 }
 
-# ── restore: break overview panes back into separate windows ──────────────────
+# ── restore ───────────────────────────────────────────────────────────────────
 
 cmd_restore() {
   running || die "Session '$SESSION' is not running."
@@ -154,11 +172,9 @@ cmd_restore() {
     exit 0
   fi
   echo "Restoring roles to separate windows..."
-  # break-pane always acts on pane 0 (the remaining panes shift down after each break)
   tmux break-pane -t "${SESSION}:overview.0" -d -n "pm"
   tmux break-pane -t "${SESSION}:overview.0" -d -n "dev"
   tmux break-pane -t "${SESSION}:overview.0" -d -n "uiux"
-  # Last pane stays in what was the overview window — rename it
   tmux rename-window -t "${SESSION}:overview" "arch"
   tmux set-option -t "${SESSION}" pane-border-status off
   tmux select-window -t "${SESSION}:pm"
@@ -169,40 +185,36 @@ cmd_restore() {
 
 case "$SUBCOMMAND" in
   help)
-    cat <<'EOF'
-Usage: bash scripts/start-roles.sh [subcommand] [--bypass]
+    cat <<EOF
+Usage: bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass]
 
 Subcommands:
   (none)              Start all 4 roles in separate tmux windows
   overview            Collapse roles into a 2×2 overview pane
   restore             Spread overview panes back to separate windows
-  stop                Gracefully stop the book-ai tmux session
+  stop                Gracefully stop the session
   restart [--bypass]  Stop then start fresh
   dev2    [--bypass]  Add a second Dev window to a running session
   --help | -h | help  Show this help
 
 Flags:
-  --bypass  Pass --dangerously-skip-permissions to every claude invocation
+  --repo <path>  Repo root (default: parent of this script — $DEFAULT_REPO)
+  --bypass       Pass --dangerously-skip-permissions to every claude invocation
+
+Repo:    $REPO
+Session: $SESSION
+
+Worktrees:
+  PM    $REPO          (main checkout)
+  Dev   $REPO_DEV
+  UIUX  $REPO_UIUX
+  Arch  $REPO_ARCH
 
 Models:
-  PM      claude-sonnet-4-6
-  Dev     claude-sonnet-4-6
-  UI/UX   claude-haiku-4-5-20251001
-  Arch    claude-opus-4-7
-
-Tmux keybindings (prefix = C-a):
-  C-a O   overview   (collapse to 2×2)
-  C-a o   restore    (back to separate windows)
-
-Worktrees (each role runs in its own isolated directory):
-  PM    /Users/alfmunny/Projects/AI/book-reader-ai        (main checkout)
-  Dev   /Users/alfmunny/Projects/AI/book-reader-ai-dev
-  UIUX  /Users/alfmunny/Projects/AI/book-reader-ai-uiux
-  Arch  /Users/alfmunny/Projects/AI/book-reader-ai-arch
-
-Session: book-ai
-  Attach:   tmux attach -t book-ai
-  Windows:  pm | dev | uiux | arch
+  PM      $MODEL_PM
+  Dev     $MODEL_DEV
+  UI/UX   $MODEL_UIUX
+  Arch    $MODEL_ARCH
 EOF
     exit 0
     ;;
@@ -226,7 +238,7 @@ EOF
     running || die "Session '$SESSION' not running — start it first."
     write_prompts
     ensure_worktree "$REPO_DEV"
-    start_window "dev2" "/tmp/book-ai-dev.txt" "$MODEL_DEV" "$REPO_DEV"
+    start_window "dev2" "/tmp/${SLUG}-dev.txt" "$MODEL_DEV" "$REPO_DEV"
     echo "Added dev2 window to session '$SESSION'."
     echo "Switch to it:  tmux select-window -t ${SESSION}:dev2"
     exit 0
@@ -237,6 +249,9 @@ esac
 
 check_deps
 
+echo "Repo:    $REPO"
+echo "Session: $SESSION"
+echo ""
 echo "Checking worktrees..."
 git -C "$REPO" worktree list
 
@@ -258,11 +273,11 @@ ensure_worktree "$REPO_ARCH"
 # Four separate windows — PM in main repo, code roles each in their own worktree
 tmux new-session -d -s "$SESSION" -n "pm"   -x 220 -y 50
 tmux send-keys -t "${SESSION}:pm" \
-  "cd '$REPO' && $CLAUDE_BASE --model '$MODEL_PM' \"\$(cat /tmp/book-ai-pm.txt)\"" Enter
+  "cd '$REPO' && $CLAUDE_BASE --model '$MODEL_PM' \"\$(cat '/tmp/${SLUG}-pm.txt')\"" Enter
 
-start_window "dev"  "/tmp/book-ai-dev.txt"  "$MODEL_DEV"  "$REPO_DEV"
-start_window "uiux" "/tmp/book-ai-uiux.txt" "$MODEL_UIUX" "$REPO_UIUX"
-start_window "arch" "/tmp/book-ai-arch.txt" "$MODEL_ARCH" "$REPO_ARCH"
+start_window "dev"  "/tmp/${SLUG}-dev.txt"  "$MODEL_DEV"  "$REPO_DEV"
+start_window "uiux" "/tmp/${SLUG}-uiux.txt" "$MODEL_UIUX" "$REPO_UIUX"
+start_window "arch" "/tmp/${SLUG}-arch.txt" "$MODEL_ARCH" "$REPO_ARCH"
 
 tmux select-window -t "${SESSION}:pm"
 

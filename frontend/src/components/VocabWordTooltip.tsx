@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { getWordDefinition, WordDefinition } from "@/lib/api";
-import { CloseIcon, CheckCircleIcon } from "@/components/Icons";
+import { CloseIcon, CheckCircleIcon, ArrowUpRightIcon } from "@/components/Icons";
 
 interface Props {
   word: string;
@@ -111,7 +111,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
             rel="noopener noreferrer"
             className="text-[11px] text-amber-600 hover:text-amber-800"
           >
-            Wiktionary ↗
+            Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
           </a>
         ) : <span />}
         <button

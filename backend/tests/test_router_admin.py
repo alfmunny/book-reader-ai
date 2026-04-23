@@ -488,6 +488,42 @@ async def test_delete_book_removes_word_occurrences(admin_client, admin_db):
     assert count == 0
 
 
+async def test_delete_book_removes_flashcard_reviews(admin_client, admin_db):
+    """Regression #691: admin delete_book must clean up flashcard_reviews before pruning vocabulary.
+
+    SQLite FK enforcement is OFF so ON DELETE CASCADE never fires. Without an
+    explicit DELETE, orphaned flashcard_reviews rows inflate flashcard stats for
+    users who had saved words from the deleted book."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute("INSERT INTO vocabulary (user_id, word) VALUES (1, 'ephemeral')")
+        async with db.execute("SELECT id FROM vocabulary WHERE word='ephemeral'") as cur:
+            vocab_id = (await cur.fetchone())[0]
+        await db.execute(
+            "INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)"
+            " VALUES (?, 100, 0, 'An ephemeral moment.')",
+            (vocab_id,),
+        )
+        await db.execute(
+            "INSERT INTO flashcard_reviews (user_id, vocabulary_id, due_date) VALUES (1, ?, date('now'))",
+            (vocab_id,),
+        )
+        await db.commit()
+
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE vocabulary_id=?", (vocab_id,)
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0, (
+        "flashcard_reviews rows must be deleted when admin deletes a book (#691); "
+        "orphaned rows inflate flashcard stats for affected users"
+    )
+
+
 async def test_delete_book_removes_annotations(admin_client, admin_db, admin_user):
     await save_book(100, BOOK_META, BOOK_TEXT)
     await create_annotation(admin_user["id"], 100, 0, "A great line.", "The full quote.", "yellow")

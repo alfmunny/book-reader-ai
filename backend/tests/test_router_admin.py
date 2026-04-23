@@ -1960,3 +1960,45 @@ async def test_queue_settings_accepts_valid_model_chain(admin_client, admin_db):
     assert res.status_code == 200, (
         f"Expected 200 for valid model_chain, got {res.status_code}: {res.text}"
     )
+
+
+# ── Queue items limit validation (Issue #484) ─────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_queue_items_over_limit_returns_422(admin_client, admin_db):
+    """Regression #484: GET /admin/queue/items?limit=9999999 must be rejected with 422.
+
+    Without an upper bound, the query runs with LIMIT 9999999 and can exhaust
+    server memory when the queue is large.
+    """
+    res = await admin_client.get("/api/admin/queue/items?limit=9999999")
+    assert res.status_code == 422, (
+        f"Expected 422 for over-limit value, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_items_zero_limit_returns_422(admin_client, admin_db):
+    """Regression #484: limit=0 must be rejected."""
+    res = await admin_client.get("/api/admin/queue/items?limit=0")
+    assert res.status_code == 422, (
+        f"Expected 422 for zero limit, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_items_default_limit_accepted(admin_client, admin_db):
+    """Default limit (200) must still be accepted."""
+    res = await admin_client.get("/api/admin/queue/items")
+    assert res.status_code == 200, (
+        f"Expected 200 for default limit, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_items_max_limit_accepted(admin_client, admin_db):
+    """Upper boundary (1000) must be accepted."""
+    res = await admin_client.get("/api/admin/queue/items?limit=1000")
+    assert res.status_code == 200, (
+        f"Expected 200 for limit=1000, got {res.status_code}: {res.text}"
+    )

@@ -88,7 +88,7 @@ class TranslateRequest(BaseModel):
 
 
 class TTSRequest(BaseModel):
-    text: str
+    text: str = Field(..., max_length=50_000)
     language: str = "en"
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"

@@ -923,3 +923,38 @@ async def test_clear_queue_status_filter_preserves_running_items(tmp_db):
     running = [r for r in remaining if r["status"] == "running"]
     assert len(running) == 1, "Running row must survive clear_queue(status='running')"
     assert running[0]["chapter_index"] == 0
+
+
+async def test_estimate_queue_cost_uploaded_book_nonzero(tmp_db):
+    """Regression #713: estimate_queue_cost must not return $0 for uploaded books.
+
+    Uploaded books store text in user_book_chapters (books.text is '').
+    The cost estimate must sum the actual chapter lengths, not LENGTH(books.text).
+    """
+    from services.translation_queue import estimate_queue_cost
+
+    CHAPTER_TEXT = " ".join(["word"] * 5000)  # ~5000 words, ~30 000 chars
+
+    async with aiosqlite.connect(tmp_db) as db:
+        cur = await db.execute(
+            """INSERT INTO books (title, authors, languages, subjects, download_count,
+                                 cover, text, images, source, owner_user_id)
+               VALUES ('Upload Test', '["Auth"]', '[]', '[]', 0, '', '', '[]', 'upload', 1)"""
+        )
+        book_id = cur.lastrowid
+        await db.executemany(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+            "VALUES (?, ?, ?, ?, 0)",
+            [(book_id, 0, "Ch 1", CHAPTER_TEXT), (book_id, 1, "Ch 2", CHAPTER_TEXT)],
+        )
+        await db.commit()
+
+    await enqueue(book_id, 0, "zh")
+    await enqueue(book_id, 1, "zh")
+
+    est = await estimate_queue_cost(models=["gemini-2.5-flash"])
+    assert est["pending_items"] == 2
+    flash = next(r for r in est["per_model"] if r["model"] == "gemini-2.5-flash")
+    # Each chapter is ~30 000 chars; cost must be well above zero.
+    assert flash["usd"] > 0.0, "Cost must not be $0 for uploaded books"
+    assert est["estimated_input_tokens"] > 100, "tokens must reflect actual chapter text"

@@ -350,8 +350,17 @@ async def estimate_queue_cost(models: list[str] | None = None) -> dict:
         if book_counts:
             ids = [b[0] for b in book_counts]
             placeholders = ",".join("?" for _ in ids)
+            # For uploaded books books.text is '' — use actual chapter text
+            # lengths from user_book_chapters instead of LENGTH(books.text).
             async with db.execute(
-                f"SELECT id, LENGTH(text) FROM books WHERE id IN ({placeholders})",
+                f"""SELECT b.id,
+                       CASE WHEN b.source = 'upload'
+                         THEN (SELECT COALESCE(SUM(LENGTH(ubc.text)), 0)
+                               FROM user_book_chapters ubc
+                               WHERE ubc.book_id = b.id AND ubc.is_draft = 0)
+                         ELSE LENGTH(b.text)
+                       END
+                    FROM books b WHERE b.id IN ({placeholders})""",
                 ids,
             ) as cursor:
                 text_lengths = dict(await cursor.fetchall())

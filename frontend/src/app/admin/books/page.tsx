@@ -386,7 +386,7 @@ export default function BooksPage() {
                 <button
                   onClick={() => queueLanguageForBook(b, newLangInput[b.id] ?? "zh")}
                   disabled={queueingLangFor?.startsWith(`${b.id}:`)}
-                  className="text-xs px-2 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0 disabled:opacity-50"
+                  className="text-xs px-2 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0 disabled:opacity-50 min-h-[44px]"
                   title="Queue this book for translation into the selected language"
                 >
                   {queueingLangFor?.startsWith(`${b.id}:`) ? "Queueing…" : "+ Translate"}
@@ -397,7 +397,7 @@ export default function BooksPage() {
                     if (confirm(`Delete "${b.title}" and all its audio/translations?`))
                       act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" }));
                   }}
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 shrink-0"
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 shrink-0 min-h-[44px]"
                 >
                   Delete
                 </button>
@@ -459,7 +459,7 @@ export default function BooksPage() {
                                     setBulkRetranslating(null);
                                   }
                                 }}
-                                className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                                className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
                               >
                                 {bulkRetranslating === bulkKey ? "Retranslating…" : "Retranslate all"}
                               </button>
@@ -473,7 +473,7 @@ export default function BooksPage() {
                                     }),
                                   );
                                 }}
-                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-500"
+                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 min-h-[44px]"
                               >
                                 Delete all
                               </button>

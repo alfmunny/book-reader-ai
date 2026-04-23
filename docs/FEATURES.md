@@ -416,16 +416,18 @@ New "Uploads" tab in the admin panel showing all user-uploaded books with metada
 
 ---
 
-## Feature 11: user_book_chapters Table (Issue #357 — awaiting PM approval)
+## Feature 11: user_book_chapters Table ✅ (merged — migration 025, PR #649)
 
 ### Overview
-Replace the JSON blob in `books.text` for uploaded books with a proper `user_book_chapters` table. Unblocks full-text search and removes all `source=='upload'` branching from route handlers and the chapter-splitting service.
+Uploaded books now store their chapters in a dedicated `user_book_chapters` table instead of serializing a JSON blob into `books.text`. Removes `source=='upload'` branching from route handlers + chapter splitting, and lays the groundwork for Feature 13 (in-app search).
 
 ### Design doc
-`docs/design/user-book-chapters.md` (PR #555 — awaiting PM review)
+`docs/design/user-book-chapters.md` — merged.
 
-### Estimated effort
-~4 hours after approval.
+### What shipped
+- Migration 025: `user_book_chapters (id, book_id, chapter_index, title, text, is_draft)` with `UNIQUE(book_id, chapter_index)` and `FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE`.
+- Upload / chapter-editor / confirm flow rewritten to use the new table.
+- `services/book_chapters.split_with_html_preference` reads uploaded chapters directly from the table.
 
 ---
 
@@ -439,3 +441,47 @@ Needs design doc. See issue #557.
 
 ### Estimated effort
 ~5 hours after design approval.
+
+---
+
+## Feature 13: In-App Full-Text Search (FTS5) ✅ (merged — migration 026, PR #733)
+
+### Overview
+A single `/search` endpoint and frontend page that lets a logged-in user grep across their own annotations, saved vocabulary context sentences, and confirmed uploaded-book chapters. Closes the long-standing "I know I wrote a note about Kafka somewhere" gap.
+
+### Design doc
+`docs/design/fts5-in-app-search.md` — PM-approved 2026-04-23.
+
+### What shipped
+**Schema (migration 026)**
+- `annotations_fts`, `word_occurrences_fts`, `user_chapters_fts` — SQLite FTS5 virtual tables in external-content mode (the index stays in sync; the source tables remain the source of truth).
+- Triggers (AI / AD / AU) keep each index aligned. The `user_chapters_*` triggers gate on `is_draft = 0` so drafts never leak into search results.
+
+**Backend**
+- `services/search.py::search_content` — user-scoped queries, `snippet()` highlighting, rank ordering, phrase-quoted input so raw `AND`/`OR`/`NOT`/`*` do not blow up the FTS parser.
+- `routers/search.py::GET /search` — `q` (1–200 chars, whitespace-only rejected), `scope` (csv subset of `annotations,vocabulary,chapters`), `limit` (1–50).
+- `services/migrations._split_sql_statements` now keeps `CREATE TRIGGER … BEGIN … END;` blocks intact — required because migration 026 contains triggers whose bodies hold their own semicolons.
+
+**Frontend**
+- `SearchBar` component in the home header: collapsed icon → expanded input, `/` keyboard shortcut, 44px touch target, full aria-labelling.
+- `/search` results page: sectioned cards per scope, snippet HTML sanitised to a `<b>`-only whitelist before `dangerouslySetInnerHTML`.
+- `SearchIcon` in `Icons.tsx`, `searchInAppContent()` in `lib/api.ts`.
+
+### Tests
+- 18 new backend tests (`test_router_search.py`) + a trigger-splitter regression in `test_migrations.py`.
+- 6 new frontend SearchBar tests.
+- Full backend + frontend suites green at merge time.
+
+---
+
+## Feature 14: Vocabulary Tags & Custom Study Decks (Issue #645 — in progress)
+
+### Overview
+Users can attach free-text tags to vocabulary words and assemble named study decks — either manual (explicit member list) or smart (filter-based: `language`, `book_ids`, `tags_any`, `tags_all`, `saved_after`, `saved_before`). The existing SM-2 flashcard endpoints grow an optional `deck_id` so a user can focus a review session on a single topic.
+
+### Design doc
+`docs/design/vocab-tags-decks.md` — merged via PR #646.
+
+### Status
+- Backend PR open: #745 (migration 027, `services/decks.py`, `services/vocab_tags.py`, `routers/decks.py`, tag routes on `routers/vocabulary.py`, `deck_id` filter on flashcard endpoints, 33 new tests).
+- Frontend follow-up PR pending.

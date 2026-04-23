@@ -25,6 +25,7 @@ def test_decode_invalid_jwt_raises_401():
     with pytest.raises(HTTPException) as exc:
         auth_module.decode_jwt("not.a.valid.token")
     assert exc.value.status_code == 401
+    assert exc.value.detail == "Invalid token"
 
 
 def test_decode_tampered_jwt_raises_401():
@@ -33,6 +34,18 @@ def test_decode_tampered_jwt_raises_401():
     with pytest.raises(HTTPException) as exc:
         auth_module.decode_jwt(tampered)
     assert exc.value.status_code == 401
+    assert exc.value.detail == "Invalid token"
+
+
+def test_decode_jwt_detail_does_not_leak_exception():
+    """detail must be a static string, not the raw JWTError message."""
+    with pytest.raises(HTTPException) as exc:
+        auth_module.decode_jwt("bad.token.here")
+    detail = exc.value.detail
+    assert isinstance(detail, str)
+    assert "Error" not in detail
+    assert "signature" not in detail.lower()
+    assert ":" not in detail
 
 
 # ── Fernet encryption ─────────────────────────────────────────────────────────

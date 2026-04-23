@@ -2143,3 +2143,42 @@ async def test_import_translations_oversized_paragraph_item_returns_422(admin_cl
     assert res.status_code == 422, (
         f"Expected 422 for oversized paragraph item in import, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #531: QueueSettingsRequest list item bounds ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_oversized_language_item_returns_422(admin_client, admin_db):
+    """Regression #531: auto_translate_languages item > 20 chars must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"auto_translate_languages": ["x" * 21]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized language item, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_oversized_model_chain_item_returns_422(admin_client, admin_db):
+    """Regression #531: model_chain item > 200 chars must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": ["m" * 201]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized model_chain item, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_too_many_languages_returns_422(admin_client, admin_db):
+    """Regression #531: auto_translate_languages list > 50 items must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"auto_translate_languages": ["en"] * 51},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for too many languages, got {res.status_code}: {res.text}"
+    )

@@ -196,7 +196,7 @@ class ConfirmChapterSpec(BaseModel):
 
 
 class ConfirmChaptersBody(BaseModel):
-    chapters: list[ConfirmChapterSpec]
+    chapters: list[ConfirmChapterSpec] = Field(..., max_length=1000)
 
 
 @router.post("/{book_id}/chapters/confirm")

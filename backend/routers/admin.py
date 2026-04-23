@@ -926,7 +926,7 @@ async def queue_stop(_admin: dict = Depends(_require_admin)):
 
 class QueuePlanRequest(BaseModel):
     target_language: str = Field(..., max_length=20)
-    book_ids: list[int] | None = None
+    book_ids: list[Annotated[int, Field(ge=1)]] | None = None
 
 
 @router.post("/queue/plan")
@@ -1291,7 +1291,7 @@ async def queue_enqueue_all(admin: dict = Depends(_require_admin)):
 
 @router.get("/uploads")
 async def get_uploads(
-    user_id: int | None = Query(default=None),
+    user_id: int | None = Query(default=None, ge=1),
     _admin: dict = Depends(_require_admin),
 ):
     """Return all user-uploaded books with uploader information.

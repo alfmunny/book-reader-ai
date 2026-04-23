@@ -106,51 +106,23 @@ def parse_txt(content: str) -> dict[str, Any]:
 
 
 def parse_epub(file_bytes: bytes) -> dict[str, Any]:
-    """Parse epub file. Returns {title, author, chapters: [{title, text}]}."""
+    """Parse epub file. Returns {title, author, chapters: [{title, text}]}.
+
+    Delegates to build_chapters_from_epub() for consistent spine-ordered,
+    NCX-titled extraction shared with the Gutenberg ingestion path.
+    """
     try:
-        import ebooklib
+        from services.splitter import build_chapters_from_epub
         from ebooklib import epub
-        from html.parser import HTMLParser
 
-        class _TextExtractor(HTMLParser):
-            def __init__(self):
-                super().__init__()
-                self.text_parts: list[str] = []
-                self._skip = False
-
-            def handle_starttag(self, tag, attrs):
-                if tag in ('script', 'style'):
-                    self._skip = True
-
-            def handle_endtag(self, tag):
-                if tag in ('script', 'style'):
-                    self._skip = False
-                if tag in ('p', 'div', 'br', 'h1', 'h2', 'h3', 'h4'):
-                    self.text_parts.append('\n')
-
-            def handle_data(self, data):
-                if not self._skip:
-                    self.text_parts.append(data)
-
-            def get_text(self) -> str:
-                return ''.join(self.text_parts)
-
-        book = epub.read_epub(io.BytesIO(file_bytes))
-
-        title = book.get_metadata('DC', 'title')
-        title = title[0][0] if title else "Untitled"
-        author_meta = book.get_metadata('DC', 'creator')
+        book_epub = epub.read_epub(io.BytesIO(file_bytes), options={"ignore_ncx": False})
+        dc_title = book_epub.get_metadata("DC", "title")
+        title = dc_title[0][0] if dc_title else "Untitled"
+        author_meta = book_epub.get_metadata("DC", "creator")
         author = author_meta[0][0] if author_meta else "Unknown"
 
-        chapters = []
-        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
-            extractor = _TextExtractor()
-            extractor.feed(item.get_content().decode('utf-8', errors='replace'))
-            text = extractor.get_text().strip()
-            if len(text) < 50:  # skip very short items (nav, cover pages)
-                continue
-            ch_title = item.get_name().split('/')[-1].replace('.xhtml', '').replace('.html', '')
-            chapters.append({"title": ch_title, "text": text})
+        chapters_obj = build_chapters_from_epub(file_bytes)
+        chapters = [{"title": c.title, "text": c.text} for c in chapters_obj]
 
         return {"title": title, "author": author, "chapters": chapters[:MAX_CHAPTERS]}
 

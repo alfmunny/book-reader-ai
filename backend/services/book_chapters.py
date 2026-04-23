@@ -1,16 +1,15 @@
 """Shared chapter-list resolver used by BOTH the reader endpoint and the
 translation queue worker.
 
-Previously the reader used a (cached) HTML-preferring splitter, while the
-queue worker called `build_chapters(text)` directly. For books where the
-two splitters produced different chapter lists (plays / drama like Faust,
-or any book where `<div class="chapter">` markup differs from what
-heading-regex finds in plain text), the worker would translate chapter
-indices that DON'T correspond to what the reader is displaying — off-by-
-one visible to users from the first divergent chapter onward.
+Priority (all DB-only, no external fetches at chapter-load time):
+  1. Pre-split JSON  — uploaded books that store chapters as structured JSON.
+  2. Stored EPUB     — preferred for Gutenberg books: explicit spine/TOC gives
+                       clean paragraph boundaries and reliable titles.
+  3. Plain-text regex fallback — for Gutenberg books with no EPUB available.
 
-This module is the one place both call sites share to get the canonical
-Chapter list for a book.
+New Gutenberg books have their EPUB fetched and stored at add-time.
+Existing books (pre-EPUB feature) get their EPUB fetched in a background
+task on first chapter access, becoming available on the next cold start.
 """
 
 from __future__ import annotations
@@ -20,55 +19,38 @@ import json
 import logging
 from collections import defaultdict
 
-from services.gutenberg import get_book_html
-from services.splitter import Chapter, build_chapters, build_chapters_from_html
+from services.splitter import Chapter, build_chapters, build_chapters_from_epub
 
 logger = logging.getLogger(__name__)
 
-# In-memory cache keyed by book_id. Populated on first split after each
-# process restart; every subsequent call returns the cached list. The
-# reader previously had its own cache in routers/books.py — merged here
-# so reader + worker share the same result.
 _chapter_cache: dict[int, list[Chapter]] = {}
-
-# One lock per book_id: serializes concurrent cache-miss requests so the
-# second waiter reuses the result written by the first instead of running
-# a different split path and returning a divergent chapter list.
 _split_locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
+
+# Track books for which a background EPUB fetch has already been fired this
+# process lifetime so we don't hammer Gutenberg on every chapter request.
+_epub_fetch_attempted: set[int] = set()
 
 
 async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
-    """Return the canonical chapter list for a book.
+    """Return the canonical chapter list for a book (DB-only, no external calls).
 
-    Strategy:
-      1. Try Gutenberg's HTML edition — much cleaner on books with nested
-         structure (War and Peace, Faust drama, etc.).
-      2. Fall back to the plain-text splitter if HTML isn't available,
-         fails, or produces fewer than 2 chapters.
-
-    CPU-heavy work runs on a thread so the event loop stays responsive.
+    The name is kept for backwards compatibility with call sites.
     """
     cached = _chapter_cache.get(book_id)
     if cached is not None:
         return cached
 
     async with _split_locks[book_id]:
-        # Double-check: a concurrent request may have populated the cache
-        # while we were waiting for the lock.
         cached = _chapter_cache.get(book_id)
         if cached is not None:
             return cached
 
-        # Uploaded books store chapters as JSON, not raw text.
-        # Detect and return pre-split chapters directly to avoid feeding
-        # JSON to the Gutenberg HTML / regex splitter.
+        # ── 1. Uploaded books: pre-split JSON ─────────────────────────────────
         if text and text.lstrip().startswith("{"):
             try:
                 data = json.loads(text)
                 if "chapters" in data:
                     if data.get("draft"):
-                        # Draft: not yet confirmed — no translatable chapters.
-                        # Do NOT cache; the caller should reject draft books explicitly.
                         return []
                     chapters: list[Chapter] = [
                         Chapter(title=ch["title"], text=ch["text"])
@@ -77,28 +59,53 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
                     _chapter_cache[book_id] = chapters
                     return chapters
             except (ValueError, KeyError, TypeError):
-                pass  # not a valid uploaded-book JSON — fall through to normal split
+                pass
 
+        # ── 2. Stored EPUB (Gutenberg books) ──────────────────────────────────
         try:
-            html = await get_book_html(book_id)
-            if html:
-                chapters = await asyncio.to_thread(build_chapters_from_html, html)
+            from services.db import get_book_epub_bytes
+            epub_bytes = await get_book_epub_bytes(book_id)
+            if epub_bytes:
+                chapters = await asyncio.to_thread(build_chapters_from_epub, epub_bytes)
                 if len(chapters) >= 2:
                     _chapter_cache[book_id] = chapters
                     return chapters
+            elif book_id not in _epub_fetch_attempted:
+                # Existing book with no EPUB yet — fetch silently in background.
+                # Current request falls through to plain-text; EPUB available next restart.
+                _epub_fetch_attempted.add(book_id)
+                asyncio.create_task(_background_fetch_epub(book_id))
         except Exception:
-            logger.exception(
-                "HTML split failed for book %s, falling back to text", book_id,
-            )
+            logger.exception("EPUB split failed for book %s, falling back to text", book_id)
 
+        # ── 3. Plain-text regex fallback ──────────────────────────────────────
         chapters = await asyncio.to_thread(build_chapters, text)
         _chapter_cache[book_id] = chapters
         return chapters
 
 
+async def _background_fetch_epub(book_id: int) -> None:
+    """Fetch and store EPUB for a pre-existing Gutenberg book (fire-and-forget).
+
+    Does not update the in-memory chapter cache — stored EPUB becomes
+    available on the next cold start.
+    """
+    try:
+        from services.gutenberg import get_book_epub
+        from services.db import save_book_epub
+        result = await get_book_epub(book_id)
+        if result:
+            epub_bytes, epub_url = result
+            await save_book_epub(book_id, epub_bytes, epub_url)
+            logger.info(
+                "Background EPUB cached for book %d (%d KB)", book_id, len(epub_bytes) // 1024
+            )
+    except Exception:
+        logger.debug("Background EPUB fetch failed for book %d", book_id, exc_info=True)
+
+
 def clear_cache(book_id: int | None = None) -> None:
-    """Invalidate cached chapter list. Called from admin book-delete
-    and retranslate paths so stale chapter indices don't linger."""
+    """Invalidate cached chapter list."""
     if book_id is None:
         _chapter_cache.clear()
     else:

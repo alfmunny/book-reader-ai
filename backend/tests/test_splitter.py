@@ -1178,3 +1178,136 @@ def test_html_inline_text_empty_inner_child_not_appended():
     # "leading text" and "trailing" should be present; no crash
     assert "leading" in text
     assert "trailing" in text
+
+
+# ── EPUB splitter ─────────────────────────────────────────────────────────────
+
+def _make_test_epub(chapters: list[tuple[str, str]]) -> bytes:
+    """Build a minimal but valid EPUB for testing."""
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Test Book")
+    book.set_language("en")
+    book.add_author("Test Author")
+
+    spine = ["nav"]
+    toc = []
+    for i, (title, body) in enumerate(chapters):
+        uid = f"chapter{i+1:02d}"
+        fname = f"{uid}.xhtml"
+        content = (
+            f'<?xml version="1.0" encoding="utf-8"?>'
+            f'<html xmlns="http://www.w3.org/1999/xhtml">'
+            f"<head><title>{title}</title></head>"
+            f"<body><h2>{title}</h2>"
+            + "".join(f"<p>{body} sentence {j}.</p>" for j in range(8))
+            + "</body></html>"
+        )
+        item = epub.EpubHtml(title=title, file_name=fname, lang="en")
+        item.content = content.encode("utf-8")
+        book.add_item(item)
+        spine.append(item)
+        toc.append(epub.Link(fname, title, uid))
+
+    book.toc = toc
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.spine = spine
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+    return buf.getvalue()
+
+
+from services.splitter import build_chapters_from_epub, _epub_nav_titles
+
+
+def test_build_chapters_from_epub_basic():
+    epub_bytes = _make_test_epub([
+        ("Chapter I", "Alice was beginning to be very tired"),
+        ("Chapter II", "Curiouser and curiouser cried Alice"),
+        ("Chapter III", "They were indeed a queer looking party"),
+    ])
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert len(chapters) == 3
+    assert chapters[0].title == "Chapter I"
+    assert chapters[1].title == "Chapter II"
+    assert chapters[2].title == "Chapter III"
+
+
+def test_build_chapters_from_epub_uses_toc_titles():
+    epub_bytes = _make_test_epub([
+        ("Chapter I — Down the Rabbit-Hole", "Alice was beginning to be very tired"),
+        ("Chapter II — The Pool of Tears", "Curiouser and curiouser"),
+        ("Chapter III — A Caucus-Race", "They were indeed a queer looking party"),
+    ])
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert "Down the Rabbit-Hole" in chapters[0].title
+    assert "Pool of Tears" in chapters[1].title
+
+
+def test_build_chapters_from_epub_preserves_paragraph_breaks():
+    epub_bytes = _make_test_epub([
+        ("Chapter I", "First paragraph of text"),
+        ("Chapter II", "Second chapter content here"),
+        ("Chapter III", "Third chapter more words"),
+    ])
+    chapters = build_chapters_from_epub(epub_bytes)
+    # Each <p> should become a paragraph separated by \n\n
+    assert "\n\n" in chapters[0].text
+
+
+def test_build_chapters_from_epub_spine_order():
+    """Chapters must come out in spine reading order, not arbitrary order."""
+    epub_bytes = _make_test_epub([
+        ("First", "Alpha content words here yes"),
+        ("Second", "Beta content words here yes"),
+        ("Third", "Gamma content words here yes"),
+    ])
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert chapters[0].title == "First"
+    assert chapters[1].title == "Second"
+    assert chapters[2].title == "Third"
+
+
+def test_build_chapters_from_epub_returns_empty_on_invalid_bytes():
+    assert build_chapters_from_epub(b"not an epub") == []
+    assert build_chapters_from_epub(b"") == []
+
+
+def test_build_chapters_from_epub_skips_short_items():
+    """Items with fewer than 30 words should be skipped (nav/cover pages)."""
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Test")
+    book.set_language("en")
+
+    cover = epub.EpubHtml(title="Cover", file_name="cover.xhtml", lang="en")
+    cover.content = b'<html><body><p>Cover page.</p></body></html>'
+    book.add_item(cover)
+
+    ch = epub.EpubHtml(title="Chapter I", file_name="chapter01.xhtml", lang="en")
+    ch.content = (
+        b'<html><body><h2>Chapter I</h2>'
+        + b'<p>Alice content sentence one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty more words here.</p>' * 3
+        + b'</body></html>'
+    )
+    book.add_item(ch)
+
+    nav = epub.EpubNav()
+    book.add_item(epub.EpubNcx())
+    book.add_item(nav)
+    book.toc = [epub.Link("chapter01.xhtml", "Chapter I", "ch1")]
+    book.spine = ["nav", cover, ch]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+
+    chapters = build_chapters_from_epub(buf.getvalue())
+    # cover.xhtml is in SKIP_SUFFIXES and also < 30 words — must not appear
+    assert all("Cover" not in c.title for c in chapters)
+    assert len(chapters) >= 1

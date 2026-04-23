@@ -1206,3 +1206,15 @@ async def test_popular_books_page_too_large_returns_422(client):
     """Regression #739: GET /books/popular?page=10001 must return 422."""
     resp = await client.get("/api/books/popular?page=10001")
     assert resp.status_code == 422, f"Expected 422 for page > 10000, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #772: min_length=1 on target_language in RequestTranslationBody ────
+
+
+async def test_request_translation_empty_target_language_returns_422(client, test_user):
+    """Regression #772: POST /books/{id}/chapters/{i}/translation with target_language="" must return 422."""
+    resp = await client.post(
+        "/api/books/1/chapters/0/translation",
+        json={"target_language": ""},
+    )
+    assert resp.status_code == 422, f"Expected 422 for empty target_language, got {resp.status_code}: {resp.text}"

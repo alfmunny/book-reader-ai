@@ -587,13 +587,13 @@ async def retranslate(
 
 
 class BulkRetranslateRequest(BaseModel):
-    target_language: str = Field(..., max_length=20)
+    target_language: str = Field(..., min_length=1, max_length=20)
 
 
 class ImportTranslationEntry(BaseModel):
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
-    target_language: str = Field(..., max_length=20)
+    target_language: str = Field(..., min_length=1, max_length=20)
     paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)
@@ -933,7 +933,7 @@ async def queue_stop(_admin: dict = Depends(_require_admin)):
 
 
 class QueuePlanRequest(BaseModel):
-    target_language: str = Field(..., max_length=20)
+    target_language: str = Field(..., min_length=1, max_length=20)
     book_ids: list[Annotated[int, Field(ge=1)]] | None = Field(default=None, max_length=1000)
 
 
@@ -1112,7 +1112,7 @@ async def queue_items(
 
 class EnqueueBookRequest(BaseModel):
     book_id: int = Field(..., ge=1)
-    target_languages: list[Annotated[str, Field(max_length=20)]] | None = Field(default=None, max_length=100)
+    target_languages: list[Annotated[str, Field(min_length=1, max_length=20)]] | None = Field(default=None, max_length=100)
     priority: int = 50   # lower than default so admin enqueues jump the line
     reset_failed: bool = False
 

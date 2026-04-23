@@ -1,5 +1,6 @@
 """Wiktionary REST API integration for word definitions and lemma extraction."""
 import re
+from urllib.parse import quote
 
 import httpx
 
@@ -63,8 +64,8 @@ async def lookup(word: str, lang: str = "en") -> dict:
             "url": str,             # canonical Wiktionary URL
         }
     """
-    url = f"{_BASE}/{word.lower()}"
-    wikt_url = f"https://en.wiktionary.org/wiki/{word}"
+    url = f"{_BASE}/{quote(word.lower(), safe='')}"
+    wikt_url = f"https://en.wiktionary.org/wiki/{quote(word, safe='')}"
 
     empty = {"lemma": word, "language": lang, "definitions": [], "url": wikt_url}
 

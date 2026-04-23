@@ -300,3 +300,37 @@ async def test_patch_obsidian_valid_path_accepted(client, test_user):
     assert resp.status_code == 200, (
         f"Expected 200 for valid obsidian_path, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #508: user fields max_length ────────────────────────────────────────
+
+async def test_save_oversized_gemini_key_returns_422(client, test_user):
+    """POST /user/gemini-key rejects api_key longer than 500 chars (issue #508)."""
+    resp = await client.post("/api/user/gemini-key", json={"api_key": "x" * 501})
+    assert resp.status_code == 422, f"Expected 422 for oversized api_key, got {resp.status_code}"
+
+
+async def test_patch_obsidian_oversized_github_token_returns_422(client, test_user):
+    """PATCH /user/obsidian-settings rejects github_token longer than 500 chars (issue #508)."""
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "github_token": "x" * 501,
+        "obsidian_repo": "user/vault",
+    })
+    assert resp.status_code == 422, f"Expected 422 for oversized github_token, got {resp.status_code}"
+
+
+async def test_patch_obsidian_oversized_repo_returns_422(client, test_user):
+    """PATCH /user/obsidian-settings rejects obsidian_repo longer than 200 chars (issue #508)."""
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "x" * 201,
+    })
+    assert resp.status_code == 422, f"Expected 422 for oversized obsidian_repo, got {resp.status_code}"
+
+
+async def test_patch_obsidian_oversized_path_returns_422(client, test_user):
+    """PATCH /user/obsidian-settings rejects obsidian_path longer than 1000 chars (issue #508)."""
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "user/vault",
+        "obsidian_path": "a/" * 501,
+    })
+    assert resp.status_code == 422, f"Expected 422 for oversized obsidian_path, got {resp.status_code}"

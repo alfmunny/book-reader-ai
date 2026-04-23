@@ -1,6 +1,6 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
     set_user_gemini_key, get_user_by_id, get_reading_progress,
@@ -26,7 +26,7 @@ async def me(user: dict = Depends(get_current_user)):
 
 
 class GeminiKeyRequest(BaseModel):
-    api_key: str
+    api_key: str = Field(..., max_length=500)
 
 
 @router.post("/gemini-key")
@@ -97,9 +97,9 @@ async def get_obsidian(user: dict = Depends(get_current_user)):
 
 
 class ObsidianSettingsUpdate(BaseModel):
-    github_token: Optional[str] = None
-    obsidian_repo: str = ""
-    obsidian_path: str = ""
+    github_token: Optional[str] = Field(default=None, max_length=500)
+    obsidian_repo: str = Field(default="", max_length=200)
+    obsidian_path: str = Field(default="", max_length=1000)
 
 
 @router.patch("/obsidian-settings")

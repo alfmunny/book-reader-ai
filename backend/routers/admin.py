@@ -5,7 +5,7 @@ Full CRUD where applicable.
 
 import json
 import aiosqlite
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
 from services.db import (
@@ -1090,7 +1090,7 @@ async def queue_set_settings(
 async def queue_items(
     status: str | None = None,
     book_id: int | None = None,
-    limit: int = 200,
+    limit: int = Query(default=200, ge=1, le=1000),
     _admin: dict = Depends(_require_admin),
 ):
     return await list_queue(status=status, book_id=book_id, limit=limit)

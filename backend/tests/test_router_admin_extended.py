@@ -877,3 +877,27 @@ async def test_retranslate_all_preserves_old_translations_on_failure(admin_clien
     assert await get_cached_translation(200, 1, "fr") == ["original ch1"], (
         "Chapter 1 old translation was deleted before confirming new one succeeded"
     )
+
+
+# ── Issue #572: admin request body bounds ────────────────────────────────────
+
+async def test_queue_plan_oversized_language_returns_422(admin_client, admin_db):
+    """Regression #572: POST /admin/queue/plan with target_language > 20 chars must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": "x" * 21},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in /queue/plan, got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_retry_failed_oversized_language_returns_422(admin_client, admin_db):
+    """Regression #572: POST /admin/queue/retry-failed with target_language > 20 chars must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"target_language": "x" * 21},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in /queue/retry-failed, got {res.status_code}: {res.text}"
+    )

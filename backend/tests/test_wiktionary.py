@@ -268,3 +268,70 @@ async def test_lookup_lemma_only_extracted_from_first_definition():
         assert result["lemma"] == "go"
         # Second definition body still present
         assert len(result["definitions"]) == 2
+
+
+# ── URL encoding (regression for #612) ────────────────────────────────────────
+
+@pytest.mark.anyio
+async def test_lookup_word_with_hash_uses_encoded_url():
+    """A word containing '#' must have it percent-encoded in the API URL so the
+    fragment is not stripped by httpx before reaching the server."""
+    captured_urls: list[str] = []
+
+    async def fake_get(url, **kwargs):
+        captured_urls.append(url)
+        resp = MagicMock()
+        resp.status_code = 404
+        return resp
+
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = fake_get
+        await lookup("foo#bar", "en")
+
+    assert len(captured_urls) == 1
+    assert "#" not in captured_urls[0], (
+        "URL must not contain a raw '#' — it should be percent-encoded as %23"
+    )
+    assert "%23" in captured_urls[0]
+
+
+@pytest.mark.anyio
+async def test_lookup_word_with_question_mark_uses_encoded_url():
+    """A word containing '?' must have it percent-encoded so it is not treated
+    as the start of a query string."""
+    captured_urls: list[str] = []
+
+    async def fake_get(url, **kwargs):
+        captured_urls.append(url)
+        resp = MagicMock()
+        resp.status_code = 404
+        return resp
+
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = fake_get
+        await lookup("foo?bar", "en")
+
+    assert len(captured_urls) == 1
+    assert "?" not in captured_urls[0], (
+        "URL must not contain a raw '?' — it should be percent-encoded as %3F"
+    )
+    assert "%3F" in captured_urls[0]
+
+
+@pytest.mark.anyio
+async def test_lookup_word_with_special_chars_wikt_url_is_encoded():
+    """The display URL returned in the result must also be percent-encoded."""
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        mock_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=MagicMock(status_code=404))
+        result = await lookup("foo#bar", "en")
+    assert "#" not in result["url"]
+    assert "%23" in result["url"]

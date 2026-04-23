@@ -813,3 +813,16 @@ async def test_delete_uploaded_book_negative_id_returns_422(client, test_user):
     """Regression #731: DELETE /books/upload/{id} with negative id must return 422."""
     resp = await client.delete("/api/books/upload/-1")
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #761: parser exception must not leak in 422 response ────────────────
+
+@pytest.mark.asyncio
+async def test_upload_parse_error_does_not_leak_exception_detail(client, test_user):
+    """Regression #761: when file parsing raises, the 422 detail must be a static message."""
+    with patch("services.book_parser.parse_txt", side_effect=RuntimeError("internal-parser-secret-xyzzy")):
+        resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert "internal-parser-secret-xyzzy" not in detail
+    assert ":" not in detail or "Could not parse" in detail

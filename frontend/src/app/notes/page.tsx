@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
-import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, WordIcon } from "@/components/Icons";
+import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, ArrowRightIcon, WordIcon } from "@/components/Icons";
 
 interface BookSummary {
   bookId: number;
@@ -186,7 +186,7 @@ export default function NotesOverviewPage() {
                   </div>
                   <div className="shrink-0 text-right">
                     <span className="text-xs text-stone-400">{timeAgo(book.lastActivity)}</span>
-                    <p className="text-amber-600 group-hover:text-amber-800 text-lg mt-0.5">→</p>
+                    <p className="text-amber-600 group-hover:text-amber-800 mt-0.5"><ArrowRightIcon className="w-5 h-5" aria-hidden="true" /></p>
                   </div>
                 </div>
               </button>

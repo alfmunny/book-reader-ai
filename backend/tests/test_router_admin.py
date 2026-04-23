@@ -2276,3 +2276,28 @@ async def test_queue_clear_oversized_status_returns_422(admin_client):
 async def test_queue_delete_book_oversized_target_language_returns_422(admin_client):
     res = await admin_client.delete(f"/api/admin/queue/book/1?target_language={'x' * 21}")
     assert res.status_code == 422
+
+
+# ── Translation path param bounds checks (regression for #583) ────────────────
+
+async def test_delete_language_translations_oversized_target_language_returns_422(admin_client):
+    res = await admin_client.delete(f"/api/admin/translations/1/{'x' * 21}")
+    assert res.status_code == 422
+
+
+async def test_delete_translation_oversized_target_language_returns_422(admin_client):
+    res = await admin_client.delete(f"/api/admin/translations/1/0/{'x' * 21}")
+    assert res.status_code == 422
+
+
+async def test_retranslate_oversized_target_language_returns_422(admin_client):
+    res = await admin_client.post(f"/api/admin/translations/1/0/{'x' * 21}/retranslate")
+    assert res.status_code == 422
+
+
+async def test_move_translation_oversized_target_language_returns_422(admin_client):
+    res = await admin_client.post(
+        f"/api/admin/translations/1/0/{'x' * 21}/move",
+        json={"new_chapter_index": 1},
+    )
+    assert res.status_code == 422

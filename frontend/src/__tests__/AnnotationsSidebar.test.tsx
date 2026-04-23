@@ -146,3 +146,29 @@ test("sidebar footer shows 'Book notes' link when bookId provided", async () => 
   const bookLink = screen.getByRole("link", { name: /book notes/i });
   expect(bookLink).toHaveAttribute("href", "/notes/42");
 });
+
+// ── Regression #561: emoji icons and missing aria-labels ──────────────────────
+
+test("edit button has aria-label so screen readers announce it correctly", async () => {
+  const ann = makeAnnotation({ sentence_text: "Some sentence." });
+  render(<AnnotationsSidebar {...BASE_PROPS} annotations={[ann]} totalCount={1} />);
+  await userEvent.click(screen.getByTestId("annotations-toggle"));
+  // getByRole with name relies on aria-label (not just title)
+  expect(screen.getByRole("button", { name: "Edit annotation" })).toBeInTheDocument();
+});
+
+test("annotation link button has aria-label when bookId is provided", async () => {
+  const ann = makeAnnotation({ sentence_text: "Some sentence." });
+  render(<AnnotationsSidebar {...BASE_PROPS} annotations={[ann]} totalCount={1} bookId={42} />);
+  await userEvent.click(screen.getByTestId("annotations-toggle"));
+  expect(screen.getByRole("link", { name: /view in notes/i })).toBeInTheDocument();
+});
+
+test("toggle button does not contain emoji characters in its text content", () => {
+  render(<AnnotationsSidebar {...BASE_PROPS} />);
+  const btn = screen.getByTestId("annotations-toggle");
+  // Text content should be "Notes" (with count badge), not an emoji like 📝
+  const emojiRegex = /\p{Emoji_Presentation}/u;
+  expect(btn.textContent).not.toMatch(emojiRegex);
+  expect(btn.textContent).toMatch(/Notes/);
+});

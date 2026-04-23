@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Annotation } from "@/lib/api";
-import { ArrowRightIcon } from "@/components/Icons";
+import { ArrowRightIcon, NoteIcon, EditIcon, CloseIcon, EmptyNotesIcon } from "@/components/Icons";
 
 const COLOR_BADGE: Record<string, string> = {
   yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
@@ -48,7 +48,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
         className="relative shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0"
         data-testid="annotations-toggle"
       >
-        📝 Notes
+        <NoteIcon className="w-3.5 h-3.5" /> Notes
         {totalCount > 0 && (
           <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold px-1">
             {totalCount}
@@ -66,10 +66,10 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <h2 className="font-serif font-semibold text-ink text-sm">Annotations</h2>
             <button
               onClick={() => setOpen(false)}
-              className="text-stone-400 hover:text-stone-600 text-lg leading-none"
+              className="text-stone-400 hover:text-stone-600"
               aria-label="Close"
             >
-              ✕
+              <CloseIcon className="w-4 h-4" />
             </button>
           </div>
 
@@ -80,7 +80,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
               </div>
             ) : annotations.length === 0 ? (
               <div className="text-center text-stone-400 mt-10 text-sm">
-                <p className="text-3xl mb-2">📝</p>
+                <EmptyNotesIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
                 <p>No annotations yet.</p>
                 <p className="mt-1 text-xs">Click a sentence and choose Note to add one.</p>
               </div>
@@ -112,18 +112,20 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                               <a
                                 href={`/notes/${bookId}#annotation-${ann.id}`}
                                 onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-                                className="text-xs opacity-60 hover:opacity-100"
+                                className="opacity-60 hover:opacity-100"
                                 title="View in notes page"
+                                aria-label="View in notes page"
                               >
-                                📄
+                                <ArrowRightIcon className="w-3.5 h-3.5" />
                               </a>
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); onEdit(ann); setOpen(false); }}
-                              className="text-xs opacity-60 hover:opacity-100"
+                              className="opacity-60 hover:opacity-100"
                               title="Edit annotation"
+                              aria-label="Edit annotation"
                             >
-                              ✏️
+                              <EditIcon className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>

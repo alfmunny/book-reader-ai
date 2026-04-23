@@ -890,7 +890,7 @@ class TranslationQueueWorker:
         book_id = items[0].book_id
         target_language = items[0].target_language
         book = await get_cached_book(book_id)
-        if not book or not book.get("text"):
+        if not book:
             await self._mark_skipped(items, reason="book not in cache")
             mark_handled(items)
             return
@@ -901,8 +901,10 @@ class TranslationQueueWorker:
             return
         # Match the reader's splitter exactly so chapter_index alignment
         # stays consistent between the UI and the worker.
+        # Uploaded books have books.text='' — split_with_html_preference resolves
+        # their chapters from user_book_chapters automatically.
         from services.book_chapters import split_with_html_preference
-        all_chapters = await split_with_html_preference(book_id, book["text"])
+        all_chapters = await split_with_html_preference(book_id, book.get("text") or "")
 
         works: list[ChapterWork] = []
         title = book.get("title") or str(book_id)
@@ -1259,9 +1261,9 @@ async def plan_work_for_queue(
         if not source or source.lower().split("-")[0] == target_language:
             continue
         book = await get_cached_book(meta["id"])
-        if not book or not book.get("text"):
+        if not book:
             continue
-        chapters = await split_with_html_preference(meta["id"], book["text"])
+        chapters = await split_with_html_preference(meta["id"], book.get("text") or "")
         to_translate = []
         for idx, ch in enumerate(chapters):
             if not ch.text.strip():

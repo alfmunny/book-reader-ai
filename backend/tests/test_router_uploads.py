@@ -578,3 +578,21 @@ async def test_confirm_chapters_empty_list_returns_400(client, test_user):
     assert resp.status_code == 400, (
         f"Expected 400 for empty chapters list, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Empty/whitespace file upload validation (Issue #480) ──────────────────────
+
+@pytest.mark.asyncio
+async def test_upload_whitespace_only_txt_returns_422(client, test_user):
+    """Regression #480: uploading a whitespace-only .txt file must return 422.
+
+    parse_txt() returns zero chapters for whitespace-only content; the endpoint
+    previously saved this as a draft with 0 chapters, making it unconfirmable
+    and consuming quota permanently.
+    """
+    whitespace_file = _txt_upload(content=b"   \n\n\t  \n   ", filename="empty.txt")
+    resp = await client.post("/api/books/upload", files=whitespace_file)
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only file, got {resp.status_code}: {resp.text}"
+    )
+    assert "chapter" in resp.json()["detail"].lower()

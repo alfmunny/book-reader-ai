@@ -95,6 +95,11 @@ async def upload_book(
         raise HTTPException(status_code=422, detail=f"Could not parse file: {exc}")
 
     chapters = parsed["chapters"]
+    if not chapters:
+        raise HTTPException(
+            status_code=422,
+            detail="No chapters could be detected. The file appears to be empty or contains no readable text.",
+        )
     book_id = await _save_upload_book(
         user_id=user["id"],
         title=parsed["title"],

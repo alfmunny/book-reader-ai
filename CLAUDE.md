@@ -133,7 +133,8 @@ Always work highest priority first. Re-check priority each time you pick the nex
 7. Run the full test suite; all tests must pass before committing
 8. Commit, push, create PR with `Closes #N` in the body and `--label bug` or `--label feat`
 9. Enable auto-merge and launch the background poll loop
-10. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
+10. **Before picking a new issue:** check `gh pr list --state open --author @me` — if any of your own PRs is BEHIND or BLOCKED, rebase/fix it first. Only open a new PR once your existing PRs are either MERGED or have CI running without problems.
+11. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
 
 **Idle mode (no unclaimed issues):** Enter bug-hunt mode. Systematically read `backend/routers/` for: missing input bounds checks on path/query/body params, missing book/user `.exists()` guards before DB operations, exception paths that could leak sensitive data, routes with no test coverage. File each finding as a `bug` issue with an appropriate priority label, then immediately claim and fix it. Do not accumulate a backlog — file one, fix one, repeat.
 
@@ -164,7 +165,8 @@ Always work highest priority first. Re-check priority each time you pick the nex
 4. Write frontend test first (Jest/RTL or E2E), then implement
 5. Run full frontend test suite before pushing
 6. PR with `Closes #N`, `--label ux` or `--label ui`
-7. After merge: remove `in-progress` label
+7. **Before picking a new issue:** check `gh pr list --state open --author @me` — if any of your own PRs is BEHIND or BLOCKED, rebase/fix it first. Only open a new PR once existing PRs are merged or have CI running cleanly.
+8. After merge: remove `in-progress` label
 
 **Idle mode (no unclaimed issues):** Run a UX audit. Check frontend components for: emoji used as UI icons instead of SVG from `Icons.tsx`, icon-only buttons missing `aria-label`, interactive elements with touch targets under 44px, hardcoded hex colors instead of CSS token variables. File each violation as a `ux` issue, then immediately claim and fix it. File one, fix one, repeat.
 
@@ -191,7 +193,8 @@ Always work highest priority first. Re-check priority each time you pick the nex
 4. Open design doc PR; comment on the issue linking to the PR; wait for PM approval
 5. After PM approves and design doc merges: begin implementation in a new branch
 6. Implementation PR with `Closes #N`; PM reviews; merged
-7. After merge: remove `in-progress` label
+7. **Before picking a new issue:** check `gh pr list --state open --author @me` — if any of your own PRs is BEHIND or BLOCKED, rebase/fix it first. Only open a new PR once existing PRs are merged or have CI running cleanly.
+8. After merge: remove `in-progress` label
 
 **Workflow (Path A — direct implementation):**
 Same as Dev workflow, but may include a design note in the PR body instead of a separate doc.

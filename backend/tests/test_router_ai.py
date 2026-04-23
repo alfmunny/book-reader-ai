@@ -946,3 +946,27 @@ async def test_tts_chunks_oversized_text_returns_422(client, test_user):
         json={"text": "x" * 50_001},
     )
     assert resp.status_code == 422, f"Expected 422 for oversized text, got {resp.status_code}"
+
+
+async def test_summary_oversized_chapter_text_returns_422(client, test_user, tmp_db):
+    """POST /ai/summary rejects chapter_text longer than 50,000 chars (issue #505)."""
+    from services.db import save_book
+    from services.book_chapters import clear_cache as _clear
+    _BOOK_META = {"id": 9896, "title": "T", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}
+    text = "CHAPTER I\n\n" + "word " * 200
+    await save_book(9896, _BOOK_META, text)
+    _clear()
+    resp = await client.post(
+        "/api/ai/summary",
+        json={"book_id": 9896, "chapter_index": 0, "chapter_text": "x" * 50_001, "book_title": "T", "author": "A"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized chapter_text, got {resp.status_code}"
+
+
+async def test_references_oversized_chapter_excerpt_returns_422(client, test_user):
+    """POST /ai/references rejects chapter_excerpt longer than max_length (issue #505)."""
+    resp = await client.post(
+        "/api/ai/references",
+        json={"book_title": "T", "author": "A", "chapter_excerpt": "x" * 10_001},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized chapter_excerpt, got {resp.status_code}"

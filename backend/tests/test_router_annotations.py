@@ -473,3 +473,18 @@ async def test_create_annotation_oversized_sentence_text_returns_422(client, tes
     assert resp.status_code == 422, (
         f"Expected 422 for oversized sentence_text, got {resp.status_code}: {resp.text[:200]}"
     )
+
+
+async def test_patch_annotation_oversized_note_text_returns_422(client, test_user, tmp_db):
+    """PATCH /annotations/{id} rejects note_text longer than max_length (issue #504)."""
+    from services.db import save_book
+    text = "CHAPTER I\n\n" + "word " * 300
+    await save_book(9895, {**_BOOK_META, "id": 9895}, text)
+    from services.book_chapters import clear_cache as _clear
+    _clear()
+    ann = await create_annotation(test_user["id"], 9895, 0, "Some sentence.", "", "yellow")
+    resp = await client.patch(
+        f"/api/annotations/{ann['id']}",
+        json={"note_text": "x" * 10_001},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized note_text in PATCH, got {resp.status_code}"

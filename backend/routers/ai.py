@@ -63,15 +63,15 @@ class QARequest(BaseModel):
 class ReferencesRequest(BaseModel):
     book_title: str
     author: str
-    chapter_title: str = ""
-    chapter_excerpt: str = ""
+    chapter_title: str = Field(default="", max_length=500)
+    chapter_excerpt: str = Field(default="", max_length=10_000)
     response_language: str = "en"
 
 
 class SummaryRequest(BaseModel):
     book_id: int
     chapter_index: int
-    chapter_text: str
+    chapter_text: str = Field(..., max_length=50_000)
     book_title: str
     author: str
     chapter_title: str = ""

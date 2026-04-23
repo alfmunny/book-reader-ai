@@ -19,7 +19,7 @@ class AnnotationCreate(BaseModel):
 
 
 class AnnotationUpdate(BaseModel):
-    note_text: Optional[str] = None
+    note_text: Optional[str] = Field(default=None, max_length=10000)
     color: Optional[AnnotationColor] = None
 
 

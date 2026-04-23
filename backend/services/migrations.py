@@ -18,6 +18,7 @@ This module has no external dependencies beyond `aiosqlite`.
 """
 
 import os
+import re
 import aiosqlite
 
 
@@ -147,10 +148,12 @@ async def run(db_path: str) -> list[str]:
                 continue
 
             # Apply each statement in the migration file inside one transaction.
-            # We split on `;` (with a trailing strip) because aiosqlite's
-            # execute() only runs one statement at a time.
+            # We split on `;` because aiosqlite's execute() only runs one
+            # statement at a time. Strip -- line comments first so semicolons
+            # inside comments don't produce spurious empty/invalid fragments.
             try:
-                for statement in sql.split(";"):
+                sql_no_comments = re.sub(r"--[^\n]*", "", sql)
+                for statement in sql_no_comments.split(";"):
                     stmt = statement.strip()
                     if stmt:
                         await db.execute(stmt)

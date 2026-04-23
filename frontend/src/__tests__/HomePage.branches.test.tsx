@@ -533,9 +533,9 @@ describe("HomePage — popular books pagination", () => {
     await renderHome();
 
     await waitFor(() =>
-      expect(screen.getByText(/← Prev/i)).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /Prev/i })).toBeInTheDocument(),
     );
-    expect(screen.getByText(/Next →/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument();
     expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
   });
 
@@ -550,9 +550,9 @@ describe("HomePage — popular books pagination", () => {
     const user = userEvent.setup();
     await renderHome();
 
-    await waitFor(() => expect(screen.getByText(/Next →/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument());
 
-    await user.click(screen.getByText(/Next →/i));
+    await user.click(screen.getByRole("button", { name: /Next/i }));
 
     await waitFor(() =>
       expect(mockGetPopularBooks).toHaveBeenCalledTimes(2),
@@ -570,10 +570,10 @@ describe("HomePage — popular books pagination", () => {
     await renderHome();
 
     await waitFor(() =>
-      expect(screen.getByText(/← Prev/i)).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: /Prev/i })).toBeInTheDocument(),
     );
 
-    const prevBtn = screen.getByText(/← Prev/i).closest("button");
+    const prevBtn = screen.getByRole("button", { name: /Prev/i });
     expect(prevBtn).toBeDisabled();
   });
 });

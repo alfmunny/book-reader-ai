@@ -40,7 +40,9 @@ This eliminates every `source=='upload'` branch that touches `books.text`; code 
 
 ## Database Schema
 
-### New table (migration 024)
+### New table (migration 025)
+
+> **Note:** Migration `024_flashcard_reviews.sql` is already merged. This migration uses `025`.
 
 ```sql
 CREATE TABLE IF NOT EXISTS user_book_chapters (
@@ -150,7 +152,7 @@ Files changed:
 
 | File | Change |
 |---|---|
-| `backend/migrations/024_user_book_chapters.sql` | New table DDL |
+| `backend/migrations/025_user_book_chapters.sql` | New table DDL |
 | `backend/scripts/migrate_upload_chapters.py` | One-time data migration |
 | `backend/services/book_chapters.py` | Remove JSON-detect branch; query `user_book_chapters` for uploads |
 | `backend/routers/uploads.py` | Write to / read from `user_book_chapters` instead of `books.text` |

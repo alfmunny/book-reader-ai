@@ -723,3 +723,15 @@ async def test_save_word_negative_chapter_index_returns_422(client, test_user, t
         "sentence_text": "Hello world.",
     })
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #731: ge=1 bound on book_id body field in vocabulary router ─────────
+
+
+async def test_save_word_negative_book_id_returns_422(client, test_user):
+    """Regression #731: POST /vocabulary with book_id < 1 must return 422."""
+    resp = await client.post("/api/vocabulary", json={
+        "word": "hello", "book_id": -1, "chapter_index": 0,
+        "sentence_text": "Hello world.",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

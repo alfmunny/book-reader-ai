@@ -342,3 +342,12 @@ async def test_update_reading_progress_negative_chapter_index_returns_422(client
                            "subjects": [], "download_count": 0, "cover": ""}, "text")
     resp = await client.put("/api/user/reading-progress/9001", json={"chapter_index": -1})
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #731: ge=1 bound on book_id path param in user router ───────────────
+
+
+async def test_update_reading_progress_negative_book_id_returns_422(client, test_user):
+    """Regression #731: PUT /user/reading-progress/{book_id} with negative id must return 422."""
+    resp = await client.put("/api/user/reading-progress/-1", json={"chapter_index": 0})
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

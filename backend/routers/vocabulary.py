@@ -25,7 +25,7 @@ router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
 
 class WordSave(BaseModel):
     word: str = Field(..., max_length=200)
-    book_id: int
+    book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     sentence_text: str = Field(..., max_length=5000)
 

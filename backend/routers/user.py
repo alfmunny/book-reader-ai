@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
@@ -59,8 +59,8 @@ class ProgressUpdate(BaseModel):
 
 @router.put("/reading-progress/{book_id}")
 async def update_reading_progress(
-    book_id: int,
     req: ProgressUpdate,
+    book_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
     book = await get_cached_book(book_id)

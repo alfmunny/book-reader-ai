@@ -181,6 +181,19 @@ async def test_stats_reviewed_today_after_review(client, test_user):
     assert data["reviewed_today"] == 1
 
 
+# ── Session cap (issue #564) ──────────────────────────────────────────────────
+
+async def test_due_flashcards_capped_at_100(client, test_user):
+    """GET /flashcards/due must return at most 100 cards even when more are due."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    for i in range(110):
+        await save_word(test_user["id"], f"word_{i:03d}", BOOK_ID, 0, f"Context {i}.")
+
+    resp = await client.get("/api/vocabulary/flashcards/due")
+    assert resp.status_code == 200
+    assert len(resp.json()) <= 100
+
+
 # ── Auth requirements ─────────────────────────────────────────────────────────
 
 async def test_flashcards_require_auth(anon_client):

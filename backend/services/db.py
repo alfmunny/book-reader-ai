@@ -1076,6 +1076,7 @@ async def get_flashcards_due(user_id: int) -> list[dict]:
             JOIN vocabulary v ON v.id = fr.vocabulary_id
             WHERE fr.user_id = ? AND fr.due_date <= date('now')
             ORDER BY fr.due_date ASC, v.word ASC
+            LIMIT 100
             """,
             (user_id,),
         ) as cur:

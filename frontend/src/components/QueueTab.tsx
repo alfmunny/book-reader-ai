@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { CheckIcon, AlertCircleIcon } from "@/components/Icons";
 import {
   CHAIN_PRESETS,
   DEFAULT_CHAIN,
@@ -601,7 +602,13 @@ export default function QueueTab({ adminFetch }: Props) {
                         : "text-stone-600"
                     }`}
                   >
-                    {e.event === "translated" ? "✓" : "!"} {e.event}
+                    <span className="inline-flex items-center gap-1">
+                      {e.event === "translated" ? (
+                        <CheckIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" aria-hidden="true" />
+                      ) : (
+                        <AlertCircleIcon className="w-4 h-4 text-red-600 flex-shrink-0" aria-hidden="true" />
+                      )}
+                    </span> {e.event}
                     {e.title ? ` · ${e.title}` : ""}
                     {e.chapter !== undefined ? ` · ch${e.chapter}` : ""}
                     {e.lang ? ` → ${e.lang}` : ""}

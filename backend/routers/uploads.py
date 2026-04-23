@@ -297,6 +297,13 @@ async def delete_uploaded_book(book_id: int, user: dict = Depends(get_current_us
             (book_id,),
         )
         await db.execute("DELETE FROM word_occurrences WHERE book_id=?", (book_id,))
+        # Prune flashcard_reviews for vocabulary entries about to be orphaned,
+        # then prune those vocabulary entries. FK enforcement is off so this
+        # must be done manually before the vocabulary delete.
+        await db.execute(
+            "DELETE FROM flashcard_reviews WHERE vocabulary_id NOT IN "
+            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
         await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )

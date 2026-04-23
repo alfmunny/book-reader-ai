@@ -151,7 +151,7 @@ export default function AnnotationToolbar({
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex-1 rounded-lg bg-amber-700 text-white text-sm py-1.5 hover:bg-amber-800 disabled:opacity-50 transition-colors"
+          className="flex-1 rounded-lg bg-amber-700 text-white text-sm py-1.5 min-h-[44px] hover:bg-amber-800 disabled:opacity-50 transition-colors"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -159,7 +159,7 @@ export default function AnnotationToolbar({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="rounded-lg border border-red-300 text-red-600 text-sm px-3 py-1.5 hover:bg-red-50 disabled:opacity-50 transition-colors"
+            className="rounded-lg border border-red-300 text-red-600 text-sm px-3 py-1.5 min-h-[44px] hover:bg-red-50 disabled:opacity-50 transition-colors"
           >
             {deleting ? "…" : "Delete"}
           </button>
@@ -167,7 +167,7 @@ export default function AnnotationToolbar({
         <button
           onClick={onClose}
           aria-label="Close"
-          className="rounded-lg border border-stone-300 text-stone-500 px-2.5 py-1.5 hover:bg-stone-50 transition-colors flex items-center justify-center"
+          className="rounded-lg border border-stone-300 text-stone-500 px-2.5 py-1.5 min-h-[44px] hover:bg-stone-50 transition-colors flex items-center justify-center"
         >
           <CloseIcon className="w-4 h-4" />
         </button>

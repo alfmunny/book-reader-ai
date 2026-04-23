@@ -557,3 +557,24 @@ async def test_double_confirm_second_request_returns_400(client, test_user, tmp_
     assert statuses == [200, 400], (
         f"Expected one 200 and one 400 from concurrent confirms, got statuses: {statuses}"
     )
+
+
+# ── Empty chapters list validation (Issue #475) ───────────────────────────────
+
+async def test_confirm_chapters_empty_list_returns_400(client, test_user):
+    """Regression #475: confirming with an empty chapters list must return 400.
+
+    An empty list would mark the book as confirmed but with 0 chapters,
+    making all chapter_index accesses return out-of-range errors.
+    """
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": []},
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for empty chapters list, got {resp.status_code}: {resp.text}"
+    )

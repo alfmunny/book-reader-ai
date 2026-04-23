@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { BookMeta, getBookTranslationStatus, TranslationStatus } from "@/lib/api";
 import { RecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
-import { BookCoverPlaceholderIcon, CloseIcon } from "@/components/Icons";
+import { BookCoverPlaceholderIcon, CloseIcon, CheckIcon } from "@/components/Icons";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English", de: "German", fr: "French", es: "Spanish",
@@ -100,7 +100,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
         {/* Translation availability */}
         {showTranslation && (
           <div className="flex items-center gap-2 mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-            <span>✓</span>
+            <CheckIcon aria-hidden="true" className="w-4 h-4 shrink-0" />
             <span>
               {fullTranslation
                 ? `Full ${LANG_NAMES[translationLang] ?? translationLang} translation available`

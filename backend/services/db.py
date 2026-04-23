@@ -675,11 +675,17 @@ async def get_user_stats(user_id: int) -> dict:
 
 
 async def list_cached_books() -> list[dict]:
-    """Return all cached books (without text field)."""
+    """Return publicly available cached books (Gutenberg only, without text field).
+
+    Uploaded books are excluded — their titles are private to the owner.
+    """
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT id, title, authors, languages, subjects, download_count, cover, cached_at FROM books ORDER BY cached_at DESC"
+            "SELECT id, title, authors, languages, subjects, download_count, cover, cached_at"
+            " FROM books"
+            " WHERE (source IS NULL OR source != 'upload')"
+            " ORDER BY cached_at DESC"
         ) as cursor:
             rows = await cursor.fetchall()
     result = []

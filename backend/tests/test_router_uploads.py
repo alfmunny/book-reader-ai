@@ -632,7 +632,26 @@ async def test_confirm_chapters_non_integer_original_index_returns_400(client, t
         f"/api/books/{book_id}/chapters/confirm",
         json={"chapters": [{"title": "Chapter 1", "original_index": "not_an_int"}]},
     )
-    assert resp.status_code in (200, 400), (
-        f"Expected 200 (graceful empty-text) or 400, got {resp.status_code} (likely 500 crash): {resp.text}"
+    assert resp.status_code in (200, 400, 422), (
+        f"Expected 200/400/422, got {resp.status_code} (likely 500 crash): {resp.text}"
     )
     assert resp.status_code != 500, "Non-integer original_index must not crash the server with 500"
+
+
+# ── Issue #519: ConfirmChapterSpec title max_length ───────────────────────────
+
+
+async def test_confirm_chapters_oversized_title_returns_422(client, test_user):
+    """Regression #519: chapter title > 500 chars must return 422, not store a
+    huge string in the books table."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": [{"title": "x" * 501, "original_index": 0}]},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized chapter title, got {resp.status_code}: {resp.text}"
+    )

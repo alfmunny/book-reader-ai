@@ -268,7 +268,7 @@ async def translate_cache(
 
 class SaveTranslationRequest(BaseModel):
     book_id: int
-    chapter_index: int
+    chapter_index: int = Field(..., ge=0)
     target_language: str = Field(..., max_length=20)
     paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)

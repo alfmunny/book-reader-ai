@@ -4,7 +4,7 @@ import logging
 import os
 from typing import AsyncIterator
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_epub
@@ -146,8 +146,8 @@ async def translation_status(book_id: int, target_language: str = Query(..., max
 
 @router.get("/{book_id}/chapters/{chapter_index}/queue-status")
 async def chapter_queue_status(
-    book_id: int,
-    chapter_index: int,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     target_language: str = Query(..., max_length=20),
     user: dict = Depends(get_current_user),
 ):
@@ -175,8 +175,8 @@ async def chapter_queue_status(
 
 @router.get("/{book_id}/chapters/{chapter_index}/translation")
 async def get_chapter_translation(
-    book_id: int,
-    chapter_index: int,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     target_language: str = Query(..., max_length=20),
     user: dict | None = Depends(get_optional_user),
 ):
@@ -212,9 +212,9 @@ class RequestTranslationBody(BaseModel):
 
 @router.post("/{book_id}/chapters/{chapter_index}/translation")
 async def request_chapter_translation(
-    book_id: int,
-    chapter_index: int,
     req: RequestTranslationBody,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     user: dict | None = Depends(get_optional_user),
 ):
     """Unified reader-side translation endpoint.
@@ -376,9 +376,9 @@ async def enqueue_all_chapters(
 
 @router.post("/{book_id}/chapters/{chapter_index}/translation/retry")
 async def retry_chapter_translation(
-    book_id: int,
-    chapter_index: int,
     req: RequestTranslationBody,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     user: dict = Depends(get_current_user),
 ):
     """Re-queue a single chapter whose queue row is in 'failed' state.

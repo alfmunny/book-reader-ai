@@ -1152,3 +1152,12 @@ async def test_delete_summary_negative_chapter_index_returns_422(client, test_us
     """Regression #717: DELETE /ai/summary with chapter_index < 0 must return 422."""
     resp = await client.delete("/api/ai/summary?book_id=1&chapter_index=-1")
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_save_translation_negative_chapter_index_returns_422(client, test_user):
+    """Regression #719: PUT /ai/translate/cache with chapter_index < 0 must return 422."""
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 1, "chapter_index": -1, "target_language": "en",
+        "paragraphs": ["Hello."],
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

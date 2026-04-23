@@ -1139,3 +1139,16 @@ async def test_chapter_translation_oversized_target_language_returns_422(client)
     assert resp.status_code == 422, (
         f"Expected 422 for oversized target_language in chapter translation, got {resp.status_code}: {resp.text}"
     )
+
+
+async def test_chapter_translation_negative_chapter_index_returns_422(client, test_user, tmp_db):
+    """Regression #719: GET/POST /books/{id}/chapters/{idx}/translation with idx<0 must return 422."""
+    resp = await client.get("/api/books/1/chapters/-1/translation?target_language=en")
+    assert resp.status_code == 422, f"GET: expected 422, got {resp.status_code}: {resp.text}"
+
+    resp = await client.post("/api/books/1/chapters/-1/translation",
+                             json={"target_language": "en"})
+    assert resp.status_code == 422, f"POST: expected 422, got {resp.status_code}: {resp.text}"
+
+    resp = await client.get("/api/books/1/chapters/-1/queue-status?target_language=en")
+    assert resp.status_code == 422, f"queue-status: expected 422, got {resp.status_code}: {resp.text}"

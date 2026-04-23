@@ -123,6 +123,17 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - Keep `product/review-state.md` updated every cycle
 - **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
 
+**Default models and idle-recovery cadences (set in `scripts/start-roles.sh`):**
+
+| Role | Model | Loop cadence |
+|---|---|---|
+| PM | `claude-opus-4-7` | 3 min (team-size-adjusted) |
+| Dev | `claude-sonnet-4-6` | 5 min |
+| UI/UX Dev | `claude-sonnet-4-6` | 5 min |
+| Architect | `claude-opus-4-7` | 10 min |
+
+All four roles use `/loop Nm` so the harness fires a cron on every tick. If a role finishes a task and goes idle, the next cron tick re-enters its work prompt automatically — no manual intervention needed. Edit `*_POLL_MINUTES` variables in `start-roles.sh` and restart to change cadences.
+
 **Polling cadence (fixed-interval cron via `/loop Nm`):**
 - PM runs as `/loop ${PM_POLL_MINUTES}m <prompt>`, launched by `scripts/start-roles.sh`. The harness fires the cron every N minutes regardless of whether the prior turn re-armed a wakeup — this guarantees the loop cannot die silently between turns.
 - **Default cadence** is 3 min, sized for 3 active code roles (Dev + UI/UX + Architect). `start-roles.sh` bumps it to 2 min when `dev2` is added.
@@ -130,9 +141,10 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - PM should **not** call `ScheduleWakeup` itself — the fixed cron is the sole wake source. Conversational replies to the user do not need to end with a wakeup.
 
 **Startup sequence:**
-1. Read all memory files in `MEMORY.md`
-2. Run `git worktree list` — warn user if `in-progress` issues exist but no worktrees are set up
-3. Run `gh pr list --state open` and `gh issue list --label "in-progress"` to orient
+1. Run `git -C /Users/alfmunny/Projects/AI/book-reader-ai fetch origin main --quiet` to ensure remote refs are current.
+2. Read all memory files in `MEMORY.md`
+3. Run `git worktree list` — warn user if `in-progress` issues exist but no worktrees are set up
+4. Run `gh pr list --state open` and `gh issue list --label "in-progress"` to orient
 4. Resume from `product/review-state.md`
 5. **Stale claim cleanup:** For any `in-progress` issue with no linked open PR and a claim comment older than 1 hour, leave a comment asking the owning session to confirm it's active. If it's already been asked once with no follow-up, remove the `in-progress` label so it can be reclaimed.
 
@@ -229,8 +241,9 @@ At the start of every session, follow this exact order. **Do not skip step 5.**
 
 1. Declare your role (PM / Dev / UI/UX Dev / Architect).
 2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`.
-3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`). If not, create it before touching any file.
-4. If PM: check worktree list and warn the user if `in-progress` issues exist but no worktrees are set up.
+3. If PM: run `git -C /Users/alfmunny/Projects/AI/book-reader-ai fetch origin main --quiet` to ensure remote refs are current before reading CLAUDE.md or any `docs/` file.
+4. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`). If not, create it before touching any file. Read CLAUDE.md from the **main checkout** (`/Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md`), not from your worktree — the main checkout always has the latest version.
+5. If PM: check worktree list and warn the user if `in-progress` issues exist but no worktrees are set up.
 5. **PR-first rule — walk through every leftover PR you authored before anything else.**
 
    Run `gh pr list --state open --author @me --json number,title,mergeStateStatus,headRefName`. For each PR in the result, do one of the following before moving on:

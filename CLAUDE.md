@@ -225,18 +225,23 @@ Same as Dev workflow, but may include a design note in the PR body instead of a 
 
 ## Session startup
 
-At the start of every session:
-1. Declare your role (PM / Dev / UI/UX Dev / Architect)
-2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`
-3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`) before touching any file
-4. If PM: check worktree list and warn user if `in-progress` issues exist but no worktrees are set up
-5. **Check your own open PRs immediately.** Run `gh pr list --state open --author @me --json number,title,mergeStateStatus` and for any PR that is `BEHIND` or `BLOCKED`, rebase and force-push **before** picking up any new work:
-   ```bash
-   git -C <worktree> fetch origin main
-   git -C <worktree> rebase origin/main
-   git -C <worktree> push origin <branch> --force-with-lease
-   ```
-   A BEHIND branch at startup means a prior session ended without rebasing — that PR will never auto-merge until you catch it up. Fix it first, then proceed to the rest of startup.
+At the start of every session, follow this exact order. **Do not skip step 5.**
+
+1. Declare your role (PM / Dev / UI/UX Dev / Architect).
+2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`.
+3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`). If not, create it before touching any file.
+4. If PM: check worktree list and warn the user if `in-progress` issues exist but no worktrees are set up.
+5. **PR-first rule — walk through every leftover PR you authored before anything else.**
+
+   Run `gh pr list --state open --author @me --json number,title,mergeStateStatus,headRefName`. For each PR in the result, do one of the following before moving on:
+   - **`BEHIND`** → fetch main, rebase, force-push. Re-run `/submit-pr` on the branch if needed.
+   - **Failed CI** → open the checks, understand the failure, fix on the branch, force-push, re-run `/submit-pr`.
+   - **`BLOCKED` waiting on PM review** → leave a comment asking PM for status, then move to the next PR.
+   - **`OPEN`, CI passing, auto-merge enabled, not BEHIND** → PR is driving itself; move on.
+
+   Only after every leftover PR has been accounted for does the role start its normal loop (PM cycle, Dev issue-picking, UX audit, Architect design work, etc.). A PR abandoned mid-session is the leading cause of the pileup pattern — driving them on startup is non-negotiable.
+
+6. Now — and only now — enter the role's per-cycle priority (see "Per-cycle priority (all code roles)" above).
 
 ## Testing policy
 

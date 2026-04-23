@@ -657,6 +657,48 @@ async def test_confirm_chapters_oversized_title_returns_422(client, test_user):
     )
 
 
+# ── Regression #630: flashcard_reviews cleanup on book delete ─────────────────
+
+
+async def test_delete_uploaded_book_sweeps_flashcard_reviews(client, test_user, tmp_db):
+    """Regression #630: delete_uploaded_book must sweep flashcard_reviews for
+    vocabulary entries that become orphaned after word_occurrences are removed.
+
+    The check queries flashcard_reviews directly (not via a JOIN) so that an
+    orphaned row — where the vocabulary FK is dangling — is still detected.
+    """
+    from services.db import _ensure_flashcard_rows
+    book_id = await _upload_and_confirm(client)
+
+    with patch("services.db._update_lemma", new_callable=AsyncMock):
+        await save_word(test_user["id"], "ephemword", book_id, 0, "An ephemeral word.")
+
+    # Seed flashcard_reviews for this vocabulary word and capture its id
+    await _ensure_flashcard_rows(test_user["id"])
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT fr.id FROM flashcard_reviews fr "
+            "JOIN vocabulary v ON v.id = fr.vocabulary_id "
+            "WHERE v.user_id=? AND v.word='ephemword'",
+            (test_user["id"],),
+        ) as cur:
+            row = await cur.fetchone()
+    assert row is not None, "pre-condition: flashcard_reviews row must exist"
+    fr_id = row[0]
+
+    del_resp = await client.delete(f"/api/books/upload/{book_id}")
+    assert del_resp.status_code == 200
+
+    # Check directly by primary key — would catch orphaned rows even if vocab FK is gone
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE id=?", (fr_id,)
+        ) as cur:
+            (after,) = await cur.fetchone()
+    assert after == 0, "orphaned flashcard_reviews must be swept after delete_uploaded_book"
+
+
 # ── Issue #606: ConfirmChaptersBody.chapters list max_length ─────────────────
 
 

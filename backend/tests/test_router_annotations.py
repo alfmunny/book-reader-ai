@@ -244,16 +244,15 @@ async def test_create_annotation_rejects_empty_sentence(client, test_user):
 
 
 async def test_create_annotation_rejects_negative_chapter_index(client, test_user):
-    """POST /annotations with chapter_index < 0 must return 400.
-    Negative indices are not valid book positions and would produce
-    invisible orphan rows (no reader query matches chapter -1)."""
+    """POST /annotations with chapter_index < 0 must return 422 (Pydantic ge=0).
+    Negative indices are not valid book positions — rejected at validation layer."""
     await save_book(BOOK_ID, _BOOK_META, "text")
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
         "chapter_index": -1,
         "sentence_text": "Some highlighted text.",
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_create_annotation_select_runs_before_commit(tmp_db, test_user, monkeypatch):
@@ -488,3 +487,12 @@ async def test_patch_annotation_oversized_note_text_returns_422(client, test_use
         json={"note_text": "x" * 10_001},
     )
     assert resp.status_code == 422, f"Expected 422 for oversized note_text in PATCH, got {resp.status_code}"
+
+
+async def test_create_annotation_negative_chapter_index_returns_422(client, test_user, tmp_db):
+    """Regression #717: POST /annotations with chapter_index < 0 must return 422."""
+    resp = await client.post("/api/annotations", json={
+        "book_id": 1, "chapter_index": -1,
+        "sentence_text": "some text", "note_text": "", "color": "yellow",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

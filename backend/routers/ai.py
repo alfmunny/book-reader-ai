@@ -70,7 +70,7 @@ class ReferencesRequest(BaseModel):
 
 class SummaryRequest(BaseModel):
     book_id: int
-    chapter_index: int
+    chapter_index: int = Field(..., ge=0)
     chapter_text: str = Field(..., max_length=50_000)
     book_title: str = Field(..., max_length=500)
     author: str = Field(..., max_length=500)
@@ -82,7 +82,7 @@ class TranslateRequest(BaseModel):
     source_language: str = Field(default="de", max_length=20)
     target_language: str = Field(default="en", max_length=20)
     book_id: int | None = None
-    chapter_index: int | None = None
+    chapter_index: int | None = Field(default=None, ge=0)
     # "auto" → Gemini if user has a key, else Google Translate (free).
     provider: Literal["auto", "gemini", "google"] = "auto"
 
@@ -209,7 +209,7 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
 
 
 @router.delete("/summary")
-async def delete_summary(book_id: int, chapter_index: int, user: dict = Depends(get_current_user)):
+async def delete_summary(book_id: int = Query(..., ge=1), chapter_index: int = Query(..., ge=0), user: dict = Depends(get_current_user)):
     """Admin-only: delete a cached summary so it will be regenerated on next request."""
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
@@ -236,8 +236,8 @@ async def delete_summary(book_id: int, chapter_index: int, user: dict = Depends(
 
 @router.get("/translate/cache")
 async def translate_cache(
-    book_id: int,
-    chapter_index: int,
+    book_id: int = Query(..., ge=1),
+    chapter_index: int = Query(..., ge=0),
     target_language: str = Query(..., max_length=20),
     _user: dict = Depends(get_current_user),
 ):
@@ -268,7 +268,7 @@ async def translate_cache(
 
 class SaveTranslationRequest(BaseModel):
     book_id: int
-    chapter_index: int
+    chapter_index: int = Field(..., ge=0)
     target_language: str = Field(..., max_length=20)
     paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)

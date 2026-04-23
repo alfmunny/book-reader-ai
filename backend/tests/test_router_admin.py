@@ -2457,3 +2457,115 @@ async def test_enqueue_book_oversized_target_languages_returns_422(admin_client)
         json={"book_id": 1, "target_languages": ["en"] * 101},
     )
     assert res.status_code == 422
+
+
+async def test_retranslate_all_empty_chapters_returns_ok(admin_client, admin_db):
+    """Regression #715: retranslate-all must not crash with SQL syntax error
+    when split_with_html_preference returns 0 chapters.
+
+    Previously the running-jobs SQL query was built as:
+      AND chapter_index IN ()
+    which is invalid SQLite syntax and caused a 500 OperationalError.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+
+    from services.book_chapters import clear_cache
+    clear_cache()
+
+    # Mock the splitter to return 0 chapters — the scenario that causes IN ()
+    with patch(
+        "services.book_chapters.split_with_html_preference",
+        new=AsyncMock(return_value=[]),
+    ):
+        res = await admin_client.post(
+            "/api/admin/translations/100/retranslate-all",
+            json={"target_language": "zh"},
+        )
+    assert res.status_code == 200, f"Expected 200 for zero-chapter book, got {res.status_code}: {res.text}"
+    body = res.json()
+    assert body["ok"] is True
+    assert body["chapters"] == 0
+    assert body["results"] == []
+
+
+# ── Issue #723: retranslate endpoints must work for uploaded books ─────────────
+
+
+async def _insert_uploaded_book(db_path: str, book_id: int, owner_id: int) -> None:
+    """Insert a confirmed uploaded book with two chapters into the test DB."""
+    import aiosqlite
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects, download_count,
+                                  cover, text, images, source, owner_user_id)
+               VALUES (?, 'Uploaded Novel', '["Author"]', '["en"]', '[]', 0, '', '', '[]', 'upload', ?)""",
+            (book_id, owner_id),
+        )
+        await db.execute(
+            """INSERT INTO book_uploads (book_id, user_id, filename, file_size, format)
+               VALUES (?, ?, 'novel.txt', 1024, 'txt')""",
+            (book_id, owner_id),
+        )
+        await db.executemany(
+            """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
+               VALUES (?, ?, ?, ?, 0)""",
+            [
+                (book_id, 0, "Chapter One", "word " * 300),
+                (book_id, 1, "Chapter Two", "word " * 300),
+            ],
+        )
+        await db.commit()
+
+
+async def test_retranslate_uploaded_book_returns_200(admin_client, admin_db, admin_user):
+    """Regression #723: retranslate must not return 404 for uploaded books.
+
+    Uploaded books have text='' in the books table; chapters live in
+    user_book_chapters. Previously the endpoint guarded with
+    `if not book or not book.get('text')` which always raised 404 for uploads.
+    """
+    import services.db as db_module
+    from services.book_chapters import clear_cache
+
+    await _insert_uploaded_book(db_module.DB_PATH, 7230, admin_user["id"])
+    clear_cache()
+
+    with patch(
+        "routers.admin.do_translate",
+        new_callable=AsyncMock,
+        return_value=["Translated paragraph."],
+    ):
+        res = await admin_client.post(
+            "/api/admin/translations/7230/0/zh/retranslate"
+        )
+
+    assert res.status_code == 200, (
+        f"Expected 200 for uploaded book retranslate, got {res.status_code}: {res.text}"
+    )
+    assert res.json()["ok"] is True
+
+
+async def test_retranslate_all_uploaded_book_returns_200(admin_client, admin_db, admin_user):
+    """Regression #723: retranslate-all must not return 404 for uploaded books."""
+    import services.db as db_module
+    from services.book_chapters import clear_cache
+
+    await _insert_uploaded_book(db_module.DB_PATH, 7231, admin_user["id"])
+    clear_cache()
+
+    with patch(
+        "routers.admin.do_translate",
+        new_callable=AsyncMock,
+        return_value=["Translated."],
+    ):
+        res = await admin_client.post(
+            "/api/admin/translations/7231/retranslate-all",
+            json={"target_language": "zh"},
+        )
+
+    assert res.status_code == 200, (
+        f"Expected 200 for uploaded book retranslate-all, got {res.status_code}: {res.text}"
+    )
+    body = res.json()
+    assert body["ok"] is True
+    assert body["chapters"] == 2

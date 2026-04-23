@@ -198,15 +198,14 @@ async def test_post_insight_rejects_empty_answer(client: AsyncClient):
 
 
 async def test_post_insight_rejects_negative_chapter_index(client: AsyncClient):
-    """POST /insights with chapter_index < 0 must return 400.
-    A negative chapter_index is not a valid position and produces an
-    invisible orphan row (no reader query matches chapter -1)."""
+    """POST /insights with chapter_index < 0 must return 422 (Pydantic ge=0).
+    A negative chapter_index is not a valid position — rejected at validation layer."""
     await save_book(1, _META, "text")
     resp = await client.post(
         "/api/insights",
         json={"book_id": 1, "question": "Q?", "answer": "A.", "chapter_index": -5},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_save_insight_select_runs_before_commit(tmp_db, test_user, monkeypatch):
@@ -353,3 +352,12 @@ async def test_duplicate_insight_returns_existing_row(client, test_user, tmp_db)
     assert r1.json()["id"] == r2.json()["id"], "Duplicate POST should return the same insight id"
     resp = await client.get("/api/insights?book_id=9887")
     assert len(resp.json()) == 1, f"Expected 1 insight, got {len(resp.json())}"
+
+
+async def test_create_insight_negative_chapter_index_returns_422(client, test_user, tmp_db):
+    """Regression #717: POST /insights with chapter_index < 0 must return 422."""
+    resp = await client.post("/api/insights", json={
+        "book_id": 1, "chapter_index": -1,
+        "question": "Q?", "answer": "A.",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

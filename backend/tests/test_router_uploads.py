@@ -779,3 +779,13 @@ async def test_confirm_chapters_oversized_list_returns_422(client, test_user):
         json={"chapters": oversized},
     )
     assert resp.status_code == 422
+
+
+async def test_confirm_chapters_negative_original_index_returns_422(client, test_user, tmp_db):
+    """Regression #721: POST /books/{id}/chapters/confirm with negative original_index must return 422.
+    A negative index silently produces empty chapter text — data corruption."""
+    resp = await client.post(
+        "/api/books/1/chapters/confirm",
+        json={"chapters": [{"title": "Ch 1", "original_index": -1}]},
+    )
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

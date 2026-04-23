@@ -711,3 +711,15 @@ async def test_definition_corrupted_gemini_key_returns_200_not_500(client, test_
     )
     data = resp.json()
     assert data["definitions"] == []
+
+
+async def test_save_word_negative_chapter_index_returns_422(client, test_user, tmp_db):
+    """Regression #719: POST /vocabulary with chapter_index < 0 must return 422."""
+    from services.db import save_book
+    await save_book(9001, {"title": "T", "authors": [], "languages": ["en"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.post("/api/vocabulary", json={
+        "word": "hello", "book_id": 9001, "chapter_index": -1,
+        "sentence_text": "Hello world.",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

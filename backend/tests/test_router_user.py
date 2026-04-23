@@ -97,16 +97,15 @@ async def test_reading_progress_rejects_nonexistent_book(client, test_user):
 
 
 async def test_reading_progress_rejects_negative_chapter_index(client, test_user):
-    """PUT reading-progress with chapter_index < 0 must return 400.
+    """PUT reading-progress with chapter_index < 0 must return 422 (Pydantic ge=0).
 
-    Negative indices are not valid chapter positions. Storing them would
-    silently corrupt the user's resume position."""
+    Negative indices are not valid chapter positions — rejected at validation layer."""
     from services.db import save_book
     _META = {"title": "T", "authors": [], "languages": ["en"], "subjects": [],
               "download_count": 0, "cover": ""}
     await save_book(BOOK_ID, _META, "text")
     resp = await client.put(f"/api/user/reading-progress/{BOOK_ID}", json={"chapter_index": -1})
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_get_obsidian_settings_returns_defaults_initially(client, test_user):
@@ -334,3 +333,12 @@ async def test_patch_obsidian_oversized_path_returns_422(client, test_user):
         "obsidian_path": "a/" * 501,
     })
     assert resp.status_code == 422, f"Expected 422 for oversized obsidian_path, got {resp.status_code}"
+
+
+async def test_update_reading_progress_negative_chapter_index_returns_422(client, test_user, tmp_db):
+    """Regression #721: PUT /user/reading-progress/{id} with chapter_index < 0 must return 422."""
+    from services.db import save_book
+    await save_book(9001, {"title": "T", "authors": [], "languages": ["en"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put("/api/user/reading-progress/9001", json={"chapter_index": -1})
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

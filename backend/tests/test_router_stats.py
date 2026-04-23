@@ -91,8 +91,9 @@ async def test_stats_totals_reflect_user_data(client, test_user, tmp_db):
 # ── Streak calculation ────────────────────────────────────────────────────────
 
 async def _insert_history_at(db_path, user_id, book_id, day_offset):
-    """Insert a reading_history row with a synthetic timestamp."""
-    target_date = date.today() - timedelta(days=day_offset)
+    """Insert a reading_history row with a synthetic timestamp (UTC-based)."""
+    from datetime import timezone, datetime as _dt
+    target_date = _dt.now(timezone.utc).date() - timedelta(days=day_offset)
     ts = f"{target_date.isoformat()} 12:00:00"
     async with aiosqlite.connect(db_path) as db:
         await db.execute(
@@ -154,7 +155,8 @@ async def test_activity_includes_vocabulary_events(client, test_user, tmp_db):
     await save_word(test_user["id"], "loquacious", BOOK_ID, 0, "A loquacious narrator.")
     resp = await client.get("/api/user/stats")
     activity = resp.json()["activity"]
-    today = date.today().isoformat()
+    from datetime import timezone, datetime as _dt
+    today = _dt.now(timezone.utc).date().isoformat()
     counts = {a["date"]: a["count"] for a in activity}
     assert today in counts
     assert counts[today] >= 1
@@ -206,7 +208,8 @@ async def test_progress_update_multiple_chapters_all_logged(client, test_user, t
 
     # 4 reading events → activity count for today >= 4
     resp = await client.get("/api/user/stats")
-    today = date.today().isoformat()
+    from datetime import timezone, datetime as _dt
+    today = _dt.now(timezone.utc).date().isoformat()
     activity = {a["date"]: a["count"] for a in resp.json()["activity"]}
     assert activity.get(today, 0) >= 4
 

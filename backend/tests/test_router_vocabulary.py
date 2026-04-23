@@ -571,3 +571,17 @@ async def test_save_word_oversized_sentence_text_returns_422(client, test_user, 
         json={"word": "Wort", "book_id": 1, "chapter_index": 0, "sentence_text": "s" * 5001},
     )
     assert resp.status_code == 422, f"Expected 422 for oversized sentence_text, got {resp.status_code}"
+
+
+# ── Issue #513: ExportRequest.target_language max_length ─────────────────────
+
+async def test_export_obsidian_oversized_target_language_returns_422(client, test_user):
+    """Regression #513: POST /vocabulary/export/obsidian with target_language > 20 chars
+    must return 422, not pass to external translation API."""
+    resp = await client.post(
+        "/api/vocabulary/export/obsidian",
+        json={"target_language": "x" * 21},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in export/obsidian, got {resp.status_code}: {resp.text}"
+    )

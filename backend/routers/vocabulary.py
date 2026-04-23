@@ -29,7 +29,7 @@ class WordSave(BaseModel):
 
 class ExportRequest(BaseModel):
     book_id: int | None = None
-    target_language: str = "zh"
+    target_language: str = Field(default="zh", max_length=20)
 
 
 @router.post("")

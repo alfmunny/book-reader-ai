@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_html
 from services.db import (
     get_cached_book,
@@ -205,7 +205,7 @@ async def get_chapter_translation(
 
 
 class RequestTranslationBody(BaseModel):
-    target_language: str
+    target_language: str = Field(..., max_length=20)
 
 
 @router.post("/{book_id}/chapters/{chapter_index}/translation")

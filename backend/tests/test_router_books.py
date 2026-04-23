@@ -1050,3 +1050,45 @@ async def test_cached_books_hides_uploaded_books(client, test_user, tmp_db, inse
     assert 9891 not in returned_ids, (
         "Private uploaded book must NOT appear in cached list — its title is private"
     )
+
+
+# ── Issue #513: target_language max_length ────────────────────────────────────
+
+
+async def test_request_translation_oversized_target_language_returns_422(client, test_user):
+    """Regression #513: POST /books/{id}/chapters/0/translation with target_language > 20 chars
+    must return 422, not silently store a huge string in translation_queue."""
+    await save_book(9801, {**MOCK_META, "id": 9801}, "some text")
+    resp = await client.post(
+        "/api/books/9801/chapters/0/translation",
+        json={"target_language": "x" * 21},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_enqueue_all_oversized_target_language_returns_422(client, test_user):
+    """Regression #513: POST /books/{id}/translations/enqueue-all with target_language > 20 chars
+    must return 422."""
+    await save_book(9802, {**MOCK_META, "id": 9802}, "some text")
+    resp = await client.post(
+        "/api/books/9802/translations/enqueue-all",
+        json={"target_language": "y" * 21},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in enqueue-all, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_retry_translation_oversized_target_language_returns_422(client, test_user):
+    """Regression #513: POST /books/{id}/chapters/{idx}/translation/retry with target_language > 20 chars
+    must return 422."""
+    await save_book(9803, {**MOCK_META, "id": 9803}, "some text")
+    resp = await client.post(
+        "/api/books/9803/chapters/0/translation/retry",
+        json={"target_language": "z" * 21},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in retry, got {resp.status_code}: {resp.text}"
+    )

@@ -847,7 +847,10 @@ export default function QueueTab({ adminFetch }: Props) {
               </label>
               <div className="flex items-center gap-2">
                 {wasJustSaved("chain") && (
-                  <span className="text-xs text-emerald-700">Saved ✓</span>
+                  <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
+                    <CheckIcon className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                    Saved
+                  </span>
                 )}
                 <button
                   onClick={() => {

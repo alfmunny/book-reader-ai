@@ -501,6 +501,9 @@ def _html_body_text(
     skipped_heading = not skip_first_heading
     skip_set = {id(e) for e in skip_elems}
 
+    _BLOCK_TAGS = {"p", "div", "blockquote", "pre", "h1", "h2", "h3", "h4", "h5", "h6",
+                   "ul", "ol", "table", "section", "article", "aside", "header", "footer"}
+
     for child in elem.iterchildren():
         tag = child.tag if isinstance(child.tag, str) else ""
         if id(child) in skip_set:
@@ -524,8 +527,21 @@ def _html_body_text(
         elif tag == "hr":
             continue
         else:
-            # Fall-through: if it's another container (section, div) recurse
-            text = _html_body_text(child, skip_first_heading=False)
+            # Fall-through: a div whose own children are all inline (span/a/
+            # br/em/strong/text) is itself a paragraph — common in Gutenberg
+            # poetry EPUBs where each verse line is wrapped in
+            # <span class="i0">…<br/></span> inside <div class="stanza">.
+            # Treat it as one paragraph via _html_inline_text so the line
+            # text survives (the recursive variant only looks at children
+            # and drops each span's .text).
+            has_block_child = any(
+                isinstance(gc.tag, str) and gc.tag in _BLOCK_TAGS
+                for gc in child.iterchildren()
+            )
+            if not has_block_child:
+                text = _html_inline_text(child)
+            else:
+                text = _html_body_text(child, skip_first_heading=False)
             if text.strip():
                 parts.append(text.strip())
 
@@ -574,6 +590,10 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         basename = item.get_name().split("/")[-1].lower()
         if basename in _SKIP_SUFFIXES:
             continue
+        # Modern Gutenberg EPUBs include a `pg-footer` spine item carrying
+        # the PG trademark license. Never a real chapter.
+        if item_id in ("pg-footer",):
+            continue
 
         raw = item.get_content()
         try:
@@ -581,6 +601,11 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
             body = doc.find(".//body")
             if body is None:
                 body = doc
+            # Drop PG boilerplate <section> wrappers from the body before
+            # extracting text. These hold the legal header and aren't part
+            # of the chapter content.
+            for boiler in body.xpath(".//section[contains(@class, 'pg-boilerplate')]"):
+                boiler.getparent().remove(boiler)
             text = _html_body_text(body, skip_first_heading=True)
         except Exception:
             continue

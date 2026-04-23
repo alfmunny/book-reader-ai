@@ -1,5 +1,5 @@
 from typing import Literal, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, check_book_access
 from services.db import create_annotation, get_annotations, get_all_annotations, update_annotation, delete_annotation, get_cached_book
@@ -11,7 +11,7 @@ AnnotationColor = Literal["yellow", "blue", "green", "pink"]
 
 
 class AnnotationCreate(BaseModel):
-    book_id: int
+    book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     sentence_text: str = Field(..., max_length=5000)
     note_text: str = Field(default="", max_length=10000)
@@ -56,7 +56,7 @@ async def list_all_annotations(user: dict = Depends(get_current_user)):
 
 
 @router.get("")
-async def list_annotations(book_id: int, user: dict = Depends(get_current_user)):
+async def list_annotations(book_id: int = Query(..., ge=1), user: dict = Depends(get_current_user)):
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -66,8 +66,8 @@ async def list_annotations(book_id: int, user: dict = Depends(get_current_user))
 
 @router.patch("/{annotation_id}")
 async def update(
-    annotation_id: int,
     req: AnnotationUpdate,
+    annotation_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
     result = await update_annotation(
@@ -80,7 +80,7 @@ async def update(
 
 
 @router.delete("/{annotation_id}")
-async def delete(annotation_id: int, user: dict = Depends(get_current_user)):
+async def delete(annotation_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
     deleted = await delete_annotation(annotation_id, user["id"])
     if not deleted:
         raise HTTPException(status_code=404, detail="Annotation not found")

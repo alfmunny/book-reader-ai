@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, check_book_access
 from services.db import save_insight, get_insights, get_all_insights, delete_insight, get_cached_book
@@ -7,7 +7,7 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 
 
 class InsightCreate(BaseModel):
-    book_id: int
+    book_id: int = Field(..., ge=1)
     chapter_index: int | None = Field(default=None, ge=0)
     question: str = Field(..., max_length=2000)
     answer: str = Field(..., max_length=20000)
@@ -50,7 +50,7 @@ async def list_all_insights(user: dict = Depends(get_current_user)):
 
 
 @router.get("")
-async def list_insights(book_id: int, user: dict = Depends(get_current_user)):
+async def list_insights(book_id: int = Query(..., ge=1), user: dict = Depends(get_current_user)):
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -59,7 +59,7 @@ async def list_insights(book_id: int, user: dict = Depends(get_current_user)):
 
 
 @router.delete("/{insight_id}")
-async def delete(insight_id: int, user: dict = Depends(get_current_user)):
+async def delete(insight_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
     deleted = await delete_insight(insight_id, user["id"])
     if not deleted:
         raise HTTPException(status_code=404, detail="Insight not found")

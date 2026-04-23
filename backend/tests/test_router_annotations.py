@@ -496,3 +496,33 @@ async def test_create_annotation_negative_chapter_index_returns_422(client, test
         "sentence_text": "some text", "note_text": "", "color": "yellow",
     })
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #729: ge=1 bounds on book_id, annotation_id ────────────────────────
+
+
+async def test_create_annotation_negative_book_id_returns_422(client, test_user):
+    """Regression #729: POST /annotations with book_id < 1 must return 422."""
+    resp = await client.post("/api/annotations", json={
+        "book_id": -1, "chapter_index": 0,
+        "sentence_text": "text", "note_text": "", "color": "yellow",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_list_annotations_negative_book_id_returns_422(client, test_user):
+    """Regression #729: GET /annotations?book_id=-1 must return 422."""
+    resp = await client.get("/api/annotations?book_id=-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_update_annotation_negative_id_returns_422(client, test_user):
+    """Regression #729: PATCH /annotations/{id} with negative id must return 422."""
+    resp = await client.patch("/api/annotations/-1", json={"note_text": "note"})
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_delete_annotation_negative_id_returns_422(client, test_user):
+    """Regression #729: DELETE /annotations/{id} with negative id must return 422."""
+    resp = await client.delete("/api/annotations/-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

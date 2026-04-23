@@ -612,3 +612,47 @@ async def test_remove_word_oversized_word_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for oversized word in DELETE /vocabulary, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── AI fallback for empty wiktionary results (issue #444) ────────────────────
+
+async def test_definition_falls_back_to_ai_when_wiktionary_empty(client, test_user):
+    """When wiktionary returns no definitions, the endpoint falls back to AI if user has a key."""
+    from services.auth import encrypt_api_key
+    import aiosqlite
+    import services.db as db_module
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET gemini_key=? WHERE id=?",
+            (encrypt_api_key("fake-gemini-key"), test_user["id"]),
+        )
+        await db.commit()
+
+    empty_wikt = {"lemma": "Fernweh", "language": "de", "definitions": [], "url": "https://en.wiktionary.org/wiki/Fernweh"}
+    ai_response = '{"lemma":"Fernweh","definitions":[{"pos":"noun","text":"longing for distant places"}]}'
+
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=empty_wikt)), \
+         patch("services.gemini._generate", new=AsyncMock(return_value=ai_response)):
+        resp = await client.get("/api/vocabulary/definition/Fernweh?lang=de")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["definitions"]) == 1
+    assert "longing" in data["definitions"][0]["text"]
+
+
+async def test_definition_no_ai_fallback_when_wiktionary_succeeds(client, test_user):
+    """When wiktionary returns definitions, AI is not called even if user has a key."""
+    wikt_result = {
+        "lemma": "whale",
+        "language": "en",
+        "definitions": [{"pos": "noun", "text": "A large marine mammal."}],
+        "url": "https://en.wiktionary.org/wiki/whale",
+    }
+    ai_generate = AsyncMock()
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=wikt_result)), \
+         patch("services.gemini._generate", ai_generate):
+        resp = await client.get("/api/vocabulary/definition/whale?lang=en")
+
+    assert resp.status_code == 200
+    ai_generate.assert_not_called()

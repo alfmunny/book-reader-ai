@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from services.wiktionary import lookup, _extract_lemma, _strip_html
+from services.wiktionary import lookup, _extract_lemma, _strip_html, ai_lookup
 
 
 # ── _strip_html ────────────────────────────────────────────────────────────────
@@ -335,3 +335,34 @@ async def test_lookup_word_with_special_chars_wikt_url_is_encoded():
         result = await lookup("foo#bar", "en")
     assert "#" not in result["url"]
     assert "%23" in result["url"]
+
+
+# ── ai_lookup (fallback for #444) ─────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_ai_lookup_returns_definition():
+    """ai_lookup calls Gemini and parses a JSON definition response."""
+    gemini_json = '{"lemma":"laufen","definitions":[{"pos":"verb","text":"to run"}]}'
+    with patch("services.gemini._generate", new=AsyncMock(return_value=gemini_json)):
+        result = await ai_lookup("lief", "de", api_key="test-key")
+    assert result["lemma"] == "laufen"
+    assert len(result["definitions"]) == 1
+    assert result["definitions"][0]["pos"] == "verb"
+    assert result["language"] == "de"
+
+
+@pytest.mark.asyncio
+async def test_ai_lookup_returns_empty_on_bad_json():
+    """If Gemini returns unparseable output, ai_lookup returns empty definitions."""
+    with patch("services.gemini._generate", new=AsyncMock(return_value="not json")):
+        result = await ai_lookup("word", "en", api_key="test-key")
+    assert result["definitions"] == []
+    assert result["lemma"] == "word"
+
+
+@pytest.mark.asyncio
+async def test_ai_lookup_returns_empty_on_exception():
+    """If Gemini raises, ai_lookup returns empty definitions."""
+    with patch("services.gemini._generate", new=AsyncMock(side_effect=Exception("api error"))):
+        result = await ai_lookup("word", "en", api_key="test-key")
+    assert result["definitions"] == []

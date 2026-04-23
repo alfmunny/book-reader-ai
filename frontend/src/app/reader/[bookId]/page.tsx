@@ -18,7 +18,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, EmptyVocabIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -910,7 +910,7 @@ export default function ReaderPage() {
                       rel="noopener noreferrer"
                       className="shrink-0 text-xs text-amber-500 hover:text-amber-700"
                       title="View on Project Gutenberg"
-                    >↗</a>
+                    ><ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" /></a>
                   )}
                 </div>
                 <p className="text-xs text-amber-700 truncate">{meta.authors.join(", ")}</p>

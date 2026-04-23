@@ -340,3 +340,16 @@ async def test_post_insight_oversized_answer_returns_422(client, test_user, tmp_
         json={"book_id": 9885, "question": "Q?", "answer": "a" * 20001},
     )
     assert resp.status_code == 422, f"Expected 422 for oversized answer, got {resp.status_code}"
+
+
+async def test_duplicate_insight_returns_existing_row(client, test_user, tmp_db):
+    """POST /insights with identical question deduplicates — returns existing row, GET returns 1 entry (issue #497)."""
+    await save_book(9887, {**_META, "id": 9887}, "text")
+    payload = {"book_id": 9887, "chapter_index": 0, "question": "Q?", "answer": "A."}
+    r1 = await client.post("/api/insights", json=payload)
+    assert r1.status_code == 200
+    r2 = await client.post("/api/insights", json=payload)
+    assert r2.status_code == 200
+    assert r1.json()["id"] == r2.json()["id"], "Duplicate POST should return the same insight id"
+    resp = await client.get("/api/insights?book_id=9887")
+    assert len(resp.json()) == 1, f"Expected 1 insight, got {len(resp.json())}"

@@ -953,14 +953,25 @@ async def save_insight(
 ) -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        cursor = await db.execute(
-            """INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer, context_text)
+        await db.execute(
+            """INSERT OR IGNORE INTO book_insights (user_id, book_id, chapter_index, question, answer, context_text)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (user_id, book_id, chapter_index, question, answer, context_text),
         )
-        row_id = cursor.lastrowid
-        async with db.execute("SELECT * FROM book_insights WHERE id = ?", (row_id,)) as c:
-            row = await c.fetchone()
+        # SELECT before COMMIT — prevents dict(None) crash if a concurrent
+        # delete_book removes the row between our COMMIT and a later SELECT.
+        if chapter_index is None:
+            async with db.execute(
+                "SELECT * FROM book_insights WHERE user_id=? AND book_id=? AND chapter_index IS NULL AND question=?",
+                (user_id, book_id, question),
+            ) as c:
+                row = await c.fetchone()
+        else:
+            async with db.execute(
+                "SELECT * FROM book_insights WHERE user_id=? AND book_id=? AND chapter_index=? AND question=?",
+                (user_id, book_id, chapter_index, question),
+            ) as c:
+                row = await c.fetchone()
         await db.commit()
     return dict(row)
 

@@ -412,9 +412,14 @@ def build_chapters_from_html(html: str) -> list[Chapter]:
                     subtitle_elem = nxt
 
         # Extract body text from all children except the title heading
-        # (and the subtitle paragraph, if any).
+        # (and the subtitle paragraph, if any). HTML path enables
+        # skip_nested_chapter_divs — we iterate every chapter div via
+        # XPath at the top of this function, so nested ones would be
+        # double-processed if we let them through here.
         body_text = _html_body_text(
-            div, skip_first_heading=True, skip_elems=(subtitle_elem,) if subtitle_elem is not None else (),
+            div, skip_first_heading=True,
+            skip_elems=(subtitle_elem,) if subtitle_elem is not None else (),
+            skip_nested_chapter_divs=True,
         )
         word_count = len(body_text.split())
 
@@ -488,6 +493,7 @@ def _html_body_text(
     *,
     skip_first_heading: bool = False,
     skip_elems: tuple = (),
+    skip_nested_chapter_divs: bool = False,
 ) -> str:
     """Extract readable text from an HTML element, preserving paragraph breaks.
 
@@ -496,6 +502,13 @@ def _html_body_text(
     is skipped when `skip_first_heading=True` (since the caller already used
     it as the chapter title). `skip_elems` lets the caller exclude specific
     elements (e.g. a subtitle `<p>` already folded into the title).
+
+    `skip_nested_chapter_divs=True` is only for the HTML path
+    (`build_chapters_from_html`), which iterates every ``*[class~="chapter"]``
+    element via XPath and skips nested chapter divs to avoid double-counting.
+    The EPUB path (`build_chapters_from_epub`) already picks one spine item
+    per chapter — setting this flag there would wrongly drop Gutenberg's
+    common ``<div class="div1 chapter">`` chapter-body wrapper (Kafka, etc).
     """
     parts: list[str] = []
     skipped_heading = not skip_first_heading
@@ -511,7 +524,11 @@ def _html_body_text(
         if tag in ("h1", "h2", "h3") and not skipped_heading:
             skipped_heading = True
             continue
-        if tag == "div" and "chapter" in (child.get("class") or ""):
+        if (
+            skip_nested_chapter_divs
+            and tag == "div"
+            and "chapter" in (child.get("class") or "")
+        ):
             # Nested chapter div (seen in book-section wrappers) — skip
             continue
         if tag == "p":
@@ -519,7 +536,11 @@ def _html_body_text(
             if text.strip():
                 parts.append(text.strip())
         elif tag in ("blockquote",):
-            nested = _html_body_text(child, skip_first_heading=False)
+            nested = _html_body_text(
+                child,
+                skip_first_heading=False,
+                skip_nested_chapter_divs=skip_nested_chapter_divs,
+            )
             if nested.strip():
                 parts.append(nested.strip())
         elif tag in ("pre",):
@@ -541,7 +562,11 @@ def _html_body_text(
             if not has_block_child:
                 text = _html_inline_text(child)
             else:
-                text = _html_body_text(child, skip_first_heading=False)
+                text = _html_body_text(
+                    child,
+                    skip_first_heading=False,
+                    skip_nested_chapter_divs=skip_nested_chapter_divs,
+                )
             if text.strip():
                 parts.append(text.strip())
 

@@ -1144,7 +1144,9 @@ def test_build_chapters_from_html_empty_body_text():
 
 # Line 512: nested chapter div inside another chapter div → skip
 def test_html_body_text_skips_nested_chapter_div():
-    """A nested div with class='chapter' should be skipped during body extraction."""
+    """In the HTML path (opt-in flag), a nested div with class='chapter'
+    is skipped during body extraction — the top-level XPath loop already
+    iterates every chapter div separately."""
     from lxml import html as lxml_html
     html = (
         '<div class="chapter outer">'
@@ -1155,7 +1157,7 @@ def test_html_body_text_skips_nested_chapter_div():
     root = lxml_html.fromstring(html)
     # Get the outer chapter div
     outer = root.xpath("//*[contains(@class, 'outer')]")[0]
-    text = _html_body_text(outer)
+    text = _html_body_text(outer, skip_nested_chapter_divs=True)
     assert "Outer paragraph" in text
     assert "Inner paragraph should be skipped" not in text
 

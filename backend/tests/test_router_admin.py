@@ -305,6 +305,41 @@ async def test_delete_user_prunes_orphaned_vocabulary_from_other_readers(admin_c
     assert count == 0, "orphaned vocabulary entry remains after owner deleted"
 
 
+async def test_delete_user_removes_flashcard_reviews(admin_client, admin_db, admin_user):
+    """Regression #630: delete_user must delete flashcard_reviews rows.
+
+    FK enforcement is OFF so ON DELETE CASCADE never fires; delete_user must
+    include an explicit DELETE FROM flashcard_reviews.
+    """
+    from services.db import _ensure_flashcard_rows
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    user2 = await get_or_create_user(
+        google_id="flashcard-cascade", email="flashcard@test.com", name="FC", picture=""
+    )
+    with patch("services.db._update_lemma", new_callable=AsyncMock):
+        await save_word(user2["id"], "testword", 100, 0, "A test sentence.")
+    # Seed flashcard_reviews row for the vocabulary word
+    await _ensure_flashcard_rows(user2["id"])
+
+    # Verify the row exists before deletion
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ?", (user2["id"],)
+        ) as cur:
+            (before,) = await cur.fetchone()
+    assert before > 0, "test setup: flashcard_reviews row not created"
+
+    res = await admin_client.delete(f"/api/admin/users/{user2['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        async with conn.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ?", (user2["id"],)
+        ) as cur:
+            (after,) = await cur.fetchone()
+    assert after == 0, "orphaned flashcard_reviews rows left after delete_user"
+
+
 # ── Books ────────────────────────────────────────────────────────────────────
 
 async def test_get_books(admin_client, admin_db):

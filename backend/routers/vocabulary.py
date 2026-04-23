@@ -3,7 +3,7 @@ import base64
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
@@ -64,13 +64,17 @@ async def list_vocabulary(user: dict = Depends(get_current_user)):
 
 
 @router.get("/definition/{word}")
-async def get_definition(word: str, lang: str = "en", user: dict = Depends(get_current_user)):
+async def get_definition(
+    word: str = Path(..., max_length=200),
+    lang: str = Query(default="en", max_length=20),
+    user: dict = Depends(get_current_user),
+):
     from services import wiktionary
     return await wiktionary.lookup(word, lang)
 
 
 @router.delete("/{word}")
-async def remove_word(word: str, user: dict = Depends(get_current_user)):
+async def remove_word(word: str = Path(..., max_length=200), user: dict = Depends(get_current_user)):
     deleted = await delete_word(user["id"], word)
     if not deleted:
         raise HTTPException(status_code=404, detail="Word not found")

@@ -6,7 +6,7 @@ Full CRUD where applicable.
 import json
 import aiosqlite
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
 from services.db import (
@@ -422,7 +422,7 @@ async def delete_book_translations(book_id: int, _admin: dict = Depends(_require
 @router.delete("/translations/{book_id}/{target_language}")
 async def delete_language_translations(
     book_id: int,
-    target_language: str,
+    target_language: str = Path(..., max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
     """Delete all cached translations for one language of a book."""
@@ -461,7 +461,7 @@ async def delete_language_translations(
 async def delete_translation(
     book_id: int,
     chapter_index: int,
-    target_language: str,
+    target_language: str = Path(..., max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
     """Delete a specific cached translation."""
@@ -499,7 +499,7 @@ async def delete_translation(
 async def retranslate(
     book_id: int,
     chapter_index: int,
-    target_language: str,
+    target_language: str = Path(..., max_length=20),
     admin: dict = Depends(_require_admin),
 ):
     """Delete cached translation and re-translate the chapter."""
@@ -727,7 +727,7 @@ class MoveTranslationRequest(BaseModel):
 async def move_translation(
     book_id: int,
     chapter_index: int,
-    target_language: str,
+    target_language: Annotated[str, Path(max_length=20)],
     req: MoveTranslationRequest,
     _admin: dict = Depends(_require_admin),
 ):
@@ -1180,7 +1180,7 @@ async def queue_clear(
 @router.delete("/queue/book/{book_id}")
 async def queue_delete_book(
     book_id: int,
-    target_language: str | None = None,
+    target_language: str | None = Query(default=None, max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
     norm = target_language.lower().split("-")[0] if target_language else None

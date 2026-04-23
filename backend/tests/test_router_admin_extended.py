@@ -901,3 +901,50 @@ async def test_queue_retry_failed_oversized_language_returns_422(admin_client, a
     assert res.status_code == 422, (
         f"Expected 422 for oversized target_language in /queue/retry-failed, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #583: admin translation path/query param bounds ────────────────────
+
+async def test_delete_language_translations_oversized_lang_returns_422(admin_client, admin_db):
+    """Regression #583: DELETE /admin/translations/{book_id}/{target_language} with >20 char lang must return 422."""
+    lang = "x" * 21
+    res = await admin_client.delete(f"/api/admin/translations/1/{lang}")
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in DELETE /translations/{{book_id}}/{{lang}}, got {res.status_code}"
+    )
+
+
+async def test_delete_chapter_translation_oversized_lang_returns_422(admin_client, admin_db):
+    """Regression #583: DELETE /admin/translations/{book_id}/{chapter}/{target_language} with >20 char lang must return 422."""
+    lang = "x" * 21
+    res = await admin_client.delete(f"/api/admin/translations/1/0/{lang}")
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in DELETE /translations/{{book}}/{{ch}}/{{lang}}, got {res.status_code}"
+    )
+
+
+async def test_retranslate_oversized_lang_returns_422(admin_client, admin_db):
+    """Regression #583: POST /admin/translations/{book_id}/{chapter}/{target_language}/retranslate with >20 char lang must return 422."""
+    lang = "x" * 21
+    res = await admin_client.post(f"/api/admin/translations/1/0/{lang}/retranslate")
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in retranslate, got {res.status_code}"
+    )
+
+
+async def test_move_translation_oversized_lang_returns_422(admin_client, admin_db):
+    """Regression #583: POST /admin/translations/{book_id}/{chapter}/{target_language}/move with >20 char lang must return 422."""
+    lang = "x" * 21
+    res = await admin_client.post(f"/api/admin/translations/1/0/{lang}/move", json={"new_chapter_index": 1})
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in move, got {res.status_code}"
+    )
+
+
+async def test_queue_delete_book_oversized_lang_query_returns_422(admin_client, admin_db):
+    """Regression #583: DELETE /admin/queue/book/{book_id}?target_language= with >20 char lang must return 422."""
+    lang = "x" * 21
+    res = await admin_client.delete(f"/api/admin/queue/book/1?target_language={lang}")
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language query param in DELETE /queue/book, got {res.status_code}"
+    )

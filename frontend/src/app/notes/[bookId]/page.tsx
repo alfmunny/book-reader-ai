@@ -19,7 +19,7 @@ import {
 } from "@/lib/api";
 
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
-import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon } from "@/components/Icons";
+import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon } from "@/components/Icons";
 
 type ViewMode = "section" | "chapter";
 
@@ -682,14 +682,14 @@ export default function BookNotesPage() {
           </div>
         ) : annCount + insCount + vocCount === 0 ? (
           <div className="text-center py-24 text-stone-400">
-            <p className="text-4xl mb-3">📒</p>
+            <EmptyNotesIcon className="w-16 h-16 mx-auto mb-3 text-amber-300" aria-hidden="true" />
             <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
             <p className="text-sm">Annotate sentences, save AI insights, or add words to vocabulary while reading.</p>
             <button
               onClick={() => router.push(`/reader/${bookId}`)}
-              className="mt-4 px-5 py-2 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800"
+              className="mt-4 px-5 py-2 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 inline-flex items-center gap-1"
             >
-              Open reader →
+              Open reader <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         ) : (

@@ -685,3 +685,29 @@ async def test_definition_no_ai_fallback_when_wiktionary_succeeds(client, test_u
 
     assert resp.status_code == 200
     ai_generate.assert_not_called()
+
+
+async def test_definition_corrupted_gemini_key_returns_200_not_500(client, test_user):
+    """Regression #706: a corrupted Gemini key must not raise 500 when AI fallback is triggered.
+
+    When Wiktionary returns empty definitions and the user has a key that cannot be
+    decrypted, the endpoint should skip the AI fallback and return empty definitions
+    (200) rather than propagating the decrypt 500 error.
+    """
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET gemini_key=? WHERE id=?",
+            ("not-a-valid-fernet-token", test_user["id"]),
+        )
+        await db.commit()
+
+    empty_wikt = {"lemma": "Fernweh", "language": "de", "definitions": [], "url": "https://en.wiktionary.org/wiki/Fernweh"}
+
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=empty_wikt)):
+        resp = await client.get("/api/vocabulary/definition/Fernweh?lang=de")
+
+    assert resp.status_code == 200, (
+        f"Expected 200 with empty definitions when Gemini key is corrupted, got {resp.status_code}: {resp.text}"
+    )
+    data = resp.json()
+    assert data["definitions"] == []

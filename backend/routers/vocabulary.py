@@ -77,8 +77,12 @@ async def get_definition(
     if not result["definitions"]:
         raw_key = user.get("gemini_key")
         if raw_key:
-            api_key = decrypt_api_key(raw_key)
-            result = await wiktionary.ai_lookup(word, lang, api_key)
+            try:
+                api_key = decrypt_api_key(raw_key)
+            except HTTPException:
+                api_key = None
+            if api_key:
+                result = await wiktionary.ai_lookup(word, lang, api_key)
     return result
 
 

@@ -14,6 +14,9 @@
 set -euo pipefail
 
 REPO="/Users/alfmunny/Projects/AI/book-reader-ai"
+REPO_DEV="$REPO-dev"
+REPO_UIUX="$REPO-uiux"
+REPO_ARCH="$REPO-arch"
 SESSION="book-ai"
 
 # ── Model assignments per role ─────────────────────────────────────────────────
@@ -47,6 +50,16 @@ CLAUDE_BASE="claude${BYPASS:+ $BYPASS}"
 die()      { echo "ERROR: $*" >&2; exit 1; }
 running()  { tmux has-session -t "$SESSION" 2>/dev/null; }
 
+# Create a worktree at <path> pointing to origin/main if it doesn't exist yet
+ensure_worktree() {
+  local wt="$1"
+  if [ ! -d "$wt" ]; then
+    echo "Creating worktree at $wt..."
+    git -C "$REPO" fetch origin main --quiet
+    git -C "$REPO" worktree add --detach "$wt" origin/main
+  fi
+}
+
 check_deps() {
   command -v tmux   >/dev/null 2>&1 || die "tmux not found — brew install tmux"
   command -v claude >/dev/null 2>&1 || die "claude CLI not found — install Claude Code"
@@ -74,14 +87,15 @@ PROMPT
 }
 
 # Launch a single-window role (used for all 4 roles and dev2)
-# Usage: start_window <name> <prompt_file> <model>
+# Usage: start_window <name> <prompt_file> <model> [workdir]
 start_window() {
   local name="$1"
   local prompt_file="$2"
   local model="$3"
+  local workdir="${4:-$REPO}"
   tmux new-window -t "${SESSION}:" -n "$name"
   tmux send-keys -t "${SESSION}:${name}" \
-    "cd '$REPO' && $CLAUDE_BASE --model '$model' \"\$(cat '$prompt_file')\"" Enter
+    "cd '$workdir' && $CLAUDE_BASE --model '$model' \"\$(cat '$prompt_file')\"" Enter
 }
 
 # ── stop: send graceful exit signals then kill ────────────────────────────────
@@ -180,6 +194,12 @@ Tmux keybindings (prefix = C-a):
   C-a O   overview   (collapse to 2×2)
   C-a o   restore    (back to separate windows)
 
+Worktrees (each role runs in its own isolated directory):
+  PM    /Users/alfmunny/Projects/AI/book-reader-ai        (main checkout)
+  Dev   /Users/alfmunny/Projects/AI/book-reader-ai-dev
+  UIUX  /Users/alfmunny/Projects/AI/book-reader-ai-uiux
+  Arch  /Users/alfmunny/Projects/AI/book-reader-ai-arch
+
 Session: book-ai
   Attach:   tmux attach -t book-ai
   Windows:  pm | dev | uiux | arch
@@ -205,7 +225,8 @@ EOF
   dev2)
     running || die "Session '$SESSION' not running — start it first."
     write_prompts
-    start_window "dev2" "/tmp/book-ai-dev.txt" "$MODEL_DEV"
+    ensure_worktree "$REPO_DEV"
+    start_window "dev2" "/tmp/book-ai-dev.txt" "$MODEL_DEV" "$REPO_DEV"
     echo "Added dev2 window to session '$SESSION'."
     echo "Switch to it:  tmux select-window -t ${SESSION}:dev2"
     exit 0
@@ -229,14 +250,19 @@ fi
 
 write_prompts
 
-# Four separate windows — one per role
+# Ensure each code role has its own worktree (creates from origin/main if missing)
+ensure_worktree "$REPO_DEV"
+ensure_worktree "$REPO_UIUX"
+ensure_worktree "$REPO_ARCH"
+
+# Four separate windows — PM in main repo, code roles each in their own worktree
 tmux new-session -d -s "$SESSION" -n "pm"   -x 220 -y 50
 tmux send-keys -t "${SESSION}:pm" \
   "cd '$REPO' && $CLAUDE_BASE --model '$MODEL_PM' \"\$(cat /tmp/book-ai-pm.txt)\"" Enter
 
-start_window "dev"  "/tmp/book-ai-dev.txt"  "$MODEL_DEV"
-start_window "uiux" "/tmp/book-ai-uiux.txt" "$MODEL_UIUX"
-start_window "arch" "/tmp/book-ai-arch.txt" "$MODEL_ARCH"
+start_window "dev"  "/tmp/book-ai-dev.txt"  "$MODEL_DEV"  "$REPO_DEV"
+start_window "uiux" "/tmp/book-ai-uiux.txt" "$MODEL_UIUX" "$REPO_UIUX"
+start_window "arch" "/tmp/book-ai-arch.txt" "$MODEL_ARCH" "$REPO_ARCH"
 
 tmux select-window -t "${SESSION}:pm"
 
@@ -251,7 +277,7 @@ echo "            uiux=$MODEL_UIUX"
 echo "            arch=$MODEL_ARCH"
 echo ""
 echo "  Attach:          tmux attach -t $SESSION"
-echo "  Switch windows:  Ctrl+b + window name  (or Ctrl+b w for visual picker)"
+echo "  Switch windows:  C-a p/n  (or C-a w for visual picker)"
 echo "  Overview pane:   bash scripts/start-roles.sh overview"
 echo "  Stop:            bash scripts/start-roles.sh stop"
 echo "  Restart:         bash scripts/start-roles.sh restart"

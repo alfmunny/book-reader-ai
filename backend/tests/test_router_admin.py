@@ -2755,3 +2755,36 @@ async def test_queue_items_negative_book_id_returns_422(admin_client):
     """Regression #736: GET /admin/queue/items?book_id=-1 must return 422."""
     res = await admin_client.get("/api/admin/queue/items?book_id=-1")
     assert res.status_code == 422, f"Expected 422 for negative book_id, got {res.status_code}: {res.text}"
+
+
+@pytest.mark.asyncio
+async def test_import_book_error_does_not_leak_exception_detail(admin_client):
+    """Regression #756: import_book must not expose raw exception text in 400 response."""
+    with patch("routers.admin.get_book_meta", new_callable=AsyncMock,
+               side_effect=RuntimeError("gutenberg-internal-error-xyzzy")):
+        res = await admin_client.post("/api/admin/books/import", json={"book_id": 42})
+    assert res.status_code == 400
+    detail = res.json()["detail"]
+    assert "gutenberg-internal-error-xyzzy" not in detail
+    assert ":" not in detail or detail.count(":") == 0
+
+
+@pytest.mark.asyncio
+async def test_queue_dry_run_error_does_not_leak_exception_detail(admin_client):
+    """Regression #756: queue_dry_run must not expose raw exception text in 500 response."""
+    with patch("routers.admin.get_setting", new_callable=AsyncMock, return_value="encrypted-key"), \
+         patch("routers.admin.decrypt_api_key", return_value="sk-fake"), \
+         patch("routers.admin.plan_work_for_queue", new_callable=AsyncMock,
+               return_value=[{"book_id": 1, "book_title": "T", "source_language": "de",
+                              "chapters": [type("C", (), {"chapter_index": 0, "chapter_text": "hello world"})()]}]), \
+         patch("routers.admin.group_chapters_for_batch",
+               return_value=[[type("C", (), {"chapter_index": 0, "chapter_text": "hello world"})()]]), \
+         patch("routers.admin.get_model_chain", new_callable=AsyncMock, return_value=["gemini-pro"]), \
+         patch("routers.admin.translate_chapters_batch", new_callable=AsyncMock,
+               side_effect=RuntimeError("api-key-secret-xyzzy leaked")):
+        res = await admin_client.post("/api/admin/queue/dry-run",
+                                      json={"target_language": "zh"})
+    assert res.status_code == 500
+    detail = res.json()["detail"]
+    assert "api-key-secret-xyzzy" not in detail
+    assert "leaked" not in detail

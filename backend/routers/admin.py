@@ -215,8 +215,8 @@ async def import_book(req: ImportBookRequest, _admin: dict = Depends(_require_ad
         text = await get_book_text(req.book_id)
         await save_book(req.book_id, meta, text)
         return {"ok": True, "status": "imported", "title": meta.get("title", ""), "text_length": len(text)}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to import book {req.book_id}: {e}")
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Failed to import book {req.book_id}")
 
 
 @router.delete("/books/{book_id}")
@@ -1013,8 +1013,8 @@ async def queue_dry_run(req: QueuePlanRequest, _admin: dict = Depends(_require_a
             model=chain[0] or TRANSLATOR_MODEL,
             max_output_tokens=max_output_tokens,
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Translation failed: {e}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Translation service request failed")
 
     return {
         "preview": translations,

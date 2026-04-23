@@ -99,6 +99,16 @@ async def run(db_path: str) -> list[str]:
              "SELECT name FROM sqlite_master WHERE type='table' AND name='reading_history'"),
             ("021_user_books",
              "SELECT 1 FROM pragma_table_info('books') WHERE name='source'"),
+            # 022: skip if index already exists OR if the table exists but 'question'
+            # column is absent (legacy DBs that pre-date migration 015 use 'insight'
+            # instead of 'question'/'answer' and cannot receive this index).
+            # The table-existence guard prevents a false positive on fresh databases
+            # where book_insights has not been created yet.
+            ("022_book_insights_unique",
+             "SELECT 1 FROM sqlite_master WHERE type='index' AND name='uq_book_insights_question' "
+             "UNION ALL "
+             "SELECT 1 WHERE EXISTS (SELECT 1 FROM sqlite_master WHERE type='table' AND name='book_insights') "
+             "AND NOT EXISTS (SELECT 1 FROM pragma_table_info('book_insights') WHERE name='question')"),
         ]
         bootstrapped: list[str] = []
         for version, check_sql in bootstrap_checks:

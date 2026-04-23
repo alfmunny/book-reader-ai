@@ -1161,3 +1161,24 @@ async def test_save_translation_negative_chapter_index_returns_422(client, test_
         "paragraphs": ["Hello."],
     })
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #729: ge=1 bounds on book_id in ai body models ─────────────────────
+
+
+async def test_summary_negative_book_id_returns_422(client, test_user):
+    """Regression #729: POST /ai/summary with book_id < 1 must return 422."""
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": -1, "chapter_index": 0,
+        "chapter_text": "text", "book_title": "T", "author": "A",
+    })
+    assert resp.status_code == 422, f"Expected 422 for book_id=-1 in summary, got {resp.status_code}: {resp.text}"
+
+
+async def test_save_translation_negative_book_id_returns_422(client, test_user):
+    """Regression #729: PUT /ai/translate/cache with book_id < 1 must return 422."""
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": -1, "chapter_index": 0, "target_language": "en",
+        "paragraphs": ["Hello."],
+    })
+    assert resp.status_code == 422, f"Expected 422 for book_id=-1 in save_translation, got {resp.status_code}: {resp.text}"

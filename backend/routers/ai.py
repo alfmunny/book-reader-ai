@@ -69,7 +69,7 @@ class ReferencesRequest(BaseModel):
 
 
 class SummaryRequest(BaseModel):
-    book_id: int
+    book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     chapter_text: str = Field(..., max_length=50_000)
     book_title: str = Field(..., max_length=500)
@@ -81,7 +81,7 @@ class TranslateRequest(BaseModel):
     text: str = Field(..., max_length=50_000)
     source_language: str = Field(default="de", max_length=20)
     target_language: str = Field(default="en", max_length=20)
-    book_id: int | None = None
+    book_id: int | None = Field(default=None, ge=1)
     chapter_index: int | None = Field(default=None, ge=0)
     # "auto" → Gemini if user has a key, else Google Translate (free).
     provider: Literal["auto", "gemini", "google"] = "auto"
@@ -267,7 +267,7 @@ async def translate_cache(
 
 
 class SaveTranslationRequest(BaseModel):
-    book_id: int
+    book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     target_language: str = Field(..., max_length=20)
     paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)

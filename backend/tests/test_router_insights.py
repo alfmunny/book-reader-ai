@@ -361,3 +361,26 @@ async def test_create_insight_negative_chapter_index_returns_422(client, test_us
         "question": "Q?", "answer": "A.",
     })
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #729: ge=1 bounds on book_id, insight_id ───────────────────────────
+
+
+async def test_create_insight_negative_book_id_returns_422(client, test_user):
+    """Regression #729: POST /insights with book_id < 1 must return 422."""
+    resp = await client.post("/api/insights", json={
+        "book_id": -1, "chapter_index": 0, "question": "Q?", "answer": "A.",
+    })
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_list_insights_negative_book_id_returns_422(client, test_user):
+    """Regression #729: GET /insights?book_id=-1 must return 422."""
+    resp = await client.get("/api/insights?book_id=-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_delete_insight_negative_id_returns_422(client, test_user):
+    """Regression #729: DELETE /insights/{id} with negative id must return 422."""
+    resp = await client.delete("/api/insights/-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

@@ -44,7 +44,7 @@ async def cached_books():
 
 @router.get("/popular")
 async def popular_books(
-    language: str = "",
+    language: str = Query(default="", max_length=20),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
 ):

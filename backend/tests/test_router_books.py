@@ -164,6 +164,14 @@ async def test_popular_books_unknown_language_falls_back_to_all(client, popular_
     assert data["total"] == 120  # falls back to "" collection
 
 
+async def test_popular_books_oversized_language_returns_422(client, popular_cache):
+    """Regression #568: GET /books/popular?language= must reject strings > 20 chars."""
+    resp = await client.get("/api/books/popular?language=" + "x" * 21)
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized language in /books/popular, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_popular_books_empty_when_no_manifest(client):
     import routers.books as br
     original = br._popular_cache

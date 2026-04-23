@@ -16,6 +16,17 @@ set -euo pipefail
 REPO="/Users/alfmunny/Projects/AI/book-reader-ai"
 SESSION="book-ai"
 
+# ── Model assignments per role ─────────────────────────────────────────────────
+# PM:    Sonnet — nuanced design reviews, PR comments, issue triage
+# Dev:   Sonnet — code generation and test writing
+# UX:    Haiku  — formulaic audit work (emoji→SVG, aria-label, touch targets)
+# Arch:  Opus   — deep reasoning for design docs and cross-cutting decisions
+
+MODEL_PM="claude-sonnet-4-6"
+MODEL_DEV="claude-sonnet-4-6"
+MODEL_UIUX="claude-haiku-4-5-20251001"
+MODEL_ARCH="claude-opus-4-7"
+
 # ── Parse args ────────────────────────────────────────────────────────────────
 
 BYPASS=""
@@ -27,7 +38,8 @@ for arg in "$@"; do
   esac
 done
 
-CLAUDE="claude${BYPASS:+ $BYPASS}"
+# Base claude command (bypass flag only — model is passed per-role)
+CLAUDE_BASE="claude${BYPASS:+ $BYPASS}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -61,12 +73,14 @@ PROMPT
 }
 
 # Launch a single-window role (used for all 4 roles and dev2)
+# Usage: start_window <name> <prompt_file> <model>
 start_window() {
   local name="$1"
   local prompt_file="$2"
+  local model="$3"
   tmux new-window -t "${SESSION}:" -n "$name"
   tmux send-keys -t "${SESSION}:${name}" \
-    "cd '$REPO' && $CLAUDE \"\$(cat '$prompt_file')\"" Enter
+    "cd '$REPO' && $CLAUDE_BASE --model '$model' \"\$(cat '$prompt_file')\"" Enter
 }
 
 # ── stop: send graceful exit signals then kill ────────────────────────────────
@@ -158,7 +172,7 @@ case "$SUBCOMMAND" in
   dev2)
     running || die "Session '$SESSION' not running — start it first."
     write_prompts
-    start_window "dev2" "/tmp/book-ai-dev.txt"
+    start_window "dev2" "/tmp/book-ai-dev.txt" "$MODEL_DEV"
     echo "Added dev2 window to session '$SESSION'."
     echo "Switch to it:  tmux select-window -t ${SESSION}:dev2"
     exit 0
@@ -185,11 +199,11 @@ write_prompts
 # Four separate windows — one per role
 tmux new-session -d -s "$SESSION" -n "pm"   -x 220 -y 50
 tmux send-keys -t "${SESSION}:pm" \
-  "cd '$REPO' && $CLAUDE \"\$(cat /tmp/book-ai-pm.txt)\"" Enter
+  "cd '$REPO' && $CLAUDE_BASE --model '$MODEL_PM' \"\$(cat /tmp/book-ai-pm.txt)\"" Enter
 
-start_window "dev"  "/tmp/book-ai-dev.txt"
-start_window "uiux" "/tmp/book-ai-uiux.txt"
-start_window "arch" "/tmp/book-ai-arch.txt"
+start_window "dev"  "/tmp/book-ai-dev.txt"  "$MODEL_DEV"
+start_window "uiux" "/tmp/book-ai-uiux.txt" "$MODEL_UIUX"
+start_window "arch" "/tmp/book-ai-arch.txt" "$MODEL_ARCH"
 
 tmux select-window -t "${SESSION}:pm"
 
@@ -197,6 +211,11 @@ echo ""
 echo "All 4 roles started in session '$SESSION'."
 echo ""
 echo "  Windows:  pm | dev | uiux | arch"
+echo ""
+echo "  Models:   pm=$MODEL_PM"
+echo "            dev=$MODEL_DEV"
+echo "            uiux=$MODEL_UIUX"
+echo "            arch=$MODEL_ARCH"
 echo ""
 echo "  Attach:          tmux attach -t $SESSION"
 echo "  Switch windows:  Ctrl+b + window name  (or Ctrl+b w for visual picker)"

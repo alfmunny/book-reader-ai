@@ -303,8 +303,8 @@ describe("ReaderPage — after chapters load", () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
-    expect(await screen.findByText("← Previous chapter")).toBeInTheDocument();
-    expect(screen.getByText("Next chapter →")).toBeInTheDocument();
+    expect(await screen.findByText(/Previous chapter/)).toBeInTheDocument();
+    expect(screen.getByText(/Next chapter/)).toBeInTheDocument();
   });
 
   it("shows chapter progress fraction", async () => {
@@ -378,7 +378,7 @@ describe("ReaderPage — chapter navigation", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
 
     await waitFor(() => {
@@ -394,7 +394,7 @@ describe("ReaderPage — chapter navigation", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const prevBtn = await screen.findByText("← Previous chapter");
+    const prevBtn = await screen.findByText(/Previous chapter/);
     expect(prevBtn).toBeDisabled();
   });
 
@@ -406,7 +406,7 @@ describe("ReaderPage — chapter navigation", () => {
     await flushPromises();
 
     // Navigate to last chapter first
-    const nextBtns = await screen.findAllByText("Next chapter →");
+    const nextBtns = await screen.findAllByText(/Next chapter/);
     expect(nextBtns[0]).toBeDisabled();
   });
 
@@ -416,7 +416,7 @@ describe("ReaderPage — chapter navigation", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
 
     await waitFor(() => {
@@ -430,7 +430,7 @@ describe("ReaderPage — chapter navigation", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
 
     await waitFor(() => {
@@ -716,7 +716,7 @@ describe("ReaderPage — unauthenticated session", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
 
     expect(mockSaveReadingProgress).not.toHaveBeenCalled();
@@ -1131,7 +1131,7 @@ describe("ReaderPage — notes sidebar content", () => {
 });
 
 describe("ReaderPage — vocab sidebar content", () => {
-  it("shows 'View all →' button when vocab tab is open", async () => {
+  it("shows 'View all' button when vocab tab is open", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
@@ -1139,10 +1139,10 @@ describe("ReaderPage — vocab sidebar content", () => {
     const vocabBtn = await screen.findByTitle("Vocabulary");
     await userEvent.click(vocabBtn);
 
-    expect(await screen.findByText("View all →")).toBeInTheDocument();
+    expect(await screen.findByText(/View all/)).toBeInTheDocument();
   });
 
-  it("'View all →' navigates to /vocabulary", async () => {
+  it("'View all' navigates to /vocabulary", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
@@ -1150,7 +1150,7 @@ describe("ReaderPage — vocab sidebar content", () => {
     const vocabBtn = await screen.findByTitle("Vocabulary");
     await userEvent.click(vocabBtn);
 
-    const viewAllBtn = await screen.findByText("View all →");
+    const viewAllBtn = await screen.findByText(/View all/);
     await userEvent.click(viewAllBtn);
 
     expect(mockPush).toHaveBeenCalledWith("/vocabulary");

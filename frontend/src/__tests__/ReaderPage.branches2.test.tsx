@@ -1563,7 +1563,7 @@ describe("ReaderPage.branches2 — translation loaded from in-memory cache", () 
     const countAfterFirstRender = fetchCount;
 
     // Navigate to next chapter and back to trigger cache hit
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
     await flushPromises();
 
@@ -1662,12 +1662,12 @@ describe("ReaderPage.branches2 — in-memory translation cache hit", () => {
     const beforeNavigate = fetchCount;
 
     // Navigate to chapter 2
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
     await flushPromises();
 
     // Navigate back to chapter 1
-    const prevBtns = await screen.findAllByText("← Previous chapter");
+    const prevBtns = await screen.findAllByText(/Previous chapter/);
     await userEvent.click(prevBtns[0]);
     await flushPromises();
 

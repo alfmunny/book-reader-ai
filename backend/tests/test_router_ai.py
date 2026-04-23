@@ -492,7 +492,9 @@ async def test_insight_gemini_error_returns_500(client, test_user):
             "chapter_text": "text", "book_title": "Book", "author": "Author",
         })
     assert resp.status_code == 500
-    assert "AI down" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert "AI down" not in detail
+    assert ":" not in detail
 
 
 async def test_qa_gemini_error_returns_500(client, test_user):
@@ -518,10 +520,27 @@ async def test_translate_gemini_error_falls_back_to_google(client, test_user):
     assert resp.json()["fallback"] is True
 
 
+async def test_translate_total_failure_returns_500_without_detail_leak(client, test_user):
+    await _set_key(test_user)
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, side_effect=RuntimeError("internal error")), \
+         patch("services.translate._google_translate", new_callable=AsyncMock, side_effect=RuntimeError("google down")):
+        resp = await client.post("/api/ai/translate", json={
+            "text": "text", "source_language": "de", "target_language": "en",
+        })
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "internal error" not in detail
+    assert "google down" not in detail
+    assert ":" not in detail
+
+
 async def test_tts_error_returns_500(client):
     with patch("routers.ai.synthesize", new_callable=AsyncMock, side_effect=RuntimeError("TTS fail")):
         resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en", "rate": 1.0})
     assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "TTS fail" not in detail
+    assert ":" not in detail
 
 
 # ── TTS rate bounds validation (Issue #482) ───────────────────────────────────
@@ -602,6 +621,9 @@ async def test_references_error_returns_500(client, test_user):
             "book_title": "Faust", "author": "Goethe",
         })
     assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "AI down" not in detail
+    assert ":" not in detail
 
 
 # ── Corrupted Gemini key ──────────────────────────────────────────────────────
@@ -722,6 +744,32 @@ async def test_summary_concurrent_requests_call_gemini_once(client, test_user, t
         f"Expected 1 Gemini call for concurrent requests to the same chapter, "
         f"got {call_count}. Missing per-key asyncio.Lock in the summary endpoint."
     )
+
+
+# ── Summary Gemini failure (issue #752) ──────────────────────────────────────
+
+async def test_summary_gemini_error_returns_500_without_detail_leak(client, test_user, tmp_db):
+    from services.auth import encrypt_api_key as _enc
+    await save_book(9871, _BOOK_META, "word " * 300)
+    await set_setting("queue_api_key", _enc("test-gemini-key"))
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.generate_chapter_summary = AsyncMock(
+            side_effect=RuntimeError("API quota exceeded for project xyz-secret-123")
+        )
+        mock_gemini.MODEL = "gemini-2.0"
+        resp = await client.post("/api/ai/summary", json={
+            "book_id": 9871,
+            "chapter_index": 0,
+            "chapter_text": "Chapter text here.",
+            "book_title": "Test Book",
+            "author": "Author",
+            "chapter_title": "Ch 1",
+        })
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "xyz-secret-123" not in detail
+    assert "quota" not in detail.lower()
+    assert ":" not in detail
 
 
 # ── Access control for private uploaded books ────────────────────────────────

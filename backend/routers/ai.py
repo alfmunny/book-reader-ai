@@ -108,8 +108,8 @@ async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
             key, req.chapter_text, req.book_title, req.author, req.response_language
         )
         return {"insight": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="AI service request failed")
 
 
 @router.post("/qa")
@@ -120,8 +120,8 @@ async def qa(req: QARequest, user: dict = Depends(get_current_user)):
             key, req.question, req.passage, req.book_title, req.author, req.response_language
         )
         return {"answer": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="AI service request failed")
 
 
 @router.post("/references")
@@ -145,8 +145,8 @@ async def references(req: ReferencesRequest, user: dict = Depends(get_current_us
             key, prompt, excerpt or "N/A", req.book_title, req.author, req.response_language
         )
         return {"references": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="AI service request failed")
 
 
 @router.post("/summary")
@@ -201,8 +201,8 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
             content = await gemini.generate_chapter_summary(
                 api_key, req.chapter_text, req.book_title, req.author, req.chapter_title
             )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            raise HTTPException(status_code=500, detail="AI service request failed")
 
         await save_chapter_summary(req.book_id, req.chapter_index, content, model=gemini.MODEL)
         return {"summary": content, "cached": False, "model": gemini.MODEL}
@@ -419,8 +419,8 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
         }
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Translation service request failed")
 
 
 @router.post("/tts")
@@ -431,8 +431,8 @@ async def tts(req: TTSRequest):
         audio, content_type, boundaries = await synthesize(
             req.text, req.language, req.rate, gender=req.gender
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="TTS synthesis failed")
     headers: dict = {}
     if boundaries:
         timings_json = _json.dumps(boundaries, separators=(",", ":"))

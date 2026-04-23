@@ -77,6 +77,52 @@ export function searchBooks(query: string, language = "", page = 1) {
   return request<{ count: number; books: BookMeta[] }>(`/books/search?${params}`);
 }
 
+// In-app FTS5 search over user content (issue #648).
+export type InAppSearchResult =
+  | {
+      type: "annotation";
+      id: number;
+      book_id: number;
+      book_title: string;
+      chapter_index: number;
+      snippet: string;
+      note_text: string;
+    }
+  | {
+      type: "vocabulary";
+      word: string;
+      occurrence_id: number;
+      book_id: number;
+      book_title: string;
+      chapter_index: number;
+      snippet: string;
+    }
+  | {
+      type: "chapter";
+      id: number;
+      book_id: number;
+      book_title: string;
+      chapter_index: number;
+      chapter_title: string;
+      snippet: string;
+    };
+
+export interface InAppSearchResponse {
+  query: string;
+  results: InAppSearchResult[];
+  total: number;
+}
+
+export function searchInAppContent(
+  q: string,
+  scope?: Array<"annotations" | "vocabulary" | "chapters">,
+  limit = 20,
+) {
+  const params = new URLSearchParams({ q, limit: String(limit) });
+  if (scope && scope.length) params.set("scope", scope.join(","));
+  return request<InAppSearchResponse>(`/search?${params}`);
+}
+
 export function getCachedBooks() {
   return request<BookMeta[]>("/books/cached");
 }

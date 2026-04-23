@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 test("clicking a search result opens the book detail modal", async ({ page }) => {
   await page.goto("/");
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("Faust").first()).toBeVisible();
 
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
@@ -50,7 +50,7 @@ test("modal shows Continue Reading for a book in the library", async ({ page }) 
 test("modal CTA navigates to reader", async ({ page }) => {
   await page.goto("/");
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
 
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
   await page.getByRole("button", { name: /Start Reading/ }).click();
@@ -62,7 +62,7 @@ test("modal CTA navigates to reader", async ({ page }) => {
 test("modal closes when clicking the close button", async ({ page }) => {
   await page.goto("/");
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
 
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
   await expect(page.getByRole("heading", { name: "Faust" })).toBeVisible();
@@ -74,7 +74,7 @@ test("modal closes when clicking the close button", async ({ page }) => {
 test("modal closes on Escape key", async ({ page }) => {
   await page.goto("/");
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
 
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
   await expect(page.getByRole("heading", { name: "Faust" })).toBeVisible();
@@ -86,7 +86,7 @@ test("modal closes on Escape key", async ({ page }) => {
 test("modal shows language tag for the book", async ({ page }) => {
   await page.goto("/");
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
 
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
 

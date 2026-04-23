@@ -26,6 +26,65 @@ import aiosqlite
 _MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "..", "migrations")
 
 
+def _split_sql_statements(sql: str) -> list[str]:
+    """Split a migration SQL blob into individual statements.
+
+    Splits on `;` at top level but keeps `BEGIN ... END` blocks (SQLite
+    triggers) intact — trigger bodies contain `;` separators that must not
+    terminate the outer CREATE TRIGGER statement.
+
+    Line comments (`-- ...`) are stripped first so semicolons inside
+    comments don't produce spurious empty/invalid fragments (#544).
+    """
+    sql_no_comments = re.sub(r"--[^\n]*", "", sql)
+
+    statements: list[str] = []
+    current: list[str] = []
+    in_trigger = 0  # BEGIN/END nesting depth
+    i = 0
+    n = len(sql_no_comments)
+
+    # Walk token-by-token on word boundaries to detect BEGIN/END
+    # (case-insensitive). Semicolons while in_trigger>0 are kept in current.
+    word_re = re.compile(r"\b(BEGIN|END)\b", re.IGNORECASE)
+    while i < n:
+        m = word_re.search(sql_no_comments, i)
+        # Find the next ';' in the remaining text (tracked for splitting).
+        next_semi = sql_no_comments.find(";", i)
+
+        # No more BEGIN/END tokens ahead of the next ';' — process the
+        # semicolon at the top level (or if none, consume the rest).
+        if not m or (next_semi != -1 and next_semi < m.start()):
+            if next_semi == -1:
+                current.append(sql_no_comments[i:])
+                break
+            current.append(sql_no_comments[i:next_semi])
+            if in_trigger > 0:
+                current.append(";")  # keep inner semi; it's part of the trigger body
+                i = next_semi + 1
+                continue
+            statements.append("".join(current).strip())
+            current = []
+            i = next_semi + 1
+            continue
+
+        # Consume up through the BEGIN/END token as part of current.
+        current.append(sql_no_comments[i:m.end()])
+        if m.group(0).upper() == "BEGIN":
+            in_trigger += 1
+        else:
+            # END — matches a BEGIN. Only semantically relevant inside trigger bodies.
+            if in_trigger > 0:
+                in_trigger -= 1
+        i = m.end()
+
+    if current:
+        stmt = "".join(current).strip()
+        if stmt:
+            statements.append(stmt)
+    return [s for s in statements if s]
+
+
 async def run(db_path: str) -> list[str]:
     """Apply all pending migrations and return the list of versions applied.
 
@@ -148,15 +207,13 @@ async def run(db_path: str) -> list[str]:
                 continue
 
             # Apply each statement in the migration file inside one transaction.
-            # We split on `;` because aiosqlite's execute() only runs one
-            # statement at a time. Strip -- line comments first so semicolons
-            # inside comments don't produce spurious empty/invalid fragments.
+            # We split on `;` at top level (keeping CREATE TRIGGER ... BEGIN ...
+            # END; blocks intact) because aiosqlite's execute() runs one
+            # statement at a time. Line comments are stripped first so
+            # semicolons inside comments don't produce spurious fragments (#544).
             try:
-                sql_no_comments = re.sub(r"--[^\n]*", "", sql)
-                for statement in sql_no_comments.split(";"):
-                    stmt = statement.strip()
-                    if stmt:
-                        await db.execute(stmt)
+                for stmt in _split_sql_statements(sql):
+                    await db.execute(stmt)
 
                 # Record this version as applied.
                 await db.execute(

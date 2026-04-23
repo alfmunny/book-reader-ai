@@ -846,6 +846,38 @@ async def test_migration_025_user_book_chapters_table_created(tmp_db):
     assert cols == {"id", "book_id", "chapter_index", "title", "text", "is_draft"}
 
 
+# ── SQL splitter keeps CREATE TRIGGER BEGIN...END blocks intact ─────────────
+
+async def test_trigger_migration_applies_cleanly(tmp_db, tmp_migrations, monkeypatch):
+    """Regression for #648: migration files containing CREATE TRIGGER ... BEGIN
+    statement1; statement2; END; must apply cleanly — the runner must keep
+    the BEGIN..END block together and not split it on the inner semicolons."""
+    sql = (
+        "CREATE TABLE trigger_test_src (id INTEGER PRIMARY KEY, v TEXT);\n"
+        "CREATE TABLE trigger_test_dst (src_id INTEGER, v1 TEXT, v2 TEXT);\n"
+        "CREATE TRIGGER tts_ai AFTER INSERT ON trigger_test_src\n"
+        "BEGIN\n"
+        "    INSERT INTO trigger_test_dst (src_id, v1, v2) VALUES (new.id, new.v, 'a');\n"
+        "    INSERT INTO trigger_test_dst (src_id, v1, v2) VALUES (new.id, new.v, 'b');\n"
+        "END;\n"
+    )
+    (open(os.path.join(tmp_migrations, "001_trigger.sql"), "w")).write(sql)
+    monkeypatch.setattr("services.migrations._MIGRATIONS_DIR", tmp_migrations)
+
+    applied = await run_migrations(tmp_db)
+    assert "001_trigger" in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("INSERT INTO trigger_test_src (v) VALUES ('x')")
+        await db.commit()
+        async with db.execute(
+            "SELECT COUNT(*) FROM trigger_test_dst WHERE src_id=1"
+        ) as cur:
+            count = (await cur.fetchone())[0]
+        # Both trigger-body statements ran — splitter preserved BEGIN..END.
+        assert count == 2
+
+
 async def test_migration_025_unique_constraint_enforced(tmp_db):
     """user_book_chapters (book_id, chapter_index) UNIQUE must reject duplicates."""
     await run_migrations(tmp_db)

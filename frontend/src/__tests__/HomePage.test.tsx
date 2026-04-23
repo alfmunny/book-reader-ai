@@ -328,7 +328,8 @@ describe("HomePage — Library tab with books", () => {
     await act(flushPromises);
     await user.click(screen.getByRole("button", { name: /Home/i }));
     await user.click(screen.getByRole("button", { name: "Discover Books" }));
-    expect(screen.getByRole("button", { name: /Search/i })).toBeInTheDocument();
+    // Use exact-match to avoid matching the global header "Open search" button (SearchBar).
+    expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
   });
 });
 

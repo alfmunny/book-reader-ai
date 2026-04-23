@@ -41,7 +41,7 @@ test("search for Faust returns result and displays it", async ({ page }) => {
   await page.goto("/");
   // No library → already on Discover tab
   await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("Faust").first()).toBeVisible();
 });
 

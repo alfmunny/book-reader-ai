@@ -93,19 +93,27 @@ def auth_headers(test_user):
 def insert_private_book():
     """Return a coroutine that inserts an upload-sourced private book owned by the given user.
 
+    Chapters are written to `user_book_chapters` (issue #357). `books.text`
+    stays empty, matching the post-migration contract.
+
     Usage in tests::
 
         await insert_private_book(book_id=8801, owner_user_id=owner["id"])
     """
     async def _impl(book_id: int, owner_user_id: int) -> None:
-        chapters = json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "private"}]})
         async with aiosqlite.connect(db_module.DB_PATH) as db:
             await db.execute(
                 """INSERT OR REPLACE INTO books
                    (id, title, authors, languages, subjects, download_count,
                     cover, text, images, source, owner_user_id)
-                   VALUES (?, 'Private', '[]', '["en"]', '[]', 0, '', ?, '[]', 'upload', ?)""",
-                (book_id, chapters, owner_user_id),
+                   VALUES (?, 'Private', '[]', '["en"]', '[]', 0, '', '', '[]', 'upload', ?)""",
+                (book_id, owner_user_id),
+            )
+            await db.execute(
+                "INSERT OR REPLACE INTO user_book_chapters "
+                "(book_id, chapter_index, title, text, is_draft) "
+                "VALUES (?, 0, 'Ch1', 'private', 0)",
+                (book_id,),
             )
             await db.commit()
     return _impl

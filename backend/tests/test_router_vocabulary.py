@@ -612,3 +612,58 @@ async def test_remove_word_oversized_word_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for oversized word in DELETE /vocabulary, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #444: AI dictionary fallback ───────────────────────────────────────
+
+async def test_definition_falls_back_to_ai_when_wiktionary_empty(client, test_user, tmp_db):
+    """Regression #444: when wiktionary returns no definitions (e.g. German compound),
+    the endpoint should fall back to AI if the user has a Gemini key configured."""
+    from services.auth import encrypt_api_key
+    import aiosqlite
+
+    # Give the test user a (fake) encrypted Gemini key
+    enc = encrypt_api_key("fake-key-for-testing")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "UPDATE users SET gemini_key=? WHERE id=?", (enc, test_user["id"])
+        )
+        await db.commit()
+
+    empty_wikt = {"lemma": "Aufmerksamkeitsdefizit", "language": "de", "definitions": [], "url": "https://en.wiktionary.org/wiki/Aufmerksamkeitsdefizit"}
+    ai_result = {"lemma": "Aufmerksamkeitsdefizit", "language": "de", "definitions": [{"pos": "noun", "text": "attention deficit"}], "url": "https://en.wiktionary.org/wiki/Aufmerksamkeitsdefizit", "source": "ai"}
+
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=empty_wikt)):
+        with patch("services.gemini.define_word", new=AsyncMock(return_value=ai_result)):
+            resp = await client.get("/api/vocabulary/definition/Aufmerksamkeitsdefizit?lang=de")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["definitions"] != []
+    assert data["definitions"][0]["text"] == "attention deficit"
+    assert data.get("source") == "ai"
+
+
+async def test_definition_returns_wiktionary_when_available(client, test_user):
+    """When wiktionary has definitions, return them without calling AI."""
+    wikt_result = {"lemma": "test", "language": "en", "definitions": [{"pos": "noun", "text": "a trial"}], "url": "https://en.wiktionary.org/wiki/test"}
+
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=wikt_result)):
+        with patch("services.gemini.define_word", new=AsyncMock()) as mock_ai:
+            resp = await client.get("/api/vocabulary/definition/test?lang=en")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["definitions"][0]["text"] == "a trial"
+    mock_ai.assert_not_called()
+
+
+async def test_definition_returns_empty_when_no_key_and_wiktionary_fails(client, test_user):
+    """Without a Gemini key, empty wiktionary result is returned as-is (no AI fallback)."""
+    empty_wikt = {"lemma": "xyz", "language": "de", "definitions": [], "url": "https://en.wiktionary.org/wiki/xyz"}
+
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=empty_wikt)):
+        resp = await client.get("/api/vocabulary/definition/xyz?lang=de")
+
+    assert resp.status_code == 200
+    assert resp.json()["definitions"] == []

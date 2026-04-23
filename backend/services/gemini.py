@@ -153,6 +153,49 @@ async def check_pronunciation(
     return await _generate(api_key, SYSTEM_PRONUNCIATION, prompt, 512)
 
 
+async def define_word(api_key: str, word: str, lang: str = "en") -> dict:
+    """Return an AI-generated definition for a word or phrase.
+
+    Used as a fallback when wiktionary returns no definitions — handles German
+    compound words, inflected forms, and multi-word phrases that wiktionary misses.
+
+    Returns the same shape as wiktionary.lookup so callers can use either transparently.
+    """
+    lang_note = f" The word is in {lang}." if lang != "en" else ""
+    prompt = (
+        f'Define "{word}" as it would appear in a reading context.{lang_note}\n\n'
+        "Return a JSON object with exactly these fields:\n"
+        '  "lemma": the base/dictionary form of the word or phrase\n'
+        '  "definitions": array of objects with "pos" (part of speech) and "text" (definition)\n'
+        "Provide 1-3 definitions. Keep each definition under 100 words. "
+        "Return ONLY the JSON object, no markdown, no explanation."
+    )
+    import json as _json
+    raw = await _generate(api_key, "", prompt, 400)
+    raw = raw.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+    try:
+        data = _json.loads(raw)
+        return {
+            "lemma": str(data.get("lemma", word)),
+            "language": lang,
+            "definitions": [
+                {"pos": str(d.get("pos", "")), "text": str(d.get("text", ""))}
+                for d in data.get("definitions", [])[:3]
+                if d.get("text")
+            ],
+            "url": f"https://en.wiktionary.org/wiki/{word}",
+            "source": "ai",
+        }
+    except Exception:
+        return {
+            "lemma": word, "language": lang, "definitions": [],
+            "url": f"https://en.wiktionary.org/wiki/{word}", "source": "ai",
+        }
+
+
 async def suggest_youtube_query(api_key: str, passage: str, book_title: str, author: str) -> str:
     prompt = (
         f'Given this passage from "{book_title}" by {author}:\n---\n{passage[:500]}\n---\n\n'

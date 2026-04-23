@@ -10,7 +10,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon, ArrowLeftIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowLeftIcon, FlashcardIcon } from "@/components/Icons";
 
 type SortMode = "alpha" | "language" | "book" | "recent";
 
@@ -371,6 +371,14 @@ function VocabularyPageContent() {
             </p>
           )}
         </div>
+        <button
+          onClick={() => router.push("/vocabulary/flashcards")}
+          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0"
+          data-testid="flashcards-btn"
+        >
+          <FlashcardIcon className="w-4 h-4" />
+          <span className="hidden sm:inline">Flashcards</span>
+        </button>
         <button
           onClick={() => handleExport()}
           disabled={exporting || words.length === 0}

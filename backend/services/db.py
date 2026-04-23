@@ -1039,3 +1039,135 @@ async def delete_insight(insight_id: int, user_id: int) -> bool:
         )
         await db.commit()
     return cursor.rowcount > 0
+
+
+# ── Flashcard / SRS (issue #556) ─────────────────────────────────────────────
+
+async def _ensure_flashcard_rows(user_id: int) -> None:
+    """Create flashcard_reviews rows for any vocabulary words that don't have one yet.
+
+    New words are treated as due immediately (due_date = today). This is called
+    lazily before any flashcard read so users don't need a separate 'enroll' step.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT OR IGNORE INTO flashcard_reviews (user_id, vocabulary_id, due_date)
+            SELECT ?, id, date('now')
+            FROM vocabulary
+            WHERE user_id = ?
+            """,
+            (user_id, user_id),
+        )
+        await db.commit()
+
+
+async def get_flashcards_due(user_id: int) -> list[dict]:
+    """Return vocabulary cards whose due_date <= today, with vocab metadata."""
+    await _ensure_flashcard_rows(user_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT fr.vocabulary_id, fr.interval_days, fr.ease_factor,
+                   fr.repetitions, fr.due_date, fr.last_reviewed_at,
+                   v.word, v.created_at AS saved_at
+            FROM flashcard_reviews fr
+            JOIN vocabulary v ON v.id = fr.vocabulary_id
+            WHERE fr.user_id = ? AND fr.due_date <= date('now')
+            ORDER BY fr.due_date ASC, v.word ASC
+            """,
+            (user_id,),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def review_flashcard(
+    user_id: int,
+    vocabulary_id: int,
+    grade: int,
+) -> dict | None:
+    """Apply SM-2 algorithm to a flashcard review. Returns updated state or None if not found."""
+    from datetime import date, timedelta
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT interval_days, ease_factor, repetitions FROM flashcard_reviews "
+            "WHERE user_id = ? AND vocabulary_id = ?",
+            (user_id, vocabulary_id),
+        ) as cur:
+            row = await cur.fetchone()
+        if row is None:
+            return None
+
+        interval = row["interval_days"]
+        ease = row["ease_factor"]
+        reps = row["repetitions"]
+
+        if grade < 3:
+            new_interval = 1
+            new_reps = 0
+        else:
+            if reps == 0:
+                new_interval = 1
+            elif reps == 1:
+                new_interval = 6
+            else:
+                new_interval = round(interval * ease)
+            new_reps = reps + 1
+
+        new_ease = max(1.3, ease + 0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
+        next_due = (date.today() + timedelta(days=new_interval)).isoformat()
+
+        await db.execute(
+            """
+            UPDATE flashcard_reviews
+            SET interval_days = ?, ease_factor = ?, repetitions = ?,
+                due_date = ?,
+                last_reviewed_at = datetime('now')
+            WHERE user_id = ? AND vocabulary_id = ?
+            """,
+            (new_interval, round(new_ease, 4), new_reps,
+             next_due, user_id, vocabulary_id),
+        )
+        await db.commit()
+
+    return {
+        "vocabulary_id": vocabulary_id,
+        "interval_days": new_interval,
+        "ease_factor": round(new_ease, 4),
+        "repetitions": new_reps,
+        "next_due": next_due,
+    }
+
+
+async def get_flashcard_stats(user_id: int) -> dict:
+    """Return aggregate flashcard stats for the user."""
+    await _ensure_flashcard_rows(user_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ?",
+            (user_id,),
+        ) as cur:
+            total = (await cur.fetchone())[0]
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ? AND due_date <= date('now')",
+            (user_id,),
+        ) as cur:
+            due_today = (await cur.fetchone())[0]
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews "
+            "WHERE user_id = ? AND date(last_reviewed_at) = date('now')",
+            (user_id,),
+        ) as cur:
+            reviewed_today = (await cur.fetchone())[0]
+
+    return {
+        "total": total,
+        "due_today": due_today,
+        "reviewed_today": reviewed_today,
+    }

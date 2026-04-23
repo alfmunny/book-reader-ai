@@ -742,3 +742,46 @@ export function confirmChapters(bookId: number, chapters: { title: string; origi
 export function deleteUploadedBook(bookId: number): Promise<{ ok: boolean }> {
   return request("/books/upload/" + bookId, { method: "DELETE" });
 }
+
+// ── Flashcards / SRS (issue #556) ────────────────────────────────────────────
+
+export interface Flashcard {
+  vocabulary_id: number;
+  word: string;
+  due_date: string;
+  interval_days: number;
+  ease_factor: number;
+  repetitions: number;
+  last_reviewed_at: string | null;
+  saved_at: string | null;
+}
+
+export interface FlashcardReviewResult {
+  vocabulary_id: number;
+  interval_days: number;
+  ease_factor: number;
+  repetitions: number;
+  next_due: string;
+}
+
+export interface FlashcardStats {
+  total: number;
+  due_today: number;
+  reviewed_today: number;
+}
+
+export function getDueFlashcards() {
+  return request<Flashcard[]>("/vocabulary/flashcards/due");
+}
+
+export function reviewFlashcard(vocabularyId: number, grade: number) {
+  return request<FlashcardReviewResult>(`/vocabulary/flashcards/${vocabularyId}/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grade }),
+  });
+}
+
+export function getFlashcardStats() {
+  return request<FlashcardStats>("/vocabulary/flashcards/stats");
+}

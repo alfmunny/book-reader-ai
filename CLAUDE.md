@@ -93,6 +93,19 @@ Always work highest priority first. Re-check priority each time you pick the nex
 | **P2 — normal** | UX issues, enhancements that unblock users, code quality bugs |
 | **P3 — low** | Nice-to-haves, minor polish, refactors |
 
+### Per-cycle priority (all code roles)
+
+At the top of every cycle — before claiming, implementing, or submitting anything — every code role (Dev / UI/UX / Architect) executes this check in order. Never skip steps.
+
+1. **Check your own open PRs first:** `gh pr list --author @me --state open --json number,title,mergeStateStatus`.
+   - For each PR with `mergeStateStatus = BEHIND`: rebase + force-push. `/submit-pr` handles this if you re-run it on the branch; otherwise run `git -C <worktree> fetch origin main && git -C <worktree> rebase origin/main && git -C <worktree> push origin <branch> --force-with-lease`.
+   - For each PR with failing CI: investigate. Fix or mark `blocked` and comment.
+   - For each PR MERGED since last cycle: remove `in-progress` label from the corresponding issue.
+2. **In-flight PR limit: 3 per session.** If you already have 3 or more open PRs authored by you, **do not submit a new PR this cycle.** You can still claim an issue and work it locally (branch, commits, tests), but hold off on `/submit-pr` until the count drops below 3. Prevents the backlog rot and CI-queue jam observed on 2026-04-23.
+3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label. Claim it. Work it. Submit via `/submit-pr`.
+4. **If there are no unclaimed issues AND your PR count < 3**, enter your role's idle mode (bug hunt / UX audit / architecture gap analysis). File one issue, claim it, work it, submit.
+5. **If there are no unclaimed issues AND your PR count ≥ 3**, wait. Re-check PRs every few minutes; as soon as one merges, the slot frees up and you resume step 3.
+
 ---
 
 ## Roles
@@ -108,7 +121,7 @@ Always work highest priority first. Re-check priority each time you pick the nex
 - Watch deployments: run `/loop` for smoke-test and deploy monitoring
 - Approve design docs (Path B) before implementation begins
 - Keep `product/review-state.md` updated every cycle
-- **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, pushes, creates, enables auto-merge, and watches until MERGED in one atomic flow. A PR is not done until the skill exits cleanly.
+- **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
 
 **Polling cadence (fixed-interval cron via `/loop Nm`):**
 - PM runs as `/loop ${PM_POLL_MINUTES}m <prompt>`, launched by `scripts/start-roles.sh`. The harness fires the cron every N minutes regardless of whether the prior turn re-armed a wakeup — this guarantees the loop cannot die silently between turns.
@@ -138,7 +151,7 @@ Always work highest priority first. Re-check priority each time you pick the nex
 5. **Write a failing regression test first** — confirms the issue is reproducible. Never ship without a test.
 6. Fix the source code — minimal change, no unrelated cleanup
 7. Run the full test suite; all tests must pass before committing
-8. **Submit via `/submit-pr` skill.** It rebases, pushes, creates the PR with `Closes #N` in the body (add `--label bug` or `--label feat`), enables auto-merge, and watches until MERGED — including rebasing on every BEHIND and breaking on check failures. Do NOT run `gh pr create` or `gh pr merge` directly. Do NOT pick a new issue until the skill exits cleanly.
+8. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label bug` or `--label feat`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` or `gh pr merge` directly. Once the skill returns, the watcher runs async — you may pick up new work **only if your per-cycle PR count is under 3** (see "Per-cycle priority" above).
 9. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
 
 **Idle mode (no unclaimed issues):** Enter bug-hunt mode. Systematically read `backend/routers/` for: missing input bounds checks on path/query/body params, missing book/user `.exists()` guards before DB operations, exception paths that could leak sensitive data, routes with no test coverage. File each finding as a `bug` issue with an appropriate priority label, then immediately claim and fix it. Do not accumulate a backlog — file one, fix one, repeat.
@@ -169,7 +182,7 @@ Always work highest priority first. Re-check priority each time you pick the nex
 3. Claim the issue; create a fix branch in your worktree
 4. Write frontend test first (Jest/RTL or E2E), then implement
 5. Run full frontend test suite before pushing
-6. **Submit via `/submit-pr` skill.** It rebases, pushes, creates the PR with `Closes #N` (add `--label ux` or `--label ui`), enables auto-merge, and watches until MERGED. Do NOT run `gh pr create` directly. Do NOT pick a new issue until the skill exits cleanly.
+6. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label ux` or `--label ui`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` directly. Once the skill returns, the watcher runs async — you may pick up new work only if your per-cycle PR count is under 3 (see "Per-cycle priority" above).
 7. After merge: remove `in-progress` label
 
 **Idle mode (no unclaimed issues):** Run a UX audit. Check frontend components for: emoji used as UI icons instead of SVG from `Icons.tsx`, icon-only buttons missing `aria-label`, interactive elements with touch targets under 44px, hardcoded hex colors instead of CSS token variables. File each violation as a `ux` issue, then immediately claim and fix it. File one, fix one, repeat.
@@ -194,9 +207,9 @@ Always work highest priority first. Re-check priority each time you pick the nex
 1. Read all memory files in `MEMORY.md`
 2. Claim the issue
 3. Write `docs/design/<feature>.md` — cover: problem, solution, schema changes, API changes, open questions
-4. **Submit the design doc via `/submit-pr` skill.** The skill watches until MERGED (or until PM requests changes). Comment on the issue linking to the PR. Do NOT pick new work until the skill exits.
+4. **Submit the design doc via `/submit-pr` skill.** Comment on the issue linking to the PR. Background watcher picks up BEHIND/failures; session can pick up new work once the skill returns, subject to the 3-PR limit (see "Per-cycle priority" above).
 5. After PM approves and design doc merges: begin implementation in a new branch
-6. **Submit the implementation via `/submit-pr` skill** with `Closes #N` in the body. Same rule — wait for skill to exit cleanly.
+6. **Submit the implementation via `/submit-pr` skill** with `Closes #N` in the body. Same watcher semantics as step 4.
 7. After merge: remove `in-progress` label
 
 **Workflow (Path A — direct implementation):**
@@ -299,9 +312,10 @@ Branch naming: `feat/`, `fix/`, `chore/`, `test/`, `design/`
 1. `git -C <repo> fetch origin main && git -C <repo> rebase origin/main`
 2. `git -C <repo> checkout -b <prefix>/description`
 3. Make commits; run the full test suite before submitting.
-4. **Invoke the `/submit-pr` skill.** It handles push, PR creation (with `Closes #N` + appropriate label), auto-merge, BEHIND-rebase-on-demand, check-failure detection, and watching until MERGED — in one atomic flow.
-5. Do **not** call `gh pr create` / `gh pr merge` / a hand-rolled watch loop directly. The skill exists to make those steps atomic. If you think the skill can't handle a case, tell the user and stop — don't bypass.
-6. **Do not start any new work until the skill exits cleanly** (MERGED, or CLOSED / failed checks with a clear reason).
+4. **Check the in-flight PR limit.** If you already have 3 or more open PRs authored by you, stop here. Hold the branch locally until one of your PRs merges, then resume. See "Per-cycle priority (all code roles)".
+5. **Invoke the `/submit-pr` skill.** It handles push, PR creation (with `Closes #N` + appropriate label), auto-merge, and launches a background watcher that rebases on BEHIND and surfaces check failures until MERGED.
+6. Do **not** call `gh pr create` / `gh pr merge` / a hand-rolled watch loop directly. The skill exists to make those steps atomic. If you think the skill can't handle a case, tell the user and stop — don't bypass.
+7. **After the skill returns, the watcher runs async.** You may pick up new work subject to step 4's 3-PR cap.
 
 **A PR is NOT done until it is MERGED.** Never report a PR as done while it is still OPEN, BEHIND, or BLOCKED. The `/submit-pr` skill is the only supported path to satisfy this rule; rolling your own is how PRs pile up unmerged.
 

@@ -899,13 +899,19 @@ export default function ReaderPage() {
               <>
                 <div className="flex items-baseline gap-1.5 min-w-0">
                   <h1 className="font-serif font-bold text-ink truncate text-sm">{meta.title}</h1>
-                  <a
-                    href={`https://www.gutenberg.org/ebooks/${meta.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 text-xs text-amber-500 hover:text-amber-700"
-                    title="View on Project Gutenberg"
-                  >↗</a>
+                  {meta.source === "upload" ? (
+                    <span className="shrink-0 text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 leading-none">
+                      Uploaded
+                    </span>
+                  ) : (
+                    <a
+                      href={`https://www.gutenberg.org/ebooks/${meta.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-xs text-amber-500 hover:text-amber-700"
+                      title="View on Project Gutenberg"
+                    >↗</a>
+                  )}
                 </div>
                 <p className="text-xs text-amber-700 truncate">{meta.authors.join(", ")}</p>
               </>

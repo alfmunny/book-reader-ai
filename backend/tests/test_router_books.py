@@ -1092,3 +1092,46 @@ async def test_retry_translation_oversized_target_language_returns_422(client, t
     assert resp.status_code == 422, (
         f"Expected 422 for oversized target_language in retry, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #517: Unbounded GET query params ────────────────────────────────────
+
+
+async def test_search_oversized_q_returns_422(client):
+    """Regression #517: GET /books/search?q=<201 chars> must return 422."""
+    resp = await client.get(f"/api/books/search?q={'x' * 201}")
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized q in /books/search, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_search_oversized_language_returns_422(client):
+    """Regression #517: GET /books/search?language=<21 chars> must return 422."""
+    resp = await client.get(f"/api/books/search?q=test&language={'x' * 21}")
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized language in /books/search, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_translation_status_oversized_target_language_returns_422(client):
+    """Regression #517: GET /books/{id}/translation-status?target_language=<21 chars> must return 422."""
+    resp = await client.get(f"/api/books/1/translation-status?target_language={'x' * 21}")
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in translation-status, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_chapter_queue_status_oversized_target_language_returns_422(client, test_user):
+    """Regression #517: GET /books/{id}/chapters/{idx}/queue-status?target_language=<21 chars> must return 422."""
+    resp = await client.get(f"/api/books/1/chapters/0/queue-status?target_language={'x' * 21}")
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in chapter queue-status, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_chapter_translation_oversized_target_language_returns_422(client):
+    """Regression #517: GET /books/{id}/chapters/{idx}/translation?target_language=<21 chars> must return 422."""
+    resp = await client.get(f"/api/books/1/chapters/0/translation?target_language={'x' * 21}")
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in chapter translation, got {resp.status_code}: {resp.text}"
+    )

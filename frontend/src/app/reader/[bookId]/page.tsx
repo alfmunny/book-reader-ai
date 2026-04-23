@@ -837,7 +837,7 @@ export default function ReaderPage() {
             <button
               onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
               disabled={chapterIndex === 0}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
+              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
             >← Prev</button>
             <span className="text-stone-400 mx-0.5">|</span>
             <span className="text-stone-600 max-w-[180px] truncate font-medium">
@@ -847,14 +847,14 @@ export default function ReaderPage() {
             <button
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
               disabled={chapterIndex === chapters.length - 1}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors"
+              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
             >Next →</button>
             {paragraphFocus && (
               <>
                 <span className="text-stone-400 mx-0.5">|</span>
                 <button
                   onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px]"
                   title={ttsIsPlaying ? "Playing…" : "Read focused paragraph"}
                 >
                   {ttsIsPlaying ? <><PauseIcon className="w-3 h-3 shrink-0" /> Playing</> : <><PlayIcon className="w-3 h-3 shrink-0" /> Read para</>}
@@ -868,13 +868,13 @@ export default function ReaderPage() {
                 setTypographyAnchorPos({ x: rect.right, y: rect.bottom });
                 setShowTypographyPanel((v) => !v);
               }}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold"
+              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px]"
               title="Typography"
             >Aa</button>
             <span className="text-stone-400 mx-0.5">|</span>
             <button
               onClick={() => setFocusMode(false)}
-              className="px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors"
+              className="px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px]"
               title="Exit focus mode (F)"
             >✕ Focus</button>
           </div>
@@ -1191,7 +1191,7 @@ export default function ReaderPage() {
           ) : (
             <a
               href="/api/auth/signin"
-              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] flex items-center"
             >
               Sign in
             </a>
@@ -1830,7 +1830,7 @@ export default function ReaderPage() {
                                     }
                                     setSidebarOpen(false);
                                   }}
-                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors"
+                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] flex items-center"
                                 >
                                   {vocabView === "book" && (
                                     <span className="text-[10px] text-stone-400 mr-1">Ch.{occ.chapter_index + 1}</span>
@@ -1971,7 +1971,7 @@ export default function ReaderPage() {
                             <button
                               onClick={handleTranslateWholeBook}
                               disabled={enqueueingBook}
-                              className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                              className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
                             >
                               {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
                             </button>

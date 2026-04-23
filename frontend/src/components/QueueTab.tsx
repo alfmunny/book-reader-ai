@@ -508,7 +508,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <button
               onClick={stopWorker}
               disabled={togglingWorker !== null}
-              className="text-xs px-3 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-1.5"
+              className="text-xs px-3 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-1.5 min-h-[44px]"
             >
               {togglingWorker === "stop" && (
                 <span
@@ -523,7 +523,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <button
               onClick={startWorker}
               disabled={togglingWorker !== null}
-              className="text-xs px-3 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 inline-flex items-center gap-1.5"
+              className="text-xs px-3 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 inline-flex items-center gap-1.5 min-h-[44px]"
             >
               {togglingWorker === "start" && (
                 <span

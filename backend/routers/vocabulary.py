@@ -18,6 +18,8 @@ from services.db import (
     review_flashcard,
     get_flashcard_stats,
 )
+from services import decks as decks_service
+from services import vocab_tags
 from services.translate import translate_text
 
 router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
@@ -101,7 +103,15 @@ class ReviewRequest(BaseModel):
 
 
 @router.get("/flashcards/due")
-async def get_due_flashcards(user: dict = Depends(get_current_user)):
+async def get_due_flashcards(
+    deck_id: int | None = Query(default=None, ge=1),
+    user: dict = Depends(get_current_user),
+):
+    if deck_id is not None:
+        vocab_ids = await decks_service.resolve_deck_vocab_ids(user["id"], deck_id)
+        if vocab_ids is None:
+            raise HTTPException(status_code=404, detail="Deck not found")
+        return await get_flashcards_due(user["id"], vocabulary_ids=vocab_ids)
     return await get_flashcards_due(user["id"])
 
 
@@ -118,8 +128,65 @@ async def submit_flashcard_review(
 
 
 @router.get("/flashcards/stats")
-async def flashcard_stats(user: dict = Depends(get_current_user)):
+async def flashcard_stats(
+    deck_id: int | None = Query(default=None, ge=1),
+    user: dict = Depends(get_current_user),
+):
+    if deck_id is not None:
+        vocab_ids = await decks_service.resolve_deck_vocab_ids(user["id"], deck_id)
+        if vocab_ids is None:
+            raise HTTPException(status_code=404, detail="Deck not found")
+        return await get_flashcard_stats(user["id"], vocabulary_ids=vocab_ids)
     return await get_flashcard_stats(user["id"])
+
+
+# ── Tags on vocabulary (issue #645) ─────────────────────────────────────────
+
+class TagAdd(BaseModel):
+    tag: str = Field(..., min_length=1, max_length=50)
+
+
+@router.get("/tags")
+async def list_tags(user: dict = Depends(get_current_user)):
+    return await vocab_tags.list_user_tags(user["id"])
+
+
+@router.get("/{vocabulary_id}/tags")
+async def get_tags(
+    vocabulary_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    return await vocab_tags.get_vocab_tags(user["id"], vocabulary_id)
+
+
+@router.post("/{vocabulary_id}/tags", status_code=201)
+async def add_tag(
+    req: TagAdd,
+    vocabulary_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        normalized = await vocab_tags.add_vocab_tag(user["id"], vocabulary_id, req.tag)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if normalized is None:
+        raise HTTPException(status_code=404, detail="Vocabulary word not found")
+    return {"tag": normalized}
+
+
+@router.delete("/{vocabulary_id}/tags/{tag}", status_code=204)
+async def delete_tag(
+    vocabulary_id: int = Path(..., ge=1),
+    tag: str = Path(..., min_length=1, max_length=50),
+    user: dict = Depends(get_current_user),
+):
+    try:
+        removed = await vocab_tags.remove_vocab_tag(user["id"], vocabulary_id, tag)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not removed:
+        raise HTTPException(status_code=404, detail="Tag not found on this word")
+    return None
 
 
 # ── Obsidian export ───────────────────────────────────────────────────────────

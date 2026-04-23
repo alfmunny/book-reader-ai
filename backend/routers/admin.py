@@ -259,6 +259,14 @@ async def delete_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_re
             "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
         await db.execute(
+            "DELETE FROM vocabulary_tags WHERE vocabulary_id NOT IN "
+            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
+        await db.execute(
+            "DELETE FROM deck_members WHERE vocabulary_id NOT IN "
+            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
+        await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
         await db.execute("DELETE FROM annotations WHERE book_id = ?", (book_id,))

@@ -55,29 +55,32 @@ MEMORY_PATH="$HOME/.claude/projects/$(echo "$REPO" | tr '/' '-')/memory/MEMORY.m
 CLAUDE_BASE="claude${BYPASS:+ $BYPASS}"
 
 # ── Model assignments per role ─────────────────────────────────────────────────
-# PM:    Sonnet — nuanced design reviews, PR comments, issue triage
+# PM:    Opus   — sustained multi-cycle review loop, design judgement, triage
 # Dev:   Sonnet — code generation and test writing
-# UX:    Haiku  — formulaic audit work (emoji→SVG, aria-label, touch targets)
+# UX:    Sonnet — component implementation, SVG extraction, touch target fixes
 # Arch:  Opus   — deep reasoning for design docs and cross-cutting decisions
 
-MODEL_PM="claude-sonnet-4-6"
+MODEL_PM="claude-opus-4-7"
 MODEL_DEV="claude-sonnet-4-6"
-MODEL_UIUX="claude-haiku-4-5-20251001"
+MODEL_UIUX="claude-sonnet-4-6"
 MODEL_ARCH="claude-opus-4-7"
 
-# ── PM polling cadence (team-size-adjusted, fixed-interval cron) ──────────────
-# PM runs as /loop ${PM_POLL_MINUTES}m so the harness re-fires the cycle via
-# cron on every tick, regardless of whether the prior turn re-armed a wakeup.
-# This guarantees the PM loop cannot die silently between turns.
+# ── Polling cadences (fixed-interval cron via /loop Nm) ───────────────────────
+# All four roles use /loop so the harness re-fires the prompt on every cron
+# tick, even if the prior turn went idle. This prevents any role from silently
+# stalling after finishing a task.
 #
-# Default cadence is sized for 3 active code roles (dev + uiux + arch). When
-# dev2 is running, the dev2 subcommand bumps the interval to 2 minutes by
-# regenerating the PM prompt and reminding the user to restart PM.
-#
+# PM cadence is team-size-adjusted:
 #   1 code role   → 5 min   2 code roles  → 4 min
 #   3 code roles  → 3 min   4 code roles  → 2 min  (dev + dev2 + uiux + arch)
+#
+# Code role cadences are idle-recovery checks — long enough not to interrupt
+# active work, short enough to restart a stalled session quickly.
 
 PM_POLL_MINUTES=3
+DEV_POLL_MINUTES=5
+UIUX_POLL_MINUTES=5
+ARCH_POLL_MINUTES=10
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -104,19 +107,19 @@ check_deps() {
 # Write role prompts to /tmp (namespaced by SLUG so multiple repos can run at once)
 write_prompts() {
   cat > "/tmp/${SLUG}-pm.txt" << PROMPT
-/loop ${PM_POLL_MINUTES}m Act as product manager for ${SLUG}. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait.
+/loop ${PM_POLL_MINUTES}m Act as product manager for ${SLUG}. At the start of every cycle, run: git -C ${REPO} fetch origin main --quiet to keep the remote refs current. Then: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait.
 PROMPT
 
   cat > "/tmp/${SLUG}-dev.txt" << PROMPT
-You are a Dev session for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in ${MEMORY_PATH}. Then start immediately: verify your worktree exists (git -C ${REPO} worktree list), pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion — regression test first, fix, full test suite, PR with auto-merge enabled. After each PR merges, pick the next issue without waiting for me. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks, missing .exists() guards, and unhandled edge cases — file one bug issue, immediately claim and fix it, then repeat.
+/loop ${DEV_POLL_MINUTES}m You are a Dev session for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md (the main checkout — always current) and follow the Dev role rules exactly. Read all memory files listed in ${MEMORY_PATH}. Every cycle, follow this order strictly: (1) FIRST check your own open PRs — run: gh pr list --author @me --state open --json number,title,mergeStateStatus,headRefName — for each PR: if BEHIND rebase and force-push; if CI failing investigate and fix; if merged remove the in-progress label from its issue. Only after all your open PRs are handled, move to (2): pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion — regression test first, fix, full test suite, PR with auto-merge enabled. If no unclaimed issues exist, enter bug-hunt mode: scan backend/routers/ for missing bounds checks, missing .exists() guards, and unhandled edge cases — file one bug issue, immediately claim and fix it, then repeat.
 PROMPT
 
   cat > "/tmp/${SLUG}-uiux.txt" << PROMPT
-You are the UI/UX Dev for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in ${MEMORY_PATH}. Then start immediately: verify your worktree exists (git -C ${REPO} worktree list), pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion — test first, implement, PR. After each PR merges, pick the next issue without waiting for me. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file one ux issue, immediately claim and fix it, then repeat.
+/loop ${UIUX_POLL_MINUTES}m You are the UI/UX Dev for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md (the main checkout — always current) and follow the UI/UX Dev role rules. Read all memory files listed in ${MEMORY_PATH}. Every cycle, follow this order strictly: (1) FIRST check your own open PRs — run: gh pr list --author @me --state open --json number,title,mergeStateStatus,headRefName — for each PR: if BEHIND rebase and force-push; if CI failing investigate and fix; if merged remove the in-progress label from its issue. Only after all your open PRs are handled, move to (2): pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion — test first, implement, PR. If no unclaimed ux/ui issues exist, run a UX audit: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file one ux issue, immediately claim and fix it, then repeat.
 PROMPT
 
   cat > "/tmp/${SLUG}-arch.txt" << PROMPT
-You are the Architect for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md and follow the Architect role rules. Read all memory files listed in ${MEMORY_PATH}. Then start immediately: verify your worktree exists (git -C ${REPO} worktree list), pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B complex features). After each task completes, pick the next without waiting for me. If no architecture issues exist, identify the highest-value unimplemented feature by reviewing docs/FEATURES.md and the open issue list — file a new architecture issue, claim it, and begin a design doc. Do not implement without PM sign-off on the design doc.
+/loop ${ARCH_POLL_MINUTES}m You are the Architect for ${SLUG}. Read CLAUDE.md at ${REPO}/CLAUDE.md (the main checkout — always current) and follow the Architect role rules. Read all memory files listed in ${MEMORY_PATH}. Every cycle, follow this order strictly: (1) FIRST check your own open PRs — run: gh pr list --author @me --state open --json number,title,mergeStateStatus,headRefName — for each PR: if BEHIND rebase and force-push; if CI failing investigate and fix; if merged remove the in-progress label from its issue. Only after all your open PRs are handled, move to (2): pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B complex features). If no architecture issues exist, identify the highest-value unimplemented feature by reviewing docs/FEATURES.md and the open issue list — file a new architecture issue, claim it, and begin a design doc. Do not implement without PM sign-off on the design doc.
 PROMPT
 }
 
@@ -186,10 +189,16 @@ cmd_restore() {
     exit 0
   fi
   echo "Restoring roles to separate windows..."
-  tmux break-pane -t "${SESSION}:overview.0" -d -n "pm"
-  tmux break-pane -t "${SESSION}:overview.0" -d -n "dev"
-  tmux break-pane -t "${SESSION}:overview.0" -d -n "uiux"
-  tmux rename-window -t "${SESSION}:overview" "arch"
+  # Capture all pane IDs up front — breaking panes shifts indices, so we must
+  # target by stable pane ID, not by positional index.
+  local pane_ids
+  mapfile -t pane_ids < <(tmux list-panes -t "${SESSION}:overview" -F "#{pane_id}")
+  local names=("pm" "dev" "uiux" "arch")
+  for i in "${!pane_ids[@]}"; do
+    tmux break-pane -s "${pane_ids[$i]}" -d -n "${names[$i]}" 2>/dev/null || \
+      { tmux break-pane -s "${pane_ids[$i]}" -d && \
+        tmux rename-window -t "${SESSION}:$(tmux display-message -p -t "${pane_ids[$i]}" '#{window_index}')" "${names[$i]}" 2>/dev/null || true; }
+  done
   tmux set-option -t "${SESSION}" pane-border-status off
   tmux select-window -t "${SESSION}:pm"
   echo "Roles restored: pm / dev / uiux / arch"
@@ -204,8 +213,8 @@ Usage: bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass]
 
 Subcommands:
   (none)              Start all 4 roles in separate tmux windows
-  overview            Collapse roles into a 2×2 overview pane
-  restore             Spread overview panes back to separate windows
+  overview            Collapse roles into a 2×2 grid (all panes in one window)
+  restore             Spread the 2×2 grid back to separate windows
   stop                Gracefully stop the session
   restart [--bypass]  Stop then start fresh
   dev2    [--bypass]  Add a second Dev window to a running session
@@ -230,9 +239,20 @@ Models:
   UI/UX   $MODEL_UIUX
   Arch    $MODEL_ARCH
 
-PM polling cadence: ${PM_POLL_MINUTES} min (fixed cron via /loop).
-  Bumped to 2 min when dev2 is added. Change by editing PM_POLL_MINUTES
-  near the top of this script, then restart.
+Idle-recovery cadences (fixed cron via /loop — re-enters role if stalled):
+  PM      ${PM_POLL_MINUTES} min  (bumped to 2 min when dev2 added)
+  Dev     ${DEV_POLL_MINUTES} min
+  UI/UX   ${UIUX_POLL_MINUTES} min
+  Arch    ${ARCH_POLL_MINUTES} min
+  Edit *_POLL_MINUTES near the top of this script and restart to change.
+
+Quick reference:
+  Attach to session:   tmux attach -t $SESSION
+  Switch windows:      Ctrl-b n/p  (next/prev)  or  Ctrl-b w  (visual picker)
+  Collapse to grid:    bash scripts/start-roles.sh overview
+  Restore to windows:  bash scripts/start-roles.sh restore
+  Stop all roles:      bash scripts/start-roles.sh stop
+  Restart all roles:   bash scripts/start-roles.sh restart
 EOF
     exit 0
     ;;

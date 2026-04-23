@@ -106,3 +106,71 @@ def test_html_body_text_preserves_div_chapter_wrapper_in_epub():
         body, skip_first_heading=True, skip_nested_chapter_divs=True,
     )
     assert "Jemand mußte Josef K." not in text_html_path, text_html_path
+
+
+# ── Faust / Kafka title-page + duplicate-title regressions ─────────────────
+
+def test_strip_title_from_body_prefix_drops_matching_line():
+    """If a chapter's body text opens with the chapter title itself,
+    _strip_title_from_body_prefix drops that line so the reader doesn't
+    render the header twice (Faust Nacht, book 2229)."""
+    from services.splitter import _strip_title_from_body_prefix
+    body = "FAUST: Der Tragödie erster Teil\n\nNacht\n\nIn einem hochgewölbten..."
+    out = _strip_title_from_body_prefix(body, "FAUST: Der Tragödie erster Teil")
+    assert out.startswith("Nacht")
+
+
+def test_strip_title_leaves_unrelated_body_alone():
+    from services.splitter import _strip_title_from_body_prefix
+    body = "Once upon a time\n\nmore prose"
+    out = _strip_title_from_body_prefix(body, "Chapter 1")
+    assert out == body
+
+
+def test_epub_frontmatter_blocks_detects_gutenberg_classes():
+    """Kafka's pg-header wraps each frontmatter piece in
+    <div class="div1 titlepage"> / cover / frenchtitle / copyright. The
+    helper finds them all by class so build_chapters_from_epub can strip
+    them before the word-count filter runs."""
+    from lxml import html as lxml_html
+    from services.splitter import _epub_frontmatter_blocks
+    html = """
+    <body>
+      <div class="body">
+        <div class="div1 cover"><p>cover text</p></div>
+        <div class="div1 titlepage"><h1>Title</h1></div>
+        <div class="div1 frenchtitle"><p>AUTHOR</p></div>
+        <div class="div1 copyright"><p>(c) 1925</p></div>
+        <div class="chapter"><p>real prose</p></div>
+      </div>
+    </body>
+    """
+    body = lxml_html.fromstring(html)
+    fm = _epub_frontmatter_blocks(body)
+    assert len(fm) == 4
+
+
+def test_epub_toc_containers_detects_pginternal_table():
+    """Gutenberg title-page spine items often hold a <table> whose every
+    row is a single <a class="pginternal"> link to another spine item
+    (book 2229 Faust). Dropping the table lets the 30-word cutoff filter
+    the whole spine item out so it doesn't become a rogue chapter 0."""
+    from lxml import html as lxml_html
+    from services.splitter import _epub_toc_containers
+    html = """
+    <body>
+      <table>
+        <tr><td><a class="pginternal" href="ch1.xhtml#c1">Zueignung</a></td></tr>
+        <tr><td><a class="pginternal" href="ch2.xhtml#c2">Vorspiel</a></td></tr>
+        <tr><td><a class="pginternal" href="ch3.xhtml#c3">Prolog im Himmel</a></td></tr>
+        <tr><td><a class="pginternal" href="ch4.xhtml#c4">Nacht</a></td></tr>
+      </table>
+      <p>This is not a TOC.</p>
+      <table>
+        <tr><td>Random</td><td>table cell</td></tr>
+      </table>
+    </body>
+    """
+    body = lxml_html.fromstring(html)
+    toc = _epub_toc_containers(body)
+    assert len(toc) == 1  # only the pginternal-dominated table qualifies

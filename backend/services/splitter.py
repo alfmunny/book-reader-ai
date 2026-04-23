@@ -631,6 +631,19 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
             # of the chapter content.
             for boiler in body.xpath(".//section[contains(@class, 'pg-boilerplate')]"):
                 boiler.getparent().remove(boiler)
+            # Drop internal-anchor TOC tables and lists. Gutenberg pg-header
+            # items often carry a <table> or <ol> full of
+            # <a class="pginternal"> links to other spine items — a rendered
+            # reading of those looks like "chapter 0 = title + TOC" and
+            # shifts every real chapter's translation by one (#762, Faust).
+            for toc in _epub_toc_containers(body):
+                toc.getparent().remove(toc)
+            # Drop Gutenberg-marked frontmatter blocks (cover, title page,
+            # copyright, dedication, etc.) by class — Kafka's pg-header
+            # uses <div class="div1 titlepage">, <div class="div1
+            # copyright"> and so on for every frontmatter element.
+            for fm in _epub_frontmatter_blocks(body):
+                fm.getparent().remove(fm)
             text = _html_body_text(body, skip_first_heading=True)
         except Exception:
             continue
@@ -643,11 +656,86 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
             or _epub_heading_title(raw)
             or f"Section {len(chapters) + 1}"
         )
+        # Drop the chapter title if it repeats as the first body paragraph
+        # (Faust Nacht: spine item holds a stand-alone part-title <div class="chapter">
+        # followed by the real scene <div class="chapter">; the recursive
+        # body walker otherwise renders both into text).
+        text = _strip_title_from_body_prefix(text, title)
         chapters.append(Chapter(title=_clean_title(title), text=text))
 
     # EPUB spine is authoritative structure, not a heuristic guess.
     # Skip the regex-oriented _validate() and just require >= 2 chapters.
     return chapters if len(chapters) >= 2 else []
+
+
+_FRONTMATTER_CLASSES = (
+    "cover", "titlepage", "frenchtitle", "halftitle",
+    "colophon", "copyright", "dedication",
+)
+
+
+def _epub_frontmatter_blocks(body) -> list:
+    """Return top-level div/section elements tagged as frontmatter by
+    Gutenberg-specific class markers. Kafka's pg-header wraps each piece
+    (cover image, titlepage, frenchtitle, copyright) in its own
+    ``<div class="div1 titlepage">``-style container; this lets us drop
+    them cleanly without hard-coding item IDs."""
+    out = []
+    for elem in body.xpath(".//div[@class] | .//section[@class]"):
+        classes = (elem.get("class") or "").split()
+        if any(c in _FRONTMATTER_CLASSES for c in classes):
+            out.append(elem)
+    return out
+
+
+def _normalize_for_title_match(s: str) -> str:
+    """Lowercase + whitespace-collapse + trim. Used to detect whether a body
+    paragraph is really a repetition of the chapter title."""
+    import re
+    return re.sub(r"\s+", " ", (s or "").strip().lower())
+
+
+def _strip_title_from_body_prefix(body_text: str, title: str) -> str:
+    """If the body text's first non-empty paragraph(s) are just the chapter
+    title (or a close variant), drop them.
+
+    Happens when a spine item's HTML carries a <div class="chapter">
+    wrapper whose sole payload is the part/book title heading — the
+    recursive body walker otherwise renders that into body text verbatim,
+    duplicating the chapter header in the reader (book 2229, Faust Nacht).
+    """
+    if not body_text or not title:
+        return body_text
+    target = _normalize_for_title_match(title)
+    paragraphs = body_text.split("\n\n")
+    while paragraphs and _normalize_for_title_match(paragraphs[0]) == target:
+        paragraphs.pop(0)
+    return "\n\n".join(paragraphs).lstrip("\n")
+
+
+def _epub_toc_containers(body) -> list:
+    """Return <table> / <ol> / <ul> elements whose direct entries are
+    overwhelmingly (>=60%) Gutenberg-internal TOC links.
+
+    Marker used: ``<a class="pginternal">`` — Gutenberg emits exactly this
+    class on every TOC anchor it auto-generates, so the signal is narrow.
+    We look at direct-descendant cell/li nodes rather than every nested
+    anchor, which prevents a legitimate chapter that quotes a cross-link
+    from being mistaken for a TOC.
+    """
+    out = []
+    for container in body.xpath(".//table | .//ol | .//ul"):
+        entries = container.xpath(".//tr | .//li")
+        if not entries:
+            continue
+        internal = 0
+        for entry in entries:
+            entry_anchors = entry.xpath(".//a[contains(@class, 'pginternal')]")
+            if entry_anchors:
+                internal += 1
+        if internal >= max(3, int(len(entries) * 0.6)):
+            out.append(container)
+    return out
 
 
 def _epub_nav_titles(book) -> dict[str, str]:

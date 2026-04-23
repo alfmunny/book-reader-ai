@@ -1907,3 +1907,56 @@ async def test_queue_settings_accepts_valid_positive_values(admin_client, admin_
     assert res.status_code == 200, (
         f"Expected 200 for valid positive values, got {res.status_code}: {res.text}"
     )
+
+
+# ── model_chain validation (Issue #474) ──────────────────────────────────────
+
+async def test_queue_settings_rejects_empty_model_chain(admin_client, admin_db):
+    """Regression #474: empty model_chain list must return 400 (would leave SETTING_MODEL stale)."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": []},
+    )
+    assert res.status_code == 400, (
+        f"Expected 400 for empty model_chain, got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_settings_rejects_model_chain_with_empty_entry(admin_client, admin_db):
+    """Regression #474: model_chain with empty-string entry must return 400
+    (would set SETTING_MODEL to '' causing AI calls to fail)."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": ["", "gemini-1.5-flash"]},
+    )
+    assert res.status_code == 400, (
+        f"Expected 400 for model_chain with empty entry, got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_settings_rejects_auto_translate_languages_with_whitespace_entry(admin_client, admin_db):
+    """Regression #474: whitespace-only language codes in auto_translate_languages
+    must be stripped, resulting in valid stored codes only."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"auto_translate_languages": ["  ", "en", " "]},
+    )
+    # Should succeed but store only ["en"] — whitespace entries are silently filtered
+    assert res.status_code == 200, (
+        f"Expected 200 (whitespace filtered), got {res.status_code}: {res.text}"
+    )
+    from services.db import get_setting
+    import json as _json
+    stored = _json.loads(await get_setting("auto_translate_languages") or "[]")
+    assert stored == ["en"], f"Expected only ['en'] after whitespace filtering, got {stored}"
+
+
+async def test_queue_settings_accepts_valid_model_chain(admin_client, admin_db):
+    """Regression #474: a non-empty model_chain with valid entries must be accepted."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": ["gemini-2.0-flash", "gemini-1.5-flash"]},
+    )
+    assert res.status_code == 200, (
+        f"Expected 200 for valid model_chain, got {res.status_code}: {res.text}"
+    )

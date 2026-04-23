@@ -378,19 +378,13 @@ async def test_queue_put_settings_model_chain_updates_model_too(admin_client, ad
     assert model == "gemini-2.5-pro"
 
 
-async def test_queue_put_settings_empty_model_chain_does_not_update_model(admin_client, admin_db):
-    """An empty model_chain list doesn't update the model setting."""
-    from services.translation_queue import SETTING_MODEL
-    from services.db import set_setting
-    await set_setting(SETTING_MODEL, "original-model")
-
+async def test_queue_put_settings_empty_model_chain_returns_400(admin_client, admin_db):
+    """Regression #474: empty model_chain must be rejected (would leave SETTING_MODEL stale)."""
     res = await admin_client.put(
         "/api/admin/queue/settings",
         json={"model_chain": []},
     )
-    assert res.status_code == 200
-    # Model should remain unchanged
-    assert await get_setting(SETTING_MODEL) == "original-model"
+    assert res.status_code == 400, f"Expected 400 for empty model_chain, got {res.status_code}"
 
 
 async def test_queue_put_settings_max_output_tokens(admin_client, admin_db):

@@ -655,3 +655,21 @@ async def test_confirm_chapters_oversized_title_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for oversized chapter title, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #606: ConfirmChaptersBody.chapters list max_length ─────────────────
+
+
+async def test_confirm_chapters_oversized_list_returns_422(client, test_user):
+    """Regression #606: chapters list > 1000 entries must return 422, not write
+    a huge JSON blob to the DB."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+
+    oversized = [{"title": f"ch{i}", "original_index": 0} for i in range(1001)]
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": oversized},
+    )
+    assert resp.status_code == 422

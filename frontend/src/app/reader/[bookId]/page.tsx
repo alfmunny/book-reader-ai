@@ -56,7 +56,6 @@ export default function ReaderPage() {
   const [annotationPanel, setAnnotationPanel] = useState<{
     sentenceText: string;
     chapterIndex: number;
-    position: { x: number; y: number };
   } | null>(null);
   const [quickHighlightPanel, setQuickHighlightPanel] = useState<{
     sentenceText: string;
@@ -1354,9 +1353,6 @@ export default function ReaderPage() {
                   translationLoading={translationLoading}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
-                  onAnnotate={session?.backendToken ? (sentenceText, ci, position) => {
-                    setAnnotationPanel({ sentenceText, chapterIndex: ci, position });
-                  } : undefined}
                   onAnnotationClick={session?.backendToken ? (annotation, position) => {
                     setQuickHighlightPanel({
                       sentenceText: annotation.sentence_text,
@@ -1436,11 +1432,7 @@ export default function ReaderPage() {
               setQuickHighlightPanel({ sentenceText: text, chapterIndex, position });
             } : undefined}
             onNote={session?.backendToken ? (text) => {
-              setAnnotationPanel({
-                sentenceText: text,
-                chapterIndex,
-                position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-              });
+              setAnnotationPanel({ sentenceText: text, chapterIndex });
             } : undefined}
             onChat={(text) => {
               setChatSheetText(text);
@@ -1457,7 +1449,6 @@ export default function ReaderPage() {
               sentenceText={annotationPanel.sentenceText}
               chapterIndex={annotationPanel.chapterIndex}
               bookId={Number(bookId)}
-              position={annotationPanel.position}
               existingAnnotation={annotations.find(
                 (a) =>
                   a.sentence_text === annotationPanel.sentenceText &&
@@ -1513,7 +1504,6 @@ export default function ReaderPage() {
                 setAnnotationPanel({
                   sentenceText: quickHighlightPanel.sentenceText,
                   chapterIndex: quickHighlightPanel.chapterIndex,
-                  position: quickHighlightPanel.position,
                 });
               }}
             />
@@ -1695,7 +1685,6 @@ export default function ReaderPage() {
                           setAnnotationPanel({
                             sentenceText: ann.sentence_text,
                             chapterIndex: ann.chapter_index,
-                            position: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
                           });
                         }}
                         className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"

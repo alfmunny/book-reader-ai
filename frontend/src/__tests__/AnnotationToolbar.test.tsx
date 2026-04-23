@@ -22,7 +22,6 @@ const BASE_PROPS = {
   sentenceText: "It is a truth universally acknowledged.",
   chapterIndex: 0,
   bookId: 1,
-  position: { x: 100, y: 200 },
   onClose: jest.fn(),
   onSaved: jest.fn(),
   onDeleted: jest.fn(),
@@ -64,7 +63,7 @@ test("pre-fills color and note from existingAnnotation", () => {
       existingAnnotation={{ id: 42, note_text: "Interesting passage", color: "green" }}
     />,
   );
-  const textarea = screen.getByPlaceholderText(/Add a note/i) as HTMLTextAreaElement;
+  const textarea = screen.getByPlaceholderText(/Your thoughts/i) as HTMLTextAreaElement;
   expect(textarea.value).toBe("Interesting passage");
   // Green button should appear selected (scale-110 class)
   const greenBtn = screen.getByLabelText("Green");
@@ -83,10 +82,10 @@ test("calls createAnnotation and onSaved when saving new annotation", async () =
 
   render(<AnnotationToolbar {...BASE_PROPS} />);
 
-  const textarea = screen.getByPlaceholderText(/Add a note/i);
+  const textarea = screen.getByPlaceholderText(/Your thoughts/i);
   await userEvent.type(textarea, "My note");
 
-  await userEvent.click(screen.getByRole("button", { name: /save/i }));
+  await userEvent.click(screen.getByRole("button", { name: /save note/i }));
 
   await waitFor(() => {
     expect(mockCreateAnnotation).toHaveBeenCalledWith({
@@ -121,7 +120,7 @@ test("calls updateAnnotation when saving existing annotation", async () => {
   // Change color to blue
   await userEvent.click(screen.getByLabelText("Blue"));
 
-  await userEvent.click(screen.getByRole("button", { name: /save/i }));
+  await userEvent.click(screen.getByRole("button", { name: /update/i }));
 
   await waitFor(() => {
     expect(mockUpdateAnnotation).toHaveBeenCalledWith(42, expect.objectContaining({ color: "blue" }));

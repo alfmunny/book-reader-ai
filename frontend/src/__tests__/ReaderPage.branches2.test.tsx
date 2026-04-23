@@ -310,24 +310,16 @@ jest.mock("@/components/UndoToast", () => {
   return { __esModule: true, default: UndoToast };
 });
 
-// ─── SentenceReader: exposes onAnnotate / onSegmentClick / onAnnotationClick ──
+// ─── SentenceReader: exposes onSegmentClick / onAnnotationClick ───────────────
 jest.mock("@/components/SentenceReader", () => {
   const SentenceReader = ({
-    onAnnotate,
     onSegmentClick,
     onAnnotationClick,
   }: {
-    onAnnotate?: (sentenceText: string, ci: number, position: { x: number; y: number }) => void;
     onSegmentClick?: (startTime: number) => void;
     onAnnotationClick?: (ann: unknown, position: { x: number; y: number }) => void;
   }) => (
     <div data-testid="sentence-reader">
-      <button
-        data-testid="trigger-annotate"
-        onClick={() => onAnnotate?.("Test sentence", 0, { x: 100, y: 200 })}
-      >
-        annotate
-      </button>
       <button data-testid="trigger-segment-click" onClick={() => onSegmentClick?.(1.5)}>
         segment
       </button>
@@ -523,8 +515,8 @@ describe("ReaderPage.branches2 — AnnotationToolbar onSaved new annotation", ()
     render(<ReaderPage />);
     await flushPromises();
 
-    // Trigger annotation panel via SentenceReader mock button
-    const annotateBtn = await screen.findByTestId("trigger-annotate");
+    // Trigger annotation panel via SelectionToolbar note button
+    const annotateBtn = await screen.findByTestId("trigger-note");
     await userEvent.click(annotateBtn);
 
     const toolbar = await screen.findByTestId("annotation-toolbar");
@@ -610,7 +602,7 @@ describe("ReaderPage.branches2 — AnnotationToolbar onDeleted", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const annotateBtn = await screen.findByTestId("trigger-annotate");
+    const annotateBtn = await screen.findByTestId("trigger-note");
     await userEvent.click(annotateBtn);
 
     const toolbar = await screen.findByTestId("annotation-toolbar");
@@ -1973,18 +1965,16 @@ describe("ReaderPage.branches2 — chapter nav loading state", () => {
   });
 });
 
-// ─── Annotation toolbar shown when SentenceReader onAnnotate fires ────────────
+// ─── Annotation toolbar shown when SelectionToolbar onNote fires ──────────────
 
-describe("ReaderPage.branches2 — SentenceReader onAnnotate opens toolbar", () => {
-  it("annotation toolbar appears when SentenceReader triggers onAnnotate", async () => {
+describe("ReaderPage.branches2 — SelectionToolbar onNote opens toolbar", () => {
+  it("annotation toolbar appears when SelectionToolbar triggers onNote", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    await screen.findByTestId("sentence-reader");
-
-    const annotateBtn = await screen.findByTestId("trigger-annotate");
-    await userEvent.click(annotateBtn);
+    const noteBtn = await screen.findByTestId("trigger-note");
+    await userEvent.click(noteBtn);
 
     expect(await screen.findByTestId("annotation-toolbar")).toBeInTheDocument();
   });
@@ -2753,12 +2743,12 @@ describe("ReaderPage.branches2 — spacebar toggles TTS play/pause", () => {
 // ─── Annotation delete undo toast ─────────────────────────────────────────────
 
 describe("ReaderPage.branches2 — annotation delete shows undo toast", () => {
-  // id: 77 matches what SentenceReader mock sends in trigger-annotation-click
+  // id: 77 and sentence_text "annotated" match what SentenceReader mock sends in trigger-annotation-click
   const SAMPLE_ANN = {
     id: 77,
     book_id: 42,
     chapter_index: 0,
-    sentence_text: "Test sentence",
+    sentence_text: "annotated",
     note_text: "",
     color: "yellow",
   };
@@ -2811,9 +2801,12 @@ describe("ReaderPage.branches2 — annotation delete shows undo toast", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    // Open annotation toolbar via long-press trigger
-    const longPressTrigger = await screen.findByTestId("trigger-annotate");
-    await userEvent.click(longPressTrigger);
+    // Open annotation panel via annotation-click → qhp-open-note so existingAnnotation is loaded
+    const annClickBtn = await screen.findByTestId("trigger-annotation-click");
+    await userEvent.click(annClickBtn);
+
+    const openNoteBtn = await screen.findByTestId("qhp-open-note");
+    await userEvent.click(openNoteBtn);
 
     const deleteBtn = await screen.findByTestId("annotation-delete");
     await userEvent.click(deleteBtn);

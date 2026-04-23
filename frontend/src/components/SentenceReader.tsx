@@ -288,15 +288,6 @@ interface Props {
   /** Sentence text to scroll to and briefly highlight. */
   scrollTargetSentence?: string;
   /**
-   * Called when the user long-presses a sentence (400ms hold).
-   * Provides the sentence text, chapter index, and pointer position.
-   */
-  onAnnotate?: (
-    sentenceText: string,
-    chapterIndex: number,
-    position: { x: number; y: number },
-  ) => void;
-  /**
    * Called when the user clicks an already-annotated segment.
    * Provides the annotation and the click position so the parent can open
    * an inline color-picker / delete panel without navigating away.
@@ -305,7 +296,7 @@ interface Props {
     annotation: Annotation,
     position: { x: number; y: number },
   ) => void;
-  /** Chapter index — used with onAnnotate. */
+  /** Chapter index — used to scope annotations to the current chapter. */
   chapterIndex?: number;
   /** Existing annotations to highlight matching segments. */
   annotations?: Annotation[];
@@ -433,7 +424,6 @@ export default function SentenceReader({
   translations,
   translationDisplayMode = "parallel",
   translationLoading = false,
-  onAnnotate,
   onAnnotationClick,
   chapterIndex = 0,
   annotations,
@@ -596,22 +586,7 @@ export default function SentenceReader({
     };
   }, [annotations, annotationMap]);
 
-  // Long-press handlers (shared across segments)
-  function handlePointerDown(e: React.PointerEvent, seg: Segment) {
-    if (!onAnnotate) return;
-    // Prevent the browser's native text-selection loupe on touch devices so
-    // the 400ms hold cleanly triggers annotation without a competing selection.
-    if (e.pointerType === "touch") e.preventDefault();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    longPressStartPos.current = { x: startX, y: startY };
-    longPressTimer.current = setTimeout(() => {
-      longPressTimer.current = null;
-      longPressStartPos.current = null;
-      onAnnotate(seg.text, chapterIndex, { x: startX, y: startY });
-    }, 400);
-  }
-
+  // Long-press cancel (shared across segments)
   function cancelLongPress() {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -653,11 +628,7 @@ export default function SentenceReader({
 
         // Long press (500ms) → open word action drawer
         const handleSegLongPress = (e: React.PointerEvent, seg: Segment) => {
-          if (!onWordTap) {
-            // Fallback to legacy annotation long-press
-            handlePointerDown(e, seg);
-            return;
-          }
+          if (!onWordTap) return;
           // Prevent the browser's native text-selection loupe on touch so
           // the hold gesture cleanly triggers the word-tap drawer.
           if (e.pointerType === "touch") e.preventDefault();
@@ -726,10 +697,10 @@ export default function SentenceReader({
                   onSegmentClick(seg.startTime, seg.text);
                 }
               }}
-              onPointerDown={(e) => onWordTap ? handleSegLongPress(e, seg) : handlePointerDown(e, seg)}
-              onPointerUp={cancelLongPress}
-              onPointerCancel={cancelLongPress}
-              onPointerMove={handlePointerMove}
+              onPointerDown={onWordTap ? (e) => handleSegLongPress(e, seg) : undefined}
+              onPointerUp={onWordTap ? cancelLongPress : undefined}
+              onPointerCancel={onWordTap ? cancelLongPress : undefined}
+              onPointerMove={onWordTap ? handlePointerMove : undefined}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords)}

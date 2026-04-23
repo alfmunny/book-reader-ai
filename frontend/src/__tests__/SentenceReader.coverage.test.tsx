@@ -360,7 +360,7 @@ describe("SentenceReader — pointer move cancels long press (lines 455-458)", (
 
   it("cancels long press if pointer moves more than 10px", () => {
     jest.useFakeTimers();
-    const onAnnotate = jest.fn();
+    const onWordTap = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Move and cancel sentence."
@@ -368,25 +368,23 @@ describe("SentenceReader — pointer move cancels long press (lines 455-458)", (
         currentTime={0}
         isPlaying={false}
         onSegmentClick={noop}
-        onAnnotate={onAnnotate}
+        onWordTap={onWordTap}
       />
     );
 
     const segs = getSegments(container);
-    // Start press at (10, 10)
     dispatchPointerEvent(segs[0], "pointerdown", { clientX: 10, clientY: 10 });
     // Move more than 10px away → should cancel the long-press timer
     dispatchPointerEvent(segs[0], "pointermove", { clientX: 25, clientY: 10 });
 
     act(() => { jest.advanceTimersByTime(500); });
 
-    // onAnnotate should NOT have been called
-    expect(onAnnotate).not.toHaveBeenCalled();
+    expect(onWordTap).not.toHaveBeenCalled();
   });
 
   it("does not cancel if pointer moves less than 10px", () => {
     jest.useFakeTimers();
-    const onAnnotate = jest.fn();
+    const onWordTap = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Small move sentence here."
@@ -394,7 +392,7 @@ describe("SentenceReader — pointer move cancels long press (lines 455-458)", (
         currentTime={0}
         isPlaying={false}
         onSegmentClick={noop}
-        onAnnotate={onAnnotate}
+        onWordTap={onWordTap}
         chapterIndex={1}
       />
     );
@@ -406,12 +404,12 @@ describe("SentenceReader — pointer move cancels long press (lines 455-458)", (
 
     act(() => { jest.advanceTimersByTime(500); });
 
-    expect(onAnnotate).toHaveBeenCalledTimes(1);
+    expect(onWordTap).toHaveBeenCalledTimes(1);
   });
 
   it("pointerCancel clears the long-press timer", () => {
     jest.useFakeTimers();
-    const onAnnotate = jest.fn();
+    const onWordTap = jest.fn();
     const { container } = render(
       <SentenceReader
         text="Cancel event sentence."
@@ -419,18 +417,17 @@ describe("SentenceReader — pointer move cancels long press (lines 455-458)", (
         currentTime={0}
         isPlaying={false}
         onSegmentClick={noop}
-        onAnnotate={onAnnotate}
+        onWordTap={onWordTap}
       />
     );
 
     const segs = getSegments(container);
     dispatchPointerEvent(segs[0], "pointerdown", { clientX: 10, clientY: 10 });
-    // pointerCancel should call cancelLongPress
     dispatchPointerEvent(segs[0], "pointercancel", { clientX: 10, clientY: 10 });
 
     act(() => { jest.advanceTimersByTime(500); });
 
-    expect(onAnnotate).not.toHaveBeenCalled();
+    expect(onWordTap).not.toHaveBeenCalled();
   });
 });
 

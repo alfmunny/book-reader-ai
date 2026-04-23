@@ -16,7 +16,6 @@ const baseProps = {
   sentenceText: "Call me Ishmael.",
   chapterIndex: 0,
   bookId: 10,
-  position: { x: 100, y: 100 },
   onClose: jest.fn(),
   onSaved: jest.fn(),
   onDeleted: jest.fn(),

@@ -498,6 +498,11 @@ async def test_save_book_does_not_overwrite_uploaded_private_book(tmp_db):
     import json
     from services.db import save_book
 
+    # Create the owner user first — FK enforcement (issue #748) requires
+    # books.owner_user_id to reference a real user.
+    from services.db import get_or_create_user
+    owner = await get_or_create_user("priv-owner", "priv@ex.com", "Owner", "")
+
     # Manually insert an uploaded private book at a known ID.
     private_book_id = 9990
     private_text = "SECRET private content"
@@ -505,8 +510,8 @@ async def test_save_book_does_not_overwrite_uploaded_private_book(tmp_db):
         await db.execute(
             """INSERT INTO books (id, title, authors, languages, subjects,
                                   download_count, cover, text, images, source, owner_user_id)
-               VALUES (?, 'Private', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', 1)""",
-            (private_book_id, private_text),
+               VALUES (?, 'Private', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (private_book_id, private_text, owner["id"]),
         )
         await db.commit()
 

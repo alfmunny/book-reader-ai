@@ -932,14 +932,18 @@ async def test_estimate_queue_cost_uploaded_book_nonzero(tmp_db):
     The cost estimate must sum the actual chapter lengths, not LENGTH(books.text).
     """
     from services.translation_queue import estimate_queue_cost
+    from services.db import get_or_create_user
 
     CHAPTER_TEXT = " ".join(["word"] * 5000)  # ~5000 words, ~30 000 chars
+
+    _u = await get_or_create_user("tq-owner-1", "tq1@ex.com", "T1", "")
 
     async with aiosqlite.connect(tmp_db) as db:
         cur = await db.execute(
             """INSERT INTO books (title, authors, languages, subjects, download_count,
                                  cover, text, images, source, owner_user_id)
-               VALUES ('Upload Test', '["Auth"]', '[]', '[]', 0, '', '', '[]', 'upload', 1)"""
+               VALUES ('Upload Test', '["Auth"]', '[]', '[]', 0, '', '', '[]', 'upload', ?)""",
+            (_u["id"],),
         )
         book_id = cur.lastrowid
         await db.executemany(
@@ -968,11 +972,15 @@ async def test_enqueue_for_book_uploaded_book_enqueues_chapters(tmp_db):
     uploaded books. This test verifies that chapters are enqueued correctly.
     """
     # Insert an uploaded book: source='upload', text='', languages=['de']
+    from services.db import get_or_create_user
+    _u = await get_or_create_user("tq-owner-2", "tq2@ex.com", "T2", "")
+
     async with aiosqlite.connect(tmp_db) as db:
         cur = await db.execute(
             """INSERT INTO books (title, authors, languages, subjects, download_count,
                                  cover, text, images, source, owner_user_id)
-               VALUES ('Uploaded Book', '["Author"]', '["de"]', '[]', 0, '', '', '[]', 'upload', 1)"""
+               VALUES ('Uploaded Book', '["Author"]', '["de"]', '[]', 0, '', '', '[]', 'upload', ?)""",
+            (_u["id"],),
         )
         book_id = cur.lastrowid
         # Insert two confirmed chapters (is_draft=0)
@@ -1014,11 +1022,15 @@ async def test_worker_processes_uploaded_book_chapters(tmp_db):
     await set_setting(SETTING_ENABLED, "1")
 
     # Insert an uploaded book: source='upload', text='', one confirmed chapter
+    from services.db import get_or_create_user
+    _u = await get_or_create_user("tq-owner-3", "tq3@ex.com", "T3", "")
+
     async with aiosqlite.connect(tmp_db) as db:
         cur = await db.execute(
             """INSERT INTO books (title, authors, languages, subjects, download_count,
                                  cover, text, images, source, owner_user_id)
-               VALUES ('Upload Book', '["A"]', '["de"]', '[]', 0, '', '', '[]', 'upload', 1)"""
+               VALUES ('Upload Book', '["A"]', '["de"]', '[]', 0, '', '', '[]', 'upload', ?)""",
+            (_u["id"],),
         )
         book_id = cur.lastrowid
         await db.execute(

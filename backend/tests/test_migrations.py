@@ -965,3 +965,93 @@ async def test_migration_027_deck_name_unique_per_user(tmp_db):
                 "INSERT INTO decks (user_id, name, mode) VALUES (1, 'dup', 'manual')"
             )
         await db.rollback()
+
+
+# ── Migration 028 (FK orphan cleanup, issue #700 / #748) ──────────────────────
+
+
+async def test_migration_028_cleans_orphan_flashcard_reviews(tmp_db):
+    """Seed a flashcard_review pointing at a missing vocabulary row; migration
+    028 must delete it so enabling FK enforcement doesn't fail later."""
+    # Apply the full migration sequence up through 027 first so all tables
+    # (including vocabulary + flashcard_reviews) exist.
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        # Insert users + a vocabulary row, then delete the vocab directly so
+        # the flashcard_reviews row is orphaned without cascades.
+        # PRAGMA foreign_keys changes are only accepted outside transactions,
+        # so flip FK off before the first DML.
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (1, 'x', 'a@b.com', 'A', '')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary (id, user_id, word) VALUES (777, 1, 'w')"
+        )
+        await db.execute(
+            "INSERT INTO flashcard_reviews (user_id, vocabulary_id) "
+            "VALUES (1, 777)"
+        )
+        # Orphan the flashcard_review by deleting the parent vocabulary row.
+        await db.execute("DELETE FROM vocabulary WHERE id = 777")
+        await db.commit()
+
+        # Simulate the migration re-running by deleting its recorded row
+        # and running again — this exercises the cleanup SQL.
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '028_fk_orphan_cleanup'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE vocabulary_id = 777"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0
+
+
+async def test_migration_028_clears_dangling_book_owner(tmp_db):
+    """books.owner_user_id pointing at a deleted user must be NULL'd, not
+    deleted — books are also shared content."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        # SQLite rejects PRAGMA foreign_keys changes inside a transaction, so
+        # issue it BEFORE any DML. The patched __aenter__ turns FK on; we
+        # flip it off for the rest of this connection so the user delete
+        # below doesn't cascade-destroy the book via owner_user_id.
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (42, 'gone', 'g@b.com', 'G', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images, owner_user_id) VALUES (91234, 'B', '[]', 42)"
+        )
+        await db.execute("DELETE FROM users WHERE id = 42")
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '028_fk_orphan_cleanup'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT owner_user_id FROM books WHERE id = 91234"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row[0] is None, "book row should survive with null owner"
+
+
+async def test_migration_028_recorded_in_schema_migrations(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT version FROM schema_migrations WHERE version = '028_fk_orphan_cleanup'"
+        ) as cur:
+            assert (await cur.fetchone()) is not None

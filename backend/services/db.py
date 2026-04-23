@@ -48,6 +48,39 @@ if not getattr(aiosqlite.connect, _BUSY_TIMEOUT_ATTR, False):
     aiosqlite.connect = _aiosqlite_connect_with_busy_timeout
 
 
+# ── Per-connection FK enforcement (issue #700 / #748) ────────────────────────
+#
+# SQLite's PRAGMA foreign_keys is OFF by default AND must be set per
+# connection. Without this hook every ON DELETE CASCADE in the schema is
+# silent — a gap that caused three production cascade-cleanup bugs in April
+# 2026 (#685, #691, #695). We patch aiosqlite.Connection.__aenter__ at the
+# class level (instance-level patches are ignored by Python's dunder
+# lookup) so every Connection issues PRAGMA foreign_keys = ON right after
+# the backing sqlite3 connection is live.
+#
+# Migrations run under a separate FK-off window — see services/migrations.run.
+
+_FK_ATTR = "_book_reader_ai_fk_patched"
+
+if not getattr(aiosqlite.Connection, _FK_ATTR, False):
+    _original_aenter = aiosqlite.Connection.__aenter__
+
+    async def _aenter_with_fk(self):
+        db = await _original_aenter(self)
+        try:
+            await db.execute("PRAGMA foreign_keys = ON")
+        except Exception:
+            # Never block connection open on pragma failure — log and continue.
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to enable PRAGMA foreign_keys", exc_info=True,
+            )
+        return db
+
+    aiosqlite.Connection.__aenter__ = _aenter_with_fk
+    setattr(aiosqlite.Connection, _FK_ATTR, True)
+
+
 async def init_db() -> None:
     """Ensure the database schema is up-to-date by running any pending
     versioned migrations from backend/migrations/*.sql.

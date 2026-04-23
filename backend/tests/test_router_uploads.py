@@ -482,31 +482,57 @@ async def test_translation_status_uploaded_book_reports_correct_chapter_count(
     )
 
 
-async def test_split_with_html_preference_handles_uploaded_book_json():
-    """Regression #380: split_with_html_preference must return correct chapters
-    when passed uploaded-book JSON text instead of raw book text."""
-    import json
+async def test_split_with_html_preference_reads_user_book_chapters(tmp_db):
+    """split_with_html_preference resolves uploaded books from user_book_chapters
+    (issue #357, replaces JSON-in-books.text path)."""
     from services.book_chapters import split_with_html_preference, clear_cache
 
-    uploaded_json = json.dumps({
-        "draft": False,
-        "chapters": [
-            {"title": "Chapter One", "text": "The first chapter content here."},
-            {"title": "Chapter Two", "text": "The second chapter content here."},
-            {"title": "Chapter Three", "text": "The third chapter content here."},
-        ]
-    })
+    async with aiosqlite.connect(tmp_db) as db:
+        cur = await db.execute(
+            "INSERT INTO books (title, source, text) VALUES ('T', 'upload', '')"
+        )
+        book_id = cur.lastrowid
+        await db.executemany(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+            "VALUES (?, ?, ?, ?, 0)",
+            [
+                (book_id, 0, "Chapter One", "The first chapter content here."),
+                (book_id, 1, "Chapter Two", "The second chapter content here."),
+                (book_id, 2, "Chapter Three", "The third chapter content here."),
+            ],
+        )
+        await db.commit()
 
-    clear_cache(99999)
-    chapters = await split_with_html_preference(99999, uploaded_json)
-    clear_cache(99999)
+    clear_cache(book_id)
+    chapters = await split_with_html_preference(book_id, "")
+    clear_cache(book_id)
 
-    assert len(chapters) == 3, (
-        f"Expected 3 chapters from uploaded JSON, got {len(chapters)} (#380)"
-    )
+    assert len(chapters) == 3
     assert chapters[0].title == "Chapter One"
     assert "first chapter" in chapters[0].text
     assert chapters[2].title == "Chapter Three"
+
+
+async def test_split_with_html_preference_skips_draft_rows(tmp_db):
+    """Draft rows are hidden from the reader/queue until confirmed."""
+    from services.book_chapters import split_with_html_preference, clear_cache
+
+    async with aiosqlite.connect(tmp_db) as db:
+        cur = await db.execute(
+            "INSERT INTO books (title, source, text) VALUES ('T', 'upload', '')"
+        )
+        book_id = cur.lastrowid
+        await db.execute(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+            "VALUES (?, 0, 'D', 't', 1)",
+            (book_id,),
+        )
+        await db.commit()
+
+    clear_cache(book_id)
+    chapters = await split_with_html_preference(book_id, "")
+    clear_cache(book_id)
+    assert chapters == []
 
 
 async def test_translation_status_draft_book_reports_zero_chapters(client, test_user):

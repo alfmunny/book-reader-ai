@@ -7,6 +7,7 @@ import services.db as _db
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from services.auth import get_current_user
+from services.db import get_user_book_chapters, count_draft_user_book_chapters
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/books", tags=["uploads"])
@@ -30,10 +31,12 @@ async def _save_upload_book(user_id: int, title: str, author: str, filename: str
                             max_books: int | None = None) -> int:
     """Insert a new uploaded book row (source='upload') and book_uploads row.
 
+    Chapters are persisted in the user_book_chapters table with is_draft=1.
+    The books.text column stays empty for uploads.
+
     If max_books is provided, the quota is re-checked inside the BEGIN IMMEDIATE
     transaction to prevent TOCTOU races between concurrent uploads.
     """
-    draft_json = json.dumps({"draft": True, "chapters": draft_chapters})
     async with aiosqlite.connect(_db.DB_PATH) as db:
         # BEGIN IMMEDIATE acquires a write lock immediately so that a second
         # concurrent upload cannot pass the quota check after this connection
@@ -53,14 +56,22 @@ async def _save_upload_book(user_id: int, title: str, author: str, filename: str
             cur = await db.execute(
                 """INSERT INTO books (title, authors, languages, subjects, download_count,
                                      cover, text, images, source, owner_user_id)
-                   VALUES (?, ?, '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
-                (title, json.dumps([author]), draft_json, user_id),
+                   VALUES (?, ?, '[]', '[]', 0, '', '', '[]', 'upload', ?)""",
+                (title, json.dumps([author]), user_id),
             )
             book_id = cur.lastrowid
             await db.execute(
                 """INSERT INTO book_uploads (book_id, user_id, filename, file_size, format)
                    VALUES (?, ?, ?, ?, ?)""",
                 (book_id, user_id, filename, file_size, fmt),
+            )
+            await db.executemany(
+                """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
+                   VALUES (?, ?, ?, ?, 1)""",
+                [
+                    (book_id, i, ch.get("title", "") or "", ch.get("text", "") or "")
+                    for i, ch in enumerate(draft_chapters)
+                ],
             )
             await db.execute("COMMIT")
             return book_id
@@ -161,34 +172,30 @@ async def get_draft_chapters(book_id: int, user: dict = Depends(get_current_user
     """Return the draft chapter list for an uploaded book pending confirmation."""
     async with aiosqlite.connect(_db.DB_PATH) as db:
         async with db.execute(
-            "SELECT text, owner_user_id, source FROM books WHERE id=?", (book_id,)
+            "SELECT owner_user_id, source FROM books WHERE id=?", (book_id,)
         ) as cur:
             row = await cur.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Book not found")
-    if row[2] != "upload":
+    if row[1] != "upload":
         raise HTTPException(status_code=400, detail="Not an uploaded book")
-    if row[1] != user["id"] and user.get("role") != "admin":
+    if row[0] != user["id"] and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Not your book")
 
-    try:
-        data = json.loads(row[0])
-    except Exception:
-        raise HTTPException(status_code=500, detail="Draft data corrupted")
-
-    if not data.get("draft"):
+    draft_rows = await get_user_book_chapters(book_id, include_drafts=True)
+    if not draft_rows or all(r["is_draft"] == 0 for r in draft_rows):
         raise HTTPException(status_code=400, detail="Book already confirmed")
 
-    chapters = data.get("chapters", [])
     return {
         "chapters": [
             {
                 "index": i,
-                "title": ch["title"],
-                "preview": ch["text"][:300].strip(),
-                "word_count": len(ch["text"].split()),
+                "title": r["title"],
+                "preview": (r["text"] or "")[:300].strip(),
+                "word_count": len((r["text"] or "").split()),
             }
-            for i, ch in enumerate(chapters)
+            for i, r in enumerate(draft_rows)
+            if r["is_draft"] == 1
         ]
     }
 
@@ -209,53 +216,61 @@ async def confirm_chapters(
     body: ConfirmChaptersBody,
     user: dict = Depends(get_current_user),
 ):
-    """Confirm chapter splits for an uploaded book. Writes chapters to DB and makes book readable."""
+    """Confirm chapter splits for an uploaded book. Replaces draft rows with confirmed rows."""
+    if not body.chapters:
+        raise HTTPException(status_code=400, detail="chapters list cannot be empty")
+
     async with aiosqlite.connect(_db.DB_PATH) as db:
         # BEGIN IMMEDIATE acquires a write reservation immediately so a second
-        # concurrent confirm cannot read draft=True after this connection has
-        # written draft=False (#451).
+        # concurrent confirm cannot read is_draft=1 after this connection has
+        # written is_draft=0 (#451).
         await db.execute("BEGIN IMMEDIATE")
         async with db.execute(
-            "SELECT text, owner_user_id, source FROM books WHERE id=?", (book_id,)
+            "SELECT owner_user_id, source FROM books WHERE id=?", (book_id,)
         ) as cur:
             row = await cur.fetchone()
         if not row:
+            await db.execute("ROLLBACK")
             raise HTTPException(status_code=404, detail="Book not found")
-        if row[2] != "upload":
+        if row[1] != "upload":
+            await db.execute("ROLLBACK")
             raise HTTPException(status_code=400, detail="Not an uploaded book")
-        if row[1] != user["id"] and user.get("role") != "admin":
+        if row[0] != user["id"] and user.get("role") != "admin":
+            await db.execute("ROLLBACK")
             raise HTTPException(status_code=403, detail="Not your book")
 
-        try:
-            data = json.loads(row[0])
-        except Exception:
-            raise HTTPException(status_code=500, detail="Draft data corrupted")
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT chapter_index, title, text, is_draft FROM user_book_chapters "
+            "WHERE book_id=? ORDER BY chapter_index",
+            (book_id,),
+        ) as cur:
+            orig_rows = [dict(r) for r in await cur.fetchall()]
 
-        if not data.get("draft"):
+        if not any(r["is_draft"] == 1 for r in orig_rows):
+            await db.execute("ROLLBACK")
             raise HTTPException(status_code=400, detail="Book already confirmed")
 
-        if not body.chapters:
-            raise HTTPException(status_code=400, detail="chapters list cannot be empty")
+        orig_by_idx = {r["chapter_index"]: r for r in orig_rows}
 
-        orig_chapters = data.get("chapters", [])
-
-        # Build final chapters: body.chapters provides the ordering/titles;
-        # original text comes from orig_chapters by matching original index
-        final_chapters = []
+        final_chapters: list[dict] = []
         for ch_spec in body.chapters:
             orig_idx = ch_spec.original_index if ch_spec.original_index is not None else ch_spec.index
             title = ch_spec.title or f"Chapter {len(final_chapters) + 1}"
-            if orig_idx is not None and 0 <= orig_idx < len(orig_chapters):
-                text = orig_chapters[orig_idx]["text"]
+            if orig_idx is not None and orig_idx in orig_by_idx:
+                text = orig_by_idx[orig_idx]["text"] or ""
             else:
                 text = ""
             final_chapters.append({"title": title, "text": text})
 
-        confirmed_json = json.dumps({"draft": False, "chapters": final_chapters})
-        await db.execute(
-            "UPDATE books SET text=? WHERE id=?", (confirmed_json, book_id)
+        # Replace the draft rows atomically: delete + reinsert as confirmed.
+        await db.execute("DELETE FROM user_book_chapters WHERE book_id=?", (book_id,))
+        await db.executemany(
+            """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
+               VALUES (?, ?, ?, ?, 0)""",
+            [(book_id, i, ch["title"], ch["text"]) for i, ch in enumerate(final_chapters)],
         )
-        await db.commit()
+        await db.execute("COMMIT")
 
     # Invalidate any stale chapter-split cache from draft-state accesses.
     from services.book_chapters import clear_cache as _clear_chapter_cache
@@ -316,6 +331,7 @@ async def delete_uploaded_book(book_id: int, user: dict = Depends(get_current_us
         await db.execute("DELETE FROM chapter_summaries WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM reading_history WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM user_reading_progress WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM user_book_chapters WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM book_uploads WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM books WHERE id=?", (book_id,))
         await db.commit()

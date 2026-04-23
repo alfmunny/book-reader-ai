@@ -1128,17 +1128,19 @@ async def test_enqueue_draft_book_returns_400(admin_client, admin_db):
     Before the fix the endpoint returned 200 with enqueued=0, giving
     the admin no indication that the book hadn't been confirmed yet.
     """
-    import json as _json
     import aiosqlite
-    draft_text = _json.dumps({"draft": True, "chapters": [{"title": "Ch 1", "text": "word " * 300}]})
     async with aiosqlite.connect(admin_db) as db:
         cur = await db.execute(
             """INSERT INTO books (title, authors, languages, subjects, download_count,
                                   cover, text, images, source, owner_user_id)
-               VALUES ('Draft', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', 1)""",
-            (draft_text,),
+               VALUES ('Draft', '[]', '[]', '[]', 0, '', '', '[]', 'upload', 1)"""
         )
         book_id = cur.lastrowid
+        await db.execute(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+            "VALUES (?, 0, 'Ch 1', ?, 1)",
+            (book_id, "word " * 300),
+        )
         await db.commit()
 
     res = await admin_client.post("/api/admin/queue/enqueue-book", json={

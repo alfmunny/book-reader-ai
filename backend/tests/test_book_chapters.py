@@ -18,10 +18,16 @@ def _make_chapters(*titles: str) -> list[Chapter]:
 
 @pytest.fixture(autouse=True)
 def clear_chapter_cache():
-    """Start each test with an empty chapter cache and fetch-attempted set."""
+    """Start each test with an empty chapter cache and fetch-attempted set.
+
+    Also stubs `services.db.get_book_source` by default so these tests can
+    exercise the resolver without a fully-initialized DB. Individual tests
+    may override via their own patch stack.
+    """
     clear_cache()
     book_chapters_module._epub_fetch_attempted.clear()
-    yield
+    with patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None):
+        yield
     clear_cache()
     book_chapters_module._epub_fetch_attempted.clear()
 

@@ -823,3 +823,43 @@ async def test_semicolon_in_sql_comment_does_not_break_migration(tmp_db, tmp_mig
             row = await cursor.fetchone()
     assert row is not None
     assert row[0] == "hello"
+
+
+# ── 025_user_book_chapters (issue #357) ──────────────────────────────────────
+
+async def test_migration_025_user_book_chapters_table_created(tmp_db):
+    """Migration 025 creates user_book_chapters table + index."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='user_book_chapters'"
+        ) as cur:
+            assert await cur.fetchone() is not None
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='ubc_book_draft'"
+        ) as cur:
+            assert await cur.fetchone() is not None
+        async with db.execute(
+            "SELECT name FROM pragma_table_info('user_book_chapters')"
+        ) as cur:
+            cols = {r[0] for r in await cur.fetchall()}
+    assert cols == {"id", "book_id", "chapter_index", "title", "text", "is_draft"}
+
+
+async def test_migration_025_unique_constraint_enforced(tmp_db):
+    """user_book_chapters (book_id, chapter_index) UNIQUE must reject duplicates."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO books (id, title, source) VALUES (1, 'x', 'upload')"
+        )
+        await db.execute(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+            "VALUES (1, 0, 'Ch1', 't', 1)"
+        )
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+                "VALUES (1, 0, 'dup', 't', 1)"
+            )
+        await db.rollback()

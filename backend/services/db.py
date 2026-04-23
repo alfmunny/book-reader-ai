@@ -308,6 +308,7 @@ async def delete_user(user_id: int) -> None:
         await db.execute(f"DELETE FROM book_insights WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM user_reading_progress WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM reading_history WHERE book_id IN ({_owned})", (user_id,))
+        await db.execute(f"DELETE FROM user_book_chapters WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM book_uploads WHERE book_id IN ({_owned})", (user_id,))
         await db.execute("DELETE FROM books WHERE owner_user_id = ?", (user_id,))
         await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
@@ -492,6 +493,61 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
         )
 
 
+
+
+# ── Uploaded-book chapters (issue #357) ──────────────────────────────────────
+
+async def get_book_source(book_id: int) -> str | None:
+    """Return the 'source' column of a book (e.g. 'gutenberg', 'upload') or None if missing."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT source FROM books WHERE id = ?", (book_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    return row[0] if row else None
+
+
+async def get_user_book_chapters(
+    book_id: int, include_drafts: bool = False,
+) -> list[dict]:
+    """Return rows from user_book_chapters for an uploaded book, ordered by chapter_index."""
+    query = "SELECT id, chapter_index, title, text, is_draft FROM user_book_chapters WHERE book_id = ?"
+    if not include_drafts:
+        query += " AND is_draft = 0"
+    query += " ORDER BY chapter_index"
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(query, (book_id,)) as cur:
+            rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def count_draft_user_book_chapters(book_id: int) -> int:
+    """Return count of draft rows for an uploaded book (0 means fully confirmed or empty)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM user_book_chapters WHERE book_id = ? AND is_draft = 1",
+            (book_id,),
+        ) as cur:
+            row = await cur.fetchone()
+    return row[0] if row else 0
+
+
+async def insert_user_book_chapters_draft(book_id: int, chapters: list[dict]) -> None:
+    """Insert a fresh set of draft chapters for a newly uploaded book.
+
+    Caller provides chapters in final index order with 'title' and 'text'.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.executemany(
+            """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
+               VALUES (?, ?, ?, ?, 1)""",
+            [
+                (book_id, i, ch.get("title", "") or "", ch.get("text", "") or "")
+                for i, ch in enumerate(chapters)
+            ],
+        )
+        await db.commit()
 
 
 # ── EPUB cache ────────────────────────────────────────────────────────────────

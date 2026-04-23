@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, AlertCircleIcon } from "@/components/Icons";
+import { CheckIcon, AlertCircleIcon, CloseIcon } from "@/components/Icons";
 import {
   CHAIN_PRESETS,
   DEFAULT_CHAIN,
@@ -996,6 +996,7 @@ export default function QueueTab({ adminFetch }: Props) {
                         disabled={idx === 0}
                         className="text-xs px-1 text-stone-500 hover:text-amber-700 disabled:opacity-30"
                         title="Move up"
+                        aria-label="Move up"
                       >
                         ↑
                       </button>
@@ -1009,16 +1010,18 @@ export default function QueueTab({ adminFetch }: Props) {
                         disabled={idx === chain.length - 1}
                         className="text-xs px-1 text-stone-500 hover:text-amber-700 disabled:opacity-30"
                         title="Move down"
+                        aria-label="Move down"
                       >
                         ↓
                       </button>
                     </div>
                     <button
                       onClick={() => setChain(chain.filter((_, i) => i !== idx))}
-                      className="text-xs px-1.5 rounded border border-red-200 text-red-500 shrink-0 self-start"
+                      className="text-xs px-1.5 py-1 rounded border border-red-200 text-red-500 shrink-0 self-start"
                       title="Remove from chain"
+                      aria-label="Remove from chain"
                     >
-                      ×
+                      <CloseIcon aria-hidden="true" className="w-3 h-3" />
                     </button>
                   </div>
                 );

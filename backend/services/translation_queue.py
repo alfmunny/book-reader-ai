@@ -246,8 +246,10 @@ async def enqueue_for_book(
         return 0
 
     book = await get_cached_book(book_id)
-    if not book or not book.get("text"):
+    if not book:
         return 0
+    # Uploaded books have books.text='' — chapters live in user_book_chapters.
+    # split_with_html_preference handles both cases, so no text guard here.
     source = (book.get("languages") or [None])[0]
     # Use the SAME splitter resolver the reader uses (HTML-preferring with
     # text fallback). Without this, the reader showed Faust chapter 7

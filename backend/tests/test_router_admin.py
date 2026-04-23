@@ -2731,3 +2731,9 @@ async def test_queue_dry_run_negative_book_id_in_list_returns_422(admin_client):
         json={"target_language": "zh", "book_ids": [-1]},
     )
     assert res.status_code == 422, f"Expected 422 for negative book_id in list, got {res.status_code}: {res.text}"
+
+
+async def test_queue_items_negative_book_id_returns_422(admin_client):
+    """Regression #736: GET /admin/queue/items?book_id=-1 must return 422."""
+    res = await admin_client.get("/api/admin/queue/items?book_id=-1")
+    assert res.status_code == 422, f"Expected 422 for negative book_id, got {res.status_code}: {res.text}"

@@ -1095,7 +1095,7 @@ async def queue_set_settings(
 @router.get("/queue/items")
 async def queue_items(
     status: str | None = Query(default=None, max_length=20),
-    book_id: int | None = None,
+    book_id: int | None = Query(default=None, ge=1),
     limit: int = Query(default=200, ge=1, le=1000),
     _admin: dict = Depends(_require_admin),
 ):

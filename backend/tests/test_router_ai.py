@@ -796,3 +796,27 @@ async def test_ai_summary_out_of_bounds_chapter_returns_400(client, test_user, t
         f"Expected 400 for out-of-bounds chapter_index=999, got {resp.status_code}: {resp.text}"
     )
 
+
+# ── DELETE /ai/summary bounds checks (Issue #464) ────────────────────────────
+
+async def test_delete_summary_nonexistent_book_returns_404(client, test_user, tmp_db):
+    """Regression #464: DELETE /ai/summary must return 404 when the book does not exist."""
+    resp = await client.delete("/api/ai/summary", params={"book_id": 99999, "chapter_index": 0})
+    assert resp.status_code == 404, (
+        f"Expected 404 for non-existent book, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_delete_summary_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #464: DELETE /ai/summary must return 400 when chapter_index is out of range."""
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9882, {"id": 9882, "title": "T", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}, text)
+    _clear()
+
+    resp = await client.delete("/api/ai/summary", params={"book_id": 9882, "chapter_index": 999})
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999, got {resp.status_code}: {resp.text}"
+    )
+

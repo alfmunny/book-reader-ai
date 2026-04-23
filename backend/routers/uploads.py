@@ -86,6 +86,8 @@ async def upload_book(
 
     # Format check
     filename = file.filename or ""
+    if len(filename) > 255:
+        raise HTTPException(status_code=422, detail="Filename too long (max 255 characters).")
     if filename.endswith(".txt"):
         fmt = "txt"
         max_size = MAX_TXT_BYTES
@@ -116,10 +118,12 @@ async def upload_book(
             status_code=422,
             detail="No chapters could be detected. The file appears to be empty or contains no readable text.",
         )
+    title = (parsed["title"] or "Untitled")[:500]
+    author = (parsed["author"] or "Unknown")[:200]
     book_id = await _save_upload_book(
         user_id=user["id"],
-        title=parsed["title"],
-        author=parsed["author"],
+        title=title,
+        author=author,
         filename=filename,
         file_size=len(file_bytes),
         fmt=fmt,
@@ -129,8 +133,8 @@ async def upload_book(
 
     return {
         "book_id": book_id,
-        "title": parsed["title"],
-        "author": parsed["author"],
+        "title": title,
+        "author": author,
         "format": fmt,
         "detected_chapters": [
             {

@@ -1152,3 +1152,36 @@ async def test_chapter_translation_negative_chapter_index_returns_422(client, te
 
     resp = await client.get("/api/books/1/chapters/-1/queue-status?target_language=en")
     assert resp.status_code == 422, f"queue-status: expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #727: ge=1 bounds on remaining book_id path params ─────────────────
+
+
+async def test_translation_status_negative_book_id_returns_422(client):
+    """Regression #727: GET /books/{book_id}/translation-status with negative book_id must return 422."""
+    resp = await client.get("/api/books/-1/translation-status?target_language=en")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_enqueue_all_negative_book_id_returns_422(client, test_user):
+    """Regression #727: POST /books/{book_id}/translations/enqueue-all with negative book_id must return 422."""
+    resp = await client.post("/api/books/-1/translations/enqueue-all", json={"target_language": "en"})
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_book_meta_negative_book_id_returns_422(client):
+    """Regression #727: GET /books/{book_id} with negative book_id must return 422."""
+    resp = await client.get("/api/books/-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_book_chapters_negative_book_id_returns_422(client):
+    """Regression #727: GET /books/{book_id}/chapters with negative book_id must return 422."""
+    resp = await client.get("/api/books/-1/chapters")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_import_stream_negative_book_id_returns_422(client):
+    """Regression #727: GET /books/{book_id}/import-stream with negative book_id must return 422."""
+    resp = await client.get("/api/books/-1/import-stream")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

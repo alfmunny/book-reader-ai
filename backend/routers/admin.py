@@ -1108,8 +1108,23 @@ async def queue_enqueue_book(
     req: EnqueueBookRequest,
     admin: dict = Depends(_require_admin),
 ):
-    if not await get_cached_book(req.book_id):
+    book = await get_cached_book(req.book_id)
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+    text = book.get("text") or ""
+    if text.lstrip().startswith("{"):
+        try:
+            import json as _json
+            _data = _json.loads(text)
+            if _data.get("draft"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Book has not been confirmed yet. Confirm chapter splits before enqueueing for translation.",
+                )
+        except HTTPException:
+            raise
+        except (ValueError, TypeError):
+            pass
     added = await enqueue_for_book(
         req.book_id,
         target_languages=req.target_languages,

@@ -1109,3 +1109,14 @@ async def test_translate_cache_put_oversized_paragraph_item_returns_422(client, 
         f"Expected 422 for oversized paragraph item in PUT /translate/cache, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+async def test_translate_cache_get_oversized_language_returns_422(client, test_user):
+    """Regression #576: GET /ai/translate/cache?target_language=<21 chars> must return 422."""
+    resp = await client.get(
+        "/api/ai/translate/cache?book_id=1&chapter_index=0&target_language=" + "x" * 21
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in GET /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )

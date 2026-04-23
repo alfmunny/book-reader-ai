@@ -214,6 +214,13 @@ At the start of every session:
 2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`
 3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`) before touching any file
 4. If PM: check worktree list and warn user if `in-progress` issues exist but no worktrees are set up
+5. **Check your own open PRs immediately.** Run `gh pr list --state open --author @me --json number,title,mergeStateStatus` and for any PR that is `BEHIND` or `BLOCKED`, rebase and force-push **before** picking up any new work:
+   ```bash
+   git -C <worktree> fetch origin main
+   git -C <worktree> rebase origin/main
+   git -C <worktree> push origin <branch> --force-with-lease
+   ```
+   A BEHIND branch at startup means a prior session ended without rebasing — that PR will never auto-merge until you catch it up. Fix it first, then proceed to the rest of startup.
 
 ## Testing policy
 

@@ -202,6 +202,9 @@ async def confirm_chapters(
         if not data.get("draft"):
             raise HTTPException(status_code=400, detail="Book already confirmed")
 
+        if not body.chapters:
+            raise HTTPException(status_code=400, detail="chapters list cannot be empty")
+
         orig_chapters = data.get("chapters", [])
 
         # Build final chapters: body.chapters provides the ordering/titles;

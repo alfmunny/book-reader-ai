@@ -740,13 +740,13 @@ async def test_chapter_queue_status_normalizes_language(client):
 
 # ── import-stream uses HTML splitter (issue #276) ─────────────────────────────
 
-async def test_import_stream_uses_html_splitter_chapter_count(client):
-    """import-stream must use split_with_html_preference, not build_chapters.
+async def test_import_stream_uses_epub_splitter_chapter_count(client):
+    """import-stream must use split_with_html_preference (EPUB path), not build_chapters.
 
-    When the HTML edition produces a different chapter count than the plain-text
+    When the EPUB edition produces a different chapter count than the plain-text
     splitter, the import dialog chapter count must match the reader (issue #276).
     Before the fix the stream called build_chapters(text) and returned 2;
-    after the fix it calls split_with_html_preference and returns 3.
+    after the fix it calls split_with_html_preference with EPUB and returns 3.
     """
     from unittest.mock import AsyncMock, patch
     from services.book_chapters import clear_cache
@@ -762,20 +762,16 @@ async def test_import_stream_uses_html_splitter_chapter_count(client):
     clear_cache(book_id)
     await save_book(book_id, meta, text)
 
-    # HTML that produces 3 chapters — different from the plain-text count.
-    # Each chapter body needs >= 50 words (tiny skip) and >= 100 words
-    # (tiny-first-merge avoidance) to be kept as its own chapter.
-    body = " ".join(["word"] * 110)
-    html_3ch = f"""<!DOCTYPE html><html><body>
-<div class="chapter" id="link2HCH0001"><h2>Chapter I</h2><p>{body}</p></div>
-<div class="chapter" id="link2HCH0002"><h2>Chapter II</h2><p>{body}</p></div>
-<div class="chapter" id="link2HCH0003"><h2>Chapter III</h2><p>{body}</p></div>
-</body></html>"""
+    # EPUB path returns 3 chapters — different from the plain-text count.
+    epub_3ch = [
+        Chapter(title="Chapter I", text="word " * 110),
+        Chapter(title="Chapter II", text="word " * 110),
+        Chapter(title="Chapter III", text="word " * 110),
+    ]
 
-    with patch(
-        "services.book_chapters.get_book_html",
-        new_callable=AsyncMock,
-        return_value=html_3ch,
+    with (
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=b"fake_epub"),
+        patch("services.book_chapters.build_chapters_from_epub", return_value=epub_3ch),
     ):
         resp = await client.get(f"/api/books/{book_id}/import-stream")
 
@@ -785,7 +781,7 @@ async def test_import_stream_uses_html_splitter_chapter_count(client):
     assert chapters_ev is not None, "chapters event missing from import stream"
     assert chapters_ev["total"] == 3, (
         f"import-stream reported {chapters_ev['total']} chapters but expected 3 "
-        "(HTML splitter); build_chapters on the plain text would return 2"
+        "(EPUB splitter); build_chapters on the plain text would return 2"
     )
     clear_cache(book_id)
 

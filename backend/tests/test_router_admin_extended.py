@@ -65,9 +65,9 @@ async def admin_db(monkeypatch, tmp_path):
     monkeypatch.setattr(db_module, "DB_PATH", path)
     monkeypatch.setattr(admin_module, "DB_PATH", path)
 
-    async def _no_html(_book_id):
-        return None
-    monkeypatch.setattr("services.book_chapters.get_book_html", _no_html)
+    from unittest.mock import AsyncMock as _AsyncMock
+    monkeypatch.setattr("services.db.get_book_epub_bytes", _AsyncMock(return_value=None))
+    monkeypatch.setattr("services.book_chapters._background_fetch_epub", _AsyncMock())
     from services.book_chapters import clear_cache as _clear_cache
     _clear_cache()
 

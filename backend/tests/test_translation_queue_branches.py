@@ -52,10 +52,10 @@ async def tmp_db(monkeypatch, tmp_path):
     monkeypatch.setattr(db_module, "DB_PATH", path)
     import services.translation_queue as tq_module
     monkeypatch.setattr(tq_module.db_module, "DB_PATH", path)
-    # Prevent network calls in split_with_html_preference
-    async def _no_html(_book_id):
-        return None
-    monkeypatch.setattr("services.book_chapters.get_book_html", _no_html)
+    # Prevent any EPUB DB/network calls in split_with_html_preference
+    from unittest.mock import AsyncMock as _AsyncMock
+    monkeypatch.setattr("services.db.get_book_epub_bytes", _AsyncMock(return_value=None))
+    monkeypatch.setattr("services.book_chapters._background_fetch_epub", _AsyncMock())
     from services.book_chapters import clear_cache
     clear_cache()
     await init_db()

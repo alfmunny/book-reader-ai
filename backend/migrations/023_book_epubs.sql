@@ -1,7 +1,7 @@
 -- Stores the downloaded EPUB binary for each Gutenberg book.
 -- Used by split_with_html_preference as the primary chapter source
 -- (preferred over on-demand HTML fetch and plain-text regex splitting).
--- Populated at book-add time for new books; backfill script available
+-- Populated at book-add time for new books. Backfill script available
 -- for books already in the DB.
 CREATE TABLE IF NOT EXISTS book_epubs (
     book_id    INTEGER PRIMARY KEY REFERENCES books(id) ON DELETE CASCADE,

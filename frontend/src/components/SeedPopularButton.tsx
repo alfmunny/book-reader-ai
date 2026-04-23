@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { CheckIcon, AlertCircleIcon } from "@/components/Icons";
 
 type AdminFetch = (path: string, options?: RequestInit) => Promise<any>;
 
@@ -214,7 +215,13 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
                       entry.event === "failed" ? "text-red-600" : "text-stone-600"
                     }`}
                   >
-                    {entry.event === "failed" ? "!" : "✓"} #{entry.book_id}{" "}
+                    <span className="inline-flex items-center gap-1">
+                      {entry.event === "failed" ? (
+                        <AlertCircleIcon className="w-3.5 h-3.5 text-red-600 flex-shrink-0" aria-hidden="true" />
+                      ) : (
+                        <CheckIcon className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" aria-hidden="true" />
+                      )}
+                    </span> #{entry.book_id}{" "}
                     {entry.title || ""}
                     {entry.chars ? ` (${Math.round(entry.chars / 1000)}K)` : ""}
                     {entry.error ? ` — ${entry.error}` : ""}

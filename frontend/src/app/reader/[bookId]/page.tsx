@@ -18,7 +18,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, EmptyVocabIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -1792,7 +1792,7 @@ export default function ReaderPage() {
                     </div>
                     {filteredVocab.length === 0 ? (
                       <div className="text-center text-stone-400 mt-10 text-sm">
-                        <p className="text-3xl mb-2">📚</p>
+                        <EmptyVocabIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
                         <p>No words saved{vocabView === "chapter" ? " in this chapter" : ""} yet.</p>
                         <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
                       </div>

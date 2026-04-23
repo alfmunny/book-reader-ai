@@ -2698,3 +2698,42 @@ async def test_retry_failed_negative_book_id_returns_422(admin_client):
         json={"book_id": -1},
     )
     assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+# ── Issue #736: ge=1 on admin uploads user_id and QueuePlanRequest.book_ids ──
+
+
+async def test_get_uploads_negative_user_id_returns_422(admin_client):
+    """Regression #736: GET /admin/uploads?user_id=-1 must return 422."""
+    res = await admin_client.get("/api/admin/uploads?user_id=-1")
+    assert res.status_code == 422, f"Expected 422 for negative user_id, got {res.status_code}: {res.text}"
+
+
+async def test_get_uploads_zero_user_id_returns_422(admin_client):
+    """Regression #736: GET /admin/uploads?user_id=0 must return 422."""
+    res = await admin_client.get("/api/admin/uploads?user_id=0")
+    assert res.status_code == 422, f"Expected 422 for user_id=0, got {res.status_code}: {res.text}"
+
+
+async def test_queue_plan_negative_book_id_in_list_returns_422(admin_client):
+    """Regression #736: POST /admin/queue/plan with book_ids containing negative must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": "zh", "book_ids": [-1]},
+    )
+    assert res.status_code == 422, f"Expected 422 for negative book_id in list, got {res.status_code}: {res.text}"
+
+
+async def test_queue_dry_run_negative_book_id_in_list_returns_422(admin_client):
+    """Regression #736: POST /admin/queue/dry-run with book_ids containing negative must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/dry-run",
+        json={"target_language": "zh", "book_ids": [-1]},
+    )
+    assert res.status_code == 422, f"Expected 422 for negative book_id in list, got {res.status_code}: {res.text}"
+
+
+async def test_queue_items_negative_book_id_returns_422(admin_client):
+    """Regression #736: GET /admin/queue/items?book_id=-1 must return 422."""
+    res = await admin_client.get("/api/admin/queue/items?book_id=-1")
+    assert res.status_code == 422, f"Expected 422 for negative book_id, got {res.status_code}: {res.text}"

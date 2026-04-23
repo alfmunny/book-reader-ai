@@ -6,6 +6,7 @@ import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
 import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon } from "@/components/Icons";
+import { SearchBar } from "@/components/SearchBar";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -172,29 +173,32 @@ export default function Home() {
               <p className="text-xs md:text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
             </div>
           </div>
-          {status === "unauthenticated" ? (
-            <button
-              onClick={() => router.push("/login")}
-              className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px]"
-            >
-              Sign in
-            </button>
-          ) : (
-            <button
-              onClick={() => router.push("/profile")}
-              title={session?.backendUser?.name ?? "Profile & Settings"}
-              className="w-10 h-10 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
-            >
-              {session?.backendUser?.picture ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
-                  {session?.backendUser?.name?.[0] ?? "?"}
-                </span>
-              )}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {status === "authenticated" ? <SearchBar /> : null}
+            {status === "unauthenticated" ? (
+              <button
+                onClick={() => router.push("/login")}
+                className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px]"
+              >
+                Sign in
+              </button>
+            ) : (
+              <button
+                onClick={() => router.push("/profile")}
+                title={session?.backendUser?.name ?? "Profile & Settings"}
+                className="w-10 h-10 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+              >
+                {session?.backendUser?.picture ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
+                    {session?.backendUser?.name?.[0] ?? "?"}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </header>
 

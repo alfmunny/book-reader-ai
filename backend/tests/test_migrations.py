@@ -693,6 +693,76 @@ async def test_legacy_db_with_018_chapter_summaries_gets_020_bootstrapped(tmp_db
             )
 
 
+# ── 022_book_insights_unique: dedup before index (issue #526) ────────────────
+
+async def test_022_deduplicates_before_creating_unique_index(tmp_db, tmp_migrations, monkeypatch):
+    """Regression #526: migration 022 must DELETE duplicate book_insights rows
+    before creating the UNIQUE INDEX so it doesn't crash with IntegrityError
+    on databases that already have duplicate questions in the same chapter.
+
+    This is the exact scenario that caused the Railway app crash: a production
+    DB had duplicates and migration 022 had not yet been applied."""
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version TEXT PRIMARY KEY, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE book_insights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL, book_id INTEGER NOT NULL,
+                chapter_index INTEGER, question TEXT, answer TEXT, context_text TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Insert duplicate rows: same user/book/chapter/question — this is exactly
+        # the state that would cause CREATE UNIQUE INDEX to raise IntegrityError.
+        await db.executemany(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (1, 100, 0, 'What is the theme?', ?)",
+            [("Answer A",), ("Answer B",)],
+        )
+        # A non-duplicate row — must survive.
+        await db.execute(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (1, 100, 1, 'What is the theme?', 'Answer C')"
+        )
+        await db.commit()
+
+    # Point runner at a dir containing only migration 022.
+    shutil.copy(
+        os.path.join(os.path.dirname(__file__), "..", "migrations", "022_book_insights_unique.sql"),
+        os.path.join(tmp_migrations, "022_book_insights_unique.sql"),
+    )
+    monkeypatch.setattr("services.migrations._MIGRATIONS_DIR", tmp_migrations)
+
+    # Must NOT raise IntegrityError.
+    applied = await run_migrations(tmp_db)
+    assert "022_book_insights_unique" in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        # Duplicate removed — only one row for (user=1, book=100, chapter=0, q="What is the theme?")
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE user_id=1 AND book_id=100 AND chapter_index=0"
+        ) as cursor:
+            assert (await cursor.fetchone())[0] == 1, \
+                "duplicate row must be removed by migration 022 dedup step"
+
+        # Non-duplicate row in chapter 1 must be untouched.
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE user_id=1 AND book_id=100 AND chapter_index=1"
+        ) as cursor:
+            assert (await cursor.fetchone())[0] == 1, "non-duplicate row must survive"
+
+        # The unique index must exist.
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='uq_book_insights_question'"
+        ) as cursor:
+            assert await cursor.fetchone() is not None, \
+                "uq_book_insights_question index must exist after migration 022"
+
+
 # ── No migrations directory ──────────────────────────────────────────────────
 
 async def test_missing_migrations_dir_returns_empty(tmp_db, monkeypatch):

@@ -258,14 +258,7 @@ async def delete_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_re
             "DELETE FROM flashcard_reviews WHERE vocabulary_id NOT IN "
             "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
-        await db.execute(
-            "DELETE FROM vocabulary_tags WHERE vocabulary_id NOT IN "
-            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
-        )
-        await db.execute(
-            "DELETE FROM deck_members WHERE vocabulary_id NOT IN "
-            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
-        )
+        # vocabulary_tags and deck_members cascade automatically via FK enforcement (#751).
         await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )

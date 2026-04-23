@@ -480,3 +480,57 @@ async def test_delete_user_removes_owned_books_and_all_child_data():
             )
             count = (await cur.fetchone())[0]
             assert count == 0, f"{table} still has rows for deleted owner's book (#{416})"
+
+
+# ── save_book upload collision guard ─────────────────────────────────────────
+
+
+async def test_save_book_does_not_overwrite_uploaded_private_book(tmp_db):
+    """Regression #467: save_book with a Gutenberg book_id that matches an
+    existing uploaded private book must be a no-op rather than wiping the
+    user's private content via INSERT OR REPLACE.
+
+    Scenario: user uploads a book (gets auto-id=X). Admin/user then fetches
+    Gutenberg book X. Without the guard the INSERT OR REPLACE deletes the
+    uploaded row (losing private content) and re-inserts without source='upload'
+    or owner_user_id, making it publicly accessible."""
+    import aiosqlite
+    import json
+    from services.db import save_book
+
+    # Manually insert an uploaded private book at a known ID.
+    private_book_id = 9990
+    private_text = "SECRET private content"
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+                                  download_count, cover, text, images, source, owner_user_id)
+               VALUES (?, 'Private', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', 1)""",
+            (private_book_id, private_text),
+        )
+        await db.commit()
+
+    # Now simulate fetching the same ID from Gutenberg.
+    await save_book(private_book_id, {
+        "title": "Gutenberg Book",
+        "authors": ["Public Author"],
+        "languages": ["en"],
+        "subjects": [],
+        "download_count": 100,
+        "cover": "",
+    }, "PUBLIC Gutenberg text")
+
+    # The uploaded private book must still be intact.
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT source, owner_user_id, text FROM books WHERE id=?",
+            (private_book_id,),
+        ) as cur:
+            row = await cur.fetchone()
+
+    assert row is not None, "Book row was deleted — save_book wiped the uploaded book"
+    assert row[0] == "upload", (
+        f"source changed from 'upload' to '{row[0]}' — private book overwritten by Gutenberg"
+    )
+    assert row[1] == 1, "owner_user_id was cleared — private book lost its owner"
+    assert row[2] == private_text, "Private book text was overwritten with Gutenberg content"

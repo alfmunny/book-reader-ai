@@ -440,6 +440,17 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
     will pick them up on its next tick.
     """
     async with aiosqlite.connect(DB_PATH) as db:
+        # Guard against clobbering a user's uploaded private book that happens
+        # to share the same auto-assigned SQLite ID as a Gutenberg catalog ID.
+        # INSERT OR REPLACE would delete the uploaded row (losing source='upload'
+        # and owner_user_id) and re-insert without those fields. (#467)
+        async with db.execute(
+            "SELECT source FROM books WHERE id=?", (book_id,)
+        ) as _cur:
+            _existing = await _cur.fetchone()
+        if _existing and _existing[0] == "upload":
+            return
+
         await db.execute(
             """
             INSERT OR REPLACE INTO books

@@ -138,7 +138,7 @@ function AnnotationCard({
           </a>
           <button
             onClick={onEdit}
-            className="text-stone-400 hover:text-stone-600 transition-colors"
+            className="text-stone-400 hover:text-stone-600 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Edit note"
             aria-label="Edit note"
           >
@@ -147,7 +147,7 @@ function AnnotationCard({
           <button
             onClick={onDelete}
             disabled={isDeleting}
-            className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+            className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Delete annotation"
             aria-label="Delete annotation"
           >

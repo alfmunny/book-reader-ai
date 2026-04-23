@@ -1290,24 +1290,29 @@ def test_build_chapters_from_epub_skips_short_items():
     cover.content = b'<html><body><p>Cover page.</p></body></html>'
     book.add_item(cover)
 
-    ch = epub.EpubHtml(title="Chapter I", file_name="chapter01.xhtml", lang="en")
-    ch.content = (
-        b'<html><body><h2>Chapter I</h2>'
-        + b'<p>Alice content sentence one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty more words here.</p>' * 3
-        + b'</body></html>'
-    )
-    book.add_item(ch)
+    body = b'<p>Alice content sentence one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty more words here.</p>' * 3
+
+    ch1 = epub.EpubHtml(title="Chapter I", file_name="chapter01.xhtml", lang="en")
+    ch1.content = b'<html><body><h2>Chapter I</h2>' + body + b'</body></html>'
+    book.add_item(ch1)
+
+    ch2 = epub.EpubHtml(title="Chapter II", file_name="chapter02.xhtml", lang="en")
+    ch2.content = b'<html><body><h2>Chapter II</h2>' + body + b'</body></html>'
+    book.add_item(ch2)
 
     nav = epub.EpubNav()
     book.add_item(epub.EpubNcx())
     book.add_item(nav)
-    book.toc = [epub.Link("chapter01.xhtml", "Chapter I", "ch1")]
-    book.spine = ["nav", cover, ch]
+    book.toc = [
+        epub.Link("chapter01.xhtml", "Chapter I", "ch1"),
+        epub.Link("chapter02.xhtml", "Chapter II", "ch2"),
+    ]
+    book.spine = ["nav", cover, ch1, ch2]
 
     buf = io.BytesIO()
     epub.write_epub(buf, book)
 
     chapters = build_chapters_from_epub(buf.getvalue())
-    # cover.xhtml is in SKIP_SUFFIXES and also < 30 words — must not appear
+    # cover.xhtml is in SKIP_SUFFIXES — must not appear
     assert all("Cover" not in c.title for c in chapters)
-    assert len(chapters) >= 1
+    assert len(chapters) == 2

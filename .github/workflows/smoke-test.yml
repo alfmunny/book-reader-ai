@@ -33,6 +33,17 @@ name: Smoke test (post-deploy)
 on:
   push:
     branches: [main]
+    # Skip when the push is docs/design/PM-only — nothing was deployed,
+    # so there is nothing new to smoke-test. The 6-hour cron and manual
+    # workflow_dispatch still cover everything.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'product/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.claude/**'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
   schedule:
     # Every 6 hours, catch any silent outage between deploys.

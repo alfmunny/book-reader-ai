@@ -7,8 +7,35 @@ on:
     branches: [main]
 
 jobs:
+  # Detect whether the PR touches code that actually needs CI. If only docs,
+  # design files, CLAUDE.md, product/, or issue templates changed, skip the
+  # heavy test + build jobs. They remain required for the branch protection,
+  # but a skipped `if:` job is reported as success so merges stay unblocked.
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+              - '!product/**'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.claude/**'
+              - '!LICENSE'
+              - '!.gitignore'
+
   test-frontend:
     name: Frontend tests (Jest)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -65,6 +92,8 @@ jobs:
 
   test-e2e:
     name: Frontend E2E (Playwright)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -150,6 +179,8 @@ jobs:
 
   test-backend:
     name: Backend tests (pytest)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -204,9 +235,9 @@ jobs:
 
   coverage-comment:
     name: Post coverage comment
-    needs: [test-frontend, test-backend, test-e2e]
+    needs: [changes, test-frontend, test-backend, test-e2e]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && always()
+    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && always()
     permissions:
       pull-requests: write
     steps:
@@ -332,6 +363,8 @@ jobs:
 
   docker-build:
     name: Verify Docker build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

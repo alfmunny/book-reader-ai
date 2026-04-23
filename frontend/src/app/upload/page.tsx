@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { uploadBook, getUploadQuota, UploadQuota, ApiError } from "@/lib/api";
-import { UploadIcon } from "@/components/Icons";
+import { UploadIcon, ArrowLeftIcon } from "@/components/Icons";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -100,7 +100,7 @@ export default function UploadPage() {
             onClick={() => router.push("/")}
             className="text-sm text-amber-600 hover:text-amber-800 transition-colors"
           >
-            ← Back
+            <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
           </button>
           <h1 className="font-serif text-lg font-semibold text-ink">Upload a Book</h1>
         </div>

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
+import { CloseIcon } from "@/components/Icons";
 
 interface UploadEntry {
   book_id: number;
@@ -106,7 +107,7 @@ export default function UploadsPage() {
             onClick={clearFilter}
             className="text-sm text-amber-600 hover:text-amber-900"
           >
-            ✕ Clear filter (user {activeFilter})
+            <CloseIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Clear filter (user {activeFilter})
           </button>
         )}
         <span className="ml-auto text-xs text-stone-400">{uploads.length} upload{uploads.length !== 1 ? "s" : ""}</span>

@@ -562,8 +562,8 @@ async def import_stream(
             else:
                 try:
                     meta, text = await _fetch_and_cache(book_id)
-                except Exception as e:
-                    yield _sse("error", {"stage": "fetching", "message": str(e)})
+                except Exception:
+                    yield _sse("error", {"stage": "fetching", "message": "Could not fetch book from Gutenberg"})
                     return
 
             source_language = (meta.get("languages") or ["en"])[0]
@@ -589,9 +589,9 @@ async def import_stream(
         except asyncio.CancelledError:
             # Client disconnected — FastAPI will raise this
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("Import stream crashed")
-            yield _sse("error", {"stage": "unknown", "message": str(e)})
+            yield _sse("error", {"stage": "unknown", "message": "Import failed unexpectedly"})
 
     return StreamingResponse(
         generator(),

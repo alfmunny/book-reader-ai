@@ -337,6 +337,8 @@ async def export_obsidian(
 
     async def _build_and_push_book(bid: int) -> str:
         book = await get_cached_book(bid)
+        if book:
+            check_book_access(book, user)
         annotations = await db_get_annotations(user["id"], bid)
         book_insights = await get_insights(user["id"], bid)
         words_for_book = [

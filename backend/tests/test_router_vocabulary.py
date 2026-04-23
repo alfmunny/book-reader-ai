@@ -357,6 +357,35 @@ async def test_save_word_blocked_for_non_owner_of_uploaded_book(client, test_use
     )
 
 
+async def test_export_obsidian_blocked_for_private_book_non_owner(client, test_user, tmp_db, insert_private_book):
+    """Regression #667: POST /vocabulary/export/obsidian must return 403 when the
+    requested book_id belongs to a private uploaded book the caller does not own.
+
+    Without check_book_access in _build_and_push_book, any authenticated user
+    can push another user's private book title to their own Obsidian vault."""
+    from services.db import set_user_role
+    await set_user_role(test_user["id"], "user")
+    owner = await get_or_create_user("exp-owner-gid", "exp-owner@ex.com", "ExpOwner", "")
+    private_book_id = 8900
+    await insert_private_book(private_book_id, owner["id"])
+
+    enc_token = encrypt_api_key("ghp_test_token")
+    from services.db import update_obsidian_settings
+    await update_obsidian_settings(
+        test_user["id"], enc_token, "user/notes", "Books",
+    )
+
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
+        resp = await client.post(
+            "/api/vocabulary/export/obsidian", json={"book_id": private_book_id}
+        )
+
+    assert resp.status_code == 403, (
+        f"Expected 403 for non-owner exporting private book, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_export_github_api_error_returns_502(client, test_user):
     await _setup_export(test_user)
 

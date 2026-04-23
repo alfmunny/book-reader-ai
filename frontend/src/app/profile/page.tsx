@@ -3,7 +3,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings } from "@/lib/api";
-import { ArrowLeftIcon } from "@/components/Icons";
+import { ArrowLeftIcon, CheckIcon } from "@/components/Icons";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 
 const LANGUAGES = [
@@ -229,7 +229,7 @@ export default function ProfilePage() {
           {hasKey ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
-                <span>✓</span>
+                <CheckIcon aria-hidden="true" className="w-4 h-4 shrink-0" />
                 <span>Gemini key is active — translations, TTS, and insights use Gemini.</span>
               </div>
               <button

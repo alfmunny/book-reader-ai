@@ -15,6 +15,7 @@ import json
 import pytest
 import aiosqlite
 from unittest.mock import AsyncMock, patch
+import services.db as db_module
 from services.db import save_book, save_translation, get_cached_translation, set_user_gemini_key, set_setting, get_or_create_user
 from services.auth import encrypt_api_key
 
@@ -644,6 +645,39 @@ async def test_insight_with_corrupted_key_returns_400(client, test_user):
         "author": "Goethe",
     })
     assert resp.status_code == 400
+
+
+# ── Chapter summary empty text validation (Issue #492) ───────────────────────
+
+@pytest.mark.parametrize("chapter_text", ["", "   ", "\n\t\n"])
+async def test_summary_empty_chapter_text_returns_400(client, test_user, tmp_db, chapter_text):
+    """Regression #492: empty or whitespace-only chapter_text must return 400.
+
+    Without this check the empty text was passed to Gemini, wasting API
+    quota and potentially caching a low-quality summary.
+    """
+    from services.db import save_book
+    from services.auth import encrypt_api_key as _enc
+    await save_book(7771, _BOOK_META, "word " * 300)
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('queue_api_key', ?)",
+                         (_enc("AIza-test"),))
+        await db.commit()
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.generate_chapter_summary = AsyncMock(return_value="summary")
+        resp = await client.post("/api/ai/summary", json={
+            "book_id": 7771,
+            "chapter_index": 0,
+            "chapter_text": chapter_text,
+            "book_title": "Test Book",
+            "author": "Author",
+            "chapter_title": "Ch 1",
+        })
+    assert resp.status_code == 400, (
+        f"Expected 400 for empty chapter_text={repr(chapter_text)}, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    mock_gemini.generate_chapter_summary.assert_not_called()
 
 
 # ── Chapter summary concurrent generation ────────────────────────────────────

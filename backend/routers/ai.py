@@ -169,6 +169,9 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
         )
 
+    if not req.chapter_text.strip():
+        raise HTTPException(status_code=400, detail="chapter_text cannot be empty")
+
     cached = await get_chapter_summary(req.book_id, req.chapter_index)
     if cached:
         return {"summary": cached["content"], "cached": True, "model": cached["model"]}

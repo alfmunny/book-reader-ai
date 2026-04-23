@@ -520,10 +520,27 @@ async def test_translate_gemini_error_falls_back_to_google(client, test_user):
     assert resp.json()["fallback"] is True
 
 
+async def test_translate_total_failure_returns_500_without_detail_leak(client, test_user):
+    await _set_key(test_user)
+    with patch("services.translate._gemini_translate", new_callable=AsyncMock, side_effect=RuntimeError("internal error")), \
+         patch("services.translate._google_translate", new_callable=AsyncMock, side_effect=RuntimeError("google down")):
+        resp = await client.post("/api/ai/translate", json={
+            "text": "text", "source_language": "de", "target_language": "en",
+        })
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "internal error" not in detail
+    assert "google down" not in detail
+    assert ":" not in detail
+
+
 async def test_tts_error_returns_500(client):
     with patch("routers.ai.synthesize", new_callable=AsyncMock, side_effect=RuntimeError("TTS fail")):
         resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en", "rate": 1.0})
     assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "TTS fail" not in detail
+    assert ":" not in detail
 
 
 # ── TTS rate bounds validation (Issue #482) ───────────────────────────────────

@@ -419,8 +419,8 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
         }
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Translation service request failed")
 
 
 @router.post("/tts")
@@ -431,8 +431,8 @@ async def tts(req: TTSRequest):
         audio, content_type, boundaries = await synthesize(
             req.text, req.language, req.rate, gender=req.gender
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="TTS synthesis failed")
     headers: dict = {}
     if boundaries:
         timings_json = _json.dumps(boundaries, separators=(",", ":"))

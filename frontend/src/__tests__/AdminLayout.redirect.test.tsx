@@ -56,15 +56,15 @@ test("renders authenticated layout with tabs when user is admin", async () => {
   mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
   render(<AdminLayout><div>child content</div></AdminLayout>);
   await waitFor(() => screen.getByText("child content"));
-  expect(screen.getByText("← Library")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Library/i })).toBeInTheDocument();
   expect(screen.getByText("Users")).toBeInTheDocument();
 });
 
-test("clicking ← Library navigates to / (line 76)", async () => {
+test("clicking Library button navigates to /", async () => {
   mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
   render(<AdminLayout><div>child</div></AdminLayout>);
-  await waitFor(() => screen.getByText("← Library"));
-  fireEvent.click(screen.getByText("← Library"));
+  await waitFor(() => screen.getByRole("button", { name: /Library/i }));
+  fireEvent.click(screen.getByRole("button", { name: /Library/i }));
   expect(mockPush).toHaveBeenCalledWith("/");
 });
 

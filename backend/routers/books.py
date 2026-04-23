@@ -90,7 +90,7 @@ async def popular_books(
 
 
 @router.get("/{book_id}/translation-status")
-async def translation_status(book_id: int, target_language: str = Query(..., max_length=20), user: dict | None = Depends(get_optional_user)):
+async def translation_status(book_id: int = Path(..., ge=1), target_language: str = Query(..., max_length=20), user: dict | None = Depends(get_optional_user)):
     """Return book-level translation progress for the reader banner.
 
     Includes:
@@ -336,8 +336,8 @@ async def request_chapter_translation(
 
 @router.post("/{book_id}/translations/enqueue-all")
 async def enqueue_all_chapters(
-    book_id: int,
     req: RequestTranslationBody,
+    book_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
     """Queue every not-yet-translated chapter of a book for one language.
@@ -435,7 +435,7 @@ async def retry_chapter_translation(
 
 
 @router.get("/{book_id}")
-async def book_meta(book_id: int, user: dict | None = Depends(get_optional_user)):
+async def book_meta(book_id: int = Path(..., ge=1), user: dict | None = Depends(get_optional_user)):
     cached = await get_cached_book(book_id)
     if cached:
         check_book_access(cached, user)
@@ -447,7 +447,7 @@ async def book_meta(book_id: int, user: dict | None = Depends(get_optional_user)
 
 
 @router.get("/{book_id}/chapters")
-async def book_chapters(book_id: int, user: dict | None = Depends(get_optional_user)):
+async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depends(get_optional_user)):
     """
     Return book split into chapters.
     Serves from local DB if cached, otherwise fetches from Gutenberg and caches.
@@ -523,7 +523,7 @@ def _sse(event: str, data: dict) -> str:
 
 @router.get("/{book_id}/import-stream")
 async def import_stream(
-    book_id: int,
+    book_id: int = Path(..., ge=1),
     user: dict | None = Depends(get_optional_user),
 ):
     """Stream import progress for a book via Server-Sent Events.

@@ -634,6 +634,84 @@ async def test_delete_book_removes_book_uploads_row(admin_client, admin_db, admi
     )
 
 
+@pytest.mark.asyncio
+async def test_delete_book_removes_vocabulary_tags(admin_client, admin_db):
+    """Regression #755: delete_book must remove vocabulary_tags for words that only appeared in the deleted book.
+
+    FK ON DELETE CASCADE on vocabulary_tags(vocabulary_id → vocabulary.id) fires when the
+    orphaned vocabulary row is deleted. This test confirms the cascade (or explicit prune) fires.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute("INSERT INTO vocabulary (user_id, word) VALUES (1, 'ephemeral')")
+        async with db.execute("SELECT id FROM vocabulary WHERE word='ephemeral'") as cur:
+            vocab_id = (await cur.fetchone())[0]
+        await db.execute(
+            "INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)"
+            " VALUES (?, 100, 0, 'An ephemeral moment.')",
+            (vocab_id,),
+        )
+        await db.execute(
+            "INSERT INTO vocabulary_tags (user_id, vocabulary_id, tag) VALUES (1, ?, 'german')",
+            (vocab_id,),
+        )
+        await db.commit()
+
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM vocabulary_tags WHERE vocabulary_id=?", (vocab_id,)
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0, (
+        "vocabulary_tags rows must be removed when admin deletes a book (#755); "
+        "orphaned tags inflate tag lists for the user"
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_book_removes_deck_members(admin_client, admin_db):
+    """Regression #755: delete_book must remove deck_members for words that only appeared in the deleted book.
+
+    FK ON DELETE CASCADE on deck_members(vocabulary_id → vocabulary.id) fires when the
+    orphaned vocabulary row is deleted. This test confirms the cascade (or explicit prune) fires.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute("INSERT INTO vocabulary (user_id, word) VALUES (1, 'ephemeral')")
+        async with db.execute("SELECT id FROM vocabulary WHERE word='ephemeral'") as cur:
+            vocab_id = (await cur.fetchone())[0]
+        await db.execute(
+            "INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)"
+            " VALUES (?, 100, 0, 'An ephemeral moment.')",
+            (vocab_id,),
+        )
+        # Create a deck and add the word to it
+        await db.execute("INSERT INTO decks (user_id, name, mode) VALUES (1, 'Test Deck', 'manual')")
+        async with db.execute("SELECT id FROM decks WHERE name='Test Deck'") as cur:
+            deck_id = (await cur.fetchone())[0]
+        await db.execute(
+            "INSERT INTO deck_members (deck_id, vocabulary_id) VALUES (?, ?)",
+            (deck_id, vocab_id),
+        )
+        await db.commit()
+
+    res = await admin_client.delete("/api/admin/books/100")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(admin_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM deck_members WHERE vocabulary_id=?", (vocab_id,)
+        ) as cur:
+            count = (await cur.fetchone())[0]
+    assert count == 0, (
+        "deck_members rows must be removed when admin deletes a book (#755); "
+        "orphaned members keep deleted words in flashcard decks"
+    )
+
+
 # ── Translations ─────────────────────────────────────────────────────────────
 
 async def test_get_translations(admin_client, admin_db):

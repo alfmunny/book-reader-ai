@@ -79,7 +79,7 @@ class ApproveRequest(BaseModel):
 
 
 @router.put("/users/{user_id}/approve")
-async def approve_user(user_id: int, req: ApproveRequest, _admin: dict = Depends(_require_admin)):
+async def approve_user(user_id: int = Path(..., ge=1), req: ApproveRequest = Body(...), _admin: dict = Depends(_require_admin)):
     if not await get_user_by_id(user_id):
         raise HTTPException(status_code=404, detail="User not found")
     await set_user_approved(user_id, req.approved)
@@ -91,7 +91,7 @@ class RoleRequest(BaseModel):
 
 
 @router.put("/users/{user_id}/role")
-async def change_role(user_id: int, req: RoleRequest, admin: dict = Depends(_require_admin)):
+async def change_role(req: RoleRequest, user_id: int = Path(..., ge=1), admin: dict = Depends(_require_admin)):
     if req.role not in ("admin", "user"):
         raise HTTPException(status_code=400, detail="Role must be 'admin' or 'user'")
     if user_id == admin["id"] and req.role != "admin":
@@ -103,7 +103,7 @@ async def change_role(user_id: int, req: RoleRequest, admin: dict = Depends(_req
 
 
 @router.delete("/users/{user_id}")
-async def remove_user(user_id: int, admin: dict = Depends(_require_admin)):
+async def remove_user(user_id: int = Path(..., ge=1), admin: dict = Depends(_require_admin)):
     if user_id == admin["id"]:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
     if not await get_user_by_id(user_id):
@@ -199,7 +199,7 @@ async def get_books(_admin: dict = Depends(_require_admin)):
 
 
 class ImportBookRequest(BaseModel):
-    book_id: int
+    book_id: int = Field(..., ge=1)
 
 
 @router.post("/books/import")
@@ -220,7 +220,7 @@ async def import_book(req: ImportBookRequest, _admin: dict = Depends(_require_ad
 
 
 @router.delete("/books/{book_id}")
-async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
+async def delete_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
     """Delete a cached book and all its associated audio + translation cache."""
     if not await get_cached_book(book_id):
         raise HTTPException(status_code=404, detail="Book not found")
@@ -344,7 +344,7 @@ async def get_audio_cache(_admin: dict = Depends(_require_admin)):
 
 
 @router.delete("/audio/{book_id}")
-async def delete_book_audio(book_id: int, _admin: dict = Depends(_require_admin)):
+async def delete_book_audio(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
         deleted = db.total_changes
@@ -353,7 +353,7 @@ async def delete_book_audio(book_id: int, _admin: dict = Depends(_require_admin)
 
 
 @router.delete("/audio/{book_id}/{chapter_index}")
-async def delete_chapter_audio(book_id: int, chapter_index: int, _admin: dict = Depends(_require_admin)):
+async def delete_chapter_audio(book_id: int = Path(..., ge=1), chapter_index: int = Path(..., ge=0), _admin: dict = Depends(_require_admin)):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "DELETE FROM audio_cache WHERE book_id=? AND chapter_index=?",
@@ -392,7 +392,7 @@ async def get_translations(_admin: dict = Depends(_require_admin)):
 
 
 @router.delete("/translations/{book_id}")
-async def delete_book_translations(book_id: int, _admin: dict = Depends(_require_admin)):
+async def delete_book_translations(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
     """Delete all translations for a book."""
     async with aiosqlite.connect(DB_PATH) as db:
         # Reject if any worker is running — it would re-insert via INSERT OR REPLACE. (#338)
@@ -426,7 +426,7 @@ async def delete_book_translations(book_id: int, _admin: dict = Depends(_require
 
 @router.delete("/translations/{book_id}/{target_language}")
 async def delete_language_translations(
-    book_id: int,
+    book_id: int = Path(..., ge=1),
     target_language: str = Path(..., max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
@@ -464,8 +464,8 @@ async def delete_language_translations(
 
 @router.delete("/translations/{book_id}/{chapter_index}/{target_language}")
 async def delete_translation(
-    book_id: int,
-    chapter_index: int,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     target_language: str = Path(..., max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
@@ -502,8 +502,8 @@ async def delete_translation(
 
 @router.post("/translations/{book_id}/{chapter_index}/{target_language}/retranslate")
 async def retranslate(
-    book_id: int,
-    chapter_index: int,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     target_language: str = Path(..., max_length=20),
     admin: dict = Depends(_require_admin),
 ):
@@ -583,8 +583,8 @@ class BulkRetranslateRequest(BaseModel):
 
 
 class ImportTranslationEntry(BaseModel):
-    book_id: int
-    chapter_index: int
+    book_id: int = Field(..., ge=1)
+    chapter_index: int = Field(..., ge=0)
     target_language: str = Field(..., max_length=20)
     paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
@@ -656,8 +656,8 @@ async def import_translations(
 
 @router.post("/translations/{book_id}/retranslate-all")
 async def retranslate_all(
-    book_id: int,
     req: BulkRetranslateRequest,
+    book_id: int = Path(..., ge=1),
     admin: dict = Depends(_require_admin),
 ):
     """Retranslate ALL chapters of a book for a target language.
@@ -725,13 +725,13 @@ async def retranslate_all(
 
 
 class MoveTranslationRequest(BaseModel):
-    new_chapter_index: int
+    new_chapter_index: int = Field(..., ge=0)
 
 
 @router.post("/translations/{book_id}/{chapter_index}/{target_language}/move")
 async def move_translation(
-    book_id: int,
-    chapter_index: int,
+    book_id: int = Path(..., ge=1),
+    chapter_index: int = Path(..., ge=0),
     target_language: str = Path(..., max_length=20),
     req: MoveTranslationRequest = Body(...),
     _admin: dict = Depends(_require_admin),
@@ -1103,7 +1103,7 @@ async def queue_items(
 
 
 class EnqueueBookRequest(BaseModel):
-    book_id: int
+    book_id: int = Field(..., ge=1)
     target_languages: list[Annotated[str, Field(max_length=20)]] | None = Field(default=None, max_length=100)
     priority: int = 50   # lower than default so admin enqueues jump the line
     reset_failed: bool = False
@@ -1137,7 +1137,7 @@ async def queue_enqueue_book(
 
 @router.delete("/queue/items/{item_id}")
 async def queue_delete_item(
-    item_id: int, _admin: dict = Depends(_require_admin),
+    item_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin),
 ):
     # Reject deletion of running items: the worker will still save its result,
     # so silently "succeeding" here gives the admin a false sense of cancellation (#296).
@@ -1177,7 +1177,7 @@ async def queue_clear(
 
 @router.delete("/queue/book/{book_id}")
 async def queue_delete_book(
-    book_id: int,
+    book_id: int = Path(..., ge=1),
     target_language: str | None = Query(default=None, max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
@@ -1188,7 +1188,7 @@ async def queue_delete_book(
 
 @router.post("/queue/items/{item_id}/retry")
 async def queue_retry_item(
-    item_id: int, _admin: dict = Depends(_require_admin),
+    item_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin),
 ):
     # Reset priority too — without this, a row that was bumped to the back
     # on failure would be retried but still sit behind everything else.
@@ -1222,7 +1222,7 @@ async def queue_retry_item(
 
 
 class RetryFailedRequest(BaseModel):
-    book_id: int | None = None
+    book_id: int | None = Field(default=None, ge=1)
     target_language: str | None = Field(default=None, max_length=20)
 
 

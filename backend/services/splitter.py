@@ -595,7 +595,9 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         )
         chapters.append(Chapter(title=_clean_title(title), text=text))
 
-    return _validate(chapters) or []
+    # EPUB spine is authoritative structure, not a heuristic guess.
+    # Skip the regex-oriented _validate() and just require >= 2 chapters.
+    return chapters if len(chapters) >= 2 else []
 
 
 def _epub_nav_titles(book) -> dict[str, str]:

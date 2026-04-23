@@ -1354,6 +1354,7 @@ export default function ReaderPage() {
                 />
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
+                    data-testid="bottom-prev-chapter"
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}
                     className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
@@ -1362,6 +1363,7 @@ export default function ReaderPage() {
                     {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
                   </span>
                   <button
+                    data-testid="bottom-next-chapter"
                     onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                     disabled={chapterIndex === chapters.length - 1}
                     className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"

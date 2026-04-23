@@ -26,12 +26,30 @@ async def _user_upload_count(user_id: int) -> int:
 
 
 async def _save_upload_book(user_id: int, title: str, author: str, filename: str,
-                            file_size: int, fmt: str, draft_chapters: list[dict]) -> int:
-    """Insert a new uploaded book row (source='upload') and book_uploads row."""
+                            file_size: int, fmt: str, draft_chapters: list[dict],
+                            max_books: int | None = None) -> int:
+    """Insert a new uploaded book row (source='upload') and book_uploads row.
+
+    If max_books is provided, the quota is re-checked inside the BEGIN IMMEDIATE
+    transaction to prevent TOCTOU races between concurrent uploads.
+    """
     draft_json = json.dumps({"draft": True, "chapters": draft_chapters})
     async with aiosqlite.connect(_db.DB_PATH) as db:
-        await db.execute("BEGIN")
+        # BEGIN IMMEDIATE acquires a write lock immediately so that a second
+        # concurrent upload cannot pass the quota check after this connection
+        # has already started its insert (#489).
+        await db.execute("BEGIN IMMEDIATE")
         try:
+            if max_books is not None:
+                async with db.execute(
+                    "SELECT COUNT(*) FROM book_uploads WHERE user_id=?", (user_id,)
+                ) as cur:
+                    count = (await cur.fetchone())[0]
+                if count >= max_books:
+                    raise HTTPException(
+                        status_code=429,
+                        detail=f"Upload limit reached ({max_books} books). Delete a book to upload more.",
+                    )
             cur = await db.execute(
                 """INSERT INTO books (title, authors, languages, subjects, download_count,
                                      cover, text, images, source, owner_user_id)
@@ -46,6 +64,9 @@ async def _save_upload_book(user_id: int, title: str, author: str, filename: str
             )
             await db.execute("COMMIT")
             return book_id
+        except HTTPException:
+            await db.execute("ROLLBACK")
+            raise
         except Exception:
             await db.execute("ROLLBACK")
             raise
@@ -59,14 +80,9 @@ async def upload_book(
     """Upload a .txt or .epub file. Returns book_id + detected chapters for editing."""
     from services.book_parser import parse_txt, parse_epub
 
-    # Quota check — admins are exempt
-    if user.get("role") != "admin":
-        count = await _user_upload_count(user["id"])
-        if count >= MAX_BOOKS_PER_USER:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Upload limit reached ({MAX_BOOKS_PER_USER} books). Delete a book to upload more.",
-            )
+    # Admins are exempt; non-admins have the quota re-checked atomically inside
+    # _save_upload_book to prevent TOCTOU races between concurrent uploads (#489).
+    max_books = None if user.get("role") == "admin" else MAX_BOOKS_PER_USER
 
     # Format check
     filename = file.filename or ""
@@ -108,6 +124,7 @@ async def upload_book(
         file_size=len(file_bytes),
         fmt=fmt,
         draft_chapters=chapters,
+        max_books=max_books,
     )
 
     return {

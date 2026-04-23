@@ -2031,3 +2031,84 @@ async def test_queue_items_max_limit_accepted(admin_client, admin_db):
     assert res.status_code == 200, (
         f"Expected 200 for limit=1000, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #521: Admin request model max_length ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_bulk_retranslate_oversized_target_language_returns_422(admin_client, admin_db):
+    """Regression #521: POST /admin/translations/{id}/retranslate-all with target_language > 20 chars
+    must return 422, not try to store a huge string in translations table."""
+    res = await admin_client.post(
+        "/api/admin/translations/9901/retranslate-all",
+        json={"target_language": "x" * 21},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in retranslate-all, got {res.status_code}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_translations_oversized_target_language_returns_422(admin_client, admin_db):
+    """Regression #521: POST /admin/translations/import with target_language > 20 chars
+    must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": 0,
+                           "target_language": "y" * 21, "paragraphs": ["hello"]}]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in import, got {res.status_code}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_translations_oversized_provider_returns_422(admin_client, admin_db):
+    """Regression #521: provider > 100 chars in import entry must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": 0,
+                           "target_language": "de", "paragraphs": ["hello"],
+                           "provider": "p" * 101}]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized provider in import, got {res.status_code}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_oversized_api_key_returns_422(admin_client, admin_db):
+    """Regression #521: PUT /admin/queue/settings with api_key > 500 chars must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"api_key": "k" * 501},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized api_key in queue settings, got {res.status_code}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_oversized_model_returns_422(admin_client, admin_db):
+    """Regression #521: PUT /admin/queue/settings with model > 200 chars must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model": "m" * 201},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized model in queue settings, got {res.status_code}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_enqueue_book_oversized_target_language_returns_422(admin_client, admin_db):
+    """Regression #521: POST /admin/queue/enqueue-book with a target_language > 20 chars
+    must return 422, not store a huge string in translation_queue."""
+    res = await admin_client.post(
+        "/api/admin/queue/enqueue-book",
+        json={"book_id": 1, "target_languages": ["z" * 21]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in enqueue-book, got {res.status_code}"
+    )

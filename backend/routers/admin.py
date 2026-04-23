@@ -5,6 +5,7 @@ Full CRUD where applicable.
 
 import json
 import aiosqlite
+from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
@@ -573,17 +574,17 @@ async def retranslate(
 
 
 class BulkRetranslateRequest(BaseModel):
-    target_language: str
+    target_language: str = Field(..., max_length=20)
 
 
 class ImportTranslationEntry(BaseModel):
     book_id: int
     chapter_index: int
-    target_language: str
+    target_language: str = Field(..., max_length=20)
     paragraphs: list[str]
-    provider: str | None = None
-    model: str | None = None
-    title_translation: str | None = None
+    provider: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=200)
+    title_translation: str | None = Field(default=None, max_length=500)
 
 
 class ImportTranslationsRequest(BaseModel):
@@ -1035,11 +1036,11 @@ async def queue_get_settings(_admin: dict = Depends(_require_admin)):
 
 class QueueSettingsRequest(BaseModel):
     enabled: bool | None = None
-    api_key: str | None = None     # plaintext; empty string clears
+    api_key: str | None = Field(default=None, max_length=500)
     auto_translate_languages: list[str] | None = None
     rpm: int | None = Field(default=None, ge=1)
     rpd: int | None = Field(default=None, ge=1)
-    model: str | None = None
+    model: str | None = Field(default=None, max_length=200)
     model_chain: list[str] | None = None
     max_output_tokens: int | None = Field(default=None, ge=1)
 
@@ -1098,7 +1099,7 @@ async def queue_items(
 
 class EnqueueBookRequest(BaseModel):
     book_id: int
-    target_languages: list[str] | None = None
+    target_languages: list[Annotated[str, Field(max_length=20)]] | None = None
     priority: int = 50   # lower than default so admin enqueues jump the line
     reset_failed: bool = False
 

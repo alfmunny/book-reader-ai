@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import verify_google_id_token, verify_apple_id_token, verify_github_access_token, create_jwt
 from services.db import get_or_create_user, get_or_create_user_github, get_or_create_user_apple
 
@@ -22,7 +22,7 @@ def _user_response(user: dict) -> dict:
 
 
 class GoogleAuthRequest(BaseModel):
-    id_token: str
+    id_token: str = Field(..., max_length=2000)
 
 
 @router.post("/google")
@@ -43,7 +43,7 @@ async def google_login(req: GoogleAuthRequest):
 
 
 class GitHubAuthRequest(BaseModel):
-    access_token: str
+    access_token: str = Field(..., max_length=500)
 
 
 @router.post("/github")
@@ -69,8 +69,8 @@ async def github_login(req: GitHubAuthRequest):
 
 
 class AppleAuthRequest(BaseModel):
-    id_token: str
-    name: str = ""
+    id_token: str = Field(..., max_length=2000)
+    name: str = Field(default="", max_length=500)
 
 
 @router.post("/apple")

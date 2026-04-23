@@ -606,6 +606,16 @@ async def get_book_epub_bytes(book_id: int) -> bytes | None:
     return row[0] if row else None
 
 
+async def has_book_epub(book_id: int) -> bool:
+    """Cheap existence check — avoids loading the EPUB blob just to know if
+    we have one. Used by the reader source-format badge."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT 1 FROM book_epubs WHERE book_id = ? LIMIT 1", (book_id,)
+        ) as cur:
+            return (await cur.fetchone()) is not None
+
+
 # ── App settings (key/value config used by the always-on queue, etc.) ────────
 
 async def get_setting(key: str) -> str | None:

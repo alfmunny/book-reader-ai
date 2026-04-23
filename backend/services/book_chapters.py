@@ -106,3 +106,23 @@ def clear_cache(book_id: int | None = None) -> None:
         _chapter_cache.clear()
     else:
         _chapter_cache.pop(book_id, None)
+
+
+async def get_chapter_source(book_id: int) -> str:
+    """Return which source the reader is actually using to render chapters.
+
+    One of:
+        "upload" — uploaded book, chapters live in user_book_chapters
+        "epub"   — Gutenberg book with a stored EPUB; spine/TOC used
+        "text"   — Gutenberg book falling back to plain-text regex split
+
+    Mirrors the priority in split_with_html_preference so the badge shown
+    to the user matches exactly what produced the chapters they're reading.
+    """
+    from services.db import get_book_source, has_book_epub
+    source = await get_book_source(book_id)
+    if source == "upload":
+        return "upload"
+    if await has_book_epub(book_id):
+        return "epub"
+    return "text"

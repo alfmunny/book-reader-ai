@@ -899,3 +899,50 @@ async def test_delete_summary_out_of_bounds_chapter_returns_400(client, test_use
         f"Expected 400 for out-of-bounds chapter_index=999, got {resp.status_code}: {resp.text}"
     )
 
+
+
+# ── Issue #500: AI endpoint input bounds ──────────────────────────────────────
+
+async def test_translate_oversized_text_returns_422(client, test_user):
+    """POST /ai/translate rejects text longer than 50,000 chars (issue #500)."""
+    resp = await client.post(
+        "/api/ai/translate",
+        json={"text": "x" * 50_001, "source_language": "de", "target_language": "en"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized text, got {resp.status_code}"
+
+
+async def test_insight_oversized_chapter_text_returns_422(client, test_user, monkeypatch):
+    """POST /ai/insight rejects chapter_text longer than 50,000 chars (issue #500)."""
+    resp = await client.post(
+        "/api/ai/insight",
+        json={"chapter_text": "x" * 50_001, "book_title": "T", "author": "A"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized chapter_text, got {resp.status_code}"
+
+
+async def test_qa_oversized_question_returns_422(client, test_user, monkeypatch):
+    """POST /ai/qa rejects question longer than 2,000 chars (issue #500)."""
+    resp = await client.post(
+        "/api/ai/qa",
+        json={"question": "q" * 2001, "passage": "Some passage.", "book_title": "T", "author": "A"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized question, got {resp.status_code}"
+
+
+async def test_qa_oversized_passage_returns_422(client, test_user, monkeypatch):
+    """POST /ai/qa rejects passage longer than 50,000 chars (issue #500)."""
+    resp = await client.post(
+        "/api/ai/qa",
+        json={"question": "Q?", "passage": "p" * 50_001, "book_title": "T", "author": "A"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized passage, got {resp.status_code}"
+
+
+async def test_tts_chunks_oversized_text_returns_422(client, test_user):
+    """POST /ai/tts/chunks rejects text longer than 50,000 chars (issue #500)."""
+    resp = await client.post(
+        "/api/ai/tts/chunks",
+        json={"text": "x" * 50_001},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized text, got {resp.status_code}"

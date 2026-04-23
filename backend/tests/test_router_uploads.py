@@ -71,13 +71,31 @@ async def test_upload_quota_returns_count(client, test_user):
     assert resp2.json()["used"] == 1
 
 
-async def test_upload_quota_exceeded_returns_429(client, test_user):
-    # test_user is auto-admin in a fresh db; demote so the quota limit applies
+async def test_upload_quota_exceeded_returns_429(client, test_user, tmp_db):
+    """Quota enforcement is now checked atomically inside the DB transaction.
+
+    We fill the quota via real DB inserts (not a mock) to ensure the
+    in-transaction re-check fires correctly (#489 TOCTOU fix).
+    """
     await set_user_role(test_user["id"], "user")
-    # Patch the quota check function to simulate limit reached
-    with patch("routers.uploads._user_upload_count", new_callable=AsyncMock, return_value=10):
-        resp = await client.post("/api/books/upload", files=_txt_upload())
-    assert resp.status_code == 429
+    # Insert 10 fake book_uploads rows directly so we don't have to upload 10 files
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        for i in range(10):
+            cur = await db.execute(
+                """INSERT INTO books (title, authors, languages, subjects, download_count,
+                                     cover, text, images, source, owner_user_id)
+                   VALUES (?, '[]', '[]', '[]', 0, '', '{}', '[]', 'upload', ?)""",
+                (f"Filler book {i}", test_user["id"]),
+            )
+            book_id = cur.lastrowid
+            await db.execute(
+                "INSERT INTO book_uploads (book_id, user_id, filename, file_size, format) VALUES (?, ?, ?, 0, 'txt')",
+                (book_id, test_user["id"], f"filler{i}.txt"),
+            )
+        await db.commit()
+
+    resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert resp.status_code == 429, f"Expected 429 for over-quota upload, got {resp.status_code}: {resp.text}"
     assert "limit" in resp.json()["detail"].lower()
 
 

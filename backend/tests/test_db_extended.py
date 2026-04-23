@@ -534,3 +534,41 @@ async def test_save_book_does_not_overwrite_uploaded_private_book(tmp_db):
     )
     assert row[1] == 1, "owner_user_id was cleared — private book lost its owner"
     assert row[2] == private_text, "Private book text was overwritten with Gutenberg content"
+
+
+# ── get_vocabulary single-query join (Issue #470) ────────────────────────────
+
+async def test_get_vocabulary_multiple_words_multiple_occurrences(tmp_db):
+    """Regression #470: get_vocabulary must return all words with all occurrences intact
+    after switching from N+1 queries to a single JOIN query.
+
+    Covers: two words each with two occurrences, ordering by word (alphabetical),
+    and words with no occurrences (LEFT JOIN must not drop them).
+    """
+    user = await get_or_create_user("g_n1a", "n1a@test.com", "N1", "")
+
+    await save_word(user["id"], "Zeitgeist", 1, 0, "First zeitgeist sentence.")
+    await save_word(user["id"], "Zeitgeist", 1, 1, "Second zeitgeist sentence.")
+    await save_word(user["id"], "Angst", 2, 0, "First angst sentence.")
+    await save_word(user["id"], "Angst", 2, 1, "Second angst sentence.")
+
+    vocab = await get_vocabulary(user["id"])
+
+    assert len(vocab) == 2, f"Expected 2 words, got {len(vocab)}"
+
+    # Words must be sorted alphabetically (angst before zeitgeist)
+    assert vocab[0]["word"] == "angst", f"Expected 'angst' first, got '{vocab[0]['word']}'"
+    assert vocab[1]["word"] == "zeitgeist", f"Expected 'zeitgeist' second, got '{vocab[1]['word']}'"
+
+    assert len(vocab[0]["occurrences"]) == 2, (
+        f"'angst' should have 2 occurrences, got {len(vocab[0]['occurrences'])}"
+    )
+    assert len(vocab[1]["occurrences"]) == 2, (
+        f"'zeitgeist' should have 2 occurrences, got {len(vocab[1]['occurrences'])}"
+    )
+
+    # Occurrence fields must all be present
+    occ = vocab[1]["occurrences"][0]
+    assert occ["book_id"] == 1
+    assert occ["chapter_index"] == 0
+    assert occ["sentence_text"] == "First zeitgeist sentence."

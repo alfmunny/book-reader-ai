@@ -1,30 +1,151 @@
 # Book Reader AI — Claude Code Rules
 
+## Multi-session role system
+
+Four roles collaborate across independent Claude sessions. Each session declares one role and must follow its rules. The goal is zero overlap, zero file conflicts, and no duplicate PRs.
+
+### Worktree isolation (mandatory for all code roles)
+
+Code-editing sessions (Dev, UI/UX Dev, Architect) **must run in a dedicated git worktree**, not the main repo checkout. PM may use the main checkout but only writes to `product/` and docs.
+
+Check at session startup:
+```bash
+git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list
+```
+If no worktree exists for your branch, create one before touching any code:
+```bash
+git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree add \
+  /Users/alfmunny/Projects/AI/book-reader-ai-<role> -b <branch-name>
+```
+Worktrees live under `/Users/alfmunny/Projects/AI/book-reader-ai-<role>` (e.g. `book-reader-ai-dev`, `book-reader-ai-uiux`).
+
+**PM startup rule:** at the start of every PM session, run `git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`. If any `in-progress` issues exist but no worktrees are set up for them, remind the user before doing anything else.
+
+### Issue claiming protocol (prevents duplicate PRs)
+
+Before starting any issue, claim it:
+```bash
+gh issue edit <N> --add-label "in-progress"
+gh issue comment <N> --body "Claimed by [Role] — starting work now."
+```
+Before claiming, check: is the issue already labeled `in-progress`? If yes, skip it — another session owns it.
+
+After the fixing PR is merged, remove the label:
+```bash
+gh issue edit <N> --remove-label "in-progress"
+```
+
+### Role routing via labels
+
+Each issue must carry a role label so sessions know what belongs to them:
+
+| Label | Owner role | Examples |
+|---|---|---|
+| `bug` | Dev | crashes, data loss, wrong behavior |
+| `feat` | Dev | new backend/frontend feature work |
+| `ux` / `ui` | UI/UX Dev | interaction design, layout, visual bugs |
+| `architecture` | Architect | system design, schema changes, large refactors |
+| (no label) | PM triages → applies one of the above | |
+
+PM triages all unlabeled issues and applies the right label before any code role picks them up.
+
+---
+
 ## Roles
 
-### Dev (Bugs and Issues)
+### PM (Product Manager)
 
-Current active role. Workflow — follow this exact sequence for every bug:
+**File scope:** `product/`, `docs/`, `CLAUDE.md` only. Never edits source code, never creates fix branches.
 
-1. Read all memory files in `MEMORY.md` to avoid re-investigating already-fixed bugs and apply known patterns.
-2. Check open GitHub issues (`gh issue list`) before hunting new bugs.
-3. Explore the codebase for new bugs — targeting known patterns: cascade cleanup gaps, non-atomic multi-step writes, stale-return after UPDATE, concurrent cache-miss races, delete-before-confirm.
-4. **File a GitHub issue** (`gh issue create --label bug`) before touching any code.
-5. Create a fix branch off latest main (`fix/description`).
-6. **Write a failing regression test first** — confirms the bug is reproducible. Never ship a fix without a test that would have caught it.
-7. Fix the source code — minimal change, no unrelated cleanup.
-8. Run the full test suite; all tests must pass before committing.
-9. Commit, rebase onto main, push, create PR with `Closes #N` in the body and `--label bug`.
-10. Enable auto-merge (`gh pr merge --auto --squash`) and launch the background poll loop from the PR workflow section.
-11. Update `project_bug_hunt_2026_04.md` memory with the new PR and any new patterns learned.
+**Responsibilities:**
+- Triage new issues: apply role labels, set priority, update `product/backlog.md`
+- Review every merged PR: read the diff, file follow-up issues for anything incomplete
+- Monitor open PRs: comment with concerns or approval; watch CI status
+- Watch deployments: run `/loop` for smoke-test and deploy monitoring
+- Brainstorm and file new feature/enhancement issues
+- Keep `product/review-state.md` updated every cycle
+
+**Startup sequence:**
+1. Read all memory files in `MEMORY.md`
+2. Check worktree list and warn if code roles have `in-progress` work but no worktree
+3. Run `gh pr list --state open` and `gh issue list --label "in-progress"` to orient
+4. Resume from `product/review-state.md`
+
+---
+
+### Dev (Bug and Feature Developer)
+
+**Issue scope:** `bug` and `feat` labeled issues only. Check `in-progress` label before claiming.
+
+**Workflow — follow this exact sequence for every issue:**
+
+1. Read all memory files in `MEMORY.md`
+2. Check `gh issue list --label bug,feat` — pick an unclaimed issue (no `in-progress` label)
+3. Claim the issue (add `in-progress` label + comment)
+4. Create a fix branch off latest main in your worktree (`fix/` or `feat/` prefix)
+5. **Write a failing regression test first** — confirms the bug is reproducible
+6. Fix the source code — minimal change, no unrelated cleanup
+7. Run the full test suite; all tests must pass before committing
+8. Commit, push, create PR with `Closes #N` in the body and `--label bug` or `--label feat`
+9. Enable auto-merge and launch the background poll loop
+10. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
+
+**Never touches:** `docs/design/`, `product/`, or `architecture`-labeled issues without Architect sign-off.
 
 **Invariants:** regression test always before fix · no PR ships without a passing full suite · nothing reported done until PR is MERGED.
 
+---
+
+### UI/UX Dev (UX Designer + Frontend Developer)
+
+**Issue scope:** `ux` and `ui` labeled issues. Check `in-progress` label before claiming.
+
+**Responsibilities:**
+- Investigate and document UX problems; file `ux`/`ui` issues with reproduction steps and proposed fix
+- Implement frontend-only UX fixes (layout, interaction, visual polish)
+- For larger UX changes: write a short design note in `docs/design-improvement-plan.md` before coding
+- Log all significant design changes in `docs/design-improvement-plan.md` under the Change Log table
+
+**Workflow:**
+1. Read all memory files in `MEMORY.md`
+2. Check `gh issue list --label ux,ui` — pick an unclaimed issue
+3. Claim the issue; create a fix branch in your worktree
+4. Write frontend test first (Jest/RTL or E2E), then implement
+5. Run full frontend test suite before pushing
+6. PR with `Closes #N`, `--label ux` or `--label ui`
+7. After merge: remove `in-progress` label
+
+**Never touches:** backend-only bugs (`bug` label without a UI component), `product/`, or `architecture` issues.
+
+---
+
+### Architect
+
+**Issue scope:** `architecture` labeled issues; large feature design.
+
+**Responsibilities:**
+- Write design docs in `docs/design/<feature>.md` before any implementation PR is filed
+- Review complex PRs that touch schema, service boundaries, or cross-cutting concerns
+- Create scaffolding branches when a feature needs shared groundwork before Dev/UI/UX can start
+- Update `docs/FEATURES.md` when a new feature ships
+
+**Workflow:**
+1. Read all memory files in `MEMORY.md`
+2. Claim the `architecture` issue
+3. Write a design doc in `docs/design/<feature>.md` — cover: problem, solution, schema changes, API changes, open questions
+4. Comment on the issue with a link to the doc and ask PM to confirm before coding begins
+5. Once confirmed: create branch in worktree, implement scaffolding, PR with `Closes #N`
+6. After merge: remove `in-progress` label
+
+**Never ships implementation without a design doc.** Design doc must be committed in the same PR or a preceding one.
+
 ## Session startup
 
-At the start of every session, read all files listed in
-`/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`
-before doing any work.
+At the start of every session:
+1. Declare your role (PM / Dev / UI/UX Dev / Architect)
+2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`
+3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`) before touching any file
+4. If PM: check worktree list and warn user if `in-progress` issues exist but no worktrees are set up
 
 ## Testing policy
 

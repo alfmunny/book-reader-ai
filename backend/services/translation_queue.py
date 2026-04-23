@@ -256,7 +256,7 @@ async def enqueue_for_book(
     # with chapter 8's translation — different splitters produced
     # different chapter indexing.
     from services.book_chapters import split_with_html_preference
-    chapters = await split_with_html_preference(book_id, book["text"])
+    chapters = await split_with_html_preference(book_id, book.get("text") or "")
 
     inserted = 0
     for lang in target_languages:

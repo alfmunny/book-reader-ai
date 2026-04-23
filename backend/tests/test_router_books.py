@@ -1024,3 +1024,29 @@ async def test_queue_status_out_of_bounds_chapter_returns_400(client, test_user)
         f"got {resp.status_code}: {resp.text}"
     )
     assert "out of range" in resp.json()["detail"].lower()
+
+
+# ── GET /books/cached hides private uploads (Issue #478) ─────────────────────
+
+async def test_cached_books_hides_uploaded_books(client, test_user, tmp_db, insert_private_book):
+    """Regression #478: GET /books/cached must not return private uploaded books.
+
+    Any unauthenticated user calling /books/cached should only see publicly
+    available Gutenberg books, not titles of other users' private uploads.
+    """
+    import aiosqlite
+    import services.db as db_module
+
+    # Insert a confirmed uploaded book (source='upload') owned by test_user
+    await insert_private_book(book_id=9891, owner_user_id=test_user["id"])
+
+    # Also insert a public Gutenberg book
+    await save_book(9892, {**MOCK_META, "id": 9892}, "some text")
+
+    resp = await client.get("/api/books/cached")
+    assert resp.status_code == 200
+    returned_ids = {b["id"] for b in resp.json()}
+    assert 9892 in returned_ids, "Public Gutenberg book must appear in cached list"
+    assert 9891 not in returned_ids, (
+        "Private uploaded book must NOT appear in cached list — its title is private"
+    )

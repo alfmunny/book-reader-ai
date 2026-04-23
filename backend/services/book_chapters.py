@@ -2,9 +2,10 @@
 translation queue worker.
 
 Priority (all DB-only, no external fetches at chapter-load time):
-  1. Pre-split JSON  — uploaded books that store chapters as structured JSON.
-  2. Stored EPUB     — preferred for Gutenberg books: explicit spine/TOC gives
-                       clean paragraph boundaries and reliable titles.
+  1. user_book_chapters — uploaded books store their chapters in a dedicated
+                          table (issue #357); draft rows are filtered out.
+  2. Stored EPUB        — preferred for Gutenberg books: explicit spine/TOC
+                          gives clean paragraph boundaries and reliable titles.
   3. Plain-text regex fallback — for Gutenberg books with no EPUB available.
 
 New Gutenberg books have their EPUB fetched and stored at add-time.
@@ -15,7 +16,6 @@ task on first chapter access, becoming available on the next cold start.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from collections import defaultdict
 
@@ -34,7 +34,8 @@ _epub_fetch_attempted: set[int] = set()
 async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
     """Return the canonical chapter list for a book (DB-only, no external calls).
 
-    The name is kept for backwards compatibility with call sites.
+    The `text` argument is used only for the plain-text regex fallback (Gutenberg).
+    Uploaded books are resolved from the user_book_chapters table.
     """
     cached = _chapter_cache.get(book_id)
     if cached is not None:
@@ -45,21 +46,16 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
         if cached is not None:
             return cached
 
-        # ── 1. Uploaded books: pre-split JSON ─────────────────────────────────
-        if text and text.lstrip().startswith("{"):
-            try:
-                data = json.loads(text)
-                if "chapters" in data:
-                    if data.get("draft"):
-                        return []
-                    chapters: list[Chapter] = [
-                        Chapter(title=ch["title"], text=ch["text"])
-                        for ch in data["chapters"]
-                    ]
-                    _chapter_cache[book_id] = chapters
-                    return chapters
-            except (ValueError, KeyError, TypeError):
-                pass
+        # ── 1. Uploaded books: dedicated chapters table (issue #357) ──────────
+        from services.db import get_book_source, get_user_book_chapters
+        source = await get_book_source(book_id)
+        if source == "upload":
+            rows = await get_user_book_chapters(book_id, include_drafts=False)
+            chapters: list[Chapter] = [
+                Chapter(title=r["title"], text=r["text"]) for r in rows
+            ]
+            _chapter_cache[book_id] = chapters
+            return chapters
 
         # ── 2. Stored EPUB (Gutenberg books) ──────────────────────────────────
         try:

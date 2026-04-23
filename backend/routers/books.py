@@ -110,11 +110,12 @@ async def translation_status(book_id: int, target_language: str = Query(..., max
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(cached, user)
     total_chapters = 0
-    if cached.get("text"):
+    if cached.get("text") or cached.get("source") == "upload":
         # Use the shared resolver so total_chapters matches what the reader
-        # displays (and what the queue worker processes).
+        # displays (and what the queue worker processes). Uploaded books now
+        # store chapters in the user_book_chapters table (books.text is empty).
         from services.book_chapters import split_with_html_preference
-        chapters = await split_with_html_preference(book_id, cached["text"])
+        chapters = await split_with_html_preference(book_id, cached.get("text") or "")
         total_chapters = len(chapters)
 
     cached_translations = await count_translations_for_book(book_id, target_language)
@@ -259,18 +260,12 @@ async def request_chapter_translation(
 
     # 0c. Guard: reject draft uploaded books — chapters not yet confirmed.
     if book_meta.get("source") == "upload":
-        try:
-            import json as _json
-            _data = _json.loads(book_meta.get("text") or "{}")
-            if _data.get("draft"):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Book chapters not yet confirmed. Confirm the chapter structure before translating.",
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            pass
+        from services.db import count_draft_user_book_chapters
+        if await count_draft_user_book_chapters(book_id) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Book chapters not yet confirmed. Confirm the chapter structure before translating.",
+            )
 
     # 0d. Guard: reject same-language translation.
     source = (book_meta.get("languages") or [None])[0]
@@ -464,23 +459,18 @@ async def book_chapters(book_id: int, user: dict | None = Depends(get_optional_u
     """
     cached = await get_cached_book(book_id)
 
-    # Handle uploaded books (chapters stored as JSON in text field)
+    # Handle uploaded books (chapters in the user_book_chapters table).
     if cached and cached.get("source") == "upload":
         check_book_access(cached, user)
-        text = cached.get("text", "")
-        try:
-            import json as _json
-            data = _json.loads(text)
-        except Exception:
-            raise HTTPException(status_code=422, detail="Book data corrupted")
-        if data.get("draft"):
+        from services.db import count_draft_user_book_chapters, get_user_book_chapters
+        if await count_draft_user_book_chapters(book_id) > 0:
             raise HTTPException(status_code=400, detail="Book not yet confirmed. Visit /upload/{book_id}/chapters to confirm.")
-        raw_chapters = data.get("chapters", [])
+        chapters_rows = await get_user_book_chapters(book_id, include_drafts=False)
         meta = {k: v for k, v in cached.items() if k not in ("text", "cached_at", "images")}
         return {
             "book_id": book_id,
             "meta": meta,
-            "chapters": [{"title": ch["title"], "text": ch["text"]} for ch in raw_chapters],
+            "chapters": [{"title": r["title"], "text": r["text"]} for r in chapters_rows],
         }
 
     if cached and cached.get("text"):

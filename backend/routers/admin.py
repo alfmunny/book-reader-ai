@@ -242,6 +242,7 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
                     "Wait for it to finish before deleting."
                 ),
             )
+        await db.execute("DELETE FROM user_book_chapters WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM book_uploads WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
         await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
@@ -1112,20 +1113,13 @@ async def queue_enqueue_book(
     book = await get_cached_book(req.book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    text = book.get("text") or ""
-    if text.lstrip().startswith("{"):
-        try:
-            import json as _json
-            _data = _json.loads(text)
-            if _data.get("draft"):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Book has not been confirmed yet. Confirm chapter splits before enqueueing for translation.",
-                )
-        except HTTPException:
-            raise
-        except (ValueError, TypeError):
-            pass
+    if book.get("source") == "upload":
+        from services.db import count_draft_user_book_chapters
+        if await count_draft_user_book_chapters(req.book_id) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Book has not been confirmed yet. Confirm chapter splits before enqueueing for translation.",
+            )
     added = await enqueue_for_book(
         req.book_id,
         target_languages=req.target_languages,

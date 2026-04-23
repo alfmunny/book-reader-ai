@@ -67,4 +67,10 @@ describe("LoginPage", () => {
     await user.click(screen.getByText("Continue with GitHub"));
     expect(mockSignIn).toHaveBeenCalledWith("github", expect.objectContaining({ callbackUrl: "/" }));
   });
+
+  it("GitHub button uses Tailwind token colors, not raw hex (regression #566)", () => {
+    render(<LoginForm />);
+    const btn = screen.getByText("Continue with GitHub").closest("button")!;
+    expect(btn.className).not.toMatch(/#[0-9a-fA-F]{3,6}/);
+  });
 });

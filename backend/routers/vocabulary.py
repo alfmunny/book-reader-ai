@@ -70,7 +70,24 @@ async def get_definition(
     user: dict = Depends(get_current_user),
 ):
     from services import wiktionary
-    return await wiktionary.lookup(word, lang)
+    result = await wiktionary.lookup(word, lang)
+    if result["definitions"]:
+        return result
+
+    # Wiktionary returned nothing (e.g. German compound or multi-word phrase).
+    # Fall back to AI if the user has a Gemini key configured.
+    raw_key = user.get("gemini_key")
+    if raw_key:
+        try:
+            api_key = decrypt_api_key(raw_key)
+            from services.gemini import define_word
+            ai_result = await define_word(api_key, word, lang)
+            if ai_result["definitions"]:
+                return ai_result
+        except Exception:
+            pass
+
+    return result
 
 
 @router.delete("/{word}")

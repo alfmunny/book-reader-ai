@@ -119,9 +119,9 @@ async def upload_book(
             parsed = parse_txt(file_bytes.decode("utf-8", errors="replace"))
         else:
             parsed = parse_epub(file_bytes)
-    except Exception as exc:
+    except Exception:
         logger.exception("Failed to parse uploaded file")
-        raise HTTPException(status_code=422, detail=f"Could not parse file: {exc}")
+        raise HTTPException(status_code=422, detail="Could not parse uploaded file")
 
     chapters = parsed["chapters"]
     if not chapters:

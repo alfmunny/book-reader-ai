@@ -28,8 +28,8 @@ router = APIRouter(prefix="/books", tags=["books"])
 
 @router.get("/search")
 async def search(
-    q: str = Query(..., description="Search query"),
-    language: str = Query("", description="Language code e.g. en, de, fr"),
+    q: str = Query(..., max_length=200, description="Search query"),
+    language: str = Query("", max_length=20, description="Language code e.g. en, de, fr"),
     page: int = Query(1, ge=1),
 ):
     return await search_books(q, language, page)
@@ -89,7 +89,7 @@ async def popular_books(
 
 
 @router.get("/{book_id}/translation-status")
-async def translation_status(book_id: int, target_language: str, user: dict | None = Depends(get_optional_user)):
+async def translation_status(book_id: int, target_language: str = Query(..., max_length=20), user: dict | None = Depends(get_optional_user)):
     """Return book-level translation progress for the reader banner.
 
     Includes:
@@ -146,7 +146,7 @@ async def translation_status(book_id: int, target_language: str, user: dict | No
 async def chapter_queue_status(
     book_id: int,
     chapter_index: int,
-    target_language: str,
+    target_language: str = Query(..., max_length=20),
     user: dict = Depends(get_current_user),
 ):
     """Per-chapter queue lookup for the reader page.
@@ -175,7 +175,7 @@ async def chapter_queue_status(
 async def get_chapter_translation(
     book_id: int,
     chapter_index: int,
-    target_language: str,
+    target_language: str = Query(..., max_length=20),
     user: dict | None = Depends(get_optional_user),
 ):
     """Return the cached translation if available, 404 otherwise. Never enqueues."""

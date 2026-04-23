@@ -300,7 +300,10 @@ export default function ProfilePage() {
                   </label>
                   {hasObsidianToken && (
                     <span className="flex items-center gap-2">
-                      <span className="text-xs text-emerald-600 font-medium">Token configured ✓</span>
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                        <CheckIcon className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                        Token configured
+                      </span>
                       <button
                         onClick={handleRemoveObsidianToken}
                         disabled={obsidianSaving}

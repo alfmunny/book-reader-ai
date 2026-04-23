@@ -96,6 +96,14 @@ async def run(db_path: str) -> list[str]:
     applied: list[str] = []
 
     async with aiosqlite.connect(db_path) as db:
+        # Run migrations with FK enforcement OFF for this connection — SQLite
+        # documents this as the required pattern for schema rewrites, and our
+        # 010_rate_limiter_per_model pattern (CREATE new / INSERT SELECT /
+        # DROP old / RENAME) would violate declared FKs mid-swap. Global
+        # connections get FK=ON via the services.db monkey-patch; we revert
+        # that just for this connection.
+        await db.execute("PRAGMA foreign_keys = OFF")
+
         # Ensure the tracking table exists.
         await db.execute("""
             CREATE TABLE IF NOT EXISTS schema_migrations (

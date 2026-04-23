@@ -66,8 +66,10 @@ Anyone files issue (feat label)
 
 **Path B — Complex/cross-cutting feature (`architecture` label):**
 ```
-Anyone files issue (architecture label)
-  → Architect claims it
+Anyone files issue (architecture label) — MUST include complete design in body
+  → User reviews issue body → adds `user-approved` label         ← USER GATE
+  → PM reviews → adds `pm-approved` label (confirms scope/fit)
+  → Architect claims it (only after BOTH labels are present)
   → Design doc PR first (docs/design/<feature>.md)
   → PM reviews design doc → approves or requests changes
   → Design doc merged
@@ -81,6 +83,57 @@ Anyone files issue (architecture label)
 **When to use Path B:** new DB table, new service/router, schema migrations with existing-data impact, features touching 3+ files across different services, or anything the user/PM flags as needing a design review first.
 
 **Path B is NOT needed for:** bug fixes, small enhancements, adding a field to an existing model, adding a new endpoint that follows an established pattern.
+
+### User approval gate (Path B only)
+
+Every `architecture`-labeled issue requires **human user approval** before any role can claim it. This is the gate that decides whether a big feature is in scope for the product.
+
+**Signal:** the `user-approved` label, applied by the user directly on GitHub. PM does NOT apply this label. If it's missing, Architect must not claim.
+
+**Dependency order:**
+- `user-approved` (user) → `pm-approved` (PM confirms scope/technical fit) → Architect may claim.
+- Both labels required before claim. Either can arrive first.
+
+**User's filter URL** for pending approvals: `is:issue is:open label:architecture -label:user-approved -label:needs-revision`.
+
+**When user rejects:** user closes the issue or adds `needs-revision` with a comment.
+
+### Architecture issue template (mandatory)
+
+Every architecture issue must include **complete design content in the body** before it is eligible for user review. Missing design is a blocker; PM comments "design incomplete — please fill in the architecture issue template" and leaves `user-approved` off.
+
+Required sections:
+
+1. **Problem** — what breaks or is missing today; user impact.
+2. **Proposed solution** — architecture overview, how it works end-to-end.
+3. **Schema changes** — new tables, new columns, migrations. None is a valid answer.
+4. **API changes** — new endpoints, changed contracts. None is a valid answer.
+5. **Files touched** — rough list with line estimates so reviewers gauge scope.
+6. **Open questions** — explicit list user can answer yes/no/defer; each numbered.
+7. **Alternatives considered** — what was rejected and why.
+
+A GitHub issue template (`.github/ISSUE_TEMPLATE/architecture.md`) pre-populates these sections when an architecture issue is filed via the web UI.
+
+**Who writes it:**
+- User or PM filing: fill out the template.
+- Architect in idle mode (during FEATURES.md gap analysis): fill it out before filing. "Write a short proposal, file, and wait for a formal design review" is no longer acceptable — the proposal *is* the design review.
+- Dev: still forbidden from filing architecture issues.
+
+### Revision feedback loop (all roles, all items)
+
+A single label — `needs-revision` — carries change requests from reviewer back to author, for both issues and PRs.
+
+**Semantics:** *"Author, come back and revise this."*
+
+**Triggers (reviewer side):**
+- PM or user reads an issue body → finds the design incomplete, wrong, or wants a change → adds `needs-revision` + comment explaining what.
+- PM reviews a PR → wants changes before merge → adds `needs-revision` + review comment.
+
+**Response (author side), checked every cycle:**
+- Architect: scan `gh issue list --author @me --label architecture,needs-revision`. For each, open the issue, read the new comments, revise the issue body (or the design doc if that phase), remove `needs-revision`, comment "design updated — please re-review."
+- Dev / UI/UX / Architect on their own PRs: scan `gh pr list --author @me --label needs-revision`. For each, address the comments, push the fix, remove the label.
+
+The label is the ONLY sanctioned way to send something back for revision in this workflow. A bare comment is advisory; `needs-revision` is the action signal.
 
 ### Priority tiers (Dev + Architect use when picking issues)
 
@@ -97,14 +150,19 @@ Always work highest priority first. Re-check priority each time you pick the nex
 
 At the top of every cycle — before claiming, implementing, or submitting anything — every code role (Dev / UI/UX / Architect) executes this check in order. Never skip steps.
 
-1. **Check your own open PRs first:** `gh pr list --author @me --state open --json number,title,mergeStateStatus`.
+1. **Check your own open PRs first:** `gh pr list --author @me --state open --json number,title,mergeStateStatus,labels`.
    - For each PR with `mergeStateStatus = BEHIND`: rebase + force-push. `/submit-pr` handles this if you re-run it on the branch; otherwise run `git -C <worktree> fetch origin main && git -C <worktree> rebase origin/main && git -C <worktree> push origin <branch> --force-with-lease`.
    - For each PR with failing CI: investigate. Fix or mark `blocked` and comment.
+   - **For each PR with the `needs-revision` label:** read the review comments (`gh pr view <N> --comments`), address them on the branch, push, remove the label, and re-run `/submit-pr` to restart the watcher. This is the reviewer's signal that the author must come back.
    - For each PR MERGED since last cycle: remove `in-progress` label from the corresponding issue.
-2. **In-flight PR limit: 3 per session.** If you already have 3 or more open PRs authored by you, **do not submit a new PR this cycle.** You can still claim an issue and work it locally (branch, commits, tests), but hold off on `/submit-pr` until the count drops below 3. Prevents the backlog rot and CI-queue jam observed on 2026-04-23.
-3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label. Claim it. Work it. Submit via `/submit-pr`.
-4. **If there are no unclaimed issues AND your PR count < 3**, enter your role's idle mode (bug hunt / UX audit / architecture gap analysis). File one issue, claim it, work it, submit.
-5. **If there are no unclaimed issues AND your PR count ≥ 3**, wait. Re-check PRs every few minutes; as soon as one merges, the slot frees up and you resume step 3.
+2. **Architect only — check your own open `architecture` issues:** `gh issue list --author @me --label architecture --state open --json number,title,labels`.
+   - For each with `needs-revision`: open the issue, read the new comments, revise the issue body, remove the label, post "design updated — please re-review." This is the only way user/PM feedback reaches the design.
+   - For each with `user-approved` + `pm-approved` (no `needs-revision`): ready to claim and proceed with the design doc PR.
+   - For each awaiting one of those labels: leave alone; the reviewer will act.
+3. **In-flight PR limit: 3 per session.** If you already have 3 or more open PRs authored by you, **do not submit a new PR this cycle.** You can still claim an issue and work it locally (branch, commits, tests), but hold off on `/submit-pr` until the count drops below 3. Prevents the backlog rot and CI-queue jam observed on 2026-04-23.
+4. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label. Architect: must check for both `user-approved` + `pm-approved` before claiming. Claim it. Work it. Submit via `/submit-pr`.
+5. **If there are no unclaimed issues AND your PR count < 3**, enter your role's idle mode (bug hunt / UX audit / architecture gap analysis). File one issue, (claim only if role rules permit — Architect must wait for `user-approved`), work it, submit.
+6. **If there are no unclaimed issues AND your PR count ≥ 3**, wait. Re-check PRs every few minutes; as soon as one merges, the slot frees up and you resume step 4.
 
 ---
 
@@ -115,13 +173,14 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 **File scope:** `product/`, `docs/`, `CLAUDE.md` only. Never edits source code, never creates fix branches.
 
 **Responsibilities:**
-- Triage new issues: apply role labels, set priority, update `product/backlog.md`
-- Review every merged PR: read the diff, file follow-up issues for anything incomplete
-- Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
-- Watch deployments: run `/loop` for smoke-test and deploy monitoring
-- Approve design docs (Path B) before implementation begins
-- Keep `product/review-state.md` updated every cycle
-- **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
+- Triage new issues: apply role labels, set priority, update `product/backlog.md`.
+- **For `architecture`-labeled issues:** verify the issue body follows the architecture template (all 7 sections filled). If not, comment "design incomplete — please fill in the architecture issue template" and leave labels off. If complete, review scope/technical fit and add `pm-approved`. Do NOT add `user-approved` — only the user adds that. Surface the issue to the user via a brief summary comment.
+- Review every merged PR: read the diff, file follow-up issues for anything incomplete.
+- Review open PRs: comment with concerns or approval. For PRs needing changes, add `needs-revision` (the canonical signal to the author). For hard blockers, add `blocked`.
+- Watch deployments: run `/loop` for smoke-test and deploy monitoring.
+- Approve design docs (Path B) before implementation begins.
+- Keep `product/review-state.md` updated every cycle.
+- **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher. Once the skill returns, the watcher runs async; you are free to pick up new work.
 
 **Polling cadence (fixed-interval cron via `/loop Nm`):**
 - PM runs as `/loop ${PM_POLL_MINUTES}m <prompt>`, launched by `scripts/start-roles.sh`. The harness fires the cron every N minutes regardless of whether the prior turn re-armed a wakeup — this guarantees the loop cannot die silently between turns.
@@ -204,18 +263,20 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - Update `docs/FEATURES.md` when a new feature ships
 
 **Workflow (Path B — design-first):**
-1. Read all memory files in `MEMORY.md`
-2. Claim the issue
-3. Write `docs/design/<feature>.md` — cover: problem, solution, schema changes, API changes, open questions
-4. **Submit the design doc via `/submit-pr` skill.** Comment on the issue linking to the PR. Background watcher picks up BEHIND/failures; session can pick up new work once the skill returns, subject to the 3-PR limit (see "Per-cycle priority" above).
-5. After PM approves and design doc merges: begin implementation in a new branch
-6. **Submit the implementation via `/submit-pr` skill** with `Closes #N` in the body. Same watcher semantics as step 4.
-7. After merge: remove `in-progress` label
+1. Read all memory files in `MEMORY.md`.
+2. **Only claim issues with BOTH `user-approved` AND `pm-approved` labels.** Issues missing either are not ready. If your own filed issue is missing `user-approved`, skip — don't claim your own work before the user has signed off.
+3. Check for `needs-revision` on your architecture issues first (see per-cycle priority). Revise the issue body, remove the label, re-request review — **before** claiming new work.
+4. Once claimed, write `docs/design/<feature>.md` — most of this content can be copied from the approved issue body since it already contains the complete design.
+5. **Submit the design doc via `/submit-pr` skill.** Comment on the issue linking to the PR. Background watcher picks up BEHIND/failures; session can pick up new work once the skill returns, subject to the 3-PR limit.
+6. If PM adds `needs-revision` on the design doc PR: address the comments, push, re-run `/submit-pr`.
+7. After PM approves and design doc merges: begin implementation in a new branch.
+8. **Submit the implementation via `/submit-pr` skill** with `Closes #N` in the body. Same watcher semantics.
+9. After merge: remove `in-progress` label.
 
 **Workflow (Path A — direct implementation):**
-Same as Dev workflow, but may include a design note in the PR body instead of a separate doc.
+Same as Dev workflow, but may include a design note in the PR body instead of a separate doc. Path A does NOT require `user-approved` — it's for small-scope enhancements.
 
-**Idle mode (no unclaimed issues):** Identify the highest-value unimplemented feature or most impactful refactor. Review `docs/FEATURES.md` and the open issue list for gaps. Open a GitHub issue with the `architecture` label describing the proposal, claim it, and begin a design doc following Path B. Never implement without PM sign-off on the design doc.
+**Idle mode (no unclaimed issues):** Identify the highest-value unimplemented feature or most impactful refactor. Review `docs/FEATURES.md` and the open issue list for gaps. **File a GitHub issue using the `.github/ISSUE_TEMPLATE/architecture.md` template with all 7 sections filled in — bare proposals are no longer acceptable.** Do NOT claim your own issue; wait for `user-approved` + `pm-approved`. Never implement without PM sign-off on the design doc.
 
 **Continuous operation:** After every PR merges, immediately pick the next issue without waiting.
 

@@ -33,8 +33,9 @@ frontend/e2e-results.json
 # Tauri
 src-tauri/target/
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings (ignore everything EXCEPT the skills dir)
+.claude/*
+!.claude/skills/
 
 # General
 .DS_Store

@@ -532,6 +532,128 @@ def _html_body_text(
     return "\n\n".join(parts)
 
 
+
+# ── EPUB-based splitter ──────────────────────────────────────────────────────
+
+def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
+    """Extract chapters from a Gutenberg EPUB using spine order and NCX/nav titles.
+
+    Returns [] on any failure so callers fall through gracefully.
+    """
+    try:
+        import io
+        import ebooklib
+        from ebooklib import epub as epublib
+        from lxml import html as lxmlhtml
+    except ImportError:
+        return []
+
+    try:
+        book = epublib.read_epub(io.BytesIO(epub_bytes), options={"ignore_ncx": False})
+    except Exception:
+        return []
+
+    nav_titles = _epub_nav_titles(book)
+    id_to_item = {
+        item.get_id(): item
+        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT)
+    }
+
+    _SKIP_SUFFIXES = {
+        "nav.xhtml", "nav.html", "cover.xhtml", "cover.html",
+        "toc.xhtml", "toc.html", "title.xhtml", "titlepage.xhtml",
+        "halftitle.xhtml", "copyright.xhtml", "dedication.xhtml",
+        "colophon.xhtml", "index.xhtml",
+    }
+
+    chapters: list[Chapter] = []
+    for item_id, _ in book.spine:
+        item = id_to_item.get(item_id)
+        if item is None:
+            continue
+        basename = item.get_name().split("/")[-1].lower()
+        if basename in _SKIP_SUFFIXES:
+            continue
+
+        raw = item.get_content()
+        try:
+            doc = lxmlhtml.fromstring(raw)
+            body = doc.find(".//body")
+            if body is None:
+                body = doc
+            text = _html_body_text(body, skip_first_heading=True)
+        except Exception:
+            continue
+
+        if not text.strip() or len(text.split()) < 30:
+            continue
+
+        title = (
+            nav_titles.get(item_id)
+            or _epub_heading_title(raw)
+            or f"Section {len(chapters) + 1}"
+        )
+        chapters.append(Chapter(title=_clean_title(title), text=text))
+
+    # EPUB spine is authoritative structure, not a heuristic guess.
+    # Skip the regex-oriented _validate() and just require >= 2 chapters.
+    return chapters if len(chapters) >= 2 else []
+
+
+def _epub_nav_titles(book) -> dict[str, str]:
+    """Return {item_id: chapter_title} from the EPUB TOC (NCX or EPUB3 nav)."""
+    import ebooklib
+
+    name_to_id: dict[str, str] = {
+        item.get_name(): item.get_id()
+        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT)
+    }
+
+    titles: dict[str, str] = {}
+
+    def _resolve(href: str) -> str | None:
+        bare = href.split("#")[0].lstrip("/")
+        if bare in name_to_id:
+            return name_to_id[bare]
+        for name, item_id in name_to_id.items():
+            if name.endswith("/" + bare) or name == bare:
+                return item_id
+        return None
+
+    def _walk(toc_items) -> None:
+        for entry in toc_items:
+            if isinstance(entry, tuple):
+                section, children = entry
+                if getattr(section, "href", None):
+                    item_id = _resolve(section.href)
+                    if item_id and getattr(section, "title", None):
+                        titles.setdefault(item_id, section.title)
+                _walk(children)
+            elif getattr(entry, "href", None):
+                item_id = _resolve(entry.href)
+                if item_id and getattr(entry, "title", None):
+                    titles.setdefault(item_id, entry.title)
+
+    _walk(book.toc)
+    return titles
+
+
+def _epub_heading_title(raw_xhtml: bytes) -> str:
+    """Extract the first heading from XHTML as a fallback chapter title."""
+    try:
+        from lxml import html as lxmlhtml
+        doc = lxmlhtml.fromstring(raw_xhtml)
+        for tag in ("h1", "h2", "h3", "h4"):
+            elems = doc.findall(f".//{tag}")
+            if elems:
+                text = " ".join(elems[0].itertext()).strip()
+                if text:
+                    return text
+    except Exception:
+        pass
+    return ""
+
+
 # Dramatic speaker cue: an all-caps label that introduces a speaker's
 # lines in plays (BÜRGERMÄDCHEN., ZWEITER SCHÜLER (zum ersten).,
 # ANDRER BÜRGER., FAUST, MEPHISTOPHELES, IRRLICHT (im Wechselgesang).

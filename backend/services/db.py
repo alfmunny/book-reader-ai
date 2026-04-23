@@ -487,6 +487,32 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
 
 
 
+
+# ── EPUB cache ────────────────────────────────────────────────────────────────
+
+async def save_book_epub(book_id: int, epub_bytes: bytes, epub_url: str = "") -> None:
+    """Persist downloaded EPUB bytes for a Gutenberg book."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """
+            INSERT OR REPLACE INTO book_epubs (book_id, epub_url, epub_bytes)
+            VALUES (?, ?, ?)
+            """,
+            (book_id, epub_url, epub_bytes),
+        )
+        await db.commit()
+
+
+async def get_book_epub_bytes(book_id: int) -> bytes | None:
+    """Return stored EPUB bytes for a book, or None if not cached."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT epub_bytes FROM book_epubs WHERE book_id = ?", (book_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    return row[0] if row else None
+
+
 # ── App settings (key/value config used by the always-on queue, etc.) ────────
 
 async def get_setting(key: str) -> str | None:

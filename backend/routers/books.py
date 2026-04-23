@@ -7,13 +7,14 @@ from typing import AsyncIterator
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_html
+from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_epub
 from services.db import (
     get_cached_book,
     save_book,
+    save_book_epub,
     list_cached_books,
 )
-from services.splitter import build_chapters, build_chapters_from_html
+from services.splitter import build_chapters
 from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access
 
 logger = logging.getLogger(__name__)
@@ -505,7 +506,20 @@ async def _fetch_and_cache(book_id: int) -> tuple[dict, str]:
     meta = await get_book_meta(book_id)
     text = await get_book_text(book_id)
     await save_book(book_id, meta, text)
+    # Fetch EPUB in background so book-add stays snappy.
+    asyncio.create_task(_fetch_and_store_epub(book_id))
     return meta, text
+
+
+async def _fetch_and_store_epub(book_id: int) -> None:
+    try:
+        result = await get_book_epub(book_id)
+        if result:
+            epub_bytes, epub_url = result
+            await save_book_epub(book_id, epub_bytes, epub_url)
+            logger.info("EPUB cached for book %d (%d KB)", book_id, len(epub_bytes) // 1024)
+    except Exception:
+        logger.debug("EPUB fetch failed for book %d (no EPUB edition available)", book_id)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

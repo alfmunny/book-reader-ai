@@ -107,3 +107,42 @@ async def test_github_login_idempotent(client, tmp_db):
     assert resp1.status_code == 200
     assert resp2.status_code == 200
     assert resp1.json()["user"]["id"] == resp2.json()["user"]["id"]
+
+
+# ── Issue #537: auth token field bounds ──────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_google_login_oversized_id_token_returns_422(client):
+    """Regression #537: POST /auth/google with id_token > 2000 chars must return 422."""
+    resp = await client.post("/api/auth/google", json={"id_token": "x" * 2001})
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized Google id_token, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_github_login_oversized_access_token_returns_422(client):
+    """Regression #537: POST /auth/github with access_token > 500 chars must return 422."""
+    resp = await client.post("/api/auth/github", json={"access_token": "g" * 501})
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized GitHub access_token, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_apple_login_oversized_id_token_returns_422(client):
+    """Regression #537: POST /auth/apple with id_token > 2000 chars must return 422."""
+    resp = await client.post("/api/auth/apple", json={"id_token": "a" * 2001, "name": "Alice"})
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized Apple id_token, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_apple_login_oversized_name_returns_422(client):
+    """Regression #537: POST /auth/apple with name > 500 chars must return 422."""
+    resp = await client.post("/api/auth/apple", json={"id_token": "valid-tok", "name": "N" * 501})
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized Apple name, got {resp.status_code}: {resp.text}"
+    )

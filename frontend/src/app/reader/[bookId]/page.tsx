@@ -1691,7 +1691,7 @@ export default function ReaderPage() {
                         <button
                           key={v}
                           onClick={() => setNotesView(v)}
-                          className={`flex-1 text-xs py-1 rounded-md font-medium transition-colors ${
+                          className={`flex-1 text-xs py-1 min-h-[44px] rounded-md font-medium transition-colors ${
                             notesView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"
                           }`}
                         >
@@ -1774,7 +1774,7 @@ export default function ReaderPage() {
                         <button
                           key={v}
                           onClick={() => setVocabView(v)}
-                          className={`flex-1 text-xs py-1 rounded-md font-medium transition-colors ${
+                          className={`flex-1 text-xs py-1 min-h-[44px] rounded-md font-medium transition-colors ${
                             vocabView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"
                           }`}
                         >

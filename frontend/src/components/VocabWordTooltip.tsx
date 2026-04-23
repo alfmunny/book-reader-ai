@@ -117,7 +117,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
         <button
           onClick={handleSave}
           disabled={saved}
-          className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors ${
+          className={`text-xs font-medium px-3 py-1 min-h-[44px] rounded-lg transition-colors flex items-center justify-center ${
             saved
               ? "bg-stone-100 text-stone-400 cursor-default"
               : "bg-amber-600 text-white hover:bg-amber-700"

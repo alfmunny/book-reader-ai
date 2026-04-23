@@ -5,7 +5,7 @@ import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks"
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon } from "@/components/Icons";
+import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -573,7 +573,7 @@ export default function Home() {
                 {FEATURED.map((f) => (
                   <button
                     key={f.query}
-                    className="text-xs rounded-full border border-amber-300 px-3 py-1 text-amber-800 hover:bg-amber-100 transition-colors"
+                    className="text-xs rounded-full border border-amber-300 px-3 py-1 min-h-[44px] text-amber-800 hover:bg-amber-100 transition-colors"
                     onClick={() => { setQuery(f.query); setLang(f.lang); handleSearch(f.query, f.lang); }}
                     disabled={searching}
                   >
@@ -626,7 +626,7 @@ export default function Home() {
                       <button
                         key={l.code}
                         onClick={() => handlePopularLangChange(l.code)}
-                        className={`text-xs rounded-full px-3 py-1 border transition-colors ${
+                        className={`text-xs rounded-full px-3 py-1 min-h-[44px] border transition-colors ${
                           popularLang === l.code
                             ? "bg-amber-700 text-white border-amber-700"
                             : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -641,21 +641,18 @@ export default function Home() {
                   <button
                     onClick={() => setPopularView("grid")}
                     title="Grid view"
-                    className={`p-1.5 rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
+                    aria-label="Grid view"
+                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                      <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
-                      <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
-                    </svg>
+                    <GridViewIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setPopularView("list")}
                     title="List view"
-                    className={`p-1.5 rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
+                    aria-label="List view"
+                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 16 16">
-                      <line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/>
-                    </svg>
+                    <ListViewIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>

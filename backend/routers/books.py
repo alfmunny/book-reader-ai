@@ -470,6 +470,7 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
         return {
             "book_id": book_id,
             "meta": meta,
+            "chapter_source": "upload",
             "chapters": [{"title": r["title"], "text": r["text"]} for r in chapters_rows],
         }
 
@@ -483,11 +484,12 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
             msg = str(e) or type(e).__name__
             raise HTTPException(status_code=404, detail=msg)
 
-    from services.book_chapters import split_with_html_preference
+    from services.book_chapters import split_with_html_preference, get_chapter_source
     chapters = await split_with_html_preference(book_id, text)
     return {
         "book_id": book_id,
         "meta": meta,
+        "chapter_source": await get_chapter_source(book_id),
         "chapters": [{"title": c.title, "text": c.text} for c in chapters],
     }
 

@@ -144,8 +144,10 @@ export function getBookMeta(id: number) {
   return request<BookMeta>(`/books/${id}`);
 }
 
+export type ChapterSource = "upload" | "epub" | "text";
+
 export function getBookChapters(id: number) {
-  return request<{ book_id: number; meta: BookMeta; chapters: BookChapter[] }>(`/books/${id}/chapters`);
+  return request<{ book_id: number; meta: BookMeta; chapter_source: ChapterSource; chapters: BookChapter[] }>(`/books/${id}/chapters`);
 }
 
 export interface BookChapter {

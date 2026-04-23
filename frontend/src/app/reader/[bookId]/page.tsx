@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -23,6 +23,7 @@ import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
 const metaCache = new Map<string, BookMeta>();
+const sourceCache = new Map<string, ChapterSource>();
 
 export default function ReaderPage() {
   const { bookId } = useParams<{ bookId: string }>();
@@ -32,6 +33,7 @@ export default function ReaderPage() {
 
   const [meta, setMeta] = useState<BookMeta | null>(metaCache.get(bookId) ?? null);
   const [chapters, setChapters] = useState<BookChapter[]>(chaptersCache.get(bookId) ?? []);
+  const [chapterSource, setChapterSource] = useState<ChapterSource | null>(sourceCache.get(bookId) ?? null);
   const [chapterIndex, setChapterIndex] = useState(() => {
     // ?chapter=N from vocabulary deep links takes priority over last-read
     const qch = searchParams?.get("chapter");
@@ -327,8 +329,10 @@ export default function ReaderPage() {
       .then((data) => {
         chaptersCache.set(bookId, data.chapters);
         metaCache.set(bookId, data.meta);
+        sourceCache.set(bookId, data.chapter_source);
         setChapters(data.chapters);
         setMeta(data.meta);
+        setChapterSource(data.chapter_source);
         const savedChapter = getLastChapter(Number(bookId));
         // ?chapter=N from deep-links takes priority over last-read progress
         const urlChapter = searchParams?.get("chapter");
@@ -798,8 +802,10 @@ export default function ReaderPage() {
       .then((data) => {
         chaptersCache.set(bookId, data.chapters);
         metaCache.set(bookId, data.meta);
+        sourceCache.set(bookId, data.chapter_source);
         setChapters(data.chapters);
         setMeta(data.meta);
+        setChapterSource(data.chapter_source);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -899,11 +905,31 @@ export default function ReaderPage() {
               <>
                 <div className="flex items-baseline gap-1.5 min-w-0">
                   <h1 className="font-serif font-bold text-ink truncate text-sm">{meta.title}</h1>
-                  {meta.source === "upload" ? (
-                    <span className="shrink-0 text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 leading-none">
+                  {chapterSource === "upload" && (
+                    <span
+                      className="shrink-0 text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 leading-none"
+                      title="Uploaded book — chapters from your own file"
+                    >
                       Uploaded
                     </span>
-                  ) : (
+                  )}
+                  {chapterSource === "epub" && (
+                    <span
+                      className="shrink-0 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5 leading-none"
+                      title="Rendered from the Gutenberg EPUB (spine + TOC)"
+                    >
+                      EPUB
+                    </span>
+                  )}
+                  {chapterSource === "text" && (
+                    <span
+                      className="shrink-0 text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200 rounded px-1 py-0.5 leading-none"
+                      title="Rendered from the Gutenberg plain-text edition (no EPUB available yet)"
+                    >
+                      Plain text
+                    </span>
+                  )}
+                  {meta.source !== "upload" && (
                     <a
                       href={`https://www.gutenberg.org/ebooks/${meta.id}`}
                       target="_blank"

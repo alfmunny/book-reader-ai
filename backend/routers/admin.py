@@ -920,7 +920,7 @@ async def queue_stop(_admin: dict = Depends(_require_admin)):
 
 
 class QueuePlanRequest(BaseModel):
-    target_language: str
+    target_language: str = Field(..., max_length=20)
     book_ids: list[int] | None = None
 
 
@@ -1225,7 +1225,7 @@ async def queue_retry_item(
 
 class RetryFailedRequest(BaseModel):
     book_id: int | None = None
-    target_language: str | None = None
+    target_language: str | None = Field(default=None, max_length=20)
 
 
 @router.post("/queue/retry-failed")

@@ -1,9 +1,9 @@
 # Design: In-App Full-Text Search via FTS5 (Issue #592)
 
-**Status:** Awaiting PM approval  
+**Status:** PM approved 2026-04-23 ✅ — revised per review notes  
 **Author:** Architect  
 **Date:** 2026-04-23  
-**Depends on:** #357 (user_book_chapters) must merge first
+**Depends on:** #357 (user_book_chapters) implementation must merge before the implementation PR for this design is opened.
 
 ---
 
@@ -90,6 +90,12 @@ CREATE TRIGGER word_occ_ad BEFORE DELETE ON word_occurrences BEGIN
     INSERT INTO word_occurrences_fts(word_occurrences_fts, rowid, sentence_text)
     VALUES ('delete', old.id, old.sentence_text);
 END;
+CREATE TRIGGER word_occ_au AFTER UPDATE ON word_occurrences BEGIN
+    INSERT INTO word_occurrences_fts(word_occurrences_fts, rowid, sentence_text)
+    VALUES ('delete', old.id, old.sentence_text);
+    INSERT INTO word_occurrences_fts(rowid, sentence_text)
+    VALUES (new.id, new.sentence_text);
+END;
 
 -- FTS5 for uploaded book chapters (depends on 025_user_book_chapters)
 CREATE VIRTUAL TABLE IF NOT EXISTS user_chapters_fts USING fts5(
@@ -104,17 +110,40 @@ CREATE VIRTUAL TABLE IF NOT EXISTS user_chapters_fts USING fts5(
 INSERT INTO user_chapters_fts(rowid, title, text)
 SELECT id, title, text FROM user_book_chapters WHERE is_draft = 0;
 
-CREATE TRIGGER user_chapters_ai AFTER INSERT ON user_book_chapters BEGIN
+-- Triggers keep the FTS in sync ONLY for confirmed rows (is_draft = 0).
+-- Draft rows must not appear in the index — users haven't finalized them yet
+-- and the search router additionally filters `is_draft = 0` as a belt-and-braces guard.
+
+-- New row: only index if it lands already confirmed (rare; typical path is insert-draft, then confirm).
+CREATE TRIGGER user_chapters_ai AFTER INSERT ON user_book_chapters
+WHEN NEW.is_draft = 0
+BEGIN
     INSERT INTO user_chapters_fts(rowid, title, text)
     VALUES (new.id, new.title, new.text);
 END;
-CREATE TRIGGER user_chapters_ad BEFORE DELETE ON user_book_chapters BEGIN
+
+-- Delete: only remove from FTS if the row was indexed (i.e. was confirmed).
+CREATE TRIGGER user_chapters_ad BEFORE DELETE ON user_book_chapters
+WHEN OLD.is_draft = 0
+BEGIN
     INSERT INTO user_chapters_fts(user_chapters_fts, rowid, title, text)
     VALUES ('delete', old.id, old.title, old.text);
 END;
-CREATE TRIGGER user_chapters_au AFTER UPDATE ON user_book_chapters BEGIN
+
+-- Update is split into two triggers that compose to cover all four transitions:
+--   0 → 0  : delete old + insert new = re-index (title/text edited on confirmed row)
+--   0 → 1  : delete old only         = row removed from index (defensive; un-confirm)
+--   1 → 0  : insert new only         = added to index on confirm
+--   1 → 1  : neither fires           = draft-only edit stays out of index
+CREATE TRIGGER user_chapters_au_del AFTER UPDATE ON user_book_chapters
+WHEN OLD.is_draft = 0
+BEGIN
     INSERT INTO user_chapters_fts(user_chapters_fts, rowid, title, text)
     VALUES ('delete', old.id, old.title, old.text);
+END;
+CREATE TRIGGER user_chapters_au_ins AFTER UPDATE ON user_book_chapters
+WHEN NEW.is_draft = 0
+BEGIN
     INSERT INTO user_chapters_fts(rowid, title, text)
     VALUES (new.id, new.title, new.text);
 END;
@@ -260,8 +289,14 @@ Migration 026 uses `INSERT INTO fts ... SELECT` to seed existing data — this i
 
 This migration adds no constraints to existing tables. The FTS seed is additive. **No cleanup step required.**
 
-A test is still required per testing policy:
+Tests required per testing policy:
 - `test_migrations.py`: seed an annotation + vocabulary occurrence + uploaded chapter, run migration, verify FTS returns matches.
+- `test_router_search.py`:
+  - draft chapter is not indexed on insert (`is_draft = 1`) and does not appear in search results.
+  - draft chapter becomes searchable only after `UPDATE ... SET is_draft = 0` (confirm transition).
+  - un-confirm transition (0 → 1, defensive) removes the chapter from the index.
+  - content edit on a confirmed chapter updates the FTS snippet.
+  - `word_occurrences` sentence_text update re-indexes correctly (covers `word_occ_au`).
 
 ---
 
@@ -305,4 +340,9 @@ Total: 11 files. No schema changes to existing tables.
 
 ## Decision
 
-**Awaiting PM approval.** Once the design doc merges, implementation begins on `feat/fts5-in-app-search` after issue #357 is merged.
+**PM approved 2026-04-23 ✅** with three revision items (addressed in this revision):
+1. `word_occ_au` trigger added — `word_occurrences` is not guaranteed insert-only long-term; a defensive AU trigger keeps the FTS index consistent if sentence_text is ever updated.
+2. Draft-chapter leak fixed — all `user_chapters_*` triggers are now gated by `WHEN … is_draft = 0` and compose cleanly over the four draft/confirm transitions. An explicit confirm transition (1 → 0) adds the row to the FTS index.
+3. **Implementation order lock-in:** the implementation PR for #592 **MUST NOT** be opened until the implementation of #357 (user_book_chapters) is merged and deployed. `user_chapters_fts` references the `user_book_chapters` table; migration 026 will fail to apply without it. PM will file the implementation issue (labeled `feat` + `architecture`) once #357 implementation ships.
+
+Implementation begins on `feat/fts5-in-app-search` only after the PM-filed implementation issue appears.

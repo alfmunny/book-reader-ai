@@ -936,6 +936,40 @@ def test_html_body_text_div_fallthrough():
     assert "word" in text
 
 
+def test_html_body_text_preserves_span_wrapped_verse_lines():
+    """Regression for book 24288 (Rilke, Das Stunden-Buch): Project Gutenberg
+    EPUBs for poetry wrap each verse line in ``<span class="i0">…<br/></span>``
+    inside ``<div class="stanza">`` inside ``<div class="poem">``. Without
+    treating a span-only stanza as a paragraph, the recursive div walker
+    drops every span's .text and the entire poem body disappears."""
+    from lxml import html as lxml_html
+    html = """
+    <body>
+      <h1>Das Stunden-Buch</h1>
+      <div class="poem">
+        <div class="stanza">
+          <span class="i0">Da neigt sich die Stunde und rührt mich an<br/></span>
+          <span class="i0">mit klarem metallenem Schlag:<br/></span>
+          <span class="i0">mir zittern die Sinne. Ich fühle: ich kann –<br/></span>
+          <span class="i0">und ich fasse den plastischen Tag.<br/></span>
+        </div>
+        <div class="stanza">
+          <span class="i0">Nichts war noch vollendet, eh ich es erschaut,<br/></span>
+          <span class="i0">ein jedes Werden stand still.<br/></span>
+        </div>
+      </div>
+    </body>
+    """
+    body = lxml_html.fromstring(html)
+    text = _html_body_text(body, skip_first_heading=True)
+    assert "Da neigt sich die Stunde" in text, text
+    assert "plastischen Tag" in text, text
+    assert "Nichts war noch vollendet" in text, text
+    # Two stanzas => two paragraphs, separated by a blank line.
+    paragraphs = [p for p in text.split("\n\n") if p.strip()]
+    assert len(paragraphs) == 2
+
+
 # Lines 571->562: _split_dramatic_speakers — speaker cue mid-paragraph
 def test_split_dramatic_speakers_splits_at_cue():
     """A speaker cue (ALL-CAPS word(s) ending with period) should split the paragraph."""

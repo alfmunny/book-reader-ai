@@ -26,6 +26,7 @@ Affected code paths today (all require a `source=='upload'` branch):
 - `routers/uploads.py:171` — `GET /books/{id}/chapters/draft`
 - `routers/uploads.py:226` — `POST /books/{id}/chapters/confirm`
 - `routers/admin.py:1119` — draft guard before admin bulk enqueue
+- `services/book_chapters.py:52–60` — in-memory chapter cache resolves uploads by detecting `text.startswith("{")`
 
 ---
 
@@ -151,6 +152,7 @@ Files changed:
 |---|---|
 | `backend/migrations/024_user_book_chapters.sql` | New table DDL |
 | `backend/scripts/migrate_upload_chapters.py` | One-time data migration |
+| `backend/services/book_chapters.py` | Remove JSON-detect branch; query `user_book_chapters` for uploads |
 | `backend/routers/uploads.py` | Write to / read from `user_book_chapters` instead of `books.text` |
 | `backend/routers/books.py` | Remove JSON-parse branch; read from `user_book_chapters` for uploads |
 | `backend/routers/admin.py` | Remove JSON-parse draft guard |
@@ -158,7 +160,7 @@ Files changed:
 | `backend/tests/test_router_books.py` | Update upload chapter tests |
 | `backend/tests/test_migrations.py` | New test: data migration correctness |
 
-Total: 8 files, 3 services. No frontend changes needed.
+Total: 9 files, 4 services. No frontend changes needed.
 
 ---
 

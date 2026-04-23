@@ -294,7 +294,7 @@ function VocabularyPageContent() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveWord({ word: group.lemma, lang: group.language })}
-              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left"
+              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left min-h-[44px] flex items-center"
             >
               {group.lemma}
             </button>

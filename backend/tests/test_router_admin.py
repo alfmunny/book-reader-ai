@@ -1081,6 +1081,35 @@ async def test_enqueue_book_nonexistent_returns_404(admin_client):
     assert res.status_code == 404
 
 
+async def test_enqueue_draft_book_returns_400(admin_client, admin_db):
+    """Regression #486: enqueuing an unconfirmed uploaded book must return 400.
+
+    Before the fix the endpoint returned 200 with enqueued=0, giving
+    the admin no indication that the book hadn't been confirmed yet.
+    """
+    import json as _json
+    import aiosqlite
+    draft_text = _json.dumps({"draft": True, "chapters": [{"title": "Ch 1", "text": "word " * 300}]})
+    async with aiosqlite.connect(admin_db) as db:
+        cur = await db.execute(
+            """INSERT INTO books (title, authors, languages, subjects, download_count,
+                                  cover, text, images, source, owner_user_id)
+               VALUES ('Draft', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', 1)""",
+            (draft_text,),
+        )
+        book_id = cur.lastrowid
+        await db.commit()
+
+    res = await admin_client.post("/api/admin/queue/enqueue-book", json={
+        "book_id": book_id,
+        "target_languages": ["de"],
+    })
+    assert res.status_code == 400, (
+        f"Expected 400 for draft book, got {res.status_code}: {res.text}"
+    )
+    assert "draft" in res.json()["detail"].lower() or "confirm" in res.json()["detail"].lower()
+
+
 # ── Retry-failed bulk endpoint ───────────────────────────────────────────────
 
 async def _seed_failed(book_id: int, chapter_index: int, target_language: str):

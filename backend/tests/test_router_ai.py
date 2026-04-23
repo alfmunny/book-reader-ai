@@ -1027,3 +1027,52 @@ async def test_translate_oversized_source_language_returns_422(client, test_user
         json={"text": "hello", "source_language": "x" * 21, "target_language": "en"},
     )
     assert resp.status_code == 422, f"Expected 422 for oversized source_language, got {resp.status_code}"
+
+
+# ── Issue #516: SaveTranslationRequest max_length ────────────────────────────
+
+
+async def test_translate_cache_put_oversized_target_language_returns_422(client, test_user):
+    """Regression #516: PUT /ai/translate/cache with target_language > 20 chars
+    must return 422, not store a huge string in translations table."""
+    await save_book(9821, {"title": "T", "authors": [], "languages": ["de"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put(
+        "/api/ai/translate/cache",
+        json={"book_id": 9821, "chapter_index": 0, "target_language": "x" * 21,
+              "paragraphs": ["hello"]},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized target_language in PUT /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_translate_cache_put_oversized_provider_returns_422(client, test_user):
+    """Regression #516: PUT /ai/translate/cache with provider > 100 chars must return 422."""
+    await save_book(9822, {"title": "T", "authors": [], "languages": ["de"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put(
+        "/api/ai/translate/cache",
+        json={"book_id": 9822, "chapter_index": 0, "target_language": "fr",
+              "paragraphs": ["hello"], "provider": "x" * 101},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized provider in PUT /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_translate_cache_put_oversized_model_returns_422(client, test_user):
+    """Regression #516: PUT /ai/translate/cache with model > 200 chars must return 422."""
+    await save_book(9823, {"title": "T", "authors": [], "languages": ["de"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put(
+        "/api/ai/translate/cache",
+        json={"book_id": 9823, "chapter_index": 0, "target_language": "fr",
+              "paragraphs": ["hello"], "model": "m" * 201},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized model in PUT /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )

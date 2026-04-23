@@ -269,10 +269,10 @@ async def translate_cache(
 class SaveTranslationRequest(BaseModel):
     book_id: int
     chapter_index: int
-    target_language: str
+    target_language: str = Field(..., max_length=20)
     paragraphs: list[str]
-    provider: str | None = None
-    model: str | None = None
+    provider: str | None = Field(default=None, max_length=100)
+    model: str | None = Field(default=None, max_length=200)
 
 
 @router.put("/translate/cache")

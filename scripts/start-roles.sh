@@ -65,6 +65,20 @@ MODEL_DEV="claude-sonnet-4-6"
 MODEL_UIUX="claude-haiku-4-5-20251001"
 MODEL_ARCH="claude-opus-4-7"
 
+# ── PM polling cadence (team-size-adjusted, fixed-interval cron) ──────────────
+# PM runs as /loop ${PM_POLL_MINUTES}m so the harness re-fires the cycle via
+# cron on every tick, regardless of whether the prior turn re-armed a wakeup.
+# This guarantees the PM loop cannot die silently between turns.
+#
+# Default cadence is sized for 3 active code roles (dev + uiux + arch). When
+# dev2 is running, the dev2 subcommand bumps the interval to 2 minutes by
+# regenerating the PM prompt and reminding the user to restart PM.
+#
+#   1 code role   → 5 min   2 code roles  → 4 min
+#   3 code roles  → 3 min   4 code roles  → 2 min  (dev + dev2 + uiux + arch)
+
+PM_POLL_MINUTES=3
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 die()      { echo "ERROR: $*" >&2; exit 1; }
@@ -90,7 +104,7 @@ check_deps() {
 # Write role prompts to /tmp (namespaced by SLUG so multiple repos can run at once)
 write_prompts() {
   cat > "/tmp/${SLUG}-pm.txt" << PROMPT
-/loop Act as product manager for ${SLUG}. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait.
+/loop ${PM_POLL_MINUTES}m Act as product manager for ${SLUG}. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait.
 PROMPT
 
   cat > "/tmp/${SLUG}-dev.txt" << PROMPT
@@ -215,6 +229,10 @@ Models:
   Dev     $MODEL_DEV
   UI/UX   $MODEL_UIUX
   Arch    $MODEL_ARCH
+
+PM polling cadence: ${PM_POLL_MINUTES} min (fixed cron via /loop).
+  Bumped to 2 min when dev2 is added. Change by editing PM_POLL_MINUTES
+  near the top of this script, then restart.
 EOF
     exit 0
     ;;
@@ -236,11 +254,19 @@ EOF
     ;;
   dev2)
     running || die "Session '$SESSION' not running — start it first."
+    # Bump PM cadence: 4 code roles are active, PM should poll every 2 min.
+    PM_POLL_MINUTES=2
     write_prompts
     ensure_worktree "$REPO_DEV"
     start_window "dev2" "/tmp/${SLUG}-dev.txt" "$MODEL_DEV" "$REPO_DEV"
     echo "Added dev2 window to session '$SESSION'."
     echo "Switch to it:  tmux select-window -t ${SESSION}:dev2"
+    echo ""
+    echo "⚠  PM is still running at its original cadence. To pick up the new"
+    echo "   ${PM_POLL_MINUTES}-min cron interval, restart PM:"
+    echo "     tmux kill-window -t ${SESSION}:pm"
+    echo "     tmux new-window -t ${SESSION}: -n pm 'cd ${REPO} && ${CLAUDE_BASE} --model ${MODEL_PM} \"\$(cat /tmp/${SLUG}-pm.txt)\"'"
+    echo "   Or simpler: bash scripts/start-roles.sh restart"
     exit 0
     ;;
 esac

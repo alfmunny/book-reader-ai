@@ -109,6 +109,12 @@ Always work highest priority first. Re-check priority each time you pick the nex
 - Approve design docs (Path B) before implementation begins
 - Keep `product/review-state.md` updated every cycle
 
+**Polling cadence (fixed-interval cron via `/loop Nm`):**
+- PM runs as `/loop ${PM_POLL_MINUTES}m <prompt>`, launched by `scripts/start-roles.sh`. The harness fires the cron every N minutes regardless of whether the prior turn re-armed a wakeup — this guarantees the loop cannot die silently between turns.
+- **Default cadence** is 3 min, sized for 3 active code roles (Dev + UI/UX + Architect). `start-roles.sh` bumps it to 2 min when `dev2` is added.
+- To change the cadence: edit `PM_POLL_MINUTES` in `scripts/start-roles.sh`, then restart (`bash scripts/start-roles.sh restart`). The running cron cannot be retuned mid-session.
+- PM should **not** call `ScheduleWakeup` itself — the fixed cron is the sole wake source. Conversational replies to the user do not need to end with a wakeup.
+
 **Startup sequence:**
 1. Read all memory files in `MEMORY.md`
 2. Run `git worktree list` — warn user if `in-progress` issues exist but no worktrees are set up

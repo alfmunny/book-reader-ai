@@ -5,7 +5,7 @@ import logging
 import aiosqlite
 import services.db as _db
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -189,8 +189,14 @@ async def get_draft_chapters(book_id: int, user: dict = Depends(get_current_user
     }
 
 
+class ConfirmChapterSpec(BaseModel):
+    title: str = Field(default="", max_length=500)
+    original_index: int | None = None
+    index: int | None = None
+
+
 class ConfirmChaptersBody(BaseModel):
-    chapters: list[dict]  # [{title: str, index: int}] — reordered/renamed list
+    chapters: list[ConfirmChapterSpec]
 
 
 @router.post("/{book_id}/chapters/confirm")
@@ -233,9 +239,9 @@ async def confirm_chapters(
         # original text comes from orig_chapters by matching original index
         final_chapters = []
         for ch_spec in body.chapters:
-            orig_idx = ch_spec.get("original_index", ch_spec.get("index"))
-            title = ch_spec.get("title", f"Chapter {len(final_chapters) + 1}")
-            if orig_idx is not None and isinstance(orig_idx, int) and 0 <= orig_idx < len(orig_chapters):
+            orig_idx = ch_spec.original_index if ch_spec.original_index is not None else ch_spec.index
+            title = ch_spec.title or f"Chapter {len(final_chapters) + 1}"
+            if orig_idx is not None and 0 <= orig_idx < len(orig_chapters):
                 text = orig_chapters[orig_idx]["text"]
             else:
                 text = ""

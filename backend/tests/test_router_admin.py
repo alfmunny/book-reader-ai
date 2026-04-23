@@ -2166,6 +2166,18 @@ async def test_queue_settings_oversized_language_item_returns_422(admin_client, 
     )
 
 
+# ── Issue #530: admin queue GET/DELETE param bounds ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_queue_items_oversized_status_returns_422(admin_client, admin_db):
+    """Regression #530: GET /admin/queue/items?status=<21 chars> must return 422."""
+    res = await admin_client.get("/api/admin/queue/items?status=" + "x" * 21)
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized status in queue/items, got {res.status_code}: {res.text}"
+    )
+
+
 @pytest.mark.asyncio
 async def test_queue_settings_oversized_model_chain_item_returns_422(admin_client, admin_db):
     """Regression #531: model_chain item > 200 chars must return 422."""
@@ -2175,6 +2187,15 @@ async def test_queue_settings_oversized_model_chain_item_returns_422(admin_clien
     )
     assert res.status_code == 422, (
         f"Expected 422 for oversized model_chain item, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_clear_oversized_status_returns_422(admin_client, admin_db):
+    """Regression #530: DELETE /admin/queue?status=<21 chars> must return 422."""
+    res = await admin_client.delete("/api/admin/queue?status=" + "x" * 21)
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized status in DELETE queue, got {res.status_code}: {res.text}"
     )
 
 
@@ -2260,19 +2281,10 @@ async def test_get_uploads_filter_by_user(admin_client, admin_db, admin_user):
     assert data[0]["book_id"] == 201
 
 
-# ── Oversized query param bounds checks (regression for #530, #538) ──────────
-
-async def test_queue_items_oversized_status_returns_422(admin_client):
-    # regression for #530: status query param was unbounded
-    res = await admin_client.get(f"/api/admin/queue/items?status={'x' * 21}")
-    assert res.status_code == 422
-
-
-async def test_queue_clear_oversized_status_returns_422(admin_client):
-    res = await admin_client.delete(f"/api/admin/queue?status={'x' * 21}")
-    assert res.status_code == 422
-
-
-async def test_queue_delete_book_oversized_target_language_returns_422(admin_client):
-    res = await admin_client.delete(f"/api/admin/queue/book/1?target_language={'x' * 21}")
-    assert res.status_code == 422
+@pytest.mark.asyncio
+async def test_queue_delete_book_oversized_target_language_returns_422(admin_client, admin_db):
+    """Regression #530: DELETE /admin/queue/book/1?target_language=<21 chars> must return 422."""
+    res = await admin_client.delete("/api/admin/queue/book/1?target_language=" + "x" * 21)
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in queue/book delete, got {res.status_code}: {res.text}"
+    )

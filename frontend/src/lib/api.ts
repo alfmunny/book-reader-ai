@@ -467,6 +467,7 @@ export interface BookMeta {
   download_count: number;
   cover: string;
   original_language?: string;
+  source?: string;
 }
 
 

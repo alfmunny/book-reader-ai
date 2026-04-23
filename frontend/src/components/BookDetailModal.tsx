@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { BookMeta, getBookTranslationStatus, TranslationStatus } from "@/lib/api";
 import { RecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
-import { BookCoverPlaceholderIcon, CloseIcon, CheckIcon } from "@/components/Icons";
+import { BookCoverPlaceholderIcon, CloseIcon, CheckIcon, ArrowUpRightIcon } from "@/components/Icons";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English", de: "German", fr: "French", es: "Spanish",
@@ -138,7 +138,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
             rel="noopener noreferrer"
             className="text-xs text-amber-600 hover:text-amber-800 hover:underline ml-auto"
           >
-            View on Project Gutenberg ↗
+            View on Project Gutenberg <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
           </a>
         </div>
       </div>

@@ -207,7 +207,7 @@ async def get_chapter_translation(
 
 
 class RequestTranslationBody(BaseModel):
-    target_language: str = Field(..., max_length=20)
+    target_language: str = Field(..., min_length=1, max_length=20)
 
 
 @router.post("/{book_id}/chapters/{chapter_index}/translation")

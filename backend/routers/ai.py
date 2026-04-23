@@ -49,7 +49,7 @@ class InsightRequest(BaseModel):
     chapter_text: str = Field(..., max_length=50_000)
     book_title: str = Field(..., max_length=500)
     author: str = Field(..., max_length=500)
-    response_language: str = Field(default="en", max_length=20)
+    response_language: str = Field(default="en", min_length=1, max_length=20)
 
 
 class QARequest(BaseModel):
@@ -57,7 +57,7 @@ class QARequest(BaseModel):
     passage: str = Field(..., max_length=50_000)
     book_title: str = Field(..., max_length=500)
     author: str = Field(..., max_length=500)
-    response_language: str = Field(default="en", max_length=20)
+    response_language: str = Field(default="en", min_length=1, max_length=20)
 
 
 class ReferencesRequest(BaseModel):
@@ -65,7 +65,7 @@ class ReferencesRequest(BaseModel):
     author: str = Field(..., max_length=500)
     chapter_title: str = Field(default="", max_length=500)
     chapter_excerpt: str = Field(default="", max_length=10_000)
-    response_language: str = Field(default="en", max_length=20)
+    response_language: str = Field(default="en", min_length=1, max_length=20)
 
 
 class SummaryRequest(BaseModel):
@@ -79,8 +79,8 @@ class SummaryRequest(BaseModel):
 
 class TranslateRequest(BaseModel):
     text: str = Field(..., max_length=50_000)
-    source_language: str = Field(default="de", max_length=20)
-    target_language: str = Field(default="en", max_length=20)
+    source_language: str = Field(default="de", min_length=1, max_length=20)
+    target_language: str = Field(default="en", min_length=1, max_length=20)
     book_id: int | None = Field(default=None, ge=1)
     chapter_index: int | None = Field(default=None, ge=0)
     # "auto" → Gemini if user has a key, else Google Translate (free).
@@ -89,7 +89,7 @@ class TranslateRequest(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str = Field(..., max_length=50_000)
-    language: str = Field(default="en", max_length=20)
+    language: str = Field(default="en", min_length=1, max_length=20)
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
 
@@ -269,7 +269,7 @@ async def translate_cache(
 class SaveTranslationRequest(BaseModel):
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
-    target_language: str = Field(..., max_length=20)
+    target_language: str = Field(..., min_length=1, max_length=20)
     paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)

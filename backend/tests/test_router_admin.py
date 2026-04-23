@@ -2788,3 +2788,42 @@ async def test_queue_dry_run_error_does_not_leak_exception_detail(admin_client):
     detail = res.json()["detail"]
     assert "api-key-secret-xyzzy" not in detail
     assert "leaked" not in detail
+
+
+# ── Issue #772: target_language fields accept empty string ────────────────────
+
+
+async def test_queue_plan_empty_target_language_returns_422(admin_client):
+    """Regression #772: POST /admin/queue/plan with target_language="" must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": ""},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty target_language, got {res.status_code}: {res.text}"
+
+
+async def test_queue_dry_run_empty_target_language_returns_422(admin_client):
+    """Regression #772: POST /admin/queue/dry-run with target_language="" must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/dry-run",
+        json={"target_language": ""},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty target_language, got {res.status_code}: {res.text}"
+
+
+async def test_bulk_retranslate_empty_target_language_returns_422(admin_client):
+    """Regression #772: POST /admin/translations/{id}/retranslate-all with target_language="" must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/9901/retranslate-all",
+        json={"target_language": ""},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty target_language, got {res.status_code}: {res.text}"
+
+
+async def test_enqueue_book_empty_target_language_in_list_returns_422(admin_client):
+    """Regression #772: POST /admin/queue/enqueue-book with empty string in target_languages must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/enqueue-book",
+        json={"book_id": 1, "target_languages": [""]},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty target_language in list, got {res.status_code}: {res.text}"

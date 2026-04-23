@@ -1230,3 +1230,33 @@ async def test_save_translation_negative_book_id_returns_422(client, test_user):
         "paragraphs": ["Hello."],
     })
     assert resp.status_code == 422, f"Expected 422 for book_id=-1 in save_translation, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #772: min_length=1 on target/source language fields ─────────────────
+
+
+async def test_translate_empty_target_language_returns_422(client, test_user):
+    """Regression #772: POST /ai/translate with target_language="" must return 422."""
+    resp = await client.post("/api/ai/translate", json={
+        "text": "Hallo Welt",
+        "target_language": "",
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty target_language, got {resp.status_code}: {resp.text}"
+
+
+async def test_translate_empty_source_language_returns_422(client, test_user):
+    """Regression #772: POST /ai/translate with source_language="" must return 422."""
+    resp = await client.post("/api/ai/translate", json={
+        "text": "Hello World",
+        "source_language": "",
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty source_language, got {resp.status_code}: {resp.text}"
+
+
+async def test_save_translation_empty_target_language_returns_422(client, test_user):
+    """Regression #772: PUT /ai/translate/cache with target_language="" must return 422."""
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 1, "chapter_index": 0, "target_language": "",
+        "paragraphs": ["Hello."],
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty target_language in save_translation, got {resp.status_code}: {resp.text}"

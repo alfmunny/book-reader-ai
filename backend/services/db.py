@@ -300,7 +300,12 @@ async def delete_user(user_id: int) -> None:
         await db.execute(f"DELETE FROM chapter_summaries WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM translation_queue WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM word_occurrences WHERE book_id IN ({_owned})", (user_id,))
-        # Prune vocabulary entries that now have no occurrences (owned books just deleted).
+        # Prune flashcard_reviews and vocabulary for entries left without any occurrence.
+        # FK enforcement is OFF so ON DELETE CASCADE never fires automatically.
+        await db.execute(
+            "DELETE FROM flashcard_reviews WHERE vocabulary_id NOT IN "
+            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
         await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )

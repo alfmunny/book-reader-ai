@@ -305,6 +305,70 @@ async def test_delete_user_prunes_orphaned_vocabulary_from_other_readers(admin_c
     assert count == 0, "orphaned vocabulary entry remains after owner deleted"
 
 
+async def test_delete_user_cleans_flashcard_reviews_for_other_readers(admin_client, admin_db):
+    """Regression #695: deleting a book owner must clean up flashcard_reviews for
+    other users whose vocabulary entries are pruned when the owned book is removed.
+
+    FK enforcement is OFF, so the cascade on flashcard_reviews(vocabulary_id) never
+    fires automatically. delete_user() must explicitly DELETE FROM flashcard_reviews
+    between the word_occurrences prune and the vocabulary prune.
+    """
+    import json as _json
+    from services.db import _ensure_flashcard_rows
+
+    owner = await get_or_create_user(
+        google_id="fr-owner-695", email="fr-owner@test.com", name="Owner", picture=""
+    )
+    reader = await get_or_create_user(
+        google_id="fr-reader-695", email="fr-reader@test.com", name="Reader", picture=""
+    )
+    chapters = _json.dumps({"draft": False, "chapters": [{"title": "Ch1", "text": "unique695"}]})
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO books (id, title, authors, languages, subjects,
+               download_count, cover, text, images, source, owner_user_id)
+               VALUES (9971, 'OwnedBook695', '[]', '[]', '[]', 0, '', ?, '[]', 'upload', ?)""",
+            (chapters, owner["id"]),
+        )
+        await db.execute(
+            "INSERT OR IGNORE INTO vocabulary (user_id, word) VALUES (?, ?)",
+            (reader["id"], "unique695"),
+        )
+        async with db.execute(
+            "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
+            (reader["id"], "unique695"),
+        ) as cur:
+            (vocab_id,) = await cur.fetchone()
+        await db.execute(
+            "INSERT OR IGNORE INTO word_occurrences "
+            "(vocabulary_id, book_id, chapter_index, sentence_text) VALUES (?, ?, ?, ?)",
+            (vocab_id, 9971, 0, "unique695 sentence"),
+        )
+        await db.commit()
+
+    await _ensure_flashcard_rows(reader["id"])
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE vocabulary_id = ?", (vocab_id,)
+        ) as cur:
+            (before,) = await cur.fetchone()
+    assert before > 0, "test setup: flashcard_reviews row not created for reader"
+
+    res = await admin_client.delete(f"/api/admin/users/{owner['id']}")
+    assert res.status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM flashcard_reviews WHERE vocabulary_id = ?", (vocab_id,)
+        ) as cur:
+            (after,) = await cur.fetchone()
+    assert after == 0, (
+        "flashcard_reviews rows must be deleted when delete_user prunes orphaned vocabulary (#695); "
+        "orphaned rows inflate flashcard stats for affected readers"
+    )
+
+
 async def test_delete_user_removes_flashcard_reviews(admin_client, admin_db, admin_user):
     """Regression #630: delete_user must delete flashcard_reviews rows.
 

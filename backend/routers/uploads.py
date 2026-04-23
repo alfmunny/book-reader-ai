@@ -235,7 +235,7 @@ async def confirm_chapters(
         for ch_spec in body.chapters:
             orig_idx = ch_spec.get("original_index", ch_spec.get("index"))
             title = ch_spec.get("title", f"Chapter {len(final_chapters) + 1}")
-            if orig_idx is not None and 0 <= orig_idx < len(orig_chapters):
+            if orig_idx is not None and isinstance(orig_idx, int) and 0 <= orig_idx < len(orig_chapters):
                 text = orig_chapters[orig_idx]["text"]
             else:
                 text = ""

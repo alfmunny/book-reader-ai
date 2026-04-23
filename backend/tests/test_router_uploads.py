@@ -614,3 +614,25 @@ async def test_upload_whitespace_only_txt_returns_422(client, test_user):
         f"Expected 422 for whitespace-only file, got {resp.status_code}: {resp.text}"
     )
     assert "chapter" in resp.json()["detail"].lower()
+
+
+# ── Issue #511: confirm_chapters TypeError on non-integer original_index ──────
+
+async def test_confirm_chapters_non_integer_original_index_returns_400(client, test_user):
+    """Regression #511: original_index='string' must return 400, not crash with 500.
+
+    chapters: list[dict] is untyped — Pydantic doesn't validate dict values.
+    Without the isinstance(orig_idx, int) guard the comparison 0 <= 'abc'
+    raises TypeError and FastAPI returns 500."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": [{"title": "Chapter 1", "original_index": "not_an_int"}]},
+    )
+    assert resp.status_code in (200, 400), (
+        f"Expected 200 (graceful empty-text) or 400, got {resp.status_code} (likely 500 crash): {resp.text}"
+    )
+    assert resp.status_code != 500, "Non-integer original_index must not crash the server with 500"

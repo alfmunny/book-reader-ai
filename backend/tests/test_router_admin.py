@@ -2457,3 +2457,32 @@ async def test_enqueue_book_oversized_target_languages_returns_422(admin_client)
         json={"book_id": 1, "target_languages": ["en"] * 101},
     )
     assert res.status_code == 422
+
+
+async def test_retranslate_all_empty_chapters_returns_ok(admin_client, admin_db):
+    """Regression #715: retranslate-all must not crash with SQL syntax error
+    when split_with_html_preference returns 0 chapters.
+
+    Previously the running-jobs SQL query was built as:
+      AND chapter_index IN ()
+    which is invalid SQLite syntax and caused a 500 OperationalError.
+    """
+    await save_book(100, BOOK_META, BOOK_TEXT)
+
+    from services.book_chapters import clear_cache
+    clear_cache()
+
+    # Mock the splitter to return 0 chapters — the scenario that causes IN ()
+    with patch(
+        "services.book_chapters.split_with_html_preference",
+        new=AsyncMock(return_value=[]),
+    ):
+        res = await admin_client.post(
+            "/api/admin/translations/100/retranslate-all",
+            json={"target_language": "zh"},
+        )
+    assert res.status_code == 200, f"Expected 200 for zero-chapter book, got {res.status_code}: {res.text}"
+    body = res.json()
+    assert body["ok"] is True
+    assert body["chapters"] == 0
+    assert body["results"] == []

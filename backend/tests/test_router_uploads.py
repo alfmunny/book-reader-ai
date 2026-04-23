@@ -789,3 +789,27 @@ async def test_confirm_chapters_negative_original_index_returns_422(client, test
         json={"chapters": [{"title": "Ch 1", "original_index": -1}]},
     )
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #731: ge=1 bounds on book_id path params in uploads router ──────────
+
+
+async def test_get_draft_chapters_negative_book_id_returns_422(client, test_user):
+    """Regression #731: GET /books/{id}/chapters/draft with negative id must return 422."""
+    resp = await client.get("/api/books/-1/chapters/draft")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_confirm_chapters_negative_book_id_returns_422(client, test_user):
+    """Regression #731: POST /books/{id}/chapters/confirm with negative book_id must return 422."""
+    resp = await client.post(
+        "/api/books/-1/chapters/confirm",
+        json={"chapters": [{"title": "Ch 1", "original_index": 0}]},
+    )
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+async def test_delete_uploaded_book_negative_id_returns_422(client, test_user):
+    """Regression #731: DELETE /books/upload/{id} with negative id must return 422."""
+    resp = await client.delete("/api/books/upload/-1")
+    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"

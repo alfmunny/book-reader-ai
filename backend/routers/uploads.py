@@ -4,7 +4,7 @@ import logging
 
 import aiosqlite
 import services.db as _db
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Path, UploadFile
 from pydantic import BaseModel, Field
 from services.auth import get_current_user
 from services.db import get_user_book_chapters, count_draft_user_book_chapters
@@ -168,7 +168,7 @@ async def upload_quota(user: dict = Depends(get_current_user)):
 
 
 @router.get("/{book_id}/chapters/draft")
-async def get_draft_chapters(book_id: int, user: dict = Depends(get_current_user)):
+async def get_draft_chapters(book_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
     """Return the draft chapter list for an uploaded book pending confirmation."""
     async with aiosqlite.connect(_db.DB_PATH) as db:
         async with db.execute(
@@ -212,8 +212,8 @@ class ConfirmChaptersBody(BaseModel):
 
 @router.post("/{book_id}/chapters/confirm")
 async def confirm_chapters(
-    book_id: int,
     body: ConfirmChaptersBody,
+    book_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
     """Confirm chapter splits for an uploaded book. Replaces draft rows with confirmed rows."""
@@ -279,7 +279,7 @@ async def confirm_chapters(
 
 
 @router.delete("/upload/{book_id}")
-async def delete_uploaded_book(book_id: int, user: dict = Depends(get_current_user)):
+async def delete_uploaded_book(book_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
     """Delete an uploaded book and all associated data."""
     async with aiosqlite.connect(_db.DB_PATH) as db:
         async with db.execute(

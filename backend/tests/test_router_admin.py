@@ -2569,3 +2569,132 @@ async def test_retranslate_all_uploaded_book_returns_200(admin_client, admin_db,
     body = res.json()
     assert body["ok"] is True
     assert body["chapters"] == 2
+
+
+# ── Issue #725: ge bounds on admin path and body params ───────────────────────
+
+
+async def test_approve_user_negative_id_returns_422(admin_client):
+    res = await admin_client.put("/api/admin/users/-1/approve", json={"approved": True})
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_change_role_negative_user_id_returns_422(admin_client):
+    res = await admin_client.put("/api/admin/users/-1/role", json={"role": "user"})
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_remove_user_negative_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/users/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_delete_book_negative_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/books/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_delete_book_audio_negative_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/audio/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_delete_chapter_audio_negative_chapter_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/audio/1/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_delete_book_translations_negative_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/translations/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_delete_language_translations_negative_book_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/translations/-1/zh")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_delete_translation_negative_chapter_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/translations/1/-1/zh")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_retranslate_negative_chapter_returns_422(admin_client):
+    res = await admin_client.post("/api/admin/translations/1/-1/zh/retranslate")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_retranslate_all_negative_book_id_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/translations/-1/retranslate-all",
+        json={"target_language": "zh"},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_move_translation_negative_chapter_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/translations/1/-1/zh/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_move_translation_negative_new_chapter_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/translations/1/0/zh/move",
+        json={"new_chapter_index": -1},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_import_book_negative_id_returns_422(admin_client):
+    res = await admin_client.post("/api/admin/books/import", json={"book_id": -1})
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_import_translation_entry_negative_book_id_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": -1, "chapter_index": 0, "target_language": "zh", "paragraphs": ["p"]}]},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_import_translation_entry_negative_chapter_index_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": -1, "target_language": "zh", "paragraphs": ["p"]}]},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_enqueue_book_negative_book_id_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/queue/enqueue-book",
+        json={"book_id": -1},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_queue_delete_item_negative_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/queue/items/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_queue_retry_item_negative_id_returns_422(admin_client):
+    res = await admin_client.post("/api/admin/queue/items/-1/retry")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_queue_delete_book_negative_id_returns_422(admin_client):
+    res = await admin_client.delete("/api/admin/queue/book/-1")
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"
+
+
+async def test_retry_failed_negative_book_id_returns_422(admin_client):
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"book_id": -1},
+    )
+    assert res.status_code == 422, f"Expected 422, got {res.status_code}"

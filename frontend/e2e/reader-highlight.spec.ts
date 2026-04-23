@@ -28,13 +28,18 @@ test("highlight sends full sentence text, not raw selection substring", async ({
 
   await page.goto("/reader/1342");
 
-  // Wait for the first chapter sentence to appear
+  // Wait for the first chapter sentence AND the reader scroll container to be visible
+  // before interacting — ensures SelectionToolbar's useEffect has registered its listener.
   const fullSentence = MOCK_CHAPTERS[0].text;
   await expect(page.getByText(fullSentence.slice(0, 30), { exact: false })).toBeVisible({ timeout: 5000 });
+  await page.waitForSelector("#reader-scroll", { state: "visible", timeout: 5000 });
+  await page.waitForSelector("[data-seg]", { state: "visible", timeout: 5000 });
 
   // Use evaluate to select just the first word ("It") inside the first [data-seg] span,
   // then dispatch selectionchange so SelectionToolbar picks it up.
-  const segText = await page.evaluate(() => {
+  // Double-dispatch (after 2 RAF cycles) handles the race where React's useEffect
+  // listener hasn't registered on the first dispatch.
+  const segText = await page.evaluate(async () => {
     const seg = document.querySelector("[data-seg]");
     if (!seg || !seg.firstChild) return null;
     const range = document.createRange();
@@ -45,6 +50,10 @@ test("highlight sends full sentence text, not raw selection substring", async ({
     sel?.removeAllRanges();
     sel?.addRange(range);
     document.dispatchEvent(new Event("selectionchange"));
+    // Wait 2 animation frames so React's useEffect has time to register listeners,
+    // then dispatch again to ensure the toolbar state is set.
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    document.dispatchEvent(new Event("selectionchange"));
     return seg.textContent?.trim() ?? null;
   });
 
@@ -53,14 +62,14 @@ test("highlight sends full sentence text, not raw selection substring", async ({
 
   // SelectionToolbar should appear with Highlight button
   const highlightBtn = page.getByRole("button", { name: /highlight/i });
-  await expect(highlightBtn).toBeVisible({ timeout: 3000 });
+  await expect(highlightBtn).toBeVisible({ timeout: 6000 });
 
   // Click Highlight — this opens the QuickHighlightPanel with color choices
   await highlightBtn.click();
 
   // QuickHighlightPanel shows color buttons; click Yellow to trigger the annotation POST
   const yellowBtn = page.getByRole("button", { name: /yellow/i });
-  await expect(yellowBtn).toBeVisible({ timeout: 3000 });
+  await expect(yellowBtn).toBeVisible({ timeout: 6000 });
   await yellowBtn.click();
 
   // Verify the POST was made with the full sentence, not just "It"

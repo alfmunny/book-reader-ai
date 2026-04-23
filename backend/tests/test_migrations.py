@@ -778,3 +778,33 @@ async def test_missing_migrations_dir_returns_empty(tmp_db, monkeypatch):
             "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_migrations'"
         ) as cursor:
             assert await cursor.fetchone() is not None
+
+
+# ── Semicolon inside SQL comment (issue #544) ────────────────────────────────
+
+async def test_semicolon_in_sql_comment_does_not_break_migration(tmp_db, tmp_migrations, monkeypatch):
+    """Regression #544: sql.split(';') naively splits on semicolons inside
+    -- line comments, producing invalid SQL fragments that crash the runner.
+
+    Example: a comment like '-- backfill script available; run manually' causes
+    the runner to try to execute ' run manually' as a statement."""
+    sql = (
+        "-- Creates the test table; run this before adding rows.\n"
+        "CREATE TABLE semicolon_test (\n"
+        "    id INTEGER PRIMARY KEY,\n"
+        "    name TEXT NOT NULL\n"
+        ");\n"
+        "-- Also insert a default row; ensures schema is populated.\n"
+        "INSERT INTO semicolon_test (id, name) VALUES (1, 'hello');\n"
+    )
+    (open(os.path.join(tmp_migrations, "001_semicolon_comment.sql"), "w")).write(sql)
+
+    monkeypatch.setattr("services.migrations._MIGRATIONS_DIR", tmp_migrations)
+    applied = await run_migrations(tmp_db)
+    assert "001_semicolon_comment" in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT name FROM semicolon_test WHERE id=1") as cursor:
+            row = await cursor.fetchone()
+    assert row is not None
+    assert row[0] == "hello"

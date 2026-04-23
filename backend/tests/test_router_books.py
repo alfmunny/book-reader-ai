@@ -58,6 +58,9 @@ async def test_book_meta_404_when_gutenberg_fails(client):
     with patch("routers.books.get_book_meta", side_effect=Exception("Not found")):
         resp = await client.get("/api/books/99999")
     assert resp.status_code == 404
+    detail = resp.json()["detail"]
+    assert "Not found" not in detail
+    assert ":" not in detail
 
 
 async def test_book_chapters_served_from_cache(client):
@@ -85,6 +88,9 @@ async def test_book_chapters_404_when_fetch_fails(client):
     with patch("routers.books._fetch_and_cache", side_effect=Exception("Network error")):
         resp = await client.get("/api/books/99999/chapters")
     assert resp.status_code == 404
+    detail = resp.json()["detail"]
+    assert "Network error" not in detail
+    assert ":" not in detail
 
 
 async def test_search_delegates_to_gutenberg(client):

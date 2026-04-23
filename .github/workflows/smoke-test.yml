@@ -6,14 +6,29 @@ name: Smoke test (post-deploy)
 # the class of bug that only fails inside the real container, which
 # unit tests and the Docker build CI cannot reach.
 #
-# Required repository variables (Settings → Secrets and variables →
-# Actions → Variables tab — these are public URLs, not secrets):
+# ── Required setup (one-time) ────────────────────────────────────────────────
 #
-#   BACKEND_URL   e.g. https://book-reader-ai-backend.up.railway.app
-#   FRONTEND_URL  e.g. https://book-reader-ai.vercel.app
+# 1. Repository VARIABLES  (Settings → Secrets and variables → Actions → Variables)
+#
+#      BACKEND_URL   e.g. https://book-reader-ai-backend.up.railway.app
+#      FRONTEND_URL  e.g. https://book-reader-ai.vercel.app
+#
+#    These are public URLs, not secrets — use the Variables tab, not Secrets.
+#
+# 2. Repository SECRET  (Settings → Secrets and variables → Actions → Secrets)
+#    — optional, only needed for Slack alerts:
+#
+#      SLACK_WEBHOOK   your Slack incoming-webhook URL
+#                      Create one at api.slack.com/apps → Incoming Webhooks
+#
+# On failure the workflow:
+#   • Sends a Slack alert (if SLACK_WEBHOOK is set)
+#   • Files a P0 GitHub issue labeled "bug" — or adds a comment to the
+#     existing open P0 issue so duplicates don't pile up.
 #
 # The workflow gracefully skips each check if its variable is unset, so
 # it won't break main if you haven't wired the URLs up yet.
+# ─────────────────────────────────────────────────────────────────────────────
 
 on:
   push:
@@ -23,12 +38,16 @@ on:
     # Every 6 hours, catch any silent outage between deploys.
     - cron: "0 */6 * * *"
 
+permissions:
+  issues: write
+
 jobs:
   smoke-backend:
     name: Backend health
     runs-on: ubuntu-latest
     steps:
       - name: Poll backend /api/health
+        id: poll
         env:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
         run: |
@@ -60,11 +79,67 @@ jobs:
           cat /tmp/body 2>/dev/null || echo "(no body)"
           exit 1
 
+      - name: Notify Slack on failure
+        if: failure() && vars.BACKEND_URL != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_WEBHOOK secret not set — skipping Slack notification."
+            echo "Add it under Settings → Secrets and variables → Actions → Secrets."
+            exit 0
+          fi
+          curl -sS -X POST "$SLACK_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"🔴 *Backend smoke test FAILED* after deploy to \`$REF\`\\nCommit: \`${COMMIT:0:7}\`\\n<$RUN_URL|View run>\"
+            }"
+
+      - name: File GitHub issue on failure
+        if: failure() && vars.BACKEND_URL != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+        run: |
+          SEARCH_TITLE="P0: Backend smoke test failing"
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "$SEARCH_TITLE" --json number -q '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" \
+              --body "Still failing on \`$REF\` commit \`${COMMIT:0:7}\`. [Run]($RUN_URL)"
+            echo "Added comment to existing issue #$EXISTING"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "$SEARCH_TITLE ($REF)" \
+              --label "bug" \
+              --body "## Backend smoke test failed
+
+**Branch:** \`$REF\`
+**Commit:** \`${COMMIT:0:7}\`
+**Run:** $RUN_URL
+
+The backend \`/api/health\` endpoint did not return 200 within 5 minutes after deploy.
+
+### Immediate actions
+1. Check Railway deployment logs for startup errors
+2. Check migration output — a failing migration will prevent the app from starting
+3. Roll back the last merge to main if needed
+
+_Auto-filed by the smoke-test workflow. Close this issue once the backend is healthy._"
+            echo "Filed new P0 issue"
+          fi
+
   smoke-frontend:
     name: Frontend availability
     runs-on: ubuntu-latest
     steps:
       - name: Poll frontend /login
+        id: poll
         env:
           FRONTEND_URL: ${{ vars.FRONTEND_URL }}
         run: |
@@ -93,3 +168,57 @@ jobs:
 
           echo "::error::Frontend smoke test failed after 5 minutes — last status: $status"
           exit 1
+
+      - name: Notify Slack on failure
+        if: failure() && vars.FRONTEND_URL != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK" ]; then
+            echo "SLACK_WEBHOOK secret not set — skipping Slack notification."
+            exit 0
+          fi
+          curl -sS -X POST "$SLACK_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"🔴 *Frontend smoke test FAILED* after deploy to \`$REF\`\\nCommit: \`${COMMIT:0:7}\`\\n<$RUN_URL|View run>\"
+            }"
+
+      - name: File GitHub issue on failure
+        if: failure() && vars.FRONTEND_URL != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+        run: |
+          SEARCH_TITLE="P0: Frontend smoke test failing"
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "$SEARCH_TITLE" --json number -q '.[0].number' 2>/dev/null || echo "")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" \
+              --body "Still failing on \`$REF\` commit \`${COMMIT:0:7}\`. [Run]($RUN_URL)"
+            echo "Added comment to existing issue #$EXISTING"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "$SEARCH_TITLE ($REF)" \
+              --label "bug" \
+              --body "## Frontend smoke test failed
+
+**Branch:** \`$REF\`
+**Commit:** \`${COMMIT:0:7}\`
+**Run:** $RUN_URL
+
+The frontend \`/login\` page did not return 200 within 5 minutes after deploy.
+
+### Immediate actions
+1. Check Vercel deployment logs
+2. Verify the build did not fail silently
+3. Roll back the last merge to main if needed
+
+_Auto-filed by the smoke-test workflow. Close this issue once the frontend is healthy._"
+            echo "Filed new P0 issue"
+          fi

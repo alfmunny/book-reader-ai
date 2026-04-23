@@ -822,10 +822,10 @@ export default function ReaderPage() {
           </span>
           <button
             onClick={() => setGeminiReminderVisible(false)}
-            className="shrink-0 text-amber-500 hover:text-amber-700 text-lg leading-none"
+            className="shrink-0 text-amber-500 hover:text-amber-700"
             aria-label="Dismiss"
           >
-            ×
+            <CloseIcon aria-hidden="true" className="w-4 h-4" />
           </button>
         </div>
       )}

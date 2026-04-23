@@ -176,7 +176,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
             </div>
           )}
 
-          {def && (
+          {def && def.url && (
             <a
               href={def.url}
               target="_blank"

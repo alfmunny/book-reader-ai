@@ -354,6 +354,25 @@ async def test_translate_chapters_batch_sends_permissive_safety_settings():
     assert all(isinstance(s, g_types.SafetySetting) for s in config.safety_settings)
 
 
+# ── define_word ───────────────────────────────────────────────────────────────
+
+async def test_define_word_returns_empty_url_for_ai_source():
+    """Regression #551: AI-sourced definitions must not return a wiktionary URL."""
+    valid_json = '{"lemma": "Aufmerksamkeit", "definitions": [{"pos": "noun", "text": "attention"}]}'
+    with mock_generate(valid_json):
+        result = await gemini.define_word("key", "Aufmerksamkeit", "de")
+    assert result["source"] == "ai"
+    assert result["url"] == "", f"Expected empty url for AI source, got: {result['url']!r}"
+
+
+async def test_define_word_returns_empty_url_on_parse_error():
+    """Regression #551: malformed AI response still returns empty url (not wiktionary)."""
+    with mock_generate("not valid json"):
+        result = await gemini.define_word("key", "xyz", "de")
+    assert result["source"] == "ai"
+    assert result["url"] == "", f"Expected empty url for AI source on error, got: {result['url']!r}"
+
+
 async def test_translate_chapters_batch_error_includes_raw_preview():
     """The error message must include a preview of what the model
     actually returned so admins can tell truncation apart from a

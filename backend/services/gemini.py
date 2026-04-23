@@ -186,13 +186,13 @@ async def define_word(api_key: str, word: str, lang: str = "en") -> dict:
                 for d in data.get("definitions", [])[:3]
                 if d.get("text")
             ],
-            "url": f"https://en.wiktionary.org/wiki/{word}",
+            "url": "",
             "source": "ai",
         }
     except Exception:
         return {
             "lemma": word, "language": lang, "definitions": [],
-            "url": f"https://en.wiktionary.org/wiki/{word}", "source": "ai",
+            "url": "", "source": "ai",
         }
 
 

@@ -1060,9 +1060,9 @@ async def queue_set_settings(
         await set_setting(
             SETTING_AUTO_LANGS,
             json.dumps([
-                lang.lower().split("-")[0]
+                lang.strip().lower().split("-")[0]
                 for lang in req.auto_translate_languages
-                if lang
+                if lang and lang.strip()
             ]),
         )
     if req.rpm is not None:
@@ -1072,11 +1072,14 @@ async def queue_set_settings(
     if req.model is not None:
         await set_setting(SETTING_MODEL, req.model)
     if req.model_chain is not None:
+        if not req.model_chain:
+            raise HTTPException(status_code=400, detail="model_chain cannot be empty")
+        if any(not m.strip() for m in req.model_chain):
+            raise HTTPException(status_code=400, detail="model_chain entries cannot be empty strings")
         # Keep the legacy single-model setting in sync with the chain head
         # so any code path still reading SETTING_MODEL stays consistent.
         await set_setting(SETTING_MODEL_CHAIN, json.dumps(req.model_chain))
-        if req.model_chain:
-            await set_setting(SETTING_MODEL, req.model_chain[0])
+        await set_setting(SETTING_MODEL, req.model_chain[0])
     if req.max_output_tokens is not None:
         await set_setting(SETTING_MAX_OUTPUT_TOKENS, str(req.max_output_tokens))
     queue_worker().wake()

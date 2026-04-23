@@ -104,11 +104,11 @@ async def get_or_create_user(google_id: str, email: str, name: str, picture: str
                 (email, name, picture, google_id),
             )
             await db.commit()
-            updated = dict(row)
-            updated["email"] = email
-            updated["name"] = name
-            updated["picture"] = picture
-            return updated
+            async with db.execute(
+                "SELECT * FROM users WHERE id = ?", (row["id"],)
+            ) as cur:
+                row = await cur.fetchone()
+            return dict(row)
 
         # New user — check if this is the very first user (auto-admin)
         async with db.execute("SELECT COUNT(*) FROM users") as cursor:
@@ -142,27 +142,28 @@ async def get_or_create_user_github(github_id: str, email: str, name: str, pictu
                 (email, name, picture, github_id),
             )
             await db.commit()
-            updated = dict(row)
-            updated["email"] = email
-            updated["name"] = name
-            updated["picture"] = picture
-            return updated
+            async with db.execute(
+                "SELECT * FROM users WHERE id = ?", (row["id"],)
+            ) as cur:
+                row = await cur.fetchone()
+            return dict(row)
 
         # Try linking to existing account by email (user signed in via Google before)
         if email:
             async with db.execute("SELECT * FROM users WHERE email = ?", (email,)) as cursor:
                 row = await cursor.fetchone()
             if row:
+                row_id = row["id"]
                 await db.execute(
                     "UPDATE users SET github_id=?, name=?, picture=? WHERE id=?",
-                    (github_id, name, picture, row["id"]),
+                    (github_id, name, picture, row_id),
                 )
                 await db.commit()
-                updated = dict(row)
-                updated["github_id"] = github_id
-                updated["name"] = name
-                updated["picture"] = picture
-                return updated
+                async with db.execute(
+                    "SELECT * FROM users WHERE id = ?", (row_id,)
+                ) as cur:
+                    row = await cur.fetchone()
+                return dict(row)
 
         # New user
         async with db.execute("SELECT COUNT(*) FROM users") as cursor:

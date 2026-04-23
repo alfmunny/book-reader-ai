@@ -759,3 +759,19 @@ async def test_export_obsidian_zero_book_id_returns_422(client, test_user):
     """Regression #734: POST /vocabulary/export/obsidian with book_id=0 must return 422."""
     resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": 0})
     assert resp.status_code == 422, f"Expected 422 for book_id=0 in export, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #760: Obsidian export exception must not leak in 500 response ───────
+
+@pytest.mark.asyncio
+async def test_export_obsidian_error_does_not_leak_exception_detail(client, test_user):
+    """Regression #760: GitHub export errors must use a static message, not str(e)."""
+    await _setup_export(test_user)
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock,
+               side_effect=RuntimeError("github-token-secret-xyzzy leaked")), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
+        resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
+    assert resp.status_code == 500
+    detail = resp.json()["detail"]
+    assert "github-token-secret-xyzzy" not in detail
+    assert "leaked" not in detail

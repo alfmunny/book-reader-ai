@@ -515,7 +515,8 @@ async def test_export_wraps_generic_exception_as_500(client, test_user):
         resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID})
 
     assert resp.status_code == 500
-    assert "unexpected failure" in resp.json()["detail"]
+    assert "unexpected failure" not in resp.json()["detail"]
+    assert resp.json()["detail"] == "Export to GitHub failed"
 
 
 async def test_export_uses_default_path_when_obsidian_path_not_set(client, test_user):

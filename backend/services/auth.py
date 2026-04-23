@@ -58,8 +58,8 @@ def create_jwt(user_id: int, email: str) -> str:
 def decode_jwt(token: str) -> dict:
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 # ── GitHub access token verification ─────────────────────────────────────────
@@ -169,8 +169,8 @@ async def verify_apple_id_token(id_token: str) -> dict:
             issuer="https://appleid.apple.com",
             options={"verify_aud": bool(APPLE_CLIENT_ID)},
         )
-    except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid Apple ID token: {e}")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid Apple ID token")
     return payload
 
 

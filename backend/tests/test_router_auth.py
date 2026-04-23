@@ -42,7 +42,9 @@ async def test_google_login_invalid_token_returns_401(client):
         resp = await client.post("/api/auth/google", json={"id_token": "bad-token"})
 
     assert resp.status_code == 401
-    assert "bad token" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert "bad token" not in detail
+    assert ":" not in detail
 
 
 async def test_google_login_creates_user_in_db(client, tmp_db):

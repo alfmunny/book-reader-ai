@@ -115,6 +115,8 @@ async def test_verify_apple_id_token_wrong_key_raises_401(monkeypatch):
         with pytest.raises(HTTPException) as exc:
             await verify_apple_id_token(token)
     assert exc.value.status_code == 401
+    assert exc.value.detail == "Invalid Apple ID token"
+    assert ":" not in exc.value.detail
 
 
 async def test_verify_apple_id_token_jwks_unavailable_raises_503():
@@ -224,7 +226,9 @@ async def test_apple_login_invalid_token_returns_401(client):
         resp = await client.post("/api/auth/apple", json={"id_token": "bad-token"})
 
     assert resp.status_code == 401
-    assert "bad apple token" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert "bad apple token" not in detail
+    assert ":" not in detail
 
 
 async def test_apple_login_missing_sub_returns_401(client):

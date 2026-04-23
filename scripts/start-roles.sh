@@ -80,6 +80,14 @@ ensure_worktree() {
   fi
 }
 
+# Overlay CLAUDE.md from origin/main into a worktree so the session starts with
+# the latest rules regardless of which branch the worktree is currently on.
+sync_claude_md() {
+  local wt="$1"
+  git -C "$wt" fetch origin main --quiet 2>/dev/null || true
+  git -C "$wt" checkout origin/main -- CLAUDE.md 2>/dev/null || true
+}
+
 check_deps() {
   command -v tmux   >/dev/null 2>&1 || die "tmux not found — brew install tmux"
   command -v claude >/dev/null 2>&1 || die "claude CLI not found — install Claude Code"
@@ -238,6 +246,7 @@ EOF
     running || die "Session '$SESSION' not running — start it first."
     write_prompts
     ensure_worktree "$REPO_DEV"
+    sync_claude_md "$REPO_DEV"
     start_window "dev2" "/tmp/${SLUG}-dev.txt" "$MODEL_DEV" "$REPO_DEV"
     echo "Added dev2 window to session '$SESSION'."
     echo "Switch to it:  tmux select-window -t ${SESSION}:dev2"
@@ -269,6 +278,12 @@ write_prompts
 ensure_worktree "$REPO_DEV"
 ensure_worktree "$REPO_UIUX"
 ensure_worktree "$REPO_ARCH"
+
+# Sync CLAUDE.md from origin/main into each worktree so roles see the latest rules
+echo "Syncing CLAUDE.md from origin/main to code-role worktrees..."
+sync_claude_md "$REPO_DEV"
+sync_claude_md "$REPO_UIUX"
+sync_claude_md "$REPO_ARCH"
 
 # Four separate windows — PM in main repo, code roles each in their own worktree
 tmux new-session -d -s "$SESSION" -n "pm"   -x 220 -y 50

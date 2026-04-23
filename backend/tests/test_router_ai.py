@@ -544,6 +544,31 @@ async def test_tts_rate_bounds(client, rate, expected):
     )
 
 
+# ── TTS text max_length validation (Issue #488) ───────────────────────────────
+
+async def test_tts_oversized_text_returns_422(client):
+    """Regression #488: TTS text over 50,000 characters must be rejected with 422.
+
+    Without a limit, a user could POST megabytes of text, causing Edge TTS
+    to exhaust server memory or run for minutes.
+    """
+    oversized_text = "x" * 50_001
+    resp = await client.post("/api/ai/tts", json={"text": oversized_text, "language": "en"})
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized text ({len(oversized_text)} chars), "
+        f"got {resp.status_code}: {resp.text[:200]}"
+    )
+
+
+async def test_tts_max_length_boundary_accepted(client):
+    """Exactly 50,000 characters must be accepted."""
+    with patch("routers.ai.synthesize", new_callable=AsyncMock, return_value=(b"\xff\xfb", "audio/mpeg", [])):
+        resp = await client.post("/api/ai/tts", json={"text": "x" * 50_000, "language": "en"})
+    assert resp.status_code == 200, (
+        f"Expected 200 for 50,000 char text, got {resp.status_code}: {resp.text[:200]}"
+    )
+
+
 # ── References ────────────────────────────────────────────────────────────────
 
 async def test_references_without_key_returns_400(client):

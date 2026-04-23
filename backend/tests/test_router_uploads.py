@@ -657,6 +657,44 @@ async def test_confirm_chapters_oversized_title_returns_422(client, test_user):
     )
 
 
+# ── Regression #638: upload metadata bounds ──────────────────────────────────
+
+
+async def test_upload_oversized_filename_returns_422(client, test_user):
+    """Regression #638: filename > 255 chars must return 422."""
+    long_name = "x" * 252 + ".txt"  # 256 chars total
+    resp = await client.post("/api/books/upload", files=_txt_upload(filename=long_name))
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized filename, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_upload_oversized_title_and_author_are_truncated(client, test_user, tmp_db):
+    """Regression #638: parser output with title > 500 or author > 200 chars must be
+    stored truncated (not rejected), since the user cannot easily control these values."""
+    with patch("services.book_parser.parse_txt") as mock_parse:
+        mock_parse.return_value = {
+            "title": "T" * 600,
+            "author": "A" * 300,
+            "chapters": [{"title": "Ch 1", "text": "Some content here."}],
+        }
+        resp = await client.post("/api/books/upload", files=_txt_upload())
+
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    book_id = resp.json()["book_id"]
+    assert len(resp.json()["title"]) <= 500
+    assert len(resp.json()["author"]) <= 200
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT title, authors FROM books WHERE id=?", (book_id,)) as cur:
+            row = await cur.fetchone()
+    assert row is not None
+    title_stored, authors_stored = row
+    assert len(title_stored) <= 500, f"Stored title length {len(title_stored)} exceeds 500"
+    authors_list = json.loads(authors_stored)
+    assert len(authors_list[0]) <= 200, f"Stored author length {len(authors_list[0])} exceeds 200"
+
+
 # ── Regression #630: flashcard_reviews cleanup on book delete ─────────────────
 
 

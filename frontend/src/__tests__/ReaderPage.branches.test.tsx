@@ -1435,7 +1435,7 @@ describe("ReaderPage.branches — in-memory translation cache hit", () => {
     await flushPromises();
 
     // Navigate to next chapter and back (to trigger cache hit on second visit)
-    const nextBtn = await screen.findByText("Next chapter →");
+    const nextBtn = await screen.findByText(/Next chapter/);
     await userEvent.click(nextBtn);
     await flushPromises();
 

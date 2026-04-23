@@ -110,20 +110,19 @@ test.describe("Bottom-of-chapter navigation", () => {
   });
 
   test("bottom prev chapter link is present", async ({ page }) => {
-    await expect(page.getByText("← Previous chapter")).toBeVisible();
+    await expect(page.getByTestId("bottom-prev-chapter")).toBeVisible();
   });
 
   test("bottom next chapter link is present", async ({ page }) => {
-    await expect(page.getByText("Next chapter →")).toBeVisible();
+    await expect(page.getByTestId("bottom-next-chapter")).toBeVisible();
   });
 
   test("bottom prev chapter is disabled on first chapter", async ({ page }) => {
-    const prevBtn = page.getByText("← Previous chapter");
-    await expect(prevBtn).toHaveAttribute("disabled", "");
+    await expect(page.getByTestId("bottom-prev-chapter")).toBeDisabled();
   });
 
   test("bottom next chapter navigates forward", async ({ page }) => {
-    await page.getByText("Next chapter →").click();
+    await page.getByTestId("bottom-next-chapter").click();
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
   });
 
@@ -131,8 +130,7 @@ test.describe("Bottom-of-chapter navigation", () => {
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
     await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
-    const nextBtn = page.getByText("Next chapter →");
-    await expect(nextBtn).toHaveAttribute("disabled", "");
+    await expect(page.getByTestId("bottom-next-chapter")).toBeDisabled();
   });
 });
 

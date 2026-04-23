@@ -18,7 +18,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, EmptyVocabIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -837,8 +837,8 @@ export default function ReaderPage() {
             <button
               onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
               disabled={chapterIndex === 0}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
-            >← Prev</button>
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
+            ><ArrowLeftIcon className="w-3 h-3" aria-hidden="true" /> Prev</button>
             <span className="text-stone-400 mx-0.5">|</span>
             <span className="text-stone-600 max-w-[180px] truncate font-medium">
               {chapters[chapterIndex]?.title || `Ch. ${chapterIndex + 1}`}
@@ -847,8 +847,8 @@ export default function ReaderPage() {
             <button
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
               disabled={chapterIndex === chapters.length - 1}
-              className="px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
-            >Next →</button>
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
+            >Next <ArrowRightIcon className="w-3 h-3" aria-hidden="true" /></button>
             {paragraphFocus && (
               <>
                 <span className="text-stone-400 mx-0.5">|</span>
@@ -874,9 +874,9 @@ export default function ReaderPage() {
             <span className="text-stone-400 mx-0.5">|</span>
             <button
               onClick={() => setFocusMode(false)}
-              className="px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px]"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px]"
               title="Exit focus mode (F)"
-            >✕ Focus</button>
+            ><CloseIcon className="w-3 h-3" aria-hidden="true" /> Focus</button>
           </div>
         </div>
       )}
@@ -891,7 +891,7 @@ export default function ReaderPage() {
             onClick={() => router.push("/")}
             className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] flex items-center"
           >
-            ← <span className="hidden sm:inline ml-1">Library</span>
+            <ArrowLeftIcon className="w-4 h-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline ml-1">Library</span>
           </button>
 
           <div className="min-w-0 flex-1">
@@ -910,7 +910,7 @@ export default function ReaderPage() {
                       rel="noopener noreferrer"
                       className="shrink-0 text-xs text-amber-500 hover:text-amber-700"
                       title="View on Project Gutenberg"
-                    >↗</a>
+                    ><ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" /></a>
                   )}
                 </div>
                 <p className="text-xs text-amber-700 truncate">{meta.authors.join(", ")}</p>
@@ -1354,18 +1354,20 @@ export default function ReaderPage() {
                 />
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
+                    data-testid="bottom-prev-chapter"
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}
-                    className="text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
-                  >← Previous chapter</button>
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
+                  ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous chapter</button>
                   <span className="text-xs text-amber-500 self-center">
                     {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
                   </span>
                   <button
+                    data-testid="bottom-next-chapter"
                     onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                     disabled={chapterIndex === chapters.length - 1}
-                    className="text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
-                  >Next chapter →</button>
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
+                  >Next chapter <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
               </>
             )}
@@ -1748,7 +1750,7 @@ export default function ReaderPage() {
                         href={`/notes/${bookId}`}
                         className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
                       >
-                        Book notes →
+                        Book notes <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </a>
                       <a
                         href="/notes"
@@ -1787,7 +1789,7 @@ export default function ReaderPage() {
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
                       <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium">
-                        View all →
+                        View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </button>
                     </div>
                     {filteredVocab.length === 0 ? (
@@ -2036,9 +2038,9 @@ export default function ReaderPage() {
               <span className="font-serif font-semibold text-ink text-sm">Chat</span>
               <button
                 onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700 text-lg"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700"
                 aria-label="Close chat"
-              >✕</button>
+              ><CloseIcon className="w-4 h-4" aria-hidden="true" /></button>
             </div>
             <InsightChat
               bookId={bookId}

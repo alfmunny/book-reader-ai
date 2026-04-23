@@ -524,6 +524,26 @@ async def test_tts_error_returns_500(client):
     assert resp.status_code == 500
 
 
+# ── TTS rate bounds validation (Issue #482) ───────────────────────────────────
+
+@pytest.mark.parametrize("rate,expected", [
+    (9999, 422),    # absurdly fast → malformed Edge TTS percentage string
+    (-100, 422),    # negative → malformed string
+    (0.1, 422),     # below 0.25 minimum → invalid
+    (5.0, 422),     # above 4.0 maximum → invalid
+    (0.25, 200),    # lower boundary → valid
+    (4.0, 200),     # upper boundary → valid
+    (1.5, 200),     # normal value → valid
+])
+async def test_tts_rate_bounds(client, rate, expected):
+    """Regression #482: TTS rate must be validated to prevent malformed Edge TTS strings."""
+    with patch("routers.ai.synthesize", new_callable=AsyncMock, return_value=(b"\xff\xfb", "audio/mpeg", [])):
+        resp = await client.post("/api/ai/tts", json={"text": "hi", "language": "en", "rate": rate})
+    assert resp.status_code == expected, (
+        f"rate={rate}: expected {expected}, got {resp.status_code}: {resp.text}"
+    )
+
+
 # ── References ────────────────────────────────────────────────────────────────
 
 async def test_references_without_key_returns_400(client):

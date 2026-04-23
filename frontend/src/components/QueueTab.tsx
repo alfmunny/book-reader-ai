@@ -1217,7 +1217,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <button
               key={f}
               onClick={() => setItemFilter(f)}
-              className={`text-xs px-2 py-0.5 rounded ${
+              className={`text-xs px-2 py-0.5 min-h-[44px] flex items-center rounded ${
                 itemFilter === f ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
               }`}
             >
@@ -1228,7 +1228,7 @@ export default function QueueTab({ adminFetch }: Props) {
           <button
             onClick={clearAll}
             disabled={items.length === 0}
-            className="text-xs px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
+            className="text-xs px-2 py-0.5 min-h-[44px] flex items-center rounded border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
             title={itemFilter === "all" ? "Clear entire queue" : `Clear all ${itemFilter}`}
           >
             {itemFilter === "all" ? "Clear queue" : `Clear ${itemFilter}`}

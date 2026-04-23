@@ -2,7 +2,7 @@ import asyncio
 from collections import defaultdict
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, decrypt_api_key, check_book_access
@@ -238,7 +238,7 @@ async def delete_summary(book_id: int, chapter_index: int, user: dict = Depends(
 async def translate_cache(
     book_id: int,
     chapter_index: int,
-    target_language: str,
+    target_language: str = Query(..., max_length=20),
     _user: dict = Depends(get_current_user),
 ):
     """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""

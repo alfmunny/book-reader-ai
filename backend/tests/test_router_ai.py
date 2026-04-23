@@ -1109,3 +1109,13 @@ async def test_translate_cache_put_oversized_paragraph_item_returns_422(client, 
         f"Expected 422 for oversized paragraph item in PUT /translate/cache, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Oversized query param bounds checks (regression for #576) ─────────────────
+
+async def test_translate_cache_get_oversized_target_language_returns_422(client, test_user):
+    """Regression #576: GET /ai/translate/cache target_language was unbounded."""
+    resp = await client.get(
+        f"/api/ai/translate/cache?book_id=1&chapter_index=0&target_language={'x' * 21}"
+    )
+    assert resp.status_code == 422

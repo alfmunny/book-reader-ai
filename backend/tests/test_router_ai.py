@@ -238,13 +238,15 @@ async def test_translate_cache_put_saves(client, test_user):
     from services.db import save_book
     _BOOK_META = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"],
                   "subjects": [], "download_count": 0, "cover": ""}
+    from services.book_chapters import clear_cache as _clear
     await save_book(2, _BOOK_META, "text")
+    _clear()
     resp = await client.put("/api/ai/translate/cache", json={
-        "book_id": 2, "chapter_index": 1, "target_language": "fr",
+        "book_id": 2, "chapter_index": 0, "target_language": "fr",
         "paragraphs": ["Bonjour"],
     })
     assert resp.status_code == 200
-    cached = await get_cached_translation(2, 1, "fr")
+    cached = await get_cached_translation(2, 0, "fr")
     assert cached == ["Bonjour"]
 
 
@@ -687,6 +689,88 @@ async def test_translate_post_cache_hit_blocked_for_non_owner(client, test_user,
         f"Expected 403 for non-owner accessing cached translation of private book via POST /ai/translate, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+# ── chapter_index bounds checks on translation endpoints ─────────────────────
+
+_BOUNDS_META = {"title": "Bounds Test", "authors": [], "languages": ["de"],
+                "subjects": [], "download_count": 0, "cover": ""}
+_BOUNDS_TEXT = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+
+
+async def test_put_translate_cache_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #462: PUT /ai/translate/cache with chapter_index beyond chapter count
+    must return 400 instead of storing a translation at a non-existent chapter."""
+    from services.book_chapters import clear_cache as _clear
+    await save_book(9886, {**_BOUNDS_META, "id": 9886}, _BOUNDS_TEXT)
+    _clear()
+
+    resp = await client.put("/api/ai/translate/cache", json={
+        "book_id": 9886,
+        "chapter_index": 999,
+        "target_language": "en",
+        "paragraphs": ["test"],
+    })
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on PUT /ai/translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()
+
+
+async def test_get_translate_cache_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #462: GET /ai/translate/cache with chapter_index beyond chapter count
+    must return 400 instead of a misleading 404."""
+    from services.book_chapters import clear_cache as _clear
+    await save_book(9887, {**_BOUNDS_META, "id": 9887}, _BOUNDS_TEXT)
+    _clear()
+
+    resp = await client.get(
+        "/api/ai/translate/cache?book_id=9887&chapter_index=999&target_language=en"
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on GET /ai/translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()
+
+
+async def test_post_ai_translate_out_of_bounds_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #462: POST /ai/translate with chapter_index beyond chapter count
+    must return 400 (only lower bound was checked before this fix)."""
+    from services.book_chapters import clear_cache as _clear
+    await save_book(9888, {**_BOUNDS_META, "id": 9888}, _BOUNDS_TEXT)
+    _clear()
+
+    resp = await client.post("/api/ai/translate", json={
+        "book_id": 9888,
+        "chapter_index": 999,
+        "text": "Some text.",
+        "source_language": "de",
+        "target_language": "en",
+    })
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on POST /ai/translate, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()
+
+
+async def test_get_chapter_translation_out_of_bounds_returns_400(client, test_user, tmp_db):
+    """Regression #462: GET /books/{id}/chapters/{idx}/translation with out-of-bounds
+    chapter_index must return 400 instead of a misleading 404."""
+    from services.book_chapters import clear_cache as _clear
+    await save_book(9889, {**_BOUNDS_META, "id": 9889}, _BOUNDS_TEXT)
+    _clear()
+
+    resp = await client.get(
+        "/api/books/9889/chapters/999/translation?target_language=en"
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for out-of-bounds chapter_index=999 on GET /books/{{}}/chapters/999/translation, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()
 
 
 # ── chapter_index bounds checks on /ai/summary ───────────────────────────────

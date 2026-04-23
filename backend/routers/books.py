@@ -184,6 +184,13 @@ async def get_chapter_translation(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
+    from services.book_chapters import split_with_html_preference as _split
+    _chapters = await _split(book_id, book.get("text") or "")
+    if chapter_index < 0 or chapter_index >= len(_chapters):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+        )
     from services.db import get_cached_translation_with_meta
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if not cached:

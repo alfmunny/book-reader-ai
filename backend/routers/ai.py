@@ -234,6 +234,13 @@ async def translate_cache(
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, _user)
     target_language = target_language.lower().split("-")[0]
+    from services.book_chapters import split_with_html_preference as _split
+    _chapters = await _split(book_id, book.get("text") or "")
+    if chapter_index < 0 or chapter_index >= len(_chapters):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+        )
     from services.db import get_cached_translation_with_meta
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if cached:
@@ -265,6 +272,13 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, _user)
     target_language = req.target_language.lower().split("-")[0]
+    from services.book_chapters import split_with_html_preference as _split
+    _chapters = await _split(req.book_id, book.get("text") or "")
+    if req.chapter_index < 0 or req.chapter_index >= len(_chapters):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+        )
     # Reject if a queue worker is actively translating this chapter — the
     # worker's save_translation (INSERT OR REPLACE) would overwrite whatever
     # we write here when it finishes. (#341)
@@ -303,6 +317,14 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             check_book_access(_book, user)
         if req.chapter_index is not None and req.chapter_index < 0:
             raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
+        if req.book_id is not None and req.chapter_index is not None and _book is not None:
+            from services.book_chapters import split_with_html_preference as _split
+            _chapters = await _split(req.book_id, _book.get("text") or "")
+            if req.chapter_index >= len(_chapters):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
+                )
 
         # Check shared DB cache first — cache hits don't need any key.
         # Use normalized codes so "ZH" and "zh-CN" both hit a "zh" cache entry.

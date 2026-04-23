@@ -850,31 +850,37 @@ async def get_vocabulary(user_id: int) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT id, word, lemma, language, created_at FROM vocabulary WHERE user_id = ? ORDER BY word",
+            """SELECT v.id, v.word, v.lemma, v.language, v.created_at,
+                      wo.book_id, b.title AS book_title, wo.chapter_index, wo.sentence_text
+               FROM vocabulary v
+               LEFT JOIN word_occurrences wo ON wo.vocabulary_id = v.id
+               LEFT JOIN books b ON b.id = wo.book_id
+               WHERE v.user_id = ?
+               ORDER BY v.word, wo.created_at""",
             (user_id,),
         ) as cursor:
-            vocab_rows = await cursor.fetchall()
+            rows = await cursor.fetchall()
 
-        result = []
-        for v in vocab_rows:
-            async with db.execute(
-                """SELECT wo.book_id, b.title AS book_title, wo.chapter_index, wo.sentence_text
-                   FROM word_occurrences wo
-                   LEFT JOIN books b ON b.id = wo.book_id
-                   WHERE wo.vocabulary_id = ?
-                   ORDER BY wo.created_at""",
-                (v["id"],),
-            ) as cursor:
-                occurrences = [dict(r) for r in await cursor.fetchall()]
-            result.append({
-                "id": v["id"],
-                "word": v["word"],
-                "lemma": v["lemma"],
-                "language": v["language"],
-                "created_at": v["created_at"],
-                "occurrences": occurrences,
+    words: dict[int, dict] = {}
+    for row in rows:
+        vid = row["id"]
+        if vid not in words:
+            words[vid] = {
+                "id": vid,
+                "word": row["word"],
+                "lemma": row["lemma"],
+                "language": row["language"],
+                "created_at": row["created_at"],
+                "occurrences": [],
+            }
+        if row["book_id"] is not None:
+            words[vid]["occurrences"].append({
+                "book_id": row["book_id"],
+                "book_title": row["book_title"],
+                "chapter_index": row["chapter_index"],
+                "sentence_text": row["sentence_text"],
             })
-    return result
+    return list(words.values())
 
 
 async def delete_word(user_id: int, word: str) -> bool:

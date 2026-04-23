@@ -320,3 +320,23 @@ async def test_create_insight_out_of_bounds_chapter_returns_400(client, test_use
     )
     assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
     assert "out of range" in resp.json()["detail"].lower()
+
+
+async def test_post_insight_oversized_question_returns_422(client, test_user, tmp_db):
+    """POST /insights rejects question longer than max_length (issue #496)."""
+    await save_book(9884, {**_META, "id": 9884}, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 9884, "question": "q" * 2001, "answer": "A."},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized question, got {resp.status_code}"
+
+
+async def test_post_insight_oversized_answer_returns_422(client, test_user, tmp_db):
+    """POST /insights rejects answer longer than max_length (issue #496)."""
+    await save_book(9885, {**_META, "id": 9885}, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 9885, "question": "Q?", "answer": "a" * 20001},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized answer, got {resp.status_code}"

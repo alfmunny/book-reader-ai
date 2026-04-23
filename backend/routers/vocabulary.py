@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
@@ -21,10 +21,10 @@ router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
 
 
 class WordSave(BaseModel):
-    word: str
+    word: str = Field(..., max_length=200)
     book_id: int
     chapter_index: int
-    sentence_text: str
+    sentence_text: str = Field(..., max_length=5000)
 
 
 class ExportRequest(BaseModel):

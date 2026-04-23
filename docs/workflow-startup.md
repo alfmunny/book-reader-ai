@@ -8,12 +8,12 @@ loops — without waiting for you.
 
 ## Roles at a glance
 
-| Role | What it does when active | What it does when idle |
-|---|---|---|
-| **PM** | Reviews PRs, triages issues, watches deploys | Runs the review loop continuously |
-| **Dev** | Fixes bugs and implements features | Bug-hunts: scans routes for missing bounds/guards |
-| **UI/UX Dev** | Fixes UX/UI issues | UX-audits: scans components for design rule violations |
-| **Architect** | Designs and implements complex features | Proposes new features; writes design docs |
+| Role | Model | What it does when active | What it does when idle |
+|---|---|---|---|
+| **PM** | claude-sonnet-4-6 | Reviews PRs, triages issues, watches deploys | Runs the review loop continuously |
+| **Dev** | claude-sonnet-4-6 | Fixes bugs and implements features | Bug-hunts: scans routes for missing bounds/guards |
+| **UI/UX Dev** | claude-haiku-4-5-20251001 | Fixes UX/UI issues | UX-audits: scans components for design rule violations |
+| **Architect** | claude-opus-4-7 | Designs and implements complex features | Proposes new features; writes design docs |
 
 Full rules for each role are in `CLAUDE.md`.
 
@@ -43,25 +43,52 @@ bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-roles.sh
 
 This opens a tmux session named `book-ai` with four windows and starts each role immediately.
 
+To bypass permission prompts (fully autonomous mode):
+```bash
+bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-roles.sh --bypass
+```
+
 Attach to the session:
 ```bash
 tmux attach -t book-ai
 ```
 
-Navigate between roles:
+Navigate between role windows (prefix key is `C-a`):
 ```
-Ctrl+b  0   PM
-Ctrl+b  1   Dev
-Ctrl+b  2   UI/UX Dev
-Ctrl+b  3   Architect
+C-a p   previous window
+C-a n   next window
+C-a w   visual window picker
 ```
+Or switch by name: `C-a '` then type the window name (`pm`, `dev`, `uiux`, `arch`).
 
-To add a second Dev session (for parallel bug fixing):
+### Tmux keybindings for this project
+
+| Key | Action |
+|---|---|
+| `C-a O` | Collapse all roles into a 2×2 overview pane |
+| `C-a o` | Restore overview back to separate windows |
+
+### Subcommands
+
+| Subcommand | Description |
+|---|---|
+| *(none)* | Start all 4 roles in separate tmux windows |
+| `overview` | Collapse roles into a 2×2 pane (session must be running) |
+| `restore` | Spread overview panes back to separate windows |
+| `stop` | Gracefully stop the `book-ai` session |
+| `restart [--bypass]` | Stop then start fresh |
+| `dev2 [--bypass]` | Add a second Dev window to a running session |
+| `--help` / `-h` | Show usage summary |
+
+Examples:
 ```bash
-tmux new-window -t book-ai: -n dev2
-tmux send-keys -t book-ai:dev2 "$(cat /tmp/book-ai-dev-prompt.txt | head -1 | xargs -I{} echo 'claude \"{}\"')" Enter
-# Or simpler:
-bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-dev.sh book-ai dev2
+bash scripts/start-roles.sh --bypass        # start with bypass
+bash scripts/start-roles.sh overview        # collapse to 2×2
+bash scripts/start-roles.sh restore         # back to separate windows
+bash scripts/start-roles.sh stop            # graceful shutdown
+bash scripts/start-roles.sh restart         # stop + fresh start
+bash scripts/start-roles.sh dev2            # add second Dev window
+bash scripts/start-roles.sh --help          # show help
 ```
 
 ---
@@ -73,25 +100,25 @@ Open four terminal windows/tabs. In each, run the command for that role:
 ### PM
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude "/loop Act as product manager for book-reader-ai. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait."
+claude --model claude-sonnet-4-6 "/loop Act as product manager for book-reader-ai. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait."
 ```
 
 ### Dev
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude "You are a Dev session for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion (regression test first, fix, full test suite, PR with auto-merge). After each PR merges, pick the next issue without waiting. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks and missing .exists() guards, file and fix one bug at a time."
+claude --model claude-sonnet-4-6 "You are a Dev session for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion (regression test first, fix, full test suite, PR with auto-merge). After each PR merges, pick the next issue without waiting. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks and missing .exists() guards, file and fix one bug at a time."
 ```
 
 ### UI/UX Dev
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude "You are the UI/UX Dev for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion (test first, implement, PR). After each PR merges, pick the next issue without waiting. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file and fix one violation at a time."
+claude --model claude-haiku-4-5-20251001 "You are the UI/UX Dev for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion (test first, implement, PR). After each PR merges, pick the next issue without waiting. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file and fix one violation at a time."
 ```
 
 ### Architect
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude "You are the Architect for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Architect role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B). After each task completes, pick the next without waiting. If no architecture issues exist, identify the highest-value unimplemented feature, file an architecture issue for it, claim it, and begin a design doc — but do not implement without PM sign-off."
+claude --model claude-opus-4-7 "You are the Architect for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Architect role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B). After each task completes, pick the next without waiting. If no architecture issues exist, identify the highest-value unimplemented feature, file an architecture issue for it, claim it, and begin a design doc — but do not implement without PM sign-off."
 ```
 
 ---
@@ -99,12 +126,12 @@ claude "You are the Architect for book-reader-ai. Read CLAUDE.md at /Users/alfmu
 ## Adding a second Dev session
 
 Two Dev sessions can run simultaneously — each in its own branch, each claiming different
-issues via the `in-progress` label. To start a second Dev session:
+issues via the `in-progress` label. To add a second Dev window to a running session:
 
 ```bash
-# In a new terminal tab or tmux window:
-cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude "You are a second Dev session for book-reader-ai. Same role rules as Dev in CLAUDE.md. Read /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and all memory files. Your worktree is book-reader-ai-dev (shared with the first Dev session — always branch off the worktree's main, never commit to another session's branch). Pick the highest-priority unclaimed issue, work it, loop."
+bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-roles.sh dev2
+# with bypass:
+bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-roles.sh dev2 --bypass
 ```
 
 PM will naturally assign issues from different subsystems to avoid file-level conflicts.
@@ -159,12 +186,17 @@ Once started, you should not need to intervene. Here is what each role does:
 
 ## Stopping
 
-To stop all roles gracefully:
+Graceful stop (sends Ctrl+C / Ctrl+D to all panes, then kills session):
 ```bash
-tmux kill-session -t book-ai
+bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-roles.sh stop
 ```
 
-Or stop individual windows:
+Or stop and restart fresh:
+```bash
+bash /Users/alfmunny/Projects/AI/book-reader-ai/scripts/start-roles.sh restart
+```
+
+Or kill individual windows:
 ```bash
 tmux kill-window -t book-ai:dev2
 ```

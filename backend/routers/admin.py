@@ -87,7 +87,7 @@ async def approve_user(user_id: int, req: ApproveRequest, _admin: dict = Depends
 
 
 class RoleRequest(BaseModel):
-    role: str
+    role: str = Field(..., max_length=10)
 
 
 @router.put("/users/{user_id}/role")
@@ -1089,7 +1089,7 @@ async def queue_set_settings(
 
 @router.get("/queue/items")
 async def queue_items(
-    status: str | None = None,
+    status: str | None = Query(default=None, max_length=20),
     book_id: int | None = None,
     limit: int = Query(default=200, ge=1, le=1000),
     _admin: dict = Depends(_require_admin),
@@ -1165,7 +1165,7 @@ async def queue_delete_item(
 
 @router.delete("/queue")
 async def queue_clear(
-    status: str | None = None,
+    status: str | None = Query(default=None, max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
     """Delete every queue row (optionally filtered by status).
@@ -1180,7 +1180,7 @@ async def queue_clear(
 @router.delete("/queue/book/{book_id}")
 async def queue_delete_book(
     book_id: int,
-    target_language: str | None = None,
+    target_language: str | None = Query(default=None, max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
     norm = target_language.lower().split("-")[0] if target_language else None

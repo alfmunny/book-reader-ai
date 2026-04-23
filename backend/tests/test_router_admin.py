@@ -131,6 +131,12 @@ async def test_change_role_invalid(admin_client):
     assert res.status_code == 400
 
 
+async def test_change_role_oversized_role_returns_422(admin_client):
+    # regression for #538: role field was unbounded
+    res = await admin_client.put("/api/admin/users/1/role", json={"role": "x" * 11})
+    assert res.status_code == 422
+
+
 async def test_cannot_demote_self(admin_client, admin_user):
     res = await admin_client.put(
         f"/api/admin/users/{admin_user['id']}/role",
@@ -2252,3 +2258,21 @@ async def test_get_uploads_filter_by_user(admin_client, admin_db, admin_user):
     data = res.json()
     assert len(data) == 1
     assert data[0]["book_id"] == 201
+
+
+# ── Oversized query param bounds checks (regression for #530, #538) ──────────
+
+async def test_queue_items_oversized_status_returns_422(admin_client):
+    # regression for #530: status query param was unbounded
+    res = await admin_client.get(f"/api/admin/queue/items?status={'x' * 21}")
+    assert res.status_code == 422
+
+
+async def test_queue_clear_oversized_status_returns_422(admin_client):
+    res = await admin_client.delete(f"/api/admin/queue?status={'x' * 21}")
+    assert res.status_code == 422
+
+
+async def test_queue_delete_book_oversized_target_language_returns_422(admin_client):
+    res = await admin_client.delete(f"/api/admin/queue/book/1?target_language={'x' * 21}")
+    assert res.status_code == 422

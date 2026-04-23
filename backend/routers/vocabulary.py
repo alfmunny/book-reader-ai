@@ -31,7 +31,7 @@ class WordSave(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    book_id: int | None = None
+    book_id: int | None = Field(default=None, ge=1)
     target_language: str = Field(default="zh", max_length=20)
 
 

@@ -439,63 +439,6 @@ describe("SentenceReader annotations", () => {
   });
 });
 
-describe("SentenceReader long-press annotation (onAnnotate)", () => {
-  it("calls onAnnotate after long press (400ms)", async () => {
-    jest.useFakeTimers();
-    const onAnnotate = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Press this sentence."
-        duration={0}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={noop}
-        onAnnotate={onAnnotate}
-        chapterIndex={2}
-      />
-    );
-
-    const segs = getSegments(container);
-    fireEvent.pointerDown(segs[0]);
-
-    act(() => {
-      jest.advanceTimersByTime(450);
-    });
-
-    expect(onAnnotate).toHaveBeenCalledTimes(1);
-    // onAnnotate called with (sentenceText, chapterIndex, {x, y})
-    const [sentenceText, chapterIdx] = onAnnotate.mock.calls[0];
-    expect(sentenceText).toContain("Press this sentence");
-    expect(chapterIdx).toBe(2);
-    jest.useRealTimers();
-  });
-
-  it("does not call onAnnotate if pointer is released before 400ms", async () => {
-    jest.useFakeTimers();
-    const onAnnotate = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Short tap sentence."
-        duration={0}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={noop}
-        onAnnotate={onAnnotate}
-      />
-    );
-
-    const segs = getSegments(container);
-    fireEvent.pointerDown(segs[0], { clientX: 50, clientY: 50 });
-    fireEvent.pointerUp(segs[0]);
-
-    act(() => {
-      jest.advanceTimersByTime(450);
-    });
-
-    expect(onAnnotate).not.toHaveBeenCalled();
-    jest.useRealTimers();
-  });
-});
 
 describe("SentenceReader click interactions", () => {
   it("single click does nothing when TTS is idle", () => {

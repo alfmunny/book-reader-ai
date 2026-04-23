@@ -26,7 +26,6 @@ const BASE_PROPS = {
   sentenceText: "It is a truth universally acknowledged.",
   chapterIndex: 0,
   bookId: 1,
-  position: { x: 100, y: 200 },
   onClose: jest.fn(),
   onSaved: jest.fn(),
   onDeleted: jest.fn(),
@@ -36,21 +35,15 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ── Line 48: outside click calls onClose ─────────────────────────────────────
+// ── Backdrop click calls onClose ─────────────────────────────────────────────
 
-describe("AnnotationToolbar — outside click closes panel (line 48)", () => {
-  it("calls onClose when clicking outside the panel", () => {
+describe("AnnotationToolbar — backdrop click closes modal", () => {
+  it("calls onClose when clicking the backdrop", () => {
     const onClose = jest.fn();
-    render(
-      <div>
-        <AnnotationToolbar {...BASE_PROPS} onClose={onClose} />
-        <div data-testid="outside">Outside element</div>
-      </div>,
-    );
+    render(<AnnotationToolbar {...BASE_PROPS} onClose={onClose} />);
 
-    // Dispatch mousedown on an element outside the panel
-    const outside = screen.getByTestId("outside");
-    fireEvent.mouseDown(outside);
+    const backdrop = screen.getByTestId("annotation-backdrop");
+    fireEvent.click(backdrop);
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -59,28 +52,8 @@ describe("AnnotationToolbar — outside click closes panel (line 48)", () => {
     const onClose = jest.fn();
     render(<AnnotationToolbar {...BASE_PROPS} onClose={onClose} />);
 
-    // Dispatch mousedown on the panel itself
     const panel = screen.getByTestId("annotation-toolbar");
-    fireEvent.mouseDown(panel);
-
-    expect(onClose).not.toHaveBeenCalled();
-  });
-
-  it("removes listener on unmount — no call after unmount", () => {
-    const onClose = jest.fn();
-    const { unmount } = render(
-      <div>
-        <AnnotationToolbar {...BASE_PROPS} onClose={onClose} />
-        <div data-testid="outside2">Outside</div>
-      </div>,
-    );
-
-    unmount();
-
-    const outside = document.createElement("div");
-    document.body.appendChild(outside);
-    fireEvent.mouseDown(outside);
-    document.body.removeChild(outside);
+    fireEvent.click(panel);
 
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -193,7 +166,7 @@ describe("AnnotationToolbar — handleDelete error paths (line 106)", () => {
     );
   });
 
-  it("shows deleting indicator while delete is in progress", async () => {
+  it("disables delete button while delete is in progress", async () => {
     let resolveDelete: (v: unknown) => void = () => {};
     mockDeleteAnnotation.mockReturnValue(new Promise((res) => { resolveDelete = res; }));
 
@@ -204,8 +177,7 @@ describe("AnnotationToolbar — handleDelete error paths (line 106)", () => {
 
     await user.click(screen.getByRole("button", { name: /delete/i }));
 
-    // During delete "…" is shown
-    expect(screen.getByText("…")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /delete/i })).toBeDisabled();
 
     resolveDelete({ ok: true });
   });
@@ -230,9 +202,8 @@ describe("AnnotationToolbar — color picker", () => {
   it("selects yellow by default", () => {
     render(<AnnotationToolbar {...BASE_PROPS} />);
 
-    const yellowBtn = screen.getByLabelText("Yellow");
-    // Default selected color = yellow → scale-110 class
-    expect(yellowBtn.className).toMatch(/scale-110/);
+    expect(screen.getByLabelText("Yellow")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Blue")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("switches selected color when a different color is clicked", async () => {
@@ -241,10 +212,7 @@ describe("AnnotationToolbar — color picker", () => {
 
     await user.click(screen.getByLabelText("Pink"));
 
-    const pinkBtn = screen.getByLabelText("Pink");
-    expect(pinkBtn.className).toMatch(/scale-110/);
-
-    const yellowBtn = screen.getByLabelText("Yellow");
-    expect(yellowBtn.className).not.toMatch(/scale-110/);
+    expect(screen.getByLabelText("Pink")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Yellow")).toHaveAttribute("aria-pressed", "false");
   });
 });

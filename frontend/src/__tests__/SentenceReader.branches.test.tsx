@@ -183,39 +183,12 @@ describe("SentenceReader — scrollTargetSentence flash effect (lines 388-396)",
   });
 });
 
-// ── Lines 476-477: handleSegLongPress fallback to handlePointerDown ─────────
+// ── Long-press is a no-op when onWordTap is not provided ─────────────────────
 
-describe("SentenceReader — handleSegLongPress falls back to handlePointerDown (lines 476-477)", () => {
+describe("SentenceReader — long-press is noop without onWordTap", () => {
   afterEach(() => jest.useRealTimers());
 
-  it("invokes onAnnotate via handlePointerDown when onWordTap is NOT provided", () => {
-    jest.useFakeTimers();
-    const onAnnotate = jest.fn();
-    const { container } = render(
-      <SentenceReader
-        text="Annotate via fallback sentence."
-        duration={0}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={noop}
-        onAnnotate={onAnnotate}
-        // No onWordTap → handleSegLongPress falls back to handlePointerDown
-      />
-    );
-
-    const segs = getSegments(container);
-    dispatchPointerEvent(segs[0], "pointerdown", { clientX: 10, clientY: 10 });
-
-    act(() => { jest.advanceTimersByTime(450); });
-
-    // onAnnotate should fire (via the fallback handlePointerDown path)
-    expect(onAnnotate).toHaveBeenCalledTimes(1);
-    const [sentenceText, chapterIdx] = onAnnotate.mock.calls[0];
-    expect(sentenceText).toContain("Annotate via fallback");
-    expect(chapterIdx).toBe(0);
-  });
-
-  it("no annotation when neither onAnnotate nor onWordTap provided (pointerdown is noop)", () => {
+  it("does not crash and fires nothing when onWordTap is not provided", () => {
     jest.useFakeTimers();
     const { container } = render(
       <SentenceReader
@@ -224,15 +197,12 @@ describe("SentenceReader — handleSegLongPress falls back to handlePointerDown 
         currentTime={0}
         isPlaying={false}
         onSegmentClick={noop}
-        // No onAnnotate, no onWordTap
       />
     );
 
     const segs = getSegments(container);
-    // Should not crash
     dispatchPointerEvent(segs[0], "pointerdown", { clientX: 10, clientY: 10 });
     act(() => { jest.advanceTimersByTime(600); });
-    // Just verifying no crash
     expect(segs.length).toBeGreaterThan(0);
   });
 });

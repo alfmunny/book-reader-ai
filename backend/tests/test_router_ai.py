@@ -970,3 +970,60 @@ async def test_references_oversized_chapter_excerpt_returns_422(client, test_use
         json={"book_title": "T", "author": "A", "chapter_excerpt": "x" * 10_001},
     )
     assert resp.status_code == 422, f"Expected 422 for oversized chapter_excerpt, got {resp.status_code}"
+
+
+# ── Issue #507: AI metadata field max_length ──────────────────────────────────
+
+async def test_summary_oversized_book_title_returns_422(client, test_user, tmp_db):
+    """POST /ai/summary rejects book_title longer than 500 chars (issue #507)."""
+    await save_book(9897, {"title": "T", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.post(
+        "/api/ai/summary",
+        json={"book_id": 9897, "chapter_index": 0, "chapter_text": "some text", "book_title": "t" * 501, "author": "A"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized book_title, got {resp.status_code}"
+
+
+async def test_insight_oversized_author_returns_422(client, test_user):
+    """POST /ai/insight rejects author longer than 500 chars (issue #507)."""
+    resp = await client.post(
+        "/api/ai/insight",
+        json={"chapter_text": "some text", "book_title": "T", "author": "a" * 501},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized author, got {resp.status_code}"
+
+
+async def test_qa_oversized_book_title_returns_422(client, test_user):
+    """POST /ai/qa rejects book_title longer than 500 chars (issue #507)."""
+    resp = await client.post(
+        "/api/ai/qa",
+        json={"question": "Q?", "passage": "text", "book_title": "t" * 501, "author": "A"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized book_title in QA, got {resp.status_code}"
+
+
+async def test_references_oversized_author_returns_422(client, test_user):
+    """POST /ai/references rejects author longer than 500 chars (issue #507)."""
+    resp = await client.post(
+        "/api/ai/references",
+        json={"book_title": "T", "author": "a" * 501},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized author in references, got {resp.status_code}"
+
+
+async def test_tts_oversized_language_returns_422(client):
+    """POST /ai/tts rejects language longer than 20 chars (issue #507)."""
+    resp = await client.post(
+        "/api/ai/tts",
+        json={"text": "hello", "language": "x" * 21},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized language in TTS, got {resp.status_code}"
+
+
+async def test_translate_oversized_source_language_returns_422(client, test_user):
+    """POST /ai/translate rejects source_language longer than 20 chars (issue #507)."""
+    resp = await client.post(
+        "/api/ai/translate",
+        json={"text": "hello", "source_language": "x" * 21, "target_language": "en"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized source_language, got {resp.status_code}"

@@ -47,40 +47,40 @@ def _require_gemini_key(user: dict) -> str:
 
 class InsightRequest(BaseModel):
     chapter_text: str = Field(..., max_length=50_000)
-    book_title: str
-    author: str
-    response_language: str = "en"
+    book_title: str = Field(..., max_length=500)
+    author: str = Field(..., max_length=500)
+    response_language: str = Field(default="en", max_length=20)
 
 
 class QARequest(BaseModel):
     question: str = Field(..., max_length=2_000)
     passage: str = Field(..., max_length=50_000)
-    book_title: str
-    author: str
-    response_language: str = "en"
+    book_title: str = Field(..., max_length=500)
+    author: str = Field(..., max_length=500)
+    response_language: str = Field(default="en", max_length=20)
 
 
 class ReferencesRequest(BaseModel):
-    book_title: str
-    author: str
+    book_title: str = Field(..., max_length=500)
+    author: str = Field(..., max_length=500)
     chapter_title: str = Field(default="", max_length=500)
     chapter_excerpt: str = Field(default="", max_length=10_000)
-    response_language: str = "en"
+    response_language: str = Field(default="en", max_length=20)
 
 
 class SummaryRequest(BaseModel):
     book_id: int
     chapter_index: int
     chapter_text: str = Field(..., max_length=50_000)
-    book_title: str
-    author: str
-    chapter_title: str = ""
+    book_title: str = Field(..., max_length=500)
+    author: str = Field(..., max_length=500)
+    chapter_title: str = Field(default="", max_length=500)
 
 
 class TranslateRequest(BaseModel):
     text: str = Field(..., max_length=50_000)
-    source_language: str = "de"
-    target_language: str = "en"
+    source_language: str = Field(default="de", max_length=20)
+    target_language: str = Field(default="en", max_length=20)
     book_id: int | None = None
     chapter_index: int | None = None
     # "auto" → Gemini if user has a key, else Google Translate (free).
@@ -89,7 +89,7 @@ class TranslateRequest(BaseModel):
 
 class TTSRequest(BaseModel):
     text: str = Field(..., max_length=50_000)
-    language: str = "en"
+    language: str = Field(default="en", max_length=20)
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
 

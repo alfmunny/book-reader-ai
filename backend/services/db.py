@@ -309,26 +309,9 @@ async def set_user_role(user_id: int, role: str) -> None:
 
 async def delete_user(user_id: int) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """DELETE FROM flashcard_reviews WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ?)""",
-            (user_id,),
-        )
-        await db.execute(
-            """DELETE FROM word_occurrences WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ?)""",
-            (user_id,),
-        )
-        # deck_members references vocabulary.id; vocabulary_tags.user_id = user_id.
-        # decks.user_id = user_id → delete first so deck_members FK doesn't matter.
-        await db.execute(
-            """DELETE FROM deck_members WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ?)""",
-            (user_id,),
-        )
-        await db.execute("DELETE FROM deck_members WHERE deck_id IN (SELECT id FROM decks WHERE user_id = ?)", (user_id,))
-        await db.execute("DELETE FROM decks WHERE user_id = ?", (user_id,))
-        await db.execute("DELETE FROM vocabulary_tags WHERE user_id = ?", (user_id,))
+        # FK enforcement (#748) cascades vocabulary → word_occurrences,
+        # flashcard_reviews, vocabulary_tags, deck_members via declared FKs.
+        # vocabulary itself has no FK to users so delete it explicitly.
         await db.execute("DELETE FROM vocabulary WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM annotations WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM book_insights WHERE user_id = ?", (user_id,))
@@ -1028,29 +1011,8 @@ async def get_vocabulary(user_id: int) -> list[dict]:
 async def delete_word(user_id: int, word: str) -> bool:
     word = word.strip().lower()
     async with aiosqlite.connect(DB_PATH) as db:
-        # Shadow-cascade children that the declared FK would cascade if
-        # PRAGMA foreign_keys were on (see issue #700). Remove these blocks
-        # once FK enforcement lands.
-        await db.execute(
-            """DELETE FROM word_occurrences WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
-            (user_id, word),
-        )
-        await db.execute(
-            """DELETE FROM flashcard_reviews WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
-            (user_id, word),
-        )
-        await db.execute(
-            """DELETE FROM vocabulary_tags WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
-            (user_id, word),
-        )
-        await db.execute(
-            """DELETE FROM deck_members WHERE vocabulary_id IN (
-               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
-            (user_id, word),
-        )
+        # FK enforcement (issue #748) cascades vocabulary → word_occurrences /
+        # flashcard_reviews / vocabulary_tags / deck_members automatically.
         cursor = await db.execute(
             "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
             (user_id, word),

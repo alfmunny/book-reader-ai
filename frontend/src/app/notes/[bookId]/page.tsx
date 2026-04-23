@@ -632,7 +632,7 @@ export default function BookNotesPage() {
           {(annCount + insCount + vocCount) > 0 && !loading && (
             <button
               onClick={toggleCollapseAll}
-              className="text-xs text-stone-400 hover:text-stone-600 shrink-0 transition-colors"
+              className="text-xs text-stone-400 hover:text-stone-600 shrink-0 transition-colors min-h-[44px]"
             >
               {isAllCollapsed ? "Expand all" : "Collapse all"}
             </button>
@@ -644,7 +644,7 @@ export default function BookNotesPage() {
               <button
                 key={m}
                 onClick={() => setViewMode(m)}
-                className={`px-3 py-1.5 transition-colors ${
+                className={`px-3 py-1.5 min-h-[44px] transition-colors ${
                   viewMode === m
                     ? "bg-amber-700 text-white"
                     : "text-amber-700 hover:bg-amber-50"
@@ -659,7 +659,7 @@ export default function BookNotesPage() {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors"
           >
             {exporting ? "Exporting…" : "↗ Export"}
           </button>

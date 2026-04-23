@@ -286,6 +286,16 @@ async def delete_user(user_id: int) -> None:
                SELECT id FROM vocabulary WHERE user_id = ?)""",
             (user_id,),
         )
+        # deck_members references vocabulary.id; vocabulary_tags.user_id = user_id.
+        # decks.user_id = user_id → delete first so deck_members FK doesn't matter.
+        await db.execute(
+            """DELETE FROM deck_members WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ?)""",
+            (user_id,),
+        )
+        await db.execute("DELETE FROM deck_members WHERE deck_id IN (SELECT id FROM decks WHERE user_id = ?)", (user_id,))
+        await db.execute("DELETE FROM decks WHERE user_id = ?", (user_id,))
+        await db.execute("DELETE FROM vocabulary_tags WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM vocabulary WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM annotations WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM book_insights WHERE user_id = ?", (user_id,))
@@ -985,6 +995,9 @@ async def get_vocabulary(user_id: int) -> list[dict]:
 async def delete_word(user_id: int, word: str) -> bool:
     word = word.strip().lower()
     async with aiosqlite.connect(DB_PATH) as db:
+        # Shadow-cascade children that the declared FK would cascade if
+        # PRAGMA foreign_keys were on (see issue #700). Remove these blocks
+        # once FK enforcement lands.
         await db.execute(
             """DELETE FROM word_occurrences WHERE vocabulary_id IN (
                SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
@@ -992,6 +1005,16 @@ async def delete_word(user_id: int, word: str) -> bool:
         )
         await db.execute(
             """DELETE FROM flashcard_reviews WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
+            (user_id, word),
+        )
+        await db.execute(
+            """DELETE FROM vocabulary_tags WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
+            (user_id, word),
+        )
+        await db.execute(
+            """DELETE FROM deck_members WHERE vocabulary_id IN (
                SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
             (user_id, word),
         )
@@ -1133,24 +1156,35 @@ async def _ensure_flashcard_rows(user_id: int) -> None:
         await db.commit()
 
 
-async def get_flashcards_due(user_id: int) -> list[dict]:
-    """Return vocabulary cards whose due_date <= today, with vocab metadata."""
+async def get_flashcards_due(
+    user_id: int,
+    vocabulary_ids: list[int] | None = None,
+) -> list[dict]:
+    """Return vocabulary cards whose due_date <= today, with vocab metadata.
+
+    If vocabulary_ids is provided (e.g. a deck's resolved members), results
+    are filtered to just those ids. An empty list means no cards are due.
+    """
     await _ensure_flashcard_rows(user_id)
+    if vocabulary_ids is not None and not vocabulary_ids:
+        return []
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute(
-            """
+        sql = """
             SELECT fr.vocabulary_id, fr.interval_days, fr.ease_factor,
                    fr.repetitions, fr.due_date, fr.last_reviewed_at,
                    v.word, v.created_at AS saved_at
             FROM flashcard_reviews fr
             JOIN vocabulary v ON v.id = fr.vocabulary_id
             WHERE fr.user_id = ? AND fr.due_date <= date('now')
-            ORDER BY fr.due_date ASC, v.word ASC
-            LIMIT 100
-            """,
-            (user_id,),
-        ) as cur:
+        """
+        params: list = [user_id]
+        if vocabulary_ids is not None:
+            placeholders = ",".join(["?"] * len(vocabulary_ids))
+            sql += f" AND fr.vocabulary_id IN ({placeholders})"
+            params.extend(vocabulary_ids)
+        sql += " ORDER BY fr.due_date ASC, v.word ASC LIMIT 100"
+        async with db.execute(sql, params) as cur:
             rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
@@ -1215,26 +1249,42 @@ async def review_flashcard(
     }
 
 
-async def get_flashcard_stats(user_id: int) -> dict:
-    """Return aggregate flashcard stats for the user."""
+async def get_flashcard_stats(
+    user_id: int,
+    vocabulary_ids: list[int] | None = None,
+) -> dict:
+    """Return aggregate flashcard stats. Optionally scope to a subset of
+    vocabulary_ids (deck-filtered stats)."""
     await _ensure_flashcard_rows(user_id)
+    if vocabulary_ids is not None and not vocabulary_ids:
+        return {"total": 0, "due_today": 0, "reviewed_today": 0}
+    extra = ""
+    params: tuple
+    if vocabulary_ids is not None:
+        placeholders = ",".join(["?"] * len(vocabulary_ids))
+        extra = f" AND vocabulary_id IN ({placeholders})"
+
     async with aiosqlite.connect(DB_PATH) as db:
+        if vocabulary_ids is not None:
+            params = (user_id, *vocabulary_ids)
+        else:
+            params = (user_id,)
         async with db.execute(
-            "SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ?",
-            (user_id,),
+            f"SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ?{extra}",
+            params,
         ) as cur:
             total = (await cur.fetchone())[0]
 
         async with db.execute(
-            "SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ? AND due_date <= date('now')",
-            (user_id,),
+            f"SELECT COUNT(*) FROM flashcard_reviews WHERE user_id = ? AND due_date <= date('now'){extra}",
+            params,
         ) as cur:
             due_today = (await cur.fetchone())[0]
 
         async with db.execute(
-            "SELECT COUNT(*) FROM flashcard_reviews "
-            "WHERE user_id = ? AND date(last_reviewed_at) = date('now')",
-            (user_id,),
+            f"SELECT COUNT(*) FROM flashcard_reviews "
+            f"WHERE user_id = ? AND date(last_reviewed_at) = date('now'){extra}",
+            params,
         ) as cur:
             reviewed_today = (await cur.fetchone())[0]
 

@@ -895,3 +895,73 @@ async def test_migration_025_unique_constraint_enforced(tmp_db):
                 "VALUES (1, 0, 'dup', 't', 1)"
             )
         await db.rollback()
+
+
+# ── Migration 027 (vocab tags & decks, issue #645) ────────────────────────────
+
+
+async def test_migration_027_creates_tags_and_decks_tables(tmp_db):
+    """vocabulary_tags, decks, deck_members must exist with expected columns."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        for tbl, expected in [
+            ("vocabulary_tags", {"id", "user_id", "vocabulary_id", "tag", "created_at"}),
+            ("decks",
+             {"id", "user_id", "name", "description", "mode", "rules_json",
+              "created_at", "updated_at"}),
+            ("deck_members", {"deck_id", "vocabulary_id", "added_at"}),
+        ]:
+            async with db.execute(f"PRAGMA table_info({tbl})") as cursor:
+                cols = {row[1] async for row in cursor}
+            assert cols == expected, f"{tbl} columns: {cols}"
+
+
+async def test_migration_027_unique_tag_per_vocab(tmp_db):
+    """vocabulary_tags UNIQUE(user_id, vocabulary_id, tag) must reject duplicates."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO users (google_id, email, name, picture) VALUES ('x','a@b.com','A','')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary (user_id, word) VALUES (1, 'w')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary_tags (user_id, vocabulary_id, tag) VALUES (1, 1, 'foo')"
+        )
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO vocabulary_tags (user_id, vocabulary_id, tag) VALUES (1, 1, 'foo')"
+            )
+        await db.rollback()
+
+
+async def test_migration_027_deck_mode_check(tmp_db):
+    """decks.mode CHECK enforces 'manual' or 'smart'."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO users (google_id, email, name, picture) VALUES ('x','a@b.com','A','')"
+        )
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO decks (user_id, name, mode) VALUES (1, 'x', 'bogus')"
+            )
+        await db.rollback()
+
+
+async def test_migration_027_deck_name_unique_per_user(tmp_db):
+    """decks UNIQUE(user_id, name) — a user can't create two decks with the same name."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO users (google_id, email, name, picture) VALUES ('x','a@b.com','A','')"
+        )
+        await db.execute(
+            "INSERT INTO decks (user_id, name, mode) VALUES (1, 'dup', 'manual')"
+        )
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO decks (user_id, name, mode) VALUES (1, 'dup', 'manual')"
+            )
+        await db.rollback()

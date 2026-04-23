@@ -7,7 +7,7 @@ import {
   askQuestion,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
-import { PaperclipIcon } from "@/components/Icons";
+import { PaperclipIcon, CloseIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -83,10 +83,11 @@ function ContextChip({
         {onRemove && (
           <button
             onClick={onRemove}
-            className="shrink-0 text-amber-400 hover:text-amber-700 text-base leading-none"
+            className="shrink-0 text-amber-400 hover:text-amber-700"
             title="Remove context"
+            aria-label="Remove context"
           >
-            ×
+            <CloseIcon aria-hidden="true" className="w-3 h-3" />
           </button>
         )}
       </div>
@@ -544,7 +545,7 @@ function MsgContextBlock({
   const shown = !needsToggle || expanded ? text : text.slice(0, CTX_COLLAPSE_AT);
   return (
     <div className="flex items-start gap-1.5 rounded-lg bg-amber-50/80 border border-amber-100 px-2.5 py-1.5">
-      <span className="text-amber-400 text-xs shrink-0 mt-px">📎</span>
+      <PaperclipIcon aria-hidden="true" className="w-3 h-3 text-amber-400 shrink-0 mt-px" />
       <p className="text-xs text-amber-700 italic leading-relaxed flex-1">
         &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
         {needsToggle && (

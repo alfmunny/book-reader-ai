@@ -31,6 +31,7 @@ jobs:
               - '!.claude/**'
               - '!LICENSE'
               - '!.gitignore'
+              - '!scripts/start-roles.sh'
 
   test-frontend:
     name: Frontend tests (Jest)

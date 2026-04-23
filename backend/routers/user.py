@@ -107,6 +107,12 @@ async def patch_obsidian(
     req: ObsidianSettingsUpdate,
     user: dict = Depends(get_current_user),
 ):
+    path = req.obsidian_path.strip()
+    if path and (".." in path.split("/") or path.startswith("/")):
+        raise HTTPException(
+            status_code=400,
+            detail="obsidian_path must not contain '..' segments or start with '/'",
+        )
     # None = not supplied → skip the column entirely (avoids a stale-read race).
     # "" = explicit clear → set NULL.  non-empty = encrypt and store.
     if req.github_token is None:

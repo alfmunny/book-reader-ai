@@ -139,11 +139,11 @@ async def test_patch_obsidian_settings_preserves_token_when_not_supplied(client,
     from services.auth import encrypt_api_key, decrypt_api_key
     from services.db import update_obsidian_settings, get_obsidian_settings
 
-    await update_obsidian_settings(test_user["id"], encrypt_api_key("existing-token"), "r/v", "/p")
+    await update_obsidian_settings(test_user["id"], encrypt_api_key("existing-token"), "r/v", "p")
 
     await client.patch("/api/user/obsidian-settings", json={
         "obsidian_repo": "r/v-updated",
-        "obsidian_path": "/p-updated",
+        "obsidian_path": "p-updated",
     })
 
     settings = await get_obsidian_settings(test_user["id"])
@@ -265,3 +265,38 @@ async def test_reading_progress_out_of_bounds_chapter_returns_400(client, test_u
     resp = await client.put("/api/user/reading-progress/9884", json={"chapter_index": 999})
     assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
     assert "out of range" in resp.json()["detail"].lower()
+
+
+# ── obsidian_path path-traversal validation (Issue #472) ─────────────────────
+
+async def test_patch_obsidian_path_traversal_rejected(client, test_user):
+    """Regression #472: obsidian_path with '..' must return 400."""
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "user/vault",
+        "obsidian_path": "../../malicious",
+    })
+    assert resp.status_code == 400, (
+        f"Expected 400 for '..' path traversal in obsidian_path, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_patch_obsidian_absolute_path_rejected(client, test_user):
+    """Regression #472: obsidian_path starting with '/' must return 400."""
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "user/vault",
+        "obsidian_path": "/absolute/path",
+    })
+    assert resp.status_code == 400, (
+        f"Expected 400 for absolute obsidian_path, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_patch_obsidian_valid_path_accepted(client, test_user):
+    """Regression #472: a normal relative path must still be accepted."""
+    resp = await client.patch("/api/user/obsidian-settings", json={
+        "obsidian_repo": "user/vault",
+        "obsidian_path": "Notes/Books/Literature",
+    })
+    assert resp.status_code == 200, (
+        f"Expected 200 for valid obsidian_path, got {resp.status_code}: {resp.text}"
+    )

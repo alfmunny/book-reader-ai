@@ -1,8 +1,8 @@
 # Design: EPUB Ingestion for Gutenberg Books
 
-**Status:** Proposed  
+**Status:** Shipped (PR #547, 2026-04-23) — see [Shipped Implementation](#shipped-implementation) below for what changed from the proposal.  
 **Author:** Investigation 2026-04-23  
-**Relates to:** `services/splitter.py`, `services/book_chapters.py`, `services/gutenberg.py`
+**Relates to:** `services/splitter.py`, `services/book_chapters.py`, `services/gutenberg.py`, `backend/migrations/023_book_epubs.sql`
 
 ---
 
@@ -249,23 +249,13 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
 
 ## 6. Storage Strategy
 
-**Decision: keep fetching on-demand (no DB change required).**
+**Proposed:** Keep fetching on-demand (no DB change).
 
-Rationale:
-- The HTML edition is already fetched on-demand and only cached in memory. EPUB follows the same pattern.
-- Storing EPUB bytes in the DB would require a new `BLOB` column (~300 KB per book) and a migration.
-- The in-memory `_chapter_cache` survives the lifetime of a request and is reused for all subsequent chapter accesses within the same process.
-
-**Optional future improvement:** Store `epub_url` in the books table so we can avoid the double Gutendex API hit. Defer until this proves to be a bottleneck.
+**Shipped (PR #547):** EPUBs are stored in the DB in a new `book_epubs` table. See [Shipped Implementation](#shipped-implementation) for why the decision changed.
 
 ### What happens to existing books?
 
-No action required. On the next cold-start chapter request for an existing Gutenberg book, `split_with_html_preference` will run the full cascade:
-
-1. Check in-memory cache (miss — process restarted)
-2. Try HTML (same as today)
-3. **Try EPUB** ← new — may now succeed where HTML was absent before
-4. Fall back to stored plain text
+A backfill script (`scripts/backfill_epubs.py`) fetches and stores EPUBs for all books already in the DB. New books have their EPUB fetched and stored in a background task at add-time.
 
 ---
 
@@ -337,3 +327,35 @@ All changes stay within three existing files. No DB migration, no new tables, no
 - **Displaying EPUB-native formatting** (bold, italic, images) in the reader — the reader consumes plain text; formatting is stripped at ingestion time. A separate "rich reader" feature would be needed for this.
 - **EPUB DRM** — all Gutenberg EPUBs are DRM-free. Not applicable.
 - **User upload: EPUB 3 nav vs EPUB 2 NCX** — `ebooklib` handles both; no special case needed.
+
+---
+
+## Shipped Implementation
+
+**PR #547 merged 2026-04-23.** The shipped version differs from the proposal in one key area: **EPUB bytes are stored in the DB**, not fetched on-demand.
+
+### What changed
+
+| Section | Proposed | Shipped |
+|---|---|---|
+| Storage | Fetch on-demand, cache in memory | New `book_epubs` table (migration 023) with `epub_bytes BLOB` |
+| Existing books | Automatic on cold-start | `scripts/backfill_epubs.py` one-time backfill |
+| New books | Fetch on first chapter request | Fetch in background task at book-add time |
+| HTML tier | Kept as tier 1 | **Removed** — EPUB is now tier 1 for Gutenberg books; plain-text regex is the only fallback |
+
+### Why DB storage was chosen over on-demand
+
+Railway's ephemeral filesystem means the process restarts frequently. An in-memory cache survives only for the lifetime of the process. Storing EPUBs in SQLite ensures chapter splitting is reliable and consistent across restarts without re-fetching from Gutenberg.
+
+### New files shipped
+
+| File | Purpose |
+|---|---|
+| `backend/migrations/023_book_epubs.sql` | `book_epubs` table: `book_id PK`, `epub_bytes BLOB`, `epub_url TEXT`, `cached_at TIMESTAMP` |
+| `backend/services/gutenberg.py` | `get_book_epub()` — fetches no-images EPUB via Gutendex formats |
+| `backend/services/db.py` | `save_book_epub()`, `get_book_epub_bytes()` |
+| `backend/services/splitter.py` | `build_chapters_from_epub()` with spine order + NCX/nav titles |
+| `backend/services/book_chapters.py` | DB-only split: EPUB (from DB) → plain-text regex. No on-demand HTML fetch. Background lazy fetch for existing books. |
+| `backend/routers/books.py` | Fires EPUB download in background at `POST /books/{id}` (book-add) |
+| `backend/services/book_parser.py` | `parse_epub()` delegates to `build_chapters_from_epub()` — user-upload uses same logic |
+| `backend/scripts/backfill_epubs.py` | One-time backfill for books already in DB |

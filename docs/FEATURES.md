@@ -368,3 +368,74 @@ python scripts/pretranslate.py --book-id 1342 --lang de --force   # overwrite ca
 **Dependencies:** `transformers`, `sentencepiece`, `torch` (CPU), `requests` (for Ollama).  
 **Chunking:** split at sentence boundaries to stay under MarianMT's 512-token limit.  
 **Estimated effort:** ~6 hours.
+
+---
+
+## Session 5 — 2026-04-23
+
+### Shipped this session
+
+- [x] Feature 9: EPUB DB Storage for Gutenberg books (PR #547)
+- [x] Feature 10: Admin Uploads Tab (PRs #546, #553)
+
+### Filed / awaiting approval
+
+- [ ] Feature 11: user_book_chapters table — replace JSON-in-books.text (design PR #555, issue #357)
+- [ ] Feature 2: Vocabulary Flashcards / SRS (design in FEATURES.md Feature 2, issue #556)
+- [ ] Feature 12: Chapter Comprehension Quiz (issue #557)
+
+---
+
+## Feature 9: EPUB DB Storage for Gutenberg Books ✅ (merged — PR #547)
+
+### Overview
+Gutenberg EPUBs are now downloaded once and stored in the database (`book_epubs` table), giving reliable chapter splitting with correct spine order and NCX/nav titles. Eliminates on-demand HTML re-fetching at chapter-load time.
+
+### What shipped
+- Migration 023: `book_epubs` table (`book_id PK`, `epub_bytes BLOB`, `epub_url`, `cached_at`)
+- `gutenberg.py`: `get_book_epub()` — fetches no-images EPUB via Gutendex formats list
+- `db.py`: `save_book_epub()` + `get_book_epub_bytes()`
+- `splitter.py`: `build_chapters_from_epub()` using spine order + NCX/nav titles
+- `book_chapters.py`: DB-only split path — EPUB → plain-text regex fallback; background lazy fetch for existing books
+- `routers/books.py`: fires EPUB download in background at book-add time
+- `book_parser.py`: `parse_epub()` now uses same `build_chapters_from_epub()` as Gutenberg path
+- `scripts/backfill_epubs.py`: one-time backfill for books already in DB
+
+---
+
+## Feature 10: Admin Uploads Tab ✅ (merged — PRs #546, #553)
+
+### Overview
+New "Uploads" tab in the admin panel showing all user-uploaded books with metadata.
+
+### What shipped
+- `GET /api/admin/uploads` endpoint (PR #546)
+- Frontend: `/admin/uploads` page — table of uploaded books with title, filename, format, file size, uploader email, upload date
+- Supports optional filtering by user ID
+- 115 frontend tests
+
+---
+
+## Feature 11: user_book_chapters Table (Issue #357 — awaiting PM approval)
+
+### Overview
+Replace the JSON blob in `books.text` for uploaded books with a proper `user_book_chapters` table. Unblocks full-text search and removes all `source=='upload'` branching from route handlers and the chapter-splitting service.
+
+### Design doc
+`docs/design/user-book-chapters.md` (PR #555 — awaiting PM review)
+
+### Estimated effort
+~4 hours after approval.
+
+---
+
+## Feature 12: Chapter Comprehension Quiz (Issue #557 — future)
+
+### Overview
+After reading a chapter, users get 3–5 AI-generated multiple-choice questions. Results stored per user/chapter. New tables: `quiz_questions`, `quiz_attempts`. New "Quiz" tab in reader sidebar.
+
+### Status
+Needs design doc. See issue #557.
+
+### Estimated effort
+~5 hours after design approval.

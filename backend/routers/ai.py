@@ -4,7 +4,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import get_current_user, decrypt_api_key, check_book_access
 from services.db import (
     get_cached_translation,
@@ -90,7 +90,7 @@ class TranslateRequest(BaseModel):
 class TTSRequest(BaseModel):
     text: str
     language: str = "en"
-    rate: float = 1.0
+    rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
 
 

@@ -202,8 +202,8 @@ async def get_draft_chapters(book_id: int, user: dict = Depends(get_current_user
 
 class ConfirmChapterSpec(BaseModel):
     title: str = Field(default="", max_length=500)
-    original_index: int | None = None
-    index: int | None = None
+    original_index: int | None = Field(default=None, ge=0)
+    index: int | None = Field(default=None, ge=0)
 
 
 class ConfirmChaptersBody(BaseModel):

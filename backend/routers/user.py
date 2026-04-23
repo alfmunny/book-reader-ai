@@ -54,7 +54,7 @@ async def reading_progress(user: dict = Depends(get_current_user)):
 
 
 class ProgressUpdate(BaseModel):
-    chapter_index: int
+    chapter_index: int = Field(..., ge=0)
 
 
 @router.put("/reading-progress/{book_id}")

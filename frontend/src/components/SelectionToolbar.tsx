@@ -111,7 +111,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     setSelection(null);
   }
 
-  const btnClass = "flex items-center gap-1.5 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors min-h-[40px]";
+  const btnClass = "flex items-center gap-1.5 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors min-h-[44px]";
 
   return (
     <div

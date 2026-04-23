@@ -153,6 +153,18 @@ describe("SelectionToolbar", () => {
     expect(screen.queryByRole("button", { name: /Chat/i })).not.toBeInTheDocument();
   });
 
+  it("toolbar buttons meet 44px minimum touch target height (regression #563)", () => {
+    render(<SelectionToolbar onRead={jest.fn()} />);
+    simulateSelection("tap target check", readerEl);
+    act(() => { document.dispatchEvent(new Event("selectionchange")); });
+
+    const btn = screen.getByRole("button", { name: /Read/i });
+    const classList = btn.className;
+    // min-h-[40px] is below 44px — must be min-h-[44px] or larger
+    expect(classList).not.toMatch(/min-h-\[4[0-3]px\]/);
+    expect(classList).toMatch(/min-h-\[44px\]/);
+  });
+
   it("hides toolbar on reader scroll", () => {
     render(<SelectionToolbar onRead={jest.fn()} />);
     simulateSelection("scroll away", readerEl);

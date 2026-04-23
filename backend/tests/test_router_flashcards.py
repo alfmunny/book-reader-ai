@@ -194,6 +194,27 @@ async def test_due_flashcards_capped_at_100(client, test_user):
     assert len(resp.json()) <= 100
 
 
+# ── Regression #685: orphaned flashcard_reviews after word deletion ───────────
+
+async def test_stats_reset_after_word_deletion(client, test_user):
+    """Deleting a word must clean up its flashcard_reviews row so stats don't inflate."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "ephemeron", BOOK_ID, 0, "An ephemeron.")
+
+    # Trigger lazy flashcard_reviews creation
+    stats_before = (await client.get("/api/vocabulary/flashcards/stats")).json()
+    assert stats_before["total"] == 1
+
+    # Delete the word
+    del_resp = await client.delete("/api/vocabulary/ephemeron")
+    assert del_resp.status_code == 200
+
+    # Stats must reflect zero words — no orphaned rows
+    stats_after = (await client.get("/api/vocabulary/flashcards/stats")).json()
+    assert stats_after["total"] == 0
+    assert stats_after["due_today"] == 0
+
+
 # ── Auth requirements ─────────────────────────────────────────────────────────
 
 async def test_flashcards_require_auth(anon_client):

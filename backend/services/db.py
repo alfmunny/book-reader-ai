@@ -985,6 +985,11 @@ async def delete_word(user_id: int, word: str) -> bool:
                SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
             (user_id, word),
         )
+        await db.execute(
+            """DELETE FROM flashcard_reviews WHERE vocabulary_id IN (
+               SELECT id FROM vocabulary WHERE user_id = ? AND word = ?)""",
+            (user_id, word),
+        )
         cursor = await db.execute(
             "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
             (user_id, word),

@@ -59,7 +59,7 @@ function SegmentedControl<T extends string>({
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+          className={`flex-1 px-2 py-1.5 min-h-[44px] text-xs font-medium transition-colors flex items-center justify-center ${
             value === opt.value
               ? "bg-amber-700 text-white"
               : "bg-white text-amber-700 hover:bg-amber-50"

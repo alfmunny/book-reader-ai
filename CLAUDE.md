@@ -93,6 +93,19 @@ Always work highest priority first. Re-check priority each time you pick the nex
 | **P2 — normal** | UX issues, enhancements that unblock users, code quality bugs |
 | **P3 — low** | Nice-to-haves, minor polish, refactors |
 
+### Per-cycle priority (all code roles)
+
+At the top of every cycle — before claiming, implementing, or submitting anything — every code role (Dev / UI/UX / Architect) executes this check in order. Never skip steps.
+
+1. **Check your own open PRs first:** `gh pr list --author @me --state open --json number,title,mergeStateStatus`.
+   - For each PR with `mergeStateStatus = BEHIND`: rebase + force-push. `/submit-pr` handles this if you re-run it on the branch; otherwise run `git -C <worktree> fetch origin main && git -C <worktree> rebase origin/main && git -C <worktree> push origin <branch> --force-with-lease`.
+   - For each PR with failing CI: investigate. Fix or mark `blocked` and comment.
+   - For each PR MERGED since last cycle: remove `in-progress` label from the corresponding issue.
+2. **In-flight PR limit: 3 per session.** If you already have 3 or more open PRs authored by you, **do not submit a new PR this cycle.** You can still claim an issue and work it locally (branch, commits, tests), but hold off on `/submit-pr` until the count drops below 3. Prevents the backlog rot and CI-queue jam observed on 2026-04-23.
+3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label. Claim it. Work it. Submit via `/submit-pr`.
+4. **If there are no unclaimed issues AND your PR count < 3**, enter your role's idle mode (bug hunt / UX audit / architecture gap analysis). File one issue, claim it, work it, submit.
+5. **If there are no unclaimed issues AND your PR count ≥ 3**, wait. Re-check PRs every few minutes; as soon as one merges, the slot frees up and you resume step 3.
+
 ---
 
 ## Roles
@@ -108,6 +121,7 @@ Always work highest priority first. Re-check priority each time you pick the nex
 - Watch deployments: run `/loop` for smoke-test and deploy monitoring
 - Approve design docs (Path B) before implementation begins
 - Keep `product/review-state.md` updated every cycle
+- **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
 
 **Polling cadence (fixed-interval cron via `/loop Nm`):**
 - PM runs as `/loop ${PM_POLL_MINUTES}m <prompt>`, launched by `scripts/start-roles.sh`. The harness fires the cron every N minutes regardless of whether the prior turn re-armed a wakeup — this guarantees the loop cannot die silently between turns.
@@ -137,10 +151,8 @@ Always work highest priority first. Re-check priority each time you pick the nex
 5. **Write a failing regression test first** — confirms the issue is reproducible. Never ship without a test.
 6. Fix the source code — minimal change, no unrelated cleanup
 7. Run the full test suite; all tests must pass before committing
-8. Commit, push, create PR with `Closes #N` in the body and `--label bug` or `--label feat`
-9. Enable auto-merge and launch the background poll loop
-10. **Before picking a new issue:** check `gh pr list --state open --author @me` — if any of your own PRs is BEHIND or BLOCKED, rebase/fix it first. Only open a new PR once your existing PRs are either MERGED or have CI running without problems.
-11. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
+8. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label bug` or `--label feat`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` or `gh pr merge` directly. Once the skill returns, the watcher runs async — you may pick up new work **only if your per-cycle PR count is under 3** (see "Per-cycle priority" above).
+9. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
 
 **Idle mode (no unclaimed issues):** Enter bug-hunt mode. Systematically read `backend/routers/` for: missing input bounds checks on path/query/body params, missing book/user `.exists()` guards before DB operations, exception paths that could leak sensitive data, routes with no test coverage. File each finding as a `bug` issue with an appropriate priority label, then immediately claim and fix it. Do not accumulate a backlog — file one, fix one, repeat.
 
@@ -170,9 +182,8 @@ Always work highest priority first. Re-check priority each time you pick the nex
 3. Claim the issue; create a fix branch in your worktree
 4. Write frontend test first (Jest/RTL or E2E), then implement
 5. Run full frontend test suite before pushing
-6. PR with `Closes #N`, `--label ux` or `--label ui`
-7. **Before picking a new issue:** check `gh pr list --state open --author @me` — if any of your own PRs is BEHIND or BLOCKED, rebase/fix it first. Only open a new PR once existing PRs are merged or have CI running cleanly.
-8. After merge: remove `in-progress` label
+6. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label ux` or `--label ui`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` directly. Once the skill returns, the watcher runs async — you may pick up new work only if your per-cycle PR count is under 3 (see "Per-cycle priority" above).
+7. After merge: remove `in-progress` label
 
 **Idle mode (no unclaimed issues):** Run a UX audit. Check frontend components for: emoji used as UI icons instead of SVG from `Icons.tsx`, icon-only buttons missing `aria-label`, interactive elements with touch targets under 44px, hardcoded hex colors instead of CSS token variables. File each violation as a `ux` issue, then immediately claim and fix it. File one, fix one, repeat.
 
@@ -196,11 +207,10 @@ Always work highest priority first. Re-check priority each time you pick the nex
 1. Read all memory files in `MEMORY.md`
 2. Claim the issue
 3. Write `docs/design/<feature>.md` — cover: problem, solution, schema changes, API changes, open questions
-4. Open design doc PR; comment on the issue linking to the PR; wait for PM approval
+4. **Submit the design doc via `/submit-pr` skill.** Comment on the issue linking to the PR. Background watcher picks up BEHIND/failures; session can pick up new work once the skill returns, subject to the 3-PR limit (see "Per-cycle priority" above).
 5. After PM approves and design doc merges: begin implementation in a new branch
-6. Implementation PR with `Closes #N`; PM reviews; merged
-7. **Before picking a new issue:** check `gh pr list --state open --author @me` — if any of your own PRs is BEHIND or BLOCKED, rebase/fix it first. Only open a new PR once existing PRs are merged or have CI running cleanly.
-8. After merge: remove `in-progress` label
+6. **Submit the implementation via `/submit-pr` skill** with `Closes #N` in the body. Same watcher semantics as step 4.
+7. After merge: remove `in-progress` label
 
 **Workflow (Path A — direct implementation):**
 Same as Dev workflow, but may include a design note in the PR body instead of a separate doc.
@@ -215,18 +225,23 @@ Same as Dev workflow, but may include a design note in the PR body instead of a 
 
 ## Session startup
 
-At the start of every session:
-1. Declare your role (PM / Dev / UI/UX Dev / Architect)
-2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`
-3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`) before touching any file
-4. If PM: check worktree list and warn user if `in-progress` issues exist but no worktrees are set up
-5. **Check your own open PRs immediately.** Run `gh pr list --state open --author @me --json number,title,mergeStateStatus` and for any PR that is `BEHIND` or `BLOCKED`, rebase and force-push **before** picking up any new work:
-   ```bash
-   git -C <worktree> fetch origin main
-   git -C <worktree> rebase origin/main
-   git -C <worktree> push origin <branch> --force-with-lease
-   ```
-   A BEHIND branch at startup means a prior session ended without rebasing — that PR will never auto-merge until you catch it up. Fix it first, then proceed to the rest of startup.
+At the start of every session, follow this exact order. **Do not skip step 5.**
+
+1. Declare your role (PM / Dev / UI/UX Dev / Architect).
+2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`.
+3. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`). If not, create it before touching any file.
+4. If PM: check worktree list and warn the user if `in-progress` issues exist but no worktrees are set up.
+5. **PR-first rule — walk through every leftover PR you authored before anything else.**
+
+   Run `gh pr list --state open --author @me --json number,title,mergeStateStatus,headRefName`. For each PR in the result, do one of the following before moving on:
+   - **`BEHIND`** → fetch main, rebase, force-push. Re-run `/submit-pr` on the branch if needed.
+   - **Failed CI** → open the checks, understand the failure, fix on the branch, force-push, re-run `/submit-pr`.
+   - **`BLOCKED` waiting on PM review** → leave a comment asking PM for status, then move to the next PR.
+   - **`OPEN`, CI passing, auto-merge enabled, not BEHIND** → PR is driving itself; move on.
+
+   Only after every leftover PR has been accounted for does the role start its normal loop (PM cycle, Dev issue-picking, UX audit, Architect design work, etc.). A PR abandoned mid-session is the leading cause of the pileup pattern — driving them on startup is non-negotiable.
+
+6. Now — and only now — enter the role's per-cycle priority (see "Per-cycle priority (all code roles)" above).
 
 ## Testing policy
 
@@ -297,36 +312,17 @@ Root cause: PR #503 + production outage #526 (2026-04-23).
 
 Branch naming: `feat/`, `fix/`, `chore/`, `test/`, `design/`
 
-**Exact sequence every time:**
-1. `git -C <repo> fetch origin main && git -C <repo> rebase origin/main`
-2. `git -C <repo> checkout -b feat/description`
-3. Make commits; run full test suite before pushing
-4. Before push: verify the branch's PR is still OPEN — `gh pr list --head <branch> --json state`
-5. `git -C <repo> push -u origin <branch>`
-6. Write PR body to `/tmp/pr-body.md`, then `gh pr create --body-file /tmp/pr-body.md`
-7. `gh pr merge <N> --auto --squash`
-8. Launch a background watcher that polls until MERGED — use this exact loop:
-   ```bash
-   BRANCH=<branch-name>
-   while true; do
-     INFO=$(gh pr view <N> --json state,mergeStateStatus -q '"state=\(.state) merge=\(.mergeStateStatus)"')
-     echo "$INFO"
-     echo "$INFO" | grep -q "state=MERGED" && echo "PR #<N> merged" && break
-     echo "$INFO" | grep -q "state=CLOSED" && echo "PR #<N> closed" && break
-     if echo "$INFO" | grep -q "merge=BEHIND"; then
-       git -C /Users/alfmunny/Projects/AI/book-reader-ai fetch origin main
-       git -C /Users/alfmunny/Projects/AI/book-reader-ai rebase origin/main
-       git -C /Users/alfmunny/Projects/AI/book-reader-ai push origin "$BRANCH" --force-with-lease
-     fi
-     FAILED=$(gh pr checks <N> --json name,conclusion 2>/dev/null \
-       | python3 -c "import json,sys; d=json.load(sys.stdin); print(sum(1 for c in d if c['conclusion'] in ('FAILURE','ERROR','CANCELLED')))" 2>/dev/null)
-     [ "$FAILED" != "" ] && [ "$FAILED" -gt 0 ] && echo "$FAILED check(s) failed" && gh pr checks <N> && break
-     sleep 20
-   done
-   ```
-   **Why the BEHIND check matters:** multiple PRs can merge concurrently. A branch that was up-to-date at push time can go BEHIND seconds later when another PR lands. The loop must rebase and force-push whenever it sees `mergeStateStatus=BEHIND`, not just once before the initial push.
+**Exact sequence every time — use the `/submit-pr` skill:**
 
-**A PR is NOT done until it is MERGED.** Never report a PR as done while it is still OPEN, BEHIND, or BLOCKED.
+1. `git -C <repo> fetch origin main && git -C <repo> rebase origin/main`
+2. `git -C <repo> checkout -b <prefix>/description`
+3. Make commits; run the full test suite before submitting.
+4. **Check the in-flight PR limit.** If you already have 3 or more open PRs authored by you, stop here. Hold the branch locally until one of your PRs merges, then resume. See "Per-cycle priority (all code roles)".
+5. **Invoke the `/submit-pr` skill.** It handles push, PR creation (with `Closes #N` + appropriate label), auto-merge, and launches a background watcher that rebases on BEHIND and surfaces check failures until MERGED.
+6. Do **not** call `gh pr create` / `gh pr merge` / a hand-rolled watch loop directly. The skill exists to make those steps atomic. If you think the skill can't handle a case, tell the user and stop — don't bypass.
+7. **After the skill returns, the watcher runs async.** You may pick up new work subject to step 4's 3-PR cap.
+
+**A PR is NOT done until it is MERGED.** Never report a PR as done while it is still OPEN, BEHIND, or BLOCKED. The `/submit-pr` skill is the only supported path to satisfy this rule; rolling your own is how PRs pile up unmerged.
 
 **Never use `cd && git`** — use `git -C <path>` instead (bare-repo security check cannot be bypassed).
 **Never use `git` binaries directly** — always `git -C /Users/alfmunny/Projects/AI/book-reader-ai`.

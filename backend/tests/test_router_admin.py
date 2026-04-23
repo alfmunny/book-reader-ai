@@ -2112,3 +2112,34 @@ async def test_enqueue_book_oversized_target_language_returns_422(admin_client, 
     assert res.status_code == 422, (
         f"Expected 422 for oversized target_language in enqueue-book, got {res.status_code}"
     )
+
+
+# ── Issue #524: ImportTranslationEntry.paragraphs bounds ─────────────────────
+
+
+@pytest.mark.asyncio
+async def test_import_translations_too_many_paragraphs_returns_422(admin_client, admin_db):
+    """Regression #524: POST /admin/translations/import with > 2000 paragraphs
+    in an entry must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": 0,
+                           "target_language": "en", "paragraphs": ["p"] * 2001}]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for too many paragraphs in import, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_translations_oversized_paragraph_item_returns_422(admin_client, admin_db):
+    """Regression #524: POST /admin/translations/import with a paragraph item > 50000 chars
+    must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": 0,
+                           "target_language": "en", "paragraphs": ["x" * 50001]}]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized paragraph item in import, got {res.status_code}: {res.text}"
+    )

@@ -958,3 +958,96 @@ async def test_estimate_queue_cost_uploaded_book_nonzero(tmp_db):
     # Each chapter is ~30 000 chars; cost must be well above zero.
     assert flash["usd"] > 0.0, "Cost must not be $0 for uploaded books"
     assert est["estimated_input_tokens"] > 100, "tokens must reflect actual chapter text"
+
+
+async def test_enqueue_for_book_uploaded_book_enqueues_chapters(tmp_db):
+    """Regression #708: enqueue_for_book must queue chapters for uploaded books.
+
+    Uploaded books have books.text='' and chapters in user_book_chapters. The
+    early-return guard `if not book.get('text'): return 0` silently skipped all
+    uploaded books. This test verifies that chapters are enqueued correctly.
+    """
+    # Insert an uploaded book: source='upload', text='', languages=['de']
+    async with aiosqlite.connect(tmp_db) as db:
+        cur = await db.execute(
+            """INSERT INTO books (title, authors, languages, subjects, download_count,
+                                 cover, text, images, source, owner_user_id)
+               VALUES ('Uploaded Book', '["Author"]', '["de"]', '[]', 0, '', '', '[]', 'upload', 1)"""
+        )
+        book_id = cur.lastrowid
+        # Insert two confirmed chapters (is_draft=0)
+        await db.executemany(
+            """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
+               VALUES (?, ?, ?, ?, 0)""",
+            [
+                (book_id, 0, "Chapter 1", "First chapter content " * 50),
+                (book_id, 1, "Chapter 2", "Second chapter content " * 50),
+            ],
+        )
+        await db.commit()
+
+    from services.book_chapters import clear_cache
+    clear_cache()
+
+    added = await enqueue_for_book(book_id, target_languages=["zh"])
+    assert added == 2, f"expected 2 chapters enqueued for uploaded book, got {added}"
+
+    items = await list_queue()
+    assert len(items) == 2
+    assert all(i["book_id"] == book_id for i in items)
+    assert all(i["target_language"] == "zh" for i in items)
+    assert {i["chapter_index"] for i in items} == {0, 1}
+
+
+async def test_worker_processes_uploaded_book_chapters(tmp_db):
+    """Regression #708: the queue worker must NOT skip uploaded books.
+
+    Uploaded books have books.text=''. The worker previously checked
+    `if not book.get('text'): mark_skipped(reason='book not in cache')`,
+    which silently dropped all queue items for uploaded books.
+    """
+    from services.auth import encrypt_api_key
+    from services.rate_limiter import AsyncRateLimiter
+    import services.db as db_module
+
+    await set_setting(SETTING_API_KEY, encrypt_api_key("fake-key"))
+    await set_setting(SETTING_ENABLED, "1")
+
+    # Insert an uploaded book: source='upload', text='', one confirmed chapter
+    async with aiosqlite.connect(tmp_db) as db:
+        cur = await db.execute(
+            """INSERT INTO books (title, authors, languages, subjects, download_count,
+                                 cover, text, images, source, owner_user_id)
+               VALUES ('Upload Book', '["A"]', '["de"]', '[]', 0, '', '', '[]', 'upload', 1)"""
+        )
+        book_id = cur.lastrowid
+        await db.execute(
+            """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
+               VALUES (?, 0, 'Ch1', 'Uploaded chapter content to translate.', 0)""",
+            (book_id,),
+        )
+        await db.commit()
+
+    from services.book_chapters import clear_cache
+    clear_cache()
+
+    # Manually enqueue chapter 0 for zh translation
+    await enqueue(book_id, 0, "zh")
+
+    translated = {}
+
+    async def fake_translate(api_key, chapters, src, tgt, *, model=None, **kwargs):
+        result = {idx: [f"translated:{ch_text[:20]}"] for idx, ch_text in chapters}
+        translated.update(result)
+        return result
+
+    w = TranslationQueueWorker()
+    w._stop_event = __import__("asyncio").Event()
+    with patch("services.translation_queue.translate_chapters_batch", side_effect=fake_translate):
+        with patch.object(AsyncRateLimiter, "acquire", new=AsyncMock(return_value=None)):
+            await w._tick()
+
+    assert translated, "worker must have called translate for the uploaded book chapter"
+
+    cached = await get_cached_translation(book_id, 0, "zh")
+    assert cached is not None, "translation must be saved for uploaded book chapter"

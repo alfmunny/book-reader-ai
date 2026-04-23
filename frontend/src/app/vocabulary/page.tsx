@@ -7,10 +7,14 @@ import {
   deleteVocabularyWord,
   exportVocabularyToObsidian,
   getWordDefinition,
+  listVocabularyTags,
+  getVocabularyWordTags,
+  VocabTagSummary,
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
 import { EmptyVocabIcon, ArrowLeftIcon, FlashcardIcon, ArrowUpRightIcon } from "@/components/Icons";
+import TagEditor from "@/components/TagEditor";
 
 type SortMode = "alpha" | "language" | "book" | "recent";
 
@@ -206,6 +210,9 @@ function VocabularyPageContent() {
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [activeWord, setActiveWord] = useState<{ word: string; lang: string | null } | null>(null);
+  const [allTags, setAllTags] = useState<VocabTagSummary[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [tagsByVocabId, setTagsByVocabId] = useState<Record<number, string[]>>({});
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -215,17 +222,61 @@ function VocabularyPageContent() {
       .finally(() => setLoading(false));
   }, [session?.backendToken]);
 
+  useEffect(() => {
+    listVocabularyTags()
+      .then(setAllTags)
+      .catch(() => {});
+  }, [session?.backendToken]);
+
+  useEffect(() => {
+    if (!selectedTag || words.length === 0) return;
+    const missing = words
+      .map((w) => w.id)
+      .filter((id) => !(id in tagsByVocabId));
+    if (missing.length === 0) return;
+    let alive = true;
+    Promise.all(
+      missing.map((id) =>
+        getVocabularyWordTags(id)
+          .then((t) => [id, t] as const)
+          .catch(() => [id, [] as string[]] as const),
+      ),
+    ).then((pairs) => {
+      if (!alive) return;
+      setTagsByVocabId((prev) => {
+        const next = { ...prev };
+        for (const [id, t] of pairs) next[id] = t;
+        return next;
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [selectedTag, words, tagsByVocabId]);
+
+  const updateVocabTags = useCallback((vocabId: number, tags: string[]) => {
+    setTagsByVocabId((prev) => ({ ...prev, [vocabId]: tags }));
+  }, []);
+
   const groups = useMemo(() => buildGroups(words), [words]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return groups;
-    return groups.filter(
-      (g) =>
-        g.lemma.toLowerCase().includes(q) ||
-        g.forms.some((f) => f.word.toLowerCase().includes(q)),
-    );
-  }, [groups, search]);
+    let result = groups;
+    if (q) {
+      result = result.filter(
+        (g) =>
+          g.lemma.toLowerCase().includes(q) ||
+          g.forms.some((f) => f.word.toLowerCase().includes(q)),
+      );
+    }
+    if (selectedTag) {
+      result = result.filter((g) =>
+        g.forms.some((f) => (tagsByVocabId[f.id] ?? []).includes(selectedTag)),
+      );
+    }
+    return result;
+  }, [groups, search, selectedTag, tagsByVocabId]);
 
   const sections = useMemo(() => buildSections(filtered, sortMode), [filtered, sortMode]);
 
@@ -349,6 +400,13 @@ function VocabularyPageContent() {
               </div>
             ))
           )}
+        </div>
+        <div className="mt-3 pt-3 border-t border-amber-50">
+          <TagEditor
+            vocabularyId={group.forms[0].id}
+            initialTags={tagsByVocabId[group.forms[0].id]}
+            onTagsChange={(t) => updateVocabTags(group.forms[0].id, t)}
+          />
         </div>
       </div>
     );

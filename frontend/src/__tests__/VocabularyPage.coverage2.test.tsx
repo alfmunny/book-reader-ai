@@ -24,6 +24,11 @@ jest.mock("@/lib/api", () => ({
   deleteVocabularyWord: jest.fn(),
   exportVocabularyToObsidian: jest.fn(),
   getWordDefinition: jest.fn(),
+  listVocabularyTags: jest.fn().mockResolvedValue([]),
+  getVocabularyWordTags: jest.fn().mockResolvedValue([]),
+  addVocabularyWordTag: jest.fn().mockResolvedValue({ tag: "" }),
+  removeVocabularyWordTag: jest.fn().mockResolvedValue(undefined),
+  ApiError: class ApiError extends Error { status = 500; },
 }));
 
 import * as api from "@/lib/api";

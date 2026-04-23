@@ -67,6 +67,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new ApiError(res.status, err.detail || "Request failed");
   }
+  if (res.status === 204) return undefined as T;
   return res.json();
 }
 
@@ -691,6 +692,34 @@ export function exportVocabularyToObsidian(bookId?: number, targetLanguage = "zh
       target_language: targetLanguage,
     }),
   });
+}
+
+export interface VocabTagSummary {
+  tag: string;
+  word_count: number;
+}
+
+export function listVocabularyTags() {
+  return request<VocabTagSummary[]>("/vocabulary/tags");
+}
+
+export function getVocabularyWordTags(vocabularyId: number) {
+  return request<string[]>(`/vocabulary/${vocabularyId}/tags`);
+}
+
+export function addVocabularyWordTag(vocabularyId: number, tag: string) {
+  return request<{ tag: string }>(`/vocabulary/${vocabularyId}/tags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tag }),
+  });
+}
+
+export function removeVocabularyWordTag(vocabularyId: number, tag: string) {
+  return request<void>(
+    `/vocabulary/${vocabularyId}/tags/${encodeURIComponent(tag)}`,
+    { method: "DELETE" },
+  );
 }
 
 // ── Book Insights (saved AI Q&A) ──────────────────────────────────────────────

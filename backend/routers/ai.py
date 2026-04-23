@@ -46,15 +46,15 @@ def _require_gemini_key(user: dict) -> str:
 # ── Request models ────────────────────────────────────────────────────────────
 
 class InsightRequest(BaseModel):
-    chapter_text: str
+    chapter_text: str = Field(..., max_length=50_000)
     book_title: str
     author: str
     response_language: str = "en"
 
 
 class QARequest(BaseModel):
-    question: str
-    passage: str
+    question: str = Field(..., max_length=2_000)
+    passage: str = Field(..., max_length=50_000)
     book_title: str
     author: str
     response_language: str = "en"
@@ -78,7 +78,7 @@ class SummaryRequest(BaseModel):
 
 
 class TranslateRequest(BaseModel):
-    text: str
+    text: str = Field(..., max_length=50_000)
     source_language: str = "de"
     target_language: str = "en"
     book_id: int | None = None
@@ -95,7 +95,7 @@ class TTSRequest(BaseModel):
 
 
 class ChunkTextRequest(BaseModel):
-    text: str
+    text: str = Field(..., max_length=50_000)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────

@@ -521,14 +521,14 @@ export default function BooksPage() {
                                           <button
                                             onClick={() => handleMove(t, moveInput[rowKey] ?? "")}
                                             disabled={moving === rowKey || !(moveInput[rowKey] ?? "").trim()}
-                                            className="px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50"
+                                            className="px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50 min-h-[44px]"
                                           >
                                             {moving === rowKey ? "…" : "Move"}
                                           </button>
                                           <button
                                             onClick={() => handleRetranslate(t)}
                                             disabled={retranslating === rowKey}
-                                            className="px-2 py-0.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                                            className="px-2 py-0.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
                                           >
                                             {retranslating === rowKey ? "…" : "Retranslate"}
                                           </button>
@@ -541,7 +541,7 @@ export default function BooksPage() {
                                                 ),
                                               )
                                             }
-                                            className="px-2 py-0.5 rounded border border-red-200 text-red-500"
+                                            className="px-2 py-0.5 rounded border border-red-200 text-red-500 min-h-[44px]"
                                           >
                                             Delete
                                           </button>

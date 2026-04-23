@@ -934,7 +934,7 @@ async def queue_stop(_admin: dict = Depends(_require_admin)):
 
 class QueuePlanRequest(BaseModel):
     target_language: str = Field(..., max_length=20)
-    book_ids: list[Annotated[int, Field(ge=1)]] | None = None
+    book_ids: list[Annotated[int, Field(ge=1)]] | None = Field(default=None, max_length=1000)
 
 
 @router.post("/queue/plan")

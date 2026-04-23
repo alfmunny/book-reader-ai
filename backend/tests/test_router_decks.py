@@ -95,6 +95,62 @@ async def test_create_smart_rules_reject_unknown_key(client, test_user):
     assert resp.status_code == 422
 
 
+async def test_smart_rules_book_ids_rejects_zero(client, test_user):
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "ZeroBook", "mode": "smart", "rules_json": {"book_ids": [0]}},
+    )
+    assert resp.status_code == 422
+
+
+async def test_smart_rules_book_ids_rejects_negative(client, test_user):
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "NegBook", "mode": "smart", "rules_json": {"book_ids": [-1]}},
+    )
+    assert resp.status_code == 422
+
+
+async def test_smart_rules_book_ids_rejects_oversized_list(client, test_user):
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "HugeList", "mode": "smart", "rules_json": {"book_ids": list(range(1, 202))}},
+    )
+    assert resp.status_code == 422
+
+
+async def test_smart_rules_tags_any_rejects_oversized_string(client, test_user):
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "LongTag", "mode": "smart", "rules_json": {"tags_any": ["a" * 51]}},
+    )
+    assert resp.status_code == 422
+
+
+async def test_smart_rules_tags_all_rejects_oversized_list(client, test_user):
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "HugeTags", "mode": "smart", "rules_json": {"tags_all": ["t"] * 101}},
+    )
+    assert resp.status_code == 422
+
+
+async def test_smart_rules_valid_bounds_accepted(client, test_user):
+    resp = await client.post(
+        "/api/decks",
+        json={
+            "name": "ValidBounds",
+            "mode": "smart",
+            "rules_json": {
+                "book_ids": [1, 2, 3],
+                "tags_any": ["b2", "vocab"],
+                "tags_all": ["saved"],
+            },
+        },
+    )
+    assert resp.status_code == 201
+
+
 async def test_get_deck_404_for_other_user(client, test_user):
     other = await get_or_create_user("deck-other", "deck-other@ex.com", "Other", "")
 

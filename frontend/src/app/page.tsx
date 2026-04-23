@@ -5,7 +5,7 @@ import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks"
 import BookCard from "@/components/BookCard";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon } from "@/components/Icons";
+import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridIcon, ListIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -183,7 +183,8 @@ export default function Home() {
             <button
               onClick={() => router.push("/profile")}
               title={session?.backendUser?.name ?? "Profile & Settings"}
-              className="w-10 h-10 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+              aria-label={session?.backendUser?.name ?? "Profile & Settings"}
+              className="w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
             >
               {session?.backendUser?.picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -641,21 +642,18 @@ export default function Home() {
                   <button
                     onClick={() => setPopularView("grid")}
                     title="Grid view"
+                    aria-label="Grid view"
                     className={`p-1.5 rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
-                      <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
-                      <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
-                    </svg>
+                    <GridIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setPopularView("list")}
                     title="List view"
+                    aria-label="List view"
                     className={`p-1.5 rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 16 16">
-                      <line x1="3" y1="4" x2="13" y2="4"/><line x1="3" y1="8" x2="13" y2="8"/><line x1="3" y1="12" x2="13" y2="12"/>
-                    </svg>
+                    <ListIcon className="w-4 h-4" />
                   </button>
                 </div>
               </div>

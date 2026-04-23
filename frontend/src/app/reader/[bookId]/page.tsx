@@ -2146,7 +2146,7 @@ export default function ReaderPage() {
                   setTranslateExpanded(false);
                 }
               }}
-              className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
                 translationEnabled
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -2159,7 +2159,7 @@ export default function ReaderPage() {
                 const ttsEl = document.querySelector<HTMLButtonElement>("[data-tts-play]");
                 if (ttsEl) ttsEl.click();
               }}
-              className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
                 ttsIsPlaying
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -2169,7 +2169,7 @@ export default function ReaderPage() {
 
             <div className="relative flex-1 min-w-0 max-w-[110px]">
               <select
-                className="appearance-none h-10 w-full text-xs rounded-lg border border-amber-200 pl-2 pr-6 text-amber-700 bg-white truncate cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-300 transition-colors"
+                className="appearance-none h-11 w-full text-xs rounded-lg border border-amber-200 pl-2 pr-6 text-amber-700 bg-white truncate cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-300 transition-colors"
                 value={chapterIndex}
                 onChange={(e) => goToChapter(Number(e.target.value))}
               >
@@ -2187,7 +2187,7 @@ export default function ReaderPage() {
                 if (!session?.backendToken) { setAuthPrompt("save annotations and notes"); return; }
                 setNotesExpanded((v) => !v);
               }}
-              className={`relative h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`relative h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
                 notesExpanded
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -2204,7 +2204,7 @@ export default function ReaderPage() {
 
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className={`h-10 w-10 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
                 sidebarOpen
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"

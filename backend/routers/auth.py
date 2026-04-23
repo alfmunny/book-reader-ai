@@ -30,8 +30,10 @@ async def google_login(req: GoogleAuthRequest):
     """Exchange a Google ID token for our own backend JWT."""
     try:
         info = await verify_google_id_token(req.id_token)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
     user = await get_or_create_user(
         google_id=info["sub"],
@@ -56,8 +58,8 @@ async def github_login(req: GitHubAuthRequest):
         profile = await verify_github_access_token(req.access_token)
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
     user = await get_or_create_user_github(
         github_id=profile["id"],
@@ -78,8 +80,10 @@ async def apple_login(req: AppleAuthRequest):
     """Exchange an Apple ID token for our own backend JWT."""
     try:
         payload = await verify_apple_id_token(req.id_token)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
     apple_id = payload.get("sub", "")
     if not apple_id:

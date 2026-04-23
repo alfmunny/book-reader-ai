@@ -226,7 +226,9 @@ async def test_apple_login_invalid_token_returns_401(client):
         resp = await client.post("/api/auth/apple", json={"id_token": "bad-token"})
 
     assert resp.status_code == 401
-    assert "bad apple token" in resp.json()["detail"]
+    detail = resp.json()["detail"]
+    assert "bad apple token" not in detail
+    assert ":" not in detail
 
 
 async def test_apple_login_missing_sub_returns_401(client):

@@ -34,6 +34,7 @@ SUBCOMMAND=""
 for arg in "$@"; do
   case "$arg" in
     --bypass)  BYPASS="--dangerously-skip-permissions" ;;
+    --help|-h|help) SUBCOMMAND="help" ;;
     overview|restore|stop|restart|dev2) SUBCOMMAND="$arg" ;;
   esac
 done
@@ -153,6 +154,38 @@ cmd_restore() {
 # ── Route subcommands ─────────────────────────────────────────────────────────
 
 case "$SUBCOMMAND" in
+  help)
+    cat <<'EOF'
+Usage: bash scripts/start-roles.sh [subcommand] [--bypass]
+
+Subcommands:
+  (none)              Start all 4 roles in separate tmux windows
+  overview            Collapse roles into a 2×2 overview pane
+  restore             Spread overview panes back to separate windows
+  stop                Gracefully stop the book-ai tmux session
+  restart [--bypass]  Stop then start fresh
+  dev2    [--bypass]  Add a second Dev window to a running session
+  --help | -h | help  Show this help
+
+Flags:
+  --bypass  Pass --dangerously-skip-permissions to every claude invocation
+
+Models:
+  PM      claude-sonnet-4-6
+  Dev     claude-sonnet-4-6
+  UI/UX   claude-haiku-4-5-20251001
+  Arch    claude-opus-4-7
+
+Tmux keybindings (prefix = C-a):
+  C-a O   overview   (collapse to 2×2)
+  C-a o   restore    (back to separate windows)
+
+Session: book-ai
+  Attach:   tmux attach -t book-ai
+  Windows:  pm | dev | uiux | arch
+EOF
+    exit 0
+    ;;
   stop)
     cmd_stop
     exit 0

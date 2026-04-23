@@ -1037,11 +1037,11 @@ async def queue_get_settings(_admin: dict = Depends(_require_admin)):
 class QueueSettingsRequest(BaseModel):
     enabled: bool | None = None
     api_key: str | None = Field(default=None, max_length=500)
-    auto_translate_languages: list[str] | None = None
+    auto_translate_languages: list[Annotated[str, Field(max_length=20)]] | None = Field(default=None, max_length=50)
     rpm: int | None = Field(default=None, ge=1)
     rpd: int | None = Field(default=None, ge=1)
     model: str | None = Field(default=None, max_length=200)
-    model_chain: list[str] | None = None
+    model_chain: list[Annotated[str, Field(max_length=200)]] | None = Field(default=None, max_length=20)
     max_output_tokens: int | None = Field(default=None, ge=1)
 
 

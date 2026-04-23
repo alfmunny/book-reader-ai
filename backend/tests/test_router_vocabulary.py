@@ -585,3 +585,30 @@ async def test_export_obsidian_oversized_target_language_returns_422(client, tes
     assert resp.status_code == 422, (
         f"Expected 422 for oversized target_language in export/obsidian, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #529: vocabulary word/lang path+query param bounds ─────────────────
+
+
+async def test_definition_oversized_word_returns_422(client, test_user):
+    """Regression #529: GET /vocabulary/definition/{word>200chars} must return 422."""
+    resp = await client.get("/api/vocabulary/definition/" + "w" * 201)
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized word in /definition, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_definition_oversized_lang_returns_422(client, test_user):
+    """Regression #529: GET /vocabulary/definition/word?lang=<21 chars> must return 422."""
+    resp = await client.get("/api/vocabulary/definition/test?lang=" + "x" * 21)
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized lang in /definition, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_remove_word_oversized_word_returns_422(client, test_user):
+    """Regression #529: DELETE /vocabulary/{word>200chars} must return 422."""
+    resp = await client.delete("/api/vocabulary/" + "w" * 201)
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized word in DELETE /vocabulary, got {resp.status_code}: {resp.text}"
+    )

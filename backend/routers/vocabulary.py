@@ -73,7 +73,13 @@ async def get_definition(
     user: dict = Depends(get_current_user),
 ):
     from services import wiktionary
-    return await wiktionary.lookup(word, lang)
+    result = await wiktionary.lookup(word, lang)
+    if not result["definitions"]:
+        raw_key = user.get("gemini_key")
+        if raw_key:
+            api_key = decrypt_api_key(raw_key)
+            result = await wiktionary.ai_lookup(word, lang, api_key)
+    return result
 
 
 @router.delete("/{word}")

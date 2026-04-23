@@ -1,4 +1,5 @@
 """Wiktionary REST API integration for word definitions and lemma extraction."""
+import json
 import re
 from urllib.parse import quote
 
@@ -114,3 +115,43 @@ async def lookup(word: str, lang: str = "en") -> dict:
         "definitions": definitions,
         "url": wikt_url,
     }
+
+
+_AI_SYSTEM = (
+    "You are a multilingual dictionary. Given a word or phrase and its language, "
+    "return ONLY a JSON object with this exact shape:\n"
+    '{"lemma": "<base form>", "definitions": [{"pos": "<part of speech>", "text": "<definition>"}]}\n'
+    "Include at most 3 definitions. If the input is already the base form, lemma == input. "
+    "No markdown fences, no extra keys, no explanation — raw JSON only."
+)
+
+
+async def ai_lookup(word: str, lang: str, api_key: str) -> dict:
+    """Call Gemini to look up *word* when Wiktionary returns nothing.
+
+    Returns the same shape as :func:`lookup`.
+    """
+    from services.gemini import _generate
+    wikt_url = f"https://en.wiktionary.org/wiki/{quote(word, safe='')}"
+    empty = {"lemma": word, "language": lang, "definitions": [], "url": wikt_url}
+    try:
+        prompt = f'Word: "{word}"\nLanguage code: {lang}'
+        raw = await _generate(api_key, _AI_SYSTEM, prompt, max_tokens=256)
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw)
+        data = json.loads(raw)
+        definitions = [
+            {"pos": d.get("pos", ""), "text": d.get("text", "")}
+            for d in data.get("definitions", [])
+            if d.get("text")
+        ][:3]
+        return {
+            "lemma": data.get("lemma") or word,
+            "language": lang,
+            "definitions": definitions,
+            "url": wikt_url,
+        }
+    except Exception:
+        return empty

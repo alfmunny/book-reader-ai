@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getDraftChapters, confirmChapters, DraftChapter, ApiError } from "@/lib/api";
-import { TrashIcon } from "@/components/Icons";
+import { TrashIcon, ArrowLeftIcon } from "@/components/Icons";
 
 interface ChapterSpec {
   title: string;
@@ -104,7 +104,7 @@ export default function ChapterEditorPage() {
               onClick={() => router.push("/upload")}
               className="text-sm text-amber-600 hover:text-amber-800 transition-colors"
             >
-              ← Back
+              <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
             </button>
             <h1 className="font-serif text-lg font-semibold text-ink">
               Review Chapters

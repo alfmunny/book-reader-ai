@@ -297,3 +297,81 @@ async def test_save_chapter_summary_without_model():
     result = await get_chapter_summary(1234, 8)
     assert result is not None
     assert result["model"] is None
+
+
+# ── Issue #541: stale-return after UPDATE in OAuth user functions ─────────────
+
+import aiosqlite
+from unittest.mock import patch, AsyncMock
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_user_google_stale_return():
+    """Regression #541: get_or_create_user must re-fetch after UPDATE, not return pre-UPDATE snapshot.
+
+    Injects a concurrent DB change (role='admin') AFTER the SELECT fetchone() returns
+    but BEFORE the UPDATE+COMMIT. The buggy code returns the stale dict(row) with
+    role='user'; the fixed code re-fetches and gets role='admin'.
+    """
+    # Seed: first user → admin; create a second user that gets role='user'
+    await get_or_create_user("g-first-541", "first@541.com", "First", "")
+    await get_or_create_user("g-target-541", "target@541.com", "Target", "")
+
+    import aiosqlite as _aio
+    original_fetchone = _aio.Cursor.fetchone
+    injected = [False]
+
+    async def injecting_fetchone(self):
+        row = await original_fetchone(self)
+        # Inject after the first non-None fetchone (the existing-user SELECT)
+        if row is not None and not injected[0]:
+            injected[0] = True
+            async with _aio.connect(db_module.DB_PATH) as other:
+                await other.execute(
+                    "UPDATE users SET role='admin', approved=1 WHERE google_id=?",
+                    ("g-target-541",),
+                )
+                await other.commit()
+        return row
+
+    with patch.object(_aio.Cursor, "fetchone", injecting_fetchone):
+        result = await get_or_create_user("g-target-541", "target@541.com", "Target", "")
+
+    # DB has role='admin' (injected after SELECT, before COMMIT).
+    # Buggy code returns stale dict(row) with role='user'.
+    # Fixed code re-fetches after COMMIT → role='admin'.
+    assert result["role"] == "admin", (
+        f"Stale return #541: expected role='admin' (post-injection DB state), got {result['role']!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_user_github_stale_return():
+    """Regression #541: get_or_create_user_github must re-fetch after UPDATE, not return pre-UPDATE snapshot."""
+    from services.db import get_or_create_user_github
+    import aiosqlite as _aio
+
+    await get_or_create_user("g-first-gh541", "firstgh@541.com", "First", "")
+    await get_or_create_user_github("gh-target-541", "ghtar@541.com", "GHTarget", "")
+
+    original_fetchone = _aio.Cursor.fetchone
+    injected = [False]
+
+    async def injecting_fetchone(self):
+        row = await original_fetchone(self)
+        if row is not None and not injected[0]:
+            injected[0] = True
+            async with _aio.connect(db_module.DB_PATH) as other:
+                await other.execute(
+                    "UPDATE users SET role='admin', approved=1 WHERE github_id=?",
+                    ("gh-target-541",),
+                )
+                await other.commit()
+        return row
+
+    with patch.object(_aio.Cursor, "fetchone", injecting_fetchone):
+        result = await get_or_create_user_github("gh-target-541", "ghtar@541.com", "GHTarget", "")
+
+    assert result["role"] == "admin", (
+        f"Stale return #541: expected role='admin' (post-injection DB state), got {result['role']!r}"
+    )

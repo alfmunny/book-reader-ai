@@ -670,14 +670,14 @@ export default function QueueTab({ adminFetch }: Props) {
           <button
             onClick={runPlan}
             disabled={planning || dryRunning}
-            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 min-h-[44px]"
           >
             {planning ? "Planning…" : "Show plan"}
           </button>
           <button
             onClick={runDryRun}
             disabled={dryRunning || planning}
-            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 min-h-[44px]"
           >
             {dryRunning ? "Translating…" : "Dry run (preview quality)"}
           </button>
@@ -790,7 +790,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   })
                 }
                 disabled={saving}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50"
+                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50 min-h-[44px]"
               >
                 Save
               </button>
@@ -816,7 +816,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   setApiKey("");
                 }}
                 disabled={saving || !apiKey}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50"
+                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50 min-h-[44px]"
               >
                 Save
               </button>
@@ -825,7 +825,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   onClick={() => {
                     if (confirm("Clear queue API key?")) saveSettings({ api_key: "" });
                   }}
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500"
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 min-h-[44px]"
                 >
                   Clear
                 </button>
@@ -1030,7 +1030,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     <button
                       key={opt.value || "default"}
                       onClick={() => setChain([...chain, opt.value])}
-                      className={`text-xs px-2 py-1 rounded border font-mono ${
+                      className={`text-xs px-2 py-1 rounded border font-mono min-h-[44px] ${
                         opt.recommended
                           ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                           : "border-stone-200 text-stone-500 hover:bg-stone-50"
@@ -1060,7 +1060,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     setCustomModel("");
                   }}
                   disabled={!customModel.trim()}
-                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 disabled:opacity-40"
+                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 disabled:opacity-40 min-h-[44px]"
                 >
                   + Add custom
                 </button>
@@ -1072,7 +1072,7 @@ export default function QueueTab({ adminFetch }: Props) {
         <div className="flex gap-2 pt-2 border-t border-amber-100">
           <button
             onClick={enqueueAll}
-            className="text-xs px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50"
+            className="text-xs px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 min-h-[44px]"
           >
             Queue every book for all configured languages
           </button>

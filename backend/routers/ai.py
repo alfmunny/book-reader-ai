@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -270,7 +270,7 @@ class SaveTranslationRequest(BaseModel):
     book_id: int
     chapter_index: int
     target_language: str = Field(..., max_length=20)
-    paragraphs: list[str]
+    paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)
 

@@ -1076,3 +1076,36 @@ async def test_translate_cache_put_oversized_model_returns_422(client, test_user
         f"Expected 422 for oversized model in PUT /translate/cache, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #520: SaveTranslationRequest.paragraphs list bounds ─────────────────
+
+
+async def test_translate_cache_put_too_many_paragraphs_returns_422(client, test_user):
+    """Regression #520: PUT /ai/translate/cache with > 2000 paragraphs must return 422."""
+    await save_book(9824, {"title": "T", "authors": [], "languages": ["de"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put(
+        "/api/ai/translate/cache",
+        json={"book_id": 9824, "chapter_index": 0, "target_language": "fr",
+              "paragraphs": ["p"] * 2001},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for too many paragraphs in PUT /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_translate_cache_put_oversized_paragraph_item_returns_422(client, test_user):
+    """Regression #520: PUT /ai/translate/cache with a paragraph > 50000 chars must return 422."""
+    await save_book(9825, {"title": "T", "authors": [], "languages": ["de"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put(
+        "/api/ai/translate/cache",
+        json={"book_id": 9825, "chapter_index": 0, "target_language": "fr",
+              "paragraphs": ["x" * 50001]},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized paragraph item in PUT /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )

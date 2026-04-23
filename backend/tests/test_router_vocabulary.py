@@ -775,3 +775,17 @@ async def test_export_obsidian_error_does_not_leak_exception_detail(client, test
     detail = resp.json()["detail"]
     assert "github-token-secret-xyzzy" not in detail
     assert "leaked" not in detail
+
+
+# ── Issue #777: ExportRequest.target_language min_length ─────────────────────
+
+
+async def test_export_obsidian_empty_target_language_returns_422(client, test_user):
+    """Regression #777: POST /vocabulary/export/obsidian with target_language="" must return 422."""
+    resp = await client.post(
+        "/api/vocabulary/export/obsidian",
+        json={"target_language": ""},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty target_language in export/obsidian, got {resp.status_code}: {resp.text}"
+    )

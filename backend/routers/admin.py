@@ -255,6 +255,10 @@ async def delete_book(book_id: int, _admin: dict = Depends(_require_admin)):
         )
         await db.execute("DELETE FROM word_occurrences WHERE book_id = ?", (book_id,))
         await db.execute(
+            "DELETE FROM flashcard_reviews WHERE vocabulary_id NOT IN "
+            "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
+        )
+        await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
         await db.execute("DELETE FROM annotations WHERE book_id = ?", (book_id,))

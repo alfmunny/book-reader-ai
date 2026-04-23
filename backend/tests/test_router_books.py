@@ -1185,3 +1185,18 @@ async def test_import_stream_negative_book_id_returns_422(client):
     """Regression #727: GET /books/{book_id}/import-stream with negative book_id must return 422."""
     resp = await client.get("/api/books/-1/import-stream")
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #739: le=10000 on page query param ──────────────────────────────────
+
+
+async def test_search_page_too_large_returns_422(client):
+    """Regression #739: GET /books/search?page=10001 must return 422."""
+    resp = await client.get("/api/books/search?q=test&page=10001")
+    assert resp.status_code == 422, f"Expected 422 for page > 10000, got {resp.status_code}: {resp.text}"
+
+
+async def test_popular_books_page_too_large_returns_422(client):
+    """Regression #739: GET /books/popular?page=10001 must return 422."""
+    resp = await client.get("/api/books/popular?page=10001")
+    assert resp.status_code == 422, f"Expected 422 for page > 10000, got {resp.status_code}: {resp.text}"

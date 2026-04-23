@@ -31,7 +31,7 @@ router = APIRouter(prefix="/books", tags=["books"])
 async def search(
     q: str = Query(..., max_length=200, description="Search query"),
     language: str = Query("", max_length=20, description="Language code e.g. en, de, fr"),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
 ):
     return await search_books(q, language, page)
 
@@ -45,7 +45,7 @@ async def cached_books():
 @router.get("/popular")
 async def popular_books(
     language: str = Query(default="", max_length=20),
-    page: int = Query(1, ge=1),
+    page: int = Query(1, ge=1, le=10000),
     per_page: int = Query(50, ge=1, le=200),
 ):
     """Return a paginated slice of the curated popular Gutenberg books manifest.

@@ -426,3 +426,50 @@ async def test_create_annotation_out_of_bounds_chapter_returns_400(client, test_
     )
     assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
     assert "out of range" in resp.json()["detail"].lower()
+
+
+# ── Text field max_length validation (Issue #494) ─────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_annotation_oversized_note_text_returns_422(client, test_user, tmp_db):
+    """Regression #494: note_text over 10,000 chars must be rejected with 422.
+
+    Without a limit a user could store multi-MB notes, causing DB bloat
+    and degrading annotation query performance.
+    """
+    text = "CHAPTER I\n\n" + "word " * 300
+    await save_book(9890, {**_BOOK_META, "id": 9890}, text)
+    from services.book_chapters import clear_cache as _clear
+    _clear()
+    resp = await client.post(
+        "/api/annotations",
+        json={
+            "book_id": 9890,
+            "chapter_index": 0,
+            "sentence_text": "A sentence.",
+            "note_text": "x" * 10_001,
+        },
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized note_text, got {resp.status_code}: {resp.text[:200]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_annotation_oversized_sentence_text_returns_422(client, test_user, tmp_db):
+    """Regression #494: sentence_text over 5,000 chars must be rejected with 422."""
+    text = "CHAPTER I\n\n" + "word " * 300
+    await save_book(9893, {**_BOOK_META, "id": 9893}, text)
+    from services.book_chapters import clear_cache as _clear
+    _clear()
+    resp = await client.post(
+        "/api/annotations",
+        json={
+            "book_id": 9893,
+            "chapter_index": 0,
+            "sentence_text": "y" * 5_001,
+        },
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized sentence_text, got {resp.status_code}: {resp.text[:200]}"
+    )

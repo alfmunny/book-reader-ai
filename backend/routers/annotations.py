@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import get_current_user, check_book_access
 from services.db import create_annotation, get_annotations, get_all_annotations, update_annotation, delete_annotation, get_cached_book
 
@@ -13,8 +13,8 @@ AnnotationColor = Literal["yellow", "blue", "green", "pink"]
 class AnnotationCreate(BaseModel):
     book_id: int
     chapter_index: int
-    sentence_text: str
-    note_text: str = ""
+    sentence_text: str = Field(..., max_length=5000)
+    note_text: str = Field(default="", max_length=10000)
     color: AnnotationColor = "yellow"
 
 

@@ -782,6 +782,21 @@ async def test_missing_migrations_dir_returns_empty(tmp_db, monkeypatch):
 
 # ── Semicolon inside SQL comment (issue #544) ────────────────────────────────
 
+async def test_migration_024_flashcard_reviews_table_created(tmp_db):
+    """Migration 024 creates the flashcard_reviews table and its index."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='flashcard_reviews'"
+        ) as cur:
+            assert await cur.fetchone() is not None, "flashcard_reviews table must exist after migration 024"
+
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='flashcard_reviews_due'"
+        ) as cur:
+            assert await cur.fetchone() is not None, "flashcard_reviews_due index must exist after migration 024"
+
+
 async def test_semicolon_in_sql_comment_does_not_break_migration(tmp_db, tmp_migrations, monkeypatch):
     """Regression #544: sql.split(';') naively splits on semicolons inside
     -- line comments, producing invalid SQL fragments that crash the runner.

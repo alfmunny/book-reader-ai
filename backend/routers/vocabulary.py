@@ -14,6 +14,9 @@ from services.db import (
     get_obsidian_settings,
     get_cached_book,
     get_insights,
+    get_flashcards_due,
+    review_flashcard,
+    get_flashcard_stats,
 )
 from services.translate import translate_text
 
@@ -79,6 +82,34 @@ async def remove_word(word: str = Path(..., max_length=200), user: dict = Depend
     if not deleted:
         raise HTTPException(status_code=404, detail="Word not found")
     return {"ok": True}
+
+
+# ── Flashcards / SRS (issue #556) ────────────────────────────────────────────
+
+class ReviewRequest(BaseModel):
+    grade: int = Field(..., ge=0, le=5)
+
+
+@router.get("/flashcards/due")
+async def get_due_flashcards(user: dict = Depends(get_current_user)):
+    return await get_flashcards_due(user["id"])
+
+
+@router.post("/flashcards/{vocabulary_id}/review")
+async def submit_flashcard_review(
+    req: ReviewRequest,
+    vocabulary_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    result = await review_flashcard(user["id"], vocabulary_id, req.grade)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Flashcard not found")
+    return result
+
+
+@router.get("/flashcards/stats")
+async def flashcard_stats(user: dict = Depends(get_current_user)):
+    return await get_flashcard_stats(user["id"])
 
 
 # ── Obsidian export ───────────────────────────────────────────────────────────

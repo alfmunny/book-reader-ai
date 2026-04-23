@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.auth import get_current_user, check_book_access
 from services.db import save_insight, get_insights, get_all_insights, delete_insight, get_cached_book
 
@@ -9,9 +9,9 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 class InsightCreate(BaseModel):
     book_id: int
     chapter_index: int | None = None
-    question: str
-    answer: str
-    context_text: str | None = None
+    question: str = Field(..., max_length=2000)
+    answer: str = Field(..., max_length=20000)
+    context_text: str | None = Field(default=None, max_length=5000)
 
 
 @router.post("")

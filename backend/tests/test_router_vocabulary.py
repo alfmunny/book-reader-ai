@@ -553,3 +553,21 @@ async def test_save_vocabulary_out_of_bounds_chapter_returns_400(client, test_us
     )
     assert resp.status_code == 400, f"Expected 400 for out-of-bounds chapter, got {resp.status_code}: {resp.text}"
     assert "out of range" in resp.json()["detail"].lower()
+
+
+async def test_save_word_oversized_word_returns_422(client, test_user, tmp_db):
+    """POST /vocabulary rejects word longer than max_length (issue #498)."""
+    resp = await client.post(
+        "/api/vocabulary",
+        json={"word": "w" * 201, "book_id": 1, "chapter_index": 0, "sentence_text": "A sentence."},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized word, got {resp.status_code}"
+
+
+async def test_save_word_oversized_sentence_text_returns_422(client, test_user, tmp_db):
+    """POST /vocabulary rejects sentence_text longer than max_length (issue #498)."""
+    resp = await client.post(
+        "/api/vocabulary",
+        json={"word": "Wort", "book_id": 1, "chapter_index": 0, "sentence_text": "s" * 5001},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized sentence_text, got {resp.status_code}"

@@ -118,7 +118,7 @@ test.describe("Bottom-of-chapter navigation", () => {
   });
 
   test("bottom prev chapter is disabled on first chapter", async ({ page }) => {
-    await expect(page.getByTestId("bottom-prev-chapter")).toHaveAttribute("disabled", "");
+    await expect(page.getByTestId("bottom-prev-chapter")).toBeDisabled();
   });
 
   test("bottom next chapter navigates forward", async ({ page }) => {
@@ -130,7 +130,7 @@ test.describe("Bottom-of-chapter navigation", () => {
     await page.keyboard.press("ArrowRight");
     await page.keyboard.press("ArrowRight");
     await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId("bottom-next-chapter")).toHaveAttribute("disabled", "");
+    await expect(page.getByTestId("bottom-next-chapter")).toBeDisabled();
   });
 });
 

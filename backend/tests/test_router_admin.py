@@ -2173,14 +2173,14 @@ async def test_queue_settings_rejects_empty_model_chain(admin_client, admin_db):
 
 
 async def test_queue_settings_rejects_model_chain_with_empty_entry(admin_client, admin_db):
-    """Regression #474: model_chain with empty-string entry must return 400
-    (would set SETTING_MODEL to '' causing AI calls to fail)."""
+    """Regression #474/#776: model_chain with empty-string entry must be rejected.
+    Now returns 422 (Pydantic min_length=1 fires before business logic)."""
     res = await admin_client.put(
         "/api/admin/queue/settings",
         json={"model_chain": ["", "gemini-1.5-flash"]},
     )
-    assert res.status_code == 400, (
-        f"Expected 400 for model_chain with empty entry, got {res.status_code}: {res.text}"
+    assert res.status_code == 422, (
+        f"Expected 422 for model_chain with empty entry, got {res.status_code}: {res.text}"
     )
 
 
@@ -2905,3 +2905,36 @@ async def test_enqueue_book_empty_target_language_in_list_returns_422(admin_clie
         json={"book_id": 1, "target_languages": [""]},
     )
     assert res.status_code == 422, f"Expected 422 for empty target_language in list, got {res.status_code}: {res.text}"
+
+
+# ── Issue #776: QueueSettingsRequest list elements and RetryFailedRequest.target_language ──
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_empty_auto_translate_language_returns_422(admin_client):
+    """Regression #776: PUT /admin/queue/settings with empty string in auto_translate_languages must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"auto_translate_languages": [""]},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty lang in auto_translate_languages, got {res.status_code}: {res.text}"
+
+
+@pytest.mark.asyncio
+async def test_queue_settings_empty_model_chain_entry_returns_422(admin_client):
+    """Regression #776: PUT /admin/queue/settings with empty string in model_chain must return 422."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": [""]},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty entry in model_chain, got {res.status_code}: {res.text}"
+
+
+@pytest.mark.asyncio
+async def test_retry_failed_empty_target_language_returns_422(admin_client):
+    """Regression #776: POST /admin/queue/retry-failed with target_language="" must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"target_language": ""},
+    )
+    assert res.status_code == 422, f"Expected 422 for empty target_language, got {res.status_code}: {res.text}"

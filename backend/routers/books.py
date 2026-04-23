@@ -90,7 +90,7 @@ async def popular_books(
 
 
 @router.get("/{book_id}/translation-status")
-async def translation_status(book_id: int = Path(..., ge=1), target_language: str = Query(..., max_length=20), user: dict | None = Depends(get_optional_user)):
+async def translation_status(book_id: int = Path(..., ge=1), target_language: str = Query(..., min_length=1, max_length=20), user: dict | None = Depends(get_optional_user)):
     """Return book-level translation progress for the reader banner.
 
     Includes:
@@ -148,7 +148,7 @@ async def translation_status(book_id: int = Path(..., ge=1), target_language: st
 async def chapter_queue_status(
     book_id: int = Path(..., ge=1),
     chapter_index: int = Path(..., ge=0),
-    target_language: str = Query(..., max_length=20),
+    target_language: str = Query(..., min_length=1, max_length=20),
     user: dict = Depends(get_current_user),
 ):
     """Per-chapter queue lookup for the reader page.
@@ -177,7 +177,7 @@ async def chapter_queue_status(
 async def get_chapter_translation(
     book_id: int = Path(..., ge=1),
     chapter_index: int = Path(..., ge=0),
-    target_language: str = Query(..., max_length=20),
+    target_language: str = Query(..., min_length=1, max_length=20),
     user: dict | None = Depends(get_optional_user),
 ):
     """Return the cached translation if available, 404 otherwise. Never enqueues."""

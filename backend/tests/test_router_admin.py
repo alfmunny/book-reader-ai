@@ -2733,6 +2733,24 @@ async def test_queue_dry_run_negative_book_id_in_list_returns_422(admin_client):
     assert res.status_code == 422, f"Expected 422 for negative book_id in list, got {res.status_code}: {res.text}"
 
 
+async def test_queue_plan_oversized_book_ids_list_returns_422(admin_client):
+    """Regression #765: POST /admin/queue/plan with book_ids list > 1000 items must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": "zh", "book_ids": list(range(1, 1002))},
+    )
+    assert res.status_code == 422, f"Expected 422 for oversized book_ids list, got {res.status_code}: {res.text}"
+
+
+async def test_queue_dry_run_oversized_book_ids_list_returns_422(admin_client):
+    """Regression #765: POST /admin/queue/dry-run with book_ids list > 1000 items must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/dry-run",
+        json={"target_language": "zh", "book_ids": list(range(1, 1002))},
+    )
+    assert res.status_code == 422, f"Expected 422 for oversized book_ids list, got {res.status_code}: {res.text}"
+
+
 async def test_queue_items_negative_book_id_returns_422(admin_client):
     """Regression #736: GET /admin/queue/items?book_id=-1 must return 422."""
     res = await admin_client.get("/api/admin/queue/items?book_id=-1")

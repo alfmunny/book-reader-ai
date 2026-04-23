@@ -110,13 +110,13 @@ function AnnotationCard({
           <div className="flex gap-2">
             <button
               onClick={onSave}
-              className="px-3 py-1 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors"
+              className="px-3 py-1 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors min-h-[44px]"
             >
               Save
             </button>
             <button
               onClick={onCancel}
-              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition-colors"
+              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition-colors min-h-[44px]"
             >
               Cancel
             </button>

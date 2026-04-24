@@ -659,6 +659,7 @@ export default function QueueTab({ adminFetch }: Props) {
         <h3 className="font-medium text-ink text-sm">Preview &amp; plan</h3>
         <div className="flex gap-2 items-center">
           <select
+            aria-label="Preview language"
             value={dryRunLang}
             onChange={(e) => { setDryRunLang(e.target.value); setDryRunResult(null); setPlanResult(null); }}
             className="rounded border border-amber-300 px-2 py-1 text-sm bg-white"
@@ -1061,6 +1062,7 @@ export default function QueueTab({ adminFetch }: Props) {
               </div>
               <div className="mt-2 flex gap-2">
                 <input
+                  aria-label="Custom model name"
                   value={customModel}
                   onChange={(e) => setCustomModel(e.target.value)}
                   placeholder="Custom model (e.g. gemini-exp-1206)"

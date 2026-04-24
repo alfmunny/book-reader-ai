@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from services.gutenberg import search_books, get_book_meta, get_book_text, get_book_epub
 from services.db import (
     get_cached_book,
@@ -104,7 +104,9 @@ async def translation_status(book_id: int = Path(..., ge=1), target_language: st
     import aiosqlite
     from services.db import count_translations_for_book, DB_PATH
 
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     cached = await get_cached_book(book_id)
     if not cached:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -157,7 +159,9 @@ async def chapter_queue_status(
     on-demand translate to avoid duplicating work the background worker is
     already scheduled to do.
     """
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -181,7 +185,9 @@ async def get_chapter_translation(
     user: dict | None = Depends(get_optional_user),
 ):
     """Return the cached translation if available, 404 otherwise. Never enqueues."""
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -206,8 +212,20 @@ async def get_chapter_translation(
     }
 
 
+def _validate_target_language(v: str) -> str:
+    stripped = v.strip().lower().split("-")[0]
+    if not stripped:
+        raise ValueError("target_language cannot be blank")
+    return stripped
+
+
 class RequestTranslationBody(BaseModel):
     target_language: str = Field(..., min_length=1, max_length=20)
+
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        return _validate_target_language(v)
 
 
 @router.post("/{book_id}/chapters/{chapter_index}/translation")

@@ -1055,3 +1055,84 @@ async def test_migration_028_recorded_in_schema_migrations(tmp_db):
             "SELECT version FROM schema_migrations WHERE version = '028_fk_orphan_cleanup'"
         ) as cur:
             assert (await cur.fetchone()) is not None
+
+
+# ── Migration 029 (issue #783): invalidate shifted chapter cache ──────────────
+
+
+async def test_migration_029_clears_shifted_translations(tmp_db):
+    """Regression #783: migration 029 must delete translations with chapter_index >= 1
+    for Faust (#2229) and Kafka (#69327), but leave chapter 0 and other books untouched."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.executemany(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (?, ?, 'zh', '[]')",
+            [(2229, 0), (2229, 1), (2229, 2), (69327, 0), (69327, 1), (1, 1)],
+        )
+        await db.executemany(
+            "INSERT INTO chapter_summaries (book_id, chapter_index, content) VALUES (?, ?, 'summary')",
+            [(2229, 1), (69327, 1)],
+        )
+        await db.executemany(
+            "INSERT INTO translation_queue (book_id, chapter_index, target_language, status) "
+            "VALUES (?, ?, 'zh', 'pending')",
+            [(2229, 1), (69327, 2)],
+        )
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) VALUES (1, 'x', 'a@b.com', 'A', '')"
+        )
+        await db.executemany(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (1, ?, ?, 'Q?', 'A')",
+            [(2229, 1), (2229, 2), (69327, 1)],
+        )
+        await db.execute(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (1, 2229, NULL, 'Book-level?', 'A')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '029_invalidate_shifted_chapter_cache'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id IN (2229, 69327) AND chapter_index >= 1"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale chapter >= 1 translations must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id=2229 AND chapter_index=0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "chapter 0 must survive"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id=1 AND chapter_index=1"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "unrelated book must survive"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM chapter_summaries WHERE book_id IN (2229, 69327) AND chapter_index >= 1"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale chapter summaries must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE book_id IN (2229, 69327) AND chapter_index >= 1"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale queue rows must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights "
+            "WHERE book_id IN (2229, 69327) AND chapter_index IS NOT NULL AND chapter_index >= 1"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale per-chapter insights must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE book_id=2229 AND chapter_index IS NULL"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "book-level insights (NULL chapter) must survive"

@@ -921,3 +921,35 @@ export function reviewFlashcard(vocabularyId: number, grade: number) {
 export function getFlashcardStats() {
   return request<FlashcardStats>("/vocabulary/flashcards/stats");
 }
+
+// ── Chat history (server-side persistence, issue #907) ────────────────────────
+
+export interface ChatMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export interface ChatMessagesResponse {
+  messages: ChatMessage[];
+  has_more: boolean;
+}
+
+export function getChatMessages(bookId: string | number, limit = 50, beforeId?: number) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (beforeId != null) params.set("before_id", String(beforeId));
+  return request<ChatMessagesResponse>(`/chat/${bookId}/messages?${params}`);
+}
+
+export function postChatMessage(bookId: string | number, role: "user" | "assistant", content: string) {
+  return request<ChatMessage>(`/chat/${bookId}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role, content }),
+  });
+}
+
+export function clearChatMessages(bookId: string | number) {
+  return request<{ deleted: number }>(`/chat/${bookId}/messages`, { method: "DELETE" });
+}

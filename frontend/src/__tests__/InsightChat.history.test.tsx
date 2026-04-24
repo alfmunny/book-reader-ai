@@ -9,6 +9,8 @@ import InsightChat from "@/components/InsightChat";
 jest.mock("@/lib/api", () => ({
   getInsight: jest.fn().mockResolvedValue({ insight: "Chapter insight." }),
   askQuestion: jest.fn().mockResolvedValue({ answer: "A fine answer." }),
+  getChatMessages: jest.fn().mockResolvedValue({ messages: [], has_more: false }),
+  postChatMessage: jest.fn().mockResolvedValue({ id: 1, role: "assistant", content: "", created_at: "" }),
 }));
 
 jest.mock("@/lib/settings", () => ({
@@ -38,20 +40,22 @@ beforeEach(() => {
 });
 
 describe("InsightChat — history persistence", () => {
-  it("saves messages to localStorage after receiving an insight", async () => {
-    render(<InsightChat {...BASE} />);
+  it("saves messages to localStorage after receiving an insight (anonymous)", async () => {
+    // Anonymous users (userId=null) persist to localStorage; authenticated users use server.
+    render(<InsightChat {...BASE} userId={null} />);
     await waitFor(() => {
-      const raw = localStorage.getItem(HISTORY_KEY(1, "1342"));
+      const raw = localStorage.getItem(HISTORY_KEY("anon", "1342"));
       expect(raw).not.toBeNull();
       const stored = JSON.parse(raw!);
       expect(stored.some((m: any) => m.content === "Chapter insight.")).toBe(true);
     });
   });
 
-  it("restores previous messages from localStorage on mount", async () => {
+  it("restores previous messages from localStorage on mount (authenticated via migration)", async () => {
     const existing = [
       { role: "assistant", content: "Old insight.", isChapterHeader: false },
     ];
+    // Authenticated users: server returns empty → component migrates from localStorage
     localStorage.setItem(HISTORY_KEY(1, "1342"), JSON.stringify(existing));
 
     render(<InsightChat {...BASE} isVisible={false} />);
@@ -67,15 +71,15 @@ describe("InsightChat — history persistence", () => {
     expect(screen.queryByText("User 1 insight.")).not.toBeInTheDocument();
   });
 
-  it("caps stored messages at 200 (MAX_STORED)", async () => {
-    // Seed 210 messages
+  it("caps stored messages at 200 (MAX_STORED) for anonymous users", async () => {
+    // Anonymous users (userId=null) persist to localStorage; cap applies there.
     const manyMessages = Array.from({ length: 210 }, (_, i) => ({
       role: "assistant",
       content: `msg-${i}`,
     }));
-    localStorage.setItem(HISTORY_KEY(1, "1342"), JSON.stringify(manyMessages));
+    localStorage.setItem(HISTORY_KEY("anon", "1342"), JSON.stringify(manyMessages));
 
-    render(<InsightChat {...BASE} isVisible={false} />);
+    render(<InsightChat {...BASE} userId={null} isVisible={false} />);
 
     // Trigger a new message to force a save
     await act(async () => {
@@ -84,7 +88,7 @@ describe("InsightChat — history persistence", () => {
       fireEvent.keyDown(input, { key: "Enter" });
     });
     await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(HISTORY_KEY(1, "1342"))!);
+      const stored = JSON.parse(localStorage.getItem(HISTORY_KEY("anon", "1342"))!);
       expect(stored.length).toBeLessThanOrEqual(200);
     });
   });
@@ -120,16 +124,18 @@ describe("InsightChat — chapter deduplication", () => {
     await waitFor(() => expect(getInsight).toHaveBeenCalledTimes(2));
   });
 
-  it("restores visitedKeys from history so insight is not re-fetched after reload", async () => {
+  it("restores visitedKeys from history so insight is not re-fetched after reload (anonymous)", async () => {
+    // Anonymous users (userId=null): localStorage is read synchronously so visitedKeys
+    // is populated before effect #3 runs and checks whether to call getInsight.
     const { getInsight } = require("@/lib/api");
     const chapterKey = BASE.chapterText.slice(0, 100);
     const history = [
       { role: "assistant", content: "Chapter I", isChapterHeader: true, chapterKey },
       { role: "assistant", content: "Saved insight." },
     ];
-    localStorage.setItem(HISTORY_KEY(1, "1342"), JSON.stringify(history));
+    localStorage.setItem(HISTORY_KEY("anon", "1342"), JSON.stringify(history));
 
-    render(<InsightChat {...BASE} />);
+    render(<InsightChat {...BASE} userId={null} />);
     await act(async () => {});
     // visitedKeys was populated from history → no new API call
     expect(getInsight).not.toHaveBeenCalled();
@@ -137,25 +143,27 @@ describe("InsightChat — chapter deduplication", () => {
 });
 
 describe("InsightChat — pagination", () => {
-  it("shows 'Load earlier' button when history has more than 30 messages", () => {
+  it("shows 'Load earlier' button when history has more than 30 messages (anonymous)", async () => {
+    // Anonymous path: localStorage is read synchronously so pagination state is set on mount.
     const manyMessages = Array.from({ length: 35 }, (_, i) => ({
       role: "assistant" as const,
       content: `msg-${i}`,
     }));
-    localStorage.setItem(HISTORY_KEY(1, "1342"), JSON.stringify(manyMessages));
+    localStorage.setItem(HISTORY_KEY("anon", "1342"), JSON.stringify(manyMessages));
 
-    render(<InsightChat {...BASE} isVisible={false} />);
-    expect(screen.getByText(/Load earlier/)).toBeInTheDocument();
+    render(<InsightChat {...BASE} userId={null} isVisible={false} />);
+    await waitFor(() => expect(screen.getByText(/Load earlier/)).toBeInTheDocument());
   });
 
-  it("does not show 'Load earlier' when fewer than 30 messages", () => {
+  it("does not show 'Load earlier' when fewer than 30 messages (anonymous)", async () => {
     const fewMessages = Array.from({ length: 5 }, (_, i) => ({
       role: "assistant" as const,
       content: `msg-${i}`,
     }));
-    localStorage.setItem(HISTORY_KEY(1, "1342"), JSON.stringify(fewMessages));
+    localStorage.setItem(HISTORY_KEY("anon", "1342"), JSON.stringify(fewMessages));
 
-    render(<InsightChat {...BASE} isVisible={false} />);
+    render(<InsightChat {...BASE} userId={null} isVisible={false} />);
+    await act(async () => {});
     expect(screen.queryByText(/Load earlier/)).not.toBeInTheDocument();
   });
 });

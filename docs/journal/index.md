@@ -32,7 +32,7 @@ Seeded for validation of the generator; the nightly workflow commits new stubs f
 
 ## Weekly editorial rollup
 
-Not wired yet — planned as a hand-written Sunday post pulling themes from the week's seven daily entries. Tracked under a future follow-up issue.
+Every Sunday, PM produces a themed rollup at `docs/journal/weekly/YYYY-WW.md` aggregating the week's seven daily entries into shipped wins, recurring incidents, process lessons, and next-week priorities. The rollup is driven by the `/weekly-editorial` skill — it reads the daily entries, extracts themes, and drafts the weekly file; PM reviews the draft, hand-edits, and submits via `/submit-pr`. Can be run on demand (`/weekly-editorial`) or scheduled (`/schedule every sunday 22:00 /weekly-editorial`).
 
 ## Related
 

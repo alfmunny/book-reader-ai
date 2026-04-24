@@ -46,23 +46,23 @@ def _require_gemini_key(user: dict) -> str:
 # ── Request models ────────────────────────────────────────────────────────────
 
 class InsightRequest(BaseModel):
-    chapter_text: str = Field(..., max_length=50_000)
-    book_title: str = Field(..., max_length=500)
-    author: str = Field(..., max_length=500)
+    chapter_text: str = Field(..., min_length=1, max_length=50_000)
+    book_title: str = Field(..., min_length=1, max_length=500)
+    author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
 
 
 class QARequest(BaseModel):
-    question: str = Field(..., max_length=2_000)
-    passage: str = Field(..., max_length=50_000)
-    book_title: str = Field(..., max_length=500)
-    author: str = Field(..., max_length=500)
+    question: str = Field(..., min_length=1, max_length=2_000)
+    passage: str = Field(..., min_length=1, max_length=50_000)
+    book_title: str = Field(..., min_length=1, max_length=500)
+    author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
 
 
 class ReferencesRequest(BaseModel):
-    book_title: str = Field(..., max_length=500)
-    author: str = Field(..., max_length=500)
+    book_title: str = Field(..., min_length=1, max_length=500)
+    author: str = Field(..., min_length=1, max_length=500)
     chapter_title: str = Field(default="", max_length=500)
     chapter_excerpt: str = Field(default="", max_length=10_000)
     response_language: str = Field(default="en", min_length=1, max_length=20)
@@ -71,14 +71,14 @@ class ReferencesRequest(BaseModel):
 class SummaryRequest(BaseModel):
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
-    chapter_text: str = Field(..., max_length=50_000)
-    book_title: str = Field(..., max_length=500)
-    author: str = Field(..., max_length=500)
+    chapter_text: str = Field(..., min_length=1, max_length=50_000)
+    book_title: str = Field(..., min_length=1, max_length=500)
+    author: str = Field(..., min_length=1, max_length=500)
     chapter_title: str = Field(default="", max_length=500)
 
 
 class TranslateRequest(BaseModel):
-    text: str = Field(..., max_length=50_000)
+    text: str = Field(..., min_length=1, max_length=50_000)
     source_language: str = Field(default="de", min_length=1, max_length=20)
     target_language: str = Field(default="en", min_length=1, max_length=20)
     book_id: int | None = Field(default=None, ge=1)
@@ -88,14 +88,14 @@ class TranslateRequest(BaseModel):
 
 
 class TTSRequest(BaseModel):
-    text: str = Field(..., max_length=50_000)
+    text: str = Field(..., min_length=1, max_length=50_000)
     language: str = Field(default="en", min_length=1, max_length=20)
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
 
 
 class ChunkTextRequest(BaseModel):
-    text: str = Field(..., max_length=50_000)
+    text: str = Field(..., min_length=1, max_length=50_000)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────

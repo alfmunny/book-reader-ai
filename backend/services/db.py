@@ -853,7 +853,7 @@ async def create_annotation(
         ) as c:
             row = await c.fetchone()
         await db.commit()
-    return dict(row)
+    return dict(row) if row else {}
 
 
 async def get_annotations(user_id: int, book_id: int) -> list[dict]:
@@ -979,7 +979,7 @@ async def save_word(
         await db.commit()  # single atomic commit for both inserts
 
     asyncio.create_task(_update_lemma(vocab_id, word, book_id))
-    return dict(row)
+    return dict(row) if row else {}
 
 
 async def get_vocabulary(user_id: int) -> list[dict]:

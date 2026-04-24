@@ -77,10 +77,12 @@ export default function DecksPage() {
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {loading ? (
-          <div className="space-y-3 animate-pulse">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-amber-100 rounded-xl" />
-            ))}
+          <div role="status" aria-label="Loading decks">
+            <div className="space-y-3 animate-pulse">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-24 bg-amber-100 rounded-xl" />
+              ))}
+            </div>
           </div>
         ) : isEmpty ? (
           <div

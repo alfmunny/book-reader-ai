@@ -65,8 +65,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!authed) {
     return (
-      <div className="min-h-screen bg-parchment flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+      <div role="status" aria-label="Loading admin panel" className="min-h-screen bg-parchment flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
       </div>
     );
   }

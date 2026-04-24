@@ -317,13 +317,11 @@ async def delete_user(user_id: int) -> None:
         await db.execute("DELETE FROM reading_history WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM book_uploads WHERE user_id = ?", (user_id,))
         # Cascade deletions for uploaded books owned by this user.
-        # SQLite FK enforcement is OFF so ON DELETE CASCADE never fires automatically.
+        # translations.book_id, audio_cache.book_id (migration 033, #754 PR 3/4),
+        # chapter_summaries.book_id and book_insights.book_id (migration 032,
+        # #754 PR 2/4) all carry declared FKs, so the DELETE FROM books
+        # WHERE owner_user_id below cascades these tables automatically.
         _owned = "SELECT id FROM books WHERE owner_user_id = ?"
-        await db.execute(f"DELETE FROM translations WHERE book_id IN ({_owned})", (user_id,))
-        await db.execute(f"DELETE FROM audio_cache WHERE book_id IN ({_owned})", (user_id,))
-        # chapter_summaries.book_id carries a declared FK (migration 032, #754
-        # PR 2/4), so the DELETE FROM books WHERE owner_user_id below cascades
-        # these rows automatically.
         await db.execute(f"DELETE FROM translation_queue WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM word_occurrences WHERE book_id IN ({_owned})", (user_id,))
         # Prune flashcard_reviews entries left without any occurrence (still

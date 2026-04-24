@@ -244,9 +244,11 @@ async def delete_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_re
             )
         await db.execute("DELETE FROM user_book_chapters WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM book_uploads WHERE book_id = ?", (book_id,))
+        # translations.book_id and audio_cache.book_id carry declared FKs
+        # (migration 033, #754 PR 3/4), so deleting the book cascades both
+        # tables automatically. We still delete the book row itself here —
+        # the FK cascade fires on that statement.
         await db.execute("DELETE FROM books WHERE id = ?", (book_id,))
-        await db.execute("DELETE FROM translations WHERE book_id = ?", (book_id,))
-        await db.execute("DELETE FROM audio_cache WHERE book_id = ?", (book_id,))
         # SQL guard: skip running rows in case a job transitioned after the
         # Python check above (same pattern as delete_book_translations, #335).
         await db.execute(

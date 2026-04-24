@@ -151,6 +151,7 @@ async def test_list_cached_books_excludes_text_field():
 # ── Translation cache ─────────────────────────────────────────────────────────
 
 async def test_save_and_get_translation():
+    await _seed_book(1)
     paragraphs = ["Hallo Welt", "Wie geht es dir"]
     await save_translation(1, 0, "en", paragraphs)
     result = await get_cached_translation(1, 0, "en")
@@ -163,6 +164,7 @@ async def test_translation_cache_miss_returns_none():
 
 
 async def test_translation_cache_keyed_by_language():
+    await _seed_book(1)
     await save_translation(1, 0, "en", ["English text"])
     await save_translation(1, 0, "fr", ["Texte français"])
     en = await get_cached_translation(1, 0, "en")
@@ -172,6 +174,7 @@ async def test_translation_cache_keyed_by_language():
 
 
 async def test_translation_cache_keyed_by_chapter():
+    await _seed_book(1)
     await save_translation(1, 0, "en", ["Chapter 0"])
     await save_translation(1, 1, "en", ["Chapter 1"])
     assert await get_cached_translation(1, 0, "en") == ["Chapter 0"]
@@ -179,6 +182,7 @@ async def test_translation_cache_keyed_by_chapter():
 
 
 async def test_translation_upsert_replaces_existing():
+    await _seed_book(1)
     await save_translation(1, 0, "en", ["old"])
     await save_translation(1, 0, "en", ["new"])
     result = await get_cached_translation(1, 0, "en")
@@ -194,6 +198,7 @@ async def test_count_translations_for_book_zero():
 
 
 async def test_count_translations_for_book_counts_correctly():
+    await _seed_book(1342)
     await save_translation(1342, 0, "zh", ["para"])
     await save_translation(1342, 1, "zh", ["para"])
     await save_translation(1342, 0, "en", ["para"])  # different language — not counted

@@ -6,7 +6,23 @@ External calls (Gutenberg) are mocked so tests are fast and offline.
 
 import pytest
 from unittest.mock import AsyncMock, patch
+import services.db as db_module
 from services.db import save_book
+
+
+async def _seed_book(book_id: int) -> None:
+    """translations.book_id carries a declared FK to books(id) (migration 033,
+    #754 PR 3/4). Tests that call save_translation directly with a fabricated
+    id must ensure the parent book row exists."""
+    import aiosqlite
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
+        await db.commit()
+
 
 MOCK_META = {
     "id": 1342,
@@ -588,6 +604,7 @@ async def test_chapter_translation_allowed_with_gemini_key(client, test_user):
 async def test_chapter_translation_cache_served_without_login(anon_client):
     """Cached translation is served to unauthenticated users."""
     from services.db import save_translation
+    await _seed_book(9999)
     await save_translation(9999, 0, "de", ["Übersetzung"])
     resp = await anon_client.post(
         "/api/books/9999/chapters/0/translation",
@@ -702,6 +719,7 @@ async def test_chapter_translation_normalizes_language_for_cache_hit(anon_client
     Without normalization the cache lookup uses 'ZH-CN' and misses 'zh',
     forcing an unnecessary re-enqueue."""
     from services.db import save_translation
+    await _seed_book(9999)
     await save_translation(9999, 0, "zh", ["翻译"])
     resp = await anon_client.post(
         "/api/books/9999/chapters/0/translation",

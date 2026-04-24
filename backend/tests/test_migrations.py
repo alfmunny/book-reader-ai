@@ -1644,3 +1644,176 @@ async def test_migration_032_cascade_deletes_on_book_delete(tmp_db):
             "SELECT COUNT(*) FROM chapter_summaries WHERE book_id = 910"
         ) as cur:
             assert (await cur.fetchone())[0] == 0
+
+
+async def test_migration_033_cleans_orphan_translations_and_audio_cache(tmp_db):
+    """Seed rows pointing at missing books, re-run migration 033, confirm the
+    pre-rewrite orphan DELETEs wiped them so the subsequent INSERT INTO _new
+    SELECT * does not violate the new FK."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (1000, 'Book', '[]')"
+        )
+        # Valid parent — these rows should survive.
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (1000, 0, 'de', '[\"hallo\"]')"
+        )
+        await db.execute(
+            "INSERT INTO audio_cache (book_id, chapter_index, provider, voice, content_type, audio) "
+            "VALUES (1000, 0, 'gemini', 'v1', 'audio/mpeg', X'01')"
+        )
+        # Orphan rows — bogus book ids.
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (9991, 0, 'de', '[\"bogus\"]')"
+        )
+        await db.execute(
+            "INSERT INTO audio_cache (book_id, chapter_index, provider, voice, content_type, audio) "
+            "VALUES (9992, 0, 'gemini', 'v1', 'audio/mpeg', X'02')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '033_fk_translations_audio_cache'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT book_id FROM translations ORDER BY book_id"
+        ) as cur:
+            rows = [r[0] for r in await cur.fetchall()]
+        assert rows == [1000], f"only valid translation should survive; got {rows}"
+
+        async with db.execute(
+            "SELECT book_id FROM audio_cache ORDER BY book_id"
+        ) as cur:
+            rows = [r[0] for r in await cur.fetchall()]
+        assert rows == [1000], f"only valid audio_cache row should survive; got {rows}"
+
+
+async def test_migration_033_translations_carries_declared_fk(tmp_db):
+    """After migration 033, PRAGMA foreign_key_list must report the books FK."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("PRAGMA foreign_key_list(translations)") as cur:
+            fks = await cur.fetchall()
+
+    fk_map = {(row[2], row[3]): (row[4], row[5], row[6]) for row in fks}
+    assert ("books", "book_id") in fk_map, f"missing books FK: {fk_map}"
+    assert fk_map[("books", "book_id")][2] == "CASCADE"
+
+
+async def test_migration_033_audio_cache_carries_declared_fk(tmp_db):
+    """After migration 033, PRAGMA foreign_key_list must report the books FK."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("PRAGMA foreign_key_list(audio_cache)") as cur:
+            fks = await cur.fetchall()
+
+    fk_map = {(row[2], row[3]): (row[4], row[5], row[6]) for row in fks}
+    assert ("books", "book_id") in fk_map, f"missing books FK: {fk_map}"
+    assert fk_map[("books", "book_id")][2] == "CASCADE"
+
+
+async def test_migration_033_preserves_existing_rows(tmp_db):
+    """INSERT … SELECT * must round-trip data including the post-initial
+    columns (provider/model added in 007, title_translation in 011)."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (1100, 'T', '[]')"
+        )
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, "
+            "paragraphs, provider, model, title_translation) VALUES "
+            "(1100, 3, 'de', '[\"p\"]', 'gemini', 'flash', 'Titel')"
+        )
+        await db.execute(
+            "INSERT INTO audio_cache (book_id, chapter_index, chunk_index, "
+            "provider, voice, content_type, audio) VALUES "
+            "(1100, 3, 1, 'gemini', 'v2', 'audio/mpeg', X'ABCDEF')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '033_fk_translations_audio_cache'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT chapter_index, target_language, paragraphs, provider, model, title_translation "
+            "FROM translations WHERE book_id = 1100"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row == (3, "de", '["p"]', "gemini", "flash", "Titel")
+
+        async with db.execute(
+            "SELECT chapter_index, chunk_index, provider, voice, content_type, audio "
+            "FROM audio_cache WHERE book_id = 1100"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row == (3, 1, "gemini", "v2", "audio/mpeg", b"\xab\xcd\xef")
+
+
+async def test_migration_033_preserves_primary_keys(tmp_db):
+    """The composite PKs must survive the rewrite — duplicate inserts on the
+    same (book_id, chapter_index, target_language) / (book_id, chapter_index,
+    chunk_index, provider, voice) must still raise IntegrityError."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1200, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (1200, 0, 'de', '[\"a\"]')"
+        )
+        await db.commit()
+
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+                "VALUES (1200, 0, 'de', '[\"b\"]')"
+            )
+            await db.commit()
+
+
+async def test_migration_033_cascade_deletes_on_book_delete(tmp_db):
+    """DELETE FROM books must cascade to translations and audio_cache via the
+    new book_id FKs."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1300, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (1300, 0, 'de', '[\"a\"]')"
+        )
+        await db.execute(
+            "INSERT INTO audio_cache (book_id, chapter_index, provider, voice, content_type, audio) "
+            "VALUES (1300, 0, 'gemini', 'v1', 'audio/mpeg', X'01')"
+        )
+        await db.commit()
+
+        await db.execute("DELETE FROM books WHERE id = 1300")
+        await db.commit()
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id = 1300"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0
+        async with db.execute(
+            "SELECT COUNT(*) FROM audio_cache WHERE book_id = 1300"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0

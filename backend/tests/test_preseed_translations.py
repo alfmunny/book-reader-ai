@@ -40,6 +40,20 @@ async def tmp_db(monkeypatch, tmp_path):
     yield
 
 
+async def _seed_book(book_id: int) -> None:
+    """translations.book_id carries a declared FK to books(id) (migration 033,
+    #754 PR 3/4). run_jobs tests that drive save_translation directly (without
+    going through save_book) must ensure the parent book row exists."""
+    import aiosqlite
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
+        await db.commit()
+
+
 # A minimal book body the splitter will accept. Two CHAPTER headings
 # keep the "keyword" strategy happy, and each body is long enough that
 # _validate() does not reject the split (MIN_AVG_WORDS = 150).
@@ -160,6 +174,8 @@ def _job(book_id: int, chapter_index: int, text: str = "hello") -> pre.ChapterJo
 
 
 async def test_run_jobs_saves_translations_for_every_job():
+    await _seed_book(1)
+
     async def translator(text, src, tgt):
         return [f"[{tgt}] {text}"]
 
@@ -172,6 +188,8 @@ async def test_run_jobs_saves_translations_for_every_job():
 
 
 async def test_run_jobs_counts_failures_and_keeps_going():
+    await _seed_book(1)
+
     async def translator(text, src, tgt):
         if text == "break":
             raise RuntimeError("kaboom")
@@ -189,6 +207,7 @@ async def test_run_jobs_counts_failures_and_keeps_going():
 
 
 async def test_run_jobs_invokes_on_result_for_success_and_failure():
+    await _seed_book(1)
     events: list[tuple[int, bool]] = []
 
     async def translator(text, src, tgt):

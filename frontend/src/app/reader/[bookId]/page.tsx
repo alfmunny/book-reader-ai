@@ -827,7 +827,7 @@ export default function ReaderPage() {
           </span>
           <button
             onClick={() => setGeminiReminderVisible(false)}
-            className="shrink-0 text-amber-500 hover:text-amber-700"
+            className="shrink-0 text-amber-500 hover:text-amber-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Dismiss"
           >
             <CloseIcon aria-hidden="true" className="w-4 h-4" />
@@ -994,7 +994,7 @@ export default function ReaderPage() {
                 setShowTypographyPanel((v) => !v);
               }}
               title="Typography settings"
-              className={`flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg border text-xs font-bold transition-colors ${
+              className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] rounded-lg border text-xs font-bold transition-colors ${
                 showTypographyPanel || paragraphFocus
                   ? "bg-amber-100 border-amber-400 text-amber-800"
                   : "border-amber-300 hover:bg-amber-100 text-amber-700"
@@ -1803,7 +1803,7 @@ export default function ReaderPage() {
                       <span className="text-xs text-stone-400">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
-                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium">
+                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium min-h-[44px] flex items-center gap-1">
                         View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </button>
                     </div>

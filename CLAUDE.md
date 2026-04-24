@@ -520,7 +520,7 @@ These rules govern all UI work in the frontend. Follow them when adding or modif
 - Scale: `text-xs` (labels/counts) → `text-sm` (UI) → `text-base`/`text-lg` (headings) → `text-xl`+ (hero).
 
 ### Spacing
-- Touch targets minimum **44×44px** on mobile. Use `min-h-[44px]` or equivalent.
+- Touch targets minimum **44×44px on mobile only**. Use `min-h-[44px] md:min-h-0` so desktop chrome keeps its natural compact size. Never apply `min-h-[44px]` unconditionally to desktop-only elements (e.g. `hidden md:flex` buttons).
 - Card padding: `p-3` for compact cards, `p-4`–`p-6` for modals.
 - Section spacing: `space-y-10` between major sections, `gap-4` between grid items.
 

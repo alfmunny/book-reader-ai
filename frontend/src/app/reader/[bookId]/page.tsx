@@ -827,7 +827,7 @@ export default function ReaderPage() {
           </span>
           <button
             onClick={() => setGeminiReminderVisible(false)}
-            className="shrink-0 text-amber-500 hover:text-amber-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="shrink-0 text-amber-500 hover:text-amber-700 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
             aria-label="Dismiss"
           >
             <CloseIcon aria-hidden="true" className="w-4 h-4" />
@@ -895,7 +895,7 @@ export default function ReaderPage() {
           <button
             onClick={() => router.push("/")}
             aria-label="Library"
-            className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] flex items-center"
+            className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] md:min-h-0 flex items-center"
           >
             <ArrowLeftIcon className="w-4 h-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline ml-1">Library</span>
           </button>
@@ -956,7 +956,7 @@ export default function ReaderPage() {
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
                   aria-label="Previous chapter"
-                  className="w-7 h-7 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                  className="w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
                 >
                   <ArrowLeftIcon className="w-3.5 h-3.5" />
                 </button>
@@ -979,7 +979,7 @@ export default function ReaderPage() {
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
                   aria-label="Next chapter"
-                  className="w-7 h-7 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                  className="w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
                 >
                   <ArrowRightIcon className="w-3.5 h-3.5" />
                 </button>
@@ -997,7 +997,7 @@ export default function ReaderPage() {
               }}
               title="Typography settings"
               aria-label="Typography settings"
-              className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] rounded-lg border text-xs font-bold transition-colors ${
+              className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-bold transition-colors ${
                 showTypographyPanel || paragraphFocus
                   ? "bg-amber-100 border-amber-400 text-amber-800"
                   : "border-amber-300 hover:bg-amber-100 text-amber-700"
@@ -1012,7 +1012,7 @@ export default function ReaderPage() {
             onClick={cycleTheme}
             title={`Theme: ${theme} — click to cycle`}
             aria-label={`Theme: ${theme} — click to cycle`}
-            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 min-h-[44px] rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
+            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
           >
             {theme === "light" ? <SunIcon className="w-3.5 h-3.5" /> : theme === "sepia" ? <SepiaIcon className="w-3.5 h-3.5" /> : <MoonIcon className="w-3.5 h-3.5" />}
             <span className="hidden lg:inline capitalize text-[9px] font-sans">{theme}</span>
@@ -1026,7 +1026,7 @@ export default function ReaderPage() {
             title="Toggle insight chat"
             aria-label="Insight sidebar"
             aria-expanded={sidebarOpen && sidebarTab === "chat"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1042,7 +1042,7 @@ export default function ReaderPage() {
             title="Translation"
             aria-label="Translate"
             aria-expanded={sidebarOpen && sidebarTab === "translate"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"
                 ? "bg-amber-700 text-white border-amber-700"
                 : translationEnabled
@@ -1060,7 +1060,7 @@ export default function ReaderPage() {
             title="Chapter summary"
             aria-label="Chapter summary"
             aria-expanded={sidebarOpen && sidebarTab === "summary"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "summary"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1079,7 +1079,7 @@ export default function ReaderPage() {
             title="Annotations & notes"
             aria-label="Annotations & notes"
             aria-expanded={sidebarOpen && sidebarTab === "notes"}
-            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "notes"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1105,7 +1105,7 @@ export default function ReaderPage() {
                 });
               }}
               title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
-              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
                 showAnnotations
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
@@ -1125,7 +1125,7 @@ export default function ReaderPage() {
             title="Vocabulary"
             aria-label="Vocabulary"
             aria-expanded={sidebarOpen && sidebarTab === "vocab"}
-            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "vocab"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1145,7 +1145,7 @@ export default function ReaderPage() {
             <button
               onClick={handleObsidianExport}
               title="Export vocabulary to Obsidian"
-              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               <ExportIcon className="w-3.5 h-3.5 shrink-0" />
               Obsidian
@@ -1163,7 +1163,7 @@ export default function ReaderPage() {
             }}
             title="Focus mode (F)"
             aria-label="Focus mode"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               focusMode
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1179,7 +1179,7 @@ export default function ReaderPage() {
               onClick={() => setShowShortcuts((v) => !v)}
               title="Keyboard shortcuts (?)"
               aria-label="Keyboard shortcuts"
-              className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] rounded-lg border text-xs font-medium transition-colors ${
+              className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 rounded-lg border text-xs font-medium transition-colors ${
                 showShortcuts
                   ? "bg-amber-100 border-amber-400 text-amber-800"
                   : "border-amber-300 text-amber-500 hover:bg-amber-50 hover:text-amber-700"
@@ -1218,7 +1218,7 @@ export default function ReaderPage() {
               onClick={() => router.push("/profile")}
               title={session.backendUser?.name ?? "Profile"}
               aria-label={session.backendUser?.name ?? "Profile"}
-              className="shrink-0 min-w-[44px] min-h-[44px] w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
+              className="shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
             >
               {session.backendUser?.picture ? (
                 // eslint-disable-next-line @next/next/no-img-element

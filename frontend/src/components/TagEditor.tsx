@@ -152,7 +152,7 @@ export default function TagEditor({
           type="button"
           onClick={() => setAdding(true)}
           aria-label="Add tag"
-          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-amber-300 px-2 py-0.5 text-xs text-amber-700 hover:bg-amber-50 transition-colors"
+          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-amber-300 px-2 py-0.5 min-h-[44px] text-xs text-amber-700 hover:bg-amber-50 transition-colors"
           data-testid={`add-tag-${vocabularyId}`}
         >
           <span aria-hidden="true">+</span>

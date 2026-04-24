@@ -50,7 +50,7 @@ async def tmp_db(monkeypatch, tmp_path):
         await db.executemany(
             "INSERT OR IGNORE INTO books (id, title, images, source) "
             "VALUES (?, 'T', '[]', 'upload')",
-            [(i,) for i in (1, 2, 3, 5, 6, 7)],
+            [(i,) for i in (1, 2, 3, 5, 6, 7, 42, 99)],
         )
         await db.commit()
 

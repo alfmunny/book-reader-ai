@@ -67,6 +67,12 @@ async def test_migration_creates_queue_tables(tmp_db):
 
 async def test_enqueue_idempotent(tmp_db):
     """Duplicate enqueue() calls for the same (book, chapter, lang) don't stack."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'gutenberg')"
+        )
+        await db.commit()
     await enqueue(1, 0, "zh")
     await enqueue(1, 0, "zh")
     await enqueue(1, 0, "de")
@@ -130,11 +136,24 @@ async def test_queued_by_tracks_attribution(tmp_db):
 
 
 async def test_list_queue_includes_book_title(tmp_db):
-    """Queue items must carry the book title so the admin UI can identify rows."""
+    """Queue items must carry the book title so the admin UI can identify rows.
+
+    The orphan row (book_id=999 with no books entry) is structurally
+    impossible under migration 034's FK, but list_queue still needs to
+    tolerate such rows — they can appear during a migration window or if
+    FK enforcement was briefly off. Force the orphan in with PRAGMA
+    foreign_keys=OFF to exercise the defensive LEFT JOIN.
+    """
     await save_book(1, {**BOOK_META, "title": "Moby Dick"}, BOOK_TEXT)
     await enqueue(1, 0, "zh")
-    # Orphan row — book never saved.
-    await enqueue(999, 0, "zh")
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO translation_queue "
+            "(book_id, chapter_index, target_language, status) "
+            "VALUES (999, 0, 'zh', 'pending')"
+        )
+        await db.commit()
     rows = await list_queue()
     by_book = {r["book_id"]: r for r in rows}
     assert by_book[1]["book_title"] == "Moby Dick"
@@ -379,6 +398,14 @@ async def test_queue_status_for_chapter_reports_position(tmp_db):
     none = await queue_status_for_chapter(1, 0, "zh")
     assert none == {"queued": False, "status": None, "position": None, "attempts": 0}
 
+    # book_id=2, 3 pre-seed for the ahead-of-queue and behind rows (FK 034).
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.executemany(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            [(2,), (3,)],
+        )
+        await db.commit()
     # Enqueue three; (1, 0, zh) is second in line because it's enqueued
     # second but shares priority 100 with the first row.
     await enqueue(2, 0, "zh", priority=100)   # id=1, ahead
@@ -427,6 +454,14 @@ async def test_default_chain_applied_when_no_setting(tmp_db):
 
 async def test_clear_queue_all_and_by_status(tmp_db):
     """clear_queue() wipes everything; clear_queue(status='failed') only wipes failed rows."""
+    # FK 034: translation_queue.book_id REFERENCES books(id)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.executemany(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            [(1,), (2,)],
+        )
+        await db.commit()
     await enqueue(1, 0, "zh")
     await enqueue(1, 1, "zh")
     await enqueue(2, 0, "de")
@@ -454,6 +489,13 @@ async def test_clear_queue_preserves_running_items(tmp_db):
     Deleting it lets mark_queue_row_done silently destroy a re-enqueued
     pending row, voiding the admin's retranslation intent.
     """
+    # FK 034
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
+        await db.commit()
     await enqueue(1, 0, "zh")
     await enqueue(1, 1, "zh")
     # Simulate chapter 0 being actively translated by the worker.
@@ -479,6 +521,13 @@ async def test_delete_queue_for_book_preserves_running_items(tmp_db):
     (called by save_translation) deletes by composite key, so it would
     silently destroy a re-enqueued pending row for the same chapter.
     """
+    # FK 034
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
+        await db.commit()
     await enqueue(1, 0, "zh")
     await enqueue(1, 1, "zh")
     # Simulate chapter 0 being actively translated by the worker.
@@ -904,6 +953,13 @@ async def test_clear_queue_status_filter_preserves_running_items(tmp_db):
     status='running' deleted all in-flight worker rows — giving false cancellation
     and breaking mark_queue_row_done semantics.
     """
+    # FK 034
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
+        await db.commit()
     await enqueue(1, 0, "zh")
     await enqueue(1, 1, "zh")
     async with aiosqlite.connect(tmp_db) as db:

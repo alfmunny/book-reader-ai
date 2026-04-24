@@ -45,6 +45,12 @@ async def _seed_annotation(db, user_id: int, book_id: int, chapter_index: int,
 
 async def _seed_vocab_occurrence(db, user_id: int, word: str, book_id: int,
                                  chapter_index: int, sentence: str):
+    # Migration 034 added a declared FK word_occurrences.book_id → books(id);
+    # seed the parent book first so fabricated ids don't violate it.
+    await db.execute(
+        "INSERT OR IGNORE INTO books (id, title, images) VALUES (?, 'T', '[]')",
+        (book_id,),
+    )
     cur = await db.execute(
         "INSERT INTO vocabulary (user_id, word, lemma, language) VALUES (?, ?, ?, 'en')",
         (user_id, word, word),

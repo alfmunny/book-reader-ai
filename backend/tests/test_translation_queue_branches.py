@@ -65,9 +65,14 @@ async def tmp_db(monkeypatch, tmp_path):
 
 async def test_estimate_queue_cost_skips_orphan_book_id():
     """A pending queue row for a book_id that doesn't exist in the books
-    table should be skipped gracefully (the continue on line 325)."""
-    # Insert a queue row for book_id=9999 which has no books entry.
+    table should be skipped gracefully (the continue on line 325).
+
+    Migration 034's FK makes this orphan case structurally impossible at
+    insert, but the defensive skip still runs for schema states where FK
+    is OFF (e.g. during migrations). Force the orphan in with FK OFF.
+    """
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
         await db.execute(
             """INSERT INTO translation_queue
                    (book_id, chapter_index, target_language, priority, status)
@@ -202,8 +207,12 @@ async def test_worker_stop_when_not_started_does_not_crash():
 async def test_worker_run_logs_stale_row_reset():
     """When there are stale 'running' rows on worker start, _run() must
     log a startup_reset_stale event (stale > 0 branch, line 690-691)."""
-    # Create a stale running row BEFORE starting the worker.
+    # FK 034: seed parent book before inserting queue row.
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
         await db.execute(
             """INSERT INTO translation_queue
                    (book_id, chapter_index, target_language, priority, status)
@@ -224,7 +233,12 @@ async def test_worker_run_logs_stale_row_reset():
 async def test_worker_run_logs_orphan_done_rows_cleanup():
     """When there are orphan 'done' rows on worker start, _run() must
     log a startup_cleanup_done_rows event (orphans > 0 branch, lines 693-695)."""
+    # FK 034: seed parent book before inserting queue row.
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
         await db.execute(
             """INSERT INTO translation_queue
                    (book_id, chapter_index, target_language, priority, status)
@@ -264,6 +278,12 @@ async def test_worker_run_startup_exception_is_non_fatal():
 async def test_claim_next_batch_rolls_back_on_exception():
     """If an exception occurs during the transaction, ROLLBACK fires and
     the exception is re-raised (lines 785-787)."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
+        await db.commit()
     await enqueue(1, 0, "zh")
 
     w = TranslationQueueWorker()
@@ -322,15 +342,20 @@ async def test_claim_next_batch_rolls_back_on_exception():
 # ── Lines 831-833: _process_batch_inner — book not in cache ──────────────────
 
 async def test_process_batch_inner_skips_when_book_not_in_cache():
-    """When get_cached_book returns None, all items must be marked skipped."""
+    """When get_cached_book returns None, all items must be marked skipped.
+
+    The test models the case where a queue row points at a book not in the
+    books table. Migration 034 blocks that at INSERT, so force the orphan
+    in with PRAGMA foreign_keys=OFF to recreate the defensive path.
+    """
     w = TranslationQueueWorker()
     row = QueueRow(
         id=1, book_id=9999, chapter_index=0,
         target_language="zh", status="running",
         priority=100, attempts=0,
     )
-    # Insert the row so _mark_skipped has a real DB row to update.
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
         await db.execute(
             "INSERT INTO translation_queue (id, book_id, chapter_index, target_language, priority, status) "
             "VALUES (1, 9999, 0, 'zh', 100, 'running')"
@@ -681,6 +706,10 @@ async def test_mark_skipped_updates_status():
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
+        await db.execute(
             "INSERT INTO translation_queue (id, book_id, chapter_index, target_language, priority, status) "
             "VALUES (1, 1, 0, 'zh', 100, 'running')"
         )
@@ -703,6 +732,10 @@ async def test_mark_failed_increments_chapters_failed():
     w = TranslationQueueWorker()
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
         await db.execute(
             "INSERT INTO translation_queue (id, book_id, chapter_index, target_language, priority, status) "
             "VALUES (1, 1, 0, 'zh', 100, 'running')"
@@ -731,6 +764,10 @@ async def test_update_status_updates_db_row():
     w = TranslationQueueWorker()
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
         await db.execute(
             "INSERT INTO translation_queue (id, book_id, chapter_index, target_language, priority, status) "
             "VALUES (1, 1, 0, 'zh', 100, 'running')"
@@ -766,6 +803,10 @@ async def test_bump_attempt_increments_chapters_failed_at_max_attempts():
     w = TranslationQueueWorker()
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (1, 'T', '[]', 'upload')"
+        )
         await db.execute(
             "INSERT INTO translation_queue "
             "(id, book_id, chapter_index, target_language, priority, status, attempts) "

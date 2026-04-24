@@ -366,3 +366,15 @@ async def test_ai_lookup_returns_empty_on_exception():
     with patch("services.gemini._generate", new=AsyncMock(side_effect=Exception("api error"))):
         result = await ai_lookup("word", "en", api_key="test-key")
     assert result["definitions"] == []
+
+
+@pytest.mark.asyncio
+async def test_ai_lookup_url_is_empty_string():
+    """ai_lookup must return url='' — not a Wiktionary link — because wiktionary
+    had no entry for this word (that's why AI was called). Closes #551."""
+    gemini_json = '{"lemma":"Aufmerksamkeit","definitions":[{"pos":"noun","text":"attention"}]}'
+    with patch("services.gemini._generate", new=AsyncMock(return_value=gemini_json)):
+        result = await ai_lookup("Aufmerksamkeitsdefizit", "de", api_key="test-key")
+    assert result["url"] == "", (
+        "AI fallback must not return a Wiktionary URL — the user would land on a missing page"
+    )

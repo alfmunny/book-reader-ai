@@ -151,7 +151,7 @@ async def ai_lookup(word: str, lang: str, api_key: str) -> dict:
             "lemma": data.get("lemma") or word,
             "language": lang,
             "definitions": definitions,
-            "url": wikt_url,
+            "url": "",
         }
     except Exception:
         return empty

@@ -789,3 +789,28 @@ async def test_export_obsidian_empty_target_language_returns_422(client, test_us
     assert resp.status_code == 422, (
         f"Expected 422 for empty target_language in export/obsidian, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #829: save_word returns {} instead of crashing when re-SELECT is None ──
+
+
+@pytest.mark.asyncio
+async def test_save_word_returns_dict_when_row_is_none(tmp_db, test_user, monkeypatch):
+    """Regression #829: save_word() must return {} not crash when the vocabulary
+    re-SELECT returns None (concurrent-delete race between INSERT and re-SELECT)."""
+    import aiosqlite as _aio
+
+    original_fetchone = _aio.Cursor.fetchone
+    select_star_count = {"n": 0}
+
+    async def _fetchone_none_once(self):
+        query = getattr(self, "_query", "")
+        if "SELECT *" in query and "vocabulary" in query:
+            select_star_count["n"] += 1
+            if select_star_count["n"] == 1:
+                return None
+        return await original_fetchone(self)
+
+    monkeypatch.setattr(_aio.Cursor, "fetchone", _fetchone_none_once)
+    result = await save_word(test_user["id"], "hello", BOOK_ID, 0, "Hello world.")
+    assert isinstance(result, dict), f"save_word must return a dict, got {type(result)}"

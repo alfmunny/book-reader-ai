@@ -5,6 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Weekly full-matrix run, Sundays at 03:17 UTC (off-minute). Safety net
+  # for drift the path-scoped PR CI might miss — e.g. backend contract
+  # changes that didn't touch the frontend but break it, or vice versa.
+  # The `changes` job below forces all path outputs to 'true' on schedule
+  # so the full matrix actually runs. (#885 Opt 2 follow-up per user.)
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
 
 jobs:
   # Detect whether the PR touches code that actually needs CI, and which
@@ -27,14 +35,18 @@ jobs:
   changes:
     name: Detect code changes
     runs-on: ubuntu-latest
+    # On schedule + workflow_dispatch, force all path outputs to 'true' so
+    # the full matrix runs regardless of what the last push touched.
+    # On push/PR events, the filter step drives the outputs normally.
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend:  ${{ steps.filter.outputs.backend }}
-      docker:   ${{ steps.filter.outputs.docker }}
+      frontend: ${{ steps.filter.outputs.frontend == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      backend:  ${{ steps.filter.outputs.backend  == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      docker:   ${{ steps.filter.outputs.docker   == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         with:
           filters: |
             frontend:
@@ -203,7 +215,13 @@ jobs:
   test-backend:
     name: Backend tests (pytest)
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    # Broadened to run on frontend changes too: frontend contract drift
+    # against backend API types is hand-caught today (api.ts is hand-written,
+    # not OpenAPI-generated). Running pytest on frontend-only PRs is cheap
+    # insurance against silently breaking an end-to-end flow through a
+    # backend response-shape mismatch. Revisit this gate if we ever switch
+    # to generated API types. Revision requested by user on #919.
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       checks: write

@@ -112,6 +112,9 @@ export default function WordActionDrawer({
       {/* Drawer */}
       <div
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Word lookup: ${word}`}
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto safe-bottom animate-slide-up"
       >
         {/* Drag handle */}

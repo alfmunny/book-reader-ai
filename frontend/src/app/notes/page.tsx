@@ -153,6 +153,13 @@ export default function NotesOverviewPage() {
               <>
                 <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
                 <p className="text-sm">Annotate sentences or save AI insights while reading.</p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/")}
+                  className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+                >
+                  Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
+                </button>
               </>
             ) : (
               <p className="text-sm">No books match your search.</p>

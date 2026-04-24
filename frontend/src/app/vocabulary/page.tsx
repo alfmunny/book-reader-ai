@@ -13,7 +13,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon, ArrowLeftIcon, FlashcardIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon } from "@/components/Icons";
 import TagEditor from "@/components/TagEditor";
 
 type SortMode = "alpha" | "language" | "book" | "recent";
@@ -556,6 +556,13 @@ function VocabularyPageContent() {
             <EmptyVocabIcon className="w-14 h-14 text-amber-300" />
             <p className="font-serif text-lg text-stone-500 mt-1">No saved words yet.</p>
             <p className="text-sm">Double-click any word while reading to save it here.</p>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+            >
+              Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           selectedTag ? (

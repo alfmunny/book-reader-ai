@@ -2584,6 +2584,12 @@ async def test_queue_delete_book_oversized_target_language_returns_422(admin_cli
     assert res.status_code == 422
 
 
+async def test_queue_delete_book_empty_target_language_returns_422(admin_client):
+    """Regression #1019: DELETE /admin/queue/book/{id}?target_language= must return 422, not silently delete all."""
+    res = await admin_client.delete("/api/admin/queue/book/1?target_language=")
+    assert res.status_code == 422, f"Expected 422 for empty target_language, got {res.status_code}: {res.text}"
+
+
 # ── Translation path param bounds checks (regression for #583) ────────────────
 
 async def test_delete_language_translations_oversized_target_language_returns_422(admin_client):

@@ -1099,7 +1099,7 @@ async def save_insight(
             ) as c:
                 row = await c.fetchone()
         await db.commit()
-    return dict(row)
+    return dict(row) if row else {}
 
 
 async def get_insights(user_id: int, book_id: int) -> list[dict]:

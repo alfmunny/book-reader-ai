@@ -86,7 +86,7 @@ This follows the shape of `010_rate_limiter_per_model.sql` and the existing migr
 
 ### Migration numbering
 
-`029_invalidate_shifted_chapter_cache.sql` is the last file on `main` at the time of writing. This work will use **`030` onward**.
+At the time of writing, `030_invalidate_chapter0_cache.sql` (#818) is in flight, so this series begins at **`031`** and runs through **`034`**. The exact numbers are not load-bearing — if other migrations land in the meantime, every implementation PR rebases and picks the next free slot. What matters is the ordering *within* this series (orphan cleanup before rewrite, highest-volume tables last), not the absolute number.
 
 ### Migration split (one PR per migration, four PRs total)
 
@@ -94,12 +94,12 @@ PM's guidance in #754 was to split into "one migration per logical group to keep
 
 | PR | Migration file                               | Tables rewritten                                             | Rationale |
 |----|----------------------------------------------|--------------------------------------------------------------|-----------|
-| 1  | `030_fk_annotations_vocabulary.sql`          | `annotations`, `vocabulary`                                  | User-owned content with highest write volume. Small, easily reviewable. |
-| 2  | `031_fk_book_insights_chapter_summaries.sql` | `book_insights`, `chapter_summaries`                         | AI-derived per-chapter caches. |
-| 3  | `032_fk_translations_audio_cache.sql`        | `translations`, `audio_cache`                                | Read-heavy caches; largest row counts — isolate to contain lock time. |
-| 4  | `033_fk_word_occurrences_translation_queue.sql` | `word_occurrences`, `translation_queue`                    | Queue + word index; last PR in the series also removes the remaining manual cascades in `delete_user` / `admin.delete_book`. |
+| 1  | `031_fk_annotations_vocabulary.sql`          | `annotations`, `vocabulary`                                  | User-owned content with highest write volume. Small, easily reviewable. |
+| 2  | `032_fk_book_insights_chapter_summaries.sql` | `book_insights`, `chapter_summaries`                         | AI-derived per-chapter caches. |
+| 3  | `033_fk_translations_audio_cache.sql`        | `translations`, `audio_cache`                                | Read-heavy caches; largest row counts — isolate to contain lock time. |
+| 4  | `034_fk_word_occurrences_translation_queue.sql` | `word_occurrences`, `translation_queue`                    | Queue + word index; last PR in the series also removes the remaining manual cascades in `delete_user` / `admin.delete_book`. |
 
-Each PR stands alone: it declares the FKs for its tables, removes any now-redundant shadow cleanup for those tables only, and includes its own test coverage. No PR depends on any later PR. If review shows we should split further (e.g. `audio_cache` turns out to be too large to rewrite without user-visible latency on a resource-constrained Railway instance), we split; nothing in this design forbids per-table migrations.
+Each PR stands alone: it declares the FKs for its tables, removes any now-redundant shadow cleanup for those tables only, and includes its own test coverage. No PR depends on any later PR. If review shows we should split further (e.g. `audio_cache` turns out to be too large to rewrite without user-visible latency on a resource-constrained Railway instance), we split; nothing in this design forbids per-table migrations. Implementation PRs pick the next free migration number at rebase time rather than hard-coding `031..034` — if more migrations land in between, the relative ordering of this series is what matters, not the absolute numbers.
 
 ### Parent cleanup in `delete_user` / `admin.delete_book`
 

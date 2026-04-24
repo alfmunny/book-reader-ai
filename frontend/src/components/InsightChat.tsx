@@ -7,7 +7,7 @@ import {
   askQuestion,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
-import { PaperclipIcon, CloseIcon } from "@/components/Icons";
+import { PaperclipIcon, CloseIcon, RetryIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -311,7 +311,8 @@ export default function InsightChat({
             saveSettings({ chatFontSize: next });
           }}
           title={`Toggle font size (${chatFontSize === "xs" ? "small" : "medium"})`}
-          className={`shrink-0 w-7 h-7 flex items-center justify-center rounded text-xs font-bold transition-colors ${
+          aria-label={chatFontSize === "xs" ? "Increase chat font size" : "Decrease chat font size"}
+          className={`shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded text-xs font-bold transition-colors ${
             chatFontSize === "sm"
               ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
               : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
@@ -322,12 +323,11 @@ export default function InsightChat({
         <button
           onClick={() => setRefreshTick((n) => n + 1)}
           title={hasGeminiKey ? "Append a fresh insight" : "Gemini API key required"}
+          aria-label="Append a fresh insight"
           disabled={!hasGeminiKey}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <RetryIcon className="w-3.5 h-3.5" />
         </button>
       </div>
 

@@ -16,11 +16,11 @@ function checkButton(anchorText: string, label: string) {
 
 describe("reader desktop header sidebar toggle buttons aria-label and aria-expanded (closes #951)", () => {
   it("Insight chat toggle has aria-label and aria-expanded", () => {
-    checkButton('setSidebarTab("chat")', "Insight chat");
+    checkButton('setSidebarTab("chat")', "Insight sidebar");
   });
 
   it("Translate toggle has aria-label and aria-expanded", () => {
-    checkButton('setSidebarTab("translate")', "Translation");
+    checkButton('setSidebarTab("translate")', "Translate");
   });
 
   it("Chapter summary toggle has aria-label and aria-expanded", () => {
@@ -28,7 +28,7 @@ describe("reader desktop header sidebar toggle buttons aria-label and aria-expan
   });
 
   it("Notes toggle has aria-label and aria-expanded", () => {
-    checkButton('setSidebarTab("notes")', "Notes");
+    checkButton('setSidebarTab("notes")', "Annotations & notes");
   });
 
   it("Vocabulary toggle has aria-label and aria-expanded", () => {

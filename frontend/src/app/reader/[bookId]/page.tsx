@@ -18,7 +18,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -1746,7 +1746,7 @@ export default function ReaderPage() {
                                   return next;
                                 })}
                               >
-                                <span>{isCollapsed ? "▶" : "▼"}</span>
+                                {isCollapsed ? <ChevronRightIcon className="w-3 h-3" aria-hidden="true" /> : <ChevronDownIcon className="w-3 h-3" aria-hidden="true" />}
                                 <span>Chapter {ch + 1}</span>
                               </button>
                               {!isCollapsed && (

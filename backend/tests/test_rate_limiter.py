@@ -133,3 +133,15 @@ async def test_different_providers_have_separate_counters(tmp_db):
     await gemini.acquire()
     assert await gemini.daily_remaining() == 98
     assert await google.daily_remaining() == 100
+
+
+async def test_default_time_fn_works_inside_running_loop(tmp_db):
+    """Regression #1014: AsyncRateLimiter default _time must work inside async context.
+
+    get_running_loop().time() is correct here; get_event_loop() is deprecated
+    in Python 3.10+ and would emit DeprecationWarning.
+    """
+    limiter = AsyncRateLimiter(rpm=60, rpd=1000)
+    t = limiter._time()
+    assert isinstance(t, float)
+    assert t > 0

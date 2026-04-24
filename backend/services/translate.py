@@ -101,7 +101,7 @@ async def _google_translate(text: str, source: str, target: str) -> list[str]:
 
     # Run sync translator in a thread pool to avoid blocking the event loop.
     # Google Translate handles one paragraph at a time well.
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     results = []
     for para in paragraphs:
         # Skip chapter headings — translating "I" or "Chapter XIV" produces

@@ -156,7 +156,10 @@ async def get_tags(
     vocabulary_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
-    return await vocab_tags.get_vocab_tags(user["id"], vocabulary_id)
+    tags = await vocab_tags.get_vocab_tags(user["id"], vocabulary_id)
+    if tags is None:
+        raise HTTPException(status_code=404, detail="Vocabulary word not found")
+    return tags
 
 
 @router.post("/{vocabulary_id}/tags", status_code=201)

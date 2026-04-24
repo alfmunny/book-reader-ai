@@ -87,6 +87,16 @@ async def test_add_tag_404_for_foreign_word(client, test_user):
     assert resp.status_code == 404
 
 
+async def test_get_tags_404_for_foreign_word(client, test_user):
+    """GET tags on another user's word must return 404, not 200 with empty list (closes #1042)."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    other = await get_or_create_user("tag-other2", "tag-other2@ex.com", "Other2", "")
+    vid = await _save("foreignget", other["id"])
+
+    resp = await client.get(f"/api/vocabulary/{vid}/tags")
+    assert resp.status_code == 404
+
+
 async def test_add_tag_dedup(client, test_user):
     """Adding the same tag twice is idempotent."""
     await save_book(BOOK_ID, _BOOK_META, "text")

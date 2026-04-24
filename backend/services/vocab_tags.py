@@ -43,9 +43,18 @@ async def list_user_tags(user_id: int) -> list[dict]:
             return [dict(r) for r in await cur.fetchall()]
 
 
-async def get_vocab_tags(user_id: int, vocabulary_id: int) -> list[str]:
-    """Return the tags on a specific vocabulary word (user-scoped)."""
+async def get_vocab_tags(user_id: int, vocabulary_id: int) -> list[str] | None:
+    """Return the tags on a specific vocabulary word (user-scoped).
+
+    Returns None if vocabulary_id does not belong to user_id (caller raises 404).
+    """
     async with aiosqlite.connect(_db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT 1 FROM vocabulary WHERE id = ? AND user_id = ?",
+            (vocabulary_id, user_id),
+        ) as cur:
+            if await cur.fetchone() is None:
+                return None
         async with db.execute(
             """
             SELECT tag FROM vocabulary_tags

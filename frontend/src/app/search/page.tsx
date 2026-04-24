@@ -1,5 +1,6 @@
 "use client";
 
+import DOMPurify from "isomorphic-dompurify";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -8,9 +9,9 @@ import { SearchIcon } from "@/components/Icons";
 import { InAppSearchResponse, InAppSearchResult, searchInAppContent } from "@/lib/api";
 
 function SnippetHtml({ snippet }: { snippet: string }) {
-  // Backend returns snippets containing only `<b>…</b>` wrappers; safe to render.
-  // We strip any other angle brackets defensively before rendering.
-  const clean = snippet.replace(/<(?!\/?b\b)[^>]*>/g, "");
+  // SQLite snippet() embeds raw user content — sanitize before rendering.
+  // Allow only bare <b> tags (no attributes) so FTS highlights survive.
+  const clean = DOMPurify.sanitize(snippet, { ALLOWED_TAGS: ["b"], ALLOWED_ATTR: [] });
   return (
     <span
       className="text-sm text-ink"

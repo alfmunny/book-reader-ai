@@ -9,6 +9,7 @@ const customConfig = {
   moduleNameMapper: {
     "^react-markdown$": "<rootDir>/src/__mocks__/react-markdown.tsx",
     "^remark-gfm$": "<rootDir>/src/__mocks__/remark-gfm.ts",
+    "^isomorphic-dompurify$": "<rootDir>/src/__mocks__/isomorphic-dompurify.ts",
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   collectCoverageFrom: [

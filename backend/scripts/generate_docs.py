@@ -378,6 +378,10 @@ def _run_all(repo_root: Path) -> None:
     generate_migration_index(migrations, out_dir / "architecture" / "migrations.md")
 
 
+def _journal_stub_path(repo_root: Path, day: date) -> Path:
+    return repo_root / "docs" / "journal" / "daily" / f"{day.isoformat()}.md"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate auto docs pages.")
     parser.add_argument(
@@ -386,9 +390,30 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Repo root (default: two levels up from this file).",
     )
+    parser.add_argument(
+        "--journal-day",
+        type=str,
+        default=None,
+        help=(
+            "If set, generate ONLY a daily journal stub for the given ISO date "
+            "(YYYY-MM-DD) and exit. Intended for the nightly docs-journal "
+            "workflow. Skips the index generators."
+        ),
+    )
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root or Path(__file__).resolve().parents[2]
+
+    if args.journal_day is not None:
+        day = date.fromisoformat(args.journal_day)
+        out = _journal_stub_path(repo_root, day)
+        if out.exists():
+            print(f"{out} already exists — leaving in place so PM edits are preserved.")
+            return 0
+        generate_daily_journal_stub(day, out)
+        print(f"Wrote journal stub at {out}")
+        return 0
+
     _run_all(repo_root)
     print(f"Generated docs under {repo_root / 'docs'}")
     return 0

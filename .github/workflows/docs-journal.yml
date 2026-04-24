@@ -1,0 +1,67 @@
+name: Docs journal
+
+# Generates a dated 7-section journal stub in docs/journal/daily/ each
+# night and commits it to main. PM fills the hand sections (3, 5, 6) in
+# the next morning's cycle; sections 1, 2, 4, 7 are stubs that future
+# tooling will auto-populate from merged PRs + touched paths.
+#
+# Cadence: 01:07 UTC daily. Off-minute to avoid the midnight burst on
+# GitHub Actions.
+#
+# Manual dispatch is available so PM can backfill a missing day.
+
+on:
+  schedule:
+    - cron: '7 1 * * *'
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'ISO date to generate (YYYY-MM-DD). Defaults to today.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write  # commit the stub file to main
+
+concurrency:
+  group: docs-journal
+  cancel-in-progress: false
+
+jobs:
+  stub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Resolve day
+        id: day
+        run: |
+          if [ -n "${{ inputs.day }}" ]; then
+            echo "date=${{ inputs.day }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate journal stub
+        run: |
+          python -m backend.scripts.generate_docs \
+            --journal-day "${{ steps.day.outputs.date }}"
+
+      - name: Commit stub if new
+        # Stub is idempotent — if the file already exists, the generator
+        # prints "leaving in place" and we skip the commit. Guard below
+        # keeps us from pushing empty commits.
+        run: |
+          git config user.name  "book-reader-ai-journal-bot"
+          git config user.email "noreply@github.com"
+          git add docs/journal/daily/ || true
+          if git diff --cached --quiet; then
+            echo "No new stub to commit (file already existed)."
+            exit 0
+          fi
+          git commit -m "chore(journal): stub for ${{ steps.day.outputs.date }}"
+          git push

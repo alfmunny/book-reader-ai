@@ -44,6 +44,8 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
   return (
     <div
       ref={ref}
+      role="toolbar"
+      aria-label="Sentence actions"
       style={{ left, top }}
       className="fixed z-50 flex items-center gap-0.5 bg-stone-800 rounded-xl shadow-xl px-1 py-1 animate-fade-in"
     >

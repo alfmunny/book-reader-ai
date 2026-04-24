@@ -1556,3 +1556,47 @@ def test_epub_chapter_without_speaker_cues_unchanged_by_split():
     # We fed 6 <p> — expect 6 paragraphs out, not fewer (not merged) and
     # not more (not artificially split).
     assert len(paragraphs) == 6, f"expected 6 paragraphs, got {len(paragraphs)}: {paragraphs!r}"
+
+
+def test_build_chapters_from_epub_single_chapter_short_story():
+    """Regression #965: a single-chapter EPUB with < 300 words must return
+    [1 chapter], not [] — short stories (Rashomon, etc.) were wrongly
+    discarded because the text-splitter fallback's 300-word gate fired."""
+    import io
+    from ebooklib import epub
+
+    # 60 words — well below the 300-word threshold that gates the text splitter,
+    # but clearly valid short-story content.
+    story = " ".join(["The old servant waited beneath the Rashomon gate."] * 12)
+
+    content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml">'
+        "<head><title>Rashomon</title></head><body>"
+        f"<h2>Rashomon</h2>"
+        + "".join(f"<p>{story}</p>" for _ in range(4))
+        + "</body></html>"
+    )
+
+    book = epub.EpubBook()
+    book.set_title("Rashomon")
+    book.set_language("ja")
+    book.add_author("Ryunosuke Akutagawa")
+
+    item = epub.EpubHtml(title="Rashomon", file_name="rashomon.xhtml", lang="ja")
+    item.content = content.encode("utf-8")
+    book.add_item(item)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.toc = [epub.Link("rashomon.xhtml", "Rashomon", "main")]
+    book.spine = ["nav", item]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+
+    chapters = build_chapters_from_epub(buf.getvalue())
+    assert len(chapters) == 1, (
+        f"Expected 1 chapter for single-chapter short story EPUB, got {len(chapters)}"
+    )
+    assert chapters[0].title == "Rashomon"
+    assert "Rashomon gate" in chapters[0].text

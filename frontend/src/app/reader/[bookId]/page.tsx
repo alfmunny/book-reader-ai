@@ -955,7 +955,7 @@ export default function ReaderPage() {
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
                   aria-label="Previous chapter"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                  className="w-7 h-7 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
                 >
                   <ArrowLeftIcon className="w-3.5 h-3.5" />
                 </button>
@@ -977,7 +977,7 @@ export default function ReaderPage() {
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
                   aria-label="Next chapter"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                  className="w-7 h-7 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
                 >
                   <ArrowRightIcon className="w-3.5 h-3.5" />
                 </button>
@@ -1164,7 +1164,7 @@ export default function ReaderPage() {
               onClick={() => setShowShortcuts((v) => !v)}
               title="Keyboard shortcuts (?)"
               aria-label="Keyboard shortcuts"
-              className={`flex shrink-0 items-center justify-center w-7 h-7 rounded-lg border text-xs font-medium transition-colors ${
+              className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] rounded-lg border text-xs font-medium transition-colors ${
                 showShortcuts
                   ? "bg-amber-100 border-amber-400 text-amber-800"
                   : "border-amber-300 text-amber-500 hover:bg-amber-50 hover:text-amber-700"

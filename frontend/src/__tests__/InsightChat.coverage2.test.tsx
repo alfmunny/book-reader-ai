@@ -61,27 +61,27 @@ describe("InsightChat — ContextChip expand/collapse (L78)", () => {
     await act(async () => await flushPromises());
 
     // Initially shows "more"
-    const moreBtn = screen.getByRole("button", { name: "more" });
+    const moreBtn = screen.getByRole("button", { name: "Expand context" });
     expect(moreBtn).toBeInTheDocument();
 
     fireEvent.click(moreBtn);
     await act(async () => await flushPromises());
 
     // After expanding, shows "less"
-    expect(screen.getByRole("button", { name: "less" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Collapse context" })).toBeInTheDocument();
   });
 
   it("toggles ContextChip back from 'less' to 'more' on second click", async () => {
     render(<InsightChat {...BASE} selectedText={LONG_TEXT} />);
     await act(async () => await flushPromises());
 
-    fireEvent.click(screen.getByRole("button", { name: "more" }));
+    fireEvent.click(screen.getByRole("button", { name: "Expand context" }));
     await act(async () => await flushPromises());
 
-    fireEvent.click(screen.getByRole("button", { name: "less" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse context" }));
     await act(async () => await flushPromises());
 
-    expect(screen.getByRole("button", { name: "more" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand context" })).toBeInTheDocument();
   });
 });
 
@@ -274,7 +274,7 @@ describe("InsightChat — MsgContextBlock onToggle (L389-L390)", () => {
     // The user message's MsgContextBlock shows "more" (context > 160 chars, collapsed)
     // There may be multiple "more" buttons (ContextChip in input area is gone after send,
     // but MsgContextBlock in the user bubble should now be present)
-    const moreBtns = screen.getAllByRole("button", { name: "more" });
+    const moreBtns = screen.getAllByRole("button", { name: "Expand context" });
     expect(moreBtns.length).toBeGreaterThanOrEqual(1);
 
     // Click the MsgContextBlock's "more" button (last one, as ContextChip was cleared on send)
@@ -282,7 +282,7 @@ describe("InsightChat — MsgContextBlock onToggle (L389-L390)", () => {
     await act(async () => await flushPromises());
 
     // After expanding, the MsgContextBlock shows "less"
-    const lessBtns = screen.getAllByRole("button", { name: "less" });
+    const lessBtns = screen.getAllByRole("button", { name: "Collapse context" });
     expect(lessBtns.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -296,15 +296,15 @@ describe("InsightChat — MsgContextBlock onToggle (L389-L390)", () => {
 
     await waitFor(() => expect(screen.getByText("Answer.")).toBeInTheDocument());
 
-    const moreBtns = screen.getAllByRole("button", { name: "more" });
+    const moreBtns = screen.getAllByRole("button", { name: "Expand context" });
     fireEvent.click(moreBtns[moreBtns.length - 1]);
     await act(async () => await flushPromises());
 
-    const lessBtns = screen.getAllByRole("button", { name: "less" });
+    const lessBtns = screen.getAllByRole("button", { name: "Collapse context" });
     fireEvent.click(lessBtns[lessBtns.length - 1]);
     await act(async () => await flushPromises());
 
     // Back to "more"
-    expect(screen.getAllByRole("button", { name: "more" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button", { name: "Expand context" }).length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -116,6 +116,8 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
   return (
     <div
       ref={toolbarRef}
+      role="toolbar"
+      aria-label="Text selection actions"
       className="fixed z-50 flex items-center gap-0.5 bg-stone-800/95 backdrop-blur rounded-xl shadow-xl border border-white/10 px-1 py-1 animate-fade-in"
       style={{ left, top }}
     >

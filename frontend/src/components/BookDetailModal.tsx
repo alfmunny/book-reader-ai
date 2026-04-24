@@ -119,7 +119,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
         {/* Primary CTA */}
         <button
           onClick={onRead}
-          className="w-full rounded-xl bg-amber-700 text-white py-3 text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="w-full rounded-xl bg-amber-700 text-white py-3 min-h-[44px] text-sm font-medium hover:bg-amber-800 transition-colors"
         >
           {recentBook
             ? `Continue Reading — Ch. ${recentBook.lastChapter + 1}`

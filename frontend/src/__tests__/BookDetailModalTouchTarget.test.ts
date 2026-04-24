@@ -32,4 +32,11 @@ describe("BookDetailModal touch targets (closes #811)", () => {
     expect(window).not.toMatch(/\bw-8\b/);
     expect(window).not.toMatch(/\bh-8\b/);
   });
+
+  it("Start/Continue Reading CTA button has min-h-[44px]", () => {
+    const idx = src.indexOf("Start Reading");
+    expect(idx).toBeGreaterThan(-1);
+    const window = src.slice(Math.max(0, idx - 300), idx + 20);
+    expect(window).toContain("min-h-[44px]");
+  });
 });

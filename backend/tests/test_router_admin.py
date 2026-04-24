@@ -3141,3 +3141,82 @@ async def test_retranslate_all_continues_after_per_chapter_translation_failure(a
     results = {r["chapter"]: r["status"] for r in body["results"]}
     assert results.get(0) == "failed", "chapter 0 must be recorded as failed"
     assert results.get(1) == "ok", "chapter 1 must succeed after chapter 0 failed"
+
+
+# ── Issue #1086: admin translate/retranslate missing exception logging ────────
+
+
+@pytest.mark.asyncio
+async def test_retranslate_both_fail_logs_warning(admin_user, admin_client, admin_db, caplog):
+    """Regression #1086: POST .../retranslate must log a WARNING when both providers fail."""
+    import logging
+    from services.auth import encrypt_api_key
+    from services.db import set_user_gemini_key
+    await set_user_gemini_key(admin_user["id"], encrypt_api_key("fake-api-key"))
+    await save_book(100, BOOK_META, BOOK_TEXT)
+
+    async def _always_fail(text, src, tgt, *, provider="google", gemini_key=None):
+        raise RuntimeError("both providers broken")
+
+    with patch("routers.admin.do_translate", side_effect=_always_fail):
+        with caplog.at_level(logging.WARNING, logger="routers.admin"):
+            res = await admin_client.post("/api/admin/translations/100/0/de/retranslate")
+
+    assert res.status_code == 502
+    assert any(
+        "retranslate" in r.message.lower() or "translat" in r.message.lower()
+        for r in caplog.records
+    ), f"Expected warning log for retranslate failure, got: {[r.message for r in caplog.records]}"
+
+
+@pytest.mark.asyncio
+async def test_retranslate_all_chapter_failure_logs_warning(admin_user, admin_client, admin_db, caplog):
+    """Regression #1086: retranslate-all per-chapter failure must log a WARNING, not swallow silently."""
+    import logging
+    from services.auth import encrypt_api_key
+    from services.db import set_user_gemini_key
+    await set_user_gemini_key(admin_user["id"], encrypt_api_key("fake-api-key"))
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+
+    async def _always_fail(text, src, tgt, *, provider="google", gemini_key=None):
+        raise RuntimeError("chapter translation broken")
+
+    with patch("routers.admin.do_translate", side_effect=_always_fail):
+        with caplog.at_level(logging.WARNING, logger="routers.admin"):
+            res = await admin_client.post(
+                "/api/admin/translations/100/retranslate-all",
+                json={"target_language": "zh"},
+            )
+
+    assert res.status_code == 200
+    results = {r["chapter"]: r["status"] for r in res.json()["results"]}
+    assert results.get(0) == "failed"
+    assert any(
+        "retranslate" in r.message.lower() or "translat" in r.message.lower() or "ch " in r.message.lower()
+        for r in caplog.records
+    ), f"Expected warning log for chapter failure, got: {[r.message for r in caplog.records]}"
+
+
+@pytest.mark.asyncio
+async def test_queue_dry_run_translation_failure_logs_warning(admin_client, admin_db, caplog):
+    """Regression #1086: POST /admin/queue/dry-run translation failure must log a WARNING."""
+    import logging
+
+    with patch("routers.admin.get_setting", new_callable=AsyncMock, return_value="encrypted-key"), \
+         patch("routers.admin.decrypt_api_key", return_value="sk-fake"), \
+         patch("routers.admin.plan_work_for_queue", new_callable=AsyncMock,
+               return_value=[{"book_id": 100, "book_title": "T", "source_language": "de",
+                              "chapters": [type("C", (), {"chapter_index": 0, "chapter_text": "hello"})()]}]), \
+         patch("routers.admin.group_chapters_for_batch",
+               return_value=[[type("C", (), {"chapter_index": 0, "chapter_text": "hello"})()]]), \
+         patch("routers.admin.get_model_chain", new_callable=AsyncMock, return_value=["gemini-pro"]), \
+         patch("routers.admin.translate_chapters_batch", new_callable=AsyncMock,
+               side_effect=RuntimeError("dry-run broken")):
+        with caplog.at_level(logging.WARNING, logger="routers.admin"):
+            res = await admin_client.post("/api/admin/queue/dry-run", json={"target_language": "zh"})
+
+    assert res.status_code == 500
+    assert any(
+        "dry" in r.message.lower() or "preview" in r.message.lower() or "translat" in r.message.lower()
+        for r in caplog.records
+    ), f"Expected warning log for dry-run failure, got: {[r.message for r in caplog.records]}"

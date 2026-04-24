@@ -566,19 +566,25 @@ async def retranslate(
             provider=provider,
             gemini_key=decrypted_key,
         )
-    except Exception:
+    except Exception as _exc:
         if provider == "gemini":
             try:
                 paragraphs = await do_translate(
                     chapter_text, source_language, target_language, provider="google",
                 )
                 provider = "google"
-            except Exception:
+            except Exception as exc:
+                logger.warning(
+                    "admin retranslate ch %d: both providers failed: %s", chapter_index, exc, exc_info=True
+                )
                 raise HTTPException(
                     status_code=502,
                     detail="Translation failed: both Gemini and Google Translate could not process this chapter.",
                 )
         else:
+            logger.warning(
+                "admin retranslate ch %d: Google Translate failed: %s", chapter_index, _exc, exc_info=True
+            )
             raise HTTPException(
                 status_code=502,
                 detail="Translation failed: Google Translate could not process this chapter.",
@@ -726,16 +732,22 @@ async def retranslate_all(
                 ch.text, source_language, target_language,
                 provider=provider, gemini_key=decrypted_key,
             )
-        except Exception:
+        except Exception as _exc:
             if provider == "gemini":
                 try:
                     paragraphs = await do_translate(
                         ch.text, source_language, target_language, provider="google",
                     )
-                except Exception:
+                except Exception as exc:
+                    logger.warning(
+                        "admin retranslate-all ch %d: both providers failed: %s", i, exc, exc_info=True
+                    )
                     results.append({"chapter": i, "status": "failed"})
                     continue
             else:
+                logger.warning(
+                    "admin retranslate-all ch %d: Google Translate failed: %s", i, _exc, exc_info=True
+                )
                 results.append({"chapter": i, "status": "failed"})
                 continue
         await save_translation(book_id, i, target_language, paragraphs)
@@ -1028,7 +1040,8 @@ async def queue_dry_run(req: QueuePlanRequest, _admin: dict = Depends(_require_a
             model=chain[0] or TRANSLATOR_MODEL,
             max_output_tokens=max_output_tokens,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("admin queue dry-run translation failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Translation service request failed")
 
     return {

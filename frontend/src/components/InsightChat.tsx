@@ -501,6 +501,7 @@ export default function InsightChat({
 
         <div className="flex gap-2 items-end">
           <textarea
+            aria-label="Ask about this chapter"
             className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white focus:border-transparent resize-none leading-relaxed transition-colors placeholder:text-gray-400"
             rows={2}
             placeholder={hasGeminiKey ? "Ask about this chapter…" : "Gemini API key required"}

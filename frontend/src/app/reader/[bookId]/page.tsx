@@ -1008,7 +1008,7 @@ export default function ReaderPage() {
           <button
             onClick={cycleTheme}
             title={`Theme: ${theme} — click to cycle`}
-            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
+            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 min-h-[44px] rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
           >
             {theme === "light" ? <SunIcon className="w-3.5 h-3.5" /> : theme === "sepia" ? <SepiaIcon className="w-3.5 h-3.5" /> : <MoonIcon className="w-3.5 h-3.5" />}
             <span className="hidden lg:inline capitalize text-[9px] font-sans">{theme}</span>
@@ -1020,7 +1020,7 @@ export default function ReaderPage() {
           <button
             onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1034,7 +1034,7 @@ export default function ReaderPage() {
           <button
             onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
             title="Translation"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"
                 ? "bg-amber-700 text-white border-amber-700"
                 : translationEnabled
@@ -1050,7 +1050,7 @@ export default function ReaderPage() {
           <button
             onClick={() => { setSidebarTab("summary"); setSidebarOpen((v) => sidebarTab === "summary" ? !v : true); }}
             title="Chapter summary"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "summary"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1067,7 +1067,7 @@ export default function ReaderPage() {
               setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true);
             }}
             title="Annotations & notes"
-            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "notes"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1093,7 +1093,7 @@ export default function ReaderPage() {
                 });
               }}
               title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
-              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
                 showAnnotations
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
@@ -1111,7 +1111,7 @@ export default function ReaderPage() {
               setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true);
             }}
             title="Vocabulary"
-            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "vocab"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1131,7 +1131,7 @@ export default function ReaderPage() {
             <button
               onClick={handleObsidianExport}
               title="Export vocabulary to Obsidian"
-              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               <ExportIcon className="w-3.5 h-3.5 shrink-0" />
               Obsidian
@@ -1148,7 +1148,7 @@ export default function ReaderPage() {
               setShowTypographyPanel(false);
             }}
             title="Focus mode (F)"
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               focusMode
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"

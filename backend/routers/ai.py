@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from services.auth import get_current_user, decrypt_api_key, check_book_access
 from services.db import (
     get_cached_translation,
@@ -242,11 +242,13 @@ async def translate_cache(
     _user: dict = Depends(get_current_user),
 ):
     """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, _user)
-    target_language = target_language.lower().split("-")[0]
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
     if chapter_index < 0 or chapter_index >= len(_chapters):
@@ -273,6 +275,14 @@ class SaveTranslationRequest(BaseModel):
     paragraphs: list[Annotated[str, Field(min_length=1, max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)
+
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
 
 
 @router.put("/translate/cache")
@@ -315,8 +325,10 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
 @router.post("/translate")
 async def translate(req: TranslateRequest, user: dict = Depends(get_current_user)):
     """Translate text with auto-fallback: Gemini if key available, else Google Translate (free)."""
-    src = req.source_language.lower().split("-")[0]
-    tgt = req.target_language.lower().split("-")[0]
+    src = req.source_language.strip().lower().split("-")[0]
+    tgt = req.target_language.strip().lower().split("-")[0]
+    if not src or not tgt:
+        raise HTTPException(status_code=422, detail="source_language and target_language cannot be blank")
     if src == tgt:
         raise HTTPException(status_code=400, detail="Source and target language are the same.")
     try:

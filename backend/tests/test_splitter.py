@@ -1600,3 +1600,83 @@ def test_build_chapters_from_epub_single_chapter_short_story():
     )
     assert chapters[0].title == "Rashomon"
     assert "Rashomon gate" in chapters[0].text
+
+
+# --- #966 regression: CJK word-count ---
+
+def test_token_count_english():
+    from services.splitter import _token_count
+    assert _token_count("Hello world foo bar baz") == 5
+    assert _token_count("") == 0
+    assert _token_count("   ") == 0
+
+
+def test_token_count_cjk_uses_char_estimate():
+    from services.splitter import _token_count
+    # A paragraph of Japanese text has no spaces — split() returns 1 token,
+    # but _token_count should estimate ~len/3.
+    ja_text = "あの男は羅生門の下に雨やみを待っていた。" * 20  # ~420 chars
+    result = _token_count(ja_text)
+    # Should be >> 1 (not the raw split() count) and ≈ len/3
+    assert result > 30, f"CJK token_count too low: {result}"
+    assert result == len(ja_text) // 3
+
+
+def test_build_chapters_from_epub_cjk_chapters_not_discarded():
+    """Regression #966: multi-chapter CJK EPUBs must not return [].
+
+    The 30-word whitespace-split threshold discarded every Japanese spine
+    item because 'text.split()' on CJK text produces near-1 tokens even
+    for full-length chapters. _token_count() falls back to len(text)//3
+    for CJK-dominant text, so the chapters are accepted."""
+    import io
+    from ebooklib import epub
+
+    ja_sentence = "あの男は羅生門の下で雨やみを待っていた。老婆が梯子を上った。"
+    # Each chapter body: 8 paragraphs × 5 copies of the sentence
+    body_text = ja_sentence * 5
+
+    scenes = [
+        ("第一章", body_text),
+        ("第二章", body_text),
+        ("第三章", body_text),
+    ]
+
+    epub_book = epub.EpubBook()
+    epub_book.set_title("羅生門")
+    epub_book.set_language("ja")
+    epub_book.add_author("芥川龍之介")
+
+    spine = ["nav"]
+    toc = []
+    for i, (title, body) in enumerate(scenes):
+        uid = f"ch{i+1:02d}"
+        fname = f"{uid}.xhtml"
+        content = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml">'
+            f"<head><title>{title}</title></head><body>"
+            f"<h2>{title}</h2>"
+            + "".join(f"<p>{body}</p>" for _ in range(6))
+            + "</body></html>"
+        )
+        item = epub.EpubHtml(title=title, file_name=fname, lang="ja")
+        item.content = content.encode("utf-8")
+        epub_book.add_item(item)
+        spine.append(item)
+        toc.append(epub.Link(fname, title, uid))
+
+    epub_book.toc = toc
+    epub_book.add_item(epub.EpubNcx())
+    epub_book.add_item(epub.EpubNav())
+    epub_book.spine = spine
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, epub_book)
+    chapters = build_chapters_from_epub(buf.getvalue())
+
+    assert len(chapters) == 3, (
+        f"Expected 3 chapters for CJK EPUB, got {len(chapters)} — "
+        f"CJK word-count threshold may be discarding valid chapters"
+    )
+    assert "羅生門" in chapters[0].text or "老婆" in chapters[0].text

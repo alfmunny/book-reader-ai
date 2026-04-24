@@ -75,8 +75,8 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-0">
             {loading && annotations.length === 0 ? (
-              <div className="flex justify-center mt-10">
-                <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+              <div role="status" aria-label="Loading annotations" className="flex justify-center mt-10">
+                <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
               </div>
             ) : annotations.length === 0 ? (
               <div className="text-center text-stone-400 mt-10 text-sm">
@@ -87,8 +87,8 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             ) : (
               <>
                 {loading && (
-                  <div className="flex justify-center py-1">
-                    <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                  <div role="status" aria-label="Refreshing annotations" className="flex justify-center py-1">
+                    <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
                   </div>
                 )}
               {chapters.map((ch) => (

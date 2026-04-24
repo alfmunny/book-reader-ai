@@ -111,14 +111,14 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
         <button
           onClick={start}
           disabled={running}
-          className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2 text-sm hover:bg-amber-50 disabled:opacity-50"
+          className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2 min-h-[44px] text-sm hover:bg-amber-50 disabled:opacity-50"
         >
           {running ? "Seeding…" : "Seed all popular books"}
         </button>
         {state && state.status !== "idle" && !expanded && (
           <button
             onClick={() => setExpanded(true)}
-            className="text-xs text-amber-700 hover:text-amber-900"
+            className="text-xs text-amber-700 hover:text-amber-900 min-h-[44px] flex items-center"
           >
             Show progress
           </button>
@@ -126,7 +126,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
         {state && state.status !== "idle" && expanded && !running && (
           <button
             onClick={() => setExpanded(false)}
-            className="text-xs text-stone-500 hover:text-stone-700"
+            className="text-xs text-stone-500 hover:text-stone-700 min-h-[44px] flex items-center"
           >
             Hide
           </button>
@@ -150,7 +150,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
               {running && (
                 <button
                   onClick={stop}
-                  className="text-xs text-red-600 hover:text-red-800"
+                  className="text-xs text-red-600 hover:text-red-800 min-h-[44px] flex items-center"
                 >
                   Stop
                 </button>

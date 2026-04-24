@@ -238,7 +238,7 @@ async def delete_summary(book_id: int = Query(..., ge=1), chapter_index: int = Q
 async def translate_cache(
     book_id: int = Query(..., ge=1),
     chapter_index: int = Query(..., ge=0),
-    target_language: str = Query(..., max_length=20),
+    target_language: str = Query(..., min_length=1, max_length=20),
     _user: dict = Depends(get_current_user),
 ):
     """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""

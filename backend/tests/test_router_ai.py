@@ -1260,3 +1260,14 @@ async def test_save_translation_empty_target_language_returns_422(client, test_u
         "paragraphs": ["Hello."],
     })
     assert resp.status_code == 422, f"Expected 422 for empty target_language in save_translation, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #792: min_length=1 on GET /ai/translate/cache target_language ───────
+
+
+async def test_get_translate_cache_empty_target_language_returns_422(client, test_user):
+    """Regression #792: GET /ai/translate/cache?target_language="" must return 422."""
+    resp = await client.get("/api/ai/translate/cache?book_id=1&chapter_index=0&target_language=")
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty target_language in GET /ai/translate/cache, got {resp.status_code}: {resp.text}"
+    )

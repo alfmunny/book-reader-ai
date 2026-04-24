@@ -1924,7 +1924,7 @@ export default function ReaderPage() {
                         {session?.backendToken ? (
                           <button
                             onClick={handleTranslateThisChapter}
-                            className="w-full px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
+                            className="w-full px-3 py-2 min-h-[44px] rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
                           >
                             Translate this chapter
                           </button>

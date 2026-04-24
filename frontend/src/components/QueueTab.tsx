@@ -436,7 +436,7 @@ export default function QueueTab({ adminFetch }: Props) {
   // rendered panels that used to pop in incrementally over a few seconds.
   if (!initialLoaded && !error) {
     return (
-      <div className="space-y-3 animate-pulse">
+      <div role="status" aria-label="Loading queue" className="space-y-3 animate-pulse">
         <div className="bg-white rounded-xl border border-amber-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-stone-300" />

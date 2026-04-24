@@ -140,13 +140,13 @@ export default function UploadsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-amber-200 bg-amber-50/60">
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800">Title</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800">File</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800">Format</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800">Size</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800">Uploader</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800">Date</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-amber-800"></th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Title</th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">File</th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Format</th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Size</th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Uploader</th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Date</th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">

@@ -173,7 +173,7 @@ export default function ChapterEditorPage() {
                   <button
                     aria-label={`Remove chapter ${i + 1}`}
                     onClick={(e) => { e.stopPropagation(); handleRemove(i); }}
-                    className="shrink-0 p-1 rounded text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded text-stone-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                   >
                     <TrashIcon className="w-3.5 h-3.5" />
                   </button>

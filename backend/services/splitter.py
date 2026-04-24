@@ -683,6 +683,10 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
             sub = build_chapters(combined)
             if len(sub) >= 2:
                 return sub
+        # Single chapter with no further sub-splits: return as-is.
+        # Returning [] here forces a text-splitter fallback that fails for
+        # non-English content (CJK, etc.) — the 1-chapter EPUB is always better.
+        return chapters
 
     return []
 

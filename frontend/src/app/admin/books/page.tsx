@@ -236,7 +236,7 @@ export default function BooksPage() {
         <button
           onClick={handleImport}
           disabled={importing || !importId.trim()}
-          className="rounded-lg bg-amber-700 text-white px-4 py-2 text-sm hover:bg-amber-800 disabled:opacity-50"
+          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] text-sm hover:bg-amber-800 disabled:opacity-50"
         >
           {importing ? "Importing…" : "Import Book"}
         </button>
@@ -283,7 +283,7 @@ export default function BooksPage() {
                     setExpandedBookId(isExpanded ? null : b.id);
                     setExpandedLang(null);
                   }}
-                  className="text-stone-400 hover:text-amber-700 flex items-center"
+                  className="text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
                   title={isExpanded ? "Collapse" : "Expand"}
                   aria-label={isExpanded ? "Collapse" : "Expand"}
                 >
@@ -353,7 +353,7 @@ export default function BooksPage() {
                               disabled={retryingFailed === retryKey}
                               title={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
                               aria-label={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
-                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center"
+                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center min-h-[44px] min-w-[44px] justify-center"
                             >
                               <RetryIcon className={`w-3 h-3 ${retryingFailed === retryKey ? "animate-spin" : ""}`} />
                             </button>
@@ -366,7 +366,8 @@ export default function BooksPage() {
 
                 <button
                   onClick={() => router.push(`/reader/${b.id}`)}
-                  className="text-xs text-amber-600 hover:text-amber-800 shrink-0"
+                  aria-label="Open reader"
+                  className="text-xs text-amber-600 hover:text-amber-800 shrink-0 min-h-[44px] flex items-center"
                 >
                   Open
                 </button>
@@ -424,7 +425,7 @@ export default function BooksPage() {
                             <div className="px-3 py-2 flex items-center gap-2">
                               <button
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
-                                className="text-xs text-stone-400 hover:text-amber-700 flex items-center"
+                                className="text-xs text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
                                 aria-label={isLangExpanded ? "Collapse" : "Expand"}
                               >
                                 {isLangExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}

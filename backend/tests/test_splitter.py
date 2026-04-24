@@ -1313,6 +1313,56 @@ def test_build_chapters_from_epub_returns_empty_on_invalid_bytes():
     assert build_chapters_from_epub(b"") == []
 
 
+def test_build_chapters_from_epub_single_spine_item_with_keyword_chapters():
+    """Single-spine-item EPUBs (e.g. Kafka novellas) must split via text splitter.
+
+    Gutenberg packages some short works as one HTML file with keyword headings
+    (Kapitel I / II / III). The EPUB path used to return [] because its
+    len(chapters) >= 2 guard rejected the single spine item. This verifies the
+    fallback splits the body text and returns the expected chapter count.
+    """
+    import io
+    from ebooklib import epub
+
+    word = "Gregor Samsa erwachte eines Morgens aus unruhigen Träumen"
+    para = f"<p>{word}. " + " ".join(["Ein Wort"] * 40) + ".</p>"
+
+    content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml">'
+        "<head><title>Die Verwandlung</title></head><body>"
+        f"<h2>Kapitel I</h2>{para * 10}"
+        f"<h2>Kapitel II</h2>{para * 10}"
+        f"<h2>Kapitel III</h2>{para * 10}"
+        "</body></html>"
+    )
+
+    book = epub.EpubBook()
+    book.set_title("Die Verwandlung")
+    book.set_language("de")
+    book.add_author("Franz Kafka")
+
+    item = epub.EpubHtml(title="Die Verwandlung", file_name="verwandlung.xhtml", lang="de")
+    item.content = content.encode("utf-8")
+    book.add_item(item)
+
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.toc = [epub.Link("verwandlung.xhtml", "Die Verwandlung", "main")]
+    book.spine = ["nav", item]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+
+    chapters = build_chapters_from_epub(buf.getvalue())
+    assert len(chapters) >= 2, (
+        f"Expected >= 2 chapters for single-spine-item EPUB, got {len(chapters)}"
+    )
+    titles = [c.title for c in chapters]
+    assert any("Kapitel" in t or "I" in t for t in titles), f"Chapter titles: {titles}"
+    assert all(len(c.text.split()) >= 10 for c in chapters), "Each chapter must have real content"
+
+
 def test_build_chapters_from_epub_skips_short_items():
     """Items with fewer than 30 words should be skipped (nav/cover pages)."""
     import io

@@ -394,15 +394,27 @@ The label-driven gates (`pm-approved`, `user-approved`, `needs-pm-review`, `bloc
 
 ## Documentation policy
 
-**Every role contributes to keeping the docs-site source content fresh.** The docs site proposed in #864 builds directly from files in this repo; it rots the instant any source file drifts from the code. The rules below are source-content invariants and hold independently of how the site eventually renders them — they apply **now**, before the site ships.
+**Every role contributes to keeping the docs-site source content fresh.** The docs site at `alfmunny.github.io/book-reader-ai/` builds directly from files in this repo; it rots the instant any source file drifts from the code. The rules below are source-content invariants and hold independently of how the site renders them.
+
+### Per-PR docs check (applies to every role)
+
+**After finishing an issue or PR, before moving to the next task, scan the diff and ask: does any file under `docs/` need updating to reflect this change?**
+
+- If yes **and the doc update is small**: include it in the same PR.
+- If yes **but the doc update would materially grow the PR** (e.g., a new tutorial, a full FEATURES.md rewrite): file a `documentation` issue immediately, link it in the PR body under a `## Docs follow-up` heading, and claim it on the next cycle.
+- If no: no action.
+
+The default is "yes, something needs updating." Merging code without at least *checking* is the rot source.
 
 ### Dev
 - When adding, modifying, or removing a script in `backend/scripts/`, update the module docstring at the top of the file. Docstring must describe: (1) what the script does, (2) when to use it, (3) one concrete example invocation. The docs site auto-generates the scripts reference from these.
 - When a bug fix changes user-visible behaviour documented in `docs/FEATURES.md`, update the feature page in the same PR. When a fix changes API request/response shape, update the API reference section (out-of-scope placeholder today; add a TODO line so it's caught later).
+- **Per-PR check** — after every merge, confirm: (a) touched script has fresh docstring, (b) user-visible behaviour change is reflected in `docs/FEATURES.md`, (c) new migration has a matching line in `docs/reference/migrations.md` if it exists.
 
 ### UI/UX
-- Existing rule, restated here for visibility: when adding a new component pattern (modal, toolbar, sidebar type) or a significant design change, append a row to the Change Log table in `docs/design-improvement-plan.md`.
+- When adding a new component pattern (modal, toolbar, sidebar type) or a significant design change, append a row to the Change Log table in `docs/design-improvement-plan.md`.
 - When shipping a user-visible UX flow that a new reader would not discover on their own (e.g. focus mode, typography panel, flashcards), add a short tutorial stub to `docs/tutorials/<flow>.md` — a few sentences is enough; the docs site renders it.
+- **Per-PR check** — after every merge, confirm: (a) design Change Log updated if the change is user-visible, (b) if a new interaction pattern, `docs/reader-interaction-design.md` notes it, (c) screenshot-bearing pages still match the current UI.
 
 ### Architect
 - Every design doc in `docs/design/*.md` must start with this frontmatter block:
@@ -415,14 +427,18 @@ The label-driven gates (`pm-approved`, `user-approved`, `needs-pm-review`, `bloc
   ```
   The docs site's Architecture → Design Docs index renders this frontmatter. `#821` (declared-fks-schema.md) is the exemplar.
 - When a design doc's series ships, change its `Status` line to `Shipped (PR #<N>, YYYY-MM-DD)` in a one-line follow-up commit. Do not leave stale `Draft` / `PM-approved` statuses on merged-and-implemented design docs.
+- **Per-PR check** — after every merge, confirm: (a) if the shipped PR was the last of a design-doc series, the design doc's `Status` is bumped to `Shipped`, (b) `docs/FEATURES.md` status line reflects the new feature, (c) if the change adds a new service/table/router, `docs/architecture/` has a matching section.
 
 ### PM
-- The development journal in the docs site is auto-summarized from `product/review-state.md` cycle entries. Keep each cycle entry one paragraph: start with the headline (a merged PR or a decision), cover what changed and why. Avoid blow-by-blow tool output or internal deliberation.
-- When a CLAUDE.md rule changes, flag the change in the PR body under a `## Process change` heading so the development-process page in the docs site surfaces the edit. This PR (adding the user-approval gate + documentation policy) is an example.
+- The development journal lives at `docs/journal/daily/YYYY-MM-DD.md`. A nightly workflow (`.github/workflows/docs-journal.yml` at 01:07 UTC) creates an empty stub with the 7-section template; PM **fills the hand-written sections (3 — pipeline/workflow lessons, 5 — incidents/near-misses, 6 — decisions and abandoned paths) in the evening of each working day.** Sections 1, 2, 4, 7 are auto-populated — do not duplicate that content.
+- **Nightly journal cadence** — at the end of each working day, open `docs/journal/daily/YYYY-MM-DD.md` and fill sections 3/5/6 based on the day's `product/review-state.md` cycle entries. One short paragraph per section is enough; the goal is the *why*, not a second copy of the cycle log. If there were no pipeline lessons / incidents / abandoned paths that day, write `None.` — don't invent.
+- **Weekly editorial rollup** — every Sunday, produce `docs/journal/weekly/YYYY-WW.md` by distilling the week's seven daily entries into themes (shipped wins, recurring incidents, process drift, upcoming priorities). Use the `/weekly-editorial` skill — it does the aggregation and writes the file; PM reviews and commits. Can also be scheduled via `/schedule every sunday /weekly-editorial`.
+- **Full-docs sweep on material change** — when a CLAUDE.md rule changes, a new service/feature ships, or a significant UX flow lands, walk through the docs site top-to-bottom and fix any page that now contradicts reality. Flag the sweep in the PR body under a `## Process change` heading so the development-process page surfaces the edit.
+- Keep each `product/review-state.md` cycle entry to one paragraph: headline (merged PR or decision) + what changed + why. Avoid blow-by-blow tool output.
 
 ### Freshness enforcement
 - PR body checkbox: `[ ] Docs updated (if applicable)`. Reviewers flag unchecked PRs whose diff touches `backend/scripts/`, `docs/`, or user-visible frontend behaviour.
-- Until #864's docs site exists, these rules still apply to the source files; they just don't render anywhere yet. This avoids source rot during the site's build-out.
+- Weekly editorial rollup acts as a secondary freshness check — themes that appear two weeks in a row without a linked docs update signal drift and should open a `documentation` issue.
 
 ## Migration policy
 

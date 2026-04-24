@@ -776,9 +776,9 @@ describe("ReaderPage — mobile bottom bar", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    expect(await screen.findByRole("button", { name: /translation/i })).toBeInTheDocument();
+    expect((await screen.findAllByRole("button", { name: /translation/i })).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: /read aloud|pause/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /insight chat/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /insight chat/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it("does not show mobile toolbar while loading", () => {
@@ -1367,11 +1367,11 @@ describe("ReaderPage — mobile bottom bar interactions", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    // Find the mobile Notes button specifically by its aria-label="Notes"
+    // Find the mobile Notes button: aria-label="Notes" but no aria-expanded (the desktop header toggle has aria-expanded)
     let mobileNotesBtn: HTMLElement | undefined;
     await waitFor(() => {
       const allBtns = screen.queryAllByRole("button");
-      mobileNotesBtn = allBtns.find((b) => b.getAttribute("aria-label") === "Notes");
+      mobileNotesBtn = allBtns.find((b) => b.getAttribute("aria-label") === "Notes" && b.getAttribute("aria-expanded") === null);
       expect(mobileNotesBtn).toBeDefined();
     });
 

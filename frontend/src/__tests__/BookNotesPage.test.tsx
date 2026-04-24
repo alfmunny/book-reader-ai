@@ -234,20 +234,19 @@ test("edit panel stays open when save API call fails", async () => {
 
 // ── Delete annotation ──────────────────────────────────────────────────────────
 
-test("deleting annotation removes it from the list", async () => {
+test("deleting annotation removes it from the list optimistically", async () => {
   mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
   mockDeleteAnnotation.mockResolvedValue({ ok: true });
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/Call me Ishmael/));
 
   fireEvent.click(screen.getByTitle("Delete annotation"));
-  await waitFor(() => expect(mockDeleteAnnotation).toHaveBeenCalledWith(1));
   expect(screen.queryByText(/Call me Ishmael/)).not.toBeInTheDocument();
 });
 
 // ── Delete insight ─────────────────────────────────────────────────────────────
 
-test("deleting insight removes it from the list", async () => {
+test("deleting insight removes it from the list optimistically", async () => {
   mockGetAnnotations.mockResolvedValue([]);
   mockGetInsights.mockResolvedValue([makeInsight()]);
   mockDeleteInsight.mockResolvedValue({ ok: true });
@@ -255,7 +254,6 @@ test("deleting insight removes it from the list", async () => {
   await waitFor(() => screen.getByText(/What is the white whale/));
 
   fireEvent.click(screen.getByTitle("Delete insight"));
-  await waitFor(() => expect(mockDeleteInsight).toHaveBeenCalledWith(1));
   expect(screen.queryByText(/What is the white whale/)).not.toBeInTheDocument();
 });
 

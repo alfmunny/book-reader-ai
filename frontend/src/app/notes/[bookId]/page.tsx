@@ -20,6 +20,7 @@ import {
 
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
 import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon, ArrowUpRightIcon } from "@/components/Icons";
+import UndoToast from "@/components/UndoToast";
 
 type ViewMode = "section" | "chapter";
 
@@ -267,9 +268,13 @@ export default function BookNotesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editNote, setEditNote] = useState("");
 
-  // Delete loading sets
+  // Delete loading sets (still used for notes opened mid-delete)
   const [deletingAnns, setDeletingAnns] = useState<Set<number>>(new Set());
   const [deletingIns, setDeletingIns] = useState<Set<number>>(new Set());
+
+  // Undo toast state
+  const [deletedAnnToast, setDeletedAnnToast] = useState<Annotation | null>(null);
+  const [deletedInsToast, setDeletedInsToast] = useState<BookInsight | null>(null);
 
   // Export
   const [exportMsg, setExportMsg] = useState<string | null>(null);
@@ -352,24 +357,28 @@ export default function BookNotesPage() {
     } catch { /* keep edit open on failure */ }
   }
 
-  async function handleDeleteAnnotation(id: number) {
-    if (!window.confirm("Delete this annotation?")) return;
-    setDeletingAnns((prev) => new Set(prev).add(id));
-    try {
-      await deleteAnnotation(id);
-      setAnnotations((prev) => prev.filter((a) => a.id !== id));
-    } catch { /* ignore */ }
-    setDeletingAnns((prev) => { const s = new Set(prev); s.delete(id); return s; });
+  function handleDeleteAnnotation(id: number) {
+    // If a previous toast is pending, commit that delete immediately
+    if (deletedAnnToast) {
+      deleteAnnotation(deletedAnnToast.id).catch(() => {});
+      setDeletedAnnToast(null);
+    }
+    const ann = annotations.find((a) => a.id === id);
+    if (!ann) return;
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+    setDeletedAnnToast(ann);
   }
 
-  async function handleDeleteInsight(id: number) {
-    if (!window.confirm("Delete this insight?")) return;
-    setDeletingIns((prev) => new Set(prev).add(id));
-    try {
-      await deleteInsight(id);
-      setInsights((prev) => prev.filter((i) => i.id !== id));
-    } catch { /* ignore */ }
-    setDeletingIns((prev) => { const s = new Set(prev); s.delete(id); return s; });
+  function handleDeleteInsight(id: number) {
+    // If a previous toast is pending, commit that delete immediately
+    if (deletedInsToast) {
+      deleteInsight(deletedInsToast.id).catch(() => {});
+      setDeletedInsToast(null);
+    }
+    const ins = insights.find((i) => i.id === id);
+    if (!ins) return;
+    setInsights((prev) => prev.filter((i) => i.id !== id));
+    setDeletedInsToast(ins);
   }
 
   async function handleExport() {
@@ -714,6 +723,34 @@ export default function BookNotesPage() {
           </div>
         )}
       </div>
+
+      {deletedAnnToast && (
+        <UndoToast
+          message="Annotation deleted"
+          onUndo={() => {
+            setAnnotations((prev) => [...prev, deletedAnnToast]);
+            setDeletedAnnToast(null);
+          }}
+          onDone={() => {
+            deleteAnnotation(deletedAnnToast.id).catch(() => {});
+            setDeletedAnnToast(null);
+          }}
+        />
+      )}
+
+      {deletedInsToast && (
+        <UndoToast
+          message="Insight deleted"
+          onUndo={() => {
+            setInsights((prev) => [...prev, deletedInsToast]);
+            setDeletedInsToast(null);
+          }}
+          onDone={() => {
+            deleteInsight(deletedInsToast.id).catch(() => {});
+            setDeletedInsToast(null);
+          }}
+        />
+      )}
     </main>
   );
 }

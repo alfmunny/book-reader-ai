@@ -390,25 +390,26 @@ describe("HomePage — onRemove handler (lines 253-255)", () => {
     expect(mockGetRecentBooks).toHaveBeenCalled();
   });
 
-  it("does not call removeRecentBook when confirm is cancelled", async () => {
+  it("calls removeRecentBook immediately (optimistic) and shows UndoToast", async () => {
     const RECENT = [
       {
         id: 21,
         title: "Keep Me Book",
         authors: ["Author"],
         languages: ["en"],
+        subjects: [],
+        download_count: 0,
+        cover: null,
         lastChapter: 0,
         lastRead: Date.now() - 1000,
       },
     ];
-    mockGetRecentBooks.mockReturnValue(RECENT);
+    mockGetRecentBooks.mockReturnValue(RECENT).mockReturnValueOnce(RECENT).mockReturnValue([]);
     mockUseSession.mockReturnValue({
       data: { backendToken: "tok", backendUser: { id: 1, name: "User", picture: "" } },
       status: "authenticated",
     });
     mockGetReadingProgress.mockResolvedValue([]);
-
-    jest.spyOn(window, "confirm").mockReturnValue(false);
 
     const user = userEvent.setup();
     render(<Home />);
@@ -418,7 +419,7 @@ describe("HomePage — onRemove handler (lines 253-255)", () => {
     const removeBtn = screen.getByRole("button", { name: /remove-Keep Me Book/i });
     await user.click(removeBtn);
 
-    expect(mockRemoveRecentBook).not.toHaveBeenCalled();
+    expect(mockRemoveRecentBook).toHaveBeenCalledWith(21);
   });
 });
 

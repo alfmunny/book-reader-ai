@@ -67,16 +67,18 @@ Anyone files issue (feat label)
 **Path B — Complex/cross-cutting feature (`architecture` label):**
 ```
 Anyone files issue (architecture label)
-  → Architect claims it
+  → Filer (or PM at triage) applies `needs-user-approval` label on the issue — gate layer 1
+  → **User removes `needs-user-approval` + applies `user-approved` on the issue — releases the work**
+  → Architect claims it (only after user-approved is present)
   → Design doc PR first (docs/design/<feature>.md)
-  → Architect applies `needs-user-approval` label at PR creation — this is the gate
+  → Architect applies `needs-user-approval` label on the PR at creation — gate layer 2
   → PM reviews design doc → requests changes OR applies `pm-approved` label (readiness signal only)
-  → **User (repo owner) removes `needs-user-approval` + applies `user-approved` label — mandatory gate**
-  → auto-merge.yml (once #796 ships) resumes auto-merge now that the gate label is gone
+  → **User removes `needs-user-approval` + applies `user-approved` on the PR — releases merge**
+  → auto-merge.yml (once #897 ships) resumes auto-merge now that the gate label is gone
   → CI clears → PR merges
   → PM creates (or converts the original issue to) an implementation issue
     with the design doc linked, labeled feat + architecture
-  → Dev or Architect picks up implementation
+  → Dev or Architect picks up implementation (no further user approval required)
   → PM reviews implementation PR
   → Merged
 ```
@@ -85,9 +87,12 @@ Anyone files issue (architecture label)
 
 **Path B is NOT needed for:** bug fixes, small enhancements, adding a field to an existing model, adding a new endpoint that follows an established pattern.
 
-**User-approval gate is mandatory for Path B.** A design doc in `docs/design/` may not merge, and implementation may not begin, until the repo owner (user) applies the **`user-approved`** label to the design-doc PR (and, where it matters for prioritization, to the original architecture issue). PM's review is a readiness check — tests, rollback, risks, migration policy — signalled by the `pm-approved` label; it is not merge authority. Only the user can authorize the commitment to build.
+**User-approval gate is mandatory for Path B, applied at two layers.** The repo owner (user) is the sole approver on both; PM's `pm-approved` label is a readiness signal, not merge/commit authority.
 
-**How the gate blocks auto-merge.** Architect applies the **`needs-user-approval`** label on every Path B design-doc PR at creation. The `auto-merge.yml` workflow (see #796) skips when this label is present — gate is enforced by the workflow, not by the role remembering to run `gh pr merge --disable-auto`. The user removes `needs-user-approval` in the same edit that applies `user-approved`; `auto-merge.yml` re-runs on the label change, sees no gate label, and enables auto-merge. CI clears, PR merges. No manual `--disable-auto` / re-enable dance, and rebases cannot bypass because the workflow re-checks the label on every `synchronize` event. Until #796 ships, Architect should still run `gh pr merge --disable-auto <N>` as a belt-and-suspenders fallback, but the label is the durable gate.
+1. **Architecture issue layer.** Whoever files an architecture issue (or PM at triage time if it arrives unlabeled) **must apply `needs-user-approval`** at creation. This tells the user the issue is queued for their review and nothing will happen until they signal. User removes `needs-user-approval` + applies `user-approved` when greenlighting — that's the go-ahead for Architect to claim and draft the design doc. **Architect does not claim a Path B architecture issue until `user-approved` is present on it.**
+2. **Design-doc PR layer.** Architect applies `needs-user-approval` to every design-doc PR at creation. The `auto-merge.yml` workflow (see #796, currently narrow-scope; see #897 for the follow-up that covers this label) skips while the label is present — gate is enforced by the workflow, not by the role remembering to run `gh pr merge --disable-auto`. User removes `needs-user-approval` + applies `user-approved` when approving the design. `auto-merge.yml` re-runs on the label change, sees no gate label, and enables auto-merge. CI clears, PR merges. No manual `--disable-auto` / re-enable dance, and rebases cannot bypass because the workflow re-checks the label on every `synchronize` event. Until #897 ships, Architect still runs `gh pr merge --disable-auto <N>` as a belt-and-suspenders fallback, but the label is the durable gate.
+
+**Why both layers.** Without the issue-layer gate, the user has no visible marker on `architecture` issues that they need to review. Without the PR-layer gate, a design doc can auto-merge past the user. Both labels are applied at creation by the filer (PM or Architect); the user removes them in one atomic edit per layer to release the work.
 
 ### Priority tiers (Dev + Architect use when picking issues)
 
@@ -132,6 +137,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 
 **Responsibilities:**
 - Triage new issues: apply a **role label** (`bug` / `feat` / `ux` / `ui` / `architecture`) AND a **priority label** (`P0` / `P1` / `P2` / `P3`) on every issue at triage time. Issues without a priority label are treated as `P2` by roles; PM should backfill the label on the next cycle. Update `product/backlog.md` to reflect the triaged state.
+- On every `architecture`-labeled issue, apply `needs-user-approval` at filing (or at triage if the filer forgot). This is the Path B gate layer 1 — without it the user has no visible marker that the issue needs their approval before Architect can claim. Architect must not claim a Path B issue unless `user-approved` is present.
 - Review every merged PR: read the diff, file follow-up issues for anything incomplete
 - Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
 - Every cycle, check `gh pr list --label needs-pm-review --state open` — these are PRs where a role has explicitly opted in to PM review. Respond with `pm-approved` (+ comment) to unblock, or a specific-change-request comment + `blocked` if the PR needs work. See "Review gate policy" below for the full opt-in flow.

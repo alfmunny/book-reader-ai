@@ -532,7 +532,7 @@ async def test_delete_annotation_negative_id_returns_422(client, test_user):
 
 
 @pytest.mark.asyncio
-async def test_create_annotation_returns_dict_when_row_is_none(tmp_db, monkeypatch):
+async def test_create_annotation_returns_dict_when_row_is_none(test_user, monkeypatch):
     """Regression #829: create_annotation() must return {} not crash when the
     re-SELECT returns None (concurrent-delete race between upsert and re-SELECT)."""
     import aiosqlite as _aio
@@ -541,15 +541,16 @@ async def test_create_annotation_returns_dict_when_row_is_none(tmp_db, monkeypat
     await save_book(BOOK_ID, _BOOK_META, "text")
 
     original_fetchone = _aio.Cursor.fetchone
-    call_count = {"n": 0}
+    select_star_count = {"n": 0}
 
     async def _fetchone_none_once(self):
-        if "annotations" in getattr(self, "_query", ""):
-            call_count["n"] += 1
-            if call_count["n"] == 1:
+        query = getattr(self, "_query", "")
+        if "SELECT *" in query and "annotations" in query:
+            select_star_count["n"] += 1
+            if select_star_count["n"] == 1:
                 return None
         return await original_fetchone(self)
 
     monkeypatch.setattr(_aio.Cursor, "fetchone", _fetchone_none_once)
-    result = await create_annotation(1, BOOK_ID, 0, "sentence", "note", "yellow")
+    result = await create_annotation(test_user["id"], BOOK_ID, 0, "sentence", "note", "yellow")
     assert isinstance(result, dict), f"create_annotation must return a dict, got {type(result)}"

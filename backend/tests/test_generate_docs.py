@@ -275,3 +275,62 @@ def test_main_runs_all_generators_end_to_end(tmp_path, monkeypatch):
     assert (tmp_path / "docs" / "reference" / "reports.md").exists()
     assert (tmp_path / "docs" / "architecture" / "design-index.md").exists()
     assert (tmp_path / "docs" / "architecture" / "migrations.md").exists()
+
+
+# ── --journal-day CLI flag (PR C, #896) ─────────────────────────────────────
+
+
+def test_journal_day_writes_stub_at_expected_path(tmp_path):
+    (tmp_path / "docs").mkdir()
+    rc = generate_docs.main(
+        ["--repo-root", str(tmp_path), "--journal-day", "2026-04-24"]
+    )
+    assert rc == 0
+
+    stub = tmp_path / "docs" / "journal" / "daily" / "2026-04-24.md"
+    assert stub.exists()
+    text = stub.read_text(encoding="utf-8")
+    assert "# 2026-04-24" in text
+    assert "## 1. What shipped" in text
+    assert "## 7. User-facing changelog" in text
+
+
+def test_journal_day_is_idempotent_when_stub_already_exists(tmp_path):
+    # Pre-create the stub with user edits that must be preserved.
+    stub = tmp_path / "docs" / "journal" / "daily" / "2026-04-24.md"
+    stub.parent.mkdir(parents=True)
+    stub.write_text("# Pre-existing\n\nPM already filled section 3.\n", encoding="utf-8")
+
+    rc = generate_docs.main(
+        ["--repo-root", str(tmp_path), "--journal-day", "2026-04-24"]
+    )
+    assert rc == 0
+
+    # File is unchanged — the flag is safe to re-run.
+    assert "PM already filled section 3." in stub.read_text(encoding="utf-8")
+    assert "# Pre-existing" in stub.read_text(encoding="utf-8")
+
+
+def test_journal_day_skips_the_index_generators(tmp_path, monkeypatch):
+    # When --journal-day is set, the index generators must NOT run — otherwise
+    # the nightly job would clobber tracked auto pages on every nightly commit.
+    called = {"count": 0}
+
+    def _boom(*args, **kwargs):
+        called["count"] += 1
+
+    monkeypatch.setattr(generate_docs, "_run_all", _boom)
+
+    (tmp_path / "docs").mkdir()
+    rc = generate_docs.main(
+        ["--repo-root", str(tmp_path), "--journal-day", "2026-04-24"]
+    )
+    assert rc == 0
+    assert called["count"] == 0
+
+
+def test_journal_day_rejects_invalid_date_format(tmp_path):
+    with pytest.raises(ValueError):
+        generate_docs.main(
+            ["--repo-root", str(tmp_path), "--journal-day", "yesterday"]
+        )

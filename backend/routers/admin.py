@@ -565,12 +565,21 @@ async def retranslate(
         )
     except Exception:
         if provider == "gemini":
-            paragraphs = await do_translate(
-                chapter_text, source_language, target_language, provider="google",
-            )
-            provider = "google"
+            try:
+                paragraphs = await do_translate(
+                    chapter_text, source_language, target_language, provider="google",
+                )
+                provider = "google"
+            except Exception:
+                raise HTTPException(
+                    status_code=502,
+                    detail="Translation failed: both Gemini and Google Translate could not process this chapter.",
+                )
         else:
-            raise
+            raise HTTPException(
+                status_code=502,
+                detail="Translation failed: Google Translate could not process this chapter.",
+            )
 
     # 5. Cache the new translation
     await save_translation(book_id, chapter_index, target_language, paragraphs)

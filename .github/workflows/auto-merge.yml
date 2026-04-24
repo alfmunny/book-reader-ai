@@ -8,7 +8,10 @@ jobs:
   auto-merge:
     name: Enable auto-merge
     runs-on: ubuntu-latest
-    if: "!contains(github.event.pull_request.labels.*.name, 'blocked')"
+    if: >-
+      !contains(github.event.pull_request.labels.*.name, 'blocked') &&
+      !contains(github.event.pull_request.labels.*.name, 'needs-pm-review') &&
+      !contains(github.event.pull_request.labels.*.name, 'needs-user-approval')
     permissions:
       pull-requests: write
       contents: write
@@ -19,10 +22,13 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  disable-auto-merge-if-blocked:
-    name: Disable auto-merge if blocked
+  disable-auto-merge-if-gated:
+    name: Disable auto-merge if gated
     runs-on: ubuntu-latest
-    if: "contains(github.event.pull_request.labels.*.name, 'blocked')"
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'blocked') ||
+      contains(github.event.pull_request.labels.*.name, 'needs-pm-review') ||
+      contains(github.event.pull_request.labels.*.name, 'needs-user-approval')
     permissions:
       pull-requests: write
       contents: write

@@ -42,7 +42,7 @@ function CollapseHeading({
   return (
     <button
       onClick={onToggle}
-      className={`w-full flex items-center gap-2 text-left group ${
+      className={`w-full flex items-center gap-2 text-left group min-h-[44px] ${
         level === 2
           ? "mt-8 mb-3 pb-1.5 border-b border-amber-200"
           : "mt-5 mb-2"
@@ -199,7 +199,7 @@ function InsightCard({
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors"
+          className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="Delete insight"
           aria-label="Delete insight"
         >
@@ -619,7 +619,7 @@ export default function BookNotesPage() {
         <div className="max-w-3xl mx-auto flex items-center gap-3 flex-wrap">
           <button
             onClick={() => router.push("/notes")}
-            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0"
+            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] flex items-center"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Notes
           </button>

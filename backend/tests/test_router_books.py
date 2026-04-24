@@ -1310,3 +1310,34 @@ async def test_search_empty_q_returns_422(client):
     assert resp.status_code == 422, (
         f"Expected 422 for empty q in /books/search, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1091: books.py Gutenberg fetch must log WARNING on unexpected exception ──────
+
+
+async def test_book_meta_404_logs_warning_on_exception(client, caplog):
+    """Regression #1091: GET /books/{id} must emit a WARNING when get_book_meta raises,
+    not silently swallow the exception."""
+    import logging
+    with patch("routers.books.get_book_meta", side_effect=RuntimeError("network timeout")):
+        with caplog.at_level(logging.WARNING, logger="routers.books"):
+            resp = await client.get("/api/books/99999")
+    assert resp.status_code == 404
+    assert any(
+        "99999" in r.message or "meta" in r.message.lower() or "fetch" in r.message.lower()
+        for r in caplog.records
+    ), f"Expected a WARNING log for failed meta fetch, got: {[r.message for r in caplog.records]}"
+
+
+async def test_book_chapters_404_logs_warning_on_exception(client, caplog):
+    """Regression #1091: GET /books/{id}/chapters must emit a WARNING when _fetch_and_cache
+    raises, not silently swallow the exception."""
+    import logging
+    with patch("routers.books._fetch_and_cache", side_effect=RuntimeError("connection refused")):
+        with caplog.at_level(logging.WARNING, logger="routers.books"):
+            resp = await client.get("/api/books/99999/chapters")
+    assert resp.status_code == 404
+    assert any(
+        "99999" in r.message or "chapter" in r.message.lower() or "fetch" in r.message.lower()
+        for r in caplog.records
+    ), f"Expected a WARNING log for failed chapters fetch, got: {[r.message for r in caplog.records]}"

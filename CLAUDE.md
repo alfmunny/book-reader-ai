@@ -221,7 +221,16 @@ All four roles use `/loop Nm` so the harness fires a cron on every tick. If a ro
 6. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label ux` or `--label ui`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` directly. Once the skill returns, the watcher runs async — you may pick up new work only if your per-cycle PR count is under 3 (see "Per-cycle priority" above).
 7. After merge: remove `in-progress` label
 
-**Idle mode (no unclaimed issues):** Run a UX audit. Check frontend components for: emoji used as UI icons instead of SVG from `Icons.tsx`, icon-only buttons missing `aria-label`, interactive elements with touch targets under 44px, hardcoded hex colors instead of CSS token variables. File each violation as a `ux` issue, then immediately claim and fix it. File one, fix one, repeat.
+**Idle mode (no unclaimed issues):** Run a broad UX/UI audit across the full frontend. Go beyond technical checklists — look for real usability problems a user would notice. Scan areas including but not limited to:
+- **Interaction quality:** confusing flows, missing feedback on actions, unclear error states, forms with no validation messages, dead-end states with no CTA
+- **Visual consistency:** inconsistent spacing, mismatched button styles, broken layouts at mobile/tablet breakpoints, components that look out of place
+- **Accessibility (WCAG AA):** missing `aria-label` on icon-only controls, loading states without `role="status"`, dialogs without `role="dialog"`, `animate-pulse`/`animate-spin` elements with no accessible text, color contrast failures
+- **Touch & click targets:** interactive elements under 44×44px on mobile
+- **Icon hygiene:** emoji used as UI icons instead of SVG from `Icons.tsx`
+- **Empty states & loading states:** pages that show a blank screen instead of a helpful empty state or skeleton
+- **Copy & labels:** truncated text, placeholder copy left in production, labels that don't match what the control does
+
+File each finding as a `ux` or `ui` issue with a clear description and reproduction steps. Then immediately claim and fix it. File one, fix one, repeat.
 
 **Continuous operation:** After every PR merges, immediately pick the next issue without waiting.
 

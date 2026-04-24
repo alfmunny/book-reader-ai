@@ -844,11 +844,13 @@ def _epub_nav_titles(book) -> dict[str, str]:
         for entry in toc_items:
             if isinstance(entry, tuple):
                 section, children = entry
+                # Walk children first so leaf chapter titles take priority over
+                # the enclosing section header when both point to the same file.
+                _walk(children)
                 if getattr(section, "href", None):
                     item_id = _resolve(section.href)
                     if item_id and getattr(section, "title", None):
                         titles.setdefault(item_id, section.title)
-                _walk(children)
             elif getattr(entry, "href", None):
                 item_id = _resolve(entry.href)
                 if item_id and getattr(entry, "title", None):

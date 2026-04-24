@@ -89,7 +89,7 @@ export default function ChapterSummary({
           <button
             onClick={load}
             title="Regenerate summary"
-            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors"
+            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors min-h-[44px] flex items-center px-1"
           >
             {summary ? <><RetryIcon className="w-3 h-3 inline" aria-hidden="true" /> Refresh</> : "Generate"}
           </button>
@@ -115,7 +115,7 @@ export default function ChapterSummary({
             <p className="text-xs text-red-500">{error}</p>
             <button
               onClick={load}
-              className="mt-3 text-xs font-medium text-red-600 hover:underline"
+              className="mt-1 text-xs font-medium text-red-600 hover:underline min-h-[44px] flex items-center"
             >
               Try again
             </button>
@@ -136,7 +136,7 @@ export default function ChapterSummary({
             <p className="text-sm">Get a quick overview of this chapter before continuing.</p>
             <button
               onClick={load}
-              className="mt-2 px-4 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium transition-colors"
+              className="mt-2 px-4 min-h-[44px] flex items-center rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 text-sm font-medium transition-colors"
             >
               Generate Summary
             </button>

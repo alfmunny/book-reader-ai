@@ -104,7 +104,7 @@ export default function NotesOverviewPage() {
         <div className="max-w-3xl mx-auto flex items-center gap-4">
           <button
             onClick={() => router.push("/")}
-            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0"
+            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] flex items-center"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
           </button>

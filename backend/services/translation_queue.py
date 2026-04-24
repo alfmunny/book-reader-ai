@@ -728,7 +728,8 @@ class TranslationQueueWorker:
     # ── Main loop ────────────────────────────────────────────────────────
 
     async def _run(self) -> None:
-        assert self._stop_event is not None
+        if self._stop_event is None:
+            raise RuntimeError("_run() called before start()")
         stop_event = self._stop_event
 
         # Startup housekeeping: only reset rows left 'running' from a

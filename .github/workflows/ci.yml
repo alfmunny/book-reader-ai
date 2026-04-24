@@ -283,11 +283,13 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: frontend-coverage-summary
           path: frontend-summary
 
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: backend-coverage-summary
           path: backend-summary
@@ -308,8 +310,11 @@ jobs:
           script: |
             const fs = require('fs');
 
-            // ── Unit coverage (Jest) ────────────────────────────────────────
-            const fe = JSON.parse(fs.readFileSync('frontend-summary/coverage-summary.json', 'utf8')).total;
+            // ── Unit coverage (Jest) — may be absent on backend-only PRs ──
+            let fe = null;
+            try {
+              fe = JSON.parse(fs.readFileSync('frontend-summary/coverage-summary.json', 'utf8')).total;
+            } catch { /* frontend tests skipped */ }
 
             // ── E2E coverage (Istanbul via babel-plugin-istanbul) ───────────
             let e2eCov = null;
@@ -320,18 +325,20 @@ jobs:
             // ── Combined frontend coverage (max of Jest and E2E per metric) ─
             const combine = (jestMetric, e2eMetric) => {
               if (!e2eCov) return jestMetric.pct;
-              // Approximate: take the higher of the two since they cover different paths
               return Math.min(100, Math.max(jestMetric.pct, e2eMetric.pct)).toFixed(2);
             };
-            const combined = e2eCov ? {
+            const combined = (fe && e2eCov) ? {
               statements: combine(fe.statements, e2eCov.statements),
               branches: combine(fe.branches, e2eCov.branches),
               functions: combine(fe.functions, e2eCov.functions),
               lines: combine(fe.lines, e2eCov.lines),
             } : null;
 
-            // ── Unit coverage (pytest) ──────────────────────────────────────
-            const [beLines, beBranches] = fs.readFileSync('backend-summary/coverage-numbers.txt', 'utf8').trim().split('\n');
+            // ── Unit coverage (pytest) — may be absent on frontend-only PRs ─
+            let beLines = null, beBranches = null;
+            try {
+              [beLines, beBranches] = fs.readFileSync('backend-summary/coverage-numbers.txt', 'utf8').trim().split('\n');
+            } catch { /* backend tests skipped */ }
 
             // ── E2E results (Playwright) ────────────────────────────────────
             let e2eLine = 'E2E results unavailable';
@@ -354,14 +361,23 @@ jobs:
             }
 
             const pct = (v) => `${v}%`;
-            const rows = [
-              `| **Frontend (Jest)** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`,
-            ];
+            const rows = [];
+            if (fe) {
+              rows.push(`| **Frontend (Jest)** | ${pct(fe.statements.pct)} | ${pct(fe.branches.pct)} | ${pct(fe.functions.pct)} | ${pct(fe.lines.pct)} |`);
+            } else {
+              rows.push('| **Frontend (Jest)** | — (skipped) | — | — | — |');
+            }
             if (e2eCov) {
               rows.push(`| **Frontend (E2E)** | ${pct(e2eCov.statements.pct)} | ${pct(e2eCov.branches.pct)} | ${pct(e2eCov.functions.pct)} | ${pct(e2eCov.lines.pct)} |`);
+            }
+            if (combined) {
               rows.push(`| **Frontend (combined)** | ${combined.statements}% | ${combined.branches}% | ${combined.functions}% | ${combined.lines}% |`);
             }
-            rows.push(`| **Backend (pytest)** | — | ${beBranches}% | — | ${beLines}% |`);
+            if (beLines !== null) {
+              rows.push(`| **Backend (pytest)** | — | ${beBranches}% | — | ${beLines}% |`);
+            } else {
+              rows.push('| **Backend (pytest)** | — (skipped) | — | — | — |');
+            }
 
             const body = [
               '## Coverage Report',

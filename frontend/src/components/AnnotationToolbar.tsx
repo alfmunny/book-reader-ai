@@ -133,7 +133,7 @@ export default function AnnotationToolbar({
           {/* Color picker */}
           <div>
             <p className="text-xs text-stone-500 mb-2">Highlight colour</p>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-0.5">
               {COLORS.map((c) => (
                 <button
                   key={c.key}
@@ -141,12 +141,16 @@ export default function AnnotationToolbar({
                   onClick={() => setColor(c.key)}
                   aria-label={c.label}
                   aria-pressed={color === c.key}
-                  className={`w-8 h-8 rounded-full ${c.bg} border-2 transition-all duration-150 hover:scale-110 ${
-                    color === c.key
-                      ? `${c.border} scale-110 ring-2 ring-offset-1 ${c.ring}`
-                      : "border-transparent"
-                  }`}
-                />
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center"
+                >
+                  <span
+                    className={`w-8 h-8 rounded-full ${c.bg} border-2 transition-all duration-150 hover:scale-110 inline-block ${
+                      color === c.key
+                        ? `${c.border} scale-110 ring-2 ring-offset-1 ${c.ring}`
+                        : "border-transparent"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </div>

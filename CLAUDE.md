@@ -69,10 +69,11 @@ Anyone files issue (feat label)
 Anyone files issue (architecture label)
   → Architect claims it
   → Design doc PR first (docs/design/<feature>.md)
-  → Architect disables auto-merge on the design-doc PR (gh pr merge --disable-auto <N>)
+  → Architect applies `needs-user-approval` label at PR creation — this is the gate
   → PM reviews design doc → requests changes OR applies `pm-approved` label (readiness signal only)
-  → **User (repo owner) applies `user-approved` label to the design-doc PR — mandatory gate**
-  → PM merges design doc only after `user-approved` label is present
+  → **User (repo owner) removes `needs-user-approval` + applies `user-approved` label — mandatory gate**
+  → auto-merge.yml (once #796 ships) resumes auto-merge now that the gate label is gone
+  → CI clears → PR merges
   → PM creates (or converts the original issue to) an implementation issue
     with the design doc linked, labeled feat + architecture
   → Dev or Architect picks up implementation
@@ -84,7 +85,9 @@ Anyone files issue (architecture label)
 
 **Path B is NOT needed for:** bug fixes, small enhancements, adding a field to an existing model, adding a new endpoint that follows an established pattern.
 
-**User-approval gate is mandatory for Path B.** A design doc in `docs/design/` may not merge, and implementation may not begin, until the repo owner (user) applies the **`user-approved`** label to the design-doc PR (and, where it matters for prioritization, to the original architecture issue). PM's review is a readiness check — tests, rollback, risks, migration policy — signalled by the `pm-approved` label; it is not merge authority. Only the user can authorize the commitment to build. To prevent an auto-merge from racing the user's review, Architect disables auto-merge on every Path B design-doc PR immediately after filing (`gh pr merge --disable-auto <N>`), and PM only re-enables or runs `gh pr merge --squash <N>` after the `user-approved` label is present on the PR.
+**User-approval gate is mandatory for Path B.** A design doc in `docs/design/` may not merge, and implementation may not begin, until the repo owner (user) applies the **`user-approved`** label to the design-doc PR (and, where it matters for prioritization, to the original architecture issue). PM's review is a readiness check — tests, rollback, risks, migration policy — signalled by the `pm-approved` label; it is not merge authority. Only the user can authorize the commitment to build.
+
+**How the gate blocks auto-merge.** Architect applies the **`needs-user-approval`** label on every Path B design-doc PR at creation. The `auto-merge.yml` workflow (see #796) skips when this label is present — gate is enforced by the workflow, not by the role remembering to run `gh pr merge --disable-auto`. The user removes `needs-user-approval` in the same edit that applies `user-approved`; `auto-merge.yml` re-runs on the label change, sees no gate label, and enables auto-merge. CI clears, PR merges. No manual `--disable-auto` / re-enable dance, and rebases cannot bypass because the workflow re-checks the label on every `synchronize` event. Until #796 ships, Architect should still run `gh pr merge --disable-auto <N>` as a belt-and-suspenders fallback, but the label is the durable gate.
 
 ### Priority tiers (Dev + Architect use when picking issues)
 
@@ -124,7 +127,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
 - Every cycle, check `gh pr list --label needs-pm-review --state open` — these are PRs where a role has explicitly opted in to PM review. Respond with `pm-approved` (+ comment) to unblock, or a specific-change-request comment + `blocked` if the PR needs work. See "Review gate policy" below for the full opt-in flow.
 - Watch deployments: run `/loop` for smoke-test and deploy monitoring
-- Review Path B design docs for readiness (tests, rollback, risks, migration policy) and apply `pm-approved` label. **PM has no merge authority on Path B design docs — the user (repo owner) is the sole approver.** PM merges only after the user comments approval in the PR thread.
+- Review Path B design docs for readiness (tests, rollback, risks, migration policy) and apply `pm-approved` label. **PM has no merge authority on Path B design docs — the user (repo owner) is the sole approver.** The design doc only merges after the user removes `needs-user-approval` and applies `user-approved`; `auto-merge.yml` handles the merge once the gate label is gone. PM does not merge manually.
 - Keep `product/review-state.md` updated every cycle
 - **File `user-only` issues proactively.** When PM identifies work that only the repo owner can do — GitHub repo settings (branch protection, secrets, visibility), GitHub Actions secrets / env vars, Railway / Vercel dashboard config, rotating credentials, OAuth app setup, domain / DNS changes, etc. — PM files a dedicated issue labeled `user-only` with clear step-by-step instructions. No role has the credentials or permissions for these; without a PM-filed reminder, they fall through cycles and never land. Always include: what to do, where to do it (URL to the specific settings page), why it's needed, and what to verify afterwards. Example: #872 (branch protection configuration).
 - **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.

@@ -431,6 +431,7 @@ function VocabularyPageContent() {
         </div>
         <button
           onClick={() => router.push("/vocabulary/flashcards")}
+          aria-label="Flashcards"
           className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0"
           data-testid="flashcards-btn"
         >

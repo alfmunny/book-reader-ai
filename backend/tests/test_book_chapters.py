@@ -46,15 +46,30 @@ async def test_uses_epub_when_available_and_has_two_or_more_chapters():
     mock_text.assert_not_called()
 
 
-async def test_falls_back_to_text_when_epub_produces_only_one_chapter():
+async def test_uses_epub_for_single_chapter_short_story():
+    """Regression #980: a single-chapter EPUB (short story) must NOT fall back
+    to the plain-text splitter. build_chapters_from_epub returns [chapter] since
+    PR #970 fixed the splitter; book_chapters.py must accept >= 1, not >= 2."""
     epub_chapters = _make_chapters("Only One")
-    text_chapters = _make_chapters("Part 1", "Part 2")
     with (
         patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=b"fake_epub"),
         patch("services.book_chapters.build_chapters_from_epub", return_value=epub_chapters),
-        patch("services.book_chapters.build_chapters", return_value=text_chapters),
+        patch("services.book_chapters.build_chapters") as mock_text,
     ):
         result = await split_with_html_preference(2, "plain text")
+    assert result == epub_chapters
+    mock_text.assert_not_called()
+
+
+async def test_falls_back_to_text_when_epub_produces_no_chapters():
+    """EPUB that returns [] (completely empty) must still fall back to plain text."""
+    text_chapters = _make_chapters("Part 1", "Part 2")
+    with (
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=b"fake_epub"),
+        patch("services.book_chapters.build_chapters_from_epub", return_value=[]),
+        patch("services.book_chapters.build_chapters", return_value=text_chapters),
+    ):
+        result = await split_with_html_preference(3, "plain text")
     assert result == text_chapters
 
 

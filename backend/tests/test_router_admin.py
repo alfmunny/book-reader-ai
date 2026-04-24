@@ -2938,3 +2938,21 @@ async def test_retry_failed_empty_target_language_returns_422(admin_client):
         json={"target_language": ""},
     )
     assert res.status_code == 422, f"Expected 422 for empty target_language, got {res.status_code}: {res.text}"
+
+
+@pytest.mark.asyncio
+async def test_queue_items_empty_status_returns_422(admin_client):
+    """Regression #807: GET /admin/queue/items?status= must return 422, not silently filter by empty string."""
+    res = await admin_client.get("/api/admin/queue/items?status=")
+    assert res.status_code == 422, (
+        f"Expected 422 for empty status in GET /admin/queue/items, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_clear_empty_status_returns_422(admin_client):
+    """Regression #807: DELETE /admin/queue?status= must return 422, not silently filter by empty string."""
+    res = await admin_client.delete("/api/admin/queue?status=")
+    assert res.status_code == 422, (
+        f"Expected 422 for empty status in DELETE /admin/queue, got {res.status_code}: {res.text}"
+    )

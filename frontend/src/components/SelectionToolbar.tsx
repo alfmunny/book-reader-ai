@@ -120,32 +120,32 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
       style={{ left, top }}
     >
       {onRead && (
-        <button onClick={() => handleAction(onRead)} className={btnClass}>
-          <SpeakerIcon className="w-3.5 h-3.5 shrink-0" />
+        <button aria-label="Read aloud" onClick={() => handleAction(onRead)} className={btnClass}>
+          <SpeakerIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           Read
         </button>
       )}
       {onHighlight && (
-        <button onClick={() => { if (!onHighlight || !selection) return; onHighlight(selection.context || selection.text); window.getSelection()?.removeAllRanges(); setSelection(null); }} className={btnClass}>
-          <HighlightIcon className="w-3.5 h-3.5 shrink-0" />
+        <button aria-label="Highlight" onClick={() => { if (!onHighlight || !selection) return; onHighlight(selection.context || selection.text); window.getSelection()?.removeAllRanges(); setSelection(null); }} className={btnClass}>
+          <HighlightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           Highlight
         </button>
       )}
       {onNote && (
-        <button onClick={() => handleAction(onNote)} className={btnClass}>
-          <NoteIcon className="w-3.5 h-3.5 shrink-0" />
+        <button aria-label="Add note" onClick={() => handleAction(onNote)} className={btnClass}>
+          <NoteIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           Note
         </button>
       )}
       {onChat && (
-        <button onClick={() => handleAction(onChat)} className={btnClass}>
-          <ChatIcon className="w-3.5 h-3.5 shrink-0" />
+        <button aria-label="Ask AI" onClick={() => handleAction(onChat)} className={btnClass}>
+          <ChatIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           Chat
         </button>
       )}
       {onVocab && (
-        <button onClick={handleVocabAction} className={btnClass}>
-          <WordIcon className="w-3.5 h-3.5 shrink-0" />
+        <button aria-label="Look up word" onClick={handleVocabAction} className={btnClass}>
+          <WordIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           Word
         </button>
       )}

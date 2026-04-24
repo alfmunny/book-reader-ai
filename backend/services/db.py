@@ -1139,6 +1139,82 @@ async def delete_insight(insight_id: int, user_id: int) -> bool:
     return cursor.rowcount > 0
 
 
+# ── InsightChat message history (issue #907, migration 035) ──────────────────
+#
+# See docs/design/insightchat-history-persistence.md for the "why new table"
+# decision. `book_insights` is the user-bookmarked Q&A pair store; this is
+# the transient running-conversation store.
+
+CHAT_MESSAGE_MAX_BYTES = 8 * 1024  # 8 KB per message — rejected with 413 otherwise
+
+
+async def append_chat_message(
+    user_id: int, book_id: int, role: str, content: str
+) -> dict:
+    """Insert one chat message and return the inserted row (including
+    auto-assigned id + created_at) so the caller can avoid a re-fetch."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "INSERT INTO chat_messages (user_id, book_id, role, content) "
+            "VALUES (?, ?, ?, ?)",
+            (user_id, book_id, role, content),
+        )
+        new_id = cursor.lastrowid
+        async with db.execute(
+            "SELECT * FROM chat_messages WHERE id = ?", (new_id,)
+        ) as c:
+            row = await c.fetchone()
+        await db.commit()
+    return dict(row) if row else {}
+
+
+async def get_chat_messages(
+    user_id: int,
+    book_id: int,
+    *,
+    limit: int = 50,
+    before_id: int | None = None,
+) -> list[dict]:
+    """Return up to `limit` messages for (user, book), newest first.
+
+    When `before_id` is given, only rows with id < before_id are returned
+    — enables reverse-scroll pagination of older history.
+    """
+    # Defensive bound — router also enforces but keep the helper safe.
+    safe_limit = max(1, min(limit, 200))
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        if before_id is not None:
+            sql = (
+                "SELECT * FROM chat_messages "
+                "WHERE user_id = ? AND book_id = ? AND id < ? "
+                "ORDER BY id DESC LIMIT ?"
+            )
+            params = (user_id, book_id, before_id, safe_limit)
+        else:
+            sql = (
+                "SELECT * FROM chat_messages "
+                "WHERE user_id = ? AND book_id = ? "
+                "ORDER BY id DESC LIMIT ?"
+            )
+            params = (user_id, book_id, safe_limit)
+        async with db.execute(sql, params) as cursor:
+            rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def clear_chat_messages(user_id: int, book_id: int) -> int:
+    """Delete all chat messages for (user, book). Returns rowcount."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM chat_messages WHERE user_id = ? AND book_id = ?",
+            (user_id, book_id),
+        )
+        await db.commit()
+    return cursor.rowcount
+
+
 # ── Flashcard / SRS (issue #556) ─────────────────────────────────────────────
 
 async def _ensure_flashcard_rows(user_id: int) -> None:

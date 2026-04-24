@@ -2138,7 +2138,7 @@ export default function ReaderPage() {
                         }
                         setNotesExpanded(false);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-xs"
+                      className="w-full text-left px-3 py-2 min-h-[44px] flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs"
                     >
                       <div className="text-ink line-clamp-2">{ann.sentence_text}</div>
                       {ann.note_text && (

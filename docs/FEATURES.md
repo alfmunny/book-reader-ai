@@ -259,11 +259,11 @@ A distraction-free reading experience with typography customisation and paragrap
 
 ---
 
-## Feature 5: Chapter Comprehension Quiz (FUTURE)
+## Feature 5: Chapter Comprehension Quiz (DECLINED)
 
 After reading a chapter, ask 3-5 AI-generated multiple-choice questions to test comprehension. Results stored per user/chapter.
 
-Estimated: 4 hours. Requires approval for DB schema.
+**Status**: user declined in [#557](https://github.com/alfmunny/book-reader-ai/issues/557) ("Dont do it for now"). Duplicate entry kept below as "Feature 12"; both marked declined.
 
 ---
 
@@ -380,9 +380,9 @@ python scripts/pretranslate.py --book-id 1342 --lang de --force   # overwrite ca
 
 ### Filed / awaiting approval
 
-- [ ] Feature 11: user_book_chapters table — replace JSON-in-books.text (design PR #555, issue #357)
-- [ ] Feature 2: Vocabulary Flashcards / SRS (design in FEATURES.md Feature 2, issue #556)
-- [ ] Feature 12: Chapter Comprehension Quiz (issue #557)
+- [x] Feature 11: user_book_chapters table — replace JSON-in-books.text (shipped — migration 025, PR #649)
+- [x] Feature 2: Vocabulary Flashcards / SRS (shipped — issue #556 closed)
+- ~~Feature 12: Chapter Comprehension Quiz~~ — declined in #557 ("Dont do it for now")
 
 ---
 
@@ -431,16 +431,13 @@ Uploaded books now store their chapters in a dedicated `user_book_chapters` tabl
 
 ---
 
-## Feature 12: Chapter Comprehension Quiz (Issue #557 — future)
+## Feature 12: Chapter Comprehension Quiz (Issue #557 — DECLINED)
 
 ### Overview
 After reading a chapter, users get 3–5 AI-generated multiple-choice questions. Results stored per user/chapter. New tables: `quiz_questions`, `quiz_attempts`. New "Quiz" tab in reader sidebar.
 
 ### Status
-Needs design doc. See issue #557.
-
-### Estimated effort
-~5 hours after design approval.
+**Declined.** User commented "Dont do it for now" on [#557](https://github.com/alfmunny/book-reader-ai/issues/557); the issue carries the `wontfix` label. Do not start a design doc against this feature without the user reopening the discussion.
 
 ---
 

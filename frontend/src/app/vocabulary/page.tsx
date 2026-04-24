@@ -486,6 +486,51 @@ function VocabularyPageContent() {
           </div>
         )}
 
+        {!loading && words.length > 0 && allTags.length > 0 && (
+          <div
+            data-testid="tag-filter-bar"
+            role="group"
+            aria-label="Filter by tag"
+            className="mb-6 flex gap-2 overflow-x-auto pb-1"
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedTag(null)}
+              aria-pressed={selectedTag === null}
+              data-testid="tag-filter-all"
+              className={`shrink-0 min-h-[44px] px-3 rounded-full text-xs font-medium border transition-colors ${
+                selectedTag === null
+                  ? "bg-amber-700 text-white border-amber-700"
+                  : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
+              }`}
+            >
+              All
+            </button>
+            {allTags.map(({ tag, word_count }) => {
+              const active = selectedTag === tag;
+              return (
+                <button
+                  type="button"
+                  key={tag}
+                  onClick={() => setSelectedTag(active ? null : tag)}
+                  aria-pressed={active}
+                  data-testid={`tag-filter-${tag}`}
+                  className={`shrink-0 min-h-[44px] px-3 rounded-full text-xs font-medium border transition-colors ${
+                    active
+                      ? "bg-amber-700 text-white border-amber-700"
+                      : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
+                  }`}
+                >
+                  {tag}
+                  <span className={`ml-1 ${active ? "opacity-80" : "text-stone-400"}`}>
+                    · {word_count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-3 animate-pulse">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -499,7 +544,13 @@ function VocabularyPageContent() {
             <p className="text-sm">Double-click any word while reading to save it here.</p>
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-stone-400 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>
+          selectedTag ? (
+            <p className="text-center text-stone-400 mt-12 text-sm">
+              No words tagged with &ldquo;<span className="font-medium text-ink">{selectedTag}</span>&rdquo;
+            </p>
+          ) : (
+            <p className="text-center text-stone-400 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>
+          )
         ) : (
           <div className="space-y-8">
             {sections.map(({ heading, groups: sectionGroups }) => (

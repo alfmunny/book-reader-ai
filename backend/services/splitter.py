@@ -648,7 +648,7 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         except Exception:
             continue
 
-        if not text.strip() or len(text.split()) < 30:
+        if not text.strip() or _token_count(text) < 30:
             continue
 
         title = (
@@ -679,7 +679,7 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
     # the correct chapter structure (e.g. Kafka's Die Verwandlung → 3 Kapitel).
     if chapters:
         combined = "\n\n".join(c.text for c in chapters)
-        if len(combined.split()) >= 300:
+        if _token_count(combined) >= 300:
             sub = build_chapters(combined)
             if len(sub) >= 2:
                 return sub
@@ -709,6 +709,37 @@ def _epub_frontmatter_blocks(body) -> list:
         if any(c in _FRONTMATTER_CLASSES for c in classes):
             out.append(elem)
     return out
+
+
+# Unicode ranges that cover CJK ideographs, Hiragana, Katakana, and Hangul.
+# Used by _token_count to decide whether to estimate word count from
+# characters rather than whitespace-delimited tokens.
+_CJK_RANGES = (
+    (0x3040, 0x30FF),   # Hiragana + Katakana
+    (0x3400, 0x4DBF),   # CJK Extension A
+    (0x4E00, 0x9FFF),   # CJK Unified Ideographs
+    (0xAC00, 0xD7AF),   # Hangul Syllables
+)
+
+
+def _token_count(text: str) -> int:
+    """Estimate word / token count in a language-aware way.
+
+    CJK scripts (Chinese, Japanese, Korean) have no whitespace word
+    boundaries, so ``len(text.split())`` returns a near-1 count even for
+    full-length chapters.  Sample the first 500 characters; if more than
+    30 % are in a CJK Unicode block, approximate word count as
+    ``len(text) // 3`` (≈ 1 word per 3 CJK characters).
+    """
+    if not text:
+        return 0
+    sample = text[:500]
+    cjk_chars = sum(
+        1 for c in sample if any(lo <= ord(c) <= hi for lo, hi in _CJK_RANGES)
+    )
+    if cjk_chars > len(sample) * 0.3:
+        return len(text) // 3
+    return len(text.split())
 
 
 def _normalize_for_title_match(s: str) -> str:

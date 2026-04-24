@@ -69,7 +69,7 @@ class AsyncRateLimiter:
         self.rpd = rpd
         self.provider = provider
         self.model = model
-        self._time = time_fn or (lambda: asyncio.get_event_loop().time())
+        self._time = time_fn or (lambda: asyncio.get_running_loop().time())
         self._sleep = sleep_fn or asyncio.sleep
         self._rpm_window: deque[float] = deque()
         self._lock = asyncio.Lock()

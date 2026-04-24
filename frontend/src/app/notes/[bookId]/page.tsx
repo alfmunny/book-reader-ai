@@ -257,6 +257,7 @@ export default function BookNotesPage() {
   const [insights, setInsights] = useState<BookInsight[]>([]);
   const [vocab, setVocab] = useState<VocabularyWord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   // Collapse state
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -278,6 +279,7 @@ export default function BookNotesPage() {
   useEffect(() => {
     if (status === "unauthenticated") { router.replace("/login"); return; }
     if (status !== "authenticated") return;
+    setFetchError(false);
     Promise.all([
       getBookChapters(bookId),
       getAnnotations(bookId),
@@ -289,7 +291,7 @@ export default function BookNotesPage() {
       setAnnotations(anns);
       setInsights(ins);
       setVocab(voc);
-    }).catch(() => {})
+    }).catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, bookId]);
@@ -679,6 +681,11 @@ export default function BookNotesPage() {
         {loading ? (
           <div className="flex justify-center py-24">
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+          </div>
+        ) : fetchError ? (
+          <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+            <p className="font-serif text-lg text-red-500 mt-1">Failed to load notes.</p>
+            <p className="text-sm">Please refresh the page to try again.</p>
           </div>
         ) : annCount + insCount + vocCount === 0 ? (
           <div className="text-center py-24 text-stone-400">

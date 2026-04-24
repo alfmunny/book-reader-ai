@@ -19,6 +19,7 @@ if they want to surface the wait time to the user.
 from __future__ import annotations
 
 import asyncio
+import time
 from collections import deque
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -69,7 +70,7 @@ class AsyncRateLimiter:
         self.rpd = rpd
         self.provider = provider
         self.model = model
-        self._time = time_fn or (lambda: asyncio.get_running_loop().time())
+        self._time = time_fn or time.monotonic
         self._sleep = sleep_fn or asyncio.sleep
         self._rpm_window: deque[float] = deque()
         self._lock = asyncio.Lock()

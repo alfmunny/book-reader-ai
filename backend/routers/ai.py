@@ -1,6 +1,9 @@
 import asyncio
+import logging
 from collections import defaultdict
 from typing import Annotated, Literal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -136,7 +139,8 @@ async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
             key, req.chapter_text, req.book_title, req.author, req.response_language
         )
         return {"insight": result}
-    except Exception:
+    except Exception as exc:
+        logger.exception("POST /ai/insight failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(status_code=500, detail="AI service request failed")
 
 
@@ -148,7 +152,8 @@ async def qa(req: QARequest, user: dict = Depends(get_current_user)):
             key, req.question, req.passage, req.book_title, req.author, req.response_language
         )
         return {"answer": result}
-    except Exception:
+    except Exception as exc:
+        logger.exception("POST /ai/qa failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(status_code=500, detail="AI service request failed")
 
 
@@ -173,7 +178,8 @@ async def references(req: ReferencesRequest, user: dict = Depends(get_current_us
             key, prompt, excerpt or "N/A", req.book_title, req.author, req.response_language
         )
         return {"references": result}
-    except Exception:
+    except Exception as exc:
+        logger.exception("POST /ai/references failed: %s", exc)
         raise HTTPException(status_code=500, detail="AI service request failed")
 
 
@@ -229,7 +235,8 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
             content = await gemini.generate_chapter_summary(
                 api_key, req.chapter_text, req.book_title, req.author, req.chapter_title
             )
-        except Exception:
+        except Exception as exc:
+            logger.exception("POST /ai/summary book=%s ch=%s: %s", req.book_id, req.chapter_index, exc)
             raise HTTPException(status_code=500, detail="AI service request failed")
 
         await save_chapter_summary(req.book_id, req.chapter_index, content, model=gemini.MODEL)

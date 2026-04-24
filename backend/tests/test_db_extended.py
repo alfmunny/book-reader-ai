@@ -40,8 +40,9 @@ async def tmp_db(monkeypatch, tmp_path):
     monkeypatch.setattr(db_module, "DB_PATH", path)
     await init_db()
     # annotations + book_insights + chapter_summaries now carry declared FKs
-    # on book_id (migrations 031 + 032) and book_insights + annotations on
-    # user_id. Pre-seed the book ids referenced across this module's tests.
+    # on book_id (migrations 031 + 032), book_insights + annotations on
+    # user_id, and translations + audio_cache on book_id (migration 033).
+    # Pre-seed the book ids referenced across this module's tests.
     # source='upload' keeps the rows out of list_cached_books so unrelated
     # count tests stay stable.
     import aiosqlite
@@ -49,7 +50,7 @@ async def tmp_db(monkeypatch, tmp_path):
         await db.executemany(
             "INSERT OR IGNORE INTO books (id, title, images, source) "
             "VALUES (?, 'T', '[]', 'upload')",
-            [(i,) for i in (1, 5, 6, 7)],
+            [(i,) for i in (1, 2, 3, 5, 6, 7)],
         )
         await db.commit()
 

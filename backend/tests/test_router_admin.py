@@ -54,6 +54,21 @@ async def admin_db(monkeypatch, tmp_path):
     return path
 
 
+async def _seed_book(book_id: int) -> None:
+    """translations.book_id and audio_cache.book_id carry declared FKs to
+    books(id) (migration 033, #754 PR 3/4). Tests that INSERT directly into
+    either table (or call save_translation with a fabricated id) must ensure
+    the parent book row exists. Uses source='upload' so the row doesn't show
+    up in list_cached_books and throw off unrelated count assertions."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
+        await db.commit()
+
+
 @pytest.fixture
 async def admin_user(admin_db):
     """First user is auto-admin."""
@@ -715,6 +730,7 @@ async def test_delete_book_removes_deck_members(admin_client, admin_db):
 # ── Translations ─────────────────────────────────────────────────────────────
 
 async def test_get_translations(admin_client, admin_db):
+    await _seed_book(100)
     await save_translation(100, 0, "en", ["Hello"])
     res = await admin_client.get("/api/admin/translations")
     assert res.status_code == 200
@@ -722,6 +738,7 @@ async def test_get_translations(admin_client, admin_db):
 
 
 async def test_delete_book_translations(admin_client, admin_db):
+    await _seed_book(100)
     await save_translation(100, 0, "en", ["Hello"])
     res = await admin_client.delete("/api/admin/translations/100")
     assert res.status_code == 200
@@ -729,6 +746,7 @@ async def test_delete_book_translations(admin_client, admin_db):
 
 
 async def test_delete_specific_translation(admin_client, admin_db):
+    await _seed_book(100)
     await save_translation(100, 0, "en", ["Hello"])
     await save_translation(100, 0, "de", ["Hallo"])
     res = await admin_client.delete("/api/admin/translations/100/0/en")
@@ -747,6 +765,7 @@ async def test_delete_specific_translation_normalizes_language(admin_client, adm
 
     Without normalization the lookup uses 'ZH-CN' as-is and returns 404
     even though the translation exists."""
+    await _seed_book(100)
     await save_translation(100, 0, "zh", ["翻译"])
     res = await admin_client.delete("/api/admin/translations/100/0/ZH-CN")
     assert res.status_code == 200
@@ -764,6 +783,7 @@ async def test_delete_book_translations_no_translations_returns_404(admin_client
 
 async def test_delete_language_translations(admin_client, admin_db):
     """DELETE /translations/{book_id}/{lang} deletes only that language (issue #271)."""
+    await _seed_book(100)
     await save_translation(100, 0, "zh", ["中文"])
     await save_translation(100, 1, "zh", ["中文2"])
     await save_translation(100, 0, "de", ["Deutsch"])
@@ -785,6 +805,7 @@ async def test_delete_language_translations_not_found(admin_client):
 
 async def test_delete_language_translations_normalizes_language(admin_client, admin_db):
     """DELETE /translations/{book_id}/{lang} normalises e.g. ZH-CN → zh (issue #271)."""
+    await _seed_book(100)
     await save_translation(100, 0, "zh", ["中文"])
     res = await admin_client.delete("/api/admin/translations/100/ZH-CN")
     assert res.status_code == 200
@@ -942,6 +963,8 @@ async def test_get_audio_empty(admin_client, admin_db):
 
 async def test_get_audio_returns_cached_entries(admin_client, admin_db):
     """GET /admin/audio must return rows from audio_cache, not a hard-coded empty list (#455)."""
+    await _seed_book(10)
+    await _seed_book(20)
     await _insert_audio(admin_db, book_id=10, chapter_index=0)
     await _insert_audio(admin_db, book_id=10, chapter_index=1)
     await _insert_audio(admin_db, book_id=20, chapter_index=0)
@@ -959,6 +982,8 @@ async def test_delete_book_audio(admin_client, admin_db):
 
 async def test_delete_book_audio_removes_rows(admin_client, admin_db):
     """DELETE /admin/audio/{book_id} must actually delete rows from audio_cache (#455)."""
+    await _seed_book(77)
+    await _seed_book(99)
     await _insert_audio(admin_db, book_id=77, chapter_index=0)
     await _insert_audio(admin_db, book_id=77, chapter_index=1)
     await _insert_audio(admin_db, book_id=99, chapter_index=0)
@@ -976,6 +1001,7 @@ async def test_delete_book_audio_removes_rows(admin_client, admin_db):
 
 async def test_delete_chapter_audio_removes_rows(admin_client, admin_db):
     """DELETE /admin/audio/{book_id}/{chapter_index} must delete only that chapter's rows (#455)."""
+    await _seed_book(55)
     await _insert_audio(admin_db, book_id=55, chapter_index=0, chunk_index=0)
     await _insert_audio(admin_db, book_id=55, chapter_index=0, chunk_index=1)
     await _insert_audio(admin_db, book_id=55, chapter_index=1, chunk_index=0)

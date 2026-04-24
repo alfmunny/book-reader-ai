@@ -309,8 +309,9 @@ async def delete_uploaded_book(book_id: int = Path(..., ge=1), user: dict = Depe
                 ),
             )
 
-        await db.execute("DELETE FROM translations WHERE book_id=?", (book_id,))
-        await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
+        # translations.book_id and audio_cache.book_id carry declared FKs
+        # (migration 033, #754 PR 3/4), so the DELETE FROM books below
+        # cascades them automatically.
         await db.execute(
             "DELETE FROM translation_queue WHERE book_id=? AND status != 'running'",
             (book_id,),

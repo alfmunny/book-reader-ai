@@ -38,6 +38,21 @@ async def tmp_db(monkeypatch, tmp_path):
     yield
 
 
+async def _seed_book(book_id: int) -> None:
+    """chapter_summaries.book_id now carries a declared FK to books(id)
+    (migration 032, #754 PR 2/4). Tests that exercise save_chapter_summary
+    with a fabricated book_id must ensure the referenced book exists.
+    """
+    import aiosqlite
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
+        await db.commit()
+
+
 # ── Users ─────────────────────────────────────────────────────────────────────
 
 async def test_create_user():
@@ -277,6 +292,7 @@ async def test_get_chapter_summary_returns_none_when_missing():
 
 
 async def test_save_and_get_chapter_summary():
+    await _seed_book(1234)
     await save_chapter_summary(1234, 5, "A great chapter summary.", model="test-model")
     result = await get_chapter_summary(1234, 5)
     assert result is not None
@@ -285,6 +301,7 @@ async def test_save_and_get_chapter_summary():
 
 
 async def test_save_chapter_summary_overwrites():
+    await _seed_book(1234)
     await save_chapter_summary(1234, 7, "First version.", model="model-a")
     await save_chapter_summary(1234, 7, "Updated version.", model="model-b")
     result = await get_chapter_summary(1234, 7)
@@ -293,6 +310,7 @@ async def test_save_chapter_summary_overwrites():
 
 
 async def test_save_chapter_summary_without_model():
+    await _seed_book(1234)
     await save_chapter_summary(1234, 8, "No model specified.")
     result = await get_chapter_summary(1234, 8)
     assert result is not None

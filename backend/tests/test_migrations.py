@@ -551,14 +551,18 @@ async def test_bootstrap_marks_016_when_context_text_exists(tmp_db):
                 PRIMARY KEY (book_id, chapter_index, chunk_index, provider, voice)
             )
         """)
-        # book_insights already has context_text (as if 016 was applied manually)
+        # book_insights already has context_text (as if 016 was applied manually).
+        # Column shape must match the real 015+016 schema — otherwise later
+        # migrations that do INSERT ... SELECT * over this table (e.g. 032)
+        # fail on column-count mismatch.
         await db.execute("""
             CREATE TABLE IF NOT EXISTS book_insights (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL, book_id INTEGER NOT NULL,
-                chapter_index INTEGER NOT NULL, insight TEXT NOT NULL,
-                context_text TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                chapter_index INTEGER, question TEXT NOT NULL,
+                answer TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                context_text TEXT
             )
         """)
         await db.commit()
@@ -1420,3 +1424,223 @@ async def test_migration_031_cascade_deletes_annotations_on_book_delete(tmp_db):
             "SELECT COUNT(*) FROM annotations WHERE book_id = 910"
         ) as cur:
             assert (await cur.fetchone())[0] == 0, "annotations must cascade on book delete"
+
+# ── Migration 032 (#754 PR 2/4): declared FKs on book_insights + chapter_summaries ─
+
+
+async def test_migration_032_cleans_orphan_book_insights_and_summaries(tmp_db):
+    """Seed rows pointing at missing parents, re-run migration 032, confirm the
+    pre-rewrite orphan DELETEs wiped them so the subsequent INSERT INTO _new
+    SELECT * does not violate the new FKs."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (1, 'g1', 'a@b.com', 'A', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (100, 'Book', '[]')"
+        )
+        # Valid parents — these rows should survive.
+        await db.execute(
+            "INSERT INTO book_insights (id, user_id, book_id, chapter_index, question, answer) "
+            "VALUES (1, 1, 100, 0, 'Q', 'A')"
+        )
+        await db.execute(
+            "INSERT INTO chapter_summaries (id, book_id, chapter_index, content) "
+            "VALUES (1, 100, 0, 'alive')"
+        )
+        # Orphan rows — bogus parent ids.
+        await db.execute(
+            "INSERT INTO book_insights (id, user_id, book_id, chapter_index, question, answer) "
+            "VALUES (2, 999, 100, 0, 'Q-bad-user', 'A')"
+        )
+        await db.execute(
+            "INSERT INTO book_insights (id, user_id, book_id, chapter_index, question, answer) "
+            "VALUES (3, 1, 888, 0, 'Q-bad-book', 'A')"
+        )
+        await db.execute(
+            "INSERT INTO chapter_summaries (id, book_id, chapter_index, content) "
+            "VALUES (2, 888, 0, 'bad-book')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '032_fk_book_insights_chapter_summaries'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT id FROM book_insights ORDER BY id") as cur:
+            rows = [r[0] for r in await cur.fetchall()]
+        assert rows == [1], f"only valid book_insight should survive; got {rows}"
+
+        async with db.execute("SELECT id FROM chapter_summaries ORDER BY id") as cur:
+            rows = [r[0] for r in await cur.fetchall()]
+        assert rows == [1], f"only valid chapter_summary should survive; got {rows}"
+
+
+async def test_migration_032_book_insights_carries_declared_fks(tmp_db):
+    """After migration 032, PRAGMA foreign_key_list must report both FKs."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("PRAGMA foreign_key_list(book_insights)") as cur:
+            fks = await cur.fetchall()
+
+    fk_map = {(row[2], row[3]): (row[4], row[5], row[6]) for row in fks}
+    assert ("users", "user_id") in fk_map, f"missing users FK: {fk_map}"
+    assert ("books", "book_id") in fk_map, f"missing books FK: {fk_map}"
+    assert fk_map[("users", "user_id")][2] == "CASCADE"
+    assert fk_map[("books", "book_id")][2] == "CASCADE"
+
+
+async def test_migration_032_chapter_summaries_carries_declared_fk(tmp_db):
+    """chapter_summaries only has book_id as a soft reference — verify it is
+    now REFERENCES books(id) ON DELETE CASCADE."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("PRAGMA foreign_key_list(chapter_summaries)") as cur:
+            fks = await cur.fetchall()
+
+    fk_map = {(row[2], row[3]): (row[4], row[5], row[6]) for row in fks}
+    assert ("books", "book_id") in fk_map, f"missing books FK: {fk_map}"
+    assert fk_map[("books", "book_id")][2] == "CASCADE"
+
+
+async def test_migration_032_preserves_existing_rows(tmp_db):
+    """INSERT … SELECT * must round-trip data including the appended
+    context_text column that migration 016 added to book_insights."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (5, 'g5', 'e@b.com', 'E', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (500, 'T', '[]')"
+        )
+        await db.execute(
+            "INSERT INTO book_insights (id, user_id, book_id, chapter_index, "
+            "question, answer, context_text) VALUES "
+            "(777, 5, 500, 2, 'Why?', 'Because', 'a quoted passage')"
+        )
+        await db.execute(
+            "INSERT INTO chapter_summaries (id, book_id, chapter_index, model, content) "
+            "VALUES (777, 500, 2, 'gemini', 'a plot summary')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '032_fk_book_insights_chapter_summaries'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT user_id, book_id, chapter_index, question, answer, context_text "
+            "FROM book_insights WHERE id = 777"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row == (5, 500, 2, "Why?", "Because", "a quoted passage")
+
+        async with db.execute(
+            "SELECT book_id, chapter_index, model, content FROM chapter_summaries WHERE id = 777"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row == (500, 2, "gemini", "a plot summary")
+
+
+async def test_migration_032_uq_book_insights_question_index_survives(tmp_db):
+    """The UNIQUE expression index from migration 022 must be recreated after
+    the table rewrite, otherwise duplicate (user, book, chapter, question)
+    rows would be possible again."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (8, 'g', 'q@b.com', 'Q', '')"
+        )
+        await db.execute("INSERT INTO books (id, title, images) VALUES (800, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (8, 800, 0, 'dup?', 'first')"
+        )
+        await db.commit()
+
+        # Duplicate insert must fail — the index is present.
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+                "VALUES (8, 800, 0, 'dup?', 'second')"
+            )
+            await db.commit()
+
+
+async def test_migration_032_cascade_deletes_on_user_delete(tmp_db):
+    """With FK enforcement on, DELETE FROM users must cascade to book_insights
+    via the new user_id FK."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (77, 'g', 'u@b.com', 'U', '')"
+        )
+        await db.execute("INSERT INTO books (id, title, images) VALUES (900, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (77, 900, 0, 'Q?', 'A')"
+        )
+        await db.commit()
+
+        await db.execute("DELETE FROM users WHERE id = 77")
+        await db.commit()
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE user_id = 77"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0
+
+
+async def test_migration_032_cascade_deletes_on_book_delete(tmp_db):
+    """DELETE FROM books must cascade to both book_insights and
+    chapter_summaries via the new book_id FKs."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (88, 'g', 'u2@b.com', 'U2', '')"
+        )
+        await db.execute("INSERT INTO books (id, title, images) VALUES (910, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (88, 910, 0, 'Q?', 'A')"
+        )
+        await db.execute(
+            "INSERT INTO chapter_summaries (book_id, chapter_index, content) "
+            "VALUES (910, 0, 'sum')"
+        )
+        await db.commit()
+
+        await db.execute("DELETE FROM books WHERE id = 910")
+        await db.commit()
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE book_id = 910"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0
+        async with db.execute(
+            "SELECT COUNT(*) FROM chapter_summaries WHERE book_id = 910"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0

@@ -204,6 +204,7 @@ function VocabularyPageContent() {
 
   const [words, setWords] = useState<VocabularyWord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -216,9 +217,10 @@ function VocabularyPageContent() {
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setFetchError(false);
     getVocabulary()
       .then(setWords)
-      .catch(() => {})
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, [session?.backendToken]);
 
@@ -537,6 +539,11 @@ function VocabularyPageContent() {
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-5 bg-amber-100 rounded w-full" />
             ))}
+          </div>
+        ) : fetchError ? (
+          <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+            <p className="font-serif text-lg text-red-500 mt-1">Failed to load vocabulary.</p>
+            <p className="text-sm">Please refresh the page to try again.</p>
           </div>
         ) : words.length === 0 ? (
           <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">

@@ -246,6 +246,22 @@ describe("VocabularyPage — export error paths", () => {
   });
 });
 
+// ── Issue #837: fetch failure shows error state, not empty-vocabulary state ───
+
+describe("VocabularyPage — fetch error state (regression #837)", () => {
+  it("shows error message when getVocabulary rejects, not the empty-words empty state", async () => {
+    mockGetVocabulary.mockRejectedValue(new Error("Network error"));
+    render(<VocabularyPage />);
+    await flushPromises();
+
+    await waitFor(() =>
+      expect(screen.getByText("Failed to load vocabulary.")).toBeInTheDocument(),
+    );
+    // Must NOT show the "no saved words" empty state
+    expect(screen.queryByText("No saved words yet.")).not.toBeInTheDocument();
+  });
+});
+
 // ── Grouped under "#" when word has empty/undefined first char ────────────────
 
 describe("VocabularyPage — word grouped under '#' fallback letter", () => {

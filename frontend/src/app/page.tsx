@@ -319,7 +319,7 @@ export default function Home() {
                   </p>
                   <button
                     onClick={() => setStatsExpanded((v) => !v)}
-                    className="text-xs text-amber-600 hover:text-amber-800 transition-colors"
+                    className="text-xs text-amber-600 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
                   >
                     {statsExpanded ? "Hide activity" : "Show activity"}
                   </button>

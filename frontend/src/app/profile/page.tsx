@@ -3,7 +3,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings } from "@/lib/api";
-import { ArrowLeftIcon, CheckIcon } from "@/components/Icons";
+import { ArrowLeftIcon, CheckIcon, ChevronRightIcon } from "@/components/Icons";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 
 const LANGUAGES = [
@@ -282,12 +282,10 @@ export default function ProfilePage() {
                   : "Configure GitHub integration to push vocab to Obsidian"}
               </p>
             </div>
-            <span
-              className={`text-amber-600 transition-transform duration-200 ${obsidianOpen ? "rotate-90" : ""}`}
+            <ChevronRightIcon
+              className={`w-4 h-4 text-amber-600 transition-transform duration-200 ${obsidianOpen ? "rotate-90" : ""}`}
               aria-hidden="true"
-            >
-              ▶
-            </span>
+            />
           </button>
 
           {/* Collapsible body */}

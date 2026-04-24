@@ -65,9 +65,10 @@ test("pre-fills color and note from existingAnnotation", () => {
   );
   const textarea = screen.getByPlaceholderText(/Your thoughts/i) as HTMLTextAreaElement;
   expect(textarea.value).toBe("Interesting passage");
-  // Green button should appear selected (scale-110 class)
+  // Green button should appear selected (scale-110 class on inner swatch span)
   const greenBtn = screen.getByLabelText("Green");
-  expect(greenBtn.className).toMatch(/scale-110/);
+  const swatch = greenBtn.querySelector("span");
+  expect(swatch?.className).toMatch(/scale-110/);
 });
 
 test("calls createAnnotation and onSaved when saving new annotation", async () => {

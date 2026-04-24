@@ -27,6 +27,7 @@ class AnnotationUpdate(BaseModel):
 async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
     if not req.sentence_text.strip():
         raise HTTPException(status_code=400, detail="sentence_text cannot be blank")
+    note_text = req.note_text.strip() if req.note_text else ""
     if req.chapter_index < 0:
         raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     book = await get_cached_book(req.book_id)
@@ -45,7 +46,7 @@ async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
         req.book_id,
         req.chapter_index,
         req.sentence_text,
-        req.note_text,
+        note_text,
         req.color,
     )
 
@@ -70,9 +71,10 @@ async def update(
     annotation_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
+    note_text = req.note_text.strip() if req.note_text is not None else None
     result = await update_annotation(
         annotation_id, user["id"],
-        note_text=req.note_text, color=req.color,
+        note_text=note_text, color=req.color,
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Annotation not found")

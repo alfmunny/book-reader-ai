@@ -1009,6 +1009,7 @@ export default function ReaderPage() {
           <button
             onClick={cycleTheme}
             title={`Theme: ${theme} — click to cycle`}
+            aria-label={`Theme: ${theme} — click to cycle`}
             className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 min-h-[44px] rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
           >
             {theme === "light" ? <SunIcon className="w-3.5 h-3.5" /> : theme === "sepia" ? <SepiaIcon className="w-3.5 h-3.5" /> : <MoonIcon className="w-3.5 h-3.5" />}

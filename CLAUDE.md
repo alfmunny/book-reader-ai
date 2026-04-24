@@ -122,6 +122,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - Triage new issues: apply role labels, set priority, update `product/backlog.md`
 - Review every merged PR: read the diff, file follow-up issues for anything incomplete
 - Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
+- Every cycle, check `gh pr list --label needs-pm-review --state open` — these are PRs where a role has explicitly opted in to PM review. Respond with `pm-approved` (+ comment) to unblock, or a specific-change-request comment + `blocked` if the PR needs work. See "Review gate policy" below for the full opt-in flow.
 - Watch deployments: run `/loop` for smoke-test and deploy monitoring
 - Review Path B design docs for readiness (tests, rollback, risks, migration policy) and apply `pm-approved` label. **PM has no merge authority on Path B design docs — the user (repo owner) is the sole approver.** PM merges only after the user comments approval in the PR thread.
 - Keep `product/review-state.md` updated every cycle
@@ -315,6 +316,46 @@ At the start of every session, follow this exact order. **Do not skip steps 6 or
 - Implementation details (private functions, internal state)
 - Third-party library behaviour
 - Things already covered by existing tests
+
+## Review gate policy
+
+**Each role decides at PR-creation time whether the PR needs PM review before merge.** This is separate from the Path B user-approval gate (which applies only to Path B design docs and always requires the user). For Path A PRs, PM review is **opt-in by the role**, not default.
+
+### Default: auto-merge
+
+Small, routine, single-concern PRs proceed on the fast path (`/submit-pr` enables auto-merge; CI passes; PR merges). This covers most bug fixes, UI/UX tweaks, small refactors, and well-scoped feature slices.
+
+### Opt-in PM review
+
+When the role wants a second pair of eyes before merge:
+
+1. Apply the `needs-pm-review` label to the PR.
+2. Run `gh pr merge --disable-auto <N>` immediately — without this, a passing CI will merge past the review window. (Until #796 ships a label-aware `auto-merge.yml`, `--disable-auto` is also undone by rebases; re-run if the PR is force-pushed.)
+3. Leave a short comment with the specific concern — not just "please review." Examples: "novel SQL approach, want a sanity check on index scan path", "first-time touching the auth middleware, please verify I haven't left a bypass".
+
+PM picks up `needs-pm-review` PRs every cycle and responds by either:
+
+- **Approving**: applies `pm-approved` + comments the approval. Role removes `needs-pm-review`, re-enables auto-merge (`gh pr merge --auto --squash <N>`), and the PR proceeds normally.
+- **Requesting changes**: leaves a specific comment describing what needs to change + applies `blocked`. Role iterates; when the concern is addressed, role pings PM in a new comment (or simply pushes + PM notices on next cycle). Loop continues until merged.
+
+PM's `pm-approved` here is a readiness check by the PM role. It is **not** the repo owner's personal approval — that gate applies only to Path B design docs and stays as-is.
+
+### When to opt in
+
+The role decides. Guidelines (not exhaustive):
+
+- Touches a migration, schema change, or any irreversible database operation
+- Crosses 2+ service boundaries in a single PR
+- Adds an endpoint with non-obvious business-logic nuance
+- Touches security-sensitive code (auth, admin gates, rate limits, token handling)
+- Uses a novel approach the role isn't confident about
+- Ships a UX change that affects a core user flow (reader, vocabulary, onboarding) in a non-trivial way
+
+If the change is a one-liner fix to a well-covered area with a regression test, don't opt in — just ship.
+
+### What PM does NOT do without the label
+
+Without `needs-pm-review`, PM does not pre-merge-gate Path A PRs. PM still reviews every merged PR retroactively (per existing duties) and files follow-up issues for anything incomplete. The opt-in label is the role's way to pull PM into the loop *before* merge.
 
 ## Documentation policy
 

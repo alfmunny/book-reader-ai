@@ -74,7 +74,7 @@ function ContextChip({
           {needsToggle && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic"
+              className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic min-h-[44px] inline-flex items-center"
             >
               {expanded ? "less" : "more"}
             </button>
@@ -448,7 +448,7 @@ export default function InsightChat({
                         onSaveInsight(prevUserMsg.content, msg.content, prevUserMsg.context);
                       }}
                       title={isSaved ? "Already saved" : "Save to notes"}
-                      className={`mt-1.5 flex items-center gap-1 text-[11px] transition-colors ${
+                      className={`mt-1.5 flex items-center gap-1 min-h-[44px] text-[11px] transition-colors ${
                         isSaved
                           ? "text-gray-300 cursor-default"
                           : "text-gray-400 hover:text-amber-700"
@@ -552,7 +552,7 @@ function MsgContextBlock({
         {needsToggle && (
           <button
             onClick={onToggle}
-            className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic"
+            className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic min-h-[44px] inline-flex items-center"
           >
             {expanded ? "less" : "more"}
           </button>

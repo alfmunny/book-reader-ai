@@ -81,10 +81,9 @@ async def test_github_login_returns_token_and_user(client):
     assert "hasGeminiKey" in data["user"]
 
 
-async def test_github_login_missing_access_token_returns_400(client):
+async def test_github_login_missing_access_token_returns_422(client):
     resp = await client.post("/api/auth/github", json={"access_token": ""})
-    assert resp.status_code == 400
-    assert "access_token is required" in resp.json()["detail"]
+    assert resp.status_code == 422
 
 
 async def test_github_login_invalid_token_returns_401(client):
@@ -131,3 +130,24 @@ async def test_apple_login_oversized_id_token_returns_422(client):
 async def test_apple_login_oversized_name_returns_422(client):
     resp = await client.post("/api/auth/apple", json={"id_token": "valid-token", "name": "x" * 501})
     assert resp.status_code == 422
+
+
+# ── Issue #918: empty string token/text fields ────────────────────────────────
+
+
+async def test_google_login_empty_id_token_returns_422(client):
+    """Regression #918: POST /auth/google with id_token='' must return 422."""
+    resp = await client.post("/api/auth/google", json={"id_token": ""})
+    assert resp.status_code == 422, f"Expected 422 for empty id_token, got {resp.status_code}: {resp.text}"
+
+
+async def test_github_login_empty_access_token_returns_422(client):
+    """Regression #918: POST /auth/github with access_token='' must return 422."""
+    resp = await client.post("/api/auth/github", json={"access_token": ""})
+    assert resp.status_code == 422, f"Expected 422 for empty access_token, got {resp.status_code}: {resp.text}"
+
+
+async def test_apple_login_empty_id_token_returns_422(client):
+    """Regression #918: POST /auth/apple with id_token='' must return 422."""
+    resp = await client.post("/api/auth/apple", json={"id_token": "", "name": "Alice"})
+    assert resp.status_code == 422, f"Expected 422 for empty id_token, got {resp.status_code}: {resp.text}"

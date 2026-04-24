@@ -13,7 +13,7 @@ AnnotationColor = Literal["yellow", "blue", "green", "pink"]
 class AnnotationCreate(BaseModel):
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
-    sentence_text: str = Field(..., max_length=5000)
+    sentence_text: str = Field(..., min_length=1, max_length=5000)
     note_text: str = Field(default="", max_length=10000)
     color: AnnotationColor = "yellow"
 
@@ -25,8 +25,8 @@ class AnnotationUpdate(BaseModel):
 
 @router.post("")
 async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
-    if not req.sentence_text or not req.sentence_text.strip():
-        raise HTTPException(status_code=400, detail="sentence_text cannot be empty")
+    if not req.sentence_text.strip():
+        raise HTTPException(status_code=400, detail="sentence_text cannot be blank")
     if req.chapter_index < 0:
         raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     book = await get_cached_book(req.book_id)

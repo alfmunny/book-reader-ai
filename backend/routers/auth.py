@@ -22,7 +22,7 @@ def _user_response(user: dict) -> dict:
 
 
 class GoogleAuthRequest(BaseModel):
-    id_token: str = Field(..., max_length=2000)
+    id_token: str = Field(..., min_length=1, max_length=2000)
 
 
 @router.post("/google")
@@ -45,14 +45,12 @@ async def google_login(req: GoogleAuthRequest):
 
 
 class GitHubAuthRequest(BaseModel):
-    access_token: str = Field(..., max_length=500)
+    access_token: str = Field(..., min_length=1, max_length=500)
 
 
 @router.post("/github")
 async def github_login(req: GitHubAuthRequest):
     """Verify a GitHub OAuth access token server-side and issue our own JWT."""
-    if not req.access_token:
-        raise HTTPException(status_code=400, detail="access_token is required")
 
     try:
         profile = await verify_github_access_token(req.access_token)
@@ -71,7 +69,7 @@ async def github_login(req: GitHubAuthRequest):
 
 
 class AppleAuthRequest(BaseModel):
-    id_token: str = Field(..., max_length=2000)
+    id_token: str = Field(..., min_length=1, max_length=2000)
     name: str = Field(default="", max_length=500)
 
 

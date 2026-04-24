@@ -3045,3 +3045,47 @@ async def test_seed_popular_manager_run_raises_runtime_error_without_start():
 
     with pytest.raises(RuntimeError, match="_run\\(\\) called before start\\(\\)"):
         await mgr._run("some_path.json")
+
+
+# ── Issue #1006: retranslate-all aborts on per-chapter fallback failure ─────────
+
+
+@pytest.mark.asyncio
+async def test_retranslate_all_continues_after_per_chapter_translation_failure(admin_user, admin_client, admin_db):
+    """Regression #1006: retranslate-all must record a chapter as 'failed' and
+    continue to the next chapter when both Gemini and the Google fallback raise.
+
+    Without the fix, the exception from the Google fallback propagates out of
+    the for-loop and aborts the entire operation with a 500, silently skipping
+    all subsequent chapters."""
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(admin_user["id"], encrypt_api_key("fake-api-key"))
+
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+
+    call_count = 0
+
+    async def _do_translate_side_effect(text, src, tgt, *, provider="google", gemini_key=None):
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            # Calls 1+2: Gemini primary + Google fallback for chapter 0 both fail.
+            raise RuntimeError("simulated translation failure")
+        # Subsequent calls (chapters 1+ Gemini, etc.) succeed.
+        return ["ok"]
+
+    with patch("routers.admin.do_translate", side_effect=_do_translate_side_effect):
+        res = await admin_client.post(
+            "/api/admin/translations/100/retranslate-all",
+            json={"target_language": "zh"},
+        )
+
+    assert res.status_code == 200, (
+        f"Expected 200 for partial-failure retranslate-all, got {res.status_code}: {res.text}"
+    )
+    body = res.json()
+    assert body["ok"] is True
+    results = {r["chapter"]: r["status"] for r in body["results"]}
+    assert results.get(0) == "failed", "chapter 0 must be recorded as failed"
+    assert results.get(1) == "ok", "chapter 1 must succeed after chapter 0 failed"

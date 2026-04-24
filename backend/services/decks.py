@@ -128,7 +128,8 @@ async def create_deck(
         deck_id = cur.lastrowid
         await db.commit()
     created = await get_deck(user_id, deck_id)
-    assert created is not None
+    if created is None:
+        raise RuntimeError("deck INSERT succeeded but SELECT returned None")
     return created
 
 

@@ -368,3 +368,22 @@ async def test_smart_rules_valid_iso_dates_accepted(client, test_user):
     assert resp.status_code == 201, (
         f"Expected 201 for valid ISO dates, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #995: assert anti-pattern in create_deck ────────────────────────────
+
+
+async def test_create_deck_raises_runtime_error_not_assertion_error_on_get_failure(
+    client, test_user
+):
+    """Regression #995: services.decks.create_deck must raise RuntimeError (not
+    AssertionError) when the post-INSERT get_deck unexpectedly returns None.
+
+    AssertionError is silently dropped under Python -O, causing create_deck to
+    return None and the caller to receive a null JSON body instead of the deck."""
+    from unittest.mock import AsyncMock, patch
+    import services.decks as decks_service
+
+    with patch.object(decks_service, "get_deck", new=AsyncMock(return_value=None)):
+        with pytest.raises(RuntimeError, match="deck INSERT succeeded"):
+            await decks_service.create_deck(test_user["id"], "TestDeck", "", "manual", None)

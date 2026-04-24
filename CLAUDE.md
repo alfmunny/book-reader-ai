@@ -237,14 +237,24 @@ Same as Dev workflow, but may include a design note in the PR body instead of a 
 
 ## Session startup
 
-At the start of every session, follow this exact order. **Do not skip step 5.**
+At the start of every session, follow this exact order. **Do not skip steps 6 or 7.**
 
 1. Declare your role (PM / Dev / UI/UX Dev / Architect).
 2. Read all files listed in `/Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md`.
 3. If PM: run `git -C /Users/alfmunny/Projects/AI/book-reader-ai fetch origin main --quiet` to ensure remote refs are current before reading CLAUDE.md or any `docs/` file.
 4. If a code role: verify your worktree exists (`git -C /Users/alfmunny/Projects/AI/book-reader-ai worktree list`). If not, create it before touching any file. Read CLAUDE.md from the **main checkout** (`/Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md`), not from your worktree — the main checkout always has the latest version.
 5. If PM: check worktree list and warn the user if `in-progress` issues exist but no worktrees are set up.
-5. **PR-first rule — walk through every leftover PR you authored before anything else.**
+6. **Local-work-first rule (code roles only) — drain unfinished local work in your worktree before touching anything new.**
+
+   In your worktree, run `git status -s` and `git log @{u}..HEAD --oneline`. If you find either:
+   - **Tracked-file changes uncommitted** (anything under `M` / `A` / `D` / `R` in `git status -s`, ignoring untracked `??` cruft), or
+   - **Commits on a non-main branch with no remote PR** (verify with `gh pr list --head <branch> --state open`)
+
+   …then finish that work first — `git commit` what's relevant, run the test suite, push, and `/submit-pr` — before any other startup task. Local work is invisible to other sessions and at the highest risk of being lost (worktrees can be deleted, branches can be force-overwritten, sessions can crash). If the local work is genuinely abandoned (e.g. a half-broken experiment you don't want), `git stash` it with a descriptive message rather than discarding silently.
+
+   Only after the worktree is clean (or every unfinished local branch has a remote PR) proceed to step 7.
+
+7. **PR-first rule — walk through every leftover PR you authored before anything else.**
 
    Run `gh pr list --state open --author @me --json number,title,mergeStateStatus,headRefName`. For each PR in the result, do one of the following before moving on:
    - **`BEHIND`** → fetch main, rebase, force-push. Re-run `/submit-pr` on the branch if needed.
@@ -254,7 +264,7 @@ At the start of every session, follow this exact order. **Do not skip step 5.**
 
    Only after every leftover PR has been accounted for does the role start its normal loop (PM cycle, Dev issue-picking, UX audit, Architect design work, etc.). A PR abandoned mid-session is the leading cause of the pileup pattern — driving them on startup is non-negotiable.
 
-6. Now — and only now — enter the role's per-cycle priority (see "Per-cycle priority (all code roles)" above).
+8. Now — and only now — enter the role's per-cycle priority (see "Per-cycle priority (all code roles)" above).
 
 ## Testing policy
 

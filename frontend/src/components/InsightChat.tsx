@@ -83,7 +83,7 @@ function ContextChip({
         {onRemove && (
           <button
             onClick={onRemove}
-            className="shrink-0 text-amber-400 hover:text-amber-700"
+            className="shrink-0 text-amber-400 hover:text-amber-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Remove context"
             aria-label="Remove context"
           >
@@ -517,7 +517,8 @@ export default function InsightChat({
           <button
             onClick={sendMessage}
             disabled={chatLoading || !input.trim() || !hasGeminiKey}
-            className="rounded-xl bg-amber-600 p-2 text-white hover:bg-amber-700 disabled:opacity-40 shrink-0 transition-colors"
+            className="rounded-xl bg-amber-600 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-white hover:bg-amber-700 disabled:opacity-40 shrink-0 transition-colors"
+            aria-label="Send message"
             title="Send (Enter)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">

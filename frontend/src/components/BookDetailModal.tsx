@@ -50,6 +50,9 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="book-detail-title"
         className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
@@ -62,7 +65,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
               : <BookCoverPlaceholderIcon className="w-8 h-12 text-amber-600" />}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="font-serif font-bold text-ink text-lg leading-tight mb-1">
+            <h2 id="book-detail-title" className="font-serif font-bold text-ink text-lg leading-tight mb-1">
               {book.title}
             </h2>
             <p className="text-sm text-amber-700">{book.authors.join(", ")}</p>

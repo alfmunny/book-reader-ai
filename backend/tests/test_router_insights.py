@@ -113,6 +113,7 @@ async def test_delete_returns_404_if_wrong_user(client: AsyncClient, test_user):
         name="Other 2",
         picture="",
     )
+    await save_book(4, _META, "text")
     insight = await save_insight(other_user["id"], 4, None, "Q?", "A!")
     insight_id = insight["id"]
 
@@ -396,6 +397,9 @@ async def test_save_insight_returns_dict_when_row_is_none(tmp_db, monkeypatch):
     import aiosqlite as _aio
     from services.db import save_book, save_insight
 
+    # book_insights now has FK on user_id (migration 032), so seed user 1.
+    from services.db import get_or_create_user
+    await get_or_create_user(google_id="g1", email="u1@x", name="U1", picture="")
     await save_book(1, {"title": "T", "authors": [], "languages": ["de"],
                         "subjects": [], "download_count": 0, "cover": ""}, "text")
 

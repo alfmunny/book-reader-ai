@@ -327,8 +327,9 @@ async def delete_uploaded_book(book_id: int = Path(..., ge=1), user: dict = Depe
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
         await db.execute("DELETE FROM annotations WHERE book_id=?", (book_id,))
-        await db.execute("DELETE FROM book_insights WHERE book_id=?", (book_id,))
-        await db.execute("DELETE FROM chapter_summaries WHERE book_id=?", (book_id,))
+        # book_insights.book_id and chapter_summaries.book_id carry declared
+        # FKs (migration 032, #754 PR 2/4). The DELETE FROM books at the end
+        # of this block cascades both tables automatically.
         await db.execute("DELETE FROM reading_history WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM user_reading_progress WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM user_book_chapters WHERE book_id=?", (book_id,))

@@ -2001,7 +2001,7 @@ export default function ReaderPage() {
                     {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                       <button
                         onClick={handleRetranslate}
-                        className="mt-3 w-full text-xs px-3 py-2 rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50"
+                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50"
                       >
                         Retranslate chapter
                       </button>
@@ -2011,7 +2011,7 @@ export default function ReaderPage() {
                     {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
                       <button
                         onClick={handleRetryFailed}
-                        className="mt-2 w-full text-xs px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
                       >
                         Retry failed translation
                       </button>

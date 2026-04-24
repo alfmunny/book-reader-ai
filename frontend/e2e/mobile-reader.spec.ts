@@ -48,7 +48,7 @@ test.describe("Mobile reader bottom bar", () => {
   });
 
   test("translation button toggles on with single tap and off with second tap", async ({ page }) => {
-    const translateBtn = page.getByLabel("Translation");
+    const translateBtn = page.getByRole("button", { name: "Translation" });
     await translateBtn.click();
     // Options panel (Inline / Side by side) should appear
     await expect(page.getByText("Inline")).toBeVisible({ timeout: 3000 });

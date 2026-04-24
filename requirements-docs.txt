@@ -1,0 +1,8 @@
+# MkDocs docs-site dependencies. See docs/design/docs-site.md (#864).
+# Separate from backend requirements — docs build has its own python env.
+
+mkdocs==1.6.1
+mkdocs-material==9.5.39
+mkdocs-include-markdown-plugin==6.2.2
+mkdocs-macros-plugin==1.0.5
+mkdocs-git-revision-date-localized-plugin==1.2.6

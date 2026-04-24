@@ -36,6 +36,9 @@ src-tauri/target/
 # Claude Code local settings
 .claude/
 
+# Docs site (MkDocs build output; site/ is where `mkdocs build` writes)
+site/
+
 # General
 .DS_Store
 *.db

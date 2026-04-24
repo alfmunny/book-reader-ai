@@ -384,3 +384,36 @@ async def test_delete_insight_negative_id_returns_422(client, test_user):
     """Regression #729: DELETE /insights/{id} with negative id must return 422."""
     resp = await client.delete("/api/insights/-1")
     assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #822: save_insight() must not crash when row is None ────────────────
+
+
+@pytest.mark.asyncio
+async def test_save_insight_returns_dict_when_row_is_none(tmp_db, monkeypatch):
+    """Regression #822: save_insight() must return {} instead of crashing with
+    TypeError when the re-SELECT returns None (concurrent-delete race)."""
+    import aiosqlite as _aio
+    from services.db import save_book, save_insight
+
+    await save_book(1, {"title": "T", "authors": [], "languages": ["de"],
+                        "subjects": [], "download_count": 0, "cover": ""}, "text")
+
+    # Patch fetchone to simulate the race: INSERT succeeds but re-SELECT finds nothing.
+    original_fetchone = _aio.Cursor.fetchone
+
+    call_count = {"n": 0}
+
+    async def _fetchone_returns_none_once(self):
+        # Return None only on the re-SELECT inside save_insight.
+        if "book_insights" in (self._query if hasattr(self, "_query") else ""):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return None
+        return await original_fetchone(self)
+
+    monkeypatch.setattr(_aio.Cursor, "fetchone", _fetchone_returns_none_once)
+
+    # Must not raise TypeError even when fetchone returns None.
+    result = await save_insight(1, 1, None, "Q?", "A.")
+    assert isinstance(result, dict), f"save_insight must return a dict, got {type(result)}"

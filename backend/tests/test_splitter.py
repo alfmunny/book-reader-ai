@@ -1289,6 +1289,95 @@ def _make_test_epub(chapters: list[tuple[str, str]]) -> bytes:
 from services.splitter import build_chapters_from_epub, _epub_nav_titles
 
 
+def _make_faust_epub_with_section_header() -> bytes:
+    """Build an EPUB whose TOC has a Section header pointing to the same file
+    as its first child Link — reproducing the Faust ch-3 title bug (#1053)."""
+    import io
+    from ebooklib import epub
+
+    def _chapter(file_name: str, title: str, body: str) -> epub.EpubHtml:
+        item = epub.EpubHtml(title=title, file_name=file_name, lang="de")
+        body_paras = "".join(
+            f"<p>{'Ein Wort ' * 30}{body}.</p>" for _ in range(4)
+        )
+        item.content = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml">'
+            f"<head><title>{title}</title></head>"
+            f"<body><h2>{title}</h2>{body_paras}</body></html>"
+        ).encode("utf-8")
+        return item
+
+    nacht = _chapter("nacht.xhtml", "Nacht", "Habe nun Ach Philosophie")
+    thor = _chapter("thor.xhtml", "Vor dem Thor", "Vom Eise befreit sind Strom und Bäche")
+
+    book = epub.EpubBook()
+    book.set_title("Faust I")
+    book.set_language("de")
+    book.add_author("Johann Wolfgang von Goethe")
+    book.add_item(nacht)
+    book.add_item(thor)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+
+    # Section header for the whole part points to nacht.xhtml (same as the first child).
+    # This is the structure that caused the bug — the parent section's title
+    # ("FAUST: Der Tragödie erster Teil") overwrote the child's title ("Nacht").
+    book.toc = [
+        (
+            epub.Section("FAUST: Der Tragödie erster Teil", "nacht.xhtml"),
+            [
+                epub.Link("nacht.xhtml", "Nacht", "nacht"),
+                epub.Link("thor.xhtml", "Vor dem Thor", "thor"),
+            ],
+        )
+    ]
+    book.spine = ["nav", nacht, thor]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+    return buf.getvalue()
+
+
+def test_epub_nav_titles_leaf_title_beats_parent_section_title():
+    """Regression #1053: _epub_nav_titles must prefer the leaf chapter title
+    ('Nacht') over the enclosing section header ('FAUST: Der Tragödie erster Teil')
+    when both point to the same spine item."""
+    import io
+    from ebooklib import epub as epublib
+    import ebooklib
+
+    epub_bytes = _make_faust_epub_with_section_header()
+    book = epublib.read_epub(io.BytesIO(epub_bytes))
+
+    titles = _epub_nav_titles(book)
+    # Find the item_id that corresponds to nacht.xhtml
+    nacht_id = next(
+        (
+            item.get_id()
+            for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT)
+            if "nacht" in item.get_name()
+        ),
+        None,
+    )
+    assert nacht_id is not None, "nacht.xhtml not found in EPUB items"
+    assert titles.get(nacht_id) == "Nacht", (
+        f"Expected 'Nacht' but got {titles.get(nacht_id)!r} — "
+        "section header is overriding leaf chapter title"
+    )
+
+
+def test_build_chapters_from_epub_section_header_chapter_title():
+    """Integration regression #1053: chapter title from a nested EPUB TOC must
+    reflect the leaf Link title ('Nacht'), not the enclosing Section header."""
+    epub_bytes = _make_faust_epub_with_section_header()
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert len(chapters) == 2
+    assert chapters[0].title == "Nacht", (
+        f"Expected first chapter title 'Nacht', got {chapters[0].title!r}"
+    )
+
+
 def test_build_chapters_from_epub_basic():
     epub_bytes = _make_test_epub([
         ("Chapter I", "Alice was beginning to be very tired"),

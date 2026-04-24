@@ -800,6 +800,17 @@ async def test_save_word_returns_dict_when_row_is_none(tmp_db, test_user, monkey
     re-SELECT returns None (concurrent-delete race between INSERT and re-SELECT)."""
     import aiosqlite as _aio
 
+    # word_occurrences.book_id carries a declared FK to books(id) (migration
+    # 034, #754 PR 4/4); seed the parent so save_word's occurrence INSERT
+    # doesn't FK-fail.
+    async with _aio.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (BOOK_ID,),
+        )
+        await db.commit()
+
     original_fetchone = _aio.Cursor.fetchone
     select_star_count = {"n": 0}
 

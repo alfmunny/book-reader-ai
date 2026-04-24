@@ -107,7 +107,20 @@ def test_empty_exception_message_returns_false():
 
 # ── enqueue ───────────────────────────────────────────────────────────────────
 
+async def _seed_book(book_id: int) -> None:
+    """FK in migration 034: translation_queue.book_id REFERENCES books(id)."""
+    import aiosqlite
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
+        await db.commit()
+
+
 async def test_enqueue_inserts_new_row():
+    await _seed_book(1)
     count = await enqueue(1, 0, "en", priority=50)
     assert count == 1
 
@@ -119,6 +132,7 @@ async def test_enqueue_normalizes_language_code():
     saved under 'zh' never match — the reader keeps re-requesting an already-
     done translation and queue status_for_chapter returns 'not queued'."""
     from services.translation_queue import queue_status_for_chapter
+    await _seed_book(5)
     await enqueue(5, 0, "ZH-CN", priority=50)
     status = await queue_status_for_chapter(5, 0, "zh")
     assert status["queued"] is True, "normalized 'zh' must find the row stored from 'ZH-CN'"
@@ -142,6 +156,7 @@ async def test_enqueue_for_book_normalizes_language_codes():
 
 
 async def test_enqueue_existing_pending_row_is_noop():
+    await _seed_book(1)
     await enqueue(1, 0, "en")
     count = await enqueue(1, 0, "en")
     assert count == 0
@@ -150,6 +165,7 @@ async def test_enqueue_existing_pending_row_is_noop():
 async def test_enqueue_reset_failed_revives_failed_row():
     # Enqueue then manually mark as failed
     import aiosqlite
+    await _seed_book(2)
     await enqueue(2, 0, "de")
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         await db.execute(
@@ -178,6 +194,7 @@ async def test_enqueue_reset_failed_does_not_touch_running_row():
     finishes, silently voiding the retranslation.
     """
     import aiosqlite
+    await _seed_book(20)
     await enqueue(20, 0, "zh")
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         await db.execute(
@@ -200,6 +217,7 @@ async def test_enqueue_reset_failed_does_not_touch_running_row():
 
 
 async def test_enqueue_preserves_lower_priority():
+    await _seed_book(3)
     await enqueue(3, 0, "fr", priority=100, reset_failed=True)
     # Try to re-enqueue with higher priority (lower number = higher priority)
     await enqueue(3, 0, "fr", priority=10, reset_failed=True)
@@ -221,6 +239,7 @@ async def test_enqueue_reset_failed_does_not_touch_running_row():
     then deletes it by primary key, silently destroying the re-enqueued work.
     """
     import aiosqlite
+    await _seed_book(7)
     await enqueue(7, 0, "es")
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         await db.execute(

@@ -94,6 +94,14 @@ async def admin_client(admin_user):
 
 async def _insert_queue_row(db_path, book_id, chapter_index, lang, status="pending"):
     async with aiosqlite.connect(db_path) as conn:
+        # translation_queue.book_id carries a declared FK to books(id)
+        # (migration 034, #754 PR 4/4); pre-seed the parent book with
+        # source='upload' to keep it out of list_cached_books counts.
+        await conn.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
         await conn.execute(
             """INSERT INTO translation_queue
                    (book_id, chapter_index, target_language, priority, status)

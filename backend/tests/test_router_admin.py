@@ -1271,6 +1271,7 @@ async def test_delete_running_queue_item_returns_409(admin_client, admin_db):
     Without this guard the queue row is removed but the worker continues
     writing the translation, so the admin's cancellation intent is silently ignored.
     """
+    await _seed_book(999)
     async with aiosqlite.connect(admin_db) as db:
         cursor = await db.execute(
             """INSERT INTO translation_queue
@@ -1299,6 +1300,7 @@ async def test_retry_running_item_returns_409(admin_client, admin_db):
     'running', _mark_done() will DELETE the newly-re-enqueued row when the
     translation finishes — the retry is silently lost.
     """
+    await _seed_book(999)
     async with aiosqlite.connect(admin_db) as db:
         cursor = await db.execute(
             """INSERT INTO translation_queue
@@ -1360,8 +1362,17 @@ async def test_enqueue_draft_book_returns_400(admin_client, admin_db):
 # ── Retry-failed bulk endpoint ───────────────────────────────────────────────
 
 async def _seed_failed(book_id: int, chapter_index: int, target_language: str):
-    """Helper: insert a failed queue row for retry-failed tests."""
+    """Helper: insert a failed queue row for retry-failed tests.
+
+    translation_queue.book_id carries a declared FK to books(id) (migration
+    034, #754 PR 4/4), so seed the parent book first with source='upload'
+    (keeps it out of list_cached_books counts)."""
     async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) "
+            "VALUES (?, 'T', '[]', 'upload')",
+            (book_id,),
+        )
         await conn.execute(
             """INSERT INTO translation_queue
                    (book_id, chapter_index, target_language, priority,
@@ -1999,6 +2010,7 @@ async def test_queue_retry_item_sql_guard_prevents_running_reset(admin_client, a
     import aiosqlite as _real_aio
     import routers.admin as admin_mod
 
+    await _seed_book(1)
     async with aiosqlite.connect(admin_db) as db:
         cursor = await db.execute(
             """INSERT INTO translation_queue
@@ -2037,6 +2049,7 @@ async def test_queue_delete_item_sql_guard_prevents_running_delete(admin_client,
     import aiosqlite as _real_aio
     import routers.admin as admin_mod
 
+    await _seed_book(1)
     async with aiosqlite.connect(admin_db) as db:
         cursor = await db.execute(
             """INSERT INTO translation_queue

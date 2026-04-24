@@ -1739,7 +1739,7 @@ export default function ReaderPage() {
                           return (
                             <div key={ch}>
                               <button
-                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-400 uppercase tracking-wide mb-2"
+                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-400 uppercase tracking-wide min-h-[44px]"
                                 onClick={() => setCollapsedNoteChapters((prev) => {
                                   const next = new Set(prev);
                                   if (next.has(ch)) next.delete(ch); else next.add(ch);

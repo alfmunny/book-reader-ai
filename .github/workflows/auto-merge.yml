@@ -2,18 +2,33 @@ name: Auto-merge
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
   auto-merge:
     name: Enable auto-merge
     runs-on: ubuntu-latest
+    if: "!contains(github.event.pull_request.labels.*.name, 'blocked')"
     permissions:
       pull-requests: write
       contents: write
     steps:
       - name: Enable auto-merge (squash)
         run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  disable-auto-merge-if-blocked:
+    name: Disable auto-merge if blocked
+    runs-on: ubuntu-latest
+    if: "contains(github.event.pull_request.labels.*.name, 'blocked')"
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Disable auto-merge
+        run: gh pr merge --disable-auto "$PR_URL" || true
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

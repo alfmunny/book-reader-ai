@@ -635,6 +635,18 @@ async def test_definition_oversized_lang_returns_422(client, test_user):
     )
 
 
+async def test_definition_empty_lang_returns_422(client, test_user):
+    """Regression #981: GET /vocabulary/definition/word?lang= (empty) must return 422.
+
+    An explicit lang= overrides the default 'en' with an empty string, which is then
+    passed to wiktionary.lookup() as the language code. The response would include
+    'language: \"\"' and potentially garbled AI fallback output."""
+    resp = await client.get("/api/vocabulary/definition/test?lang=")
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty lang in /definition, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_remove_word_oversized_word_returns_422(client, test_user):
     """Regression #529: DELETE /vocabulary/{word>200chars} must return 422."""
     resp = await client.delete("/api/vocabulary/" + "w" * 201)

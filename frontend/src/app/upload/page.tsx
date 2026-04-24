@@ -73,7 +73,7 @@ export default function UploadPage() {
           </p>
           <button
             onClick={() => router.push("/login")}
-            className="rounded-lg bg-amber-700 px-6 py-2.5 text-white font-medium hover:bg-amber-800 transition-colors"
+            className="rounded-lg bg-amber-700 px-6 min-h-[44px] flex items-center text-white font-medium hover:bg-amber-800 transition-colors"
           >
             Sign in
           </button>

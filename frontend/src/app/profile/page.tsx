@@ -243,6 +243,7 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-3">
               <input
+                aria-label="Gemini API key"
                 type="password"
                 placeholder="AIza…"
                 value={keyInput}
@@ -293,7 +294,7 @@ export default function ProfilePage() {
             <div className="px-6 pb-6 space-y-4 border-t border-amber-100">
               <div className="pt-4">
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-ink">
+                  <label htmlFor="obsidian-token" className="block text-sm font-medium text-ink">
                     GitHub Token
                   </label>
                   {hasObsidianToken && (
@@ -313,6 +314,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <input
+                  id="obsidian-token"
                   type="password"
                   placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
                   value={obsidianToken}
@@ -325,10 +327,11 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink mb-1">
+                <label htmlFor="obsidian-repo" className="block text-sm font-medium text-ink mb-1">
                   Obsidian Repo
                 </label>
                 <input
+                  id="obsidian-repo"
                   type="text"
                   placeholder="username/obsidian-notes"
                   value={obsidianRepo}
@@ -338,10 +341,11 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink mb-1">
+                <label htmlFor="obsidian-path" className="block text-sm font-medium text-ink mb-1">
                   Vault Path
                 </label>
                 <input
+                  id="obsidian-path"
                   type="text"
                   placeholder="All Notes/002 Literature Notes/000 Books"
                   value={obsidianPath}
@@ -381,10 +385,11 @@ export default function ProfilePage() {
 
           {/* Insight & chat language */}
           <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">
+            <label htmlFor="pref-insight-lang" className="block text-sm font-medium text-ink mb-1.5">
               Insight &amp; chat language
             </label>
             <select
+              id="pref-insight-lang"
               className="w-full rounded-lg border border-amber-300 px-3 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={settings.insightLang}
               onChange={(e) => updatePref("insightLang", e.target.value)}
@@ -400,10 +405,11 @@ export default function ProfilePage() {
 
           {/* Translation language */}
           <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">
+            <label htmlFor="pref-translation-lang" className="block text-sm font-medium text-ink mb-1.5">
               Translation language
             </label>
             <select
+              id="pref-translation-lang"
               className="w-full rounded-lg border border-amber-300 px-3 py-2.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
               value={settings.translationLang}
               onChange={(e) => updatePref("translationLang", e.target.value)}

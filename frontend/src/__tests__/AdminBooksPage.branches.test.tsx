@@ -345,7 +345,7 @@ describe("AdminBooksPage — Open button navigates to reader", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const openBtn = await screen.findByRole("button", { name: /^Open$/i });
+    const openBtn = await screen.findByRole("button", { name: /^Open reader$/i });
     await userEvent.click(openBtn);
 
     expect(mockPush).toHaveBeenCalledWith("/reader/1");

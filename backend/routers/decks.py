@@ -27,10 +27,10 @@ router = APIRouter(prefix="/decks", tags=["decks"])
 class SmartRules(BaseModel):
     """Allowed filter keys on a smart deck. All fields optional; unknown keys
     are rejected at the Pydantic layer (`extra='forbid'`)."""
-    language: str | None = Field(default=None, max_length=20)
+    language: str | None = Field(default=None, min_length=1, max_length=20)
     book_ids: list[Annotated[int, Field(ge=1)]] | None = Field(default=None, max_length=200)
-    tags_any: list[Annotated[str, Field(max_length=50)]] | None = Field(default=None, max_length=100)
-    tags_all: list[Annotated[str, Field(max_length=50)]] | None = Field(default=None, max_length=100)
+    tags_any: list[Annotated[str, Field(min_length=1, max_length=50)]] | None = Field(default=None, max_length=100)
+    tags_all: list[Annotated[str, Field(min_length=1, max_length=50)]] | None = Field(default=None, max_length=100)
     saved_after: str | None = Field(default=None, max_length=10)
     saved_before: str | None = Field(default=None, max_length=10)
 

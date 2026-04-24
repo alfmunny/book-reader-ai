@@ -862,3 +862,27 @@ async def test_obsidian_export_unexpected_error_logs_and_returns_500(client, tes
         "obsidian" in r.message.lower() or "github" in r.message.lower()
         for r in caplog.records
     ), f"Expected a warning log for the failed export, got: {[r.message for r in caplog.records]}"
+
+
+# ── Issue #1060: whitespace-only lang / target_language in vocabulary router ──
+
+
+@pytest.mark.asyncio
+async def test_definition_whitespace_lang_returns_422(client, test_user):
+    """Regression #1060: GET /vocabulary/definition/{word}?lang=" " must return 422."""
+    resp = await client.get("/api/vocabulary/definition/hello?lang=%20")
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace lang in /vocabulary/definition, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_export_obsidian_whitespace_target_language_returns_422(client, test_user):
+    """Regression #1060: POST /vocabulary/export/obsidian with target_language="   " must return 422."""
+    resp = await client.post(
+        "/api/vocabulary/export/obsidian",
+        json={"target_language": "   "},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace target_language in /vocabulary/export/obsidian, got {resp.status_code}: {resp.text}"
+    )

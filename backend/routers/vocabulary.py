@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
@@ -37,6 +37,14 @@ class WordSave(BaseModel):
 class ExportRequest(BaseModel):
     book_id: int | None = Field(default=None, ge=1)
     target_language: str = Field(default="zh", min_length=1, max_length=20)
+
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
 
 
 @router.post("")
@@ -76,6 +84,9 @@ async def get_definition(
     lang: str = Query(default="en", min_length=1, max_length=20),
     user: dict = Depends(get_current_user),
 ):
+    lang = lang.strip().lower().split("-")[0]
+    if not lang:
+        raise HTTPException(status_code=422, detail="lang cannot be blank")
     from services import wiktionary
     result = await wiktionary.lookup(word, lang)
     if not result["definitions"]:

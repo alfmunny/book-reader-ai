@@ -1049,7 +1049,7 @@ class QueueSettingsRequest(BaseModel):
     auto_translate_languages: list[Annotated[str, Field(min_length=1, max_length=20)]] | None = Field(default=None, max_length=50)
     rpm: int | None = Field(default=None, ge=1)
     rpd: int | None = Field(default=None, ge=1)
-    model: str | None = Field(default=None, max_length=200)
+    model: str | None = Field(default=None, min_length=1, max_length=200)
     model_chain: list[Annotated[str, Field(min_length=1, max_length=200)]] | None = Field(default=None, max_length=20)
     max_output_tokens: int | None = Field(default=None, ge=1)
 

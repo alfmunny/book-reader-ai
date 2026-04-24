@@ -2362,6 +2362,22 @@ async def test_queue_settings_oversized_model_returns_422(admin_client, admin_db
 
 
 @pytest.mark.asyncio
+async def test_queue_settings_empty_model_returns_422(admin_client, admin_db):
+    """Regression #1003: PUT /admin/queue/settings with model="" must return 422.
+
+    Without min_length=1 the empty string passes Pydantic validation and is
+    written to SETTING_MODEL, causing all subsequent translations to fail with
+    an undiagnosable AI-API error using model name ""."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model": ""},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for empty model in queue settings, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_enqueue_book_oversized_target_language_returns_422(admin_client, admin_db):
     """Regression #521: POST /admin/queue/enqueue-book with a target_language > 20 chars
     must return 422, not store a huge string in translation_queue."""

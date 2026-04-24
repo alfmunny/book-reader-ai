@@ -1073,6 +1073,28 @@ async def test_retranslate_chapter_out_of_range(admin_client):
     assert res.status_code == 400
 
 
+@pytest.mark.asyncio
+async def test_retranslate_returns_502_when_both_gemini_and_google_fail(admin_user, admin_client, admin_db):
+    """Regression #1010: single-chapter retranslate must return 502 (not 500) when
+    both the Gemini provider and the Google fallback raise."""
+    from services.auth import encrypt_api_key
+    from services.db import set_user_gemini_key
+    await set_user_gemini_key(admin_user["id"], encrypt_api_key("fake-api-key"))
+    await save_book(100, BOOK_META, BOOK_TEXT)
+
+    async def _always_fail(text, src, tgt, *, provider="google", gemini_key=None):
+        raise RuntimeError("simulated translation failure")
+
+    with patch("routers.admin.do_translate", side_effect=_always_fail):
+        res = await admin_client.post(
+            "/api/admin/translations/100/0/de/retranslate",
+        )
+
+    assert res.status_code == 502, (
+        f"Expected 502 when both providers fail, got {res.status_code}: {res.text}"
+    )
+
+
 async def test_retranslate_non_admin_forbidden(admin_db, admin_user):
     user2 = await get_or_create_user(
         google_id="user2", email="user2@example.com", name="User 2", picture=""

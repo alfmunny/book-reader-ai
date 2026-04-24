@@ -845,9 +845,11 @@ async def test_retranslate_preserves_old_translation_on_failure(admin_client, ad
         raise Exception("simulated network error")
 
     with patch("routers.admin.do_translate", side_effect=always_fail):
-        # The unhandled exception propagates through the ASGI transport in tests.
-        with pytest.raises(Exception, match="simulated network error"):
-            await admin_client.post("/api/admin/translations/200/0/fr/retranslate")
+        res = await admin_client.post("/api/admin/translations/200/0/fr/retranslate")
+
+    assert res.status_code == 502, (
+        f"Expected 502 when translation fails, got {res.status_code}: {res.text}"
+    )
 
     # Old translation must survive regardless of the translate failure
     cached = await get_cached_translation(200, 0, "fr")

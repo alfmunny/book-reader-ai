@@ -1245,3 +1245,14 @@ async def test_chapter_translation_get_empty_target_language_returns_422(client,
     assert resp.status_code == 422, (
         f"Expected 422 for empty target_language in GET translation, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #794: min_length=1 on q in GET /books/search ───────────────────────
+
+
+async def test_search_empty_q_returns_422(client):
+    """Regression #794: GET /books/search?q="" must return 422, not call Gutendex with empty query."""
+    resp = await client.get("/api/books/search?q=")
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty q in /books/search, got {resp.status_code}: {resp.text}"
+    )

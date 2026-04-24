@@ -1821,3 +1821,263 @@ def test_epub_verse_br_lines_preserved_in_single_p():
     assert len(lines) >= 7, (
         f"Expected ≥7 verse lines preserved via \\n, got {len(lines)}: {faust_para!r}"
     )
+
+
+# ── #964 NCX fragment-anchor chapter boundaries ───────────────────────────────
+
+
+def _make_epub_single_file_with_anchors():
+    """Minimal EPUB with ONE xhtml spine item whose body has three anchor
+    sections — 3 navPoints point to (same_file, #anchor_N). This is the
+    Le Fantôme / Mémoires d'Outre-Tombe pattern the splitter used to collapse
+    to one chapter per spine file.
+    """
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Test Fragment-Anchors")
+    book.set_language("en")
+    book.add_author("Author")
+
+    # Long per-section body to pass the 30-word gate after segmentation.
+    section_body = (
+        "<p>This is a section of at least thirty words so that the splitter does "
+        "not reject it as a nav / cover page after the slice. Adding more padding "
+        "text here to meet the gate comfortably.</p>"
+    )
+    content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Body</title></head>'
+        '<body>'
+        '<h2 id="ch1">Chapter One</h2>' + section_body +
+        '<h2 id="ch2">Chapter Two</h2>' + section_body +
+        '<h2 id="ch3">Chapter Three</h2>' + section_body +
+        '</body></html>'
+    ).encode("utf-8")
+
+    doc = epub.EpubHtml(title="Body", file_name="body.xhtml", lang="en")
+    doc.content = content
+    book.add_item(doc)
+
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.toc = [
+        epub.Link("body.xhtml#ch1", "Chapter One", "ch1"),
+        epub.Link("body.xhtml#ch2", "Chapter Two", "ch2"),
+        epub.Link("body.xhtml#ch3", "Chapter Three", "ch3"),
+    ]
+    book.spine = [doc]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+    return buf.getvalue()
+
+
+def test_build_chapters_from_epub_ncx_fragment_anchors_segment_single_file():
+    """Three anchors in one spine xhtml must yield three Chapter entries,
+    each titled from the NCX navLabel."""
+    epub_bytes = _make_epub_single_file_with_anchors()
+    chapters = build_chapters_from_epub(epub_bytes)
+    titles = [c.title for c in chapters]
+    assert titles == ["Chapter One", "Chapter Two", "Chapter Three"], titles
+
+
+def test_build_chapters_from_epub_ncx_fragment_anchors_content_split_correctly():
+    """Each sliced Chapter must carry only its own anchor-delimited text
+    — Chapter Two's text must not contain Chapter Three's body."""
+    epub_bytes = _make_epub_single_file_with_anchors()
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert len(chapters) == 3
+
+    # The only way "not reject" would appear three times is if each slice
+    # correctly owns one section. Chapter One should contain exactly one.
+    assert chapters[0].text.count("section of at least thirty") == 1
+    # Chapter Three should contain the same marker exactly once too.
+    assert chapters[2].text.count("section of at least thirty") == 1
+
+
+def test_build_chapters_from_epub_ncx_single_anchor_file_keeps_one_chapter():
+    """Regression — a spine item with exactly ONE navPoint (no fragment
+    or one anchor) must stay a single chapter. Anchor segmentation is
+    gated on len(anchors) >= 2, so this exercises the else branch."""
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Single-Anchor")
+    book.set_language("en")
+
+    body = (
+        '<p>This is a chapter with enough words to pass the thirty-word '
+        'gate and show that without multiple anchors we produce one Chapter '
+        'entry per spine item, not one per heading.</p>'
+    )
+    content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>A</title></head>'
+        '<body><h2 id="top">Alpha</h2>' + body +
+        '<h3 id="mid">Alpha mid</h3>' + body +
+        '</body></html>'
+    ).encode("utf-8")
+
+    doc = epub.EpubHtml(title="A", file_name="a.xhtml", lang="en")
+    doc.content = content
+    # Add a filler spine item so the existing >= 2 guard is satisfied.
+    filler = epub.EpubHtml(title="B", file_name="b.xhtml", lang="en")
+    filler_body = "".join(
+        f"<p>Filler {i} with enough words to pass the thirty word gate "
+        "padding padding padding padding padding.</p>"
+        for i in range(3)
+    )
+    filler.content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>B</title></head>'
+        f'<body><h2>B</h2>{filler_body}</body></html>'
+    ).encode("utf-8")
+
+    book.add_item(doc)
+    book.add_item(filler)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.toc = [
+        epub.Link("a.xhtml#top", "Alpha", "top"),
+        epub.Link("b.xhtml", "B", "b"),
+    ]
+    book.spine = [doc, filler]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+
+    chapters = build_chapters_from_epub(buf.getvalue())
+    # Even though a.xhtml has TWO id attributes (top, mid), only ONE navPoint
+    # targets it — segmentation must NOT fire.
+    assert len(chapters) == 2
+    assert chapters[0].title == "Alpha"
+
+
+def test_build_chapters_from_epub_ncx_missing_anchor_falls_back_gracefully():
+    """If an NCX navPoint targets a `#nonexistent` anchor that isn't in the
+    DOM, segmentation bails out for that spine item and the file is kept
+    as one chapter (rather than silently dropping content)."""
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Missing Anchor")
+    book.set_language("en")
+
+    body_html = (
+        '<h2 id="real">Real Section</h2>'
+        '<p>This paragraph is in the only real anchor of the file, padded '
+        'with enough words to pass the thirty-word gate comfortably so the '
+        'splitter keeps it in the output. Adding a few more words here '
+        'for safety margin above the gate threshold.</p>'
+    )
+    content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>X</title></head>'
+        f'<body>{body_html}</body></html>'
+    ).encode("utf-8")
+
+    doc = epub.EpubHtml(title="X", file_name="x.xhtml", lang="en")
+    doc.content = content
+    filler = epub.EpubHtml(title="Y", file_name="y.xhtml", lang="en")
+    filler_body = "".join(
+        f"<p>Filler {i} with enough words to pass the thirty word gate "
+        "padding padding padding padding padding.</p>"
+        for i in range(3)
+    )
+    filler.content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Y</title></head>'
+        f'<body><h2>Y</h2>{filler_body}</body></html>'
+    ).encode("utf-8")
+
+    book.add_item(doc)
+    book.add_item(filler)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    # Two navPoints target x.xhtml — one real, one pointing at #ghost
+    # (doesn't exist). The splitter should bail and treat x.xhtml as a
+    # single chapter.
+    book.toc = [
+        epub.Link("x.xhtml#real", "Real Section", "real"),
+        epub.Link("x.xhtml#ghost", "Ghost Section", "ghost"),
+        epub.Link("y.xhtml", "Y", "y"),
+    ]
+    book.spine = [doc, filler]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+
+    chapters = build_chapters_from_epub(buf.getvalue())
+    # x.xhtml should produce ONE chapter despite the two nav entries,
+    # because #ghost doesn't resolve in the DOM.
+    assert len(chapters) == 2
+    # The first chapter carries content from the real section.
+    assert "only real anchor" in chapters[0].text
+
+
+def test_build_chapters_from_epub_ncx_fragment_anchors_preserves_playorder():
+    """If NCX navPoint order disagrees with DOM order (unusual but valid),
+    the slices still line up with DOM order — anchor positions are resolved
+    from the DOM, not from the list order."""
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Order Test")
+    book.set_language("en")
+
+    section = "<p>Section " + "word " * 40 + "text.</p>"
+    # DOM order: A, B, C
+    content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>O</title></head>'
+        '<body>'
+        '<h2 id="a">Alpha</h2>' + section +
+        '<h2 id="b">Beta</h2>' + section +
+        '<h2 id="c">Gamma</h2>' + section +
+        '</body></html>'
+    ).encode("utf-8")
+
+    doc = epub.EpubHtml(title="O", file_name="o.xhtml", lang="en")
+    doc.content = content
+    book.add_item(doc)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    # NCX order swapped: C first, then A, then B
+    book.toc = [
+        epub.Link("o.xhtml#c", "Gamma", "c"),
+        epub.Link("o.xhtml#a", "Alpha", "a"),
+        epub.Link("o.xhtml#b", "Beta", "b"),
+    ]
+    book.spine = [doc]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+
+    chapters = build_chapters_from_epub(buf.getvalue())
+    # Titles should come out in DOM order, not NCX listing order.
+    assert [c.title for c in chapters] == ["Alpha", "Beta", "Gamma"]
+
+
+def test_build_chapters_from_epub_ncx_fragment_anchors_real_file_62215():
+    """Integration check against the cached Le Fantôme de l'Opéra EPUB.
+    The book has 36 navPoints across 5 xhtml files; before this change
+    the splitter produced 4 chapters (one per file). Post-fix we expect
+    20+ — the full chapter structure of the novel plus frontmatter
+    anchors. Lower bound is defensive; the real count today is 30."""
+    import os
+    path = "/tmp/epub_investigation/book_62215.epub"
+    if not os.path.exists(path):
+        import pytest
+        pytest.skip(f"investigation EPUB not available at {path}")
+
+    with open(path, "rb") as f:
+        data = f.read()
+    chapters = build_chapters_from_epub(data)
+    assert len(chapters) >= 20, (
+        f"Expected ≥20 chapters from #62215 after fragment-anchor split, got {len(chapters)}"
+    )

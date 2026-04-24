@@ -595,6 +595,7 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         return []
 
     nav_titles = _epub_nav_titles(book)
+    nav_anchors = _epub_nav_anchors(book)
     book_title = book.title or ""
     id_to_item = {
         item.get_id(): item
@@ -645,34 +646,41 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
             # copyright"> and so on for every frontmatter element.
             for fm in _epub_frontmatter_blocks(body):
                 fm.getparent().remove(fm)
-            text = _html_body_text(body, skip_first_heading=True)
         except Exception:
             continue
 
-        if not text.strip() or _token_count(text) < 30:
-            continue
+        # NCX fragment-anchor segmentation (#964). If the NCX declares
+        # ≥2 navPoints targeting this spine item with distinct `#anchor`
+        # fragments, split the DOM at those anchors so each navPoint
+        # becomes its own Chapter. Falls through to single-chapter
+        # extraction when there's only one navPoint, when anchors can't
+        # be resolved in the DOM, or on any lxml error.
+        item_anchors = nav_anchors.get(item_id, [])
+        if len(item_anchors) >= 2 and any(a for a, _ in item_anchors):
+            slices = _segment_body_by_anchors(body, item_anchors, book_title)
+        else:
+            slices = []
 
-        title = (
-            nav_titles.get(item_id)
-            or _epub_heading_title(raw)
-            or f"Section {len(chapters) + 1}"
-        )
-        # Drop the chapter title if it repeats as the first body paragraph
-        # (Faust Nacht: spine item holds a stand-alone part-title <div class="chapter">
-        # followed by the real scene <div class="chapter">; the recursive
-        # body walker otherwise renders both into text).
-        text = _strip_title_from_body_prefix(text, title)
-        # Strip the book title if it appears as the first paragraph — Faust
-        # (#923): spine items open with "FAUST: Der Tragödie erster Teil" as a
-        # stand-alone <p> that predates the actual scene heading.
-        text = _strip_title_from_body_prefix(text, book_title)
-        # Split paragraphs that pack multiple speaker turns into one block
-        # (Faust / Dumas / Leviathan class — #888 supersedes #820). The
-        # plain-text and HTML builders already call this; wiring the EPUB
-        # path closes the remaining miss catalogued in the post-backfill
-        # audit (reports/epub_split_audit_2026_04_24_post_backfill.md).
-        text = _split_dramatic_speakers(text)
-        chapters.append(Chapter(title=_clean_title(title), text=text))
+        if slices:
+            for slice_title, slice_body in slices:
+                text = _extract_and_clean_chapter_text(
+                    slice_body, slice_title, book_title
+                )
+                if not text or _token_count(text) < 30:
+                    continue
+                chapters.append(Chapter(title=_clean_title(slice_title), text=text))
+        else:
+            fallback_title = (
+                nav_titles.get(item_id)
+                or _epub_heading_title(raw)
+                or f"Section {len(chapters) + 1}"
+            )
+            text = _extract_and_clean_chapter_text(
+                body, fallback_title, book_title
+            )
+            if not text or _token_count(text) < 30:
+                continue
+            chapters.append(Chapter(title=_clean_title(fallback_title), text=text))
 
     if len(chapters) >= 2:
         return chapters
@@ -797,6 +805,21 @@ def _epub_toc_containers(body) -> list:
     return out
 
 
+def _extract_and_clean_chapter_text(body, title: str, book_title: str) -> str:
+    """Walk a (possibly sliced) body element, extract plain-text, and apply the
+    per-chapter cleanups used by `build_chapters_from_epub`: strip the chapter
+    heading if it repeats as body prose, strip the book title prefix if it
+    leaks in, and split dramatic speaker cues.
+    """
+    text = _html_body_text(body, skip_first_heading=True)
+    if not text.strip():
+        return ""
+    text = _strip_title_from_body_prefix(text, title)
+    text = _strip_title_from_body_prefix(text, book_title)
+    text = _split_dramatic_speakers(text)
+    return text
+
+
 def _epub_nav_titles(book) -> dict[str, str]:
     """Return {item_id: chapter_title} from the EPUB TOC (NCX or EPUB3 nav)."""
     import ebooklib
@@ -833,6 +856,150 @@ def _epub_nav_titles(book) -> dict[str, str]:
 
     _walk(book.toc)
     return titles
+
+
+def _epub_nav_anchors(book) -> dict[str, list[tuple[str | None, str]]]:
+    """Return {item_id: [(anchor_id_or_None, title), …]} from the EPUB TOC.
+
+    Unlike `_epub_nav_titles` which only picks the first title per item_id,
+    this preserves the full ordered list of navPoints that target each spine
+    item — including fragment anchors (`file.xhtml#anchor`). Used by
+    `build_chapters_from_epub` to segment a single xhtml spine file into
+    multiple chapters when the NCX declares them via `#anchor` fragments
+    (design doc: `docs/design/epub-ncx-fragment-anchors.md`, issue #964).
+
+    The list order matches the NCX playOrder (depth-first walk of the
+    navMap). Length-1 lists reproduce the current behaviour (one chapter
+    per spine item); length-≥2 lists trigger DOM segmentation.
+    """
+    import ebooklib
+
+    name_to_id: dict[str, str] = {
+        item.get_name(): item.get_id()
+        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT)
+    }
+
+    def _resolve(href: str) -> tuple[str | None, str | None]:
+        # Split on '#' into (bare_path, anchor_or_None).
+        if "#" in href:
+            bare, anchor = href.split("#", 1)
+            anchor = anchor or None
+        else:
+            bare, anchor = href, None
+        bare = bare.lstrip("/")
+        if bare in name_to_id:
+            return name_to_id[bare], anchor
+        for name, item_id in name_to_id.items():
+            if name.endswith("/" + bare) or name == bare:
+                return item_id, anchor
+        return None, anchor
+
+    result: dict[str, list[tuple[str | None, str]]] = {}
+
+    def _walk(toc_items) -> None:
+        for entry in toc_items:
+            if isinstance(entry, tuple):
+                section, children = entry
+                if getattr(section, "href", None):
+                    item_id, anchor = _resolve(section.href)
+                    title = getattr(section, "title", None)
+                    if item_id and title:
+                        result.setdefault(item_id, []).append((anchor, title))
+                _walk(children)
+            elif getattr(entry, "href", None):
+                item_id, anchor = _resolve(entry.href)
+                title = getattr(entry, "title", None)
+                if item_id and title:
+                    result.setdefault(item_id, []).append((anchor, title))
+
+    _walk(book.toc)
+    return result
+
+
+def _segment_body_by_anchors(
+    body,
+    anchors: list[tuple[str | None, str]],
+    book_title: str,
+):
+    """Split an lxml body element at anchor ids into ordered (title, sub_body) pairs.
+
+    Each `(anchor_id, title)` tuple in `anchors` becomes one sub-chapter.
+    Content before the first anchor is attached to that first slice
+    (typically a chapter's lead-in text or a navigable page-break marker).
+
+    If any anchor can't be located in the DOM, return `[]` — the caller
+    falls back to treating the whole spine item as one chapter. Partial
+    segmentation would silently drop content; better to degrade cleanly.
+
+    Algorithm:
+    1. Walk body.iter() once, building a flat list of elements in document
+       order. For each anchor id, record its index.
+    2. For each ordered pair `(start_index, end_index)`, slice the top-level
+       children list into a sub-body containing just those nodes.
+
+    The sub-body is a standalone lxml Element (detached), safe for
+    `_html_body_text` to walk without disturbing the source DOM.
+    """
+    from lxml import html as lxmlhtml
+
+    # Which anchors actually exist in the DOM? Walk once.
+    anchor_positions: dict[str, int] = {}
+    elements_in_order: list = []
+    for i, el in enumerate(body.iter()):
+        elements_in_order.append(el)
+        el_id = el.get("id")
+        if el_id:
+            anchor_positions.setdefault(el_id, i)
+        # HTML5/EPUB3 commonly uses `id=...`; some older Gutenberg files
+        # use `<a name="anchor">`. Treat name attributes on anchors as ids
+        # to preserve compatibility.
+        if el.tag == "a":
+            name = el.get("name")
+            if name:
+                anchor_positions.setdefault(name, i)
+
+    # Require every non-None anchor to resolve. If any is missing, bail out
+    # and let the caller fall back to single-chapter treatment.
+    for anchor_id, _ in anchors:
+        if anchor_id is None:
+            continue
+        if anchor_id not in anchor_positions:
+            return []
+
+    # Build positional ordered list: each entry's position is its anchor
+    # position, or 0 for a None anchor (which means "from the top of the
+    # file"). Then sort by position so the slices line up with DOM order.
+    # (NCX order usually matches DOM order already, but guard against it.)
+    indexed: list[tuple[int, str]] = []
+    for anchor_id, title in anchors:
+        pos = anchor_positions[anchor_id] if anchor_id else 0
+        indexed.append((pos, title))
+    indexed.sort(key=lambda p: p[0])
+
+    # For each pair of consecutive positions [start, next_start), gather
+    # the top-level descendants of body whose DOM index falls in that range.
+    # We only pick up top-level children of body to keep the slice clean —
+    # descendants come with their subtree automatically.
+    body_children = list(body)
+    # Map each top-level child to its position in the flat `elements_in_order`.
+    child_positions = [elements_in_order.index(c) for c in body_children]
+
+    slices: list = []
+    for i, (start_pos, _) in enumerate(indexed):
+        end_pos = indexed[i + 1][0] if i + 1 < len(indexed) else float("inf")
+        kept = [
+            body_children[j]
+            for j, cpos in enumerate(child_positions)
+            if start_pos <= cpos < end_pos
+        ]
+        # Build a detached body element from the kept children so
+        # _html_body_text can walk it like a real body.
+        new_body = lxmlhtml.Element("body")
+        for c in kept:
+            new_body.append(lxmlhtml.fromstring(lxmlhtml.tostring(c)))
+        slices.append(new_body)
+
+    return list(zip([t for _, t in indexed], slices))
 
 
 def _epub_heading_title(raw_xhtml: bytes) -> str:

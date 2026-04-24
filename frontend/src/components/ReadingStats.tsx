@@ -96,7 +96,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
 
   if (!active || (loading && !stats)) {
     return (
-      <div className="space-y-4 animate-pulse">
+      <div role="status" aria-label="Loading reading stats" className="space-y-4 animate-pulse">
         {!heatmapOnly && (
           <div className="grid grid-cols-2 gap-3">
             {[...Array(4)].map((_, i) => (

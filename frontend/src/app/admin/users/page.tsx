@@ -109,8 +109,8 @@ export default function UsersPage() {
 
 function SpinnerRow() {
   return (
-    <div className="flex items-center justify-center py-16">
-      <div className="w-6 h-6 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+    <div role="status" aria-label="Loading users" className="flex items-center justify-center py-16">
+      <div className="w-6 h-6 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
     </div>
   );
 }

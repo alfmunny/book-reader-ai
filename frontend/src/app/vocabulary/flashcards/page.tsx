@@ -71,8 +71,8 @@ export default function FlashcardsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen bg-parchment flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+      <div role="status" aria-label="Loading flashcards" className="min-h-screen bg-parchment flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
       </div>
     );
   }

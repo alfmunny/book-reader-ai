@@ -358,6 +358,22 @@ If the change is a one-liner fix to a well-covered area with a regression test, 
 
 Without `needs-pm-review`, PM does not pre-merge-gate Path A PRs. PM still reviews every merged PR retroactively (per existing duties) and files follow-up issues for anything incomplete. The opt-in label is the role's way to pull PM into the loop *before* merge.
 
+## Communication conventions
+
+**Every role-posted comment on a PR or issue must start with a role prefix** so readers can tell at a glance who's speaking.
+
+Format: begin the first line with one of:
+- `**PM**:` (PM review, approval, triage, or follow-up question)
+- `**Dev**:`
+- `**UI/UX**:`
+- `**Architect**:`
+
+Existing claim comments (`Claimed by [Role] — starting work now.`) already follow this; the rule extends to **every** subsequent comment, not just the claim. Includes: approval comments, blocking comments, questions, nudges, status updates, post-merge notes, and replies.
+
+Why: multi-role threads become unreadable when every comment is just "@alfmunny" from the GitHub UI. The prefix makes a PR's history scannable at a glance and prevents the "who is asking" / "who is answering" confusion that wastes cycles.
+
+The label-driven gates (`pm-approved`, `user-approved`, `needs-pm-review`, `blocked`, `user-only`) are enforcement; the role prefix is legibility. Both apply.
+
 ## Documentation policy
 
 **Every role contributes to keeping the docs-site source content fresh.** The docs site proposed in #864 builds directly from files in this repo; it rots the instant any source file drifts from the code. The rules below are source-content invariants and hold independently of how the site eventually renders them — they apply **now**, before the site ships.

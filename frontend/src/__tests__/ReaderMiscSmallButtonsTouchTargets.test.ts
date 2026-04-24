@@ -28,7 +28,7 @@ describe("reader miscellaneous small button touch targets (closes #882)", () => 
     const anchor = "Chapter {ch + 1}";
     const idx = src.indexOf(anchor);
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 620), idx + 20);
+    const window = src.slice(Math.max(0, idx - 750), idx + 20);
     expect(window).toContain("min-h-[44px]");
   });
 

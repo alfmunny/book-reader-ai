@@ -450,15 +450,17 @@ function VocabularyPageContent() {
         </button>
       </header>
 
-      {exportMsg && (
-        <div className="mx-6 mt-4 border border-amber-300 bg-amber-50 rounded-xl px-4 py-3 text-sm text-ink">
-          {exportMsg.startsWith("http") ? (
-            <>Exported! <a href={exportMsg} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline break-all">{exportMsg}</a></>
-          ) : (
-            <span className="text-red-600">{exportMsg}</span>
-          )}
-        </div>
-      )}
+      <div role="status" aria-live="polite" aria-atomic="true" className="mx-6 mt-4">
+        {exportMsg && (
+          <div className="border border-amber-300 bg-amber-50 rounded-xl px-4 py-3 text-sm text-ink">
+            {exportMsg.startsWith("http") ? (
+              <>Exported! <a href={exportMsg} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline break-all">{exportMsg}</a></>
+            ) : (
+              <span className="text-red-600">{exportMsg}</span>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {words.length > 5 && (

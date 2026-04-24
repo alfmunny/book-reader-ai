@@ -716,9 +716,13 @@ async def retranslate_all(
             )
         except Exception:
             if provider == "gemini":
-                paragraphs = await do_translate(
-                    ch.text, source_language, target_language, provider="google",
-                )
+                try:
+                    paragraphs = await do_translate(
+                        ch.text, source_language, target_language, provider="google",
+                    )
+                except Exception:
+                    results.append({"chapter": i, "status": "failed"})
+                    continue
             else:
                 results.append({"chapter": i, "status": "failed"})
                 continue

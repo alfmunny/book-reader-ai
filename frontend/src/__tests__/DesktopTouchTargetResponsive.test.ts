@@ -16,7 +16,7 @@ describe("Desktop touch-target responsive sizing (closes #1052)", () => {
   it("reader page has at least 8 responsive md:min-h-0 instances for toolbar buttons", () => {
     const src = readSrc("app/reader/[bookId]/page.tsx");
     const count = (src.match(/md:min-h-0/g) || []).length;
-    expect(count).toBeGreaterThanOrEqual(8);
+    expect(count).toBeGreaterThanOrEqual(10);
   });
 
   it("reader page Library back button uses responsive min-h", () => {

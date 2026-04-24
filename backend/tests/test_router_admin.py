@@ -3009,3 +3009,23 @@ async def test_queue_clear_empty_status_returns_422(admin_client):
     assert res.status_code == 422, (
         f"Expected 422 for empty status in DELETE /admin/queue, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #999: assert anti-pattern in SeedPopularManager._run() ──────────────
+
+
+@pytest.mark.asyncio
+async def test_seed_popular_manager_run_raises_runtime_error_without_start():
+    """Regression #999: SeedPopularManager._run() must raise RuntimeError (not
+    AssertionError) when _stop_event is None.
+
+    AssertionError is silently stripped under Python -O, causing the worker to
+    proceed with stop_event=None and crash later with an unrelated AttributeError
+    instead of a clear diagnostic message."""
+    from services.seed_popular import SeedPopularManager
+
+    mgr = SeedPopularManager()
+    assert mgr._stop_event is None
+
+    with pytest.raises(RuntimeError, match="_run\\(\\) called before start\\(\\)"):
+        await mgr._run("some_path.json")

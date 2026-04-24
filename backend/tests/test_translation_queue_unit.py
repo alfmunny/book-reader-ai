@@ -356,3 +356,22 @@ async def test_get_auto_languages_filters_empty_strings():
     await set_setting(SETTING_AUTO_LANGS, '["en", "", "de", ""]')
     langs = await get_auto_languages()
     assert langs == ["en", "de"]
+
+
+# ── Issue #999: assert anti-pattern in TranslationQueueWorker._run() ──────────
+
+
+async def test_translation_queue_worker_run_raises_runtime_error_without_start():
+    """Regression #999: TranslationQueueWorker._run() must raise RuntimeError (not
+    AssertionError) when _stop_event is None.
+
+    AssertionError is silently stripped under Python -O, causing the worker to
+    proceed with stop_event=None and crash later with an unrelated AttributeError
+    instead of a clear diagnostic message."""
+    from services.translation_queue import TranslationQueueWorker
+
+    worker = TranslationQueueWorker()
+    assert worker._stop_event is None
+
+    with pytest.raises(RuntimeError, match="_run\\(\\) called before start\\(\\)"):
+        await worker._run()

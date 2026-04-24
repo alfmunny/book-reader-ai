@@ -85,9 +85,10 @@ class SeedPopularManager:
                 self._task.cancel()
 
     async def _run(self, manifest_path: str) -> None:
+        if self._stop_event is None:
+            raise RuntimeError("_run() called before start()")
         state = self._state
         stop_event = self._stop_event
-        assert stop_event is not None
 
         try:
             if not os.path.isfile(manifest_path):

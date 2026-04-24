@@ -7,7 +7,7 @@ import {
   askQuestion,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
-import { PaperclipIcon, CloseIcon, RetryIcon } from "@/components/Icons";
+import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -454,9 +454,7 @@ export default function InsightChat({
                           : "text-gray-400 hover:text-amber-700"
                       }`}
                     >
-                      <svg className="w-3 h-3" fill={isSaved ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
+                      <BookmarkIcon className="w-3 h-3" fill={isSaved ? "currentColor" : "none"} />
                       {isSaved ? "Saved" : "Save to notes"}
                     </button>
                   );
@@ -521,9 +519,7 @@ export default function InsightChat({
             aria-label="Send message"
             title="Send (Enter)"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
-            </svg>
+            <ArrowUpIcon className="w-4 h-4" />
           </button>
         </div>
         <p className="text-[11px] text-gray-400 mt-1">Enter to send · Shift+Enter for newline</p>

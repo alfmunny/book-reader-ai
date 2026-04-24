@@ -464,6 +464,7 @@ function VocabularyPageContent() {
         {words.length > 5 && (
           <div className="mb-6 space-y-3">
             <input
+              aria-label="Search vocabulary words"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

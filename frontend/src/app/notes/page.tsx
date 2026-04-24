@@ -130,6 +130,7 @@ export default function NotesOverviewPage() {
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-4">
         {/* Search */}
         <input
+          aria-label="Search notes by book"
           className="w-full rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           placeholder="Search books…"
           value={search}

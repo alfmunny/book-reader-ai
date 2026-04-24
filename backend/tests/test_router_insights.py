@@ -179,23 +179,23 @@ async def test_post_insight_rejects_nonexistent_book(client: AsyncClient):
 
 
 async def test_post_insight_rejects_empty_question(client: AsyncClient):
-    """POST /insights with empty question must return 400."""
+    """Regression #920: POST /insights with empty question must return 422 (Pydantic min_length=1)."""
     await save_book(1, _META, "text")
     resp = await client.post(
         "/api/insights",
         json={"book_id": 1, "question": "", "answer": "Some answer."},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_post_insight_rejects_empty_answer(client: AsyncClient):
-    """POST /insights with empty answer must return 400."""
+    """Regression #920: POST /insights with empty answer must return 422 (Pydantic min_length=1)."""
     await save_book(1, _META, "text")
     resp = await client.post(
         "/api/insights",
         json={"book_id": 1, "question": "What is the theme?", "answer": ""},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_post_insight_rejects_negative_chapter_index(client: AsyncClient):

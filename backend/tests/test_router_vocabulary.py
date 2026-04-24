@@ -157,7 +157,7 @@ async def test_delete_word_case_insensitive(client, test_user):
 
 
 async def test_save_word_rejects_empty_word(client, test_user):
-    """POST /vocabulary with an empty word must return 400.
+    """Regression #920: POST /vocabulary with an empty word must return 422 (Pydantic min_length=1).
 
     An empty-string word stored in the vocabulary is unusable — the user
     can never delete it via DELETE /vocabulary/ (no path segment) and
@@ -167,7 +167,7 @@ async def test_save_word_rejects_empty_word(client, test_user):
     resp = await client.post("/api/vocabulary", json={
         "word": "", "book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Some text."
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_save_word_strips_and_rejects_whitespace_only_word(client, test_user):
@@ -194,7 +194,7 @@ async def test_save_word_rejects_nonexistent_book(client, test_user):
 
 
 async def test_save_word_rejects_empty_sentence(client, test_user):
-    """POST /vocabulary with empty sentence_text must return 400.
+    """Regression #920: POST /vocabulary with empty sentence_text must return 422 (Pydantic min_length=1).
 
     An occurrence with no sentence context cannot be displayed and
     represents a client error."""
@@ -205,7 +205,7 @@ async def test_save_word_rejects_empty_sentence(client, test_user):
         "chapter_index": 0,
         "sentence_text": "",
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_save_word_rejects_whitespace_only_sentence(client, test_user):

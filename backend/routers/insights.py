@@ -9,16 +9,16 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 class InsightCreate(BaseModel):
     book_id: int = Field(..., ge=1)
     chapter_index: int | None = Field(default=None, ge=0)
-    question: str = Field(..., max_length=2000)
-    answer: str = Field(..., max_length=20000)
+    question: str = Field(..., min_length=1, max_length=2000)
+    answer: str = Field(..., min_length=1, max_length=20000)
     context_text: str | None = Field(default=None, max_length=5000)
 
 
 @router.post("")
 async def create(req: InsightCreate, user: dict = Depends(get_current_user)):
-    if not req.question or not req.question.strip():
+    if not req.question.strip():
         raise HTTPException(status_code=400, detail="question cannot be empty")
-    if not req.answer or not req.answer.strip():
+    if not req.answer.strip():
         raise HTTPException(status_code=400, detail="answer cannot be empty")
     if req.chapter_index is not None and req.chapter_index < 0:
         raise HTTPException(status_code=400, detail="chapter_index must be >= 0")

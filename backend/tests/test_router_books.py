@@ -1218,3 +1218,30 @@ async def test_request_translation_empty_target_language_returns_422(client, tes
         json={"target_language": ""},
     )
     assert resp.status_code == 422, f"Expected 422 for empty target_language, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #786: min_length=1 on target_language query params in books router ──
+
+
+async def test_translation_status_empty_target_language_returns_422(client, test_user):
+    """Regression #786: GET /books/{id}/translation-status?target_language="" must return 422."""
+    resp = await client.get("/api/books/1/translation-status?target_language=")
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty target_language in translation-status, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_chapter_queue_status_empty_target_language_returns_422(client, test_user):
+    """Regression #786: GET /books/{id}/chapters/{i}/queue-status?target_language="" must return 422."""
+    resp = await client.get("/api/books/1/chapters/0/queue-status?target_language=")
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty target_language in queue-status, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_chapter_translation_get_empty_target_language_returns_422(client, test_user):
+    """Regression #786: GET /books/{id}/chapters/{i}/translation?target_language="" must return 422."""
+    resp = await client.get("/api/books/1/chapters/0/translation?target_language=")
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty target_language in GET translation, got {resp.status_code}: {resp.text}"
+    )

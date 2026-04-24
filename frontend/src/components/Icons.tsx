@@ -83,9 +83,9 @@ export function GlobeIcon({ className = "w-4 h-4" }: IconProps) {
   );
 }
 
-export function BookmarkIcon({ className = "w-4 h-4" }: IconProps) {
+export function BookmarkIcon({ className = "w-4 h-4", fill = "none" }: IconProps & { fill?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
     </svg>
   );
@@ -454,6 +454,14 @@ export function ClockIcon({ className = "w-4 h-4" }: IconProps) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
+export function ArrowUpIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 19V5m0 0l-7 7m7-7l7 7" />
     </svg>
   );
 }

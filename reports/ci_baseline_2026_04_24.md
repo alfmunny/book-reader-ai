@@ -58,9 +58,40 @@ Per-step (sub-job) timings are available via `gh api /repos/<owner>/<repo>/actio
 - [ ] `push: main` continues to run the full matrix with coverage.
 - [ ] Flake rate unchanged (tracked over 2 weeks post-merge).
 
-## Post-optimization measurement
+## Post-optimization measurement — 2026-04-24 (after Opts 2+5, Opt 3 dropped)
 
-Re-run the same `gh run list` query after each opt lands on main, appending a row to this report. If median drops below 180 s after Opts 1+2+3+5, Opt 4 (sharding) is deferred per the design.
+Measured over 12 code-PR merges landed after Opt 2 (#919) and Opt 5 (#922) went live. Sample: #963, #962, #960, #958, #957, #919, #943, #950, #949, #947, #937, #941.
+
+| Metric | Baseline | Post-Opt-2+5 | Target | Met? |
+|---|---:|---:|---:|:---:|
+| Median code-PR wall time | 311 s | **318 s** | ≤ 180 s | ❌ |
+| Min | 266 s | 279 s | — | — |
+| Max | 429 s | 472 s | — | — |
+| P90 | 433 s | 328 s | — | — |
+
+### Interpretation
+
+The **~180 s target is not met**. Median actually moved up slightly (311 s → 318 s).
+
+Root cause is the `test-backend` gate: per the amended design (#885 review, user decision "option 1 and 2"), `test-backend` is gated on `frontend || backend` rather than `backend` only. This is deliberate — the user wanted integration safety over speed. Backend pytest (4m11s on UX-only PRs) therefore continues to dominate wall time.
+
+Sample per-job breakdown (PR #963, UX-only aria-label change):
+- Backend tests (pytest): **4m11s** (runs due to frontend-gated-as-backend policy)
+- Frontend E2E (Playwright): 4m14s
+- Frontend tests (Jest): 2m13s
+- Path filter + coverage + other: ~10s
+
+**The path-scoping optimisation (Opt 2) is working as designed** — docker-build and sometimes e2e correctly skip. But the wall-time ceiling is set by the slowest always-running job (backend pytest or Playwright E2E), both of which are at ~4 min.
+
+### Options to reach 180 s target (follow-up work)
+
+Any of these, without reverting the user-approved test-backend gating:
+
+1. **Speed up backend pytest itself** from 4 min to ≤ 2 min (parallel workers, fixture caching, reduce test count).
+2. **Speed up Playwright E2E** from 4 min to ≤ 2 min (ideally run only smoke suite on PRs; full suite on main).
+3. **Opt 4 sharding** (deferred per design) — splits the pytest or E2E suite across N runners. Could cut pytest wall time nearly in half at the cost of ~2× runner minutes.
+
+Recommendation: file a follow-up issue to profile pytest + E2E and decide between (1)/(2)/(3). Umbrella #885 should remain open until the 180 s target is met or the target is formally revised.
 
 ## Artifacts
 

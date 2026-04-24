@@ -29,7 +29,7 @@ router = APIRouter(prefix="/books", tags=["books"])
 
 @router.get("/search")
 async def search(
-    q: str = Query(..., max_length=200, description="Search query"),
+    q: str = Query(..., min_length=1, max_length=200, description="Search query"),
     language: str = Query("", max_length=20, description="Language code e.g. en, de, fr"),
     page: int = Query(1, ge=1, le=10000),
 ):

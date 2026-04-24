@@ -23,15 +23,9 @@ jobs:
         with:
           filters: |
             code:
-              - '**'
-              - '!**/*.md'
-              - '!docs/**'
-              - '!product/**'
-              - '!.github/ISSUE_TEMPLATE/**'
-              - '!.claude/**'
-              - '!LICENSE'
-              - '!.gitignore'
-              - '!scripts/start-roles.sh'
+              - 'backend/**'
+              - 'frontend/**'
+              - '.github/workflows/**'
 
   test-frontend:
     name: Frontend tests (Jest)

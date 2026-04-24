@@ -694,7 +694,7 @@ export default function BookNotesPage() {
             <p className="text-sm">Annotate sentences, save AI insights, or add words to vocabulary while reading.</p>
             <button
               onClick={() => router.push(`/reader/${bookId}`)}
-              className="mt-4 px-5 py-2 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 inline-flex items-center gap-1"
+              className="mt-4 px-5 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 inline-flex items-center gap-1"
             >
               Open reader <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
             </button>

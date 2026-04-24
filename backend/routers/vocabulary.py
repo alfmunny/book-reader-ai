@@ -26,10 +26,10 @@ router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
 
 
 class WordSave(BaseModel):
-    word: str = Field(..., max_length=200)
+    word: str = Field(..., min_length=1, max_length=200)
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
-    sentence_text: str = Field(..., max_length=5000)
+    sentence_text: str = Field(..., min_length=1, max_length=5000)
 
 
 class ExportRequest(BaseModel):
@@ -39,9 +39,9 @@ class ExportRequest(BaseModel):
 
 @router.post("")
 async def save(req: WordSave, user: dict = Depends(get_current_user)):
-    if not req.word or not req.word.strip():
+    if not req.word.strip():
         raise HTTPException(status_code=400, detail="Word cannot be empty")
-    if not req.sentence_text or not req.sentence_text.strip():
+    if not req.sentence_text.strip():
         raise HTTPException(status_code=400, detail="sentence_text cannot be empty")
     book = await get_cached_book(req.book_id)
     if not book:

@@ -26,7 +26,7 @@ async def me(user: dict = Depends(get_current_user)):
 
 
 class GeminiKeyRequest(BaseModel):
-    api_key: str = Field(..., max_length=500)
+    api_key: str = Field(..., min_length=1, max_length=500)
 
 
 @router.post("/gemini-key")

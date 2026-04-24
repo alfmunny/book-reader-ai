@@ -40,6 +40,12 @@ async def test_save_empty_gemini_key_returns_400(client):
     assert resp.status_code == 400
 
 
+async def test_save_gemini_key_empty_string_returns_422(client):
+    """Regression #920: POST /user/gemini-key with api_key='' must return 422 (Pydantic min_length=1)."""
+    resp = await client.post("/api/user/gemini-key", json={"api_key": ""})
+    assert resp.status_code == 422, f"Expected 422 for empty api_key, got {resp.status_code}: {resp.text}"
+
+
 async def test_delete_gemini_key(client, test_user):
     await set_user_gemini_key(test_user["id"], encrypt_api_key("AIza-key"))
 

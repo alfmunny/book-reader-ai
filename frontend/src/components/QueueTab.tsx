@@ -870,7 +870,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     );
                   }}
                   disabled={saving || chain.length === 0}
-                  className="text-xs px-3 py-0.5 rounded bg-amber-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
+                  className="text-xs px-3 min-h-[44px] rounded bg-amber-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
                   {saving && (
                     <span
@@ -913,7 +913,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     <button
                       key={p.id}
                       onClick={() => setChain([...p.chain])}
-                      className={`text-left p-2 rounded-lg border transition-colors ${
+                      className={`text-left p-2 min-h-[44px] rounded-lg border transition-colors ${
                         active
                           ? "border-amber-500 bg-amber-100/60"
                           : "border-amber-200 bg-white hover:bg-amber-50"
@@ -994,7 +994,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           setChain(copy);
                         }}
                         disabled={idx === 0}
-                        className="text-xs px-1 text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
                         title="Move up"
                         aria-label="Move up"
                       >
@@ -1008,7 +1008,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           setChain(copy);
                         }}
                         disabled={idx === chain.length - 1}
-                        className="text-xs px-1 text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
                         title="Move down"
                         aria-label="Move down"
                       >
@@ -1017,7 +1017,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     </div>
                     <button
                       onClick={() => setChain(chain.filter((_, i) => i !== idx))}
-                      className="text-xs px-1.5 py-1 rounded border border-red-200 text-red-500 shrink-0 self-start"
+                      className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-red-200 text-red-500 shrink-0"
                       title="Remove from chain"
                       aria-label="Remove from chain"
                     >

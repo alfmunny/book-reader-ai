@@ -28,6 +28,13 @@ OTHER_USER = {
 
 async def _seed_annotation(db, user_id: int, book_id: int, chapter_index: int,
                            sentence: str, note: str = ""):
+    # Migration 031 added a declared FK annotations.book_id → books(id); make
+    # sure the referenced book exists before inserting so tests that use
+    # made-up book ids don't fail the constraint.
+    await db.execute(
+        "INSERT OR IGNORE INTO books (id, title, images) VALUES (?, 'T', '[]')",
+        (book_id,),
+    )
     cur = await db.execute(
         """INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text, note_text)
            VALUES (?, ?, ?, ?, ?)""",

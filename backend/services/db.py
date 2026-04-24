@@ -309,11 +309,10 @@ async def set_user_role(user_id: int, role: str) -> None:
 
 async def delete_user(user_id: int) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
-        # FK enforcement (#748) cascades vocabulary → word_occurrences,
-        # flashcard_reviews, vocabulary_tags, deck_members via declared FKs.
-        # vocabulary itself has no FK to users so delete it explicitly.
-        await db.execute("DELETE FROM vocabulary WHERE user_id = ?", (user_id,))
-        await db.execute("DELETE FROM annotations WHERE user_id = ?", (user_id,))
+        # annotations.user_id and vocabulary.user_id carry declared FKs with
+        # ON DELETE CASCADE since migration 031 (#754 PR 1/4), so deleting the
+        # user row cascades both tables automatically under PRAGMA
+        # foreign_keys = ON (#751). No manual shadow delete needed.
         await db.execute("DELETE FROM book_insights WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM user_reading_progress WHERE user_id = ?", (user_id,))
         await db.execute("DELETE FROM reading_history WHERE user_id = ?", (user_id,))
@@ -326,8 +325,8 @@ async def delete_user(user_id: int) -> None:
         await db.execute(f"DELETE FROM chapter_summaries WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM translation_queue WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM word_occurrences WHERE book_id IN ({_owned})", (user_id,))
-        # Prune flashcard_reviews and vocabulary for entries left without any occurrence.
-        # FK enforcement is OFF so ON DELETE CASCADE never fires automatically.
+        # Prune flashcard_reviews entries left without any occurrence (still
+        # needed until word_occurrences gets its declared FK in PR 4/4).
         await db.execute(
             "DELETE FROM flashcard_reviews WHERE vocabulary_id NOT IN "
             "(SELECT DISTINCT vocabulary_id FROM word_occurrences)"
@@ -335,7 +334,8 @@ async def delete_user(user_id: int) -> None:
         await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
-        await db.execute(f"DELETE FROM annotations WHERE book_id IN ({_owned})", (user_id,))
+        # annotations.book_id now cascades via its declared FK (migration 031),
+        # so books deleted below carry their annotations with them automatically.
         await db.execute(f"DELETE FROM book_insights WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM user_reading_progress WHERE book_id IN ({_owned})", (user_id,))
         await db.execute(f"DELETE FROM reading_history WHERE book_id IN ({_owned})", (user_id,))

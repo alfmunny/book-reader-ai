@@ -365,7 +365,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - name: Build backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           # Match Railway's default build context (repo root). The Dockerfile
           # at backend/Dockerfile uses COPY backend/... paths because the
@@ -375,3 +375,11 @@ jobs:
           context: .
           file: backend/Dockerfile
           push: false
+          # GitHub Actions cache for Docker layers. type=gha is built in —
+          # no registry config needed — and GHA auto-evicts the cache.
+          # mode=max caches intermediate layers too (not just the final
+          # image), so Python / Node dep layers survive across runs.
+          # Expected saving: 1–2 min on PRs where base deps are unchanged
+          # (the common case). See docs/design/ci-speedup.md §Opt 5, #901.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

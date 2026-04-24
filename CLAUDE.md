@@ -69,8 +69,10 @@ Anyone files issue (feat label)
 Anyone files issue (architecture label)
   → Architect claims it
   → Design doc PR first (docs/design/<feature>.md)
-  → PM reviews design doc → approves or requests changes
-  → Design doc merged
+  → Architect disables auto-merge on the design-doc PR (gh pr merge --disable-auto <N>)
+  → PM reviews design doc → requests changes OR applies `pm-approved` label (readiness signal only)
+  → **User (repo owner) applies `user-approved` label to the design-doc PR — mandatory gate**
+  → PM merges design doc only after `user-approved` label is present
   → PM creates (or converts the original issue to) an implementation issue
     with the design doc linked, labeled feat + architecture
   → Dev or Architect picks up implementation
@@ -81,6 +83,8 @@ Anyone files issue (architecture label)
 **When to use Path B:** new DB table, new service/router, schema migrations with existing-data impact, features touching 3+ files across different services, or anything the user/PM flags as needing a design review first.
 
 **Path B is NOT needed for:** bug fixes, small enhancements, adding a field to an existing model, adding a new endpoint that follows an established pattern.
+
+**User-approval gate is mandatory for Path B.** A design doc in `docs/design/` may not merge, and implementation may not begin, until the repo owner (user) applies the **`user-approved`** label to the design-doc PR (and, where it matters for prioritization, to the original architecture issue). PM's review is a readiness check — tests, rollback, risks, migration policy — signalled by the `pm-approved` label; it is not merge authority. Only the user can authorize the commitment to build. To prevent an auto-merge from racing the user's review, Architect disables auto-merge on every Path B design-doc PR immediately after filing (`gh pr merge --disable-auto <N>`), and PM only re-enables or runs `gh pr merge --squash <N>` after the `user-approved` label is present on the PR.
 
 ### Priority tiers (Dev + Architect use when picking issues)
 
@@ -119,7 +123,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - Review every merged PR: read the diff, file follow-up issues for anything incomplete
 - Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
 - Watch deployments: run `/loop` for smoke-test and deploy monitoring
-- Approve design docs (Path B) before implementation begins
+- Review Path B design docs for readiness (tests, rollback, risks, migration policy) and apply `pm-approved` label. **PM has no merge authority on Path B design docs — the user (repo owner) is the sole approver.** PM merges only after the user comments approval in the PR thread.
 - Keep `product/review-state.md` updated every cycle
 - **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
 

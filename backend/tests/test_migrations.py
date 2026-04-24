@@ -1216,3 +1216,207 @@ async def test_migration_030_clears_chapter0_cache(tmp_db):
             "SELECT COUNT(*) FROM book_insights WHERE book_id=1 AND chapter_index=0"
         ) as cur:
             assert (await cur.fetchone())[0] == 1, "unrelated book chapter-0 insights must survive"
+
+
+# ── Migration 031 (issue #754): declared FKs on annotations + vocabulary ─────
+
+
+async def test_migration_031_cleans_orphan_annotations_and_vocabulary(tmp_db):
+    """Seed rows pointing at missing parents, re-run migration 031, and
+    confirm the pre-rewrite orphan DELETEs wiped them so the subsequent
+    INSERT INTO …_new SELECT * does not violate the new FKs."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        # Two valid parents we keep.
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (1, 'g1', 'a@b.com', 'A', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (100, 'A Book', '[]')"
+        )
+        # Valid annotation + valid vocabulary row — both must survive.
+        await db.execute(
+            "INSERT INTO annotations (id, user_id, book_id, chapter_index, sentence_text) "
+            "VALUES (1, 1, 100, 0, 'alive')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary (id, user_id, word) VALUES (1, 1, 'alive')"
+        )
+        # Orphan rows: bogus parent ids.
+        await db.execute(
+            "INSERT INTO annotations (id, user_id, book_id, chapter_index, sentence_text) "
+            "VALUES (2, 999, 100, 0, 'bad-user')"
+        )
+        await db.execute(
+            "INSERT INTO annotations (id, user_id, book_id, chapter_index, sentence_text) "
+            "VALUES (3, 1, 888, 0, 'bad-book')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary (id, user_id, word) VALUES (2, 999, 'bad-user')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '031_fk_annotations_vocabulary'"
+        )
+        await db.commit()
+
+    # Re-run migrations — this exercises the orphan cleanup + table rewrite.
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT id FROM annotations ORDER BY id") as cur:
+            rows = [r[0] for r in await cur.fetchall()]
+        assert rows == [1], f"only the valid annotation should survive; got {rows}"
+
+        async with db.execute("SELECT id FROM vocabulary ORDER BY id") as cur:
+            rows = [r[0] for r in await cur.fetchall()]
+        assert rows == [1], f"only the valid vocabulary row should survive; got {rows}"
+
+
+async def test_migration_031_annotations_carries_declared_fks(tmp_db):
+    """After migration 031 runs, PRAGMA foreign_key_list must report
+    annotations.user_id → users(id) CASCADE and annotations.book_id →
+    books(id) CASCADE. This is the load-bearing assertion of the design —
+    if these slip, the whole series is pointless."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("PRAGMA foreign_key_list(annotations)") as cur:
+            fks = await cur.fetchall()
+
+    fk_map = {(row[2], row[3]): (row[4], row[5], row[6]) for row in fks}
+    # key = (referenced_table, from_column) → (to_column, on_update, on_delete)
+    assert ("users", "user_id") in fk_map, f"missing users FK: {fk_map}"
+    assert ("books", "book_id") in fk_map, f"missing books FK: {fk_map}"
+    assert fk_map[("users", "user_id")][2] == "CASCADE"
+    assert fk_map[("books", "book_id")][2] == "CASCADE"
+
+
+async def test_migration_031_vocabulary_carries_declared_fk(tmp_db):
+    """Vocabulary has only user_id as a soft reference — verify it is now
+    declared as REFERENCES users(id) ON DELETE CASCADE."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("PRAGMA foreign_key_list(vocabulary)") as cur:
+            fks = await cur.fetchall()
+
+    fk_map = {(row[2], row[3]): (row[4], row[5], row[6]) for row in fks}
+    assert ("users", "user_id") in fk_map, f"missing users FK: {fk_map}"
+    assert fk_map[("users", "user_id")][2] == "CASCADE"
+
+
+async def test_migration_031_preserves_existing_rows(tmp_db):
+    """The rewrite copies data via INSERT … SELECT *. Data in annotations
+    and vocabulary that existed before 031 must still be present after."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (5, 'g5', 'e@b.com', 'E', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (500, 'T', '[]')"
+        )
+        await db.execute(
+            "INSERT INTO annotations (id, user_id, book_id, chapter_index, "
+            "sentence_text, note_text, color) VALUES "
+            "(777, 5, 500, 3, 'a sentence', 'a note', 'blue')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary (id, user_id, word, lemma, language) "
+            "VALUES (777, 5, 'the-word', 'the', 'en')"
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '031_fk_annotations_vocabulary'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT user_id, book_id, chapter_index, sentence_text, note_text, color "
+            "FROM annotations WHERE id = 777"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row == (5, 500, 3, "a sentence", "a note", "blue")
+
+        async with db.execute(
+            "SELECT user_id, word, lemma, language FROM vocabulary WHERE id = 777"
+        ) as cur:
+            row = await cur.fetchone()
+        assert row == (5, "the-word", "the", "en")
+
+
+async def test_migration_031_cascade_deletes_annotations_on_user_delete(tmp_db):
+    """End-to-end: with runtime FK enforcement, deleting a user must
+    automatically cascade to annotations and vocabulary via the declared
+    FKs introduced in 031 — no manual shadow delete required."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        # Default connection has FK on (services.db patches aiosqlite.connect).
+        # Explicitly enable to mirror production runtime behavior.
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (77, 'g', 'k@b.com', 'K', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (900, 'T', '[]')"
+        )
+        await db.execute(
+            "INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text) "
+            "VALUES (77, 900, 0, 's')"
+        )
+        await db.execute(
+            "INSERT INTO vocabulary (user_id, word) VALUES (77, 'w')"
+        )
+        await db.commit()
+
+        # Drop the user — FK cascade should remove both child rows.
+        await db.execute("DELETE FROM users WHERE id = 77")
+        await db.commit()
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM annotations WHERE user_id = 77"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "annotations must cascade"
+        async with db.execute(
+            "SELECT COUNT(*) FROM vocabulary WHERE user_id = 77"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "vocabulary must cascade"
+
+
+async def test_migration_031_cascade_deletes_annotations_on_book_delete(tmp_db):
+    """Same end-to-end test on the book_id side: annotations must cascade
+    when the parent book goes away."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) "
+            "VALUES (88, 'g', 'm@b.com', 'M', '')"
+        )
+        await db.execute(
+            "INSERT INTO books (id, title, images) VALUES (910, 'T', '[]')"
+        )
+        await db.execute(
+            "INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text) "
+            "VALUES (88, 910, 0, 's')"
+        )
+        await db.commit()
+
+        await db.execute("DELETE FROM books WHERE id = 910")
+        await db.commit()
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM annotations WHERE book_id = 910"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "annotations must cascade on book delete"

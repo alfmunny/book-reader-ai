@@ -39,6 +39,15 @@ async def tmp_db(monkeypatch, tmp_path):
     path = str(tmp_path / "test.db")
     monkeypatch.setattr(db_module, "DB_PATH", path)
     await init_db()
+    # Annotations now carry a declared FK to books(id) (migration 031, #754),
+    # so pre-seed the book ids referenced in this module's annotation tests.
+    import aiosqlite
+    async with aiosqlite.connect(path) as db:
+        await db.executemany(
+            "INSERT OR IGNORE INTO books (id, title, images) VALUES (?, 'T', '[]')",
+            [(i,) for i in (1, 5, 7)],
+        )
+        await db.commit()
 
 
 # ── GitHub auth ───────────────────────────────────────────────────────────────

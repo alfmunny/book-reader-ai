@@ -262,7 +262,9 @@ async def delete_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_re
         await db.execute(
             "DELETE FROM vocabulary WHERE id NOT IN (SELECT DISTINCT vocabulary_id FROM word_occurrences)"
         )
-        await db.execute("DELETE FROM annotations WHERE book_id = ?", (book_id,))
+        # annotations.book_id carries a declared FK with ON DELETE CASCADE
+        # since migration 031 (#754 PR 1/4) — the row below (DELETE FROM books)
+        # will cascade to annotations automatically.
         await db.execute("DELETE FROM book_insights WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM chapter_summaries WHERE book_id = ?", (book_id,))
         await db.execute("DELETE FROM reading_history WHERE book_id = ?", (book_id,))

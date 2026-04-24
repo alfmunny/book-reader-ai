@@ -1314,13 +1314,13 @@ export default function ReaderPage() {
                 <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={retryChapterLoad}
-                    className="px-4 py-2 rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors"
+                    className="px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors"
                   >
                     Retry
                   </button>
                   <button
                     onClick={() => router.push("/")}
-                    className="px-4 py-2 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+                    className="px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
                   >
                     Back to library
                   </button>
@@ -1379,7 +1379,7 @@ export default function ReaderPage() {
                     data-testid="bottom-prev-chapter"
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}
-                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px]"
                   ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous chapter</button>
                   <span className="text-xs text-amber-500 self-center">
                     {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
@@ -1388,7 +1388,7 @@ export default function ReaderPage() {
                     data-testid="bottom-next-chapter"
                     onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                     disabled={chapterIndex === chapters.length - 1}
-                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30"
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px]"
                   >Next chapter <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
               </>

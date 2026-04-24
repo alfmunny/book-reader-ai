@@ -93,12 +93,21 @@ Anyone files issue (architecture label)
 
 Always work highest priority first. Re-check priority each time you pick the next issue.
 
-| Tier | When to apply |
-|---|---|
-| **P0 — do now** | Security vulnerabilities, data loss, production outages |
-| **P1 — high** | Bugs affecting core flows, regressions, broken features |
-| **P2 — normal** | UX issues, enhancements that unblock users, code quality bugs |
-| **P3 — low** | Nice-to-haves, minor polish, refactors |
+Priority is a **GitHub label** applied at triage time (by PM, or by whoever files the issue when the severity is obvious). Roles sort their issue queue by priority descending — P0 first, P3 last.
+
+| Label | Colour | When to apply |
+|---|---|---|
+| **`P0`** — do now | red | Security vulnerabilities, data loss, production outages, users blocked from core flows |
+| **`P1`** — high | orange | Bugs affecting core flows, regressions, broken features, workflow gaps causing near-misses |
+| **`P2`** — normal (default) | yellow | UX issues, enhancements that unblock users, code-quality bugs, WCAG / touch-target violations |
+| **`P3`** — low | green | Nice-to-haves, minor polish, refactors, aspirational features |
+
+**PM triage rule:** every new `bug` / `feat` / `ux` / `ui` / `architecture` issue also gets a priority label at triage time. Issues without a priority label default to `P2` (roles can treat unlabeled issues as P2, but PM should backfill the label on the next cycle).
+
+**Role picking rule:** roles filter their work queue with `gh issue list --label "<role-label>" --search "-label:in-progress" --json number,labels,title` and sort the results by the presence of P0/P1/P2/P3 labels. Claim the highest priority first. Examples:
+- Dev queue: `gh issue list --label "bug,P0" --state open --search "-label:in-progress"` then P1, P2, P3 in that order.
+- UI/UX queue: same but with `ux` / `ui` labels.
+- Architect queue: same with `architecture`.
 
 ### Per-cycle priority (all code roles)
 
@@ -109,7 +118,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
    - For each PR with failing CI: investigate. Fix or mark `blocked` and comment.
    - For each PR MERGED since last cycle: remove `in-progress` label from the corresponding issue.
 2. **In-flight PR limit: 3 per session.** If you already have 3 or more open PRs authored by you, **do not submit a new PR this cycle.** You can still claim an issue and work it locally (branch, commits, tests), but hold off on `/submit-pr` until the count drops below 3. Prevents the backlog rot and CI-queue jam observed on 2026-04-23.
-3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label. Claim it. Work it. Submit via `/submit-pr`.
+3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label — sort by priority label (`P0` → `P1` → `P2` → `P3`). Claim it. Work it. Submit via `/submit-pr`.
 4. **If there are no unclaimed issues AND your PR count < 3**, enter your role's idle mode (bug hunt / UX audit / architecture gap analysis). File one issue, claim it, work it, submit.
 5. **If there are no unclaimed issues AND your PR count ≥ 3**, wait. Re-check PRs every few minutes; as soon as one merges, the slot frees up and you resume step 3.
 
@@ -122,7 +131,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 **File scope:** `product/`, `docs/`, `CLAUDE.md` only. Never edits source code, never creates fix branches.
 
 **Responsibilities:**
-- Triage new issues: apply role labels, set priority, update `product/backlog.md`
+- Triage new issues: apply a **role label** (`bug` / `feat` / `ux` / `ui` / `architecture`) AND a **priority label** (`P0` / `P1` / `P2` / `P3`) on every issue at triage time. Issues without a priority label are treated as `P2` by roles; PM should backfill the label on the next cycle. Update `product/backlog.md` to reflect the triaged state.
 - Review every merged PR: read the diff, file follow-up issues for anything incomplete
 - Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
 - Every cycle, check `gh pr list --label needs-pm-review --state open` — these are PRs where a role has explicitly opted in to PM review. Respond with `pm-approved` (+ comment) to unblock, or a specific-change-request comment + `blocked` if the PR needs work. See "Review gate policy" below for the full opt-in flow.

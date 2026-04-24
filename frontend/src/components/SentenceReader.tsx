@@ -783,10 +783,12 @@ export default function SentenceReader({
                       {translationText}
                     </p>
                   ) : translationLoading ? (
-                    <div className="space-y-2 animate-pulse">
-                      {Array.from({ length: 3 }).map((_, j) => (
-                        <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
-                      ))}
+                    <div role="status" aria-label="Loading translation">
+                      <div className="space-y-2 animate-pulse">
+                        {Array.from({ length: 3 }).map((_, j) => (
+                          <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
+                        ))}
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -801,9 +803,11 @@ export default function SentenceReader({
             {originalContent}
             {noteCard}
             {translationLoading && textParaIdx === 0 && !translationText && (
-              <div className="mt-1 space-y-1 animate-pulse">
-                <div className="h-3 bg-amber-100 rounded w-full" />
-                <div className="h-3 bg-amber-100 rounded w-5/6" />
+              <div role="status" aria-label="Loading translation">
+                <div className="mt-1 space-y-1 animate-pulse">
+                  <div className="h-3 bg-amber-100 rounded w-full" />
+                  <div className="h-3 bg-amber-100 rounded w-5/6" />
+                </div>
               </div>
             )}
             {translationText && (

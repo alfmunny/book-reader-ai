@@ -98,14 +98,16 @@ export default function ChapterSummary({
 
       <div className="flex-1 overflow-y-auto p-4">
         {loading && (
-          <div className="space-y-3 animate-pulse">
-            <div className="h-4 bg-amber-100 rounded w-3/4" />
-            <div className="h-4 bg-amber-100 rounded w-full" />
-            <div className="h-4 bg-amber-100 rounded w-5/6" />
-            <div className="h-3 bg-amber-50 rounded w-1/2 mt-4" />
-            <div className="h-3 bg-amber-50 rounded w-full" />
-            <div className="h-3 bg-amber-50 rounded w-4/5" />
-            <div className="h-3 bg-amber-50 rounded w-3/4" />
+          <div role="status" aria-label="Loading summary">
+            <div className="space-y-3 animate-pulse">
+              <div className="h-4 bg-amber-100 rounded w-3/4" />
+              <div className="h-4 bg-amber-100 rounded w-full" />
+              <div className="h-4 bg-amber-100 rounded w-5/6" />
+              <div className="h-3 bg-amber-50 rounded w-1/2 mt-4" />
+              <div className="h-3 bg-amber-50 rounded w-full" />
+              <div className="h-3 bg-amber-50 rounded w-4/5" />
+              <div className="h-3 bg-amber-50 rounded w-3/4" />
+            </div>
           </div>
         )}
 

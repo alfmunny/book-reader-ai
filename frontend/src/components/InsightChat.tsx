@@ -359,10 +359,12 @@ export default function InsightChat({
 
         {/* Initial loading skeleton */}
         {chatLoading && messages.length === 0 && (
-          <div className="space-y-2 animate-pulse pt-1 px-1">
-            {[1, 0.85, 1, 0.7, 1, 0.8].map((w, i) => (
-              <div key={i} className="h-3 bg-gray-100 rounded" style={{ width: `${w * 100}%` }} />
-            ))}
+          <div role="status" aria-label="Loading messages">
+            <div className="space-y-2 animate-pulse pt-1 px-1">
+              {[1, 0.85, 1, 0.7, 1, 0.8].map((w, i) => (
+                <div key={i} className="h-3 bg-gray-100 rounded" style={{ width: `${w * 100}%` }} />
+              ))}
+            </div>
           </div>
         )}
 

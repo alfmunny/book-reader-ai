@@ -158,18 +158,22 @@ export default function TypographyPanel({
               onParagraphFocus(next);
               saveSettings({ paragraphFocus: next });
             }}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              paragraphFocus ? "bg-amber-700" : "bg-stone-200"
-            }`}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center -mr-1.5"
             role="switch"
             aria-label="Paragraph focus"
             aria-checked={paragraphFocus}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                paragraphFocus ? "translate-x-4" : "translate-x-0.5"
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                paragraphFocus ? "bg-amber-700" : "bg-stone-200"
               }`}
-            />
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  paragraphFocus ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </span>
           </button>
         </div>
       </div>

@@ -961,6 +961,7 @@ export default function ReaderPage() {
                 </button>
                 <div className="relative">
                   <select
+                    aria-label="Go to chapter"
                     className="appearance-none text-xs rounded-lg border border-amber-300 pl-2.5 pr-7 py-1.5 text-ink bg-white max-w-[160px] cursor-pointer hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-colors"
                     value={chapterIndex}
                     onChange={(e) => goToChapter(Number(e.target.value))}
@@ -1885,8 +1886,9 @@ export default function ReaderPage() {
 
                     {/* Language selector */}
                     <div className="mb-4">
-                      <label className="block text-xs text-amber-700 mb-1">Target language</label>
+                      <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
                       <select
+                        id="reader-trans-lang"
                         className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white"
                         value={translationLang}
                         onChange={(e) => {
@@ -2090,6 +2092,7 @@ export default function ReaderPage() {
           {translateExpanded && translationEnabled && (
             <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 flex items-center gap-2 animate-slide-up">
               <select
+                aria-label="Translation language"
                 className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px]"
                 value={translationLang}
                 onChange={(e) => setTranslationLang(e.target.value)}
@@ -2187,6 +2190,7 @@ export default function ReaderPage() {
 
             <div className="relative flex-1 min-w-0 max-w-[110px]">
               <select
+                aria-label="Go to chapter"
                 className="appearance-none h-11 w-full text-xs rounded-lg border border-amber-200 pl-2 pr-6 text-amber-700 bg-white truncate cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-300 transition-colors"
                 value={chapterIndex}
                 onChange={(e) => goToChapter(Number(e.target.value))}

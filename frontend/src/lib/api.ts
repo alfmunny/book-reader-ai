@@ -722,6 +722,65 @@ export function removeVocabularyWordTag(vocabularyId: number, tag: string) {
   );
 }
 
+export type DeckMode = "manual" | "smart";
+
+export interface DeckSummary {
+  id: number;
+  name: string;
+  description: string;
+  mode: DeckMode;
+  rules_json: string | null;
+  created_at: string;
+  updated_at: string;
+  member_count: number;
+  due_today: number;
+}
+
+export interface DeckDetail extends Omit<DeckSummary, "due_today"> {
+  members: number[];
+}
+
+export interface DeckCreatePayload {
+  name: string;
+  description?: string;
+  mode: DeckMode;
+  rules_json?: Record<string, unknown> | null;
+}
+
+export function listDecks() {
+  return request<DeckSummary[]>("/decks");
+}
+
+export function getDeck(id: number) {
+  return request<DeckDetail>(`/decks/${id}`);
+}
+
+export function createDeck(payload: DeckCreatePayload) {
+  return request<DeckDetail>("/decks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteDeck(id: number) {
+  return request<void>(`/decks/${id}`, { method: "DELETE" });
+}
+
+export function addDeckMember(deckId: number, vocabularyId: number) {
+  return request<{ vocabulary_id: number }>(`/decks/${deckId}/members`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ vocabulary_id: vocabularyId }),
+  });
+}
+
+export function removeDeckMember(deckId: number, vocabularyId: number) {
+  return request<void>(`/decks/${deckId}/members/${vocabularyId}`, {
+    method: "DELETE",
+  });
+}
+
 // ── Book Insights (saved AI Q&A) ──────────────────────────────────────────────
 
 export interface BookInsight {

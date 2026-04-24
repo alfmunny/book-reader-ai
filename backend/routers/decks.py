@@ -16,7 +16,7 @@ from typing import Annotated, Literal
 
 import aiosqlite
 from fastapi import APIRouter, Depends, HTTPException, Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from services import decks as decks_service
 from services.auth import get_current_user
@@ -43,11 +43,25 @@ class DeckCreate(BaseModel):
     mode: Literal["manual", "smart"]
     rules_json: SmartRules | None = None
 
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("name cannot be blank")
+        return v
+
 
 class DeckPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=500)
     rules_json: SmartRules | None = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("name cannot be blank")
+        return v
 
 
 class MemberAdd(BaseModel):

@@ -661,6 +661,12 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         # followed by the real scene <div class="chapter">; the recursive
         # body walker otherwise renders both into text).
         text = _strip_title_from_body_prefix(text, title)
+        # Split paragraphs that pack multiple speaker turns into one block
+        # (Faust / Dumas / Leviathan class — #888 supersedes #820). The
+        # plain-text and HTML builders already call this; wiring the EPUB
+        # path closes the remaining miss catalogued in the post-backfill
+        # audit (reports/epub_split_audit_2026_04_24_post_backfill.md).
+        text = _split_dramatic_speakers(text)
         chapters.append(Chapter(title=_clean_title(title), text=text))
 
     # EPUB spine is authoritative structure, not a heuristic guess.

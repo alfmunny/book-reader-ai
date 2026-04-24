@@ -1352,3 +1352,157 @@ def test_build_chapters_from_epub_skips_short_items():
     # cover.xhtml is in SKIP_SUFFIXES — must not appear
     assert all("Cover" not in c.title for c in chapters)
     assert len(chapters) == 2
+
+
+# ── #888 / #903 — _split_dramatic_speakers runs on EPUB chapters ─────────────
+
+
+def _make_epub_with_collapsed_speaker_cues(title: str, body_html: str) -> bytes:
+    """Minimal EPUB whose single chapter contains a <p> with the Faust
+    #820 / #888 speaker-cue collapse pattern embedded as <br> lines."""
+    import io
+    from ebooklib import epub
+
+    book = epub.EpubBook()
+    book.set_title("Test Play")
+    book.set_language("de")
+    book.add_author("Test Author")
+
+    ch = epub.EpubHtml(title=title, file_name="chapter01.xhtml", lang="de")
+    ch.content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html xmlns="http://www.w3.org/1999/xhtml">'
+        f'<head><title>{title}</title></head>'
+        f'<body><h2>{title}</h2>{body_html}</body></html>'
+    ).encode("utf-8")
+    book.add_item(ch)
+    # Need at least 2 chapters for build_chapters_from_epub to return;
+    # tack on a filler scene.
+    filler = epub.EpubHtml(title="Scene 2", file_name="chapter02.xhtml", lang="de")
+    filler_body = "".join(
+        f"<p>Filler body sentence number {i} with enough words to pass the 30-word gate, "
+        f"padding padding padding padding padding.</p>"
+        for i in range(5)
+    )
+    filler.content = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<html><head><title>Scene 2</title></head>'
+        f'<body><h2>Scene 2</h2>{filler_body}</body></html>'
+    ).encode("utf-8")
+    book.add_item(filler)
+    # Set TOC + spine + ncx/nav (order matters — the splitter's
+    # _epub_nav_titles walks book.toc, so it must be a list of Link.)
+    book.toc = [
+        epub.Link("chapter01.xhtml", title, title),
+        epub.Link("chapter02.xhtml", "Scene 2", "scene2"),
+    ]
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.spine = ["nav", ch, filler]
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, book)
+    return buf.getvalue()
+
+
+def test_epub_chapter_splits_embedded_speaker_cue_paragraph():
+    """Regression #888: build_chapters_from_epub now calls
+    _split_dramatic_speakers, so a paragraph that packs two speakers'
+    turns splits at the all-caps speaker cue.
+
+    Before the fix, the EPUB path left <br>-separated speaker turns in a
+    single paragraph. After the fix, they split into one paragraph per
+    speaker — matching the plain-text and HTML paths."""
+    # Long enough block to trigger the structural signal; embeds a
+    # MARGARETE. speaker cue that must trigger the split.
+    verse_block = (
+        "<p>Und weißt du was? ich glaub', er liebt dich eben.<br/>"
+        "Ja, freilich! wir verstehn uns nicht auf gleichen Ton.<br/>"
+        "Und leg' den Schmuck nur wieder weg, mein Sohn.<br/>"
+        "  MARGARETE.<br/>"
+        "Das Dunkel hebt sich auf, mein Blick gewinnt;<br/>"
+        "Ich seh' die Berge frei, die Fluten blau.<br/>"
+        "Mich stützte eine Hand, die mich erfand<br/>"
+        "Und wieder schuf aus Liebe, Leid und Zeit.</p>"
+    )
+    epub_bytes = _make_epub_with_collapsed_speaker_cues("Faust: Nacht", verse_block)
+
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert len(chapters) >= 1
+
+    # The scene-1 chapter must contain two paragraphs whose boundary is
+    # the MARGARETE speaker cue — not one long paragraph that embeds it.
+    scene_text = chapters[0].text
+    paragraphs = [p for p in scene_text.split("\n\n") if p.strip()]
+
+    # Find the paragraph that starts with the MARGARETE cue (after the split).
+    margarete_para_idx = next(
+        (i for i, p in enumerate(paragraphs) if p.lstrip().startswith("MARGARETE.")),
+        None,
+    )
+    assert margarete_para_idx is not None, (
+        f"no paragraph starts with MARGARETE. — split did not run. "
+        f"paragraphs={paragraphs!r}"
+    )
+    # Must not be the very first paragraph of the chapter (there should be
+    # pre-speaker verse before it that was split off).
+    assert margarete_para_idx > 0, (
+        "MARGARETE is the first paragraph; pre-speaker verse should have "
+        "been separated by the split"
+    )
+
+
+def test_epub_chapter_passes_audit_structural_check_after_split():
+    """End-to-end: run the audit's own structural-flag detector on the
+    fix's output. The detector is the canonical signal used in
+    reports/epub_split_audit_2026_04_24_post_backfill.md."""
+    import os
+    import sys
+    _SCRIPTS_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"
+    )
+    if _SCRIPTS_DIR not in sys.path:
+        sys.path.insert(0, _SCRIPTS_DIR)
+    import epub_split_audit as audit  # noqa: E402
+
+    # Build a chapter block large enough to hit the default 400-char
+    # structural threshold, with an embedded speaker cue that the
+    # pre-#888 EPUB path would NOT have split.
+    verse_block = (
+        "<p>"
+        + ("Und weißt du was? ich glaub', er liebt dich eben.<br/>" * 4)
+        + ("Ja, freilich! wir verstehn uns nicht auf gleichen Ton.<br/>" * 4)
+        + "MARGARETE.<br/>"
+        + ("Das Dunkel hebt sich auf, mein Blick gewinnt.<br/>" * 8)
+        + "</p>"
+    )
+    epub_bytes = _make_epub_with_collapsed_speaker_cues("Faust: Nacht", verse_block)
+
+    chapters = build_chapters_from_epub(epub_bytes)
+    flags = audit._find_structural_flags(chapters)
+
+    assert flags == [], (
+        f"audit detector still flags post-fix EPUB output; split did not "
+        f"run — flags={flags!r}"
+    )
+
+
+def test_epub_chapter_without_speaker_cues_unchanged_by_split():
+    """Books with no speaker cues must round-trip unchanged through
+    _split_dramatic_speakers. The function is documented as a no-op on
+    text without cues — this test pins that contract on the EPUB path."""
+    body = "".join(
+        f"<p>Prose paragraph {i} with enough normal words to not look "
+        f"anything like a speaker cue. No all-caps lines here at all.</p>"
+        for i in range(6)
+    )
+    epub_bytes = _make_epub_with_collapsed_speaker_cues("A Novel", body)
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert len(chapters) >= 1
+
+    # Every paragraph should be a normal prose paragraph — no artificial
+    # splits introduced.
+    paragraphs = [p for p in chapters[0].text.split("\n\n") if p.strip()]
+    # We fed 6 <p> — expect 6 paragraphs out, not fewer (not merged) and
+    # not more (not artificially split).
+    assert len(paragraphs) == 6, f"expected 6 paragraphs, got {len(paragraphs)}: {paragraphs!r}"

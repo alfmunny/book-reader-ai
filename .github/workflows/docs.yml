@@ -40,6 +40,13 @@ jobs:
       - name: Install docs dependencies
         run: pip install -r requirements-docs.txt
 
+      - name: Regenerate auto pages
+        # Scripts reference / Reports index / Design-doc index / Migration
+        # index are derived from sources in the repo. Regenerate in CI so
+        # main always ships the latest content even if a PR forgot to rerun
+        # the generator locally.
+        run: python -m backend.scripts.generate_docs
+
       - name: Build site
         # --strict turns warnings (broken links, missing nav entries) into
         # build failures so we don't ship broken pages silently.

@@ -73,10 +73,13 @@ nav:
   - Architecture:
       - Stack: architecture/stack.md
       - Database: architecture/database.md
+      - Migrations: architecture/migrations.md
       - Design docs:
           - Index: architecture/design-index.md
-          - Docs site (#864): design/docs-site.md
+          - CI speedup (#885): design/ci-speedup.md
           - Declared FKs (#754): design/declared-fks-schema.md
+          - Docs site (#864): design/docs-site.md
+          - EPUB speaker-cue fix (#888): design/epub-speaker-cue-fix.md
           - FK enforcement (#700): design/fk-enforcement.md
           - FTS5 search (#592): design/fts5-in-app-search.md
           - User book chapters (#357): design/user-book-chapters.md

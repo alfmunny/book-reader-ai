@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { searchBooks, getPopularBooks, getMe, getReadingProgress, getUserStats, UserStats, BookMeta } from "@/lib/api";
-import { getRecentBooks, removeRecentBook, RecentBook } from "@/lib/recentBooks";
+import { getRecentBooks, removeRecentBook, recordRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
+import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
 import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon } from "@/components/Icons";
@@ -52,6 +53,7 @@ export default function Home() {
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [statsExpanded, setStatsExpanded] = useState(false);
+  const [removedBookToast, setRemovedBookToast] = useState<RecentBook | null>(null);
 
   useEffect(() => {
     const books = getRecentBooks();
@@ -383,9 +385,12 @@ export default function Home() {
                       onClick={() => handleBookClick(book)}
                       badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
                       onRemove={() => {
-                        if (!confirm(`Remove "${book.title}" from your library?`)) return;
+                        if (removedBookToast) {
+                          setRemovedBookToast(null);
+                        }
                         removeRecentBook(book.id);
                         setRecentBooks(getRecentBooks());
+                        setRemovedBookToast(book);
                       }}
                     />
                   ))}
@@ -777,6 +782,18 @@ export default function Home() {
             setSelectedBook(null);
             openBook(selectedBook.id);
           }}
+        />
+      )}
+
+      {removedBookToast && (
+        <UndoToast
+          message={`"${removedBookToast.title}" removed from library`}
+          onUndo={() => {
+            recordRecentBook(removedBookToast, removedBookToast.lastChapter);
+            setRecentBooks(getRecentBooks());
+            setRemovedBookToast(null);
+          }}
+          onDone={() => setRemovedBookToast(null)}
         />
       )}
     </main>

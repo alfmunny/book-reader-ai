@@ -428,28 +428,34 @@ test("clicking a collapsed heading again un-collapses it (line 306 delete branch
   expect(screen.getByText(/Uncollapse me/)).toBeInTheDocument();
 });
 
-// ── Lines 347, 357: confirm returns false → no delete ─────────────────────────
+// ── Lines 347, 357: UndoToast undo path restores item without calling API ──────
 
-test("annotation delete is skipped when user cancels confirm (line 347)", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(false);
+test("clicking Undo in annotation delete toast restores the annotation (line 347)", async () => {
   mockGetAnnotations.mockResolvedValue([makeAnnotation()]);
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/Call me Ishmael/));
 
   fireEvent.click(screen.getByTitle("Delete annotation"));
+  expect(screen.queryByText(/Call me Ishmael/)).not.toBeInTheDocument();
+  expect(screen.getByText("Annotation deleted")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: /Undo/i }));
+  await waitFor(() => expect(screen.getByText(/Call me Ishmael/)).toBeInTheDocument());
   expect(api.deleteAnnotation).not.toHaveBeenCalled();
-  expect(screen.getByText(/Call me Ishmael/)).toBeInTheDocument();
 });
 
-test("insight delete is skipped when user cancels confirm (line 357)", async () => {
-  jest.spyOn(window, "confirm").mockReturnValue(false);
+test("clicking Undo in insight delete toast restores the insight (line 357)", async () => {
   mockGetInsights.mockResolvedValue([makeInsight()]);
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/What is Moby Dick/));
 
   fireEvent.click(screen.getByTitle("Delete insight"));
+  expect(screen.queryByText(/What is Moby Dick/)).not.toBeInTheDocument();
+  expect(screen.getByText("Insight deleted")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: /Undo/i }));
+  await waitFor(() => expect(screen.getByText(/What is Moby Dick/)).toBeInTheDocument());
   expect(api.deleteInsight).not.toHaveBeenCalled();
-  expect(screen.getByText(/What is Moby Dick/)).toBeInTheDocument();
 });
 
 // ── Line 372: export throws non-Error → "Export failed" fallback ───────────────

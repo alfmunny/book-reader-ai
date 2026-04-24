@@ -63,7 +63,7 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
             epub_bytes = await get_book_epub_bytes(book_id)
             if epub_bytes:
                 chapters = await asyncio.to_thread(build_chapters_from_epub, epub_bytes)
-                if len(chapters) >= 2:
+                if len(chapters) >= 1:
                     _chapter_cache[book_id] = chapters
                     return chapters
             elif book_id not in _epub_fetch_attempted:

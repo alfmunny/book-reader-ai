@@ -111,7 +111,12 @@ jobs:
   test-e2e:
     name: Frontend E2E (Playwright)
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    # E2E tests the full stack — backend-only changes (API contract,
+    # auth, request validation, service logic) can break end-to-end flows
+    # without surfacing in pytest. Skipping E2E on backend changes would
+    # defeat its purpose. Docker-only changes can still skip (Docker is
+    # config, not code paths). Revision requested on #919 by user / PM.
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

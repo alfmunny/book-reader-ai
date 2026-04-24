@@ -783,6 +783,7 @@ export default function QueueTab({ adminFetch }: Props) {
             </label>
             <div className="flex gap-2">
               <input
+                aria-label="Auto-translate languages"
                 value={langs}
                 onChange={(e) => setLangs(e.target.value)}
                 className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"
@@ -812,6 +813,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <div className="flex gap-2">
               <input
                 type="password"
+                aria-label="Gemini API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"

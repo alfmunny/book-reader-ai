@@ -325,3 +325,46 @@ async def test_smart_rules_empty_tag_in_tags_all_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for empty tag in tags_all, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #979: ISO-date format enforcement on saved_after/saved_before ────────
+
+
+async def test_smart_rules_invalid_saved_after_returns_422(client, test_user):
+    """Regression #979: SmartRules.saved_after with a non-ISO date must be rejected with 422.
+
+    SQLite's date('not-date') evaluates to NULL, so a bad date silently returns
+    zero members instead of raising an error."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "BadDate", "mode": "smart", "rules_json": {"saved_after": "not-date!"}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for non-ISO saved_after, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_invalid_saved_before_returns_422(client, test_user):
+    """Regression #979: SmartRules.saved_before with a non-ISO date must be rejected with 422."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "BadDate2", "mode": "smart", "rules_json": {"saved_before": "2024/01/01"}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for non-ISO saved_before, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_valid_iso_dates_accepted(client, test_user):
+    """Regression #979: valid YYYY-MM-DD dates in saved_after/saved_before must be accepted."""
+    resp = await client.post(
+        "/api/decks",
+        json={
+            "name": "GoodDate",
+            "mode": "smart",
+            "rules_json": {"saved_after": "2024-01-01", "saved_before": "2025-12-31"},
+        },
+    )
+    assert resp.status_code == 201, (
+        f"Expected 201 for valid ISO dates, got {resp.status_code}: {resp.text}"
+    )

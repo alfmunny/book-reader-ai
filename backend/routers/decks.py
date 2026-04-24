@@ -31,8 +31,8 @@ class SmartRules(BaseModel):
     book_ids: list[Annotated[int, Field(ge=1)]] | None = Field(default=None, max_length=200)
     tags_any: list[Annotated[str, Field(min_length=1, max_length=50)]] | None = Field(default=None, max_length=100)
     tags_all: list[Annotated[str, Field(min_length=1, max_length=50)]] | None = Field(default=None, max_length=100)
-    saved_after: str | None = Field(default=None, max_length=10)
-    saved_before: str | None = Field(default=None, max_length=10)
+    saved_after: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}$')
+    saved_before: str | None = Field(default=None, pattern=r'^\d{4}-\d{2}-\d{2}$')
 
     model_config = {"extra": "forbid"}
 

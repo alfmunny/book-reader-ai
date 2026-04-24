@@ -1317,7 +1317,7 @@ export default function ReaderPage() {
             onMouseUp={handleSelection}
           >
             {loading ? (
-              <div className="max-w-prose mx-auto space-y-3 animate-pulse">
+              <div role="status" aria-label="Loading chapter" className="max-w-prose mx-auto space-y-3 animate-pulse">
                 {Array.from({ length: 14 }).map((_, i) => (
                   <div key={i} className={`h-4 bg-amber-200 rounded ${i % 5 === 4 ? "w-2/3" : "w-full"}`} />
                 ))}

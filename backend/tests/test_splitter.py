@@ -972,8 +972,15 @@ def test_html_body_text_preserves_span_wrapped_verse_lines():
 
 # Lines 571->562: _split_dramatic_speakers — speaker cue mid-paragraph
 def test_split_dramatic_speakers_splits_at_cue():
-    """A speaker cue (ALL-CAPS word(s) ending with period) should split the paragraph."""
-    text = "FAUST.\nFirst speech line.\nSecond speech line.\nMEPHISTOPHELES.\nThe devil speaks now."
+    """A speaker cue (ALL-CAPS word(s) ending with period) should split the paragraph.
+
+    The #967 guard requires ≥2 *unique* cue strings — FAUST and
+    MEPHISTOPHELES are two distinct names, so the split fires.
+    """
+    text = (
+        "FAUST.\nFirst speech line.\nSecond speech line.\n"
+        "MEPHISTOPHELES.\nThe devil speaks now."
+    )
     result = _split_dramatic_speakers(text)
     paragraphs = [p for p in result.split("\n\n") if p.strip()]
     assert len(paragraphs) == 2
@@ -986,6 +993,24 @@ def test_split_dramatic_speakers_no_split_needed():
     text = "This is a normal paragraph.\nWith multiple lines.\nNo speaker cues."
     result = _split_dramatic_speakers(text)
     assert result == text
+
+
+def test_split_dramatic_speakers_single_cue_not_split():
+    """Regression #967: a single all-caps line (running header / section title)
+    must NOT trigger a split. Reference works like Anzeiger (Gutenberg #49501)
+    embed the journal title at every page boundary, producing one mid-paragraph
+    cue per chapter — which was mistakenly identified as a drama speaker cue."""
+    header = "ORGAN DES GERMANISCHEN MUSEUMS."
+    text = (
+        "Some prose text from page one of the reference work.\n"
+        f"{header}\n"
+        "More prose text from page two of the same article."
+    )
+    result = _split_dramatic_speakers(text)
+    # Must be unchanged — single cue is below the ≥2 drama threshold.
+    assert result == text, (
+        f"Expected no split for single all-caps header, got:\n{result!r}"
+    )
 
 
 # Lines 598-600: _html_inline_text — elem.text is None
@@ -1192,15 +1217,19 @@ def test_html_body_text_else_fallthrough_empty_not_added():
 
 # Line 571->562: _split_dramatic_speakers — speaker cue mid-paragraph triggers split
 def test_split_dramatic_speakers_via_html_chapter():
-    """Speaker cue inside a paragraph triggers the buf→out append then buf=[line]."""
-    # Build a paragraph that has a speaker cue in the middle (not at start)
-    # buf starts with non-cue lines, then hits the cue → appends buf, starts new buf
-    text = "Some opening text.\nFAUST.\nSpeaks now."
+    """Speaker cue inside a paragraph triggers the buf→out append then buf=[line].
+
+    The #967 guard requires ≥2 unique cue strings to fire — use FAUST
+    and MEPHISTOPHELES so the guard is satisfied.
+    """
+    # FAUST opens (buf empty → no split); MEPHISTOPHELES arrives after
+    # FAUST's speech (buf non-empty → split fires).
+    text = "FAUST.\nSpeaks now.\nMEPHISTOPHELES.\nReplies."
     result = _split_dramatic_speakers(text)
     parts = [p for p in result.split("\n\n") if p.strip()]
     assert len(parts) == 2
-    assert parts[0] == "Some opening text."
-    assert parts[1].startswith("FAUST.")
+    assert parts[0].startswith("FAUST.")
+    assert parts[1].startswith("MEPHISTOPHELES.")
 
 
 # Line 606->608: _html_inline_text inner is empty → not appended
@@ -1463,10 +1492,11 @@ def test_epub_chapter_splits_embedded_speaker_cue_paragraph():
     Before the fix, the EPUB path left <br>-separated speaker turns in a
     single paragraph. After the fix, they split into one paragraph per
     speaker — matching the plain-text and HTML paths."""
-    # Long enough block to trigger the structural signal; embeds a
-    # MARGARETE. speaker cue that must trigger the split.
+    # Long enough block to trigger the structural signal; two speaker
+    # cues (FAUST + MARGARETE) satisfy the #967 ≥2-unique-cues guard.
     verse_block = (
-        "<p>Und weißt du was? ich glaub', er liebt dich eben.<br/>"
+        "<p>FAUST.<br/>"
+        "Und weißt du was? ich glaub', er liebt dich eben.<br/>"
         "Ja, freilich! wir verstehn uns nicht auf gleichen Ton.<br/>"
         "Und leg' den Schmuck nur wieder weg, mein Sohn.<br/>"
         "  MARGARETE.<br/>"
@@ -1518,8 +1548,9 @@ def test_epub_chapter_passes_audit_structural_check_after_split():
     # Build a chapter block large enough to hit the default 400-char
     # structural threshold, with an embedded speaker cue that the
     # pre-#888 EPUB path would NOT have split.
+    # Two speaker cues (FAUST + MARGARETE) satisfy the #967 ≥2-unique-cues guard.
     verse_block = (
-        "<p>"
+        "<p>FAUST.<br/>"
         + ("Und weißt du was? ich glaub', er liebt dich eben.<br/>" * 4)
         + ("Ja, freilich! wir verstehn uns nicht auf gleichen Ton.<br/>" * 4)
         + "MARGARETE.<br/>"

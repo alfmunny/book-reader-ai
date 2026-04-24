@@ -1680,3 +1680,69 @@ def test_build_chapters_from_epub_cjk_chapters_not_discarded():
         f"CJK word-count threshold may be discarding valid chapters"
     )
     assert "羅生門" in chapters[0].text or "老婆" in chapters[0].text
+
+
+# --- #923 regression: book title in chapter body ---
+
+def test_build_chapters_from_epub_book_title_not_in_chapter_body():
+    """Regression #923: book title appearing as the first paragraph of each
+    spine item must be stripped, not duplicated into chapter text.
+
+    Faust (Gutenberg EPUB 2229): every scene opens with a bare
+    <p>Faust: Der Tragödie erster Teil</p> line before the actual scene
+    content. The chapter-title strip only removes the *chapter* title
+    ('Nacht', 'Studierzimmer', …) — the book title was left untouched."""
+    import io
+    from ebooklib import epub
+
+    book_title = "Faust: Der Tragödie erster Teil"
+    scenes = [
+        ("Nacht", "Faust sitzt an seinem Schreibtische. Im Hintergrunde ein Gewölbe."),
+        ("Studierzimmer", "Faust tritt wieder auf in dem langen engen gotischen Zimmer."),
+        ("Vor dem Tor", "Spaziergänger aller Art ziehen aus."),
+    ]
+
+    epub_book = epub.EpubBook()
+    epub_book.set_title(book_title)
+    epub_book.set_language("de")
+    epub_book.add_author("Johann Wolfgang von Goethe")
+
+    spine = ["nav"]
+    toc = []
+    for i, (scene_title, body_text) in enumerate(scenes):
+        uid = f"scene{i+1:02d}"
+        fname = f"{uid}.xhtml"
+        # Each spine item starts with the book title as a plain <p>, then the
+        # scene heading and actual prose — mirroring the real Faust EPUB.
+        content = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<html xmlns="http://www.w3.org/1999/xhtml">'
+            f"<head><title>{scene_title}</title></head><body>"
+            f"<p>{book_title}</p>"
+            f"<h2>{scene_title}</h2>"
+            + "".join(f"<p>{body_text} Zeile {j}.</p>" for j in range(6))
+            + "</body></html>"
+        )
+        item = epub.EpubHtml(title=scene_title, file_name=fname, lang="de")
+        item.content = content.encode("utf-8")
+        epub_book.add_item(item)
+        spine.append(item)
+        toc.append(epub.Link(fname, scene_title, uid))
+
+    epub_book.toc = toc
+    epub_book.add_item(epub.EpubNcx())
+    epub_book.add_item(epub.EpubNav())
+    epub_book.spine = spine
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, epub_book)
+    chapters = build_chapters_from_epub(buf.getvalue())
+
+    assert len(chapters) == 3, f"Expected 3 chapters, got {len(chapters)}"
+    for ch in chapters:
+        assert not ch.text.startswith(book_title), (
+            f"Chapter '{ch.title}' text must not start with book title; got: {ch.text[:120]!r}"
+        )
+        assert book_title not in ch.text.split("\n\n")[0], (
+            f"Book title must not appear in first paragraph of '{ch.title}'; got: {ch.text[:120]!r}"
+        )

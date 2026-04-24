@@ -595,6 +595,7 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         return []
 
     nav_titles = _epub_nav_titles(book)
+    book_title = book.title or ""
     id_to_item = {
         item.get_id(): item
         for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT)
@@ -661,6 +662,10 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         # followed by the real scene <div class="chapter">; the recursive
         # body walker otherwise renders both into text).
         text = _strip_title_from_body_prefix(text, title)
+        # Strip the book title if it appears as the first paragraph — Faust
+        # (#923): spine items open with "FAUST: Der Tragödie erster Teil" as a
+        # stand-alone <p> that predates the actual scene heading.
+        text = _strip_title_from_body_prefix(text, book_title)
         # Split paragraphs that pack multiple speaker turns into one block
         # (Faust / Dumas / Leviathan class — #888 supersedes #820). The
         # plain-text and HTML builders already call this; wiring the EPUB

@@ -220,3 +220,35 @@ async def test_get_optional_user_returns_none_for_token_missing_sub():
 
     result = await get_optional_user(request)
     assert result is None
+
+
+# ── Non-integer "sub" claim ───────────────────────────────────────────────────
+
+def _make_token_with_non_integer_sub() -> str:
+    """Craft a validly-signed JWT whose 'sub' is a non-integer string."""
+    from jose import jwt as jose_jwt
+    return jose_jwt.encode(
+        {"sub": "not-an-int", "email": "bad@example.com"},
+        auth_module.JWT_SECRET,
+        algorithm=auth_module.JWT_ALGORITHM,
+    )
+
+
+async def test_get_current_user_raises_401_for_non_integer_sub():
+    """Regression #1024: a JWT with a non-integer sub must return 401, not 500 ValueError."""
+    token = _make_token_with_non_integer_sub()
+    request = _make_request(token=token)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_user(request)
+
+    assert exc_info.value.status_code == 401
+
+
+async def test_get_optional_user_returns_none_for_non_integer_sub():
+    """get_optional_user must return None (not raise) for a non-integer sub."""
+    token = _make_token_with_non_integer_sub()
+    request = _make_request(token=token)
+
+    result = await get_optional_user(request)
+    assert result is None

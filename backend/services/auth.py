@@ -190,7 +190,10 @@ async def get_current_user(request: Request) -> dict:
     sub = payload.get("sub")
     if not sub:
         raise HTTPException(status_code=401, detail="Invalid token: missing sub claim")
-    user_id = int(sub)
+    try:
+        user_id = int(sub)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token: sub is not a valid user id")
     user = await get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")

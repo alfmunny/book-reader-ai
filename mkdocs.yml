@@ -1,0 +1,92 @@
+site_name: Book Reader AI
+site_description: A Gutenberg reader with AI translation, TTS, vocabulary, and annotations.
+site_url: https://alfmunny.github.io/book-reader-ai/
+repo_url: https://github.com/alfmunny/book-reader-ai
+repo_name: alfmunny/book-reader-ai
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: amber
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: amber
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - include-markdown
+  - git-revision-date-localized:
+      enable_creation_date: true
+      fallback_to_build_date: true
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+# Navigation is explicit for v1 per design doc; journal days switch to auto
+# ordering in PR C.
+nav:
+  - Overview: index.md
+  - Tutorials:
+      - Introduction: tutorials/index.md
+      - Read your first Gutenberg book: tutorials/first-book.md
+      - Enable AI translation: tutorials/ai-translation.md
+  - Reference:
+      - Features: FEATURES.md
+      - Reports: reference/reports.md
+      - API overview: reference/api.md
+      - Scripts: reference/scripts.md
+  - Architecture:
+      - Stack: architecture/stack.md
+      - Database: architecture/database.md
+      - Design docs:
+          - Index: architecture/design-index.md
+          - Docs site (#864): design/docs-site.md
+          - Declared FKs (#754): design/declared-fks-schema.md
+          - FK enforcement (#700): design/fk-enforcement.md
+          - FTS5 search (#592): design/fts5-in-app-search.md
+          - User book chapters (#357): design/user-book-chapters.md
+          - Vocab tags & decks (#645): design/vocab-tags-decks.md
+  - Development:
+      - Roles: development/roles.md
+      - Path A vs B: development/paths.md
+      - Testing: development/testing.md
+      - Migrations: development/migrations.md
+      - PR workflow: development/pr-workflow.md
+      - Graphic design: development/design-rules.md
+  - Journal:
+      - Introduction: journal/index.md

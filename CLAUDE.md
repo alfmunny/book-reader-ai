@@ -69,8 +69,11 @@ Anyone files issue (feat label)
 Anyone files issue (architecture label)
   → Architect claims it
   → Design doc PR first (docs/design/<feature>.md)
-  → PM reviews design doc → approves or requests changes
-  → Design doc merged
+  → Architect applies `needs-user-approval` label at PR creation — this is the gate
+  → PM reviews design doc → requests changes OR applies `pm-approved` label (readiness signal only)
+  → **User (repo owner) removes `needs-user-approval` + applies `user-approved` label — mandatory gate**
+  → auto-merge.yml (once #796 ships) resumes auto-merge now that the gate label is gone
+  → CI clears → PR merges
   → PM creates (or converts the original issue to) an implementation issue
     with the design doc linked, labeled feat + architecture
   → Dev or Architect picks up implementation
@@ -82,16 +85,29 @@ Anyone files issue (architecture label)
 
 **Path B is NOT needed for:** bug fixes, small enhancements, adding a field to an existing model, adding a new endpoint that follows an established pattern.
 
+**User-approval gate is mandatory for Path B.** A design doc in `docs/design/` may not merge, and implementation may not begin, until the repo owner (user) applies the **`user-approved`** label to the design-doc PR (and, where it matters for prioritization, to the original architecture issue). PM's review is a readiness check — tests, rollback, risks, migration policy — signalled by the `pm-approved` label; it is not merge authority. Only the user can authorize the commitment to build.
+
+**How the gate blocks auto-merge.** Architect applies the **`needs-user-approval`** label on every Path B design-doc PR at creation. The `auto-merge.yml` workflow (see #796) skips when this label is present — gate is enforced by the workflow, not by the role remembering to run `gh pr merge --disable-auto`. The user removes `needs-user-approval` in the same edit that applies `user-approved`; `auto-merge.yml` re-runs on the label change, sees no gate label, and enables auto-merge. CI clears, PR merges. No manual `--disable-auto` / re-enable dance, and rebases cannot bypass because the workflow re-checks the label on every `synchronize` event. Until #796 ships, Architect should still run `gh pr merge --disable-auto <N>` as a belt-and-suspenders fallback, but the label is the durable gate.
+
 ### Priority tiers (Dev + Architect use when picking issues)
 
 Always work highest priority first. Re-check priority each time you pick the next issue.
 
-| Tier | When to apply |
-|---|---|
-| **P0 — do now** | Security vulnerabilities, data loss, production outages |
-| **P1 — high** | Bugs affecting core flows, regressions, broken features |
-| **P2 — normal** | UX issues, enhancements that unblock users, code quality bugs |
-| **P3 — low** | Nice-to-haves, minor polish, refactors |
+Priority is a **GitHub label** applied at triage time (by PM, or by whoever files the issue when the severity is obvious). Roles sort their issue queue by priority descending — P0 first, P3 last.
+
+| Label | Colour | When to apply |
+|---|---|---|
+| **`P0`** — do now | red | Security vulnerabilities, data loss, production outages, users blocked from core flows |
+| **`P1`** — high | orange | Bugs affecting core flows, regressions, broken features, workflow gaps causing near-misses |
+| **`P2`** — normal (default) | yellow | UX issues, enhancements that unblock users, code-quality bugs, WCAG / touch-target violations |
+| **`P3`** — low | green | Nice-to-haves, minor polish, refactors, aspirational features |
+
+**PM triage rule:** every new `bug` / `feat` / `ux` / `ui` / `architecture` issue also gets a priority label at triage time. Issues without a priority label default to `P2` (roles can treat unlabeled issues as P2, but PM should backfill the label on the next cycle).
+
+**Role picking rule:** roles filter their work queue with `gh issue list --label "<role-label>" --search "-label:in-progress" --json number,labels,title` and sort the results by the presence of P0/P1/P2/P3 labels. Claim the highest priority first. Examples:
+- Dev queue: `gh issue list --label "bug,P0" --state open --search "-label:in-progress"` then P1, P2, P3 in that order.
+- UI/UX queue: same but with `ux` / `ui` labels.
+- Architect queue: same with `architecture`.
 
 ### Per-cycle priority (all code roles)
 
@@ -102,7 +118,7 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
    - For each PR with failing CI: investigate. Fix or mark `blocked` and comment.
    - For each PR MERGED since last cycle: remove `in-progress` label from the corresponding issue.
 2. **In-flight PR limit: 3 per session.** If you already have 3 or more open PRs authored by you, **do not submit a new PR this cycle.** You can still claim an issue and work it locally (branch, commits, tests), but hold off on `/submit-pr` until the count drops below 3. Prevents the backlog rot and CI-queue jam observed on 2026-04-23.
-3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label. Claim it. Work it. Submit via `/submit-pr`.
+3. **If open PR count < 3**, pick the highest-priority unclaimed issue that matches your role label — sort by priority label (`P0` → `P1` → `P2` → `P3`). Claim it. Work it. Submit via `/submit-pr`.
 4. **If there are no unclaimed issues AND your PR count < 3**, enter your role's idle mode (bug hunt / UX audit / architecture gap analysis). File one issue, claim it, work it, submit.
 5. **If there are no unclaimed issues AND your PR count ≥ 3**, wait. Re-check PRs every few minutes; as soon as one merges, the slot frees up and you resume step 3.
 
@@ -115,12 +131,14 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 **File scope:** `product/`, `docs/`, `CLAUDE.md` only. Never edits source code, never creates fix branches.
 
 **Responsibilities:**
-- Triage new issues: apply role labels, set priority, update `product/backlog.md`
+- Triage new issues: apply a **role label** (`bug` / `feat` / `ux` / `ui` / `architecture`) AND a **priority label** (`P0` / `P1` / `P2` / `P3`) on every issue at triage time. Issues without a priority label are treated as `P2` by roles; PM should backfill the label on the next cycle. Update `product/backlog.md` to reflect the triaged state.
 - Review every merged PR: read the diff, file follow-up issues for anything incomplete
 - Review open PRs: comment with concerns or approval; apply `blocked` label if a hard concern exists
+- Every cycle, check `gh pr list --label needs-pm-review --state open` — these are PRs where a role has explicitly opted in to PM review. Respond with `pm-approved` (+ comment) to unblock, or a specific-change-request comment + `blocked` if the PR needs work. See "Review gate policy" below for the full opt-in flow.
 - Watch deployments: run `/loop` for smoke-test and deploy monitoring
-- Approve design docs (Path B) before implementation begins
+- Review Path B design docs for readiness (tests, rollback, risks, migration policy) and apply `pm-approved` label. **PM has no merge authority on Path B design docs — the user (repo owner) is the sole approver.** The design doc only merges after the user removes `needs-user-approval` and applies `user-approved`; `auto-merge.yml` handles the merge once the gate label is gone. PM does not merge manually.
 - Keep `product/review-state.md` updated every cycle
+- **File `user-only` issues proactively.** When PM identifies work that only the repo owner can do — GitHub repo settings (branch protection, secrets, visibility), GitHub Actions secrets / env vars, Railway / Vercel dashboard config, rotating credentials, OAuth app setup, domain / DNS changes, etc. — PM files a dedicated issue labeled `user-only` with clear step-by-step instructions. No role has the credentials or permissions for these; without a PM-filed reminder, they fall through cycles and never land. Always include: what to do, where to do it (URL to the specific settings page), why it's needed, and what to verify afterwards. Example: #872 (branch protection configuration).
 - **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
 
 **Default models and idle-recovery cadences (set in `scripts/start-roles.sh`):**
@@ -311,6 +329,94 @@ At the start of every session, follow this exact order. **Do not skip steps 6 or
 - Implementation details (private functions, internal state)
 - Third-party library behaviour
 - Things already covered by existing tests
+
+## Review gate policy
+
+**Each role decides at PR-creation time whether the PR needs PM review before merge.** This is separate from the Path B user-approval gate (which applies only to Path B design docs and always requires the user). For Path A PRs, PM review is **opt-in by the role**, not default.
+
+### Default: auto-merge
+
+Small, routine, single-concern PRs proceed on the fast path (`/submit-pr` enables auto-merge; CI passes; PR merges). This covers most bug fixes, UI/UX tweaks, small refactors, and well-scoped feature slices.
+
+### Opt-in PM review
+
+When the role wants a second pair of eyes before merge:
+
+1. Apply the `needs-pm-review` label to the PR.
+2. Run `gh pr merge --disable-auto <N>` immediately — without this, a passing CI will merge past the review window. (Until #796 ships a label-aware `auto-merge.yml`, `--disable-auto` is also undone by rebases; re-run if the PR is force-pushed.)
+3. Leave a short comment with the specific concern — not just "please review." Examples: "novel SQL approach, want a sanity check on index scan path", "first-time touching the auth middleware, please verify I haven't left a bypass".
+
+PM picks up `needs-pm-review` PRs every cycle and responds by either:
+
+- **Approving**: applies `pm-approved` + comments the approval. Role removes `needs-pm-review`, re-enables auto-merge (`gh pr merge --auto --squash <N>`), and the PR proceeds normally.
+- **Requesting changes**: leaves a specific comment describing what needs to change + applies `blocked`. Role iterates; when the concern is addressed, role pings PM in a new comment (or simply pushes + PM notices on next cycle). Loop continues until merged.
+
+PM's `pm-approved` here is a readiness check by the PM role. It is **not** the repo owner's personal approval — that gate applies only to Path B design docs and stays as-is.
+
+### When to opt in
+
+The role decides. Guidelines (not exhaustive):
+
+- Touches a migration, schema change, or any irreversible database operation
+- Crosses 2+ service boundaries in a single PR
+- Adds an endpoint with non-obvious business-logic nuance
+- Touches security-sensitive code (auth, admin gates, rate limits, token handling)
+- Uses a novel approach the role isn't confident about
+- Ships a UX change that affects a core user flow (reader, vocabulary, onboarding) in a non-trivial way
+
+If the change is a one-liner fix to a well-covered area with a regression test, don't opt in — just ship.
+
+### What PM does NOT do without the label
+
+Without `needs-pm-review`, PM does not pre-merge-gate Path A PRs. PM still reviews every merged PR retroactively (per existing duties) and files follow-up issues for anything incomplete. The opt-in label is the role's way to pull PM into the loop *before* merge.
+
+## Communication conventions
+
+**Every role-posted comment on a PR or issue must start with a role prefix** so readers can tell at a glance who's speaking.
+
+Format: begin the first line with one of:
+- `**PM**:` (PM review, approval, triage, or follow-up question)
+- `**Dev**:`
+- `**UI/UX**:`
+- `**Architect**:`
+
+Existing claim comments (`Claimed by [Role] — starting work now.`) already follow this; the rule extends to **every** subsequent comment, not just the claim. Includes: approval comments, blocking comments, questions, nudges, status updates, post-merge notes, and replies.
+
+Why: multi-role threads become unreadable when every comment is just "@alfmunny" from the GitHub UI. The prefix makes a PR's history scannable at a glance and prevents the "who is asking" / "who is answering" confusion that wastes cycles.
+
+The label-driven gates (`pm-approved`, `user-approved`, `needs-pm-review`, `blocked`, `user-only`) are enforcement; the role prefix is legibility. Both apply.
+
+## Documentation policy
+
+**Every role contributes to keeping the docs-site source content fresh.** The docs site proposed in #864 builds directly from files in this repo; it rots the instant any source file drifts from the code. The rules below are source-content invariants and hold independently of how the site eventually renders them — they apply **now**, before the site ships.
+
+### Dev
+- When adding, modifying, or removing a script in `backend/scripts/`, update the module docstring at the top of the file. Docstring must describe: (1) what the script does, (2) when to use it, (3) one concrete example invocation. The docs site auto-generates the scripts reference from these.
+- When a bug fix changes user-visible behaviour documented in `docs/FEATURES.md`, update the feature page in the same PR. When a fix changes API request/response shape, update the API reference section (out-of-scope placeholder today; add a TODO line so it's caught later).
+
+### UI/UX
+- Existing rule, restated here for visibility: when adding a new component pattern (modal, toolbar, sidebar type) or a significant design change, append a row to the Change Log table in `docs/design-improvement-plan.md`.
+- When shipping a user-visible UX flow that a new reader would not discover on their own (e.g. focus mode, typography panel, flashcards), add a short tutorial stub to `docs/tutorials/<flow>.md` — a few sentences is enough; the docs site renders it.
+
+### Architect
+- Every design doc in `docs/design/*.md` must start with this frontmatter block:
+  ```
+  **Status:** Draft | PM-approved | User-approved | Merged | Shipped (PR #<N>, YYYY-MM-DD)
+  **Author:** <name>
+  **Date:** YYYY-MM-DD
+  **Priority:** P0–P3
+  **Prior work:** #<issue>, #<pr>, …
+  ```
+  The docs site's Architecture → Design Docs index renders this frontmatter. `#821` (declared-fks-schema.md) is the exemplar.
+- When a design doc's series ships, change its `Status` line to `Shipped (PR #<N>, YYYY-MM-DD)` in a one-line follow-up commit. Do not leave stale `Draft` / `PM-approved` statuses on merged-and-implemented design docs.
+
+### PM
+- The development journal in the docs site is auto-summarized from `product/review-state.md` cycle entries. Keep each cycle entry one paragraph: start with the headline (a merged PR or a decision), cover what changed and why. Avoid blow-by-blow tool output or internal deliberation.
+- When a CLAUDE.md rule changes, flag the change in the PR body under a `## Process change` heading so the development-process page in the docs site surfaces the edit. This PR (adding the user-approval gate + documentation policy) is an example.
+
+### Freshness enforcement
+- PR body checkbox: `[ ] Docs updated (if applicable)`. Reviewers flag unchecked PRs whose diff touches `backend/scripts/`, `docs/`, or user-visible frontend behaviour.
+- Until #864's docs site exists, these rules still apply to the source files; they just don't render anywhere yet. This avoids source rot during the site's build-out.
 
 ## Migration policy
 

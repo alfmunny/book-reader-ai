@@ -1025,6 +1025,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarTab("chat"); setSidebarOpen((v) => sidebarTab === "chat" ? !v : true); }}
             title="Toggle insight chat"
             aria-label="Insight sidebar"
+            aria-expanded={sidebarOpen && sidebarTab === "chat"}
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
@@ -1040,6 +1041,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarTab("translate"); setSidebarOpen((v) => sidebarTab === "translate" ? !v : true); }}
             title="Translation"
             aria-label="Translate"
+            aria-expanded={sidebarOpen && sidebarTab === "translate"}
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "translate"
                 ? "bg-amber-700 text-white border-amber-700"
@@ -1057,6 +1059,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarTab("summary"); setSidebarOpen((v) => sidebarTab === "summary" ? !v : true); }}
             title="Chapter summary"
             aria-label="Chapter summary"
+            aria-expanded={sidebarOpen && sidebarTab === "summary"}
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "summary"
                 ? "bg-amber-700 text-white border-amber-700"
@@ -1075,6 +1078,7 @@ export default function ReaderPage() {
             }}
             title="Annotations & notes"
             aria-label="Annotations & notes"
+            aria-expanded={sidebarOpen && sidebarTab === "notes"}
             className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "notes"
                 ? "bg-amber-700 text-white border-amber-700"
@@ -1120,6 +1124,7 @@ export default function ReaderPage() {
             }}
             title="Vocabulary"
             aria-label="Vocabulary"
+            aria-expanded={sidebarOpen && sidebarTab === "vocab"}
             className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "vocab"
                 ? "bg-amber-700 text-white border-amber-700"

@@ -593,14 +593,16 @@ export default function Home() {
               )}
 
               {searching && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
-                      <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
-                      <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
-                      <div className="h-3 bg-amber-100 rounded w-1/2" />
-                    </div>
-                  ))}
+                <div role="status" aria-label="Loading search results">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
+                        <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
+                        <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
+                        <div className="h-3 bg-amber-100 rounded w-1/2" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -662,30 +664,32 @@ export default function Home() {
               </div>
 
               {popularLoading && (
-                popularView === "grid" ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
-                        <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
-                        <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
-                        <div className="h-3 bg-amber-100 rounded w-1/2" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                        <div className="w-8 h-3 bg-amber-100 rounded shrink-0" />
-                        <div className="w-8 h-12 bg-amber-100 rounded shrink-0" />
-                        <div className="flex-1 space-y-1.5">
-                          <div className="h-3 bg-amber-100 rounded w-2/3" />
-                          <div className="h-3 bg-amber-100 rounded w-1/3" />
+                <div role="status" aria-label="Loading popular books">
+                  {popularView === "grid" ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
+                          <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
+                          <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
+                          <div className="h-3 bg-amber-100 rounded w-1/2" />
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                          <div className="w-8 h-3 bg-amber-100 rounded shrink-0" />
+                          <div className="w-8 h-12 bg-amber-100 rounded shrink-0" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 bg-amber-100 rounded w-2/3" />
+                            <div className="h-3 bg-amber-100 rounded w-1/3" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
               {!popularLoading && popularBooks.length > 0 && (

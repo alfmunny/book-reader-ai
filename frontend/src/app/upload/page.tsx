@@ -84,8 +84,8 @@ export default function UploadPage() {
 
   if (status === "loading") {
     return (
-      <main className="min-h-screen bg-parchment flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" />
+      <main role="status" aria-label="Loading upload page" className="min-h-screen bg-parchment flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
       </main>
     );
   }
@@ -145,11 +145,11 @@ export default function UploadPage() {
           `}
         >
           {uploading ? (
-            <>
-              <div className="w-10 h-10 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin mb-4" />
+            <div role="status" aria-label="Uploading file" className="flex flex-col items-center">
+              <div className="w-10 h-10 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin mb-4" aria-hidden="true" />
               <p className="font-serif text-lg text-ink">Uploading and parsing…</p>
               <p className="text-sm text-amber-700 mt-1">This may take a moment for large files.</p>
-            </>
+            </div>
           ) : (
             <>
               <UploadIcon className="w-10 h-10 text-amber-400 mb-4" />

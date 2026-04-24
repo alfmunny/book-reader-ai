@@ -230,17 +230,14 @@ async def test_create_annotation_rejects_nonexistent_book(client, test_user):
 
 
 async def test_create_annotation_rejects_empty_sentence(client, test_user):
-    """POST /annotations with empty sentence_text must return 400.
-
-    An annotation with no text context is meaningless and represents a
-    client error."""
+    """POST /annotations with empty sentence_text must return 422 (Pydantic min_length=1)."""
     await save_book(BOOK_ID, _BOOK_META, "text")
     resp = await client.post("/api/annotations", json={
         "book_id": BOOK_ID,
         "chapter_index": 0,
         "sentence_text": "",
     })
-    assert resp.status_code == 400
+    assert resp.status_code == 422
 
 
 async def test_create_annotation_rejects_negative_chapter_index(client, test_user):
@@ -554,3 +551,20 @@ async def test_create_annotation_returns_dict_when_row_is_none(test_user, monkey
     monkeypatch.setattr(_aio.Cursor, "fetchone", _fetchone_none_once)
     result = await create_annotation(test_user["id"], BOOK_ID, 0, "sentence", "note", "yellow")
     assert isinstance(result, dict), f"create_annotation must return a dict, got {type(result)}"
+
+
+# ── Issue #918: empty sentence_text ──────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_annotation_empty_sentence_text_returns_422(client, test_user, tmp_db):
+    """Regression #918: POST /annotations with sentence_text='' must return 422."""
+    from services.db import save_book
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post(
+        "/api/annotations",
+        json={"book_id": BOOK_ID, "chapter_index": 0, "sentence_text": ""},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty sentence_text, got {resp.status_code}: {resp.text}"
+    )

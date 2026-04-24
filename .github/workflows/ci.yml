@@ -49,8 +49,20 @@ jobs:
 
       - run: npm ci
 
-      - name: Run tests with coverage
-        run: npm test -- --coverage --ci --reporters=default --reporters=jest-junit
+      # Coverage collection ~2x's Jest wall time (~30-60s on our suite).
+      # On PRs we skip coverage; on push:main it runs so the main-line
+      # coverage story stays fresh. Nightly full-coverage run is in
+      # .github/workflows/coverage-nightly.yml so weekly drift is still
+      # observable even if no push lands that week. (#885 Opt 3.)
+      - name: Run tests
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            npm test -- --coverage --ci \
+              --reporters=default --reporters=jest-junit
+          else
+            npm test -- --no-coverage --ci \
+              --reporters=default --reporters=jest-junit
+          fi
         env:
           JEST_JUNIT_OUTPUT_FILE: jest-results.xml
 
@@ -62,9 +74,12 @@ jobs:
           path: frontend/jest-results.xml
           reporter: jest-junit
 
+      # Coverage artifact only exists on push:main runs (see the Jest
+       # step above). On PRs the `path: coverage-summary.json` wouldn't
+       # exist, so we gate the upload on push.
       - name: Upload coverage summary
         uses: actions/upload-artifact@v4
-        if: always()
+        if: github.event_name == 'push'
         with:
           name: frontend-coverage-summary
           path: frontend/coverage/coverage-summary.json
@@ -228,11 +243,18 @@ jobs:
           name: backend-coverage-summary
           path: backend/coverage-numbers.txt
 
+  # Coverage comment is deliberately gated off on PRs since #885 Opt 3:
+  # Jest runs with --no-coverage on PRs to save ~30-60s, so the artifact
+  # that this job would consume doesn't exist on PR runs.
+  # Coverage is reported via the nightly coverage-nightly.yml workflow
+  # (artifacts, not a comment) and via the push:main run's artifact.
+  # The job is kept here but never fires; a future PR can remove it
+  # entirely once we're sure no downstream tooling reads it.
   coverage-comment:
     name: Post coverage comment
     needs: [changes, test-frontend, test-backend, test-e2e]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && always()
+    if: false  # intentionally disabled; see note above
     permissions:
       pull-requests: write
     steps:

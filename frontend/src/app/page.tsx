@@ -537,6 +537,7 @@ export default function Home() {
 
               <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <input
+                  aria-label="Search by title or author"
                   className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 text-base"
                   placeholder="Search by title or author..."
                   value={query}
@@ -545,6 +546,7 @@ export default function Home() {
                 />
                 <div className="flex gap-2">
                   <select
+                    aria-label="Filter by language"
                     className="rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm text-ink flex-1 sm:flex-none"
                     value={lang}
                     onChange={(e) => setLang(e.target.value)}

@@ -27,13 +27,13 @@ export default function AuthPromptModal({ open, feature, onClose }: Props) {
         </p>
         <a
           href="/api/auth/signin"
-          className="block w-full py-3 bg-amber-700 hover:bg-amber-800 text-white text-center rounded-xl font-medium transition-colors"
+          className="flex items-center justify-center w-full min-h-[44px] bg-amber-700 hover:bg-amber-800 text-white text-center rounded-xl font-medium transition-colors"
         >
           Sign in
         </a>
         <button
           onClick={onClose}
-          className="block w-full py-2 text-sm text-stone-500 mt-2 hover:text-stone-700 transition-colors"
+          className="flex items-center justify-center w-full min-h-[44px] text-sm text-stone-500 mt-2 hover:text-stone-700 transition-colors"
         >
           Maybe later
         </button>

@@ -5,32 +5,67 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Weekly full-matrix run, Sundays at 03:17 UTC (off-minute). Safety net
+  # for drift the path-scoped PR CI might miss — e.g. backend contract
+  # changes that didn't touch the frontend but break it, or vice versa.
+  # The `changes` job below forces all path outputs to 'true' on schedule
+  # so the full matrix actually runs. (#885 Opt 2 follow-up per user.)
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
 
 jobs:
-  # Detect whether the PR touches code that actually needs CI. If only docs,
-  # design files, CLAUDE.md, product/, or issue templates changed, skip the
-  # heavy test + build jobs. They remain required for the branch protection,
-  # but a skipped `if:` job is reported as success so merges stay unblocked.
+  # Detect whether the PR touches code that actually needs CI, and which
+  # parts of the stack it touches. Each heavy job below gates on one of
+  # the outputs so a frontend-only PR doesn't rerun backend+docker tests
+  # (#885 Opt 2, design doc docs/design/ci-speedup.md). A skipped `if:`
+  # job is reported as success, so merges stay unblocked — branch
+  # protection gets its green check without us burning the wall clock.
+  #
+  # Scoping rules:
+  #   frontend  — anything under frontend/ or the CI workflow itself
+  #   backend   — anything under backend/ or the CI workflow itself
+  #   docker    — Dockerfile, compose, or backend deps (which invalidate
+  #               the image layer cache); also runs on any backend change
+  #               since the Docker image carries the backend code.
+  #
+  # The workflow file intentionally appears in both frontend and backend
+  # so any CI-config change still runs the full matrix — we never want a
+  # workflow edit that breaks CI to skip the very jobs we need to see it.
   changes:
     name: Detect code changes
     runs-on: ubuntu-latest
+    # On schedule + workflow_dispatch, force all path outputs to 'true' so
+    # the full matrix runs regardless of what the last push touched.
+    # On push/PR events, the filter step drives the outputs normally.
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      frontend: ${{ steps.filter.outputs.frontend == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      backend:  ${{ steps.filter.outputs.backend  == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      docker:   ${{ steps.filter.outputs.docker   == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         with:
           filters: |
-            code:
-              - 'backend/**'
+            frontend:
               - 'frontend/**'
-              - '.github/workflows/**'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            docker:
+              - 'backend/Dockerfile'
+              - 'docker-compose.yml'
+              - 'backend/requirements.txt'
+              - 'backend/pyproject.toml'
+              - '.github/workflows/ci.yml'
 
   test-frontend:
     name: Frontend tests (Jest)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -88,7 +123,12 @@ jobs:
   test-e2e:
     name: Frontend E2E (Playwright)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # E2E tests the full stack — backend-only changes (API contract,
+    # auth, request validation, service logic) can break end-to-end flows
+    # without surfacing in pytest. Skipping E2E on backend changes would
+    # defeat its purpose. Docker-only changes can still skip (Docker is
+    # config, not code paths). Revision requested on #919 by user / PM.
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -175,7 +215,13 @@ jobs:
   test-backend:
     name: Backend tests (pytest)
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # Broadened to run on frontend changes too: frontend contract drift
+    # against backend API types is hand-caught today (api.ts is hand-written,
+    # not OpenAPI-generated). Running pytest on frontend-only PRs is cheap
+    # insurance against silently breaking an end-to-end flow through a
+    # backend response-shape mismatch. Revisit this gate if we ever switch
+    # to generated API types. Revision requested by user on #919.
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -232,7 +278,7 @@ jobs:
     name: Post coverage comment
     needs: [changes, test-frontend, test-backend, test-e2e]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && needs.changes.outputs.code == 'true' && always()
+    if: github.event_name == 'pull_request' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true') && always()
     permissions:
       pull-requests: write
     steps:
@@ -359,7 +405,9 @@ jobs:
   docker-build:
     name: Verify Docker build
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    # Backend code changes also rebuild the image (image carries backend/)
+    # so we OR docker-specific files + backend/**.
+    if: needs.changes.outputs.docker == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

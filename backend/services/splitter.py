@@ -877,7 +877,30 @@ def _split_dramatic_speakers(text: str) -> str:
     change, leaving source/translation paragraph counts out of sync.
     We normalise source-side by splitting at any internal speaker cue
     so counts match and the reader can pair 1-to-1.
+
+    Guard against false positives in reference works (#967): all-caps
+    section titles and running headers (e.g. "ORGAN DES GERMANISCHEN
+    MUSEUMS.") also match the speaker-cue pattern but appear at most
+    once *per header string* per chapter. Drama has multiple distinct
+    speaker names. Require ≥2 *unique* cue strings across the text
+    before splitting — a single repeating header stays below that bar.
     """
+    # Pre-scan: collect distinct cue strings across the whole text.
+    # Reference running headers: one string repeated → 1 unique.
+    # Drama: multiple speaker names → ≥2 unique.
+    unique_cues: set[str] = set()
+    for paragraph in text.split("\n\n"):
+        for line in paragraph.split("\n"):
+            stripped = line.strip()
+            if _SPEAKER_CUE_RE.match(stripped):
+                unique_cues.add(stripped)
+                if len(unique_cues) >= 2:
+                    break
+        if len(unique_cues) >= 2:
+            break
+    if len(unique_cues) < 2:
+        return text
+
     out: list[str] = []
     for paragraph in text.split("\n\n"):
         lines = paragraph.split("\n")

@@ -669,9 +669,22 @@ def build_chapters_from_epub(epub_bytes: bytes) -> list[Chapter]:
         text = _split_dramatic_speakers(text)
         chapters.append(Chapter(title=_clean_title(title), text=text))
 
-    # EPUB spine is authoritative structure, not a heuristic guess.
-    # Skip the regex-oriented _validate() and just require >= 2 chapters.
-    return chapters if len(chapters) >= 2 else []
+    if len(chapters) >= 2:
+        return chapters
+
+    # Single-spine-item EPUBs (novellas, short story collections) package the
+    # entire text in one HTML file. The spine gives us exactly 1 chapter, which
+    # fails the >= 2 guard above. Apply the keyword/roman-numeral text splitter
+    # on the combined body text so Kapitel/Chapter/Act headings still produce
+    # the correct chapter structure (e.g. Kafka's Die Verwandlung → 3 Kapitel).
+    if chapters:
+        combined = "\n\n".join(c.text for c in chapters)
+        if len(combined.split()) >= 300:
+            sub = build_chapters(combined)
+            if len(sub) >= 2:
+                return sub
+
+    return []
 
 
 _FRONTMATTER_CLASSES = (

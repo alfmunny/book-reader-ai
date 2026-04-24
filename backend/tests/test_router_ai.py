@@ -670,13 +670,18 @@ async def test_insight_with_corrupted_key_returns_400(client, test_user):
 
 # ── Chapter summary empty text validation (Issue #492) ───────────────────────
 
-@pytest.mark.parametrize("chapter_text", ["", "   ", "\n\t\n"])
-async def test_summary_empty_chapter_text_returns_400(client, test_user, tmp_db, chapter_text):
-    """Regression #492: empty or whitespace-only chapter_text must return 400.
+async def test_summary_empty_chapter_text_returns_422(client, test_user):
+    """Regression #492/#813: empty chapter_text must return 422 (Pydantic min_length=1)."""
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": 7771, "chapter_index": 0,
+        "chapter_text": "", "book_title": "Test Book", "author": "Author",
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty chapter_text, got {resp.status_code}: {resp.text}"
 
-    Without this check the empty text was passed to Gemini, wasting API
-    quota and potentially caching a low-quality summary.
-    """
+
+@pytest.mark.parametrize("chapter_text", ["   ", "\n\t\n"])
+async def test_summary_whitespace_chapter_text_returns_400(client, test_user, tmp_db, chapter_text):
+    """Regression #492: whitespace-only chapter_text must return 400 (handler strip check)."""
     from services.db import save_book
     from services.auth import encrypt_api_key as _enc
     await save_book(7771, _BOOK_META, "word " * 300)
@@ -695,7 +700,7 @@ async def test_summary_empty_chapter_text_returns_400(client, test_user, tmp_db,
             "chapter_title": "Ch 1",
         })
     assert resp.status_code == 400, (
-        f"Expected 400 for empty chapter_text={repr(chapter_text)}, "
+        f"Expected 400 for whitespace-only chapter_text={repr(chapter_text)}, "
         f"got {resp.status_code}: {resp.text}"
     )
     mock_gemini.generate_chapter_summary.assert_not_called()
@@ -1271,3 +1276,42 @@ async def test_get_translate_cache_empty_target_language_returns_422(client, tes
     assert resp.status_code == 422, (
         f"Expected 422 for empty target_language in GET /ai/translate/cache, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #813: min_length=1 on AI endpoint text/content fields ───────────────
+
+
+async def test_insight_empty_chapter_text_returns_422(client, test_user):
+    """Regression #813: POST /ai/insight with chapter_text="" must return 422."""
+    resp = await client.post("/api/ai/insight", json={
+        "chapter_text": "", "book_title": "Faust", "author": "Goethe",
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty chapter_text, got {resp.status_code}: {resp.text}"
+
+
+async def test_qa_empty_question_returns_422(client, test_user):
+    """Regression #813: POST /ai/qa with question="" must return 422."""
+    resp = await client.post("/api/ai/qa", json={
+        "question": "", "passage": "Some text.", "book_title": "Faust", "author": "Goethe",
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty question in /ai/qa, got {resp.status_code}: {resp.text}"
+
+
+async def test_qa_empty_passage_returns_422(client, test_user):
+    """Regression #813: POST /ai/qa with passage="" must return 422."""
+    resp = await client.post("/api/ai/qa", json={
+        "question": "What happens?", "passage": "", "book_title": "Faust", "author": "Goethe",
+    })
+    assert resp.status_code == 422, f"Expected 422 for empty passage in /ai/qa, got {resp.status_code}: {resp.text}"
+
+
+async def test_translate_empty_text_returns_422(client, test_user):
+    """Regression #813: POST /ai/translate with text="" must return 422."""
+    resp = await client.post("/api/ai/translate", json={"text": ""})
+    assert resp.status_code == 422, f"Expected 422 for empty text in /ai/translate, got {resp.status_code}: {resp.text}"
+
+
+async def test_tts_empty_text_returns_422(client, test_user):
+    """Regression #813: POST /ai/tts with text="" must return 422."""
+    resp = await client.post("/api/ai/tts", json={"text": ""})
+    assert resp.status_code == 422, f"Expected 422 for empty text in /ai/tts, got {resp.status_code}: {resp.text}"

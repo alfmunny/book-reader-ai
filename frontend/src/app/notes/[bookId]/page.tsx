@@ -42,6 +42,7 @@ function CollapseHeading({
   return (
     <button
       onClick={onToggle}
+      aria-expanded={!isCollapsed}
       className={`w-full flex items-center gap-2 text-left group min-h-[44px] ${
         level === 2
           ? "mt-8 mb-3 pb-1.5 border-b border-amber-200"

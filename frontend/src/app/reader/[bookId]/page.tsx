@@ -1202,7 +1202,7 @@ export default function ReaderPage() {
             <button
               onClick={() => router.push("/profile")}
               title={session.backendUser?.name ?? "Profile"}
-              className="shrink-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
+              className="shrink-0 min-w-[44px] min-h-[44px] w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
             >
               {session.backendUser?.picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -1826,7 +1826,7 @@ export default function ReaderPage() {
                               {/* Lemma header */}
                               <button
                                 onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-amber-100 transition-colors text-left"
+                                className="w-full min-h-[44px] flex items-center justify-between gap-2 px-3 py-2 hover:bg-amber-100 transition-colors text-left"
                               >
                                 <span className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (

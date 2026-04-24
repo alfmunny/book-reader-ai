@@ -187,7 +187,7 @@ export default function Home() {
                 onClick={() => router.push("/profile")}
                 title={session?.backendUser?.name ?? "Profile & Settings"}
                 aria-label={session?.backendUser?.name ?? "Profile & Settings"}
-                className="w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+                className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
               >
                 {session?.backendUser?.picture ? (
                   // eslint-disable-next-line @next/next/no-img-element

@@ -4,7 +4,10 @@ Full CRUD where applicable.
 """
 
 import json
+import logging
 import aiosqlite
+
+logger = logging.getLogger(__name__)
 from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
@@ -859,21 +862,24 @@ async def stats(_admin: dict = Depends(_require_admin)):
     translation_count = 0
     audio_chunks = 0
     audio_mb: float = 0.0
-    async with aiosqlite.connect(DB_PATH) as db:
-        try:
-            async with db.execute("SELECT COUNT(*) FROM translations") as cur:
-                translation_count = (await cur.fetchone())[0]
-        except Exception:
-            pass
-        try:
-            async with db.execute(
-                "SELECT COUNT(*), COALESCE(SUM(LENGTH(audio)), 0) FROM audio_cache"
-            ) as cur:
-                row = await cur.fetchone()
-                audio_chunks = row[0]
-                audio_mb = round(row[1] / 1_048_576, 2)
-        except Exception:
-            pass
+    try:
+        async with aiosqlite.connect(DB_PATH) as db:
+            try:
+                async with db.execute("SELECT COUNT(*) FROM translations") as cur:
+                    translation_count = (await cur.fetchone())[0]
+            except Exception as exc:
+                logger.warning("admin /stats: failed to count translations: %s", exc)
+            try:
+                async with db.execute(
+                    "SELECT COUNT(*), COALESCE(SUM(LENGTH(audio)), 0) FROM audio_cache"
+                ) as cur:
+                    row = await cur.fetchone()
+                    audio_chunks = row[0]
+                    audio_mb = round(row[1] / 1_048_576, 2)
+            except Exception as exc:
+                logger.warning("admin /stats: failed to count audio_cache: %s", exc)
+    except Exception as exc:
+        logger.warning("admin /stats: failed to open DB connection: %s", exc)
 
     return {
         "users_total": len(users),

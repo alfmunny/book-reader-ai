@@ -1905,13 +1905,13 @@ export default function ReaderPage() {
                       <div className="flex rounded-lg border border-amber-300 overflow-hidden">
                         <button
                           onClick={() => setDisplayMode("inline")}
-                          className={`flex-1 px-3 py-2 text-sm transition-colors ${
+                          className={`flex-1 px-3 py-2 min-h-[44px] text-sm transition-colors ${
                             displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                           }`}
                         >Inline</button>
                         <button
                           onClick={() => setDisplayMode("parallel")}
-                          className={`flex-1 px-3 py-2 text-sm border-l border-amber-300 transition-colors ${
+                          className={`flex-1 px-3 py-2 min-h-[44px] text-sm border-l border-amber-300 transition-colors ${
                             displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                           }`}
                         >Side by side</button>

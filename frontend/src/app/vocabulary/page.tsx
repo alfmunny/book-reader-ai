@@ -142,9 +142,12 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/10" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/10" aria-hidden="true" onClick={onClose} />
       <div
         ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Word definition"
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto animate-slide-up"
       >
         <div className="flex justify-center py-2">

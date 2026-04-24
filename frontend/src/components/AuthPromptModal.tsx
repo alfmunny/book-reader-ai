@@ -19,7 +19,7 @@ export default function AuthPromptModal({ open, feature, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" aria-hidden="true" onClick={onClose} />
       <div role="dialog" aria-modal="true" aria-label="Sign in required" className="relative bg-white rounded-t-2xl md:rounded-2xl shadow-xl p-6 w-full max-w-sm animate-slide-up">
         <p className="font-serif text-lg text-ink mb-1">Sign in to {feature}</p>
         <p className="text-sm text-stone-500 mb-5">

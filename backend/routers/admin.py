@@ -1195,7 +1195,7 @@ async def queue_clear(
 @router.delete("/queue/book/{book_id}")
 async def queue_delete_book(
     book_id: int = Path(..., ge=1),
-    target_language: str | None = Query(default=None, max_length=20),
+    target_language: str | None = Query(default=None, min_length=1, max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
     norm = target_language.lower().split("-")[0] if target_language else None

@@ -894,6 +894,7 @@ export default function ReaderPage() {
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
           <button
             onClick={() => router.push("/")}
+            aria-label="Library"
             className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] flex items-center"
           >
             <ArrowLeftIcon className="w-4 h-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline ml-1">Library</span>
@@ -995,6 +996,7 @@ export default function ReaderPage() {
                 setShowTypographyPanel((v) => !v);
               }}
               title="Typography settings"
+              aria-label="Typography settings"
               className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] rounded-lg border text-xs font-bold transition-colors ${
                 showTypographyPanel || paragraphFocus
                   ? "bg-amber-100 border-amber-400 text-amber-800"
@@ -1150,6 +1152,7 @@ export default function ReaderPage() {
               setShowTypographyPanel(false);
             }}
             title="Focus mode (F)"
+            aria-label="Focus mode"
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] rounded-lg border text-xs font-medium transition-colors ${
               focusMode
                 ? "bg-amber-700 text-white border-amber-700"
@@ -1204,6 +1207,7 @@ export default function ReaderPage() {
             <button
               onClick={() => router.push("/profile")}
               title={session.backendUser?.name ?? "Profile"}
+              aria-label={session.backendUser?.name ?? "Profile"}
               className="shrink-0 min-w-[44px] min-h-[44px] w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
             >
               {session.backendUser?.picture ? (

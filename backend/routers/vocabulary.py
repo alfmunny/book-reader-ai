@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import logging
 from datetime import datetime, timezone
 
 import httpx
@@ -23,6 +24,7 @@ from services import vocab_tags
 from services.translate import translate_text
 
 router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
+logger = logging.getLogger(__name__)
 
 
 class WordSave(BaseModel):
@@ -482,5 +484,6 @@ async def export_obsidian(
             return {"urls": urls}
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        logger.warning("POST /vocabulary/export/obsidian failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Export to GitHub failed")

@@ -161,7 +161,7 @@ export default function ProfilePage() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-6 py-4 flex items-center gap-4">
         <button
           onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center"
         >
           <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
         </button>
@@ -189,14 +189,14 @@ export default function ProfilePage() {
           <div className="mt-6 flex items-center gap-4">
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-sm text-red-600 hover:text-red-800"
+              className="text-sm text-red-600 hover:text-red-800 min-h-[44px] flex items-center"
             >
               Sign out
             </button>
             {isAdmin && (
               <button
                 onClick={() => router.push("/admin")}
-                className="text-sm text-amber-700 hover:text-amber-900 underline"
+                className="text-sm text-amber-700 hover:text-amber-900 underline min-h-[44px] flex items-center"
               >
                 Admin Panel
               </button>
@@ -235,7 +235,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleRemoveKey}
                 disabled={removingKey}
-                className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+                className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 min-h-[44px] flex items-center"
               >
                 {removingKey ? "Removing…" : "Remove key"}
               </button>
@@ -305,7 +305,7 @@ export default function ProfilePage() {
                       <button
                         onClick={handleRemoveObsidianToken}
                         disabled={obsidianSaving}
-                        className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50"
+                        className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50 min-h-[44px] inline-flex items-center"
                       >
                         Remove
                       </button>

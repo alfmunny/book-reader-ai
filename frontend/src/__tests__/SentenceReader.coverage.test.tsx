@@ -119,6 +119,35 @@ describe("SentenceReader — isVerse detection (line 65)", () => {
     const segs = getSegments(container);
     expect(segs.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("renders verse stanza with long trailing stage direction as verse, not prose (regression #820)", () => {
+    // 7 short verse lines (≤ 60 chars) + 1 long stage direction (> 60 chars).
+    // The old strict heuristic (!lines.some(l => l.length > 60)) returned false
+    // because of the stage direction, collapsing all lines into one prose string.
+    // Median-based heuristic returns true (median of 7 short lines ≤ 60).
+    const faust =
+      "FAUST. O schaudre nicht! Lass diesen Blick,\n" +
+      "Lass diesen Haendedruck dir sagen\n" +
+      "Was unaussprechlich ist.\n" +
+      "Sich hinzugeben ganz und eine Wonne\n" +
+      "Zu fuehlen, die ewig sein muss!\n" +
+      "Ewig! -- Ihr Ende wuerde Verzweiflung sein.\n" +
+      "Nein, kein Ende! Kein Ende!\n" +
+      "(Margarete drueckt ihm die Haende, macht sich los und laeuft weg. Er steht einen Augenblick in Gedanken, dann folgt er ihr.)";
+
+    const { container } = render(
+      <SentenceReader
+        text={faust}
+        duration={0}
+        currentTime={0}
+        isPlaying={false}
+        onSegmentClick={noop}
+      />
+    );
+    // Must render as block spans (verse), not as a single collapsed prose paragraph
+    const blockSpans = container.querySelectorAll("span.block");
+    expect(blockSpans.length).toBeGreaterThanOrEqual(7);
+  });
 });
 
 // ── Lines 83-91: parseIntoSegments edge cases ─────────────────────────────────

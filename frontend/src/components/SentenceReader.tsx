@@ -62,7 +62,11 @@ function splitSentences(text: string): string[] {
  * If ANY line is longer than 60 chars it's almost certainly a prose line-wrap, not verse.
  */
 function isVerse(lines: string[]): boolean {
-  return !lines.some((l) => l.length > 60);
+  // Use median line length so a single long stage direction doesn't force
+  // an entire verse stanza to be classified as prose and joined with spaces.
+  const lengths = [...lines].map((l) => l.length).sort((a, b) => a - b);
+  const median = lengths[Math.floor(lengths.length / 2)];
+  return median <= 60;
 }
 
 function parseIntoSegments(

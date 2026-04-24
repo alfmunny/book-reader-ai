@@ -227,6 +227,7 @@ export default function BooksPage() {
 
       <div className="flex gap-2">
         <input
+          aria-label="Gutenberg Book ID to import"
           placeholder="Gutenberg Book ID (e.g. 2229)"
           value={importId}
           onChange={(e) => setImportId(e.target.value)}
@@ -373,6 +374,7 @@ export default function BooksPage() {
                 </button>
 
                 <select
+                  aria-label="Translation language"
                   value={newLangInput[b.id] ?? "zh"}
                   onChange={(e) => setNewLangInput({ ...newLangInput, [b.id]: e.target.value })}
                   className="text-xs rounded border border-amber-300 px-1.5 py-0.5 shrink-0 bg-white"
@@ -506,6 +508,7 @@ export default function BooksPage() {
                                               realignment cases where paragraphs are
                                               correct but the chapter_index is wrong. */}
                                           <input
+                                            aria-label="Move to chapter number"
                                             type="number"
                                             min={1}
                                             placeholder="→Ch"

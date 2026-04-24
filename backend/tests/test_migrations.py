@@ -1136,3 +1136,83 @@ async def test_migration_029_clears_shifted_translations(tmp_db):
             "SELECT COUNT(*) FROM book_insights WHERE book_id=2229 AND chapter_index IS NULL"
         ) as cur:
             assert (await cur.fetchone())[0] == 1, "book-level insights (NULL chapter) must survive"
+
+
+@pytest.mark.asyncio
+async def test_migration_030_clears_chapter0_cache(tmp_db):
+    """Regression #800: migration 030 must delete chapter_index=0 rows for Faust (#2229)
+    and Kafka (#69327) defensively, leaving other chapters and other books untouched."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.executemany(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (?, ?, 'zh', '[]')",
+            [(2229, 0), (2229, 1), (69327, 0), (1, 0)],
+        )
+        await db.executemany(
+            "INSERT INTO chapter_summaries (book_id, chapter_index, content) VALUES (?, ?, 'summary')",
+            [(2229, 0), (69327, 0), (1, 0)],
+        )
+        await db.executemany(
+            "INSERT INTO translation_queue (book_id, chapter_index, target_language, status) "
+            "VALUES (?, ?, 'zh', 'pending')",
+            [(2229, 0), (69327, 0)],
+        )
+        await db.execute(
+            "INSERT INTO users (id, google_id, email, name, picture) VALUES (2, 'y', 'b@c.com', 'B', '')"
+        )
+        await db.executemany(
+            "INSERT INTO book_insights (user_id, book_id, chapter_index, question, answer) "
+            "VALUES (2, ?, ?, 'Q?', 'A')",
+            [(2229, 0), (69327, 0), (1, 0)],
+        )
+        await db.execute(
+            "DELETE FROM schema_migrations WHERE version = '030_invalidate_chapter0_cache'"
+        )
+        await db.commit()
+
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id IN (2229, 69327) AND chapter_index = 0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale chapter-0 translations must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id=2229 AND chapter_index=1"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "chapter 1 must survive"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translations WHERE book_id=1 AND chapter_index=0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "unrelated book chapter-0 must survive"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM chapter_summaries WHERE book_id IN (2229, 69327) AND chapter_index = 0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale chapter-0 summaries must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM chapter_summaries WHERE book_id=1 AND chapter_index=0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "unrelated book chapter-0 summary must survive"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM translation_queue WHERE book_id IN (2229, 69327) AND chapter_index = 0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale chapter-0 queue rows must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights "
+            "WHERE book_id IN (2229, 69327) AND chapter_index = 0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 0, "stale chapter-0 insights must be deleted"
+
+        async with db.execute(
+            "SELECT COUNT(*) FROM book_insights WHERE book_id=1 AND chapter_index=0"
+        ) as cur:
+            assert (await cur.fetchone())[0] == 1, "unrelated book chapter-0 insights must survive"

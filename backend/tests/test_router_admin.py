@@ -1042,6 +1042,30 @@ async def test_stats_includes_audio_fields(admin_client, admin_db):
     assert isinstance(data["audio_cache_mb"], (int, float))
 
 
+async def test_stats_returns_200_when_translations_table_missing(admin_client, admin_db, caplog):
+    """Regression #1067: /admin/stats must degrade gracefully and log a warning
+    when the translations or audio_cache table query fails — not raise 500.
+
+    We drop the translations table to reproduce a genuine query failure.
+    """
+    import logging
+
+    # Drop translations to simulate a broken schema
+    async with aiosqlite.connect(admin_db) as db:
+        await db.execute("DROP TABLE IF EXISTS translations")
+        await db.commit()
+
+    with caplog.at_level(logging.WARNING, logger="routers.admin"):
+        res = await admin_client.get("/api/admin/stats")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["translations_cached"] == 0
+    assert any("failed to count" in msg for msg in caplog.messages), (
+        "Expected a warning log when translations table is missing; got: " + str(caplog.messages)
+    )
+
+
 # ── Retranslate ──────────────────────────────────────────────────────────────
 
 async def test_retranslate_creates_new_translation(admin_client, admin_user):

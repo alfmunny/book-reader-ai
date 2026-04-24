@@ -680,8 +680,8 @@ export default function BookNotesPage() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 md:px-8 py-8">
         {loading ? (
-          <div className="flex justify-center py-24">
-            <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+          <div role="status" aria-label="Loading notes" className="flex justify-center py-24">
+            <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           </div>
         ) : fetchError ? (
           <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">

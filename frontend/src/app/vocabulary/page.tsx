@@ -538,7 +538,7 @@ function VocabularyPageContent() {
         )}
 
         {loading ? (
-          <div className="space-y-3 animate-pulse">
+          <div role="status" aria-label="Loading vocabulary" className="space-y-3 animate-pulse">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-5 bg-amber-100 rounded w-full" />
             ))}

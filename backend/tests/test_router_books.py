@@ -1265,6 +1265,42 @@ async def test_chapter_translation_get_empty_target_language_returns_422(client,
     )
 
 
+# ── Issue #1048: whitespace-only target_language must be rejected (422) ───────
+
+
+async def test_request_translation_whitespace_target_language_returns_422(client, test_user):
+    """Regression #1048: POST /books/{id}/chapters/{i}/translation with target_language=" " must return 422."""
+    resp = await client.post(
+        "/api/books/1/chapters/0/translation",
+        json={"target_language": "   "},
+    )
+    assert resp.status_code == 422, f"Expected 422 for whitespace target_language, got {resp.status_code}: {resp.text}"
+
+
+async def test_translation_status_whitespace_target_language_returns_422(client, test_user):
+    """Regression #1048: GET /books/{id}/translation-status?target_language=" " must return 422."""
+    resp = await client.get("/api/books/1/translation-status?target_language=%20")
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace target_language in translation-status, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_chapter_queue_status_whitespace_target_language_returns_422(client, test_user):
+    """Regression #1048: GET /books/{id}/chapters/{i}/queue-status?target_language=" " must return 422."""
+    resp = await client.get("/api/books/1/chapters/0/queue-status?target_language=%20")
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace target_language in queue-status, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_chapter_translation_get_whitespace_target_language_returns_422(client, test_user):
+    """Regression #1048: GET /books/{id}/chapters/{i}/translation?target_language=" " must return 422."""
+    resp = await client.get("/api/books/1/chapters/0/translation?target_language=%20")
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace target_language in GET translation, got {resp.status_code}: {resp.text}"
+    )
+
+
 # ── Issue #794: min_length=1 on q in GET /books/search ───────────────────────
 
 

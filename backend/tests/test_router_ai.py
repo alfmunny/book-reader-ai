@@ -1330,3 +1330,50 @@ async def test_tts_empty_text_returns_422(client, test_user):
     """Regression #813: POST /ai/tts with text="" must return 422."""
     resp = await client.post("/api/ai/tts", json={"text": ""})
     assert resp.status_code == 422, f"Expected 422 for empty text in /ai/tts, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #1054: whitespace-only response_language / language ─────────────────
+
+
+async def test_insight_whitespace_response_language_returns_422(client, test_user):
+    """Regression #1054: POST /ai/insight with response_language="   " must return 422."""
+    resp = await client.post("/api/ai/insight", json={
+        "chapter_text": "Some text.", "book_title": "Faust", "author": "Goethe",
+        "response_language": "   ",
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace response_language in /ai/insight, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_qa_whitespace_response_language_returns_422(client, test_user):
+    """Regression #1054: POST /ai/qa with response_language=" " must return 422."""
+    resp = await client.post("/api/ai/qa", json={
+        "question": "What?", "passage": "Some text.", "book_title": "Faust", "author": "Goethe",
+        "response_language": " ",
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace response_language in /ai/qa, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_references_whitespace_response_language_returns_422(client, test_user):
+    """Regression #1054: POST /ai/references with response_language="\t" must return 422."""
+    resp = await client.post("/api/ai/references", json={
+        "book_title": "Faust", "author": "Goethe",
+        "response_language": "\t",
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace response_language in /ai/references, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_tts_whitespace_language_returns_422(client, test_user):
+    """Regression #1054: POST /ai/tts with language=" " must return 422."""
+    resp = await client.post("/api/ai/tts", json={
+        "text": "Hello world",
+        "language": " ",
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace language in /ai/tts, got {resp.status_code}: {resp.text}"
+    )

@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from services.auth import get_current_user, decrypt_api_key, check_book_access
 from services.db import (
     get_cached_translation,
@@ -45,11 +45,24 @@ def _require_gemini_key(user: dict) -> str:
 
 # ── Request models ────────────────────────────────────────────────────────────
 
+def _validate_language_code(v: str) -> str:
+    """Strip, lowercase, and take the primary subtag. Raises ValueError if blank."""
+    s = v.strip().lower().split("-")[0]
+    if not s:
+        raise ValueError("language code cannot be blank")
+    return s
+
+
 class InsightRequest(BaseModel):
     chapter_text: str = Field(..., min_length=1, max_length=50_000)
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+
+    @field_validator("response_language")
+    @classmethod
+    def response_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 class QARequest(BaseModel):
@@ -59,6 +72,11 @@ class QARequest(BaseModel):
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
 
+    @field_validator("response_language")
+    @classmethod
+    def response_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
+
 
 class ReferencesRequest(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=500)
@@ -66,6 +84,11 @@ class ReferencesRequest(BaseModel):
     chapter_title: str = Field(default="", max_length=500)
     chapter_excerpt: str = Field(default="", max_length=10_000)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+
+    @field_validator("response_language")
+    @classmethod
+    def response_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 class SummaryRequest(BaseModel):
@@ -92,6 +115,11 @@ class TTSRequest(BaseModel):
     language: str = Field(default="en", min_length=1, max_length=20)
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
+
+    @field_validator("language")
+    @classmethod
+    def language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 class ChunkTextRequest(BaseModel):
@@ -242,11 +270,13 @@ async def translate_cache(
     _user: dict = Depends(get_current_user),
 ):
     """Check if a translation is cached. Returns paragraphs + provider/model if yes, 404 if not."""
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, _user)
-    target_language = target_language.lower().split("-")[0]
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
     if chapter_index < 0 or chapter_index >= len(_chapters):
@@ -273,6 +303,11 @@ class SaveTranslationRequest(BaseModel):
     paragraphs: list[Annotated[str, Field(min_length=1, max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)
+
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 @router.put("/translate/cache")
@@ -315,8 +350,10 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
 @router.post("/translate")
 async def translate(req: TranslateRequest, user: dict = Depends(get_current_user)):
     """Translate text with auto-fallback: Gemini if key available, else Google Translate (free)."""
-    src = req.source_language.lower().split("-")[0]
-    tgt = req.target_language.lower().split("-")[0]
+    src = req.source_language.strip().lower().split("-")[0]
+    tgt = req.target_language.strip().lower().split("-")[0]
+    if not src or not tgt:
+        raise HTTPException(status_code=422, detail="source_language and target_language cannot be blank")
     if src == tgt:
         raise HTTPException(status_code=400, detail="Source and target language are the same.")
     try:

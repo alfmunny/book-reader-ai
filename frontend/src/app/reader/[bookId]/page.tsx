@@ -1687,7 +1687,7 @@ export default function ReaderPage() {
                             chapterIndex: ann.chapter_index,
                           });
                         }}
-                        className="shrink-0 text-xs opacity-60 hover:opacity-100 mt-0.5"
+                        className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60 hover:opacity-100"
                         aria-label="Edit annotation"
                       >
                         <EditIcon className="w-3.5 h-3.5" />

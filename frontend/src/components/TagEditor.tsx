@@ -126,7 +126,7 @@ export default function TagEditor({
             onClick={() => handleRemove(tag)}
             disabled={busy === tag}
             aria-label={`Remove tag ${tag}`}
-            className="rounded-full p-0.5 hover:bg-amber-100 disabled:opacity-50 transition-colors"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-amber-100 disabled:opacity-50 transition-colors"
           >
             <CloseIcon className="w-3 h-3" />
           </button>

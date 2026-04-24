@@ -588,7 +588,7 @@ class ImportTranslationEntry(BaseModel):
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     target_language: str = Field(..., min_length=1, max_length=20)
-    paragraphs: list[Annotated[str, Field(max_length=50000)]] = Field(..., max_length=2000)
+    paragraphs: list[Annotated[str, Field(min_length=1, max_length=50000)]] = Field(..., max_length=2000)
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)
     title_translation: str | None = Field(default=None, max_length=500)

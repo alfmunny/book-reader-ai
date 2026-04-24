@@ -1163,6 +1163,21 @@ async def test_translate_cache_put_oversized_paragraph_item_returns_422(client, 
     )
 
 
+async def test_translate_cache_put_empty_paragraph_item_returns_422(client, test_user):
+    """Regression #906: PUT /ai/translate/cache with an empty string paragraph must return 422."""
+    await save_book(9826, {"title": "T", "authors": [], "languages": ["de"],
+                           "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.put(
+        "/api/ai/translate/cache",
+        json={"book_id": 9826, "chapter_index": 0, "target_language": "fr",
+              "paragraphs": [""]},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty paragraph item in PUT /translate/cache, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
 # ── Oversized query param bounds checks (regression for #576) ─────────────────
 
 async def test_translate_cache_get_oversized_target_language_returns_422(client, test_user):

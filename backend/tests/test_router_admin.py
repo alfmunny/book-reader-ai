@@ -2366,6 +2366,20 @@ async def test_import_translations_oversized_paragraph_item_returns_422(admin_cl
     )
 
 
+@pytest.mark.asyncio
+async def test_import_translations_empty_paragraph_item_returns_422(admin_client, admin_db):
+    """Regression #906: POST /admin/translations/import with an empty string paragraph item
+    must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": 0,
+                           "target_language": "en", "paragraphs": [""]}]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for empty paragraph item in import, got {res.status_code}: {res.text}"
+    )
+
+
 # ── Issue #531: QueueSettingsRequest list item bounds ────────────────────────
 
 

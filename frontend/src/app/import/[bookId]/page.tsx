@@ -256,13 +256,13 @@ export default function BookImportPage() {
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={startImport}
-                  className="flex-1 rounded-lg bg-amber-700 text-white py-2.5 text-sm font-medium hover:bg-amber-800"
+                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] text-sm font-medium hover:bg-amber-800 flex items-center justify-center"
                 >
                   Start import
                 </button>
                 <button
                   onClick={() => router.push(nextUrl)}
-                  className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2.5 text-sm font-medium hover:bg-amber-50"
+                  className="rounded-lg border border-amber-300 text-amber-700 px-4 min-h-[44px] text-sm font-medium hover:bg-amber-50 flex items-center"
                 >
                   Skip
                 </button>
@@ -377,7 +377,7 @@ export default function BookImportPage() {
                 <button
                   onClick={handleTranslate}
                   disabled={translateState === "pending"}
-                  className="flex-1 rounded-lg bg-amber-700 text-white py-2 text-xs font-medium hover:bg-amber-800 disabled:opacity-50"
+                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] text-xs font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center justify-center"
                 >
                   {translateState === "pending"
                     ? "Enqueuing…"
@@ -385,7 +385,7 @@ export default function BookImportPage() {
                 </button>
                 <button
                   onClick={() => setTranslateState("skipped")}
-                  className="rounded-lg border border-stone-300 text-stone-600 px-3 py-2 text-xs hover:bg-stone-50"
+                  className="rounded-lg border border-stone-300 text-stone-600 px-3 min-h-[44px] text-xs hover:bg-stone-50 flex items-center"
                 >
                   Skip for now
                 </button>
@@ -408,7 +408,7 @@ export default function BookImportPage() {
               </p>
               <a
                 href="/api/auth/signin"
-                className="inline-block rounded-lg bg-amber-700 text-white px-5 py-2 text-sm font-medium hover:bg-amber-800"
+                className="inline-flex items-center rounded-lg bg-amber-700 text-white px-5 min-h-[44px] text-sm font-medium hover:bg-amber-800"
               >
                 Sign in
               </a>
@@ -432,14 +432,14 @@ export default function BookImportPage() {
               {canStartReading && !showTranslatePrompt && (
                 <button
                   onClick={skipToReading}
-                  className="flex-1 rounded-lg bg-amber-700 text-white py-2 text-sm font-medium hover:bg-amber-800"
+                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] text-sm font-medium hover:bg-amber-800 flex items-center justify-center"
                 >
                   Start reading now
                 </button>
               )}
               <button
                 onClick={cancel}
-                className="rounded-lg border border-stone-300 text-stone-600 px-4 py-2 text-sm hover:bg-stone-50"
+                className="rounded-lg border border-stone-300 text-stone-600 px-4 min-h-[44px] text-sm hover:bg-stone-50 flex items-center"
               >
                 Cancel
               </button>

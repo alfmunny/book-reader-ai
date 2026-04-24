@@ -83,7 +83,7 @@ export default function ChapterEditorPage() {
           <p className="text-sm text-red-600 mb-6">{error}</p>
           <button
             onClick={() => router.push("/upload")}
-            className="rounded-lg bg-amber-700 px-6 py-2.5 text-white font-medium hover:bg-amber-800 transition-colors"
+            className="rounded-lg bg-amber-700 px-6 min-h-[44px] text-white font-medium hover:bg-amber-800 transition-colors flex items-center"
           >
             Try another file
           </button>
@@ -102,7 +102,7 @@ export default function ChapterEditorPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/upload")}
-              className="text-sm text-amber-600 hover:text-amber-800 transition-colors"
+              className="text-sm text-amber-600 hover:text-amber-800 transition-colors min-h-[44px] flex items-center"
             >
               <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
             </button>
@@ -114,7 +114,7 @@ export default function ChapterEditorPage() {
           <button
             onClick={handleConfirm}
             disabled={confirming || chapters.length === 0}
-            className="rounded-lg bg-amber-700 px-5 py-2 text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="rounded-lg bg-amber-700 px-5 min-h-[44px] text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {confirming && (
               <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />

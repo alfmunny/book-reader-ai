@@ -138,7 +138,7 @@ describe("SelectionToolbar", () => {
     simulateSelection("chat this passage", readerEl);
     act(() => { document.dispatchEvent(new Event("selectionchange")); });
 
-    fireEvent.click(screen.getByRole("button", { name: /Chat/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Ask AI/i }));
     expect(onChat).toHaveBeenCalledWith("chat this passage");
   });
 

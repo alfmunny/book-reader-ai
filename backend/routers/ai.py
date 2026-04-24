@@ -45,11 +45,24 @@ def _require_gemini_key(user: dict) -> str:
 
 # ── Request models ────────────────────────────────────────────────────────────
 
+def _validate_language_code(v: str) -> str:
+    """Strip, lowercase, and take the primary subtag. Raises ValueError if blank."""
+    s = v.strip().lower().split("-")[0]
+    if not s:
+        raise ValueError("language code cannot be blank")
+    return s
+
+
 class InsightRequest(BaseModel):
     chapter_text: str = Field(..., min_length=1, max_length=50_000)
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+
+    @field_validator("response_language")
+    @classmethod
+    def response_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 class QARequest(BaseModel):
@@ -59,6 +72,11 @@ class QARequest(BaseModel):
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
 
+    @field_validator("response_language")
+    @classmethod
+    def response_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
+
 
 class ReferencesRequest(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=500)
@@ -66,6 +84,11 @@ class ReferencesRequest(BaseModel):
     chapter_title: str = Field(default="", max_length=500)
     chapter_excerpt: str = Field(default="", max_length=10_000)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+
+    @field_validator("response_language")
+    @classmethod
+    def response_language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 class SummaryRequest(BaseModel):
@@ -92,6 +115,11 @@ class TTSRequest(BaseModel):
     language: str = Field(default="en", min_length=1, max_length=20)
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
+
+    @field_validator("language")
+    @classmethod
+    def language_not_blank(cls, v: str) -> str:
+        return _validate_language_code(v)
 
 
 class ChunkTextRequest(BaseModel):
@@ -279,10 +307,7 @@ class SaveTranslationRequest(BaseModel):
     @field_validator("target_language")
     @classmethod
     def target_language_not_blank(cls, v: str) -> str:
-        s = v.strip().lower().split("-")[0]
-        if not s:
-            raise ValueError("target_language cannot be blank")
-        return s
+        return _validate_language_code(v)
 
 
 @router.put("/translate/cache")

@@ -252,7 +252,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveKey}
                 disabled={savingKey || !keyInput.trim()}
-                className="rounded-lg bg-amber-700 text-white px-5 py-2 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-amber-700 text-white px-5 py-2 min-h-[44px] text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
               >
                 {savingKey ? "Saving…" : "Save key"}
               </button>
@@ -353,7 +353,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveObsidian}
                 disabled={obsidianSaving}
-                className="rounded-lg bg-amber-700 text-white px-5 py-2 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-amber-700 text-white px-5 py-2 min-h-[44px] text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
               >
                 {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
               </button>
@@ -488,7 +488,7 @@ export default function ProfilePage() {
           {/* Single save button at the bottom of the preferences section */}
           <button
             onClick={savePreferences}
-            className={`w-full rounded-lg py-2.5 text-sm font-medium transition-colors ${
+            className={`w-full rounded-lg py-2.5 min-h-[44px] text-sm font-medium transition-colors ${
               prefsSaved
                 ? "bg-green-600 text-white"
                 : "bg-amber-700 text-white hover:bg-amber-800"

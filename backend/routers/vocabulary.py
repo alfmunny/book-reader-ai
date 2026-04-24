@@ -71,7 +71,7 @@ async def list_vocabulary(user: dict = Depends(get_current_user)):
 @router.get("/definition/{word}")
 async def get_definition(
     word: str = Path(..., max_length=200),
-    lang: str = Query(default="en", max_length=20),
+    lang: str = Query(default="en", min_length=1, max_length=20),
     user: dict = Depends(get_current_user),
 ):
     from services import wiktionary

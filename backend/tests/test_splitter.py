@@ -1777,3 +1777,47 @@ def test_build_chapters_from_epub_book_title_not_in_chapter_body():
         assert book_title not in ch.text.split("\n\n")[0], (
             f"Book title must not appear in first paragraph of '{ch.title}'; got: {ch.text[:120]!r}"
         )
+
+
+# ── Issue #820: <br>-separated verse lines inside a single <p> ───────────────
+
+
+def test_epub_verse_br_lines_preserved_in_single_p():
+    """Regression #820: a verse stanza encoded as a single <p> with <br/>-
+    separated lines must come out with internal \\n line breaks, not as one
+    collapsed space-separated string.
+
+    The FAUST 'O schaudre nicht!' speech uses exactly this pattern — one <p>
+    for the whole stanza, each verse line followed by <br/>.  Before the fix
+    the br elements were dropped by itertext(), collapsing the stanza into a
+    single run-on sentence."""
+    verse_block = (
+        "<p>"
+        "FAUST. O schaudre nicht! Laß diesen Blick,<br/>"
+        "Laß diesen Händedruck dir sagen<br/>"
+        "Was unaussprechlich ist.<br/>"
+        "Sich hinzugeben ganz und eine Wonne<br/>"
+        "Zu fühlen, die ewig sein muß!<br/>"
+        "Ewig!—Ihr Ende würde Verzweiflung sein<br/>"
+        "Nein, kein Ende! Kein Ende!<br/>"
+        "(Margarete drückt ihm die Hände, macht sich los und läuft weg.)"
+        "</p>"
+    )
+    epub_bytes = _make_epub_with_collapsed_speaker_cues("Garten", verse_block)
+    chapters = build_chapters_from_epub(epub_bytes)
+    assert len(chapters) >= 1
+
+    scene_text = chapters[0].text
+    # The verse stanza should be a single paragraph (separated from any
+    # surrounding text by \n\n), not 7 individual paragraphs.
+    paragraphs = [p for p in scene_text.split("\n\n") if p.strip()]
+    # Find the paragraph containing the FAUST speech.
+    faust_para = next(
+        (p for p in paragraphs if "O schaudre nicht" in p), None
+    )
+    assert faust_para is not None, f"FAUST speech not found in {paragraphs!r}"
+    # Each <br/> line must survive as an internal \n — 7 br elements → 8 lines.
+    lines = [l for l in faust_para.split("\n") if l.strip()]
+    assert len(lines) >= 7, (
+        f"Expected ≥7 verse lines preserved via \\n, got {len(lines)}: {faust_para!r}"
+    )

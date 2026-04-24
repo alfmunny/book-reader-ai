@@ -289,3 +289,39 @@ async def test_list_decks_reports_member_count_and_due_today(client, test_user):
     assert entry["member_count"] == 1
     # New cards seed with due_date = today, so due_today should be 1
     assert entry["due_today"] == 1
+
+
+# ── Issue #810: min_length=1 on SmartRules string fields ──────────────────────
+
+
+async def test_smart_rules_empty_language_returns_422(client, test_user):
+    """Regression #810: SmartRules.language="" must be rejected with 422."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "EmptyLang", "mode": "smart", "rules_json": {"language": ""}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty language in SmartRules, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_empty_tag_in_tags_any_returns_422(client, test_user):
+    """Regression #810: SmartRules.tags_any with empty string item must be rejected with 422."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "EmptyTag", "mode": "smart", "rules_json": {"tags_any": [""]}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty tag in tags_any, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_empty_tag_in_tags_all_returns_422(client, test_user):
+    """Regression #810: SmartRules.tags_all with empty string item must be rejected with 422."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "EmptyTagAll", "mode": "smart", "rules_json": {"tags_all": [""]}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for empty tag in tags_all, got {resp.status_code}: {resp.text}"
+    )

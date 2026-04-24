@@ -1826,7 +1826,7 @@ export default function ReaderPage() {
                               {/* Lemma header */}
                               <button
                                 onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-amber-100 transition-colors text-left"
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] hover:bg-amber-100 transition-colors text-left"
                               >
                                 <span className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (

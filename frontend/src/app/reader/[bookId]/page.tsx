@@ -1858,7 +1858,7 @@ export default function ReaderPage() {
                       <span className="text-xs text-stone-500">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
-                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium min-h-[44px] flex items-center gap-1">
+                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] flex items-center gap-1">
                         View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </button>
                     </div>
@@ -2059,7 +2059,7 @@ export default function ReaderPage() {
                     {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                       <button
                         onClick={handleRetranslate}
-                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50"
+                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50"
                       >
                         Retranslate chapter
                       </button>

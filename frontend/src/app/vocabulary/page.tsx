@@ -166,12 +166,12 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           <div className="flex items-baseline justify-between gap-2">
             <span className="font-serif font-bold text-ink text-xl">{word}</span>
             {def && def.lemma !== word && (
-              <span className="text-sm text-amber-600">← {def.lemma}</span>
+              <span className="text-sm text-amber-700">← {def.lemma}</span>
             )}
           </div>
 
           {loading && (
-            <div className="flex items-center gap-2 text-amber-600 text-sm" role="status">
+            <div className="flex items-center gap-2 text-amber-700 text-sm" role="status">
               <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
               Looking up…
             </div>
@@ -197,7 +197,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
               href={def.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs text-amber-600 hover:text-amber-800 hover:underline"
+              className="inline-block text-xs text-amber-700 hover:text-amber-800 hover:underline"
             >
               View on Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
             </a>
@@ -373,7 +373,7 @@ function VocabularyPageContent() {
               </span>
             )}
             {group.language && (
-              <span className="text-xs text-amber-600 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">
+              <span className="text-xs text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 border border-amber-200">
                 {group.language}
               </span>
             )}
@@ -401,7 +401,7 @@ function VocabularyPageContent() {
             f.occurrences.map((occ, i) => (
               <div key={`${f.word}-${i}`} className="text-sm text-stone-600">
                 {f.word !== group.lemma && (
-                  <span className="text-xs text-amber-600 font-medium mr-1.5">{f.word}</span>
+                  <span className="text-xs text-amber-700 font-medium mr-1.5">{f.word}</span>
                 )}
                 {occ.book_title ? (
                   <a

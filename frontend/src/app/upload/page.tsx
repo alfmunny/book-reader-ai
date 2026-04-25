@@ -98,7 +98,7 @@ export default function UploadPage() {
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => router.push("/")}
-            className="text-sm text-amber-600 hover:text-amber-800 transition-colors min-h-[44px] flex items-center"
+            className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] flex items-center"
           >
             <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
           </button>

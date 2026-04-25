@@ -153,8 +153,8 @@ test("edit button has aria-label so screen readers announce it correctly", async
   const ann = makeAnnotation({ sentence_text: "Some sentence." });
   render(<AnnotationsSidebar {...BASE_PROPS} annotations={[ann]} totalCount={1} />);
   await userEvent.click(screen.getByTestId("annotations-toggle"));
-  // getByRole with name relies on aria-label (not just title)
-  expect(screen.getByRole("button", { name: "Edit annotation" })).toBeInTheDocument();
+  // aria-label now includes sentence text for unique identification
+  expect(screen.getByRole("button", { name: `Edit annotation: ${ann.sentence_text.slice(0, 60)}` })).toBeInTheDocument();
 });
 
 test("annotation link button has aria-label when bookId is provided", async () => {

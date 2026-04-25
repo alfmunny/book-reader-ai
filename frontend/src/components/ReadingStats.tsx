@@ -151,7 +151,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
       >
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-stone-700">Activity — last year</p>
-          <p className="text-xs text-stone-400">
+          <p className="text-xs text-stone-500">
             {activeDays} active {activeDays === 1 ? "day" : "days"}
           </p>
         </div>

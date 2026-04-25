@@ -463,7 +463,7 @@ export default function QueueTab({ adminFetch }: Props) {
           <div className="h-4 w-3/4 bg-stone-100 rounded" />
           <div className="h-4 w-5/6 bg-stone-100 rounded" />
         </div>
-        <div className="text-center text-xs text-stone-400">
+        <div className="text-center text-xs text-stone-500">
           Loading queue…
         </div>
       </div>
@@ -650,7 +650,7 @@ export default function QueueTab({ adminFetch }: Props) {
             )}
           </div>
           {s.ended_at && (
-            <p className="text-xs text-stone-400 mt-2">Last completed {relTime(s.ended_at)}</p>
+            <p className="text-xs text-stone-500 mt-2">Last completed {relTime(s.ended_at)}</p>
           )}
         </div>
       )}
@@ -936,7 +936,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       <div className="text-[11px] text-stone-500 mt-1 leading-snug">
                         {p.description}
                       </div>
-                      <div className="text-xs font-mono text-stone-400 mt-1 truncate">
+                      <div className="text-xs font-mono text-stone-500 mt-1 truncate">
                         {p.chain.join(" → ")}
                       </div>
                     </button>
@@ -981,7 +981,7 @@ export default function QueueTab({ adminFetch }: Props) {
                             {opt.maxOutputTokens.toLocaleString()} tok
                           </span>
                         ) : (
-                          <span className="text-[11px] text-stone-400">
+                          <span className="text-[11px] text-stone-500">
                             custom — conservative defaults
                           </span>
                         )}
@@ -1032,7 +1032,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 );
               })}
               {chain.length === 0 && (
-                <div className="text-xs text-stone-400 italic">
+                <div className="text-xs text-stone-500 italic">
                   Chain is empty — add a model below.
                 </div>
               )}
@@ -1201,7 +1201,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       <div className="text-sm font-semibold text-ink">
                         ${row.usd.toFixed(2)}
                       </div>
-                      <div className="text-xs text-stone-400">
+                      <div className="text-xs text-stone-500">
                         ${(row.usd / books).toFixed(3)}/book
                       </div>
                     </div>
@@ -1210,7 +1210,7 @@ export default function QueueTab({ adminFetch }: Props) {
               </div>
             </div>
 
-            <p className="text-[11px] text-stone-400">
+            <p className="text-[11px] text-stone-500">
               Rough estimate — assumes ~3 chars/token and 1:1 input-to-output ratio.
               Actual cost depends on tokenizer, chapter lengths, and batching.
               Chain advance on 429/quota means multiple models may contribute — the
@@ -1255,7 +1255,7 @@ export default function QueueTab({ adminFetch }: Props) {
           </button>
         </div>
         {items.length === 0 ? (
-          <div role="status" className="px-4 py-8 text-center text-stone-400 text-sm flex items-center justify-center gap-2">
+          <div role="status" className="px-4 py-8 text-center text-stone-500 text-sm flex items-center justify-center gap-2">
             {loadingItems && <Spinner />}
             <span>{loadingItems ? "Loading items…" : "No items in this view."}</span>
           </div>
@@ -1288,7 +1288,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   · ch {it.chapter_index + 1} → {it.target_language}
                 </span>
                 <span
-                  className="text-stone-400 shrink-0"
+                  className="text-stone-500 shrink-0"
                   title={`Queued ${it.created_at} by ${it.queued_by || "auto (save_book)"}`}
                 >
                   · {relTime(it.created_at)}
@@ -1298,7 +1298,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   </span>
                 </span>
                 {it.attempts > 0 && (
-                  <span className="text-stone-400 shrink-0">· {it.attempts} attempts</span>
+                  <span className="text-stone-500 shrink-0">· {it.attempts} attempts</span>
                 )}
                 {it.last_error && (
                   <span

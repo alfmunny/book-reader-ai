@@ -301,7 +301,7 @@ export default function BooksPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-stone-400">
+                  <div className="text-xs text-stone-500">
                     ID: {b.id} · {b.languages?.join(", ")}
                     {" · "}
                     {((b.text_length || 0) / 1000).toFixed(0)}K chars
@@ -429,7 +429,7 @@ export default function BooksPage() {
                             <div className="px-3 py-2 flex items-center gap-2">
                               <button
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
-                                className="text-xs text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
+                                className="text-xs text-stone-500 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
                                 aria-label={isLangExpanded ? `Collapse ${lang} translations` : `Expand ${lang} translations`}
                                 aria-expanded={isLangExpanded}
                               >
@@ -490,7 +490,7 @@ export default function BooksPage() {
                             {isLangExpanded && (
                               <div className="border-t border-amber-100 divide-y divide-amber-50 max-h-80 overflow-y-auto">
                                 {chapterRows.length === 0 ? (
-                                  <p className="text-xs text-stone-400 px-3 py-2">
+                                  <p className="text-xs text-stone-500 px-3 py-2">
                                     (Chapter-level details load from the translations list — reload if empty.)
                                   </p>
                                 ) : (

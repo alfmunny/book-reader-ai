@@ -70,7 +70,7 @@ export default function UsersPage() {
                 <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">pending</span>
               )}
             </div>
-            <p className="text-xs text-stone-400 truncate">{u.email}</p>
+            <p className="text-xs text-stone-500 truncate">{u.email}</p>
           </div>
           {u.id !== myId && (
             <div className="flex gap-1">

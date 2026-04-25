@@ -90,7 +90,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
           </div>
         )}
         {!loading && (!def || def.definitions.length === 0) && (
-          <p className="text-xs text-stone-400 italic">No definition found.</p>
+          <p className="text-xs text-stone-500 italic">No definition found.</p>
         )}
         {!loading && def && def.definitions.length > 0 && (
           <div className="space-y-2">

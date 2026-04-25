@@ -693,7 +693,7 @@ export default function BookNotesPage() {
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           </div>
         ) : fetchError ? (
-          <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
             <p className="font-serif text-lg text-red-500 mt-1">Failed to load notes.</p>
             <p className="text-sm">Please refresh the page to try again.</p>
           </div>

@@ -162,7 +162,7 @@ describe("AdminBooksPage — null translations and queue fallback (lines 273, 27
 
     await screen.findByText("Null Fields Book");
     // no translations → allLangs=[] → "no translations" shown
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() =>
@@ -275,13 +275,13 @@ describe("AdminBooksPage — moveInput ?? '' false branch (lines 512, 518)", () 
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+      (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));

@@ -87,14 +87,14 @@ async function renderWithLangExpanded() {
   await flushPromises();
 
   // Expand book row
-  const expandBtns = await screen.findAllByTitle("Expand");
+  const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
   await userEvent.click(expandBtns[0]);
 
   // Expand the zh language row
   await waitFor(() => screen.getByText("zh"));
   const allBtns = screen.getAllByRole("button");
   const langArrow = allBtns.find(
-    (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+    (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
   );
   if (langArrow) await userEvent.click(langArrow);
 
@@ -325,7 +325,7 @@ describe("AdminBooksPage — expanded book with no translations cached", () => {
     await flushPromises();
 
     // Expand book row
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() =>
@@ -345,7 +345,7 @@ describe("AdminBooksPage — Open button navigates to reader", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const openBtn = await screen.findByRole("button", { name: /^Open reader$/i });
+    const openBtn = await screen.findByRole("button", { name: /^Open reader for/i });
     await userEvent.click(openBtn);
 
     expect(mockPush).toHaveBeenCalledWith("/reader/1");

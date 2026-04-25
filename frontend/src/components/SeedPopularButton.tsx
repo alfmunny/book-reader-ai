@@ -173,7 +173,14 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
                 </span>
                 <span>{pct}%</span>
               </div>
-              <div className="h-1.5 bg-amber-100 rounded-full overflow-hidden">
+              <div
+                className="h-1.5 bg-amber-100 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct}
+                aria-label="Seeding progress"
+              >
                 <div
                   className="h-full bg-amber-600 transition-all duration-150"
                   style={{ width: `${pct}%` }}

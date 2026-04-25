@@ -77,3 +77,21 @@ describe("Reader page reading progress bar (closes #1251)", () => {
     expect(window).toContain("aria-valuenow");
   });
 });
+
+describe("SeedPopularButton seeding progress bar (closes #1251)", () => {
+  const src = read("../components/SeedPopularButton.tsx");
+
+  it("has role=progressbar", () => {
+    const idx = src.indexOf("Seeding progress");
+    expect(idx).toBeGreaterThan(-1);
+    const region = src.slice(Math.max(0, idx - 200), idx + 50);
+    expect(region).toContain('role="progressbar"');
+  });
+
+  it("has aria-valuenow", () => {
+    const idx = src.indexOf("Seeding progress");
+    expect(idx).toBeGreaterThan(-1);
+    const region = src.slice(Math.max(0, idx - 100), idx + 50);
+    expect(region).toContain("aria-valuenow");
+  });
+});

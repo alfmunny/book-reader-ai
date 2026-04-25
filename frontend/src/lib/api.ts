@@ -906,8 +906,9 @@ export interface FlashcardStats {
   reviewed_today: number;
 }
 
-export function getDueFlashcards() {
-  return request<Flashcard[]>("/vocabulary/flashcards/due");
+export function getDueFlashcards(deckId?: number) {
+  const qs = deckId ? `?deck_id=${deckId}` : "";
+  return request<Flashcard[]>(`/vocabulary/flashcards/due${qs}`);
 }
 
 export function reviewFlashcard(vocabularyId: number, grade: number) {
@@ -918,8 +919,9 @@ export function reviewFlashcard(vocabularyId: number, grade: number) {
   });
 }
 
-export function getFlashcardStats() {
-  return request<FlashcardStats>("/vocabulary/flashcards/stats");
+export function getFlashcardStats(deckId?: number) {
+  const qs = deckId ? `?deck_id=${deckId}` : "";
+  return request<FlashcardStats>(`/vocabulary/flashcards/stats${qs}`);
 }
 
 // ── Chat history (server-side persistence, issue #907) ────────────────────────

@@ -6,6 +6,8 @@ import {
   getDueFlashcards,
   reviewFlashcard,
   getFlashcardStats,
+  listDecks,
+  DeckSummary,
   Flashcard,
   FlashcardStats,
 } from "@/lib/api";
@@ -29,11 +31,16 @@ export default function FlashcardsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [decks, setDecks] = useState<DeckSummary[]>([]);
+  const [selectedDeckId, setSelectedDeckId] = useState<number | undefined>(undefined);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [due, statsData] = await Promise.all([getDueFlashcards(), getFlashcardStats()]);
+      const [due, statsData] = await Promise.all([
+        getDueFlashcards(selectedDeckId),
+        getFlashcardStats(selectedDeckId),
+      ]);
       setCards(due);
       setStats(statsData);
       setCurrentIndex(0);
@@ -42,11 +49,24 @@ export default function FlashcardsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedDeckId]);
 
   useEffect(() => {
     if (status === "authenticated") loadData();
   }, [status, loadData]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let alive = true;
+    listDecks()
+      .then((d) => {
+        if (alive) setDecks(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [status]);
 
   const currentCard = cards[currentIndex] ?? null;
 
@@ -104,6 +124,33 @@ export default function FlashcardsPage() {
           )}
         </div>
 
+        {/* Deck selector */}
+        {decks.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="flashcards-deck-select"
+              className="text-sm text-stone-600 shrink-0"
+            >
+              Deck:
+            </label>
+            <select
+              id="flashcards-deck-select"
+              value={selectedDeckId ?? ""}
+              onChange={(e) =>
+                setSelectedDeckId(e.target.value ? Number(e.target.value) : undefined)
+              }
+              className="flex-1 min-h-[44px] rounded-lg border border-amber-200 bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-amber-300"
+            >
+              <option value="">All decks</option>
+              {decks.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} ({d.due_today} due)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Progress bar */}
         <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
           <div
@@ -118,8 +165,9 @@ export default function FlashcardsPage() {
             <CheckIcon className="w-12 h-12 text-green-500" />
             <h2 className="font-serif text-2xl text-ink">All done for today!</h2>
             <p className="text-sm text-stone-500">
-              You reviewed {stats?.reviewed_today ?? 0} card{(stats?.reviewed_today ?? 0) !== 1 ? "s" : ""}.
-              Come back tomorrow for more.
+              {selectedDeckId
+                ? `No more cards due in "${decks.find((d) => d.id === selectedDeckId)?.name ?? "this deck"}".`
+                : `You reviewed ${stats?.reviewed_today ?? 0} card${(stats?.reviewed_today ?? 0) !== 1 ? "s" : ""}. Come back tomorrow for more.`}
             </p>
             <button
               onClick={() => router.push("/vocabulary")}

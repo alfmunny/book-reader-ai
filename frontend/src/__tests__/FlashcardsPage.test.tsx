@@ -18,6 +18,7 @@ jest.mock("@/lib/api", () => ({
   getDueFlashcards: jest.fn(),
   reviewFlashcard: jest.fn(),
   getFlashcardStats: jest.fn(),
+  listDecks: jest.fn(() => Promise.resolve([])),
 }));
 
 import * as api from "@/lib/api";

@@ -100,7 +100,7 @@ export default function WordLookup({ word, position, language, onClose }: Props)
           <div className="flex items-baseline gap-2 mb-2">
             <span className="font-serif font-bold text-ink text-base">{result.word}</span>
             {result.phonetic && (
-              <span className="text-xs text-amber-500">{result.phonetic}</span>
+              <span className="text-xs text-amber-700">{result.phonetic}</span>
             )}
           </div>
           {result.meanings.map((m, i) => (

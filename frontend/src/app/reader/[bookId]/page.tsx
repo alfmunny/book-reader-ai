@@ -941,7 +941,7 @@ export default function ReaderPage() {
                       href={`https://www.gutenberg.org/ebooks/${meta.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 text-xs text-amber-500 hover:text-amber-700"
+                      className="shrink-0 text-xs text-amber-700 hover:text-amber-800"
                       title="View on Project Gutenberg"
                     ><ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" /></a>
                   )}
@@ -956,7 +956,7 @@ export default function ReaderPage() {
           {/* Chapter navigation — desktop only (mobile uses bottom bar) */}
           <div className="hidden md:flex items-center gap-1 shrink-0">
             {loading ? (
-              <span role="status" className="text-xs text-amber-500 animate-pulse">Loading…</span>
+              <span role="status" className="text-xs text-amber-700 animate-pulse">Loading…</span>
             ) : (
               <>
                 <button
@@ -1417,7 +1417,7 @@ export default function ReaderPage() {
                     disabled={chapterIndex === 0}
                     className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px]"
                   ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous chapter</button>
-                  <span className="text-xs text-amber-500 self-center">
+                  <span className="text-xs text-amber-700 self-center">
                     {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
                   </span>
                   <button

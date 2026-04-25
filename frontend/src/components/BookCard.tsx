@@ -59,7 +59,7 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
           {book.authors.join(", ")}
         </p>
         {badge && (
-          <span className="mt-1.5 text-xs text-amber-500">{badge}</span>
+          <span className="mt-1.5 text-xs text-amber-700">{badge}</span>
         )}
       </button>
     </div>

@@ -139,7 +139,7 @@ export default function WordActionDrawer({
           <div className="flex items-baseline gap-2">
             <span className="font-serif font-bold text-ink text-xl">{action.word}</span>
             {result?.phonetic && (
-              <span className="text-sm text-amber-500">{result.phonetic}</span>
+              <span className="text-sm text-amber-700">{result.phonetic}</span>
             )}
           </div>
 
@@ -152,7 +152,7 @@ export default function WordActionDrawer({
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-amber-500 italic">{error}</p>
+            <p role="alert" className="text-sm text-amber-700 italic">{error}</p>
           )}
 
           {result && result.meanings.length > 0 && (
@@ -173,7 +173,7 @@ export default function WordActionDrawer({
           {/* Translation context */}
           {action.translationText && (
             <div className="border-l-2 border-amber-300 pl-3 py-1">
-              <p className="text-xs text-amber-500 mb-0.5">Translation</p>
+              <p className="text-xs text-amber-700 mb-0.5">Translation</p>
               <p className="text-sm text-amber-800 italic">{action.translationText}</p>
             </div>
           )}

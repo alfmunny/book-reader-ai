@@ -256,7 +256,7 @@ async def confirm_chapters(
         final_chapters: list[dict] = []
         for ch_spec in body.chapters:
             orig_idx = ch_spec.original_index if ch_spec.original_index is not None else ch_spec.index
-            title = ch_spec.title or f"Chapter {len(final_chapters) + 1}"
+            title = (ch_spec.title or "").strip() or f"Chapter {len(final_chapters) + 1}"
             if orig_idx is not None and orig_idx in orig_by_idx:
                 text = orig_by_idx[orig_idx]["text"] or ""
             else:

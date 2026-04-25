@@ -826,3 +826,41 @@ async def test_upload_parse_error_does_not_leak_exception_detail(client, test_us
     detail = resp.json()["detail"]
     assert "internal-parser-secret-xyzzy" not in detail
     assert ":" not in detail or "Could not parse" in detail
+
+
+# ── Issue #1119: whitespace-only chapter titles bypass fallback ──────────────
+
+
+async def test_confirm_chapters_whitespace_title_falls_back_to_default(client, test_user):
+    """Regression #1119: confirm_chapters with title="   " must fall back to
+    the default 'Chapter N' label, not store the literal whitespace."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+    detected = upload_resp.json()["detected_chapters"]
+
+    # Send the first chapter spec with a whitespace-only title; subsequent ones
+    # use whatever the parser detected so we still confirm the full book.
+    chapters_to_confirm = [
+        {"title": "   ", "original_index": detected[0]["index"]},
+    ] + [
+        {"title": ch["title"], "original_index": ch["index"]}
+        for ch in detected[1:]
+    ]
+    confirm_resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": chapters_to_confirm},
+    )
+    assert confirm_resp.status_code == 200
+
+    chapters_resp = await client.get(f"/api/books/{book_id}/chapters")
+    assert chapters_resp.status_code == 200
+    confirmed = chapters_resp.json()["chapters"]
+
+    first_title = confirmed[0]["title"]
+    assert first_title.strip() != "", (
+        f"Whitespace-only title was stored verbatim instead of falling back; got {first_title!r}"
+    )
+    assert first_title == "Chapter 1", (
+        f"Expected fallback 'Chapter 1', got {first_title!r}"
+    )

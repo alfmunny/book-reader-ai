@@ -1583,7 +1583,7 @@ export default function ReaderPage() {
 
           {/* Obsidian export toast */}
           {obsidianToast && (
-            <div className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm text-ink max-w-xs">
+            <div role="status" className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm text-ink max-w-xs">
               {obsidianToast.startsWith("http") ? (
                 <>
                   Exported!{" "}

@@ -50,6 +50,16 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
     };
   }, [open]);
 
+  // Dismiss on Escape (APG dialog pattern)
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <>
       {/* Toggle button — always visible */}

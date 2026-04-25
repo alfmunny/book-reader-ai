@@ -48,17 +48,20 @@ function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  label,
 }: {
   options: Option<T>[];
   value: T;
   onChange: (v: T) => void;
+  label: string;
 }) {
   return (
-    <div className="flex rounded-lg border border-amber-200 overflow-hidden">
+    <div role="group" aria-label={label} className="flex rounded-lg border border-amber-200 overflow-hidden">
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
+          aria-pressed={value === opt.value}
           className={`flex-1 px-2 py-1.5 min-h-[44px] text-xs font-medium transition-colors flex items-center justify-center ${
             value === opt.value
               ? "bg-amber-700 text-white"
@@ -124,6 +127,7 @@ export default function TypographyPanel({
       <div className="space-y-4">
         <Row label="Font size">
           <SegmentedControl
+            label="Font size"
             options={FONT_SIZES}
             value={fontSize}
             onChange={set(onFontSize, "fontSize")}
@@ -131,6 +135,7 @@ export default function TypographyPanel({
         </Row>
         <Row label="Font">
           <SegmentedControl
+            label="Font family"
             options={FONT_FAMILIES}
             value={fontFamily}
             onChange={set(onFontFamily, "fontFamily")}
@@ -138,6 +143,7 @@ export default function TypographyPanel({
         </Row>
         <Row label="Spacing">
           <SegmentedControl
+            label="Line spacing"
             options={LINE_HEIGHTS}
             value={lineHeight}
             onChange={set(onLineHeight, "lineHeight")}
@@ -145,6 +151,7 @@ export default function TypographyPanel({
         </Row>
         <Row label="Width">
           <SegmentedControl
+            label="Content width"
             options={CONTENT_WIDTHS}
             value={contentWidth}
             onChange={set(onContentWidth, "contentWidth")}

@@ -864,3 +864,34 @@ async def test_confirm_chapters_whitespace_title_falls_back_to_default(client, t
     assert first_title == "Chapter 1", (
         f"Expected fallback 'Chapter 1', got {first_title!r}"
     )
+
+
+# ── Issue #1123: whitespace-only parsed title/author bypass Untitled/Unknown fallback ──
+
+
+async def test_upload_whitespace_title_author_falls_back_to_defaults(client, test_user, tmp_db):
+    """Regression #1123: parser output with whitespace-only title/author must
+    fall back to 'Untitled'/'Unknown' (same as empty string), not be stored verbatim."""
+    with patch("services.book_parser.parse_txt") as mock_parse:
+        mock_parse.return_value = {
+            "title": "   ",
+            "author": "\t\n",
+            "chapters": [{"title": "Ch 1", "text": "Some content here."}],
+        }
+        resp = await client.post("/api/books/upload", files=_txt_upload())
+
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    book_id = resp.json()["book_id"]
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT title, authors FROM books WHERE id=?", (book_id,)) as cur:
+            row = await cur.fetchone()
+    assert row is not None
+    title_stored, authors_stored = row
+    assert title_stored == "Untitled", (
+        f"Expected fallback 'Untitled' for whitespace title, got {title_stored!r}"
+    )
+    authors_list = json.loads(authors_stored)
+    assert authors_list[0] == "Unknown", (
+        f"Expected fallback 'Unknown' for whitespace author, got {authors_list[0]!r}"
+    )

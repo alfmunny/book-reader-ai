@@ -73,6 +73,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
           ref={drawerRef}
           tabIndex={-1}
           role="dialog"
+          aria-modal="true"
           aria-labelledby="annotations-heading"
           className="fixed right-0 top-0 h-full w-full sm:w-80 bg-white border-l border-amber-200 shadow-2xl z-50 flex flex-col focus:outline-none"
           data-testid="annotations-sidebar"

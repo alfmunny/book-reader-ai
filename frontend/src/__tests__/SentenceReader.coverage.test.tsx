@@ -348,7 +348,7 @@ describe("SentenceReader — showAnnotations=false (lines 401-409)", () => {
     );
 
     // Note toggle button should NOT be rendered
-    expect(screen.queryByRole("button", { name: "Toggle note" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Toggle note for:/i })).not.toBeInTheDocument();
   });
 
   it("shows annotation underline when showAnnotations defaults to true", () => {

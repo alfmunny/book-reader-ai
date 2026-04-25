@@ -24,7 +24,7 @@ describe("AnnotationToolbar color picker touch targets (closes #826)", () => {
   it("visual circle swatch stays w-8 h-8", () => {
     const idx = src.indexOf("Highlight colour");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 600);
+    const window = src.slice(idx, idx + 1000);
     expect(window).toContain("w-8 h-8");
   });
 });

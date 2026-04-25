@@ -468,7 +468,7 @@ export default function InsightChat({
             return (
               <div key={i} className="flex flex-col items-end gap-1.5">
                 <div className="bg-amber-600 text-white rounded-2xl rounded-tr-sm px-3.5 py-2 max-w-[88%] leading-relaxed shadow-sm break-words">
-                  {msg.content}
+                  <span className="sr-only">You: </span>{msg.content}
                 </div>
                 {msg.context && (
                   <div className="max-w-[88%] w-full">
@@ -514,6 +514,7 @@ export default function InsightChat({
                     "text-gray-700",
                   ].join(" ")}
                 >
+                  <span className="sr-only">Assistant: </span>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
                 {onSaveInsight && prevUserMsg && (() => {

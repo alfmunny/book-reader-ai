@@ -370,7 +370,7 @@ export default function BookImportPage() {
               </div>
 
               {translateError && (
-                <p className="text-xs text-red-600 mb-2">{translateError}</p>
+                <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">{translateError}</p>
               )}
 
               <div className="flex gap-2">
@@ -416,7 +416,7 @@ export default function BookImportPage() {
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm mb-4">
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm mb-4">
               {error}
             </div>
           )}

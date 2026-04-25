@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookMeta, getBookTranslationStatus, TranslationStatus } from "@/lib/api";
 import { RecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
@@ -22,6 +22,7 @@ interface Props {
 export default function BookDetailModal({ book, recentBook, onClose, onRead }: Props) {
   const [translationStatus, setTranslationStatus] = useState<TranslationStatus | null>(null);
   const translationLang = getSettings().translationLang;
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getBookTranslationStatus(book.id, translationLang)
@@ -37,6 +38,14 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+  }, []);
+
   const hasTranslation =
     translationStatus !== null && translationStatus.translated_chapters > 0;
   const fullTranslation =
@@ -50,10 +59,12 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="book-detail-title"
-        className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6 max-h-[85vh] overflow-y-auto"
+        className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6 max-h-[85vh] overflow-y-auto focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header: cover + metadata + close */}

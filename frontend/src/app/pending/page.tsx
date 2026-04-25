@@ -4,7 +4,7 @@ import { ClockIcon } from "@/components/Icons";
 
 export default function PendingApprovalPage() {
   return (
-    <div className="min-h-screen bg-parchment flex items-center justify-center px-4">
+    <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <ClockIcon className="w-16 h-16 text-amber-400 mx-auto mb-4" />
         <h1 className="font-serif text-2xl font-bold text-ink mb-2">Account Pending</h1>
@@ -19,6 +19,6 @@ export default function PendingApprovalPage() {
           Sign out
         </button>
       </div>
-    </div>
+    </main>
   );
 }

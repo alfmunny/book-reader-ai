@@ -623,7 +623,7 @@ export default function BookNotesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-parchment">
+    <main id="main-content" className="min-h-screen bg-parchment">
       {/* Sticky header */}
       <header className="sticky top-0 z-10 border-b border-amber-200 bg-white/80 backdrop-blur px-4 md:px-6 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3 flex-wrap">

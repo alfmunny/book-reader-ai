@@ -1464,3 +1464,20 @@ async def test_translate_rejects_whitespace_text(client, test_user):
         "target_language": "en",
     })
     assert resp.status_code == 422, f"Expected 422 for whitespace text in translate, got {resp.status_code}"
+
+
+# ── Issue #1132: whitespace-only text on /tts and /tts/chunks ───────────────
+
+
+async def test_tts_rejects_whitespace_text(anon_client):
+    resp = await anon_client.post("/api/ai/tts", json={
+        "text": "   ",
+        "language": "en",
+        "rate": 1.0,
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace text in /ai/tts, got {resp.status_code}"
+
+
+async def test_tts_chunks_rejects_whitespace_text(anon_client):
+    resp = await anon_client.post("/api/ai/tts/chunks", json={"text": "\t\n  "})
+    assert resp.status_code == 422, f"Expected 422 for whitespace text in /ai/tts/chunks, got {resp.status_code}"

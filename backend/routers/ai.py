@@ -147,6 +147,11 @@ class TTSRequest(BaseModel):
     rate: float = Field(default=1.0, ge=0.25, le=4.0)
     gender: Literal["female", "male"] = "female"
 
+    @field_validator("text")
+    @classmethod
+    def text_not_blank(cls, v: str) -> str:
+        return _not_blank(v)
+
     @field_validator("language")
     @classmethod
     def language_not_blank(cls, v: str) -> str:
@@ -155,6 +160,11 @@ class TTSRequest(BaseModel):
 
 class ChunkTextRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=50_000)
+
+    @field_validator("text")
+    @classmethod
+    def text_not_blank(cls, v: str) -> str:
+        return _not_blank(v)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────

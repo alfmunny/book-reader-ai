@@ -712,6 +712,8 @@ async def retranslate_all(
 
     from services.book_chapters import split_with_html_preference
     chapters = await split_with_html_preference(book_id, book.get("text") or "")
+    if not chapters:
+        return {"ok": True, "chapters": 0, "results": []}
     source_language = (book.get("languages") or ["en"])[0]
 
     # Pre-check: reject before translating any chapter if any have a running

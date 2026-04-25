@@ -911,3 +911,25 @@ async def test_queue_retry_failed_oversized_language_returns_422(admin_client, a
     assert res.status_code == 422, (
         f"Expected 422 for oversized target_language in /queue/retry-failed, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1323: retranslate-all crashes on books with no chapters ────────────
+
+@pytest.mark.asyncio
+async def test_retranslate_all_empty_book_returns_200_empty(admin_client, admin_db):
+    """Regression #1323: retranslate-all on a book with no chapters must return 200
+    with empty results, not a 500 SQLite syntax error from an empty IN () clause."""
+    # Save a book with empty text — split_with_html_preference returns no chapters.
+    await save_book(200, BOOK_META, "")
+
+    res = await admin_client.post(
+        "/api/admin/translations/200/retranslate-all",
+        json={"target_language": "zh"},
+    )
+    assert res.status_code == 200, (
+        f"Expected 200 for a book with no chapters, got {res.status_code}: {res.text}"
+    )
+    data = res.json()
+    assert data["ok"] is True
+    assert data["chapters"] == 0
+    assert data["results"] == []

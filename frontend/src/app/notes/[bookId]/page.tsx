@@ -645,6 +645,7 @@ export default function BookNotesPage() {
           {(annCount + insCount + vocCount) > 0 && !loading && (
             <button
               onClick={toggleCollapseAll}
+              aria-expanded={!isAllCollapsed}
               className="text-xs text-stone-500 hover:text-stone-600 shrink-0 transition-colors min-h-[44px]"
             >
               {isAllCollapsed ? "Expand all" : "Collapse all"}

@@ -719,7 +719,7 @@ export default function Home() {
                           onClick={() => handleBookClick(book)}
                           className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
                         >
-                          <span className="text-xs text-amber-400 w-7 text-right shrink-0 tabular-nums">
+                          <span className="text-xs text-stone-500 w-7 text-right shrink-0 tabular-nums">
                             {(popularPage - 1) * PER_PAGE + idx + 1}
                           </span>
                           {book.cover ? (
@@ -735,7 +735,7 @@ export default function Home() {
                             <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
                           </div>
                           {book.download_count > 0 ? (
-                            <span className="text-xs text-amber-400 shrink-0 tabular-nums">
+                            <span className="text-xs text-stone-500 shrink-0 tabular-nums">
                               {book.download_count.toLocaleString()}
                             </span>
                           ) : null}

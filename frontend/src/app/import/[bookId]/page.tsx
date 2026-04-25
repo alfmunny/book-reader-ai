@@ -316,7 +316,14 @@ export default function BookImportPage() {
                     </div>
                     {(s.status === "active" || s.status === "done") &&
                       s.total > 0 && (
-                        <div className="ml-7 h-1 bg-amber-100 rounded-full overflow-hidden">
+                        <div
+                          className="ml-7 h-1 bg-amber-100 rounded-full overflow-hidden"
+                          role="progressbar"
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={s.status === "done" ? 100 : Math.round(pct)}
+                          aria-label="Chapter translation progress"
+                        >
                           <div
                             className={`h-full rounded-full transition-all duration-150 ${
                               s.status === "done"

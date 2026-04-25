@@ -145,7 +145,7 @@ export default function UploadsPage() {
                   <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Size</th>
                   <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Uploader</th>
                   <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Date</th>
-                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800"></th>
+                  <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800" aria-label="Actions"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">

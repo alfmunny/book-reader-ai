@@ -1738,7 +1738,7 @@ export default function ReaderPage() {
                           });
                         }}
                         className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60 hover:opacity-100"
-                        aria-label="Edit annotation"
+                        aria-label={`Edit annotation for: ${ann.sentence_text.slice(0, 60)}`}
                       >
                         <EditIcon className="w-3.5 h-3.5" />
                       </button>

@@ -99,6 +99,16 @@ export default function WordActionDrawer({
     };
   }, [action, onClose]);
 
+  // Move focus to drawer on open; restore on unmount
+  useEffect(() => {
+    if (!action) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    drawerRef.current?.focus();
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+  }, [action]);
+
   if (!action) return null;
 
   return (
@@ -106,16 +116,18 @@ export default function WordActionDrawer({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black/10"
+        aria-hidden="true"
         onClick={onClose}
       />
 
       {/* Drawer */}
       <div
         ref={drawerRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={`Word lookup: ${word}`}
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto safe-bottom animate-slide-up"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto safe-bottom animate-slide-up focus:outline-none"
       >
         {/* Drag handle */}
         <div className="flex justify-center py-2">
@@ -133,8 +145,8 @@ export default function WordActionDrawer({
 
           {/* Dictionary definitions */}
           {loading && (
-            <div className="flex items-center gap-2 text-amber-600 text-sm">
-              <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+            <div role="status" aria-label="Looking up word" className="flex items-center gap-2 text-amber-600 text-sm">
+              <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
               Looking up...
             </div>
           )}

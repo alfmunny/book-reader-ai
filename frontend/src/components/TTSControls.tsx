@@ -413,7 +413,7 @@ export default function TTSControls({
             className="rounded-lg bg-amber-300 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm flex items-center gap-2 hover:bg-amber-400 min-h-[44px] md:min-h-0"
             title="Click to cancel"
           >
-            <span className="w-3 h-3 border-2 border-amber-700/40 border-t-amber-800 rounded-full animate-spin" />
+            <span className="w-3 h-3 border-2 border-amber-700/40 border-t-amber-800 rounded-full animate-spin" aria-hidden="true" />
             Preparing…
             <CloseIcon className="w-3.5 h-3.5" />
           </button>
@@ -513,10 +513,18 @@ export default function TTSControls({
               {Math.round(((loadingState.index) / loadingState.total) * 100)}%
             </span>
           </div>
-          <div className="h-2 w-full bg-amber-100 rounded-full overflow-hidden relative">
+          <div
+            className="h-2 w-full bg-amber-100 rounded-full overflow-hidden relative"
+            role="progressbar"
+            aria-valuenow={Math.round((loadingState.index / loadingState.total) * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="TTS audio loading progress"
+          >
             <div
               className="absolute inset-y-0 left-0 bg-amber-600 transition-all duration-300"
               style={{ width: `${(loadingState.index / loadingState.total) * 100}%` }}
+              aria-hidden="true"
             />
             <div
               className="absolute inset-y-0 bg-amber-400/60 animate-pulse"
@@ -524,6 +532,7 @@ export default function TTSControls({
                 left: `${(loadingState.index / loadingState.total) * 100}%`,
                 width: `${(1 / loadingState.total) * 100}%`,
               }}
+              aria-hidden="true"
             />
           </div>
           <p className="text-xs text-stone-500 mt-1 italic truncate">

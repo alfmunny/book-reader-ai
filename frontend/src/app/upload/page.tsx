@@ -179,7 +179,7 @@ export default function UploadPage() {
 
         {/* Format hints */}
         <div className="rounded-xl border border-amber-100 bg-white/60 p-4 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-stone-400">Tips</p>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400">Tips</h2>
           <ul className="text-sm text-amber-800 space-y-1 list-disc list-inside">
             <li>Plain text (.txt) files work best when chapters start with &quot;Chapter I&quot;, &quot;CHAPTER 1&quot;, etc.</li>
             <li>EPUB files are parsed automatically using the book&apos;s built-in structure.</li>

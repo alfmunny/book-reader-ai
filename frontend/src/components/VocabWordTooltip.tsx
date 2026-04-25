@@ -45,6 +45,11 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  // Move focus into the dialog on mount so screen readers announce it
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
+
   // Position near the selection, keep within viewport
   const tooltipW = 288;
   const tooltipH = 220;
@@ -63,12 +68,16 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
   return (
     <div
       ref={ref}
-      className="fixed z-50 w-72 rounded-xl border border-amber-200 bg-white shadow-xl overflow-hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vocab-tooltip-title"
+      tabIndex={-1}
+      className="fixed z-50 w-72 rounded-xl border border-amber-200 bg-white shadow-xl overflow-hidden focus:outline-none"
       style={{ left, top }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-amber-100">
-        <span className="font-semibold text-ink text-sm">{word}</span>
+        <span id="vocab-tooltip-title" className="font-semibold text-ink text-sm">{word}</span>
         <button onClick={onClose} aria-label="Close" className="text-stone-400 hover:text-stone-600 p-0.5 rounded transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"><CloseIcon className="w-3.5 h-3.5" /></button>
       </div>
 

@@ -811,13 +811,48 @@ def _extract_and_clean_chapter_text(body, title: str, book_title: str) -> str:
     heading if it repeats as body prose, strip the book title prefix if it
     leaks in, and split dramatic speaker cues.
     """
-    text = _html_body_text(body, skip_first_heading=True)
+    # Drop leading chapter-title heading(s) at any depth before extracting
+    # text. _html_body_text's skip_first_heading only handles direct children
+    # of body, so a heading wrapped in <div class="chapter">…</div> would
+    # otherwise leak into the body and shift the paragraph index — breaking
+    # translation alignment (#1157).
+    _strip_leading_headings(body)
+    text = _html_body_text(body, skip_first_heading=False)
     if not text.strip():
         return ""
     text = _strip_title_from_body_prefix(text, title)
     text = _strip_title_from_body_prefix(text, book_title)
     text = _split_dramatic_speakers(text)
     return text
+
+
+def _strip_leading_headings(body) -> None:
+    """Remove h1/h2/h3 elements that appear in document order BEFORE the
+    first paragraph-class block. Mutates `body` in place.
+
+    This catches:
+      • a single chapter heading wrapped in any depth of <div>s
+      • multi-line chapter headings split across <h2>+<h3> (book number +
+        chapter name)
+
+    Stops at the first <p>/<blockquote>/<pre> so mid-chapter section
+    headings inside the body are preserved.
+    """
+    HEADING = {"h1", "h2", "h3"}
+    REAL_BODY_BLOCK = {"p", "blockquote", "pre"}
+
+    headings_to_remove: list = []
+    for elem in body.iter():
+        tag = elem.tag if isinstance(elem.tag, str) else ""
+        if tag in HEADING:
+            headings_to_remove.append(elem)
+        elif tag in REAL_BODY_BLOCK:
+            break
+
+    for heading in headings_to_remove:
+        parent = heading.getparent()
+        if parent is not None:
+            parent.remove(heading)
 
 
 def _epub_nav_titles(book) -> dict[str, str]:

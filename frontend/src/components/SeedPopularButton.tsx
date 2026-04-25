@@ -211,7 +211,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
 
           {state.log.length > 0 && (
             <details className="mt-2">
-              <summary className="text-xs text-amber-600 cursor-pointer">
+              <summary className="text-xs text-amber-700 cursor-pointer">
                 Recent events ({state.log.length})
               </summary>
               <ul className="mt-1 text-xs space-y-0.5 max-h-40 overflow-y-auto">

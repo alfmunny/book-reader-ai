@@ -89,7 +89,7 @@ export default function ChapterSummary({
           <button
             onClick={load}
             title="Regenerate summary"
-            className="text-xs text-amber-600 hover:text-amber-800 hover:underline transition-colors min-h-[44px] flex items-center px-1"
+            className="text-xs text-amber-700 hover:text-amber-800 hover:underline transition-colors min-h-[44px] flex items-center px-1"
           >
             {summary ? <><RetryIcon className="w-3 h-3 inline" aria-hidden="true" /> Refresh</> : "Generate"}
           </button>

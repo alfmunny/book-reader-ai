@@ -148,6 +148,12 @@ body, [data-theme="light"] {
   animation: vocab-flash 1.8s ease-out forwards;
 }
 
+/* iOS Safari / Chrome default tap-highlight is gray-blue and clashes with the amber palette.
+   Amber-300 (rgb 252 211 77) at 35% opacity matches the design tokens. */
+* {
+  -webkit-tap-highlight-color: rgba(252, 211, 77, 0.35);
+}
+
 /* Honour user's reduced-motion preference (WCAG 2.3.3, vestibular accessibility) */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

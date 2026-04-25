@@ -24,12 +24,14 @@ Sections 1, 2, 4, 7 will become filled automatically as we layer in git-log / is
 
 ## Recent entries
 
-Seeded for validation of the generator; the nightly workflow commits new stubs from 2026-04-25 onward. (Note: 2026-04-25 stub never fired — the docs-journal.yml workflow appears to have skipped that day. Backfilled 2026-04-26 manually via `--journal-day` dispatch.)
+Auto-populated from `docs/journal/daily/*.md` by `python -m backend.scripts.generate_docs`, newest first. Drop a markdown file in `docs/journal/daily/YYYY-MM-DD.md` and the next docs build picks it up — no nav edits needed.
 
+<!-- auto-journal-recent-entries -->
 - [2026-04-26](daily/2026-04-26.md)
 - [2026-04-24](daily/2026-04-24.md)
 - [2026-04-23](daily/2026-04-23.md)
 - [2026-04-22](daily/2026-04-22.md)
+<!-- /auto-journal-recent-entries -->
 
 ## Weekly editorial rollup
 

@@ -362,6 +362,76 @@ def generate_daily_journal_stub(day: date, out_md: Path) -> None:
     out_md.write_text("\n".join(lines), encoding="utf-8")
 
 
+# ── Journal nav (PR C) ──────────────────────────────────────────────────────
+
+# Markers in mkdocs.yml — must appear at the same indentation as the per-day
+# entries so the rewritten YAML stays valid.
+_MKDOCS_BEGIN = "      # <auto-journal-nav>"
+_MKDOCS_END = "      # </auto-journal-nav>"
+
+# Markers in docs/journal/index.md
+_INDEX_BEGIN = "<!-- auto-journal-recent-entries -->"
+_INDEX_END = "<!-- /auto-journal-recent-entries -->"
+
+# How many recent entries to surface in the index page. The mkdocs nav lists
+# every day; the index page list is curated to keep the landing concise.
+_INDEX_RECENT_COUNT = 14
+
+
+def generate_journal_nav(repo_root: Path) -> None:
+    """Auto-populate the journal nav blocks in mkdocs.yml + journal/index.md.
+
+    Scans `docs/journal/daily/*.md`, sorts reverse-chronologically by
+    filename (ISO date), and rewrites two marker-bracketed blocks:
+
+    - `mkdocs.yml` between `# <auto-journal-nav>` / `# </auto-journal-nav>` —
+      one YAML nav entry per daily file.
+    - `docs/journal/index.md` between `<!-- auto-journal-recent-entries -->` /
+      `<!-- /auto-journal-recent-entries -->` — bullet list of the
+      newest `_INDEX_RECENT_COUNT` entries.
+
+    Idempotent. If markers are missing the function is a no-op for that file
+    so the script can still run on repos that haven't migrated yet.
+    """
+    daily_dir = repo_root / "docs" / "journal" / "daily"
+    if not daily_dir.is_dir():
+        return
+    daily_files = sorted(
+        (p for p in daily_dir.glob("*.md") if p.stem != "index"),
+        reverse=True,
+    )
+    days = [p.stem for p in daily_files]
+
+    mkdocs_path = repo_root / "mkdocs.yml"
+    if mkdocs_path.exists() and _MKDOCS_BEGIN in mkdocs_path.read_text():
+        yaml_block = "".join(
+            f"      - '{day}': journal/daily/{day}.md\n" for day in days
+        )
+        text = mkdocs_path.read_text()
+        new_text = re.sub(
+            re.escape(_MKDOCS_BEGIN) + r".*?" + re.escape(_MKDOCS_END),
+            _MKDOCS_BEGIN + "\n" + yaml_block + _MKDOCS_END,
+            text,
+            flags=re.DOTALL,
+        )
+        if new_text != text:
+            mkdocs_path.write_text(new_text)
+
+    index_path = repo_root / "docs" / "journal" / "index.md"
+    if index_path.exists() and _INDEX_BEGIN in index_path.read_text():
+        recent = days[:_INDEX_RECENT_COUNT]
+        md_block = "\n".join(f"- [{day}](daily/{day}.md)" for day in recent)
+        text = index_path.read_text()
+        new_text = re.sub(
+            re.escape(_INDEX_BEGIN) + r".*?" + re.escape(_INDEX_END),
+            _INDEX_BEGIN + "\n" + md_block + "\n" + _INDEX_END,
+            text,
+            flags=re.DOTALL,
+        )
+        if new_text != text:
+            index_path.write_text(new_text)
+
+
 # ── CLI ─────────────────────────────────────────────────────────────────────
 
 
@@ -376,6 +446,7 @@ def _run_all(repo_root: Path) -> None:
     generate_reports_index(reports, out_dir / "reference" / "reports.md")
     generate_design_index(design, out_dir / "architecture" / "design-index.md")
     generate_migration_index(migrations, out_dir / "architecture" / "migrations.md")
+    generate_journal_nav(repo_root)
 
 
 def _journal_stub_path(repo_root: Path, day: date) -> Path:

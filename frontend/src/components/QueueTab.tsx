@@ -717,7 +717,7 @@ export default function QueueTab({ adminFetch }: Props) {
             </p>
             {planResult.books.length > 0 && (
               <div className="max-h-40 overflow-y-auto border border-amber-100 rounded text-xs">
-                <table className="w-full">
+                <table className="w-full" aria-label="Books to translate">
                   <thead className="bg-amber-50">
                     <tr>
                       <th scope="col" className="text-left px-2 py-1 text-stone-600">Book</th>

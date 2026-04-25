@@ -108,6 +108,93 @@ async def test_upload_wrong_format_returns_400(client, test_user):
     assert "supported" in resp.json()["detail"].lower()
 
 
+# ── EPUB upload tests (services/book_parser.parse_epub) ──────────────────────
+
+
+def _make_test_epub(
+    chapters: list[tuple[str, str]],
+    title: str = "Test Book",
+    author: str = "Test Author",
+) -> bytes:
+    """Build a minimal valid EPUB in-memory for testing."""
+    from ebooklib import epub as epublib
+
+    book = epublib.EpubBook()
+    book.set_title(title)
+    book.set_language("en")
+    book.add_author(author)
+
+    spine = ["nav"]
+    toc = []
+    for i, (ch_title, body) in enumerate(chapters):
+        uid = f"ch{i:02d}"
+        fname = f"{uid}.xhtml"
+        content = (
+            f'<?xml version="1.0" encoding="utf-8"?>'
+            f'<html xmlns="http://www.w3.org/1999/xhtml">'
+            f"<head><title>{ch_title}</title></head>"
+            f"<body><h2>{ch_title}</h2>"
+            + "".join(f"<p>{body} sentence {j}.</p>" for j in range(6))
+            + "</body></html>"
+        )
+        item = epublib.EpubHtml(title=ch_title, file_name=fname, lang="en")
+        item.content = content.encode("utf-8")
+        book.add_item(item)
+        spine.append(item)
+        toc.append(epublib.Link(fname, ch_title, uid))
+
+    book.toc = toc
+    book.add_item(epublib.EpubNcx())
+    book.add_item(epublib.EpubNav())
+    book.spine = spine
+
+    buf = io.BytesIO()
+    epublib.write_epub(buf, book)
+    return buf.getvalue()
+
+
+def _epub_upload(epub_bytes: bytes, filename: str = "test.epub"):
+    return {"file": (filename, io.BytesIO(epub_bytes), "application/epub+zip")}
+
+
+async def test_upload_epub_creates_draft_book(client, test_user):
+    """Happy path: EPUB upload detects chapters and returns format=epub."""
+    epub_bytes = _make_test_epub([
+        ("Chapter 1", "The first chapter begins here with some content."),
+        ("Chapter 2", "The second chapter continues the story further."),
+    ])
+    resp = await client.post("/api/books/upload", files=_epub_upload(epub_bytes))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert "book_id" in data
+    assert data["format"] == "epub"
+    assert len(data["detected_chapters"]) >= 1
+
+
+async def test_upload_epub_extracts_dc_metadata(client, test_user):
+    """parse_epub reads DC title and creator from EPUB metadata."""
+    epub_bytes = _make_test_epub(
+        [("Chapter One", "The protagonist walked slowly through the autumn forest. " * 5)],
+        title="My Novel",
+        author="Jane Doe",
+    )
+    resp = await client.post("/api/books/upload", files=_epub_upload(epub_bytes))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["title"] == "My Novel"
+    assert data["author"] == "Jane Doe"
+
+
+async def test_upload_epub_invalid_bytes_returns_422(client, test_user):
+    """Malformed EPUB bytes should return 422 (cannot parse)."""
+    resp = await client.post(
+        "/api/books/upload",
+        files={"file": ("broken.epub", io.BytesIO(b"not a real epub"), "application/epub+zip")},
+    )
+    assert resp.status_code == 422
+    assert "parse" in resp.json()["detail"].lower()
+
+
 async def test_confirm_chapters_makes_book_readable(client, test_user):
     # Upload first
     upload_resp = await client.post("/api/books/upload", files=_txt_upload())

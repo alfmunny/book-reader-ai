@@ -9,7 +9,7 @@ interface Props {
 
 export default function ErrorPage({ error, reset }: Props) {
   return (
-    <main className="min-h-screen bg-parchment flex items-center justify-center px-4">
+    <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
       <div role="alert" className="text-center max-w-sm">
         <AlertCircleIcon className="w-14 h-14 mx-auto mb-4 text-red-400" aria-hidden="true" />
         <h1 className="font-serif text-2xl font-bold text-ink mb-2">Something went wrong</h1>

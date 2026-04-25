@@ -64,7 +64,7 @@ export default function UploadPage() {
 
   if (status === "unauthenticated") {
     return (
-      <main className="min-h-screen bg-parchment flex items-center justify-center px-4">
+      <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <UploadIcon className="w-12 h-12 text-amber-400 mx-auto mb-4" />
           <h1 className="font-serif text-xl font-semibold text-ink mb-2">Sign in to upload books</h1>

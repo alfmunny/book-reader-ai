@@ -77,7 +77,7 @@ export default function ChapterEditorPage() {
 
   if (error && chapters.length === 0) {
     return (
-      <main className="min-h-screen bg-parchment flex items-center justify-center px-4">
+      <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
         <div role="alert" className="text-center max-w-sm">
           <p className="font-serif text-lg text-ink mb-2">Could not load chapters</p>
           <p className="text-sm text-red-600 mb-6">{error}</p>

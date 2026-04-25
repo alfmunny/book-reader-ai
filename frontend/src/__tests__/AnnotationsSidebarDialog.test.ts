@@ -27,4 +27,8 @@ describe("AnnotationsSidebar drawer dialog semantics", () => {
   it("focuses the drawer when opened (useEffect with focus call)", () => {
     expect(sidebar).toMatch(/drawerRef\.current\?\.focus\(\)|drawerRef\.current\.focus\(\)/);
   });
+
+  it("drawer has aria-modal=true to trap screen reader virtual cursor", () => {
+    expect(sidebar).toContain('aria-modal="true"');
+  });
 });

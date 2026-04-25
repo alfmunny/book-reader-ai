@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-import { SearchIcon } from "@/components/Icons";
+import { SearchIcon, ArrowLeftIcon, ArrowRightIcon } from "@/components/Icons";
 import { InAppSearchResponse, InAppSearchResult, searchInAppContent } from "@/lib/api";
 
 function SnippetHtml({ snippet }: { snippet: string }) {
@@ -25,7 +25,7 @@ function AnnotationCard({ r }: { r: Extract<InAppSearchResult, { type: "annotati
   return (
     <Link
       href={href}
-      className="block p-4 rounded-md border border-amber-200 bg-parchment hover:-translate-y-0.5 transition-all duration-200"
+      className="block p-4 rounded-md border border-amber-200 bg-parchment hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 transition-all duration-200"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
@@ -45,7 +45,7 @@ function VocabularyCard({ r }: { r: Extract<InAppSearchResult, { type: "vocabula
   return (
     <Link
       href={href}
-      className="block p-4 rounded-md border border-amber-200 bg-parchment hover:-translate-y-0.5 transition-all duration-200"
+      className="block p-4 rounded-md border border-amber-200 bg-parchment hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 transition-all duration-200"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
@@ -63,7 +63,7 @@ function ChapterCard({ r }: { r: Extract<InAppSearchResult, { type: "chapter" }>
   return (
     <Link
       href={href}
-      className="block p-4 rounded-md border border-amber-200 bg-parchment hover:-translate-y-0.5 transition-all duration-200"
+      className="block p-4 rounded-md border border-amber-200 bg-parchment hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 transition-all duration-200"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
@@ -136,16 +136,32 @@ function SearchResultsInner() {
   }
 
   if (loading) {
-    return <div className="text-sm text-stone-500 py-8">Searching…</div>;
+    return (
+      <div role="status" aria-label="Searching" className="space-y-3 animate-pulse py-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-20 bg-amber-100 rounded-md" />
+        ))}
+      </div>
+    );
   }
   if (error) {
-    return <div className="text-sm text-red-700 py-8">Error: {error}</div>;
+    return (
+      <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        Error: {error}
+      </div>
+    );
   }
   if (!data || data.total === 0) {
     return (
       <div className="text-center text-stone-500 py-12">
-        <p className="font-serif text-lg text-ink">No matches for “{q}”.</p>
+        <p className="font-serif text-lg text-ink">No matches for &ldquo;{q}&rdquo;.</p>
         <p className="text-sm mt-2">Try a shorter or different word.</p>
+        <Link
+          href="/"
+          className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+        >
+          Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
+        </Link>
       </div>
     );
   }
@@ -166,8 +182,22 @@ function SearchResultsInner() {
 export default function SearchPage() {
   return (
     <main className="max-w-3xl mx-auto p-4 md:p-8">
-      <h1 className="font-serif text-2xl text-ink mb-6">Search</h1>
-      <Suspense fallback={<div className="text-sm text-stone-500 py-8">Loading…</div>}>
+      <div className="flex items-center gap-4 mb-6">
+        <Link
+          href="/"
+          className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] flex items-center"
+        >
+          <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
+        </Link>
+        <h1 className="font-serif text-2xl text-ink">Search</h1>
+      </div>
+      <Suspense fallback={
+        <div role="status" aria-label="Loading search" className="space-y-3 animate-pulse py-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-amber-100 rounded-md" />
+          ))}
+        </div>
+      }>
         <SearchResultsInner />
       </Suspense>
     </main>

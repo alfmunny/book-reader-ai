@@ -1,8 +1,10 @@
 # CI Speedup Phase 2 — Closing the 318s → 180s Gap
 
-Issue: #971
-Prior work: #885 (phase 1, merged). Phase 1 design: `docs/design/ci-speedup.md`.
-Baseline: `reports/ci_baseline_2026_04_24.md`.
+**Status:** Merged — design only (PR #990, 2026-04-24); staged implementation per design (slow-test fixes → pytest-xdist → Playwright smoke → deferred sharding)
+**Author:** Architect
+**Date:** 2026-04-24
+**Priority:** P2
+**Prior work:** #971 (issue), #885 (phase 1, merged), `docs/design/ci-speedup.md`, `reports/ci_baseline_2026_04_24.md`
 
 ## Problem
 

@@ -1,6 +1,6 @@
 # Design: Declared FKs on Soft `user_id` / `book_id` Columns (Issue #754)
 
-**Status:** Draft — awaiting PM review
+**Status:** Shipped (PRs #851, #858, #975, #986, 2026-04-24)
 **Author:** Architect
 **Date:** 2026-04-24
 **Priority:** P3 — quality-of-life hardening; no user-visible bug today.

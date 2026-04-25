@@ -1,6 +1,6 @@
 # Design: In-App Full-Text Search via FTS5 (Issue #592)
 
-**Status:** PM approved 2026-04-23 ✅ — revised per review notes  
+**Status:** Shipped (PR #733, 2026-04-23)  
 **Author:** Architect  
 **Date:** 2026-04-23  
 **Depends on:** #357 (user_book_chapters) implementation must merge before the implementation PR for this design is opened.

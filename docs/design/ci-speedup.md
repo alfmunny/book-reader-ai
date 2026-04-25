@@ -1,6 +1,6 @@
 # Design: Accelerate CI pipeline — Issue #885
 
-**Status:** Draft — awaiting PM review, then user approval
+**Status:** Shipped — Phase 1 (PRs #914 baseline, #919 path-scoping, #922 docker cache, #973 measurement, 2026-04-24); Phase 2 design follow-up: see `ci-speedup-phase-2.md` (PR #990)
 **Author:** Architect
 **Date:** 2026-04-24
 **Priority:** P2 — engineering-time drag, not user-visible. Pipeline is functional.

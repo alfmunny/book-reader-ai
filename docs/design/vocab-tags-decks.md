@@ -1,6 +1,6 @@
 # Design: Vocabulary Tags & Custom Study Decks (Issue #645)
 
-**Status:** Awaiting PM approval
+**Status:** Shipped (design PR #646; backend PR #745, 2026-04-23; frontend PRs #1189, #1193, #1196, #1198, #1200, #1202)
 **Author:** Architect
 **Date:** 2026-04-23
 

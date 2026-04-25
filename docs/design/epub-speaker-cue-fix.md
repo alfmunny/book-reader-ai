@@ -1,6 +1,6 @@
 # Design: EPUB speaker-cue / verse paragraph collapse fix — Issue #888
 
-**Status:** Draft — awaiting PM review, then user approval
+**Status:** Merged (design PR #902, 2026-04-24); related follow-up fix PR #982 (closes #967)
 **Author:** Architect
 **Date:** 2026-04-24
 **Priority:** P2 — user-visible on dramatic and verse books (Faust, Dumas, etc.); not app-wide.

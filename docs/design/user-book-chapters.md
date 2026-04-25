@@ -1,6 +1,6 @@
 # Design: user_book_chapters Table (Issue #357)
 
-**Status:** PM approved 2026-04-23 ✅ — revised to resolve migration-runner question  
+**Status:** Shipped (PR #649, 2026-04-23)  
 **Author:** Architect  
 **Date:** 2026-04-23
 

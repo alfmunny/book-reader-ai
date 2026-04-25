@@ -53,26 +53,28 @@ beforeEach(() => {
 
 afterEach(() => jest.clearAllMocks());
 
+const EDIT_LABEL = `Edit annotation: ${ANNOTATION.sentence_text.slice(0, 60)}`;
+const DELETE_LABEL = `Delete annotation: ${ANNOTATION.sentence_text.slice(0, 60)}`;
+
 test("Edit note button has min-h-[44px] touch target", async () => {
   render(<BookNotesPage />);
-  await waitFor(() => screen.getByLabelText("Edit note"));
-  const btn = screen.getByLabelText("Edit note");
+  await waitFor(() => screen.getByLabelText(EDIT_LABEL));
+  const btn = screen.getByLabelText(EDIT_LABEL);
   expect(btn.className).toContain("min-h-[44px]");
 });
 
 test("Delete annotation button has min-h-[44px] touch target", async () => {
   render(<BookNotesPage />);
-  await waitFor(() => screen.getByLabelText("Delete annotation"));
-  const btn = screen.getByLabelText("Delete annotation");
+  await waitFor(() => screen.getByLabelText(DELETE_LABEL));
+  const btn = screen.getByLabelText(DELETE_LABEL);
   expect(btn.className).toContain("min-h-[44px]");
 });
 
 test("Save button in edit mode has min-h-[44px] touch target", async () => {
   render(<BookNotesPage />);
-  await waitFor(() => screen.getByLabelText("Edit note"));
+  await waitFor(() => screen.getByLabelText(EDIT_LABEL));
 
-  // click edit to enter editing mode
-  const editBtn = screen.getByLabelText("Edit note");
+  const editBtn = screen.getByLabelText(EDIT_LABEL);
   editBtn.click();
 
   await waitFor(() => screen.getByRole("button", { name: "Save" }));
@@ -82,9 +84,9 @@ test("Save button in edit mode has min-h-[44px] touch target", async () => {
 
 test("Cancel button in edit mode has min-h-[44px] touch target", async () => {
   render(<BookNotesPage />);
-  await waitFor(() => screen.getByLabelText("Edit note"));
+  await waitFor(() => screen.getByLabelText(EDIT_LABEL));
 
-  const editBtn = screen.getByLabelText("Edit note");
+  const editBtn = screen.getByLabelText(EDIT_LABEL);
   editBtn.click();
 
   await waitFor(() => screen.getByRole("button", { name: "Cancel" }));

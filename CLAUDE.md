@@ -118,6 +118,7 @@ Priority is a **GitHub label** applied at triage time (by PM, or by whoever file
 
 At the top of every cycle — before claiming, implementing, or submitting anything — every code role (Dev / UI/UX / Architect) executes this check in order. Never skip steps.
 
+0. **Re-read CLAUDE.md from the main checkout** — `cat /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md` (or read it via the Read tool, same effect). This catches rule changes that landed since your session started so you don't keep operating on stale rules. Cost: one filesystem read per tick — negligible compared to the `gh` calls below. The PM cron prompt in `scripts/start-roles.sh` already wires this for new sessions; this step makes it explicit per-cycle for *running* sessions too.
 1. **Check your own open PRs first:** `gh pr list --author @me --state open --json number,title,mergeStateStatus`.
    - For each PR with `mergeStateStatus = BEHIND`: rebase + force-push. `/submit-pr` handles this if you re-run it on the branch; otherwise run `git -C <worktree> fetch origin main && git -C <worktree> rebase origin/main && git -C <worktree> push origin <branch> --force-with-lease`.
    - For each PR with failing CI: investigate. Fix or mark `blocked` and comment.

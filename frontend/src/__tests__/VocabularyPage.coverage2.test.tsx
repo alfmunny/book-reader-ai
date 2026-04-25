@@ -115,7 +115,7 @@ describe("VocabularyPage — DefinitionSheet mousedown outside (lines 59-62)", (
     await act(async () => await flushPromises());
     await screen.findByText("ephemeral");
 
-    await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+    await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
     await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
 
     // Wait 110ms for the setTimeout(100) mousedown listener to register
@@ -136,7 +136,7 @@ describe("VocabularyPage — DefinitionSheet mousedown outside (lines 59-62)", (
     await act(async () => await flushPromises());
     await screen.findByText("ephemeral");
 
-    await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+    await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
     await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
 
     await act(async () => {
@@ -162,7 +162,7 @@ describe("VocabularyPage — DefinitionSheet getWordDefinition error (line 46)",
     await act(async () => await flushPromises());
     await screen.findByText("ephemeral");
 
-    await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+    await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
 
     // After rejection, loading stops and "No definition found" shows
     await waitFor(() =>
@@ -207,7 +207,7 @@ describe("VocabularyPage — DefinitionSheet non-Escape keydown (line 51)", () =
     await act(async () => await flushPromises());
     await screen.findByText("ephemeral");
 
-    await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+    await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
     await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
 
     // Press a non-Escape key → sheet stays open

@@ -387,6 +387,7 @@ function VocabularyPageContent() {
                 key={f.word}
                 onClick={() => handleDelete(f.word)}
                 disabled={deleting === f.word}
+                aria-label={`Delete ${f.word}`}
                 className="text-xs text-red-400 hover:text-red-600 disabled:opacity-50 transition-colors min-h-[44px] md:min-h-0 flex items-center px-2"
                 data-testid={`delete-${f.word}`}
               >

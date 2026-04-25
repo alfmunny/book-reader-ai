@@ -337,7 +337,7 @@ export default function ProfilePage() {
           )}
 
           {keyMessage && (
-            <p className={`mt-3 text-sm ${keyMessage.ok ? "text-emerald-700" : "text-red-600"}`}>
+            <p role="status" className={`mt-3 text-sm ${keyMessage.ok ? "text-emerald-700" : "text-red-600"}`}>
               {keyMessage.text}
             </p>
           )}
@@ -440,7 +440,7 @@ export default function ProfilePage() {
               </button>
 
               {obsidianMsg && (
-                <p className={`text-sm ${obsidianMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
+                <p role="status" className={`text-sm ${obsidianMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
                   {obsidianMsg.text}
                 </p>
               )}

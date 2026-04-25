@@ -36,6 +36,10 @@ export default function NotesOverviewPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    document.title = "Notes — Book Reader AI";
+  }, []);
+
+  useEffect(() => {
     if (status === "unauthenticated") { router.replace("/login"); return; }
     if (status !== "authenticated") return;
     setFetchError(false);

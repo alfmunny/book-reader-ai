@@ -107,6 +107,12 @@ function SearchResultsInner() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = q.trim()
+      ? `Search: ${q.trim()} — Book Reader AI`
+      : "Search — Book Reader AI";
+  }, [q]);
+
+  useEffect(() => {
     if (!q.trim()) {
       setData(null);
       setError(null);

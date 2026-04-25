@@ -55,6 +55,10 @@ export default function ProfilePage() {
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 
+  useEffect(() => {
+    document.title = "Profile — Book Reader AI";
+  }, []);
+
   // Fetch live key status from backend (session JWT can be stale after key changes)
   useEffect(() => {
     getMe().then((me) => {

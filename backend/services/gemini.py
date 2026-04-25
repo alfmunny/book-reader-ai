@@ -7,7 +7,7 @@ import re
 from google import genai
 from google.genai import types
 
-MODEL = "gemini-3.1-flash-lite-preview"
+MODEL = "gemini-2.0-flash-lite"
 # Model used by the bulk translator. Defaults to the same model that powers
 # the rest of the app (known to work with the user's key). Admins can override
 # this through the bulk-translate start request if they want to try a

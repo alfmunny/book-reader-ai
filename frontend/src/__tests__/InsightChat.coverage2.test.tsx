@@ -310,3 +310,23 @@ describe("InsightChat — MsgContextBlock onToggle (L389-L390)", () => {
     expect(finalBtns[finalBtns.length - 1]).toHaveAttribute("aria-expanded", "false");
   });
 });
+
+
+// ── Regression #1389: opening Insight panel must not scroll the page ──────────
+
+describe("InsightChat — auto-scroll does not call scrollIntoView (#1389)", () => {
+  it("does not call scrollIntoView when insight loads on panel open", async () => {
+    const scrollIntoViewMock = jest.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+    mockGetInsight.mockResolvedValue({ insight: "Great insight." });
+
+    const { rerender } = render(<InsightChat {...BASE} isVisible={false} />);
+    await act(async () => { rerender(<InsightChat {...BASE} isVisible={true} />); });
+    await act(async () => { await flushPromises(); });
+
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
+
+    delete (window.HTMLElement.prototype as any).scrollIntoView;
+  });
+});

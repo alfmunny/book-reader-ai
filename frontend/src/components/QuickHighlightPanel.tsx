@@ -100,6 +100,8 @@ export default function QuickHighlightPanel({
   return (
     <div
       ref={panelRef}
+      role="toolbar"
+      aria-label="Highlight options"
       style={{ position: "fixed", top, left, zIndex: 1000 }}
       className="flex items-center gap-2 bg-white border border-amber-200 rounded-xl shadow-xl px-3 py-2.5 animate-fade-in"
       data-testid="quick-highlight-panel"

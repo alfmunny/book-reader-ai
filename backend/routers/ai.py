@@ -125,6 +125,11 @@ class SummaryRequest(BaseModel):
     author: str = Field(..., min_length=1, max_length=500)
     chapter_title: str = Field(default="", max_length=500)
 
+    @field_validator("chapter_text", "book_title", "author")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        return _not_blank(v)
+
 
 class TranslateRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=50_000)
@@ -240,9 +245,6 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
         )
-
-    if not req.chapter_text.strip():
-        raise HTTPException(status_code=400, detail="chapter_text cannot be empty")
 
     cached = await get_chapter_summary(req.book_id, req.chapter_index)
     if cached:

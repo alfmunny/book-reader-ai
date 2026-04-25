@@ -31,10 +31,12 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
       <button
         data-testid="book-card"
         onClick={onClick}
-        className="text-left rounded-xl border border-amber-200 bg-white p-3 flex flex-col w-full transition-all duration-200 hover:-translate-y-0.5"
+        className="text-left rounded-xl border border-amber-200 bg-white p-3 flex flex-col w-full transition-all duration-200 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         style={{ boxShadow: "var(--shadow-card)" }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+        onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+        onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
       >
         {book.cover ? (
           <img

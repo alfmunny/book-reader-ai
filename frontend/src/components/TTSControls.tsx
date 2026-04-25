@@ -533,7 +533,7 @@ export default function TTSControls({
       )}
 
       {status === "error" && errorMsg && (
-        <p className="text-xs text-red-600 w-full">{errorMsg}</p>
+        <p role="alert" className="text-xs text-red-600 w-full">{errorMsg}</p>
       )}
     </div>
   );

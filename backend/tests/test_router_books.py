@@ -700,6 +700,39 @@ async def test_retry_translation_rejects_nonexistent_book(client):
     assert resp.status_code == 404
 
 
+async def test_chapter_translation_returns_queue_status_when_already_queued(client, test_user):
+    """Regression #1366: POST translation when chapter is already queued must return
+    {status, position, attempts} instead of re-enqueueing.
+
+    routers/books.py:316 early-returns when qstatus['queued'] is True.
+    Without this path, a second translate request from the reader UI would
+    behave incorrectly (double-enqueue or missing status feedback).
+    """
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await save_book(9999, MOCK_META, "text")
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-key"))
+
+    # First request — enqueues the translation
+    first = await client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert first.status_code == 200
+
+    # Second request for the same chapter/language — should return queue status
+    second = await client.post(
+        "/api/books/9999/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert second.status_code == 200
+    data = second.json()
+    assert "status" in data
+    assert data["status"] in ("pending", "running")
+    assert "position" in data
+    assert "attempts" in data
+
+
 async def test_get_chapter_translation_normalizes_language(client):
     """GET .../translation?target_language=ZH must find a cached 'zh' row.
 

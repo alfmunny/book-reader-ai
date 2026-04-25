@@ -128,6 +128,9 @@ export default function TypographyPanel({
   return (
     <div
       ref={panelRef}
+      id="typography-panel"
+      role="dialog"
+      aria-label="Typography settings"
       style={fixedStyle}
       className={`${anchorPos ? "" : "absolute top-full right-0 mt-1 z-50 "}bg-white border border-amber-200 rounded-xl shadow-lg p-4 w-64 animate-fade-in`}
       data-testid="typography-panel"

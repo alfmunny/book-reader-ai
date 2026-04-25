@@ -657,6 +657,7 @@ export default function Home() {
                     onClick={() => setPopularView("grid")}
                     title="Grid view"
                     aria-label="Grid view"
+                    aria-pressed={popularView === "grid"}
                     className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
                     <GridViewIcon className="w-4 h-4" />
@@ -665,6 +666,7 @@ export default function Home() {
                     onClick={() => setPopularView("list")}
                     title="List view"
                     aria-label="List view"
+                    aria-pressed={popularView === "list"}
                     className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
                   >
                     <ListViewIcon className="w-4 h-4" />

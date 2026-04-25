@@ -657,6 +657,7 @@ export default function BookNotesPage() {
               <button
                 key={m}
                 onClick={() => setViewMode(m)}
+                aria-pressed={viewMode === m}
                 className={`px-3 py-1.5 min-h-[44px] transition-colors ${
                   viewMode === m
                     ? "bg-amber-700 text-white"

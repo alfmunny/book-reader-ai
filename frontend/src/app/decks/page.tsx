@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { DeckSummary, deleteDeck, listDecks } from "@/lib/api";
 import DeckCard from "@/components/DeckCard";
+import UndoToast from "@/components/UndoToast";
 import { ArrowLeftIcon, DeckIcon } from "@/components/Icons";
 
 export default function DecksPage() {
@@ -12,6 +13,7 @@ export default function DecksPage() {
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [removedDeckToast, setRemovedDeckToast] = useState<DeckSummary | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -33,13 +35,20 @@ export default function DecksPage() {
     };
   }, [session?.backendToken]);
 
-  const handleDelete = useCallback(async (id: number) => {
-    try {
-      await deleteDeck(id);
-      setDecks((prev) => prev.filter((d) => d.id !== id));
-    } catch {
-      // leave the deck in place if the delete failed; a toast system isn't wired yet.
-    }
+  const handleDelete = useCallback((id: number) => {
+    setDecks((prev) => {
+      const removed = prev.find((d) => d.id === id);
+      if (removed) {
+        // If a previous toast is still showing, commit that delete immediately
+        setRemovedDeckToast((current) => {
+          if (current) {
+            deleteDeck(current.id).catch(() => {});
+          }
+          return removed;
+        });
+      }
+      return prev.filter((d) => d.id !== id);
+    });
   }, []);
 
   const isEmpty = !loading && (error || decks.length === 0);
@@ -113,6 +122,20 @@ export default function DecksPage() {
           </div>
         )}
       </div>
+
+      {removedDeckToast && (
+        <UndoToast
+          message={`"${removedDeckToast.name}" deleted`}
+          onUndo={() => {
+            setDecks((prev) => [...prev, removedDeckToast]);
+            setRemovedDeckToast(null);
+          }}
+          onDone={() => {
+            deleteDeck(removedDeckToast.id).catch(() => {});
+            setRemovedDeckToast(null);
+          }}
+        />
+      )}
     </div>
   );
 }

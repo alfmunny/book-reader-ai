@@ -495,7 +495,7 @@ export default function InsightChat({
             <div key={i} className="flex gap-2 max-w-full">
               {/* AI icon */}
               <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
-                <svg className="w-3 h-3 text-amber-600" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="w-3 h-3 text-amber-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 14.5a6.5 6.5 0 110-13 6.5 6.5 0 010 13zm-.75-8.25a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0v-3.5zm.75 6a.875.875 0 110-1.75.875.875 0 010 1.75z"/>
                 </svg>
               </div>

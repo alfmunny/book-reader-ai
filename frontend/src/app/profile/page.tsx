@@ -160,7 +160,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-parchment">
+    <main id="main-content" className="min-h-screen bg-parchment">
       {/* Header */}
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-6 py-4 flex items-center gap-4">
         <button
@@ -510,6 +510,6 @@ export default function ProfilePage() {
         </section>
 
       </div>
-    </div>
+    </main>
   );
 }

@@ -95,7 +95,7 @@ export default function ChapterEditorPage() {
   const selectedChapter = chapters[selected];
 
   return (
-    <main className="min-h-screen bg-parchment flex flex-col">
+    <main id="main-content" className="min-h-screen bg-parchment flex flex-col">
       {/* Header */}
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 shrink-0">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">

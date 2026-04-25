@@ -205,7 +205,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Section label */}
-        <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">AI &amp; Integrations</p>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">AI &amp; Integrations</h2>
 
         {/* ── Gemini API key ──────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 p-6">
@@ -373,7 +373,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Section label */}
-        <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">Reader Preferences</p>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">Reader Preferences</h2>
 
         {/* ── Preferences ─────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-6">

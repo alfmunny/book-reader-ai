@@ -83,6 +83,7 @@ export default function UsersPage() {
                     }),
                   )
                 }
+                aria-label={u.approved ? `Revoke ${u.name}` : `Approve ${u.name}`}
                 className={`text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center ${
                   u.approved ? "border-orange-200 text-orange-600" : "border-emerald-200 text-emerald-600"
                 }`}
@@ -94,9 +95,10 @@ export default function UsersPage() {
                   if (confirm(`Delete "${u.name}"?`))
                     act(() => adminFetch(`/admin/users/${u.id}`, { method: "DELETE" }));
                 }}
+                aria-label={`Delete ${u.name}`}
                 className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center border-red-200 text-red-500"
               >
-                Del
+                Delete
               </button>
             </div>
           )}

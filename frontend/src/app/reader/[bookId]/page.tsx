@@ -1163,6 +1163,7 @@ export default function ReaderPage() {
             }}
             title="Focus mode (F)"
             aria-label="Focus mode"
+            aria-pressed={focusMode}
             className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               focusMode
                 ? "bg-amber-700 text-white border-amber-700"
@@ -2197,6 +2198,7 @@ export default function ReaderPage() {
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label="Translation"
+              aria-pressed={translationEnabled}
             ><GlobeIcon className="w-5 h-5" /></button>
 
             <button

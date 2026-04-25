@@ -56,11 +56,24 @@ def _validate_language_code(v: str) -> str:
     return s
 
 
+def _not_blank(v: str) -> str:
+    """Raise ValueError if the string is whitespace-only. Returned unmodified
+    so downstream prompts preserve the caller's formatting."""
+    if not v.strip():
+        raise ValueError("value cannot be blank")
+    return v
+
+
 class InsightRequest(BaseModel):
     chapter_text: str = Field(..., min_length=1, max_length=50_000)
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+
+    @field_validator("chapter_text", "book_title", "author")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        return _not_blank(v)
 
     @field_validator("response_language")
     @classmethod
@@ -75,6 +88,11 @@ class QARequest(BaseModel):
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
 
+    @field_validator("question", "passage", "book_title", "author")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        return _not_blank(v)
+
     @field_validator("response_language")
     @classmethod
     def response_language_not_blank(cls, v: str) -> str:
@@ -87,6 +105,11 @@ class ReferencesRequest(BaseModel):
     chapter_title: str = Field(default="", max_length=500)
     chapter_excerpt: str = Field(default="", max_length=10_000)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+
+    @field_validator("book_title", "author")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        return _not_blank(v)
 
     @field_validator("response_language")
     @classmethod
@@ -111,6 +134,11 @@ class TranslateRequest(BaseModel):
     chapter_index: int | None = Field(default=None, ge=0)
     # "auto" → Gemini if user has a key, else Google Translate (free).
     provider: Literal["auto", "gemini", "google"] = "auto"
+
+    @field_validator("text")
+    @classmethod
+    def text_not_blank(cls, v: str) -> str:
+        return _not_blank(v)
 
 
 class TTSRequest(BaseModel):

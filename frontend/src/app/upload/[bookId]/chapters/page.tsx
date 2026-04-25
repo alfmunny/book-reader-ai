@@ -117,7 +117,7 @@ export default function ChapterEditorPage() {
             className="rounded-lg bg-amber-700 px-5 min-h-[44px] text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {confirming && (
-              <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true" />
             )}
             {confirming ? "Saving…" : "Confirm & Start Reading →"}
           </button>

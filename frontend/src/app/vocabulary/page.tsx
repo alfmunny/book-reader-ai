@@ -140,15 +140,24 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
     };
   }, [onClose]);
 
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    ref.current?.focus();
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+  }, []);
+
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/10" aria-hidden="true" onClick={onClose} />
       <div
         ref={ref}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Word definition"
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto animate-slide-up"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto animate-slide-up focus:outline-none"
       >
         <div className="flex justify-center py-2">
           <div className="w-10 h-1 bg-amber-200 rounded-full" />

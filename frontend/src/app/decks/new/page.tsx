@@ -4,13 +4,39 @@ import { useRouter } from "next/navigation";
 import { ApiError, createDeck, DeckMode } from "@/lib/api";
 import { ArrowLeftIcon, DeckIcon } from "@/components/Icons";
 
+function splitTags(input: string): string[] {
+  return input
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+}
+
 export default function DecksNewPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [mode] = useState<DeckMode>("manual");
+  const [mode, setMode] = useState<DeckMode>("manual");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Smart-rule fields
+  const [ruleLanguage, setRuleLanguage] = useState("");
+  const [ruleTagsAny, setRuleTagsAny] = useState("");
+  const [ruleTagsAll, setRuleTagsAll] = useState("");
+  const [ruleSavedAfter, setRuleSavedAfter] = useState("");
+  const [ruleSavedBefore, setRuleSavedBefore] = useState("");
+
+  function buildRulesJson(): Record<string, unknown> | null {
+    const rules: Record<string, unknown> = {};
+    if (ruleLanguage.trim()) rules.language = ruleLanguage.trim();
+    const tagsAny = splitTags(ruleTagsAny);
+    if (tagsAny.length > 0) rules.tags_any = tagsAny;
+    const tagsAll = splitTags(ruleTagsAll);
+    if (tagsAll.length > 0) rules.tags_all = tagsAll;
+    if (ruleSavedAfter) rules.saved_after = ruleSavedAfter;
+    if (ruleSavedBefore) rules.saved_before = ruleSavedBefore;
+    return Object.keys(rules).length > 0 ? rules : null;
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,6 +52,7 @@ export default function DecksNewPage() {
         name: trimmedName,
         description: description.trim(),
         mode,
+        rules_json: mode === "smart" ? buildRulesJson() : null,
       });
       router.push("/decks");
     } catch (e) {
@@ -102,7 +129,7 @@ export default function DecksNewPage() {
                   name="mode"
                   value="manual"
                   checked={mode === "manual"}
-                  onChange={() => {}}
+                  onChange={() => setMode("manual")}
                   data-testid="deck-mode-manual"
                   className="mt-1"
                 />
@@ -113,24 +140,121 @@ export default function DecksNewPage() {
                   </span>
                 </span>
               </label>
-              <label className="flex items-start gap-3 rounded-lg border border-amber-100 bg-stone-50 p-3 opacity-60 cursor-not-allowed">
+              <label className="flex items-start gap-3 rounded-lg border border-amber-200 bg-white p-3 cursor-pointer has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
                 <input
                   type="radio"
                   name="mode"
                   value="smart"
-                  disabled
+                  checked={mode === "smart"}
+                  onChange={() => setMode("smart")}
                   data-testid="deck-mode-smart"
                   className="mt-1"
                 />
                 <span className="text-sm">
                   <span className="font-medium text-ink block">Smart</span>
                   <span className="text-stone-500">
-                    Rule-based — membership recomputed at query time. Coming in a later slice.
+                    Rule-based — membership recomputed at query time from your saved vocabulary.
                   </span>
                 </span>
               </label>
             </div>
           </fieldset>
+
+          {mode === "smart" && (
+            <fieldset
+              data-testid="deck-rules-fieldset"
+              className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4"
+            >
+              <legend className="px-2 text-sm font-medium text-ink">
+                Rules <span className="text-stone-400 font-normal">(leave blank to match everything)</span>
+              </legend>
+
+              <div>
+                <label
+                  htmlFor="deck-rule-language"
+                  className="block text-sm font-medium text-ink mb-1"
+                >
+                  Language <span className="text-stone-400 font-normal">(e.g. de, en, zh)</span>
+                </label>
+                <input
+                  id="deck-rule-language"
+                  type="text"
+                  value={ruleLanguage}
+                  onChange={(e) => setRuleLanguage(e.target.value)}
+                  maxLength={10}
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="de"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="deck-rule-tags-any"
+                  className="block text-sm font-medium text-ink mb-1"
+                >
+                  Tags any of <span className="text-stone-400 font-normal">(comma-separated)</span>
+                </label>
+                <input
+                  id="deck-rule-tags-any"
+                  type="text"
+                  value={ruleTagsAny}
+                  onChange={(e) => setRuleTagsAny(e.target.value)}
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="grammar, verbs"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="deck-rule-tags-all"
+                  className="block text-sm font-medium text-ink mb-1"
+                >
+                  Tags all of <span className="text-stone-400 font-normal">(comma-separated)</span>
+                </label>
+                <input
+                  id="deck-rule-tags-all"
+                  type="text"
+                  value={ruleTagsAll}
+                  onChange={(e) => setRuleTagsAll(e.target.value)}
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="advanced"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="deck-rule-saved-after"
+                    className="block text-sm font-medium text-ink mb-1"
+                  >
+                    Saved after
+                  </label>
+                  <input
+                    id="deck-rule-saved-after"
+                    type="date"
+                    value={ruleSavedAfter}
+                    onChange={(e) => setRuleSavedAfter(e.target.value)}
+                    className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="deck-rule-saved-before"
+                    className="block text-sm font-medium text-ink mb-1"
+                  >
+                    Saved before
+                  </label>
+                  <input
+                    id="deck-rule-saved-before"
+                    type="date"
+                    value={ruleSavedBefore}
+                    onChange={(e) => setRuleSavedBefore(e.target.value)}
+                    className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
+              </div>
+            </fieldset>
+          )}
 
           {error && (
             <p

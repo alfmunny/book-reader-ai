@@ -86,7 +86,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 md:py-6">
         <ContextualStats tab={current} stats={stats} />
 
-        <div className="flex gap-1 border-b border-amber-200 mb-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+        <nav
+          aria-label="Admin sections"
+          className="flex gap-1 border-b border-amber-200 mb-4 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0"
+        >
           {TABS.map(({ key, label, href }) => (
             <Link
               key={key}
@@ -102,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {label}
             </Link>
           ))}
-        </div>
+        </nav>
 
         {children}
       </div>

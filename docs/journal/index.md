@@ -24,8 +24,9 @@ Sections 1, 2, 4, 7 will become filled automatically as we layer in git-log / is
 
 ## Recent entries
 
-Seeded for validation of the generator; the nightly workflow commits new stubs from 2026-04-25 onward.
+Seeded for validation of the generator; the nightly workflow commits new stubs from 2026-04-25 onward. (Note: 2026-04-25 stub never fired — the docs-journal.yml workflow appears to have skipped that day. Backfilled 2026-04-26 manually via `--journal-day` dispatch.)
 
+- [2026-04-26](daily/2026-04-26.md)
 - [2026-04-24](daily/2026-04-24.md)
 - [2026-04-23](daily/2026-04-23.md)
 - [2026-04-22](daily/2026-04-22.md)

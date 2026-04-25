@@ -2,8 +2,8 @@
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings } from "@/lib/api";
-import { ArrowLeftIcon, CheckIcon, ChevronRightIcon } from "@/components/Icons";
+import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings, listDecks, DeckSummary } from "@/lib/api";
+import { ArrowLeftIcon, CheckIcon, ChevronRightIcon, DeckIcon } from "@/components/Icons";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 
 const LANGUAGES = [
@@ -55,9 +55,41 @@ export default function ProfilePage() {
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 
+  // ── Study decks (decks with due cards today) ───────────────────────────────
+  const [decks, setDecks] = useState<DeckSummary[]>([]);
+  const [decksLoading, setDecksLoading] = useState(true);
+
   useEffect(() => {
     document.title = "Profile — Book Reader AI";
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    listDecks()
+      .then((d) => {
+        if (alive) setDecks(d);
+      })
+      .catch(() => {
+        // Swallow — section just hides
+      })
+      .finally(() => {
+        if (alive) setDecksLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function gotoFlashcardsForDeck(deckId: number) {
+    try {
+      localStorage.setItem("flashcards.lastDeckId", String(deckId));
+    } catch {
+      /* ignore */
+    }
+    router.push("/vocabulary/flashcards");
+  }
+
+  const dueDecks = decks.filter((d) => d.due_today > 0);
 
   // Fetch live key status from backend (session JWT can be stale after key changes)
   useEffect(() => {
@@ -207,6 +239,46 @@ export default function ProfilePage() {
             )}
           </div>
         </section>
+
+        {/* ── Study decks (due today) ──────────────────────────────────── */}
+        {decksLoading ? (
+          <section
+            role="status"
+            aria-label="Loading study decks"
+            className="bg-white rounded-2xl border border-amber-100 p-6"
+          >
+            <div className="animate-pulse space-y-3" aria-hidden="true">
+              <div className="h-5 w-32 bg-amber-100 rounded" />
+              <div className="h-12 bg-amber-100 rounded-xl min-h-[44px]" />
+              <div className="h-12 bg-amber-100 rounded-xl min-h-[44px]" />
+            </div>
+          </section>
+        ) : dueDecks.length > 0 ? (
+          <section className="bg-white rounded-2xl border border-amber-100 p-6">
+            <h2 className="font-serif text-lg font-semibold text-ink mb-4">Study decks</h2>
+            <ul className="space-y-2">
+              {dueDecks.map((d) => (
+                <li key={d.id}>
+                  <button
+                    type="button"
+                    onClick={() => gotoFlashcardsForDeck(d.id)}
+                    aria-label={`Review ${d.due_today} due card${d.due_today !== 1 ? "s" : ""} in ${d.name}`}
+                    className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-white px-4 py-2 hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px]"
+                  >
+                    <DeckIcon className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span className="font-serif text-ink truncate flex-1 min-w-0 text-left">
+                      {d.name}
+                    </span>
+                    <span className="text-xs font-medium text-amber-700 shrink-0">
+                      {d.due_today} due
+                    </span>
+                    <ChevronRightIcon className="w-4 h-4 text-stone-400 shrink-0" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {/* Section label */}
         <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">AI &amp; Integrations</h2>

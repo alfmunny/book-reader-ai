@@ -26,6 +26,7 @@ jest.mock("@/lib/api", () => ({
     obsidian_path: "Notes/Books",
   }),
   saveObsidianSettings: jest.fn().mockResolvedValue({}),
+  listDecks: jest.fn().mockResolvedValue([]),
   getUserStats: jest.fn().mockResolvedValue({ totals: { books_started: 0, vocabulary_words: 0, annotations: 0, insights: 0 }, streak: 0, longest_streak: 0, activity: [] }),
 }));
 

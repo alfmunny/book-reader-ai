@@ -162,7 +162,7 @@ export default function UploadsPage() {
                     <td className="px-4 py-2.5 text-stone-500 max-w-[160px] truncate" title={u.uploader_email}>
                       {u.uploader_email}
                     </td>
-                    <td className="px-4 py-2.5 text-stone-400 whitespace-nowrap">{fmt_date(u.uploaded_at)}</td>
+                    <td className="px-4 py-2.5 text-stone-500 whitespace-nowrap">{fmt_date(u.uploaded_at)}</td>
                     <td className="px-4 py-2.5">
                       <button
                         onClick={() => router.push(`/reader/${u.book_id}`)}

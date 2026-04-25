@@ -134,7 +134,7 @@ function SearchResultsInner() {
   if (!q.trim()) {
     return (
       <div className="text-center text-stone-500 py-16">
-        <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" />
+        <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
         <p className="font-serif text-lg text-ink">Search your notes, vocabulary, and uploads</p>
         <p className="text-sm mt-2">Start typing in the search bar.</p>
       </div>

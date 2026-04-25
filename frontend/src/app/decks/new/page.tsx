@@ -106,7 +106,7 @@ export default function DecksNewPage() {
               htmlFor="deck-description"
               className="block text-sm font-medium text-ink mb-1"
             >
-              Description <span className="text-stone-400 font-normal">(optional)</span>
+              Description <span className="text-stone-500 font-normal">(optional)</span>
             </label>
             <textarea
               id="deck-description"
@@ -166,7 +166,7 @@ export default function DecksNewPage() {
               className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-4"
             >
               <legend className="px-2 text-sm font-medium text-ink">
-                Rules <span className="text-stone-400 font-normal">(leave blank to match everything)</span>
+                Rules <span className="text-stone-500 font-normal">(leave blank to match everything)</span>
               </legend>
 
               <div>
@@ -174,7 +174,7 @@ export default function DecksNewPage() {
                   htmlFor="deck-rule-language"
                   className="block text-sm font-medium text-ink mb-1"
                 >
-                  Language <span className="text-stone-400 font-normal">(e.g. de, en, zh)</span>
+                  Language <span className="text-stone-500 font-normal">(e.g. de, en, zh)</span>
                 </label>
                 <input
                   id="deck-rule-language"
@@ -192,7 +192,7 @@ export default function DecksNewPage() {
                   htmlFor="deck-rule-tags-any"
                   className="block text-sm font-medium text-ink mb-1"
                 >
-                  Tags any of <span className="text-stone-400 font-normal">(comma-separated)</span>
+                  Tags any of <span className="text-stone-500 font-normal">(comma-separated)</span>
                 </label>
                 <input
                   id="deck-rule-tags-any"
@@ -209,7 +209,7 @@ export default function DecksNewPage() {
                   htmlFor="deck-rule-tags-all"
                   className="block text-sm font-medium text-ink mb-1"
                 >
-                  Tags all of <span className="text-stone-400 font-normal">(comma-separated)</span>
+                  Tags all of <span className="text-stone-500 font-normal">(comma-separated)</span>
                 </label>
                 <input
                   id="deck-rule-tags-all"

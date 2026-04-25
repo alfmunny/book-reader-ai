@@ -136,7 +136,7 @@ export default function UploadsPage() {
       ) : (
         <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" aria-label="Uploaded books">
               <thead>
                 <tr className="border-b border-amber-200 bg-amber-50/60">
                   <th scope="col" className="px-4 py-2.5 text-left font-medium text-amber-800">Title</th>

@@ -130,7 +130,7 @@ export default function FlashcardsPage() {
   const progress = total > 0 ? (reviewed / total) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-parchment">
+    <main id="main-content" className="min-h-screen bg-parchment">
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -272,6 +272,6 @@ export default function FlashcardsPage() {
           </div>
         ) : null}
       </div>
-    </div>
+    </main>
   );
 }

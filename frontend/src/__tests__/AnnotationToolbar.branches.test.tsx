@@ -202,8 +202,8 @@ describe("AnnotationToolbar — color picker", () => {
   it("selects yellow by default", () => {
     render(<AnnotationToolbar {...BASE_PROPS} />);
 
-    expect(screen.getByLabelText("Yellow")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("Blue")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByLabelText("Yellow")).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Blue")).toHaveAttribute("aria-checked", "false");
   });
 
   it("switches selected color when a different color is clicked", async () => {
@@ -212,7 +212,7 @@ describe("AnnotationToolbar — color picker", () => {
 
     await user.click(screen.getByLabelText("Pink"));
 
-    expect(screen.getByLabelText("Pink")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("Yellow")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByLabelText("Pink")).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Yellow")).toHaveAttribute("aria-checked", "false");
   });
 });

@@ -132,15 +132,17 @@ export default function AnnotationToolbar({
 
           {/* Color picker */}
           <div>
-            <p className="text-xs text-stone-500 mb-2">Highlight colour</p>
-            <div className="flex items-center gap-0.5">
+            <p className="text-xs text-stone-500 mb-2" aria-hidden="true">Highlight colour</p>
+            <div role="radiogroup" aria-label="Highlight colour" className="flex items-center gap-0.5">
               {COLORS.map((c) => (
                 <button
                   key={c.key}
+                  type="button"
+                  role="radio"
                   title={c.label}
                   onClick={() => setColor(c.key)}
                   aria-label={c.label}
-                  aria-pressed={color === c.key}
+                  aria-checked={color === c.key}
                   className="min-h-[44px] min-w-[44px] flex items-center justify-center"
                 >
                   <span

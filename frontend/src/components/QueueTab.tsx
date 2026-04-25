@@ -101,7 +101,7 @@ function Spinner({ size = 12 }: { size?: number }) {
     <span
       className="inline-block border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin align-middle"
       style={{ width: size, height: size }}
-      aria-label="loading"
+      aria-hidden="true"
     />
   );
 }
@@ -482,6 +482,7 @@ export default function QueueTab({ adminFetch }: Props) {
       <div className="bg-white rounded-xl border border-amber-200 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div
+            aria-hidden="true"
             className={`w-2.5 h-2.5 rounded-full ${
               status?.running
                 ? s?.idle
@@ -515,7 +516,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 <span
                   className="inline-block border-2 border-red-300 border-t-red-600 rounded-full animate-spin"
                   style={{ width: 10, height: 10 }}
-                  aria-label="stopping"
+                  aria-hidden="true"
                 />
               )}
               {togglingWorker === "stop" ? "Stopping…" : "Stop"}
@@ -530,7 +531,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 <span
                   className="inline-block border-2 border-emerald-300 border-t-emerald-700 rounded-full animate-spin"
                   style={{ width: 10, height: 10 }}
-                  aria-label="starting"
+                  aria-hidden="true"
                 />
               )}
               {togglingWorker === "start" ? "Starting…" : "Start"}
@@ -543,7 +544,7 @@ export default function QueueTab({ adminFetch }: Props) {
             concrete feedback instead of a silent "Starting…" while the
             splitter chews through 100+ books. */}
         {s?.startup_phase && s.startup_phase !== "ready" ? (
-          <div className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded px-2 py-1 flex items-center gap-2">
+          <div role="status" className="text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded px-2 py-1 flex items-center gap-2">
             <Spinner />
             <span>
               <span className="font-medium">
@@ -879,7 +880,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     <span
                       className="inline-block border-2 border-white/60 border-t-white rounded-full animate-spin"
                       style={{ width: 10, height: 10 }}
-                      aria-label="saving"
+                      aria-hidden="true"
                     />
                   )}
                   {saving ? "Saving…" : "Save chain"}
@@ -1100,7 +1101,7 @@ export default function QueueTab({ adminFetch }: Props) {
           across each model. Helps decide whether to route through pro vs flash.
           Shows its own spinner (not full-tab) because this is the slowest fetch. */}
       {loadingCost && !cost && (
-        <div className="bg-white rounded-xl border border-amber-200 p-4 flex items-center gap-2 text-sm text-stone-500">
+        <div role="status" className="bg-white rounded-xl border border-amber-200 p-4 flex items-center gap-2 text-sm text-stone-500">
           <Spinner />
           Computing cost estimate…
         </div>
@@ -1252,7 +1253,7 @@ export default function QueueTab({ adminFetch }: Props) {
           </button>
         </div>
         {items.length === 0 ? (
-          <div className="px-4 py-8 text-center text-stone-400 text-sm flex items-center justify-center gap-2">
+          <div role="status" className="px-4 py-8 text-center text-stone-400 text-sm flex items-center justify-center gap-2">
             {loadingItems && <Spinner />}
             <span>{loadingItems ? "Loading items…" : "No items in this view."}</span>
           </div>

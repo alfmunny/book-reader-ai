@@ -298,11 +298,15 @@ export default function BookImportPage() {
                     <div className="flex items-baseline gap-3 mb-1">
                       <span
                         className={`flex items-center justify-center w-4 h-4 shrink-0 ${iconColor}`}
+                        aria-hidden="true"
                       >
                         {icon}
                       </span>
                       <span className="flex-1 text-sm font-medium text-ink">
                         {STAGE_LABELS[stage]}
+                        <span className="sr-only">
+                          {s.status === "done" ? " — done" : s.status === "active" ? " — in progress" : s.status === "error" ? " — failed" : " — waiting"}
+                        </span>
                       </span>
                       {s.status === "active" && s.total > 1 && (
                         <span className="text-xs text-amber-600">

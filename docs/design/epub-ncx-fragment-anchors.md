@@ -1,6 +1,10 @@
 # EPUB NCX Fragment-Anchor Chapter Boundaries
 
-Issue: #964
+**Status:** Shipped (design PR #968; impl PR #1055, 2026-04-24)
+**Author:** Architect
+**Date:** 2026-04-24
+**Priority:** P2
+**Prior work:** #964 (issue), #780 / #783 (prior cache-misalignment incidents), `reports/epub_parser_investigation_2026_04_24.md`
 
 ## Problem
 

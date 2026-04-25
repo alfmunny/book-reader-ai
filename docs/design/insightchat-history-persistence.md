@@ -1,6 +1,10 @@
 # InsightChat History Persistence
 
-Issue: #907
+**Status:** Shipped (design PR #1059, 2026-04-24; backend PR #1061, 2026-04-24; frontend PR #1114)
+**Author:** Architect
+**Date:** 2026-04-24
+**Priority:** P2
+**Prior work:** #907 (issue)
 
 ## Problem
 

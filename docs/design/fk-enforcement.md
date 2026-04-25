@@ -1,6 +1,6 @@
 # Design: Enable `PRAGMA foreign_keys` per connection (Issue #700)
 
-**Status:** Draft — awaiting PM review
+**Status:** Shipped (design PR #742; impl PR #751, 2026-04-23)
 **Author:** Architect
 **Date:** 2026-04-23
 **Priority:** P3 — quality-of-life hardening; no user-visible bug today.

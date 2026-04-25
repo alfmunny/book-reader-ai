@@ -1,4 +1,4 @@
-**Status:** Draft
+**Status:** Shipped (design PR #1190; impl PR #1204, 2026-04-25)
 **Author:** Architect
 **Date:** 2026-04-25
 **Priority:** P3

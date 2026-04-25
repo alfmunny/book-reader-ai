@@ -63,14 +63,16 @@ test("renders multiple authors joined by comma", () => {
 
 // ── onRemove branch ────────────────────────────────────────────────────────────
 
+const REMOVE_LABEL = `Remove ${BOOK.title} from library`;
+
 test("does not render remove button when onRemove is not provided", () => {
   render(<BookCard book={BOOK} onClick={jest.fn()} />);
-  expect(screen.queryByRole("button", { name: /remove from library/i })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: REMOVE_LABEL })).not.toBeInTheDocument();
 });
 
 test("renders remove button when onRemove is provided", () => {
   render(<BookCard book={BOOK} onClick={jest.fn()} onRemove={jest.fn()} />);
-  expect(screen.getByRole("button", { name: /remove from library/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: REMOVE_LABEL })).toBeInTheDocument();
 });
 
 test("calls onRemove when remove button is clicked", async () => {
@@ -78,7 +80,7 @@ test("calls onRemove when remove button is clicked", async () => {
   const onClick = jest.fn();
   render(<BookCard book={BOOK} onClick={onClick} onRemove={onRemove} />);
 
-  const removeBtn = screen.getByRole("button", { name: /remove from library/i });
+  const removeBtn = screen.getByRole("button", { name: REMOVE_LABEL });
   await userEvent.click(removeBtn);
 
   expect(onRemove).toHaveBeenCalledTimes(1);
@@ -88,7 +90,7 @@ test("calls onRemove when remove button is clicked", async () => {
 
 test("remove button meets 44px minimum touch target size", () => {
   render(<BookCard book={BOOK} onClick={jest.fn()} onRemove={jest.fn()} />);
-  const removeBtn = screen.getByRole("button", { name: /remove from library/i });
+  const removeBtn = screen.getByRole("button", { name: REMOVE_LABEL });
   expect(removeBtn.className).toContain("min-w-[44px]");
   expect(removeBtn.className).toContain("min-h-[44px]");
 });

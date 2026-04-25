@@ -463,7 +463,8 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
         }
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        logger.exception("POST /ai/translate failed: %s", exc)
         raise HTTPException(status_code=500, detail="Translation service request failed")
 
 
@@ -475,7 +476,8 @@ async def tts(req: TTSRequest):
         audio, content_type, boundaries = await synthesize(
             req.text, req.language, req.rate, gender=req.gender
         )
-    except Exception:
+    except Exception as exc:
+        logger.exception("POST /ai/tts failed: %s", exc)
         raise HTTPException(status_code=500, detail="TTS synthesis failed")
     headers: dict = {}
     if boundaries:

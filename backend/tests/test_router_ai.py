@@ -1377,3 +1377,30 @@ async def test_tts_whitespace_language_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for whitespace language in /ai/tts, got {resp.status_code}: {resp.text}"
     )
+
+
+async def test_translate_unexpected_error_logs_and_returns_500(client, test_user, caplog):
+    """Regression #1078: POST /ai/translate unexpected errors must be logged."""
+    import logging
+    # do_translate is imported inside the function body, so patch at source module.
+    with patch("services.translate.translate_text", new_callable=AsyncMock, side_effect=RuntimeError("service exploded")):
+        with caplog.at_level(logging.ERROR, logger="routers.ai"):
+            resp = await client.post("/api/ai/translate", json={
+                "text": "Hallo", "source_language": "de", "target_language": "en",
+            })
+    assert resp.status_code == 500
+    assert any("translate" in r.message.lower() for r in caplog.records), \
+        f"Expected error log for translate 500 but got: {[r.message for r in caplog.records]}"
+
+
+async def test_tts_unexpected_error_logs_and_returns_500(client, caplog):
+    """Regression #1078: POST /ai/tts unexpected errors must be logged."""
+    import logging
+    with patch("routers.ai.synthesize", new_callable=AsyncMock, side_effect=RuntimeError("TTS crashed")):
+        with caplog.at_level(logging.ERROR, logger="routers.ai"):
+            resp = await client.post("/api/ai/tts", json={
+                "text": "Hello world", "language": "en", "rate": 1.0,
+            })
+    assert resp.status_code == 500
+    assert any("tts" in r.message.lower() or "500" in r.message for r in caplog.records), \
+        f"Expected error log for tts 500 but got: {[r.message for r in caplog.records]}"

@@ -1697,6 +1697,9 @@ export default function ReaderPage() {
                 const renderCard = (ann: (typeof annotations)[0]) => (
                   <div
                     key={ann.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
                     className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${colorBadge[ann.color] ?? colorBadge.yellow}`}
                     onClick={() => {
                       if (ann.chapter_index !== chapterIndex) {
@@ -1707,6 +1710,19 @@ export default function ReaderPage() {
                         setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
                       }
                       setSidebarOpen(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        if (ann.chapter_index !== chapterIndex) {
+                          goToChapter(ann.chapter_index);
+                          setTimeout(() => setScrollTargetSentence(ann.sentence_text), 400);
+                        } else {
+                          setScrollTargetSentence(undefined);
+                          setTimeout(() => setScrollTargetSentence(ann.sentence_text), 10);
+                        }
+                        setSidebarOpen(false);
+                      }
                     }}
                   >
                     <div className="flex items-start justify-between gap-2">

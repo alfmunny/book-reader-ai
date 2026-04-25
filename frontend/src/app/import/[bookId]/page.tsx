@@ -235,7 +235,7 @@ export default function BookImportPage() {
   const cost = estimateCost(chapterCount, totalWords);
 
   return (
-    <main className="min-h-screen bg-parchment flex items-center justify-center px-4 py-8">
+    <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-xl">
         <div className="bg-white border border-amber-200 rounded-2xl shadow-sm p-8">
           <h1 className="font-serif text-2xl font-bold text-ink mb-1">

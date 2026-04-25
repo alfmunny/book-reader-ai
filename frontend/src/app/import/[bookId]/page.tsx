@@ -322,7 +322,7 @@ export default function BookImportPage() {
                           aria-valuemin={0}
                           aria-valuemax={100}
                           aria-valuenow={s.status === "done" ? 100 : Math.round(pct)}
-                          aria-label="Chapter translation progress"
+                          aria-label={`${STAGE_LABELS[stage]} progress`}
                         >
                           <div
                             className={`h-full rounded-full transition-all duration-150 ${

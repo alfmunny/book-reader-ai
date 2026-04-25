@@ -13,14 +13,14 @@ describe("Import page chapter translation progress bar (closes #1251)", () => {
   const src = read("../app/import/[bookId]/page.tsx");
 
   it("has role=progressbar", () => {
-    const idx = src.indexOf("Chapter translation progress");
+    const idx = src.indexOf("STAGE_LABELS[stage]} progress`}");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 300), idx + 50);
     expect(window).toContain('role="progressbar"');
   });
 
   it("has aria-valuenow", () => {
-    const idx = src.indexOf("Chapter translation progress");
+    const idx = src.indexOf("STAGE_LABELS[stage]} progress`}");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 150), idx + 50);
     expect(window).toContain("aria-valuenow");

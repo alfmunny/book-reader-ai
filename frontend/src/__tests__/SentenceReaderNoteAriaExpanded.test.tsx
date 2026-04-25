@@ -33,21 +33,21 @@ function renderWithAnnotation() {
 
 test("note toggle button has aria-expanded=false when note is closed", () => {
   const { container } = renderWithAnnotation();
-  const btn = container.querySelector("[aria-label='Toggle note']") as HTMLElement;
+  const btn = container.querySelector("[aria-label^='Toggle note for:']") as HTMLElement;
   expect(btn).not.toBeNull();
   expect(btn.getAttribute("aria-expanded")).toBe("false");
 });
 
 test("note toggle button has aria-expanded=true after clicking", () => {
   const { container } = renderWithAnnotation();
-  const btn = container.querySelector("[aria-label='Toggle note']") as HTMLElement;
+  const btn = container.querySelector("[aria-label^='Toggle note for:']") as HTMLElement;
   fireEvent.click(btn);
   expect(btn.getAttribute("aria-expanded")).toBe("true");
 });
 
 test("note toggle button returns to aria-expanded=false after second click", () => {
   const { container } = renderWithAnnotation();
-  const btn = container.querySelector("[aria-label='Toggle note']") as HTMLElement;
+  const btn = container.querySelector("[aria-label^='Toggle note for:']") as HTMLElement;
   fireEvent.click(btn);
   fireEvent.click(btn);
   expect(btn.getAttribute("aria-expanded")).toBe("false");

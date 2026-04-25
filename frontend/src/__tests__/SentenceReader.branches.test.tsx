@@ -340,7 +340,7 @@ describe("SentenceReader — note dot toggle expands/collapses (line 545)", () =
       />
     );
 
-    const noteBtn = container.querySelector("[aria-label='Toggle note']") as HTMLElement;
+    const noteBtn = container.querySelector("[aria-label^='Toggle note for:']") as HTMLElement;
     expect(noteBtn).not.toBeNull();
 
     // First click — note card should appear
@@ -375,7 +375,7 @@ describe("SentenceReader — note dot toggle expands/collapses (line 545)", () =
       />
     );
 
-    const noteBtn = container.querySelector("[aria-label='Toggle note']") as HTMLElement;
+    const noteBtn = container.querySelector("[aria-label^='Toggle note for:']") as HTMLElement;
     fireEvent.click(noteBtn);
 
     expect(screen.getByText("The expanded note content")).toBeInTheDocument();
@@ -410,7 +410,7 @@ describe("SentenceReader — expandedNoteFlatIdx with no matching segment (line 
     );
 
     // Click the note button on first paragraph
-    const noteBtn = container.querySelector("[aria-label='Toggle note']") as HTMLElement;
+    const noteBtn = container.querySelector("[aria-label^='Toggle note for:']") as HTMLElement;
     if (noteBtn) {
       fireEvent.click(noteBtn);
       // Note card should appear in the first paragraph

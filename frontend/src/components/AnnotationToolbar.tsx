@@ -157,9 +157,10 @@ export default function AnnotationToolbar({
 
           {/* Note textarea */}
           <div>
-            <p className="text-xs text-stone-500 mb-1.5">Note <span className="text-stone-400">(optional)</span></p>
+            <label htmlFor="annotation-note" className="block text-xs text-stone-500 mb-1.5">Note <span className="text-stone-400">(optional)</span></label>
             <textarea
               ref={textareaRef}
+              id="annotation-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Your thoughts on this passage…"

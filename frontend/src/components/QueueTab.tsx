@@ -747,7 +747,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <div className="space-y-3 max-h-64 overflow-y-auto bg-amber-50/50 rounded-lg p-3">
               {Object.entries(dryRunResult.preview).map(([idx, paragraphs]) => (
                 <div key={idx} className="text-sm font-serif">
-                  <div className="text-xs text-amber-600 mb-1">Chapter {Number(idx) + 1}</div>
+                  <div className="text-xs text-amber-700 mb-1">Chapter {Number(idx) + 1}</div>
                   {paragraphs.map((p, i) => (
                     <p key={i} className="mb-1 text-ink">{p}</p>
                   ))}

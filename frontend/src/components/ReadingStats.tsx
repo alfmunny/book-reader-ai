@@ -126,7 +126,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
                 <p className="text-sm font-semibold text-amber-900">
                   {stats.streak}-day reading streak!
                 </p>
-                <p className="text-xs text-amber-600">
+                <p className="text-xs text-amber-700">
                   Longest: {stats.longest_streak} days
                 </p>
               </div>

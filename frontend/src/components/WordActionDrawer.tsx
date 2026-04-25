@@ -145,7 +145,7 @@ export default function WordActionDrawer({
 
           {/* Dictionary definitions */}
           {loading && (
-            <div role="status" aria-label="Looking up word" className="flex items-center gap-2 text-amber-600 text-sm">
+            <div role="status" aria-label="Looking up word" className="flex items-center gap-2 text-amber-700 text-sm">
               <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
               Looking up...
             </div>

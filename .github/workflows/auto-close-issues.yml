@@ -1,0 +1,48 @@
+name: Close referenced issues on merge
+
+# Belt-and-suspenders for GitHub's built-in Closes-keyword auto-close
+# (issue #1183). When a squash-merged PR's `Closes #N` keyword failed to
+# fire, the architect role had to close issues manually. This workflow
+# parses the merged PR body, extracts every `[Cc]loses #N` reference,
+# and closes those issues idempotently.
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-referenced-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Close referenced issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Match the standard GitHub closing keywords (close|closes|closed|
+          # fix|fixes|fixed|resolve|resolves|resolved) followed by #N.
+          # Case-insensitive. Skip duplicates and self-references.
+          mapfile -t issues < <(printf '%s\n' "$PR_BODY" | grep -oiE '(close[sd]?|fix(es|ed)?|resolve[sd]?) +#[0-9]+' | grep -oE '#[0-9]+' | tr -d '#' | sort -u)
+          if [ "${#issues[@]}" -eq 0 ]; then
+            echo "No closing keywords found in PR #${PR_NUMBER} body"
+            exit 0
+          fi
+          for n in "${issues[@]}"; do
+            if [ "$n" = "$PR_NUMBER" ]; then
+              continue
+            fi
+            state=$(gh issue view "$n" --repo "$REPO" --json state -q '.state' 2>/dev/null || echo "MISSING")
+            if [ "$state" = "OPEN" ]; then
+              echo "Closing #${n} (referenced by merged PR #${PR_NUMBER})"
+              gh issue close "$n" --repo "$REPO" --comment "Auto-closed by merged PR #${PR_NUMBER}." || echo "  (close failed, continuing)"
+            else
+              echo "#${n} is ${state} — skipping"
+            fi
+          done

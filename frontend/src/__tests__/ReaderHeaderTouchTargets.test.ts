@@ -12,25 +12,26 @@ const src = fs.readFileSync(
 
 describe("Reader header touch targets (#805)", () => {
   it("Previous chapter button has min-h-[44px]", () => {
-    const idx = src.indexOf('aria-label="Previous chapter"');
+    // lastIndexOf targets the header button; focus-mode also uses this label but appears earlier
+    const idx = src.lastIndexOf('aria-label="Previous chapter"');
     const snippet = src.slice(idx, idx + 300);
     expect(snippet).toMatch(/min-h-\[44px\]/);
   });
 
   it("Previous chapter button has min-w-[44px]", () => {
-    const idx = src.indexOf('aria-label="Previous chapter"');
+    const idx = src.lastIndexOf('aria-label="Previous chapter"');
     const snippet = src.slice(idx, idx + 300);
     expect(snippet).toMatch(/min-w-\[44px\]/);
   });
 
   it("Next chapter button has min-h-[44px]", () => {
-    const idx = src.indexOf('aria-label="Next chapter"');
+    const idx = src.lastIndexOf('aria-label="Next chapter"');
     const snippet = src.slice(idx, idx + 300);
     expect(snippet).toMatch(/min-h-\[44px\]/);
   });
 
   it("Next chapter button has min-w-[44px]", () => {
-    const idx = src.indexOf('aria-label="Next chapter"');
+    const idx = src.lastIndexOf('aria-label="Next chapter"');
     const snippet = src.slice(idx, idx + 300);
     expect(snippet).toMatch(/min-w-\[44px\]/);
   });

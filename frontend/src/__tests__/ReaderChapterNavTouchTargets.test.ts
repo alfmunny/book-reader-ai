@@ -10,14 +10,15 @@ describe("reader chapter nav touch targets (closes #869)", () => {
   it("Previous chapter button has min-h-[44px]", () => {
     const idx = src.indexOf('"Previous chapter"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
+    // window extended to 350 to account for aria-label appearing before onClick
+    const window = src.slice(idx, idx + 350);
     expect(window).toContain("min-h-[44px]");
   });
 
   it("Next chapter button has min-h-[44px]", () => {
     const idx = src.indexOf('"Next chapter"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
+    const window = src.slice(idx, idx + 350);
     expect(window).toContain("min-h-[44px]");
   });
 });

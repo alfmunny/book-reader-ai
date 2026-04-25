@@ -119,6 +119,18 @@ async def init_db() -> None:
         )
 
 
+async def _new_user_role_approved(db) -> tuple[str, int]:
+    """Return (role, approved) for a brand-new user registration.
+
+    The very first user ever registered automatically becomes admin and is
+    pre-approved so the app is usable out of the box.  All subsequent users
+    start as role='user', approved=0 (pending manual approval by an admin).
+    """
+    async with db.execute("SELECT COUNT(*) FROM users") as cursor:
+        count = (await cursor.fetchone())[0]
+    return ("admin", 1) if count == 0 else ("user", 0)
+
+
 async def get_or_create_user(google_id: str, email: str, name: str, picture: str) -> dict:
     """Return existing user or create a new one.
 
@@ -143,16 +155,10 @@ async def get_or_create_user(google_id: str, email: str, name: str, picture: str
                 row = await cur.fetchone()
             return dict(row)
 
-        # New user — check if this is the very first user (auto-admin)
-        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
-            count = (await cursor.fetchone())[0]
-        is_first = count == 0
-
+        role, approved = await _new_user_role_approved(db)
         await db.execute(
             "INSERT INTO users (google_id, email, name, picture, role, approved) VALUES (?,?,?,?,?,?)",
-            (google_id, email, name, picture,
-             "admin" if is_first else "user",
-             1 if is_first else 0),
+            (google_id, email, name, picture, role, approved),
         )
         async with db.execute(
             "SELECT * FROM users WHERE google_id = ?", (google_id,)
@@ -198,16 +204,10 @@ async def get_or_create_user_github(github_id: str, email: str, name: str, pictu
                     row = await cur.fetchone()
                 return dict(row)
 
-        # New user
-        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
-            count = (await cursor.fetchone())[0]
-        is_first = count == 0
-
+        role, approved = await _new_user_role_approved(db)
         await db.execute(
             "INSERT INTO users (google_id, github_id, email, name, picture, role, approved) VALUES (?,?,?,?,?,?,?)",
-            (f"github:{github_id}", github_id, email, name, picture,
-             "admin" if is_first else "user",
-             1 if is_first else 0),
+            (f"github:{github_id}", github_id, email, name, picture, role, approved),
         )
         async with db.execute("SELECT * FROM users WHERE github_id = ?", (github_id,)) as cursor:
             row = await cursor.fetchone()
@@ -252,16 +252,10 @@ async def get_or_create_user_apple(apple_id: str, email: str, name: str) -> dict
                 updated["apple_id"] = apple_id
                 return updated
 
-        # New user
-        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
-            count = (await cursor.fetchone())[0]
-        is_first = count == 0
-
+        role, approved = await _new_user_role_approved(db)
         await db.execute(
             "INSERT INTO users (google_id, apple_id, email, name, role, approved) VALUES (?,?,?,?,?,?)",
-            (f"apple:{apple_id}", apple_id, email, name,
-             "admin" if is_first else "user",
-             1 if is_first else 0),
+            (f"apple:{apple_id}", apple_id, email, name, role, approved),
         )
         async with db.execute("SELECT * FROM users WHERE apple_id = ?", (apple_id,)) as cursor:
             row = await cursor.fetchone()

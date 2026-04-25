@@ -174,6 +174,21 @@ async def test_router_404_for_missing_book(client):
     assert res.status_code == 404
 
 
+async def test_router_post_404_for_missing_book(client, test_user):
+    """Regression #1374: POST /chat/{id}/messages with non-existent book must return 404."""
+    res = await client.post(
+        "/api/chat/99999/messages",
+        json={"role": "user", "content": "hello"},
+    )
+    assert res.status_code == 404
+
+
+async def test_router_delete_404_for_missing_book(client, test_user):
+    """Regression #1374: DELETE /chat/{id}/messages with non-existent book must return 404."""
+    res = await client.delete("/api/chat/99999/messages")
+    assert res.status_code == 404
+
+
 async def test_router_clear(client, test_user):
     await _seed_book(TEST_BOOK_ID)
     for i in range(4):

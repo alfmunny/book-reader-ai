@@ -1367,13 +1367,8 @@ describe("ReaderPage — mobile bottom bar interactions", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    // Find the mobile Notes button: aria-label="Notes" but no aria-expanded (the desktop header toggle has aria-expanded)
-    let mobileNotesBtn: HTMLElement | undefined;
-    await waitFor(() => {
-      const allBtns = screen.queryAllByRole("button");
-      mobileNotesBtn = allBtns.find((b) => b.getAttribute("aria-label") === "Notes" && b.getAttribute("aria-expanded") === null);
-      expect(mobileNotesBtn).toBeDefined();
-    });
+    // Find the mobile Notes button by its exact aria-label (desktop uses "Annotations & notes")
+    const mobileNotesBtn = await screen.findByRole("button", { name: "Notes" });
 
     await userEvent.click(mobileNotesBtn!);
     // Mobile expand panel appears — "No annotations yet." in it

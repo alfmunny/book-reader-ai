@@ -917,6 +917,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     <button
                       key={p.id}
                       onClick={() => setChain([...p.chain])}
+                      aria-pressed={active}
                       className={`text-left p-2 min-h-[44px] rounded-lg border transition-colors ${
                         active
                           ? "border-amber-500 bg-amber-100/60"

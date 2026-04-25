@@ -69,7 +69,7 @@ export default function DecksPage() {
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Decks</h1>
           {!loading && !error && (
-            <p className="text-xs text-stone-400 mt-0.5">
+            <p className="text-xs text-stone-500 mt-0.5">
               {decks.length} deck{decks.length !== 1 ? "s" : ""}
             </p>
           )}
@@ -104,7 +104,7 @@ export default function DecksPage() {
           >
             <DeckIcon className="w-14 h-14 text-amber-300" />
             <p className="font-serif text-lg text-stone-500 mt-1">No study decks yet.</p>
-            <p className="text-sm text-stone-400 max-w-xs">
+            <p className="text-sm text-stone-500 max-w-xs">
               Build focused review lists from your saved vocabulary. Start with a manual
               deck — pick a few words and study just them.
             </p>

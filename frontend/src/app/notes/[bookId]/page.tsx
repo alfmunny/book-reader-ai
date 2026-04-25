@@ -232,7 +232,7 @@ function VocabRow({
         >
           {word}
         </a>{" "}
-        <span className="text-stone-400 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
+        <span className="text-stone-500 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
         {" — "}
         <a
           href={readerHref}
@@ -636,7 +636,7 @@ export default function BookNotesPage() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-stone-400 truncate">
+            <p className="text-xs text-stone-500 truncate">
               {annCount} annotations · {insCount} insights · {vocCount} words
             </p>
           </div>
@@ -645,7 +645,7 @@ export default function BookNotesPage() {
           {(annCount + insCount + vocCount) > 0 && !loading && (
             <button
               onClick={toggleCollapseAll}
-              className="text-xs text-stone-400 hover:text-stone-600 shrink-0 transition-colors min-h-[44px]"
+              className="text-xs text-stone-500 hover:text-stone-600 shrink-0 transition-colors min-h-[44px]"
             >
               {isAllCollapsed ? "Expand all" : "Collapse all"}
             </button>
@@ -695,12 +695,12 @@ export default function BookNotesPage() {
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           </div>
         ) : fetchError ? (
-          <div role="alert" className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
             <p className="font-serif text-lg text-red-500 mt-1">Failed to load notes.</p>
             <p className="text-sm">Please refresh the page to try again.</p>
           </div>
         ) : annCount + insCount + vocCount === 0 ? (
-          <div className="text-center py-24 text-stone-400">
+          <div className="text-center py-24 text-stone-500">
             <EmptyNotesIcon className="w-16 h-16 mx-auto mb-3 text-amber-300" aria-hidden="true" />
             <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
             <p className="text-sm">Annotate sentences, save AI insights, or add words to vocabulary while reading.</p>

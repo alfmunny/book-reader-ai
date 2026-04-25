@@ -129,7 +129,7 @@ export default function DeckDetailPage() {
             {deck?.name ?? "Deck"}
           </h1>
           {deck && (
-            <p className="text-xs text-stone-400 mt-0.5">
+            <p className="text-xs text-stone-500 mt-0.5">
               {deck.members.length} word{deck.members.length !== 1 ? "s" : ""}
               {deck.mode === "smart" ? " · smart" : ""}
             </p>
@@ -195,7 +195,7 @@ export default function DeckDetailPage() {
                 <p className="font-serif text-lg text-stone-500 mt-1">
                   No words in this deck yet.
                 </p>
-                <p className="text-sm text-stone-400 max-w-xs">
+                <p className="text-sm text-stone-500 max-w-xs">
                   {isManual
                     ? "Add words from your vocabulary to study them as a focused set."
                     : "This smart deck has no matching words yet — saved vocabulary that matches the rules will appear here."}
@@ -236,7 +236,7 @@ export default function DeckDetailPage() {
                       {w.word}
                     </span>
                     {w.language && (
-                      <span className="text-xs uppercase tracking-wide text-stone-400 shrink-0">
+                      <span className="text-xs uppercase tracking-wide text-stone-500 shrink-0">
                         {w.language}
                       </span>
                     )}
@@ -388,7 +388,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
                       {w.word}
                     </span>
                     {w.language && (
-                      <span className="text-xs uppercase tracking-wide text-stone-400 shrink-0">
+                      <span className="text-xs uppercase tracking-wide text-stone-500 shrink-0">
                         {w.language}
                       </span>
                     )}

@@ -15,6 +15,8 @@ jest.mock("@/lib/api", () => ({
   askQuestion: jest.fn().mockResolvedValue({ answer: "Mocked answer" }),
   checkPronunciation: jest.fn().mockResolvedValue({ feedback: "Mocked feedback" }),
   findVideos: jest.fn().mockResolvedValue({ query: "test query", videos: [] }),
+  getChatMessages: jest.fn().mockResolvedValue({ messages: [], has_more: false }),
+  postChatMessage: jest.fn().mockResolvedValue({ id: 1, role: "assistant", content: "", created_at: "" }),
 }));
 
 // ── Default props ─────────────────────────────────────────────────────────────

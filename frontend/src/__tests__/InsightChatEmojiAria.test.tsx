@@ -8,6 +8,8 @@ import { render, screen, act } from "@testing-library/react";
 jest.mock("@/lib/api", () => ({
   getInsight: jest.fn().mockResolvedValue({ insight: "test insight" }),
   askQuestion: jest.fn(),
+  getChatMessages: jest.fn().mockResolvedValue({ messages: [], has_more: false }),
+  postChatMessage: jest.fn().mockResolvedValue({ id: 1, role: "assistant", content: "", created_at: "" }),
 }));
 
 jest.mock("@/lib/settings", () => ({

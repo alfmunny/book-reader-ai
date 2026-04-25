@@ -5,6 +5,8 @@ import remarkGfm from "remark-gfm";
 import {
   getInsight,
   askQuestion,
+  getChatMessages,
+  postChatMessage,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon } from "@/components/Icons";
@@ -142,7 +144,7 @@ export default function InsightChat({
   messagesRef.current = messages;
   const autoScrollRef = useRef(true);
 
-  // ── 1. Load history when bookId changes ──────────────────────────────
+  // ── 1. Load history when bookId / userId changes ─────────────────────
   useEffect(() => {
     visitedKeys.current.clear();
     setInput("");
@@ -156,34 +158,97 @@ export default function InsightChat({
     }
     setExpandedMsgCtx(new Set());
 
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY(userId ?? "anon", bookId));
-      if (raw) {
-        const stored: Message[] = JSON.parse(raw);
-        setMessages(stored);
-        setLoadedFrom(Math.max(0, stored.length - INITIAL_DISPLAY));
-        stored
-          .filter((m) => m.isChapterHeader && m.chapterKey)
-          .forEach((m) => visitedKeys.current.add(m.chapterKey!));
-      } else {
+    if (!userId) {
+      // Anonymous users: stay with localStorage
+      try {
+        const raw = localStorage.getItem(HISTORY_KEY("anon", bookId));
+        if (raw) {
+          const stored: Message[] = JSON.parse(raw);
+          setMessages(stored);
+          setLoadedFrom(Math.max(0, stored.length - INITIAL_DISPLAY));
+          stored
+            .filter((m) => m.isChapterHeader && m.chapterKey)
+            .forEach((m) => visitedKeys.current.add(m.chapterKey!));
+        } else {
+          setMessages([]);
+          setLoadedFrom(0);
+        }
+      } catch {
         setMessages([]);
         setLoadedFrom(0);
       }
-    } catch {
-      setMessages([]);
-      setLoadedFrom(0);
+      return;
     }
-  }, [bookId]);
 
-  // ── 2. Persist history ───────────────────────────────────────────────
+    // Authenticated users: fetch from server
+    getChatMessages(bookId, 50)
+      .then(({ messages: serverMsgs }) => {
+        // Server returns newest-first; reverse to chronological order for display
+        const uiMessages: Message[] = serverMsgs
+          .slice()
+          .reverse()
+          .map((m) => ({ role: m.role, content: m.content }));
+
+        if (uiMessages.length === 0) {
+          // One-time migration: if localStorage has history, push it to the server
+          const raw = localStorage.getItem(HISTORY_KEY(String(userId), bookId));
+          if (raw) {
+            try {
+              const stored: Message[] = JSON.parse(raw);
+              const toMigrate = stored.filter((m) => !m.isChapterHeader);
+              for (const m of toMigrate) {
+                postChatMessage(bookId, m.role, m.content).catch(() => {});
+              }
+              localStorage.removeItem(HISTORY_KEY(String(userId), bookId));
+              setMessages(stored);
+              setLoadedFrom(Math.max(0, stored.length - INITIAL_DISPLAY));
+              stored
+                .filter((m) => m.isChapterHeader && m.chapterKey)
+                .forEach((m) => visitedKeys.current.add(m.chapterKey!));
+              return;
+            } catch {
+              // migration failed silently; fall through to empty state
+            }
+          }
+          setMessages([]);
+          setLoadedFrom(0);
+        } else {
+          setMessages(uiMessages);
+          setLoadedFrom(Math.max(0, uiMessages.length - INITIAL_DISPLAY));
+        }
+      })
+      .catch(() => {
+        // Server unreachable — fall back to localStorage
+        try {
+          const raw = localStorage.getItem(HISTORY_KEY(String(userId), bookId));
+          if (raw) {
+            const stored: Message[] = JSON.parse(raw);
+            setMessages(stored);
+            setLoadedFrom(Math.max(0, stored.length - INITIAL_DISPLAY));
+            stored
+              .filter((m) => m.isChapterHeader && m.chapterKey)
+              .forEach((m) => visitedKeys.current.add(m.chapterKey!));
+          } else {
+            setMessages([]);
+            setLoadedFrom(0);
+          }
+        } catch {
+          setMessages([]);
+          setLoadedFrom(0);
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, userId]);
+
+  // ── 2. Persist history (anonymous fallback only) ─────────────────────
   useEffect(() => {
-    if (!bookId) return;
+    if (!bookId || userId) return; // authenticated users: server handles persistence
     try {
       const toStore = messages.slice(-MAX_STORED);
       if (toStore.length > 0)
-        localStorage.setItem(HISTORY_KEY(userId ?? "anon", bookId), JSON.stringify(toStore));
+        localStorage.setItem(HISTORY_KEY("anon", bookId), JSON.stringify(toStore));
     } catch {}
-  }, [messages, bookId]);
+  }, [messages, bookId, userId]);
 
   // ── 3. Chapter first-visit insight ───────────────────────────────────
   useEffect(() => {
@@ -204,7 +269,11 @@ export default function InsightChat({
 
     onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
-      .then((r) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]); })
+      .then((r) => {
+        if (cancelled) return;
+        setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]);
+        if (userId) postChatMessage(bookId, "assistant", r.insight).catch(() => {});
+      })
       .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]); })
       .finally(() => { if (!cancelled) setChatLoading(false); });
     return () => { cancelled = true; };
@@ -219,7 +288,11 @@ export default function InsightChat({
     setChatLoading(true);
     onAIUsed?.();
     getInsight(chapterText, bookTitle, author, langRef.current)
-      .then((r) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]); })
+      .then((r) => {
+        if (cancelled) return;
+        setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]);
+        if (userId) postChatMessage(bookId, "assistant", r.insight).catch(() => {});
+      })
       .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]); })
       .finally(() => { if (!cancelled) setChatLoading(false); });
     return () => { cancelled = true; };
@@ -263,6 +336,8 @@ export default function InsightChat({
     setContextText("");
     autoScrollRef.current = true;
     setMessages((prev) => [...prev, { role: "user", content: text, context: attachedContext }]);
+    // Persist user message to server (fire-and-forget; UI already updated optimistically)
+    if (userId) postChatMessage(bookId, "user", text).catch(() => {});
     setChatLoading(true);
 
     const parts: string[] = [];
@@ -280,6 +355,7 @@ export default function InsightChat({
       onAIUsed?.();
       const r = await askQuestion(text, passage, bookTitle, author, langRef.current);
       setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
+      if (userId) postChatMessage(bookId, "assistant", r.answer).catch(() => {});
     } catch (e: any) {
       setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]);
     } finally {

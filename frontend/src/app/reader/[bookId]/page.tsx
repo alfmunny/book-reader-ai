@@ -997,6 +997,7 @@ export default function ReaderPage() {
               }}
               title="Typography settings"
               aria-label="Typography settings"
+              aria-expanded={showTypographyPanel}
               className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-bold transition-colors ${
                 showTypographyPanel || paragraphFocus
                   ? "bg-amber-100 border-amber-400 text-amber-800"
@@ -2074,7 +2075,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
           />
           {/* Chat sheet (bottom half) */}
-          <div className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom">
+          <div role="dialog" aria-modal="true" aria-label="Chat" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom">
             {/* Drag handle + close */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-amber-200 shrink-0">
               <div className="w-10 h-1 bg-amber-200 rounded-full" />
@@ -2241,6 +2242,7 @@ export default function ReaderPage() {
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label="Notes"
+              aria-expanded={notesExpanded}
             >
               <NoteIcon className="w-5 h-5" />
               {annotations.length > 0 && (
@@ -2258,6 +2260,7 @@ export default function ReaderPage() {
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
               aria-label="Insight chat"
+              aria-expanded={sidebarOpen}
             ><ChatIcon className="w-5 h-5" /></button>
           </div>
         </div>

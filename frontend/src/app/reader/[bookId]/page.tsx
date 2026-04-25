@@ -942,7 +942,7 @@ export default function ReaderPage() {
                 <p className="text-xs text-amber-700 truncate">{meta.authors.join(", ")}</p>
               </>
             ) : (
-              <div className="h-4 w-48 bg-amber-200 animate-pulse rounded" />
+              <div className="h-4 w-48 bg-amber-200 animate-pulse rounded" aria-hidden="true" />
             )}
           </div>
 
@@ -1734,8 +1734,8 @@ export default function ReaderPage() {
                       ))}
                     </div>
                     {annotationsLoading && annotations.length === 0 ? (
-                      <div className="flex justify-center mt-10">
-                        <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+                      <div className="flex justify-center mt-10" role="status" aria-label="Loading annotations">
+                        <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
                       </div>
                     ) : filteredNotes.length === 0 ? (
                       <div className="text-center text-stone-400 mt-10 text-sm">

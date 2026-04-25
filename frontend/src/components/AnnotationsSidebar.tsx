@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Annotation } from "@/lib/api";
 import { ArrowRightIcon, NoteIcon, EditIcon, CloseIcon, EmptyNotesIcon } from "@/components/Icons";
 
@@ -31,6 +31,7 @@ interface Props {
 
 export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading, bookId }: Props) {
   const [open, setOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   // Group by chapter
   const byChapter = annotations.reduce<Record<number, Annotation[]>>((acc, a) => {
@@ -38,6 +39,16 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
     return acc;
   }, {});
   const chapters = Object.keys(byChapter).map(Number).sort((a, b) => a - b);
+
+  // Move focus to drawer on open; restore on close
+  useEffect(() => {
+    if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    drawerRef.current?.focus();
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+  }, [open]);
 
   return (
     <>
@@ -59,11 +70,15 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
       {/* Drawer */}
       {open && (
         <div
-          className="fixed right-0 top-0 h-full w-full sm:w-80 bg-white border-l border-amber-200 shadow-2xl z-50 flex flex-col"
+          ref={drawerRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-labelledby="annotations-heading"
+          className="fixed right-0 top-0 h-full w-full sm:w-80 bg-white border-l border-amber-200 shadow-2xl z-50 flex flex-col focus:outline-none"
           data-testid="annotations-sidebar"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-amber-100">
-            <h2 className="font-serif font-semibold text-ink text-sm">Annotations</h2>
+            <h2 id="annotations-heading" className="font-serif font-semibold text-ink text-sm">Annotations</h2>
             <button
               onClick={() => setOpen(false)}
               className="text-stone-400 hover:text-stone-600 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors"

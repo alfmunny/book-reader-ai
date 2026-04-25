@@ -568,3 +568,37 @@ async def test_create_annotation_empty_sentence_text_returns_422(client, test_us
     assert resp.status_code == 422, (
         f"Expected 422 for empty sentence_text, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1058: whitespace-only note_text stored in annotations ──────────────
+
+
+@pytest.mark.asyncio
+async def test_create_annotation_whitespace_note_text_is_stored_as_empty(client, test_user, tmp_db):
+    """Regression #1058: POST /annotations with note_text="   " must store "" not "   "."""
+    from services.db import save_book
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post(
+        "/api/annotations",
+        json={"book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "Some sentence.", "note_text": "   "},
+    )
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    assert resp.json()["note_text"] == "", (
+        f"Expected note_text to be stripped to empty, got: {resp.json()['note_text']!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_patch_annotation_whitespace_note_text_is_stored_as_empty(client, test_user, tmp_db):
+    """Regression #1058: PATCH /annotations/{id} with note_text="\t" must store "" not "\t"."""
+    from services.db import save_book
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    ann = await create_annotation(test_user["id"], BOOK_ID, 0, "Some sentence.", "original note", "yellow")
+    resp = await client.patch(
+        f"/api/annotations/{ann['id']}",
+        json={"note_text": "\t"},
+    )
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    assert resp.json()["note_text"] == "", (
+        f"Expected note_text to be stripped to empty, got: {resp.json()['note_text']!r}"
+    )

@@ -284,7 +284,7 @@ export default function BooksPage() {
                     setExpandedBookId(isExpanded ? null : b.id);
                     setExpandedLang(null);
                   }}
-                  className="text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
+                  className="text-stone-500 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
                   title={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-label={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-expanded={isExpanded}
@@ -504,7 +504,7 @@ export default function BooksPage() {
                                           className="px-3 py-1.5 flex items-center gap-2 text-xs"
                                         >
                                           <span className="text-stone-500 w-16">Ch. {t.chapter_index + 1}</span>
-                                          <span className="text-stone-400 flex-1">
+                                          <span className="text-stone-500 flex-1">
                                             {(t.size_chars / 1000).toFixed(1)}K chars
                                           </span>
                                           {/* Move-to: reassign the cached translation

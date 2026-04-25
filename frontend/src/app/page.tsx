@@ -215,6 +215,7 @@ export default function Home() {
             <button
               key={key}
               onClick={() => setTab(key)}
+              aria-current={tab === key ? "page" : undefined}
               className={`px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors ${
                 tab === key
                   ? "border-amber-700 text-amber-900"

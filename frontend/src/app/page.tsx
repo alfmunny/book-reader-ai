@@ -288,10 +288,12 @@ export default function Home() {
                 <button
                   aria-label="Continue reading"
                   onClick={() => router.push(`/reader/${recentBooks[0].id}`)}
-                  className="w-full text-left rounded-xl border border-amber-200 bg-white p-3 flex items-center gap-3 hover:-translate-y-0.5 transition-all duration-200"
+                  className="w-full text-left rounded-xl border border-amber-200 bg-white p-3 flex items-center gap-3 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 transition-all duration-200"
                   style={{ boxShadow: "var(--shadow-card)" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+                  onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                  onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
                 >
                   {recentBooks[0].cover ? (
                     // eslint-disable-next-line @next/next/no-img-element

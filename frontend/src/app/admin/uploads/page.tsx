@@ -166,6 +166,7 @@ export default function UploadsPage() {
                     <td className="px-4 py-2.5">
                       <button
                         onClick={() => router.push(`/reader/${u.book_id}`)}
+                        aria-label={`Open ${u.title}`}
                         className="text-xs text-amber-600 hover:text-amber-800 min-h-[44px] flex items-center"
                       >
                         Open

@@ -281,7 +281,7 @@ export default function ProfilePage() {
         ) : null}
 
         {/* Section label */}
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">AI &amp; Integrations</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 px-1">AI &amp; Integrations</h2>
 
         {/* ── Gemini API key ──────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 p-6">
@@ -354,7 +354,7 @@ export default function ProfilePage() {
           >
             <div>
               <h2 className="font-serif text-lg font-semibold text-ink">Obsidian Export</h2>
-              <p className="text-xs text-stone-400 mt-0.5">
+              <p className="text-xs text-stone-500 mt-0.5">
                 {hasObsidianToken
                   ? "GitHub token configured — vault sync ready"
                   : "Configure GitHub integration to push vocab to Obsidian"}
@@ -398,7 +398,7 @@ export default function ProfilePage() {
                   onChange={(e) => setObsidianToken(e.target.value)}
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
-                <p className="text-xs text-stone-400 mt-1">
+                <p className="text-xs text-stone-500 mt-1">
                   Requires <code>contents:write</code> permission on your vault repo.
                 </p>
               </div>
@@ -449,7 +449,7 @@ export default function ProfilePage() {
         </section>
 
         {/* Section label */}
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 px-1">Reader Preferences</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 px-1">Reader Preferences</h2>
 
         {/* ── Preferences ─────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-6">

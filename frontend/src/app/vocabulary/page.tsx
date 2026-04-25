@@ -178,7 +178,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           )}
 
           {!loading && (!def || def.definitions.length === 0) && (
-            <p className="text-sm text-stone-400 italic">No definition found.</p>
+            <p className="text-sm text-stone-500 italic">No definition found.</p>
           )}
 
           {def && def.definitions.length > 0 && (
@@ -368,7 +368,7 @@ function VocabularyPageContent() {
               {group.lemma}
             </button>
             {alternateForms.length > 0 && (
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-stone-500">
                 ({alternateForms.map((f) => f.word).join(", ")})
               </span>
             )}
@@ -377,7 +377,7 @@ function VocabularyPageContent() {
                 {group.language}
               </span>
             )}
-            <span className="text-xs text-stone-400 bg-stone-100 rounded-full px-2 py-0.5">
+            <span className="text-xs text-stone-600 bg-stone-100 rounded-full px-2 py-0.5">
               {occurrenceCount}×
             </span>
           </div>
@@ -411,9 +411,9 @@ function VocabularyPageContent() {
                     {occ.book_title}
                   </a>
                 ) : (
-                  <span className="text-stone-400 font-medium">(deleted book)</span>
+                  <span className="text-stone-500 font-medium">(deleted book)</span>
                 )}{" "}
-                <span className="text-stone-400">{`Ch.${occ.chapter_index + 1}`}</span>
+                <span className="text-stone-500">{`Ch.${occ.chapter_index + 1}`}</span>
                 {" — "}
                 <span className="italic">&ldquo;{occ.sentence_text}&rdquo;</span>
               </div>
@@ -443,7 +443,7 @@ function VocabularyPageContent() {
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (
-            <p className="text-xs text-stone-400 mt-0.5">
+            <p className="text-xs text-stone-500 mt-0.5">
               {words.length} word{words.length !== 1 ? "s" : ""} · {totalOccurrences} occurrence{totalOccurrences !== 1 ? "s" : ""}
             </p>
           )}
@@ -546,7 +546,7 @@ function VocabularyPageContent() {
                   }`}
                 >
                   {tag}
-                  <span className={`ml-1 ${active ? "opacity-80" : "text-stone-400"}`}>
+                  <span className={`ml-1 ${active ? "opacity-80" : "text-stone-500"}`}>
                     · {word_count}
                   </span>
                 </button>
@@ -562,12 +562,12 @@ function VocabularyPageContent() {
             ))}
           </div>
         ) : fetchError ? (
-          <div role="alert" className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
             <p className="font-serif text-lg text-red-500 mt-1">Failed to load vocabulary.</p>
             <p className="text-sm">Please refresh the page to try again.</p>
           </div>
         ) : words.length === 0 ? (
-          <div className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+          <div className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
             <EmptyVocabIcon className="w-14 h-14 text-amber-300" />
             <p className="font-serif text-lg text-stone-500 mt-1">No saved words yet.</p>
             <p className="text-sm">Double-click any word while reading to save it here.</p>
@@ -581,11 +581,11 @@ function VocabularyPageContent() {
           </div>
         ) : filtered.length === 0 ? (
           selectedTag ? (
-            <p className="text-center text-stone-400 mt-12 text-sm">
+            <p className="text-center text-stone-500 mt-12 text-sm">
               No words tagged with &ldquo;<span className="font-medium text-ink">{selectedTag}</span>&rdquo;
             </p>
           ) : (
-            <p className="text-center text-stone-400 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>
+            <p className="text-center text-stone-500 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>
           )
         ) : (
           <div className="space-y-8">

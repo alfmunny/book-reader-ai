@@ -580,7 +580,7 @@ export default function QueueTab({ adminFetch }: Props) {
 
         {/* Hard error — only shown once retries are exhausted. */}
         {s?.last_error && !(s.retry_attempt && s.retry_attempt > 0) && (
-          <div className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 truncate">
+          <div role="alert" className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 truncate">
             Last error: {s.last_error}
           </div>
         )}
@@ -693,7 +693,7 @@ export default function QueueTab({ adminFetch }: Props) {
         </div>
 
         {dryRunError && (
-          <div className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{dryRunError}</div>
+          <div role="alert" className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{dryRunError}</div>
         )}
 
         {planResult && (

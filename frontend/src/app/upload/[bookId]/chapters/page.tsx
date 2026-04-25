@@ -187,7 +187,7 @@ export default function ChapterEditorPage() {
         <div className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto">
           {selectedChapter ? (
             <>
-              <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">Preview</p>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">Preview</h2>
               <p className="font-serif font-semibold text-ink mb-3">{selectedChapter.title}</p>
               <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap font-serif">
                 {selectedChapter.preview}

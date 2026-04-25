@@ -949,7 +949,7 @@ export default function ReaderPage() {
           {/* Chapter navigation — desktop only (mobile uses bottom bar) */}
           <div className="hidden md:flex items-center gap-1 shrink-0">
             {loading ? (
-              <span className="text-xs text-amber-500 animate-pulse">Loading…</span>
+              <span role="status" className="text-xs text-amber-500 animate-pulse">Loading…</span>
             ) : (
               <>
                 <button
@@ -1957,7 +1957,7 @@ export default function ReaderPage() {
 
                     {/* Status */}
                     {translationEnabled && (
-                      <div className="text-xs">
+                      <div role="status" className="text-xs">
                         {translationLoading && !translationUsedProvider && (
                           <span className="animate-pulse text-amber-600">Checking for translation…</span>
                         )}

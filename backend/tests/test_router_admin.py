@@ -772,6 +772,15 @@ async def test_delete_specific_translation_normalizes_language(admin_client, adm
     assert res.json()["deleted"] == 1
 
 
+async def test_delete_specific_translation_whitespace_language_returns_422(admin_client):
+    """DELETE .../translations/{book_id}/{chapter_index}/%20%20%20 must return 422.
+
+    Regression #1408: .lower().split('-')[0] without .strip() passed whitespace
+    to the SQL DELETE, silently matching 0 rows."""
+    res = await admin_client.delete("/api/admin/translations/100/0/%20%20%20")
+    assert res.status_code == 422
+
+
 async def test_delete_book_translations_no_translations_returns_404(admin_client):
     """DELETE /admin/translations/{book_id} with no translations must return 404.
 
@@ -810,6 +819,14 @@ async def test_delete_language_translations_normalizes_language(admin_client, ad
     res = await admin_client.delete("/api/admin/translations/100/ZH-CN")
     assert res.status_code == 200
     assert res.json()["deleted"] == 1
+
+
+async def test_delete_language_translations_whitespace_language_returns_422(admin_client):
+    """DELETE /translations/{book_id}/%20%20%20 must return 422.
+
+    Regression #1408: whitespace-only path segment bypassed min_length=1."""
+    res = await admin_client.delete("/api/admin/translations/100/%20%20%20")
+    assert res.status_code == 422
 
 
 # ── Delete translation queue cleanup + running guard (regression #335, #338) ──
@@ -1796,6 +1813,16 @@ async def test_retranslate_normalizes_language(admin_client, admin_db):
 
     from services.db import get_cached_translation
     assert await get_cached_translation(100, 0, "zh") == ["第一段。"]
+
+
+async def test_retranslate_whitespace_language_returns_422(admin_client, admin_db):
+    """POST /admin/translations/{id}/{idx}/%20%20%20/retranslate must return 422.
+
+    Regression #1408: whitespace path segment wasn't stripped, causing the
+    translate service to receive a blank language code and return 502."""
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    res = await admin_client.post("/api/admin/translations/100/0/%20%20%20/retranslate")
+    assert res.status_code == 422
 
 
 async def test_retranslate_all_normalizes_language(admin_client, admin_db):

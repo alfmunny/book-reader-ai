@@ -439,7 +439,9 @@ async def delete_language_translations(
     _admin: dict = Depends(_require_admin),
 ):
     """Delete all cached translations for one language of a book."""
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             "SELECT chapter_index FROM translation_queue "
@@ -478,7 +480,9 @@ async def delete_translation(
     _admin: dict = Depends(_require_admin),
 ):
     """Delete a specific cached translation."""
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             "SELECT 1 FROM translation_queue "
@@ -516,7 +520,9 @@ async def retranslate(
     admin: dict = Depends(_require_admin),
 ):
     """Delete cached translation and re-translate the chapter."""
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     # 1. Get the book text
     book = await get_cached_book(book_id)
     if not book:

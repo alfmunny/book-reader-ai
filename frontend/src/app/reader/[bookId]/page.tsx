@@ -914,7 +914,7 @@ export default function ReaderPage() {
                   <h1 className="font-serif font-bold text-ink truncate text-sm">{meta.title}</h1>
                   {chapterSource === "upload" && (
                     <span
-                      className="shrink-0 text-[10px] font-medium text-amber-600 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 leading-none"
+                      className="shrink-0 text-[10px] font-medium text-amber-700 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 leading-none"
                       title="Uploaded book — chapters from your own file"
                     >
                       Uploaded
@@ -1885,7 +1885,7 @@ export default function ReaderPage() {
                               >
                                 <span className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (
-                                  <span className="text-[10px] text-amber-600 shrink-0 italic">{w.word}</span>
+                                  <span className="text-[10px] text-amber-700 shrink-0 italic">{w.word}</span>
                                 )}
                               </button>
                               {/* Context occurrences */}

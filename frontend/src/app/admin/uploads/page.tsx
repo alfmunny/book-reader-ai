@@ -109,7 +109,7 @@ export default function UploadsPage() {
             <CloseIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Clear filter (user {activeFilter})
           </button>
         )}
-        <span className="ml-auto text-xs text-stone-400">{uploads.length} upload{uploads.length !== 1 ? "s" : ""}</span>
+        <span className="ml-auto text-xs text-stone-500">{uploads.length} upload{uploads.length !== 1 ? "s" : ""}</span>
       </div>
 
       {uploads.length === 0 ? (
@@ -129,7 +129,7 @@ export default function UploadsPage() {
             />
           </svg>
           <p className="font-serif text-ink mb-1">No uploads yet</p>
-          <p className="text-sm text-stone-400">
+          <p className="text-sm text-stone-500">
             {activeFilter ? `No uploads found for user ${activeFilter}.` : "No books have been uploaded by users."}
           </p>
         </div>

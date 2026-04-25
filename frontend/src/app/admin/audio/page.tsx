@@ -59,7 +59,7 @@ export default function AudioPage() {
             <div className="text-sm text-ink">
               Book {a.book_id}, Ch. {a.chapter_index + 1}
             </div>
-            <div className="text-xs text-stone-400">
+            <div className="text-xs text-stone-500">
               {a.provider}/{a.voice} · {a.chunks} chunks · {a.size_mb} MB
             </div>
           </div>

@@ -142,7 +142,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
 
         <div className="flex items-center justify-between mt-3">
           {book.download_count > 0 && (
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-stone-500">
               {book.download_count.toLocaleString()} downloads
             </p>
           )}

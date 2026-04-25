@@ -6,7 +6,7 @@ carry across browsers / devices / cache clears. See the design doc
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from services.auth import get_current_user, check_book_access
 from services.db import (
@@ -26,6 +26,13 @@ class ChatMessageCreate(BaseModel):
     # the 8 KB byte cap below so reject-with-413 is distinguishable from
     # reject-with-422 (schema violation).
     content: str = Field(..., min_length=1, max_length=64000)
+
+    @field_validator("content")
+    @classmethod
+    def content_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("content cannot be blank")
+        return v
 
 
 @router.get("/{book_id}/messages")

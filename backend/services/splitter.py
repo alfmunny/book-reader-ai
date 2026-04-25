@@ -855,8 +855,108 @@ def _strip_leading_headings(body) -> None:
             parent.remove(heading)
 
 
+# --- Nested-NCX title composition (issue #1151, design doc
+# `docs/design/epub-nested-ncx-titles.md`) -----------------------------------
+
+_WEAK_LEAF_ROMAN_RE = re.compile(r"^[IVXLCDM]+\.?$")
+
+
+def _is_weak_leaf_title(title: str) -> bool:
+    """A leaf navPoint title is "weak" iff it doesn't carry enough chapter
+    context on its own and benefits from `<Parent> — <Leaf>` composition.
+    Calibrated for Bovary-shaped multi-part NCX (bare roman numerals)
+    without affecting Faust-shape descriptive leaves.
+    """
+    s = title.strip()
+    if not s:
+        return False
+    if _WEAK_LEAF_ROMAN_RE.match(s):
+        return True
+    words = s.split()
+    if len(words) <= 2 and len(s) < 5:
+        return True
+    return False
+
+
+def _compose_title(ancestor_titles: list[str], leaf_title: str) -> str:
+    """Compose `<Parent> — <Leaf>` only when leaf is weak AND the immediate
+    ancestor has a non-empty title distinct from the leaf's.
+    """
+    if not _is_weak_leaf_title(leaf_title):
+        return leaf_title
+    parent = next(
+        (a for a in reversed(ancestor_titles) if a and a.strip() != leaf_title.strip()),
+        None,
+    )
+    if not parent:
+        return leaf_title
+    composed = f"{parent} — {leaf_title}"
+    if len(composed) > 100:
+        return leaf_title
+    return composed
+
+
+_STANDALONE_ROMAN_RE = re.compile(r"\b[IVXLCDM]+\b")
+
+
+def _is_bloated_root_title(title: str) -> bool:
+    """Detect the chapter-0 case where the root navPoint title is a
+    concatenation of every leaf navLabel (Madame Bovary repro: a 213-char
+    string `"PREMIÈRE PARTIE I II III ..."`). Reject such titles so the
+    spine item falls back to a saner placeholder.
+
+    Two signals (either fires):
+        - title length > 120 chars (catches the production Bovary case)
+        - title contains ≥3 standalone roman-numeral tokens (catches shorter
+          but still over-concatenated TOCs without needing the full-length
+          threshold)
+    """
+    if len(title) > 120:
+        return True
+    if len(_STANDALONE_ROMAN_RE.findall(title)) >= 3:
+        return True
+    return False
+
+
+def _walk_toc_with_path(toc_items, on_entry) -> None:
+    """Depth-first walk of `book.toc` that maintains an ancestor-title stack
+    and invokes `on_entry(href, title, ancestor_titles)` for every navPoint.
+
+    `ancestor_titles` is a list of *parent* titles (the path from root to
+    the entry's parent, EXCLUSIVE of the entry itself). Children are walked
+    after `on_entry` for the parent runs, so callers using `setdefault`
+    semantics get parent-first ordering — but children's `_compose_title`
+    sees the parent in their `ancestor_titles` list.
+    """
+    def _walk(items, path: list[str]) -> None:
+        for entry in items:
+            if isinstance(entry, tuple):
+                section, children = entry
+                href = getattr(section, "href", None)
+                title = getattr(section, "title", None)
+                if href and title:
+                    on_entry(href, title, path)
+                _walk(children, path + ([title] if title else []))
+            else:
+                href = getattr(entry, "href", None)
+                title = getattr(entry, "title", None)
+                if href and title:
+                    on_entry(href, title, path)
+    _walk(toc_items, [])
+
+
 def _epub_nav_titles(book) -> dict[str, str]:
-    """Return {item_id: chapter_title} from the EPUB TOC (NCX or EPUB3 nav)."""
+    """Return {item_id: chapter_title} from the EPUB TOC (NCX or EPUB3 nav).
+
+    Composes `<Parent> — <Leaf>` titles for nested-NCX hierarchies where
+    leaf navPoints are "weak" (bare roman numerals, single-char/short
+    strings). Issue #1151, design doc `docs/design/epub-nested-ncx-titles.md`.
+
+    Bloated root titles (the entire TOC concatenated into one string —
+    the Madame Bovary `"PREMIÈRE PARTIE I II III ..."` repro) are rejected;
+    the affected item_id is left out of the dict, so callers fall back to
+    spine-level metadata.
+    """
     import ebooklib
 
     name_to_id: dict[str, str] = {
@@ -875,23 +975,28 @@ def _epub_nav_titles(book) -> dict[str, str]:
                 return item_id
         return None
 
-    def _walk(toc_items) -> None:
-        for entry in toc_items:
-            if isinstance(entry, tuple):
-                section, children = entry
-                # Walk children first so leaf chapter titles take priority over
-                # the enclosing section header when both point to the same file.
-                _walk(children)
-                if getattr(section, "href", None):
-                    item_id = _resolve(section.href)
-                    if item_id and getattr(section, "title", None):
-                        titles.setdefault(item_id, section.title)
-            elif getattr(entry, "href", None):
-                item_id = _resolve(entry.href)
-                if item_id and getattr(entry, "title", None):
-                    titles.setdefault(item_id, entry.title)
+    # Two-pass: collect, then prefer the deepest (most-composed) title for each
+    # item_id. We can't use simple setdefault because children should override
+    # parent-only assignments when both target the same href.
+    collected: dict[str, list[tuple[int, str]]] = {}
 
-    _walk(book.toc)
+    def on_entry(href: str, title: str, ancestors: list[str]) -> None:
+        item_id = _resolve(href)
+        if not item_id:
+            return
+        if _is_bloated_root_title(title):
+            return
+        composed = _compose_title(ancestors, title)
+        depth = len(ancestors)
+        collected.setdefault(item_id, []).append((depth, composed))
+
+    _walk_toc_with_path(book.toc, on_entry)
+
+    for item_id, candidates in collected.items():
+        # Prefer the deepest entry (most specific). On tie, first wins.
+        candidates.sort(key=lambda x: -x[0])
+        titles[item_id] = candidates[0][1]
+
     return titles
 
 
@@ -908,6 +1013,9 @@ def _epub_nav_anchors(book) -> dict[str, list[tuple[str | None, str]]]:
     The list order matches the NCX playOrder (depth-first walk of the
     navMap). Length-1 lists reproduce the current behaviour (one chapter
     per spine item); length-≥2 lists trigger DOM segmentation.
+
+    Titles are composed for weak leaves (issue #1151, see `_compose_title`).
+    Bloated root titles are dropped.
     """
     import ebooklib
 
@@ -917,7 +1025,6 @@ def _epub_nav_anchors(book) -> dict[str, list[tuple[str | None, str]]]:
     }
 
     def _resolve(href: str) -> tuple[str | None, str | None]:
-        # Split on '#' into (bare_path, anchor_or_None).
         if "#" in href:
             bare, anchor = href.split("#", 1)
             anchor = anchor or None
@@ -933,23 +1040,16 @@ def _epub_nav_anchors(book) -> dict[str, list[tuple[str | None, str]]]:
 
     result: dict[str, list[tuple[str | None, str]]] = {}
 
-    def _walk(toc_items) -> None:
-        for entry in toc_items:
-            if isinstance(entry, tuple):
-                section, children = entry
-                if getattr(section, "href", None):
-                    item_id, anchor = _resolve(section.href)
-                    title = getattr(section, "title", None)
-                    if item_id and title:
-                        result.setdefault(item_id, []).append((anchor, title))
-                _walk(children)
-            elif getattr(entry, "href", None):
-                item_id, anchor = _resolve(entry.href)
-                title = getattr(entry, "title", None)
-                if item_id and title:
-                    result.setdefault(item_id, []).append((anchor, title))
+    def on_entry(href: str, title: str, ancestors: list[str]) -> None:
+        item_id, anchor = _resolve(href)
+        if not item_id:
+            return
+        if _is_bloated_root_title(title):
+            return
+        composed = _compose_title(ancestors, title)
+        result.setdefault(item_id, []).append((anchor, composed))
 
-    _walk(book.toc)
+    _walk_toc_with_path(book.toc, on_entry)
     return result
 
 

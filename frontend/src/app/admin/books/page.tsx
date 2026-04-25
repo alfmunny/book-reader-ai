@@ -287,6 +287,7 @@ export default function BooksPage() {
                   className="text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
                   title={isExpanded ? "Collapse" : "Expand"}
                   aria-label={isExpanded ? "Collapse" : "Expand"}
+                  aria-expanded={isExpanded}
                 >
                   {isExpanded ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
                 </button>
@@ -429,6 +430,7 @@ export default function BooksPage() {
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
                                 className="text-xs text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
                                 aria-label={isLangExpanded ? "Collapse" : "Expand"}
+                                aria-expanded={isLangExpanded}
                               >
                                 {isLangExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                               </button>

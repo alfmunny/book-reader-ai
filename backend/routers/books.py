@@ -517,8 +517,14 @@ async def _fetch_and_cache(book_id: int) -> tuple[dict, str]:
     meta = await get_book_meta(book_id)
     text = await get_book_text(book_id)
     await save_book(book_id, meta, text)
-    # Fetch EPUB in background so book-add stays snappy.
-    asyncio.create_task(_fetch_and_store_epub(book_id))
+    # Fetch the EPUB synchronously so the very first /chapters request
+    # uses the EPUB-based split — otherwise it falls back to text-based,
+    # and the next process restart switches to EPUB-based, shifting
+    # chapter indices and breaking translations / annotations made
+    # before restart (#1161). _fetch_and_store_epub already swallows
+    # exceptions (logs at DEBUG), so a missing-EPUB book continues to
+    # work via text-based split forever — consistently.
+    await _fetch_and_store_epub(book_id)
     return meta, text
 
 

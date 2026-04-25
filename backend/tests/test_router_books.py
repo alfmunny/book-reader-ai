@@ -1341,3 +1341,77 @@ async def test_book_chapters_404_logs_warning_on_exception(client, caplog):
         "99999" in r.message or "chapter" in r.message.lower() or "fetch" in r.message.lower()
         for r in caplog.records
     ), f"Expected a WARNING log for failed chapters fetch, got: {[r.message for r in caplog.records]}"
+
+
+# ── Issue #1161: synchronous EPUB fetch on first book add ───────────────────
+
+
+async def test_fetch_and_cache_awaits_epub_fetch_before_returning(client):
+    """Regression #1161: _fetch_and_cache must await the EPUB fetch
+    synchronously, not fire it as a background task. Otherwise the first
+    chapters request falls back to text-based split, then the next process
+    restart switches to EPUB-based — chapter indices shift and break
+    cached translations / annotations made before restart."""
+    fake_meta = {
+        "id": 99001,
+        "title": "T",
+        "authors": ["A"],
+        "languages": ["en"],
+        "subjects": [],
+        "download_count": 1,
+        "cover": "",
+    }
+    fake_text = "Chapter 1\n\nSome content."
+    fake_epub_bytes = b"PK\x03\x04fake_epub_data"
+
+    save_calls: list[str] = []
+
+    async def fake_save_book_epub(book_id, epub_bytes, epub_url):
+        save_calls.append("epub")
+
+    async def fake_save_book(book_id, meta, text, *args, **kwargs):
+        save_calls.append("book")
+
+    with (
+        patch("routers.books.get_book_meta", new_callable=AsyncMock, return_value=fake_meta),
+        patch("routers.books.get_book_text", new_callable=AsyncMock, return_value=fake_text),
+        patch("routers.books.get_book_epub", new_callable=AsyncMock,
+              return_value=(fake_epub_bytes, "http://example.com/book.epub")),
+        patch("routers.books.save_book", side_effect=fake_save_book),
+        patch("routers.books.save_book_epub", side_effect=fake_save_book_epub),
+    ):
+        from routers.books import _fetch_and_cache
+        await _fetch_and_cache(99001)
+
+    # Both saves must have completed before _fetch_and_cache returned.
+    # Without the fix, save_book_epub fires in a background task and may
+    # not have run yet, so split_with_html_preference falls back to text.
+    assert "book" in save_calls, f"save_book never called: {save_calls}"
+    assert "epub" in save_calls, (
+        f"save_book_epub did not run synchronously — chapters request "
+        f"would fall back to text-based split. Calls: {save_calls}"
+    )
+
+
+async def test_fetch_and_cache_continues_when_epub_fetch_fails(client):
+    """Regression #1161: when the EPUB doesn't exist on Gutenberg
+    (or fetch fails), _fetch_and_cache must still return text + meta
+    successfully — book-add does not depend on EPUB availability."""
+    fake_meta = {"id": 99002, "title": "T", "authors": ["A"], "languages": ["en"],
+                 "subjects": [], "download_count": 1, "cover": ""}
+    fake_text = "Chapter 1\n\nSome content."
+
+    async def fake_save_book(*args, **kwargs):
+        pass
+
+    with (
+        patch("routers.books.get_book_meta", new_callable=AsyncMock, return_value=fake_meta),
+        patch("routers.books.get_book_text", new_callable=AsyncMock, return_value=fake_text),
+        patch("routers.books.get_book_epub", new_callable=AsyncMock,
+              side_effect=RuntimeError("Gutenberg has no EPUB for this book")),
+        patch("routers.books.save_book", side_effect=fake_save_book),
+    ):
+        from routers.books import _fetch_and_cache
+        meta, text = await _fetch_and_cache(99002)
+    assert meta == fake_meta
+    assert text == fake_text

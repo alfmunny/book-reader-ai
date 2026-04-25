@@ -1179,6 +1179,7 @@ export default function ReaderPage() {
               onClick={() => setShowShortcuts((v) => !v)}
               title="Keyboard shortcuts (?)"
               aria-label="Keyboard shortcuts"
+              aria-expanded={showShortcuts}
               className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 rounded-lg border text-xs font-medium transition-colors ${
                 showShortcuts
                   ? "bg-amber-100 border-amber-400 text-amber-800"
@@ -1188,7 +1189,7 @@ export default function ReaderPage() {
               <KeyboardIcon className="w-3.5 h-3.5" />
             </button>
             {showShortcuts && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-lg z-50 p-3 animate-fade-in">
+              <div role="region" aria-label="Keyboard shortcuts" className="absolute right-0 top-full mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-lg z-50 p-3 animate-fade-in">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-2">Keyboard Shortcuts</p>
                 <div className="space-y-1.5">
                   {[

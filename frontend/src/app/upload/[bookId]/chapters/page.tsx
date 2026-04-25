@@ -78,7 +78,7 @@ export default function ChapterEditorPage() {
   if (error && chapters.length === 0) {
     return (
       <main className="min-h-screen bg-parchment flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
+        <div role="alert" className="text-center max-w-sm">
           <p className="font-serif text-lg text-ink mb-2">Could not load chapters</p>
           <p className="text-sm text-red-600 mb-6">{error}</p>
           <button
@@ -126,7 +126,7 @@ export default function ChapterEditorPage() {
 
       {error && (
         <div className="max-w-5xl mx-auto w-full px-4 md:px-6 pt-4">
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         </div>

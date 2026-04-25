@@ -717,7 +717,13 @@ describe("SentenceReader annotation substring matching", () => {
     const segs = getSegments(container);
     const annotatedSeg = segs.find((s) => s.textContent?.includes("She came back"));
     expect(annotatedSeg).toBeDefined();
-    expect(annotatedSeg?.className).toContain("border-green-400");
+    // Per #1410: substring annotations underline the matched substring only,
+    // not the full segment span. So the wrapper must NOT carry the underline,
+    // but a child element should.
+    expect(annotatedSeg?.className).not.toContain("border-green-400");
+    const inner = annotatedSeg?.querySelector(".border-green-400");
+    expect(inner).not.toBeNull();
+    expect(inner?.textContent).toContain("watches below");
   });
 
   it("exact-match annotation still works after substring fallback added", () => {

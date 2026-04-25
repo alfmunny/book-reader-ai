@@ -495,6 +495,7 @@ function VocabularyPageContent() {
                   key={value}
                   onClick={() => setSortMode(value)}
                   data-testid={`sort-${value}`}
+                  aria-pressed={sortMode === value}
                   className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[44px] ${
                     sortMode === value
                       ? "bg-amber-700 text-white"

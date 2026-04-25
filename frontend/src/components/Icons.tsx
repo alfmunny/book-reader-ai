@@ -465,3 +465,11 @@ export function ArrowUpIcon({ className = "w-4 h-4" }: IconProps) {
     </svg>
   );
 }
+
+export function PlusIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 5v14m-7-7h14" />
+    </svg>
+  );
+}

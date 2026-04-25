@@ -115,7 +115,14 @@ export default function UploadPage() {
               <p className="text-sm font-medium text-ink">Your uploaded books</p>
               <p className="text-sm text-amber-700">{quota.used} / {quota.max}</p>
             </div>
-            <div className="h-2 rounded-full bg-amber-100 overflow-hidden">
+            <div
+              className="h-2 rounded-full bg-amber-100 overflow-hidden"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(Math.min(100, (quota.used / quota.max) * 100))}
+              aria-label={`Upload quota: ${quota.used} of ${quota.max} books used`}
+            >
               <div
                 className="h-full rounded-full bg-amber-500 transition-all duration-200"
                 style={{ width: `${Math.min(100, (quota.used / quota.max) * 100)}%` }}

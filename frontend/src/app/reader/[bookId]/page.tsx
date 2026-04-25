@@ -1297,7 +1297,15 @@ export default function ReaderPage() {
 
       {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
-        <div className="h-1 bg-amber-100/80" title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}>
+        <div
+          className="h-1 bg-amber-100/80"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}
+          aria-label="Reading progress"
+          title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}
+        >
           <div
             className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
             style={{ width: `${((chapterIndex + scrollProgress / 100) / chapters.length) * 100}%` }}

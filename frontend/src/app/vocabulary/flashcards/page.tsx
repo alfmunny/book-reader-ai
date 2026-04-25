@@ -182,7 +182,14 @@ export default function FlashcardsPage() {
         )}
 
         {/* Progress bar */}
-        <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
+        <div
+          className="h-2 bg-amber-100 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
+          aria-label="Study progress"
+        >
           <div
             className="h-full bg-amber-500 rounded-full transition-all duration-200"
             style={{ width: `${progress}%` }}

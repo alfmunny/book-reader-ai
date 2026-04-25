@@ -837,3 +837,28 @@ async def test_save_word_returns_dict_when_row_is_none(tmp_db, test_user, monkey
     monkeypatch.setattr(_aio.Cursor, "fetchone", _fetchone_none_once)
     result = await save_word(test_user["id"], "hello", BOOK_ID, 0, "Hello world.")
     assert isinstance(result, dict), f"save_word must return a dict, got {type(result)}"
+
+
+# ── Issue #1085: Obsidian export missing exception logging ───────────────────
+
+
+async def test_obsidian_export_unexpected_error_logs_and_returns_500(client, test_user, caplog):
+    """Regression #1085: POST /vocabulary/export/obsidian must log a WARNING when
+    an unexpected exception escapes the GitHub put helper, not swallow it silently."""
+    import logging
+
+    await _setup_export(test_user)
+    with patch(
+        "routers.vocabulary._github_put",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("network blew up"),
+    ):
+        with caplog.at_level(logging.WARNING, logger="routers.vocabulary"):
+            resp = await client.post(
+                "/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID}
+            )
+    assert resp.status_code == 500
+    assert any(
+        "obsidian" in r.message.lower() or "github" in r.message.lower()
+        for r in caplog.records
+    ), f"Expected a warning log for the failed export, got: {[r.message for r in caplog.records]}"

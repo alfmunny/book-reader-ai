@@ -282,9 +282,9 @@ export default function Home() {
             {/* Continue Reading */}
             {recentBooks.length > 0 && (
               <section>
-                <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
                   Continue Reading
-                </p>
+                </h2>
                 <button
                   aria-label="Continue reading"
                   onClick={() => router.push(`/reader/${recentBooks[0].id}`)}
@@ -319,9 +319,9 @@ export default function Home() {
             {status === "authenticated" && userStats && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 flex-1">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 flex-1">
                     Your Progress
-                  </p>
+                  </h2>
                   <button
                     onClick={() => setStatsExpanded((v) => !v)}
                     className="text-xs text-amber-600 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
@@ -376,9 +376,9 @@ export default function Home() {
             {recentBooks.length > 0 ? (
               <section>
                 {recentBooks.length > 1 && (
-                  <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
                     Your Library
-                  </p>
+                  </h2>
                 )}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {recentBooks.map((book) => (

@@ -162,6 +162,33 @@ async def test_cannot_delete_gutenberg_book(client):
     assert "gutenberg" in resp.json()["detail"].lower()
 
 
+async def test_delete_uploaded_book_by_non_owner_returns_403(tmp_db, test_user):
+    """DELETE /api/books/upload/{id} returns 403 when called by a non-owner (#1280)."""
+    async def _test_user_override():
+        return await get_user_by_id(test_user["id"])
+
+    app.dependency_overrides[get_current_user] = _test_user_override
+    app.dependency_overrides[get_optional_user] = _test_user_override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        upload_resp = await c.post("/api/books/upload", files=_txt_upload())
+        book_id = upload_resp.json()["book_id"]
+    app.dependency_overrides.clear()
+
+    other_user = await get_or_create_user(**SECOND_USER)
+
+    async def _other_user_override():
+        return await get_user_by_id(other_user["id"])
+
+    app.dependency_overrides[get_current_user] = _other_user_override
+    app.dependency_overrides[get_optional_user] = _other_user_override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        del_resp = await c.delete(f"/api/books/upload/{book_id}")
+    app.dependency_overrides.clear()
+
+    assert del_resp.status_code == 403
+    assert "not your book" in del_resp.json()["detail"].lower()
+
+
 async def test_get_draft_chapters_requires_ownership(tmp_db, test_user):
     """Another user cannot access draft chapters that belong to test_user."""
     # Upload as test_user

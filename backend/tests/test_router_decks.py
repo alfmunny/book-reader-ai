@@ -221,6 +221,14 @@ async def test_add_member_404_for_foreign_word(client, test_user):
     assert resp.status_code == 404
 
 
+async def test_add_member_404_for_nonexistent_deck(client, test_user):
+    """Regression #1351: add member to a deck that doesn't exist must return 404."""
+    await _book()
+    vid = await _save("orphan", test_user["id"])
+    resp = await client.post("/api/decks/9999/members", json={"vocabulary_id": vid})
+    assert resp.status_code == 404
+
+
 async def test_remove_member(client, test_user):
     await _book()
     vid = await _save("removable", test_user["id"])
@@ -232,6 +240,14 @@ async def test_remove_member(client, test_user):
 
     refreshed = (await client.get(f"/api/decks/{deck['id']}")).json()
     assert refreshed["members"] == []
+
+
+async def test_remove_member_404_for_nonexistent_deck(client, test_user):
+    """Regression #1351: remove member from a deck that doesn't exist must return 404."""
+    await _book()
+    vid = await _save("ghost", test_user["id"])
+    resp = await client.delete(f"/api/decks/9999/members/{vid}")
+    assert resp.status_code == 404
 
 
 # ── Smart deck rule resolution ──────────────────────────────────────────────

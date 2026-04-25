@@ -159,7 +159,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded px-2 py-1 text-xs">
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded px-2 py-1 text-xs">
               {error}
             </div>
           )}

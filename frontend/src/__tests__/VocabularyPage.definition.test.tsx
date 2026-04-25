@@ -61,7 +61,7 @@ test("clicking a word lemma button opens DefinitionSheet with spinner then defin
   await screen.findByText("ephemeral");
 
   // Click the word lemma button (shows the definition sheet)
-  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
 
   // Spinner visible while loading
   await waitFor(() => expect(screen.getByText(/Looking up/i)).toBeInTheDocument());
@@ -94,7 +94,7 @@ test("DefinitionSheet shows 'No definition found' when API returns no definition
   await flushPromises();
   await screen.findByText("ephemeral");
 
-  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
 
   await waitFor(() => expect(screen.getByText(/No definition found/i)).toBeInTheDocument());
 });
@@ -111,7 +111,7 @@ test("DefinitionSheet closes on Escape key", async () => {
   await flushPromises();
   await screen.findByText("ephemeral");
 
-  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
   await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
 
   fireEvent.keyDown(document, { key: "Escape" });
@@ -135,13 +135,13 @@ test("DefinitionSheet can be opened a second time after Escape-close (no stale e
   await screen.findByText("ephemeral");
 
   // First open → close via Escape
-  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
   await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
   fireEvent.keyDown(document, { key: "Escape" });
   await waitFor(() => expect(screen.queryByText("short-lived")).not.toBeInTheDocument());
 
   // Second open — sheet must appear again without instantly closing
-  await userEvent.click(screen.getByRole("button", { name: /ephemeral/i }));
+  await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
   await waitFor(() => expect(screen.getByText("short-lived")).toBeInTheDocument());
   // Give stale mousedown listeners a chance to fire (they wouldn't normally — but
   // if they accumulate they would close the sheet immediately)
@@ -170,6 +170,6 @@ test("DefinitionSheet shows lemma redirect arrow when lemma differs from word", 
   await flushPromises();
   await screen.findByText("running");
 
-  await userEvent.click(screen.getByRole("button", { name: /running/i }));
+  await userEvent.click(screen.getByRole("button", { name: "running" }));
   await waitFor(() => expect(screen.getByText(/← run/)).toBeInTheDocument());
 });

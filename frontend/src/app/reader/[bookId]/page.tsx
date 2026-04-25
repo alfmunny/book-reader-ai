@@ -811,7 +811,7 @@ export default function ReaderPage() {
   }
 
   return (
-    <div className="h-screen bg-parchment flex flex-col overflow-hidden">
+    <main id="main-content" className="h-screen bg-parchment flex flex-col overflow-hidden">
       {/* ── Gemini key reminder banner ───────────────────────────────────── */}
       {geminiReminderVisible && (
         <div className="shrink-0 bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-4 text-sm text-amber-800">
@@ -2277,6 +2277,6 @@ export default function ReaderPage() {
         feature={authPrompt ?? ""}
         onClose={() => setAuthPrompt(null)}
       />
-    </div>
+    </main>
   );
 }

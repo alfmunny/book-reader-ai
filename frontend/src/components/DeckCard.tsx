@@ -55,7 +55,7 @@ export default function DeckCard({ deck, onDelete }: DeckCardProps) {
             onClick={() => onDelete(deck.id)}
             aria-label={`Delete deck ${deck.name}`}
             data-testid={`deck-delete-${deck.id}`}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-400 hover:text-red-600 transition-colors shrink-0"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-red-600 transition-colors shrink-0"
           >
             <TrashIcon className="w-4 h-4" />
           </button>

@@ -162,7 +162,7 @@ export default function AnnotationToolbar({
 
           {/* Note textarea */}
           <div>
-            <label htmlFor="annotation-note" className="block text-xs text-stone-500 mb-1.5">Note <span className="text-stone-400">(optional)</span></label>
+            <label htmlFor="annotation-note" className="block text-xs text-stone-500 mb-1.5">Note <span className="text-stone-500">(optional)</span></label>
             <textarea
               ref={textareaRef}
               id="annotation-note"

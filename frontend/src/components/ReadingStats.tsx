@@ -164,7 +164,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
           {weeks.map((_, wi) => {
             const m = months.find((m) => m.colStart === wi);
             return (
-              <div key={wi} className="text-[9px] text-stone-400 truncate">
+              <div key={wi} className="text-[9px] text-stone-500 truncate">
                 {m?.label ?? ""}
               </div>
             );
@@ -199,11 +199,11 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
 
         {/* Legend */}
         <div className="flex items-center gap-1 mt-2 justify-end">
-          <span className="text-[9px] text-stone-400 mr-1">Less</span>
+          <span className="text-[9px] text-stone-500 mr-1">Less</span>
           {["bg-stone-100", "bg-amber-200", "bg-amber-400", "bg-amber-600", "bg-amber-800"].map((c) => (
             <div key={c} className={`w-3 h-3 rounded-[2px] ${c}`} />
           ))}
-          <span className="text-[9px] text-stone-400 ml-1">More</span>
+          <span className="text-[9px] text-stone-500 ml-1">More</span>
         </div>
       </div>
     </div>

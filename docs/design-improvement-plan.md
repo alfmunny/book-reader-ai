@@ -196,3 +196,51 @@ These are structural changes requiring more careful implementation and testing:
 | 8.5 | UX-010: SentenceActionPopup: SVG icons (SpeakerIcon, NoteIcon, ChatIcon) | High | SentenceActionPopup.tsx | ✅ Done |
 | 8.6 | UX-011: ChapterSummary: SummaryIcon replaces 📋 in header and empty state | Medium | ChapterSummary.tsx | ✅ Done |
 | 8.7 | UX-012: InsightChat: PaperclipIcon replaces 📎 context snippet decorator | Low | InsightChat.tsx, Icons.tsx | ✅ Done |
+
+## Wave 9 — Accessibility Sweep (2026-04-23 → 2026-04-25)
+
+Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus management, error announcements, and live regions. Every change ships with a static assertion test.
+
+### WCAG 4.1.3 Status Messages — loading states
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-23 | role=status on AnnotationsSidebar loading spinners | AnnotationsSidebar.tsx | #1069 |
+| 2026-04-23 | role=status on 6 page-level skeleton/spinner loaders (admin users, vocabulary/flashcards, upload chapters, notes/[bookId], ReadingStats, vocabulary) | multiple | #1076 |
+| 2026-04-23 | role=status on reader chapter skeleton and QueueTab initial skeleton | reader/[bookId]/page.tsx, QueueTab.tsx | #1079 |
+| 2026-04-23 | role=status on InsightChat/SentenceReader/ChapterSummary skeletons | InsightChat.tsx, SentenceReader.tsx, ChapterSummary.tsx | #1071 |
+| 2026-04-25 | role=status on WordActionDrawer loading ("Looking up word") | WordActionDrawer.tsx | #1099 |
+| 2026-04-25 | role=status on TranslationView skeleton (parallel + inline modes) | TranslationView.tsx | #1110 |
+
+### WCAG 4.1.2 Name, Role, Value — dialogs, toolbars, state
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-25 | role=dialog + aria-modal on vocabulary DefinitionSheet + aria-hidden backdrops | vocabulary/page.tsx, AuthPromptModal.tsx | #1088 |
+| 2026-04-25 | role=toolbar + aria-label on QuickHighlightPanel popover | QuickHighlightPanel.tsx | #1104 |
+| 2026-04-25 | role=dialog + aria-labelledby + focus management on AnnotationsSidebar drawer | AnnotationsSidebar.tsx | #1107 |
+| 2026-04-25 | aria-pressed + role=group on TypographyPanel SegmentedControl | TypographyPanel.tsx | #1117 |
+| 2026-04-25 | aria-current=page on active home tab button | app/page.tsx | #1122 |
+| 2026-04-25 | role=log + aria-live=polite on InsightChat message container | InsightChat.tsx | #1126 |
+
+### WCAG 2.4.3 Focus Order — modal focus management
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-25 | Focus moves to dialog on open, restored on close — BookDetailModal + AuthPromptModal | BookDetailModal.tsx, AuthPromptModal.tsx | #1097 |
+| 2026-04-25 | Same pattern — WordActionDrawer + DefinitionSheet | WordActionDrawer.tsx, vocabulary/page.tsx | #1099 |
+| 2026-04-25 | Same pattern — AnnotationsSidebar drawer | AnnotationsSidebar.tsx | #1107 |
+
+### WCAG 1.3.1 Info and Relationships — label associations
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-25 | AnnotationToolbar Note `<p>` replaced with `<label htmlFor>` on textarea | AnnotationToolbar.tsx | #1101 |
+
+### WCAG 4.1.3 Status Messages — error announcements
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-25 | role=alert on error blocks across notes, vocabulary, ChapterSummary, AnnotationToolbar | multiple | #1113 |
+
+### Pattern shifts (non-WCAG-only but UX-visible)
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-25 | Native `confirm()` → optimistic delete + UndoToast in notes/library pages | notes/[bookId]/page.tsx, app/page.tsx | #1084 |
+| 2026-04-25 | Desktop touch-target scoping: `md:min-h-0` on reader header buttons (44px becomes mobile-only) | reader/[bookId]/page.tsx, CLAUDE.md | #1081 |
+| 2026-04-25 | Browse-books CTA on vocabulary + notes empty states | vocabulary/page.tsx, notes/page.tsx | #1093 |

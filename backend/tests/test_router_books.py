@@ -1158,6 +1158,17 @@ async def test_retry_translation_oversized_target_language_returns_422(client, t
 # ── Issue #517: Unbounded GET query params ────────────────────────────────────
 
 
+async def test_search_whitespace_only_q_returns_422(client):
+    """Regression #1401: GET /books/search?q=%20%20%20 must return 422.
+
+    A whitespace-only query passes min_length=1 but should be rejected
+    before making an external Gutenberg API call."""
+    resp = await client.get("/api/books/search?q=%20%20%20")
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only q, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_search_oversized_q_returns_422(client):
     """Regression #517: GET /books/search?q=<201 chars> must return 422."""
     resp = await client.get(f"/api/books/search?q={'x' * 201}")

@@ -274,6 +274,7 @@ export default function ProfilePage() {
             onClick={() => setObsidianOpen((o) => !o)}
             className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-amber-50/50 transition-colors"
             aria-expanded={obsidianOpen}
+            aria-controls="obsidian-export-panel"
           >
             <div>
               <h2 className="font-serif text-lg font-semibold text-ink">Obsidian Export</h2>
@@ -291,7 +292,7 @@ export default function ProfilePage() {
 
           {/* Collapsible body */}
           {obsidianOpen && (
-            <div className="px-6 pb-6 space-y-4 border-t border-amber-100">
+            <div id="obsidian-export-panel" role="region" aria-label="Obsidian export settings" className="px-6 pb-6 space-y-4 border-t border-amber-100">
               <div className="pt-4">
                 <div className="flex items-center justify-between mb-1">
                   <label htmlFor="obsidian-token" className="block text-sm font-medium text-ink">

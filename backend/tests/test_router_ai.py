@@ -1404,3 +1404,63 @@ async def test_tts_unexpected_error_logs_and_returns_500(client, caplog):
     assert resp.status_code == 500
     assert any("tts" in r.message.lower() or "500" in r.message for r in caplog.records), \
         f"Expected error log for tts 500 but got: {[r.message for r in caplog.records]}"
+
+
+# ── Issue #1127: whitespace-only content bypasses min_length=1 on AI endpoints ──
+
+
+@pytest.mark.parametrize("bad", ["   ", "\t\n  "])
+async def test_insight_rejects_whitespace_chapter_text(client, test_user, bad):
+    resp = await client.post("/api/ai/insight", json={
+        "chapter_text": bad,
+        "book_title": "War and Peace",
+        "author": "Tolstoy",
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace chapter_text, got {resp.status_code}"
+
+
+@pytest.mark.parametrize("bad", ["   ", "\t"])
+async def test_insight_rejects_whitespace_book_title(client, test_user, bad):
+    resp = await client.post("/api/ai/insight", json={
+        "chapter_text": "Some chapter text",
+        "book_title": bad,
+        "author": "Tolstoy",
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace book_title, got {resp.status_code}"
+
+
+async def test_qa_rejects_whitespace_question(client, test_user):
+    resp = await client.post("/api/ai/qa", json={
+        "question": "   ",
+        "passage": "Some passage.",
+        "book_title": "Book",
+        "author": "Author",
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace question, got {resp.status_code}"
+
+
+async def test_qa_rejects_whitespace_passage(client, test_user):
+    resp = await client.post("/api/ai/qa", json={
+        "question": "What happens next?",
+        "passage": "\t\n",
+        "book_title": "Book",
+        "author": "Author",
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace passage, got {resp.status_code}"
+
+
+async def test_references_rejects_whitespace_book_title(client, test_user):
+    resp = await client.post("/api/ai/references", json={
+        "book_title": "   ",
+        "author": "Author",
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace book_title in references, got {resp.status_code}"
+
+
+async def test_translate_rejects_whitespace_text(client, test_user):
+    resp = await client.post("/api/ai/translate", json={
+        "text": "   ",
+        "source_language": "de",
+        "target_language": "en",
+    })
+    assert resp.status_code == 422, f"Expected 422 for whitespace text in translate, got {resp.status_code}"

@@ -720,8 +720,8 @@ export default function QueueTab({ adminFetch }: Props) {
                 <table className="w-full">
                   <thead className="bg-amber-50">
                     <tr>
-                      <th className="text-left px-2 py-1 text-stone-600">Book</th>
-                      <th className="text-right px-2 py-1 text-stone-600">Chapters</th>
+                      <th scope="col" className="text-left px-2 py-1 text-stone-600">Book</th>
+                      <th scope="col" className="text-right px-2 py-1 text-stone-600">Chapters</th>
                     </tr>
                   </thead>
                   <tbody>

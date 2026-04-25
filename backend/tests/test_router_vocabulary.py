@@ -877,3 +877,17 @@ async def test_export_obsidian_whitespace_target_language_returns_422(client, te
     assert resp.status_code == 422, (
         f"Expected 422 for whitespace target_language in /vocabulary/export/obsidian, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1398: whitespace-only word in /definition/{word} ──────────────────
+
+
+async def test_definition_whitespace_only_word_returns_422(client, test_user):
+    """Regression #1398: GET /vocabulary/definition/%20%20 must return 422.
+
+    A whitespace-only URL-encoded word passes max_length validation but should
+    be rejected before making external Wiktionary / Gemini API calls."""
+    resp = await client.get("/api/vocabulary/definition/%20%20%20")
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only word in /definition, got {resp.status_code}: {resp.text}"
+    )

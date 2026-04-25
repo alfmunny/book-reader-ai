@@ -1255,7 +1255,7 @@ export default function ReaderPage() {
         translationUsedProvider &&
         translationUsedProvider.startsWith("queue") && (
           <div className="bg-sky-50 border-b border-sky-200 px-4 py-2 text-xs text-sky-800 flex items-center gap-2">
-            <span className="inline-block w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" />
+            <span className="inline-block w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" aria-hidden="true" />
             <span>
               <strong>Translation queued</strong> — {translationUsedProvider}.
               The background worker is processing this chapter; translated
@@ -1996,7 +1996,7 @@ export default function ReaderPage() {
                       return (
                         <div className="mt-3 pt-3 border-t border-amber-200">
                           <div className="flex items-center gap-1.5 text-xs text-amber-700">
-                            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" />}
+                            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" aria-hidden="true" />}
                             <span>
                               <strong>{ready} / {total}</strong> chapters translated
                               {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}

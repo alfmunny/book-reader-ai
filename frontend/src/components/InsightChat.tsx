@@ -77,7 +77,8 @@ function ContextChip({
             <button
               onClick={() => setExpanded((v) => !v)}
               className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic min-h-[44px] inline-flex items-center"
-              aria-label={expanded ? "Collapse context" : "Expand context"}
+              aria-label="Toggle context"
+              aria-expanded={expanded}
             >
               {expanded ? "less" : "more"}
             </button>
@@ -634,7 +635,8 @@ function MsgContextBlock({
           <button
             onClick={onToggle}
             className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic min-h-[44px] inline-flex items-center"
-            aria-label={expanded ? "Collapse context" : "Expand context"}
+            aria-label="Toggle context"
+            aria-expanded={expanded}
           >
             {expanded ? "less" : "more"}
           </button>

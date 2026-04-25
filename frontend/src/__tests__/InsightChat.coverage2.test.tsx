@@ -62,28 +62,29 @@ describe("InsightChat — ContextChip expand/collapse (L78)", () => {
     render(<InsightChat {...BASE} selectedText={LONG_TEXT} />);
     await act(async () => await flushPromises());
 
-    // Initially shows "more"
-    const moreBtn = screen.getByRole("button", { name: "Expand context" });
-    expect(moreBtn).toBeInTheDocument();
+    // Initially collapsed (aria-expanded=false)
+    const toggleBtn = screen.getByRole("button", { name: "Toggle context" });
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
 
-    fireEvent.click(moreBtn);
+    fireEvent.click(toggleBtn);
     await act(async () => await flushPromises());
 
-    // After expanding, shows "less"
-    expect(screen.getByRole("button", { name: "Collapse context" })).toBeInTheDocument();
+    // After expanding, aria-expanded=true
+    expect(screen.getByRole("button", { name: "Toggle context" })).toHaveAttribute("aria-expanded", "true");
   });
 
   it("toggles ContextChip back from 'less' to 'more' on second click", async () => {
     render(<InsightChat {...BASE} selectedText={LONG_TEXT} />);
     await act(async () => await flushPromises());
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand context" }));
+    const toggleBtn2 = screen.getByRole("button", { name: "Toggle context" });
+    fireEvent.click(toggleBtn2);
     await act(async () => await flushPromises());
 
-    fireEvent.click(screen.getByRole("button", { name: "Collapse context" }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle context" }));
     await act(async () => await flushPromises());
 
-    expect(screen.getByRole("button", { name: "Expand context" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Toggle context" })).toHaveAttribute("aria-expanded", "false");
   });
 });
 
@@ -273,19 +274,17 @@ describe("InsightChat — MsgContextBlock onToggle (L389-L390)", () => {
     // Wait for the assistant reply
     await waitFor(() => expect(screen.getByText("Answer.")).toBeInTheDocument());
 
-    // The user message's MsgContextBlock shows "more" (context > 160 chars, collapsed)
-    // There may be multiple "more" buttons (ContextChip in input area is gone after send,
-    // but MsgContextBlock in the user bubble should now be present)
-    const moreBtns = screen.getAllByRole("button", { name: "Expand context" });
+    // The user message's MsgContextBlock shows collapsed toggle (aria-expanded=false)
+    const moreBtns = screen.getAllByRole("button", { name: "Toggle context" });
     expect(moreBtns.length).toBeGreaterThanOrEqual(1);
 
-    // Click the MsgContextBlock's "more" button (last one, as ContextChip was cleared on send)
+    // Click the MsgContextBlock's toggle button (last one)
     fireEvent.click(moreBtns[moreBtns.length - 1]);
     await act(async () => await flushPromises());
 
-    // After expanding, the MsgContextBlock shows "less"
-    const lessBtns = screen.getAllByRole("button", { name: "Collapse context" });
-    expect(lessBtns.length).toBeGreaterThanOrEqual(1);
+    // After expanding, the last toggle button should be aria-expanded=true
+    const lessBtns = screen.getAllByRole("button", { name: "Toggle context" });
+    expect(lessBtns[lessBtns.length - 1]).toHaveAttribute("aria-expanded", "true");
   });
 
   it("toggles MsgContextBlock back from 'less' to 'more' on second click", async () => {
@@ -298,15 +297,16 @@ describe("InsightChat — MsgContextBlock onToggle (L389-L390)", () => {
 
     await waitFor(() => expect(screen.getByText("Answer.")).toBeInTheDocument());
 
-    const moreBtns = screen.getAllByRole("button", { name: "Expand context" });
-    fireEvent.click(moreBtns[moreBtns.length - 1]);
+    const moreBtns2 = screen.getAllByRole("button", { name: "Toggle context" });
+    fireEvent.click(moreBtns2[moreBtns2.length - 1]);
     await act(async () => await flushPromises());
 
-    const lessBtns = screen.getAllByRole("button", { name: "Collapse context" });
-    fireEvent.click(lessBtns[lessBtns.length - 1]);
+    const lessBtns2 = screen.getAllByRole("button", { name: "Toggle context" });
+    fireEvent.click(lessBtns2[lessBtns2.length - 1]);
     await act(async () => await flushPromises());
 
-    // Back to "more"
-    expect(screen.getAllByRole("button", { name: "Expand context" }).length).toBeGreaterThanOrEqual(1);
+    // Back to collapsed
+    const finalBtns = screen.getAllByRole("button", { name: "Toggle context" });
+    expect(finalBtns[finalBtns.length - 1]).toHaveAttribute("aria-expanded", "false");
   });
 });

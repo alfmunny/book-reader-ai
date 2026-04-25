@@ -873,6 +873,8 @@ export default function ReaderPage() {
                 setTypographyAnchorPos({ x: rect.right, y: rect.bottom });
                 setShowTypographyPanel((v) => !v);
               }}
+              aria-label="Typography settings"
+              aria-expanded={showTypographyPanel}
               className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px]"
               title="Typography"
             >Aa</button>
@@ -1105,6 +1107,7 @@ export default function ReaderPage() {
                   return next;
                 });
               }}
+              aria-pressed={showAnnotations}
               title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
               className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
                 showAnnotations

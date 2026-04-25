@@ -324,6 +324,7 @@ export default function Home() {
                   </h2>
                   <button
                     onClick={() => setStatsExpanded((v) => !v)}
+                    aria-expanded={statsExpanded}
                     className="text-xs text-amber-600 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
                   >
                     {statsExpanded ? "Hide activity" : "Show activity"}

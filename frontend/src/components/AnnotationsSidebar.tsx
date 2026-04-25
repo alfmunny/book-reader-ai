@@ -128,8 +128,12 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                     {byChapter[ch].map((ann) => (
                       <div
                         key={ann.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
                         className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${COLOR_BADGE[ann.color] ?? COLOR_BADGE.yellow}`}
                         onClick={() => { onJump(ann); setOpen(false); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump(ann); setOpen(false); } }}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">

@@ -20,6 +20,29 @@ const GRADES = [
   { label: "Easy", value: 5, className: "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200" },
 ];
 
+function readLastDeckId(): number | undefined {
+  try {
+    const raw = localStorage.getItem("flashcards.lastDeckId");
+    if (!raw) return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function persistLastDeckId(id: number | undefined): void {
+  try {
+    if (id === undefined) {
+      localStorage.removeItem("flashcards.lastDeckId");
+    } else {
+      localStorage.setItem("flashcards.lastDeckId", String(id));
+    }
+  } catch {
+    /* SSR / private-mode safe */
+  }
+}
+
 export default function FlashcardsPage() {
   const router = useRouter();
   const { status } = useSession();
@@ -60,7 +83,12 @@ export default function FlashcardsPage() {
     let alive = true;
     listDecks()
       .then((d) => {
-        if (alive) setDecks(d);
+        if (!alive) return;
+        setDecks(d);
+        const saved = readLastDeckId();
+        if (saved && d.some((deck) => deck.id === saved)) {
+          setSelectedDeckId(saved);
+        }
       })
       .catch(() => {});
     return () => {
@@ -136,9 +164,11 @@ export default function FlashcardsPage() {
             <select
               id="flashcards-deck-select"
               value={selectedDeckId ?? ""}
-              onChange={(e) =>
-                setSelectedDeckId(e.target.value ? Number(e.target.value) : undefined)
-              }
+              onChange={(e) => {
+                const next = e.target.value ? Number(e.target.value) : undefined;
+                setSelectedDeckId(next);
+                persistLastDeckId(next);
+              }}
               className="flex-1 min-h-[44px] rounded-lg border border-amber-200 bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-amber-300"
             >
               <option value="">All decks</option>

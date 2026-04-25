@@ -486,7 +486,7 @@ describe("QueueTab.branches2 — save chain (line 643)", () => {
     await renderAndWait(adminFetch);
 
     // Remove all chain items using the × button
-    const removeButtons = screen.getAllByTitle(/remove from chain/i);
+    const removeButtons = screen.getAllByTitle(/remove .+ from chain/i);
     for (const btn of removeButtons) {
       await userEvent.click(btn);
     }

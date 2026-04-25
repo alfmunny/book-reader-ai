@@ -78,28 +78,28 @@ describe("QueueTab chain buttons accessibility (#595)", () => {
 
   it("move-up buttons have aria-label", async () => {
     await renderAndWait(makeAdminFetch());
-    const upBtns = screen.getAllByTitle(/move up/i);
+    const upBtns = screen.getAllByTitle(/move .+ up/i);
     expect(upBtns.length).toBeGreaterThan(0);
     upBtns.forEach((btn) => {
-      expect(btn.getAttribute("aria-label")).toBe("Move up");
+      expect(btn.getAttribute("aria-label")).toMatch(/^Move .+ up$/);
     });
   });
 
   it("move-down buttons have aria-label", async () => {
     await renderAndWait(makeAdminFetch());
-    const downBtns = screen.getAllByTitle(/move down/i);
+    const downBtns = screen.getAllByTitle(/move .+ down/i);
     expect(downBtns.length).toBeGreaterThan(0);
     downBtns.forEach((btn) => {
-      expect(btn.getAttribute("aria-label")).toBe("Move down");
+      expect(btn.getAttribute("aria-label")).toMatch(/^Move .+ down$/);
     });
   });
 
   it("remove-from-chain buttons have aria-label", async () => {
     await renderAndWait(makeAdminFetch());
-    const removeBtns = screen.getAllByTitle(/remove from chain/i);
+    const removeBtns = screen.getAllByTitle(/remove .+ from chain/i);
     expect(removeBtns.length).toBeGreaterThan(0);
     removeBtns.forEach((btn) => {
-      expect(btn.getAttribute("aria-label")).toBe("Remove from chain");
+      expect(btn.getAttribute("aria-label")).toMatch(/^Remove .+ from chain$/);
     });
   });
 

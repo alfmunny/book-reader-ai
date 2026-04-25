@@ -143,7 +143,7 @@ function AnnotationCard({
             onClick={onEdit}
             className="text-stone-400 hover:text-stone-600 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Edit note"
-            aria-label="Edit note"
+            aria-label={`Edit annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
             <EditIcon className="w-3.5 h-3.5" />
           </button>
@@ -152,7 +152,7 @@ function AnnotationCard({
             disabled={isDeleting}
             className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Delete annotation"
-            aria-label="Delete annotation"
+            aria-label={`Delete annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
             {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" /> : <TrashIcon className="w-3.5 h-3.5" />}
           </button>
@@ -204,7 +204,7 @@ function InsightCard({
           disabled={isDeleting}
           className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="Delete insight"
-          aria-label="Delete insight"
+          aria-label={`Delete insight: ${ins.question.slice(0, 60)}`}
         >
           {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" /> : <TrashIcon className="w-3.5 h-3.5" />}
         </button>

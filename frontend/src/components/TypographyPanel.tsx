@@ -101,6 +101,14 @@ export default function TypographyPanel({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [onClose]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   function set<T extends string>(setter: (v: T) => void, key: keyof Parameters<typeof saveSettings>[0]) {
     return (v: T) => {
       setter(v);

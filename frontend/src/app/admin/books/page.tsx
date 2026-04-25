@@ -369,7 +369,7 @@ export default function BooksPage() {
                 <button
                   onClick={() => router.push(`/reader/${b.id}`)}
                   aria-label={`Open reader for ${b.title}`}
-                  className="text-xs text-amber-600 hover:text-amber-800 shrink-0 min-h-[44px] flex items-center"
+                  className="text-xs text-amber-700 hover:text-amber-800 shrink-0 min-h-[44px] flex items-center"
                 >
                   Open
                 </button>
@@ -571,12 +571,12 @@ export default function BooksPage() {
           );
         })}
         {books.length === 0 ? (
-          <div className="px-4 py-8 text-center text-amber-600 text-sm">No books cached.</div>
+          <div className="px-4 py-8 text-center text-amber-700 text-sm">No books cached.</div>
         ) : (
           books.filter((b) =>
             fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
           ).length === 0 && (
-            <div className="px-4 py-8 text-center text-amber-600 text-sm">
+            <div className="px-4 py-8 text-center text-amber-700 text-sm">
               No books match &ldquo;{searchQuery}&rdquo;.
             </div>
           )

@@ -75,7 +75,7 @@ export default function AudioPage() {
         </div>
       ))}
       {audio.length === 0 && (
-        <div className="px-4 py-8 text-center text-amber-600 text-sm">No audio cached.</div>
+        <div className="px-4 py-8 text-center text-amber-700 text-sm">No audio cached.</div>
       )}
     </div>
   );

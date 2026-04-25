@@ -309,7 +309,7 @@ export default function BookImportPage() {
                         </span>
                       </span>
                       {s.status === "active" && s.total > 1 && (
-                        <span className="text-xs text-amber-600">
+                        <span className="text-xs text-amber-700">
                           {s.current} / {s.total}
                         </span>
                       )}

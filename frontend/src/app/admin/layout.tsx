@@ -78,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Library
         </button>
         <h1 className="font-serif font-bold text-ink text-lg md:text-xl">Admin Panel</h1>
-        <button onClick={loadStats} className="ml-auto text-sm text-amber-600 hover:text-amber-900 min-h-[44px] flex items-center gap-1">
+        <button onClick={loadStats} className="ml-auto text-sm text-amber-700 hover:text-amber-900 min-h-[44px] flex items-center gap-1">
           <RetryIcon className="w-4 h-4" aria-hidden="true" /> Refresh
         </button>
       </header>
@@ -152,7 +152,7 @@ function ContextualStats({ tab, stats }: { tab: TabKey | null; stats: Stats | nu
           }`}
         >
           <div className={`text-lg font-bold ${highlight ? "text-orange-700" : "text-ink"}`}>{value}</div>
-          <div className="text-xs text-amber-600">{label}</div>
+          <div className="text-xs text-amber-700">{label}</div>
         </div>
       ))}
     </div>

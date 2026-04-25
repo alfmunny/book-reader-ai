@@ -231,7 +231,7 @@ export default function Home() {
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/upload")}
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-600 hover:text-amber-800 transition-colors"
+              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
             >
               Upload
             </button>
@@ -239,7 +239,7 @@ export default function Home() {
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/notes")}
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-600 hover:text-amber-800 transition-colors"
+              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
             >
               Your Notes
             </button>
@@ -247,7 +247,7 @@ export default function Home() {
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/vocabulary")}
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-600 hover:text-amber-800 transition-colors"
+              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
             >
               Your Word List
             </button>
@@ -257,7 +257,7 @@ export default function Home() {
             <button
               onClick={() => router.push("/admin")}
               data-testid="admin-tab"
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-600 hover:text-amber-800 flex items-center gap-1.5"
+              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 flex items-center gap-1.5"
             >
               <SettingsIcon className="w-3.5 h-3.5" />
               Admin
@@ -325,7 +325,7 @@ export default function Home() {
                   <button
                     onClick={() => setStatsExpanded((v) => !v)}
                     aria-expanded={statsExpanded}
-                    className="text-xs text-amber-600 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
+                    className="text-xs text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
                   >
                     {statsExpanded ? "Hide activity" : "Show activity"}
                   </button>
@@ -626,7 +626,7 @@ export default function Home() {
               {!searching && searchedQuery && searchResults.length === 0 && !searchError && (
                 <div className="text-center py-10 text-amber-700">
                   <p className="text-lg font-serif mb-1">No books found for &ldquo;{searchedQuery}&rdquo;</p>
-                  <p className="text-sm text-amber-600">Try a different title, author, or language filter.</p>
+                  <p className="text-sm text-amber-700">Try a different title, author, or language filter.</p>
                 </div>
               )}
             </section>

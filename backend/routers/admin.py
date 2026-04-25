@@ -218,7 +218,8 @@ async def import_book(req: ImportBookRequest, _admin: dict = Depends(_require_ad
         text = await get_book_text(req.book_id)
         await save_book(req.book_id, meta, text)
         return {"ok": True, "status": "imported", "title": meta.get("title", ""), "text_length": len(text)}
-    except Exception:
+    except Exception as exc:
+        logger.warning("admin import book %d failed: %s", req.book_id, exc, exc_info=True)
         raise HTTPException(status_code=400, detail=f"Failed to import book {req.book_id}")
 
 

@@ -2969,6 +2969,22 @@ async def test_import_book_error_does_not_leak_exception_detail(admin_client):
 
 
 @pytest.mark.asyncio
+async def test_import_book_error_logs_warning(admin_client, caplog):
+    """Regression #1094: POST /admin/books/import must log a WARNING when get_book_meta
+    raises, not silently swallow the exception."""
+    import logging
+    with patch("routers.admin.get_book_meta", new_callable=AsyncMock,
+               side_effect=RuntimeError("gutenberg-timeout")):
+        with caplog.at_level(logging.WARNING, logger="routers.admin"):
+            res = await admin_client.post("/api/admin/books/import", json={"book_id": 42})
+    assert res.status_code == 400
+    assert any(
+        "import" in r.message.lower() or "book" in r.message.lower() or "42" in r.message
+        for r in caplog.records
+    ), f"Expected a WARNING log for failed import, got: {[r.message for r in caplog.records]}"
+
+
+@pytest.mark.asyncio
 async def test_queue_dry_run_error_does_not_leak_exception_detail(admin_client):
     """Regression #756: queue_dry_run must not expose raw exception text in 500 response."""
     with patch("routers.admin.get_setting", new_callable=AsyncMock, return_value="encrypted-key"), \

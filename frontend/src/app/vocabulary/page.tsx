@@ -229,6 +229,10 @@ function VocabularyPageContent() {
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    document.title = "Vocabulary — Book Reader AI";
+  }, []);
+
+  useEffect(() => {
     setFetchError(false);
     getVocabulary()
       .then(setWords)

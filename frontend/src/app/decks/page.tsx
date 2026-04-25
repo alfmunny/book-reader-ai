@@ -16,6 +16,10 @@ export default function DecksPage() {
   const [removedDeckToast, setRemovedDeckToast] = useState<DeckSummary | null>(null);
 
   useEffect(() => {
+    document.title = "Decks — Book Reader AI";
+  }, []);
+
+  useEffect(() => {
     let alive = true;
     listDecks()
       .then((d) => {

@@ -84,7 +84,7 @@ test("'New deck' header button navigates to /decks/new", async () => {
   expect(mockPush).toHaveBeenCalledWith("/decks/new");
 });
 
-test("deleting a deck removes it from the list and calls the API", async () => {
+test("deleting a deck removes it from the list optimistically and shows UndoToast", async () => {
   mockListDecks.mockResolvedValue(SAMPLE_DECKS);
   mockDeleteDeck.mockResolvedValue(undefined);
   render(<DecksPage />);
@@ -93,13 +93,14 @@ test("deleting a deck removes it from the list and calls the API", async () => {
   const user = userEvent.setup();
   await user.click(screen.getByTestId("deck-delete-1"));
 
-  await waitFor(() => {
-    expect(mockDeleteDeck).toHaveBeenCalledWith(1);
-  });
+  // Optimistic: removed from list immediately
   await waitFor(() => {
     expect(screen.queryByText("German verbs")).not.toBeInTheDocument();
   });
   expect(screen.getByText("A1 Spanish")).toBeInTheDocument();
+
+  // UndoToast is shown
+  expect(screen.getByText(/"German verbs" deleted/)).toBeInTheDocument();
 });
 
 test("falls back to the empty state when the API errors", async () => {

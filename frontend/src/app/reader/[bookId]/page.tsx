@@ -840,6 +840,7 @@ export default function ReaderPage() {
         <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="pointer-events-auto mt-2 flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-amber-200 rounded-full px-3 py-1.5 shadow-lg text-xs text-ink">
             <button
+              aria-label="Previous chapter"
               onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
               disabled={chapterIndex === 0}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
@@ -850,6 +851,7 @@ export default function ReaderPage() {
             </span>
             <span className="text-stone-400 mx-0.5">|</span>
             <button
+              aria-label="Next chapter"
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
               disabled={chapterIndex === chapters.length - 1}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
@@ -860,6 +862,7 @@ export default function ReaderPage() {
                 <button
                   onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px]"
+                  aria-label={ttsIsPlaying ? "Playing paragraph" : "Read focused paragraph"}
                   title={ttsIsPlaying ? "Playing…" : "Read focused paragraph"}
                 >
                   {ttsIsPlaying ? <><PauseIcon className="w-3 h-3 shrink-0" /> Playing</> : <><PlayIcon className="w-3 h-3 shrink-0" /> Read para</>}
@@ -882,6 +885,7 @@ export default function ReaderPage() {
             <button
               onClick={() => setFocusMode(false)}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px]"
+              aria-label="Exit focus mode"
               title="Exit focus mode (F)"
             ><CloseIcon className="w-3 h-3" aria-hidden="true" /> Focus</button>
           </div>

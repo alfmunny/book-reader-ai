@@ -206,7 +206,7 @@ export default function Home() {
       </header>
 
       {/* Tab bar */}
-      <nav className="border-b border-amber-200 bg-white/40 backdrop-blur">
+      <nav aria-label="Main navigation" className="border-b border-amber-200 bg-white/40 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
           {([
             { key: "library" as Tab, label: "Home", count: recentBooks.length || undefined },

@@ -66,6 +66,7 @@ test("submitting a valid form creates a manual deck and navigates to /decks", as
       name: "German verbs",
       description: "Top-frequency verbs",
       mode: "manual",
+      rules_json: null,
     });
   });
   expect(mockPush).toHaveBeenCalledWith("/decks");
@@ -96,8 +97,15 @@ test("surfaces the API error instead of navigating on failure", async () => {
   expect(mockPush).not.toHaveBeenCalledWith("/decks");
 });
 
-test("notes that smart decks are coming in a later slice (disabled mode)", () => {
+test("smart mode radio is enabled and reveals the rules sub-form when selected", async () => {
   render(<DecksNewPage />);
   const smartRadio = screen.getByTestId("deck-mode-smart") as HTMLInputElement;
-  expect(smartRadio.disabled).toBe(true);
+  expect(smartRadio.disabled).toBe(false);
+
+  // Rules sub-form is hidden in manual mode by default
+  expect(screen.queryByTestId("deck-rules-fieldset")).toBeNull();
+
+  const user = userEvent.setup();
+  await user.click(smartRadio);
+  expect(screen.getByTestId("deck-rules-fieldset")).toBeInTheDocument();
 });

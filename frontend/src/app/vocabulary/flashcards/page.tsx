@@ -208,7 +208,7 @@ export default function FlashcardsPage() {
             </p>
             <button
               onClick={() => router.push("/vocabulary")}
-              className="mt-2 px-5 py-2.5 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors min-h-[44px]"
+              className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px]"
             >
               Back to Vocabulary
             </button>
@@ -225,7 +225,7 @@ export default function FlashcardsPage() {
               className="cursor-pointer rounded-2xl border border-amber-200 bg-white p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 hover:-translate-y-0.5 transition-all duration-200 select-none"
               style={{ boxShadow: "var(--shadow-card)" }}
             >
-              <span className="text-xs text-stone-400 uppercase tracking-wide">
+              <span className="text-xs text-stone-500 uppercase tracking-wide">
                 {flipped ? "Definition" : "Word"}
               </span>
               {!flipped ? (
@@ -240,7 +240,7 @@ export default function FlashcardsPage() {
                 </div>
               )}
               {!flipped && (
-                <span className="text-xs text-stone-400 mt-2">tap to reveal</span>
+                <span className="text-xs text-stone-500 mt-2">tap to reveal</span>
               )}
             </div>
 
@@ -265,7 +265,7 @@ export default function FlashcardsPage() {
               <div className="flex justify-center">
                 <button
                   onClick={() => setFlipped(true)}
-                  className="px-6 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors min-h-[44px]"
+                  className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px]"
                 >
                   Show answer
                 </button>
@@ -273,7 +273,7 @@ export default function FlashcardsPage() {
             )}
 
             {/* Card counter */}
-            <p className="text-center text-xs text-stone-400">
+            <p className="text-center text-xs text-stone-500">
               {currentIndex + 1} of {cards.length} remaining
             </p>
           </div>

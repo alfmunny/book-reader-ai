@@ -145,6 +145,8 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 - Review Path B design docs for readiness (tests, rollback, risks, migration policy) and apply `pm-approved` label. **PM has no merge authority on Path B design docs — the user (repo owner) is the sole approver.** The design doc only merges after the user removes `needs-user-approval` and applies `user-approved`; `auto-merge.yml` handles the merge once the gate label is gone. PM does not merge manually.
 - Keep `product/review-state.md` updated every cycle
 - **File `user-only` issues proactively.** When PM identifies work that only the repo owner can do — GitHub repo settings (branch protection, secrets, visibility), GitHub Actions secrets / env vars, Railway / Vercel dashboard config, rotating credentials, OAuth app setup, domain / DNS changes, etc. — PM files a dedicated issue labeled `user-only` with clear step-by-step instructions. No role has the credentials or permissions for these; without a PM-filed reminder, they fall through cycles and never land. Always include: what to do, where to do it (URL to the specific settings page), why it's needed, and what to verify afterwards. Example: #872 (branch protection configuration).
+- **Queue-health duty (every cycle).** After the normal cycle work, run a per-role bite-sized backlog check: count unclaimed open issues that match each code role (`bug` → Dev, `ux`/`ui` → UI/UX, `architecture` → Architect) AND look small enough for the role's idle-mode size threshold (single-component, ≤100-line, single-PR). **If any role's bucket is empty AND that role has no open PR by them AND no `in-progress` claim**, slice an open multi-PR `feat`/`architecture` issue into 2-3 child issues that name a single component each, label them, and link from the parent. The goal: every role finds something role-matched and bite-sized at the top of its next cron tick. Never let a code role go silent for lack of small work — that's the PM's failure, not the role's.
+- **PM picks up PM-scope issues.** PM is also a code role for its own file scope: `product/`, `docs/`, `CLAUDE.md`, `scripts/start-roles.sh`, and `.github/workflows/*` (workflow YAML is PM territory). At the top of every cycle, after the PR-first sweep and before queue-health duty, run `gh issue list --state open --label "documentation,enhancement,chore" --json number,title,labels` and look for unclaimed Path A issues whose implementation lives entirely in PM file scope. Claim and ship one via `/submit-pr` before declaring the cycle idle. **Path A means: no architecture/cross-service design needed.** Examples that fit: CLAUDE.md rule edits, `start-roles.sh` prompt tweaks, docs reorganizations, workflow-YAML hygiene, journal/backlog formatting. Examples that don't fit: anything touching `backend/` or `frontend/` source. Use the same idle-mode fallback chain as code roles — never end a cycle silent if a PM-scope issue is sitting unclaimed.
 - **Submit every PR via the `/submit-pr` skill.** Never run `gh pr create` + `gh pr merge` directly — the skill rebases, tests, pushes, creates, enables auto-merge, and launches a background watcher that catches BEHIND/check-failures until MERGED. Once the skill returns, the watcher runs async; you are free to pick up new work.
 
 **Default models and idle-recovery cadences (set in `scripts/start-roles.sh`):**
@@ -192,6 +194,13 @@ All four roles use `/loop Nm` so the harness fires a cron on every tick. If a ro
 
 **Idle mode (no unclaimed issues):** Enter bug-hunt mode. Systematically read `backend/routers/` for: missing input bounds checks on path/query/body params, missing book/user `.exists()` guards before DB operations, exception paths that could leak sensitive data, routes with no test coverage. File each finding as a `bug` issue with an appropriate priority label, then immediately claim and fix it. Do not accumulate a backlog — file one, fix one, repeat.
 
+**Idle-mode fallback chain (never go silent).** If the bug-hunt sweep above turns up nothing claimable, walk this chain in order until you have something to claim — ending the cycle with no claim is not allowed:
+1. **Slice an open `feat` issue.** Pick a `feat`-labeled issue that's too big for one PR and file a child issue scoped to a single component / single endpoint / single migration. Comment on the parent linking the slice. Claim the slice immediately.
+2. **Test-coverage gap.** Run `backend/venv/bin/pytest --cov=backend --cov-report=term-missing` and pick one function with sub-50% line coverage. File `bug: <module>.<func> has no test coverage` with the missing-line list, claim, write a test PR.
+3. **Refactor / cleanup.** Find one ≤50-line refactor inside a single file (a Python `if/elif` chain that should be a dict, a service-layer function with mixed concerns, a duplicated SQL string). File `chore: ...`, claim, ship.
+
+The rule is: **every cycle ends with you having claimed and made progress on something** — even if you had to file the issue yourself. The only valid silent state is the one Per-cycle priority defines (PR cap reached, every other issue is `user-only` or `in-progress`).
+
 **Cross-role escalation:** If you discover a problem requiring a schema change, new service, or changes across 3+ files in different services, do not implement it. File a new `architecture` issue describing the finding and move on to your next issue.
 
 **Continuous operation:** After every PR merges, immediately pick the next issue without waiting. Never stop and ask the user what to do next.
@@ -232,6 +241,13 @@ All four roles use `/loop Nm` so the harness fires a cron on every tick. If a ro
 
 File each finding as a `ux` or `ui` issue with a clear description and reproduction steps. Then immediately claim and fix it. File one, fix one, repeat.
 
+**Idle-mode fallback chain (never go silent).** If the audit above turns up nothing claimable, walk this chain until you have something to claim — ending the cycle with no claim is not allowed:
+1. **Slice an open `feat` issue.** Pick a frontend `feat` (e.g., a multi-component feature) and file a child issue scoped to a single component/page. Comment on the parent linking the slice. Claim the slice.
+2. **Frontend test-coverage gap.** Run `npm --prefix frontend test -- --coverage` and pick one component with sub-60% branch coverage. File `bug: <Component> branches uncovered` listing the missing branches, claim, write a test PR.
+3. **Tutorial / empty-state polish.** Pick a user flow with no `docs/tutorials/<flow>.md` stub or an empty state without a CTA. File and ship.
+
+Same invariant as Dev: **every cycle ends with a claim**, self-filed if needed.
+
 **Continuous operation:** After every PR merges, immediately pick the next issue without waiting.
 
 **Never touches:** backend-only bugs, `product/`, or `architecture` issues without sign-off.
@@ -261,6 +277,13 @@ File each finding as a `ux` or `ui` issue with a clear description and reproduct
 Same as Dev workflow, but may include a design note in the PR body instead of a separate doc.
 
 **Idle mode (no unclaimed issues):** Identify the highest-value unimplemented feature or most impactful refactor. Review `docs/FEATURES.md` and the open issue list for gaps. Open a GitHub issue with the `architecture` label describing the proposal, claim it, and begin a design doc following Path B. Never implement without PM sign-off on the design doc.
+
+**Idle-mode fallback chain (never go silent).** If the FEATURES.md scan finds nothing worth a new design doc, walk this chain:
+1. **Decompose an open multi-PR `feat`.** Pick an open `feat` you can decompose into a Path-B design slice (e.g., a feature with backend+frontend halves). File `architecture: design slice for <feature>` with the design-doc subscope, claim it, write the doc.
+2. **Backend test-coverage gap on architecture surface.** Pick one service or migration with sub-50% line coverage and file an `architecture` test-PR issue (test infrastructure, not feature work). Claim and ship.
+3. **Cross-cutting refactor.** Find a refactor that crosses 2-3 files but has no design implications (rename a confusing function across callers, extract a shared helper). File `chore: <refactor>` with `architecture` label, ship.
+
+**Pre-existing rule still applies:** never implement a cross-cutting feature without PM sign-off on the design doc. The fallback chain operates inside the rule, not around it.
 
 **Continuous operation:** After every PR merges, immediately pick the next issue without waiting.
 

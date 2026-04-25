@@ -2170,3 +2170,93 @@ def test_build_chapters_from_epub_ncx_fragment_anchors_real_file_62215():
     assert len(chapters) >= 20, (
         f"Expected ≥20 chapters from #62215 after fragment-anchor split, got {len(chapters)}"
     )
+
+
+# ── Issue #1157: chapter title must not leak into chapter body ──────────────
+
+
+def _make_epub_with_chapters(book_title: str, items: list[tuple[str, str, str]]) -> bytes:
+    """Helper: build an in-memory EPUB. items = [(ncx_title, file_basename, html_body)]."""
+    import io
+    from ebooklib import epub
+
+    epub_book = epub.EpubBook()
+    epub_book.set_title(book_title)
+    epub_book.set_language("en")
+    epub_book.add_author("Test Author")
+
+    spine: list = ["nav"]
+    toc: list = []
+    for ncx_title, basename, body_html in items:
+        item = epub.EpubHtml(title=ncx_title, file_name=basename, lang="en")
+        item.content = (
+            f'<?xml version="1.0" encoding="utf-8"?>'
+            f'<html xmlns="http://www.w3.org/1999/xhtml">'
+            f'<head><title>{ncx_title}</title></head>'
+            f'<body>{body_html}</body></html>'
+        ).encode("utf-8")
+        epub_book.add_item(item)
+        spine.append(item)
+        toc.append(epub.Link(basename, ncx_title, basename.split(".")[0]))
+
+    epub_book.toc = toc
+    epub_book.add_item(epub.EpubNcx())
+    epub_book.add_item(epub.EpubNav())
+    epub_book.spine = spine
+
+    buf = io.BytesIO()
+    epub.write_epub(buf, epub_book)
+    return buf.getvalue()
+
+
+def test_build_chapters_from_epub_strips_heading_nested_in_wrapper_div():
+    """Regression #1157: when the chapter heading is wrapped in a <div>
+    (depth-2 in body), skip_first_heading must still drop it. Common in
+    Gutenberg EPUBs that use <div class="chapter"> / <div class="section">."""
+    body_a = (
+        '<div class="section">'
+        '<h1>Chapter I — The Beginning</h1>'
+        '<p>It was a dark and stormy night that began the long story to come for our weary travellers and their loyal hounds.</p>'
+        '<p>The wind howled through the trees and the leaves rustled in the night air as the moon shone down on the silent road.</p>'
+        '</div>'
+    )
+    data = _make_epub_with_chapters("Big Book", [("I", "ch1.xhtml", body_a)])
+    chapters = build_chapters_from_epub(data)
+    assert len(chapters) == 1, f"Expected 1 chapter, got {len(chapters)}"
+    body = chapters[0].text
+    assert "Chapter I — The Beginning" not in body, (
+        f"Heading text leaked into body verbatim: {body[:200]!r}"
+    )
+    assert body.lstrip().startswith("It was a dark"), (
+        f"Body should start with the actual prose, got: {body[:100]!r}"
+    )
+
+
+def test_build_chapters_from_epub_strips_heading_when_ncx_title_is_substring():
+    """Regression #1157: NCX title 'Chapter 1: The Awakening' vs body
+    rendering '<h2>Chapter 1</h2><h3>The Awakening</h3>'. The two halves of
+    the heading must both be stripped, not exact-matched."""
+    body_a = (
+        '<div>'
+        '<h2>Chapter 1</h2>'
+        '<h3>The Awakening</h3>'
+        '<p>It was a dark and stormy night and the storm raged through the long valley below the cliffs.</p>'
+        '<p>The wind howled through the trees and the leaves rustled in the night air as the storm passed over.</p>'
+        '</div>'
+    )
+    data = _make_epub_with_chapters(
+        "Big Book", [("Chapter 1: The Awakening", "ch1.xhtml", body_a)]
+    )
+    chapters = build_chapters_from_epub(data)
+    assert len(chapters) == 1, f"Expected 1 chapter, got {len(chapters)}"
+    body = chapters[0].text
+    first_para = body.split("\n\n")[0] if body else ""
+    assert first_para.strip() != "Chapter 1", (
+        f"First paragraph is the chapter-number heading: {body[:200]!r}"
+    )
+    assert first_para.strip() != "The Awakening", (
+        f"First paragraph is the chapter-name heading: {body[:200]!r}"
+    )
+    assert body.lstrip().startswith("It was a dark"), (
+        f"Body should start with the actual prose, got: {body[:120]!r}"
+    )

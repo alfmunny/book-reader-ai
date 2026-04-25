@@ -845,11 +845,11 @@ export default function ReaderPage() {
               disabled={chapterIndex === 0}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
             ><ArrowLeftIcon className="w-3 h-3" aria-hidden="true" /> Prev</button>
-            <span className="text-stone-400 mx-0.5">|</span>
+            <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <span className="text-stone-600 max-w-[180px] truncate font-medium">
               {chapters[chapterIndex]?.title || `Ch. ${chapterIndex + 1}`}
             </span>
-            <span className="text-stone-400 mx-0.5">|</span>
+            <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               aria-label="Next chapter"
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
@@ -858,7 +858,7 @@ export default function ReaderPage() {
             >Next <ArrowRightIcon className="w-3 h-3" aria-hidden="true" /></button>
             {paragraphFocus && (
               <>
-                <span className="text-stone-400 mx-0.5">|</span>
+                <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
                 <button
                   onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px]"
@@ -869,7 +869,7 @@ export default function ReaderPage() {
                 </button>
               </>
             )}
-            <span className="text-stone-400 mx-0.5">|</span>
+            <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -882,7 +882,7 @@ export default function ReaderPage() {
               className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px]"
               title="Typography"
             >Aa</button>
-            <span className="text-stone-400 mx-0.5">|</span>
+            <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               onClick={() => setFocusMode(false)}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px]"
@@ -1201,7 +1201,7 @@ export default function ReaderPage() {
             </button>
             {showShortcuts && (
               <div role="region" aria-label="Keyboard shortcuts" className="absolute right-0 top-full mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-lg z-50 p-3 animate-fade-in">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 mb-2">Keyboard Shortcuts</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">Keyboard Shortcuts</p>
                 <div className="space-y-1.5">
                   {[
                     { keys: ["Space"], label: "Play / Pause TTS" },
@@ -1762,7 +1762,7 @@ export default function ReaderPage() {
                           onClick={() => setNotesView(v)}
                           aria-pressed={notesView === v}
                           className={`flex-1 text-xs py-1 min-h-[44px] rounded-md font-medium transition-colors ${
-                            notesView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                            notesView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-600 hover:text-stone-800"
                           }`}
                         >
                           {v === "chapter" ? "This chapter" : "All chapters"}
@@ -1774,7 +1774,7 @@ export default function ReaderPage() {
                         <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
                       </div>
                     ) : filteredNotes.length === 0 ? (
-                      <div className="text-center text-stone-400 mt-10 text-sm">
+                      <div className="text-center text-stone-500 mt-10 text-sm">
                         <NoteIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p>{notesView === "chapter" ? "No annotations in this chapter yet." : "No annotations yet."}</p>
                         <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
@@ -1792,7 +1792,7 @@ export default function ReaderPage() {
                           return (
                             <div key={ch}>
                               <button
-                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-400 uppercase tracking-wide min-h-[44px]"
+                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-500 uppercase tracking-wide min-h-[44px]"
                                 aria-expanded={!isCollapsed}
                                 onClick={() => setCollapsedNoteChapters((prev) => {
                                   const next = new Set(prev);
@@ -1823,7 +1823,7 @@ export default function ReaderPage() {
                       </a>
                       <a
                         href="/notes"
-                        className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
+                        className="text-xs text-stone-500 hover:text-stone-700 transition-colors"
                       >
                         All books
                       </a>
@@ -1847,7 +1847,7 @@ export default function ReaderPage() {
                           onClick={() => setVocabView(v)}
                           aria-pressed={vocabView === v}
                           className={`flex-1 text-xs py-1 min-h-[44px] rounded-md font-medium transition-colors ${
-                            vocabView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                            vocabView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-600 hover:text-stone-800"
                           }`}
                         >
                           {v === "chapter" ? "This chapter" : "All chapters"}
@@ -1855,7 +1855,7 @@ export default function ReaderPage() {
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-stone-400">
+                      <span className="text-xs text-stone-500">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
                       <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-600 hover:text-amber-800 font-medium min-h-[44px] flex items-center gap-1">
@@ -1863,7 +1863,7 @@ export default function ReaderPage() {
                       </button>
                     </div>
                     {filteredVocab.length === 0 ? (
-                      <div className="text-center text-stone-400 mt-10 text-sm">
+                      <div className="text-center text-stone-500 mt-10 text-sm">
                         <EmptyVocabIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
                         <p>No words saved{vocabView === "chapter" ? " in this chapter" : ""} yet.</p>
                         <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
@@ -1905,7 +1905,7 @@ export default function ReaderPage() {
                                   className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] flex items-center"
                                 >
                                   {vocabView === "book" && (
-                                    <span className="text-[10px] text-stone-400 mr-1">Ch.{occ.chapter_index + 1}</span>
+                                    <span className="text-[10px] text-stone-500 mr-1">Ch.{occ.chapter_index + 1}</span>
                                   )}
                                   <span className="text-xs text-stone-500 italic line-clamp-2">&ldquo;{occ.sentence_text}&rdquo;</span>
                                 </button>
@@ -2011,9 +2011,9 @@ export default function ReaderPage() {
                         )}
                         {!translationLoading && (
                           translationUsedProvider === "cache" ? (
-                            <span className="text-stone-400">Loaded from cache</span>
+                            <span className="text-stone-500">Loaded from cache</span>
                           ) : translationUsedProvider.startsWith("cache · ") ? (
-                            <span className="text-stone-400">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
+                            <span className="text-stone-500">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
                           ) : translationUsedProvider === "translated" ? (
                             <span className="text-green-700">Translated</span>
                           ) : translationUsedProvider.startsWith("translated · ") ? (
@@ -2179,7 +2179,7 @@ export default function ReaderPage() {
           {session?.backendToken && notesExpanded && (
             <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
               {annotations.length === 0 ? (
-                <div className="text-center text-stone-400 py-4 text-sm">
+                <div className="text-center text-stone-500 py-4 text-sm">
                   <NoteIcon className="w-6 h-6 mx-auto mb-1 opacity-40" />
                   <p>No annotations yet.</p>
                   <p className="text-xs mt-1">Long-press text to add one.</p>

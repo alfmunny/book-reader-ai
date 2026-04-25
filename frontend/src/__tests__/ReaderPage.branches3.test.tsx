@@ -561,7 +561,7 @@ describe("ReaderPage.branches3 — vocab sidebar occurrence filtering", () => {
 
     // In "book" view, chapter labels appear (line 1428: vocabView === "book")
     await waitFor(() => {
-      const chLabels = document.querySelectorAll("span[class*='text-stone-400']");
+      const chLabels = document.querySelectorAll("span[class*='text-stone-500']");
       expect(chLabels.length).toBeGreaterThan(0);
     });
   });

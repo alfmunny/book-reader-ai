@@ -8,7 +8,7 @@ function LoginForm() {
   const callbackUrl = params.get("callbackUrl") || "/";
 
   return (
-    <div className="min-h-screen bg-parchment flex items-center justify-center px-4">
+    <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         {/* Logo / branding */}
         <div className="text-center mb-10">
@@ -66,7 +66,7 @@ function LoginForm() {
           Your reading data stays on your own device.
         </p>
       </div>
-    </div>
+    </main>
   );
 }
 

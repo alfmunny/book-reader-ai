@@ -15,6 +15,7 @@ jest.mock("@/lib/api", () => ({
   saveGeminiKey: jest.fn(),
   deleteGeminiKey: jest.fn(),
   saveObsidianSettings: jest.fn(),
+  listDecks: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock("@/lib/settings", () => ({

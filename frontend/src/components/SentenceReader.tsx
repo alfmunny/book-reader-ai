@@ -713,6 +713,7 @@ export default function SentenceReader({
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}
                   className="inline-flex items-center justify-center ml-0.5 align-middle cursor-pointer min-h-[44px] min-w-[44px] -m-[19px] p-[19px]"
                   aria-label="Toggle note"
+                  aria-expanded={expandedNoteFlatIdx === seg.flatIdx}
                 >
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[annotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
                 </button>

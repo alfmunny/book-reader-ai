@@ -752,15 +752,6 @@ async def test_save_word_negative_book_id_returns_422(client, test_user):
 # ── Issue #734: ge=1 on ExportRequest.book_id ─────────────────────────────────
 
 
-async def test_save_word_negative_book_id_returns_422(client, test_user):
-    """Regression #731: POST /vocabulary with book_id < 1 must return 422."""
-    resp = await client.post("/api/vocabulary", json={
-        "word": "hello", "book_id": -1, "chapter_index": 0,
-        "sentence_text": "Hello world.",
-    })
-    assert resp.status_code == 422, f"Expected 422, got {resp.status_code}: {resp.text}"
-
-
 async def test_export_obsidian_negative_book_id_returns_422(client, test_user):
     """Regression #734: POST /vocabulary/export/obsidian with book_id < 1 must return 422."""
     resp = await client.post("/api/vocabulary/export/obsidian", json={"book_id": -1})

@@ -367,7 +367,7 @@ export default function BookImportPage() {
                     <span className="font-semibold text-ink">Gemini Flash</span>
                     <span className="font-semibold text-amber-700">{fmtCost(cost.usd)}</span>
                   </div>
-                  <p className="text-stone-400">
+                  <p className="text-stone-500">
                     ~{fmtNum(cost.tokens)} output tokens · $2.50/M on paid tier.{" "}
                     <span className="text-emerald-600 font-medium">Free on free tier.</span>
                     {" Runs in background."}
@@ -458,7 +458,7 @@ export default function BookImportPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-stone-400 mt-4">
+        <p className="text-center text-xs text-stone-500 mt-4">
           Translations are cached — other readers of the same book share the
           result.
         </p>

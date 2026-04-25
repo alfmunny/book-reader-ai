@@ -94,7 +94,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <h2 id="annotations-heading" className="font-serif font-semibold text-ink text-sm">Annotations</h2>
             <button
               onClick={() => setOpen(false)}
-              className="text-stone-400 hover:text-stone-600 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors"
+              className="text-stone-500 hover:text-stone-700 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors"
               aria-label="Close"
             >
               <CloseIcon className="w-4 h-4" />

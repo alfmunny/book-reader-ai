@@ -152,7 +152,7 @@ export default function WordActionDrawer({
           )}
 
           {error && (
-            <p className="text-sm text-amber-500 italic">{error}</p>
+            <p role="alert" className="text-sm text-amber-500 italic">{error}</p>
           )}
 
           {result && result.meanings.length > 0 && (

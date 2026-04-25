@@ -92,7 +92,7 @@ export default function WordLookup({ word, position, language, onClose }: Props)
       )}
 
       {error && (
-        <p className="text-amber-600 italic">{error} for &ldquo;{word}&rdquo;</p>
+        <p role="alert" className="text-amber-600 italic">{error} for &ldquo;{word}&rdquo;</p>
       )}
 
       {result && (

@@ -104,6 +104,9 @@ export default function AnnotationToolbar({
       {/* Panel */}
       <div
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="annotation-toolbar-title"
         className="relative w-full max-w-sm bg-parchment border border-amber-200 rounded-2xl shadow-2xl animate-fade-in overflow-hidden"
         data-testid="annotation-toolbar"
       >
@@ -111,7 +114,7 @@ export default function AnnotationToolbar({
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-amber-100">
           <div className="flex items-center gap-2 text-amber-800">
             <NoteIcon className="w-4 h-4" aria-hidden="true" />
-            <span className="font-serif font-semibold text-sm">
+            <span id="annotation-toolbar-title" className="font-serif font-semibold text-sm">
               {existingAnnotation ? "Edit note" : "Add note"}
             </span>
           </div>

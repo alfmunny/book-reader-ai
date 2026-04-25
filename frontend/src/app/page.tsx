@@ -282,7 +282,7 @@ export default function Home() {
             {/* Continue Reading */}
             {recentBooks.length > 0 && (
               <section>
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-2">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">
                   Continue Reading
                 </h2>
                 <button
@@ -306,7 +306,7 @@ export default function Home() {
                   <div className="flex-1 min-w-0">
                     <p className="font-serif font-semibold text-sm text-ink line-clamp-1">{recentBooks[0].title}</p>
                     <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{recentBooks[0].authors?.join(", ")}</p>
-                    <p className="text-xs text-stone-400 mt-1">
+                    <p className="text-xs text-stone-500 mt-1">
                       Chapter {recentBooks[0].lastChapter + 1} · {timeAgo(recentBooks[0].lastRead)}
                     </p>
                   </div>
@@ -319,7 +319,7 @@ export default function Home() {
             {status === "authenticated" && userStats && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 flex-1">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 flex-1">
                     Your Progress
                   </h2>
                   <button
@@ -337,7 +337,7 @@ export default function Home() {
                       <FireIcon className="w-5 h-5 text-amber-600 shrink-0" />
                       <div>
                         <p className="text-lg font-bold text-amber-900 leading-none">{userStats.streak}</p>
-                        <p className="text-[10px] text-stone-400 mt-0.5">day streak</p>
+                        <p className="text-[10px] text-stone-500 mt-0.5">day streak</p>
                       </div>
                     </div>
                   )}
@@ -345,21 +345,21 @@ export default function Home() {
                     <BookOpenIcon className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.books_started}</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">books started</p>
+                      <p className="text-[10px] text-stone-500 mt-0.5">books started</p>
                     </div>
                   </div>
                   <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
                     <VocabIcon className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.vocabulary_words}</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">words saved</p>
+                      <p className="text-[10px] text-stone-500 mt-0.5">words saved</p>
                     </div>
                   </div>
                   <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
                     <NoteIcon className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.annotations}</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">annotations</p>
+                      <p className="text-[10px] text-stone-500 mt-0.5">annotations</p>
                     </div>
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export default function Home() {
             {recentBooks.length > 0 ? (
               <section>
                 {recentBooks.length > 1 && (
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-3">
                     Your Library
                   </h2>
                 )}

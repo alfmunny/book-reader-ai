@@ -93,7 +93,7 @@ export default function UploadPage() {
   const quotaFull = quota !== null && quota.used >= quota.max;
 
   return (
-    <main className="min-h-screen bg-parchment">
+    <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button

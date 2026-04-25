@@ -112,7 +112,7 @@ export default function ChapterSummary({
         )}
 
         {error && !loading && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
+          <div role="alert" className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700">
             <p className="font-medium mb-1">Could not generate summary</p>
             <p className="text-xs text-red-500">{error}</p>
             <button

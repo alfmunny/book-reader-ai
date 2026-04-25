@@ -146,12 +146,12 @@ export default function NotesOverviewPage() {
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           </div>
         ) : fetchError ? (
-          <div role="alert" className="text-center text-stone-400 mt-20 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
             <p className="font-serif text-lg text-red-500 mt-1">Failed to load notes.</p>
             <p className="text-sm">Please refresh the page to try again.</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-stone-400">
+          <div className="text-center py-20 text-stone-500">
             <EmptyNotesIcon className="w-14 h-14 mx-auto mb-4 text-amber-400/60" />
             {books.length === 0 ? (
               <>
@@ -204,7 +204,7 @@ export default function NotesOverviewPage() {
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <span className="text-xs text-stone-400">{timeAgo(book.lastActivity)}</span>
+                    <span className="text-xs text-stone-500">{timeAgo(book.lastActivity)}</span>
                     <p className="text-amber-600 group-hover:text-amber-800 mt-0.5"><ArrowRightIcon className="w-5 h-5" aria-hidden="true" /></p>
                   </div>
                 </div>

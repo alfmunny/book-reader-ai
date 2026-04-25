@@ -3236,3 +3236,37 @@ async def test_queue_dry_run_translation_failure_logs_warning(admin_client, admi
         "dry" in r.message.lower() or "preview" in r.message.lower() or "translat" in r.message.lower()
         for r in caplog.records
     ), f"Expected warning log for dry-run failure, got: {[r.message for r in caplog.records]}"
+
+
+# ── Issue #1137: whitespace-only target_language on admin retranslate/import ──
+
+
+@pytest.mark.asyncio
+async def test_retranslate_all_whitespace_target_language_returns_422(admin_client):
+    """Regression #1137: POST /admin/translations/{id}/retranslate-all with
+    target_language="   " must return 422, not proceed with a whitespace language."""
+    res = await admin_client.post(
+        "/api/admin/translations/42/retranslate-all",
+        json={"target_language": "   "},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for whitespace target_language in retranslate-all, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_translations_whitespace_target_language_returns_422(admin_client):
+    """Regression #1137: POST /admin/translations/import with an entry
+    target_language="   " must return 422 (pydantic validation)."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{
+            "book_id": 1,
+            "chapter_index": 0,
+            "target_language": "   ",
+            "paragraphs": ["p"],
+        }]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for whitespace target_language in import, got {res.status_code}: {res.text}"
+    )

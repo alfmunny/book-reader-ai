@@ -10,7 +10,7 @@ import aiosqlite
 logger = logging.getLogger(__name__)
 from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
 from services.db import (
     DB_PATH,
@@ -604,6 +604,14 @@ async def retranslate(
 class BulkRetranslateRequest(BaseModel):
     target_language: str = Field(..., min_length=1, max_length=20)
 
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
+
 
 class ImportTranslationEntry(BaseModel):
     book_id: int = Field(..., ge=1)
@@ -613,6 +621,14 @@ class ImportTranslationEntry(BaseModel):
     provider: str | None = Field(default=None, max_length=100)
     model: str | None = Field(default=None, max_length=200)
     title_translation: str | None = Field(default=None, max_length=500)
+
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
 
 
 class ImportTranslationsRequest(BaseModel):

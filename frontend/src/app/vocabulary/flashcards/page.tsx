@@ -219,7 +219,7 @@ export default function FlashcardsPage() {
             <div
               role="button"
               tabIndex={0}
-              aria-label={flipped ? "Card back — click to flip" : "Card front — click to reveal"}
+              aria-label={flipped ? `${currentCard.word} — definition side, press to flip back` : `Word: ${currentCard.word}. Press to reveal definition.`}
               onClick={() => setFlipped(f => !f)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setFlipped(f => !f); }}
               className="cursor-pointer rounded-2xl border border-amber-200 bg-white p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 hover:-translate-y-0.5 transition-all duration-200 select-none"

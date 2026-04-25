@@ -8,6 +8,7 @@ import pytest
 import services.db as db_module
 from services.db import (
     init_db,
+    _new_user_role_approved,
     get_or_create_user,
     get_or_create_user_github,
     get_or_create_user_apple,
@@ -159,6 +160,29 @@ async def test_apple_no_email_skips_linking():
     # Should create a new user, not link
     existing = await get_or_create_user("g201", "existing@example.com", "Existing", "")
     assert new_user["id"] != existing["id"]
+
+
+# ── _new_user_role_approved helper ────────────────────────────────────────────
+
+async def test_new_user_role_approved_first_user_gets_admin():
+    """Regression #1343: first user ever must get role=admin, approved=1."""
+    import aiosqlite
+    import services.db as db_module
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        role, approved = await _new_user_role_approved(db)
+    assert role == "admin"
+    assert approved == 1
+
+
+async def test_new_user_role_approved_subsequent_user_gets_user():
+    """Regression #1343: second+ user must get role=user, approved=0."""
+    await get_or_create_user("seed-g1", "seed@example.com", "Seed", "")
+    import aiosqlite
+    import services.db as db_module
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        role, approved = await _new_user_role_approved(db)
+    assert role == "user"
+    assert approved == 0
 
 
 # ── User management ───────────────────────────────────────────────────────────

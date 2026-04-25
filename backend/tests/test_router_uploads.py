@@ -369,6 +369,38 @@ async def test_get_draft_chapters_before_confirm(client, test_user):
     assert len(data["chapters"]) >= 1
 
 
+async def test_get_draft_chapters_book_not_found_returns_404(client, test_user):
+    """Regression #1367: GET /books/{id}/chapters/draft on a non-existent book must return 404."""
+    resp = await client.get("/api/books/99999/chapters/draft")
+    assert resp.status_code == 404
+
+
+async def test_get_draft_chapters_non_upload_book_returns_400(client, test_user):
+    """Regression #1367: GET /books/{id}/chapters/draft on a Gutenberg book must return 400."""
+    from services.db import save_book
+    await save_book(
+        6060,
+        {"title": "Gutenberg Draft", "authors": [], "languages": [], "subjects": [],
+         "download_count": 0, "cover": ""},
+        "some text",
+    )
+    resp = await client.get("/api/books/6060/chapters/draft")
+    assert resp.status_code == 400
+
+
+async def test_get_draft_chapters_already_confirmed_returns_400(client, test_user):
+    """Regression #1367: GET /books/{id}/chapters/draft after confirming must return 400."""
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    book_id = upload_resp.json()["book_id"]
+    detected = upload_resp.json()["detected_chapters"]
+    await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": [{"title": ch["title"], "original_index": ch["index"]} for ch in detected]},
+    )
+    resp = await client.get(f"/api/books/{book_id}/chapters/draft")
+    assert resp.status_code == 400
+
+
 async def test_chapters_endpoint_returns_400_for_draft_book(client, test_user):
     """Before confirming, /books/{id}/chapters should return 400."""
     upload_resp = await client.post("/api/books/upload", files=_txt_upload())

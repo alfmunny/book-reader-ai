@@ -144,7 +144,11 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
       )}
 
       {/* Activity heatmap */}
-      <div className="bg-white border border-amber-100 rounded-xl p-4">
+      <div
+        role="img"
+        aria-label={`Reading activity heatmap: ${activeDays} active ${activeDays === 1 ? "day" : "days"} in the last year`}
+        className="bg-white border border-amber-100 rounded-xl p-4"
+      >
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-stone-700">Activity — last year</p>
           <p className="text-xs text-stone-400">

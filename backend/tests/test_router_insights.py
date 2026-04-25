@@ -198,6 +198,30 @@ async def test_post_insight_rejects_empty_answer(client: AsyncClient):
     assert resp.status_code == 422
 
 
+async def test_post_insight_rejects_whitespace_only_question(client: AsyncClient):
+    """Regression #1355: whitespace-only question passes Pydantic min_length=1 but
+    must return 400 via the router's strip() guard (not 422 from Pydantic)."""
+    await save_book(1, _META, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 1, "question": "   ", "answer": "Some answer."},
+    )
+    assert resp.status_code == 400
+    assert "question" in resp.json()["detail"].lower()
+
+
+async def test_post_insight_rejects_whitespace_only_answer(client: AsyncClient):
+    """Regression #1355: whitespace-only answer passes Pydantic min_length=1 but
+    must return 400 via the router's strip() guard."""
+    await save_book(1, _META, "text")
+    resp = await client.post(
+        "/api/insights",
+        json={"book_id": 1, "question": "What is the theme?", "answer": "\t\n"},
+    )
+    assert resp.status_code == 400
+    assert "answer" in resp.json()["detail"].lower()
+
+
 async def test_post_insight_rejects_negative_chapter_index(client: AsyncClient):
     """POST /insights with chapter_index < 0 must return 422 (Pydantic ge=0).
     A negative chapter_index is not a valid position — rejected at validation layer."""

@@ -602,3 +602,25 @@ async def test_patch_annotation_whitespace_note_text_is_stored_as_empty(client, 
     assert resp.json()["note_text"] == "", (
         f"Expected note_text to be stripped to empty, got: {resp.json()['note_text']!r}"
     )
+
+
+# ── Issue #1355: whitespace-only sentence_text ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_annotation_whitespace_only_sentence_text_returns_400(client, test_user, tmp_db):
+    """Regression #1355: POST /annotations with sentence_text='   ' must return 400.
+
+    Pydantic's min_length=1 passes whitespace-only strings; the router's strip()
+    guard at line 29 catches it and returns 400 (not 422).
+    """
+    from services.db import save_book
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post(
+        "/api/annotations",
+        json={"book_id": BOOK_ID, "chapter_index": 0, "sentence_text": "   "},
+    )
+    assert resp.status_code == 400, (
+        f"Expected 400 for whitespace-only sentence_text, got {resp.status_code}: {resp.text}"
+    )
+    assert "sentence_text" in resp.json()["detail"].lower()

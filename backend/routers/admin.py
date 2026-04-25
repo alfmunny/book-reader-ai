@@ -805,7 +805,9 @@ async def move_translation(
     indices. Clears any pending/failed queue row at the destination so
     the worker doesn't later overwrite the moved translation.
     """
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
+    if not target_language:
+        raise HTTPException(status_code=422, detail="target_language cannot be blank")
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found in cache")

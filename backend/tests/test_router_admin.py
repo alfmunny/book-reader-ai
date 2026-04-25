@@ -1860,6 +1860,19 @@ async def test_move_translation_normalizes_language(admin_client, admin_db):
     assert await get_cached_translation(100, 1, "zh") is None
 
 
+async def test_move_translation_whitespace_language_returns_422(admin_client, admin_db):
+    """POST /admin/translations/{id}/{idx}/%20%20%20/move must return 422.
+
+    Regression #1408: whitespace path segment without .strip() was passed
+    to the DB move operation."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    res = await admin_client.post(
+        "/api/admin/translations/100/0/%20%20%20/move",
+        json={"new_chapter_index": 1},
+    )
+    assert res.status_code == 422
+
+
 async def test_import_translations_normalizes_language(admin_client, admin_db):
     """POST /admin/translations/import with target_language='ZH-CN' must
     store the row under 'zh' so GET /ai/translate/cache?target_language=zh hits it."""

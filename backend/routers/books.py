@@ -460,7 +460,8 @@ async def book_meta(book_id: int = Path(..., ge=1), user: dict | None = Depends(
         return {k: v for k, v in cached.items() if k not in ("text", "cached_at", "images")}
     try:
         return await get_book_meta(book_id)
-    except Exception:
+    except Exception as exc:
+        logger.warning("GET /books/%d meta fetch failed: %s", book_id, exc, exc_info=True)
         raise HTTPException(status_code=404, detail="Book not found")
 
 
@@ -498,7 +499,8 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
     else:
         try:
             meta, text = await _fetch_and_cache(book_id)
-        except Exception:
+        except Exception as exc:
+            logger.warning("GET /books/%d chapters fetch failed: %s", book_id, exc, exc_info=True)
             raise HTTPException(status_code=404, detail="Could not load book")
 
     from services.book_chapters import split_with_html_preference, get_chapter_source

@@ -129,8 +129,8 @@ async def upload_book(
             status_code=422,
             detail="No chapters could be detected. The file appears to be empty or contains no readable text.",
         )
-    title = (parsed["title"] or "Untitled")[:500]
-    author = (parsed["author"] or "Unknown")[:200]
+    title = ((parsed["title"] or "").strip() or "Untitled")[:500]
+    author = ((parsed["author"] or "").strip() or "Unknown")[:200]
     book_id = await _save_upload_book(
         user_id=user["id"],
         title=title,

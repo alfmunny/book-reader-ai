@@ -172,6 +172,18 @@ async def test_patch_deck_name(client, test_user):
     assert resp.json()["name"] == "New"
 
 
+async def test_patch_deck_404_for_nonexistent_deck(client, test_user):
+    """Regression #1365: PATCH /decks/{id} on a non-existent deck must return 404."""
+    resp = await client.patch("/api/decks/9999", json={"name": "Ghost"})
+    assert resp.status_code == 404
+
+
+async def test_delete_deck_404_for_nonexistent_deck(client, test_user):
+    """Regression #1365: DELETE /decks/{id} on a non-existent deck must return 404."""
+    resp = await client.delete("/api/decks/9999")
+    assert resp.status_code == 404
+
+
 async def test_delete_deck_cascades_members(client, test_user):
     await _book()
     vid = await _save("cascades", test_user["id"])

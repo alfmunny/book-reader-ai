@@ -266,9 +266,9 @@ describe("AdminBooksPage — expand/collapse", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
-    expect(await screen.findByTitle("Collapse")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Collapse / })).toBeInTheDocument();
   });
 
   it("shows 'No translations cached yet' when expanded book has no translations", async () => {
@@ -279,7 +279,7 @@ describe("AdminBooksPage — expand/collapse", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     expect(await screen.findByText(/no translations cached yet/i)).toBeInTheDocument();

@@ -112,7 +112,7 @@ describe("AdminBooksPage — act() error path (line 90)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const deleteBtns = await screen.findAllByRole("button", { name: /^Delete$/i });
+    const deleteBtns = await screen.findAllByRole("button", { name: (n) => n.startsWith("Delete ") && !n.startsWith("Delete all") });
     await userEvent.click(deleteBtns[0]);
 
     await waitFor(() =>
@@ -130,7 +130,7 @@ describe("AdminBooksPage — act() error path (line 90)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const deleteBtns = await screen.findAllByRole("button", { name: /^Delete$/i });
+    const deleteBtns = await screen.findAllByRole("button", { name: (n) => n.startsWith("Delete ") && !n.startsWith("Delete all") });
     await userEvent.click(deleteBtns[0]);
 
     await waitFor(() =>
@@ -196,13 +196,13 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     await flushPromises();
 
     // Expand book 1
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     // Expand zh language row
     await waitFor(() => screen.getByText("zh"));
     const langExpandBtns = screen.getAllByRole("button", {
-      name: (name) => name === "Expand" || name === "Collapse",
+      name: (name) => name.startsWith("Expand") || name.startsWith("Collapse"),
     });
     // The language expand chevron is inside the expanded book section
     const innerExpand = langExpandBtns.find(
@@ -220,7 +220,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     // Expand the zh language row
@@ -228,7 +228,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     // Click the small arrow to expand the language
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+      (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -265,13 +265,13 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+      (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -320,7 +320,7 @@ describe("AdminBooksPage — book expansion and metadata (lines 161-210)", () =>
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     // "3 chapters cached" should appear
@@ -336,13 +336,13 @@ describe("AdminBooksPage — book expansion and metadata (lines 161-210)", () =>
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
-    const collapseBtn = await screen.findByTitle("Collapse");
+    const collapseBtn = await screen.findByRole("button", { name: /^Collapse / });
     await userEvent.click(collapseBtn);
 
     await waitFor(() =>
-      expect(screen.queryByTitle("Collapse")).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: /^Collapse / })).not.toBeInTheDocument(),
     );
   });
 
@@ -353,13 +353,13 @@ describe("AdminBooksPage — book expansion and metadata (lines 161-210)", () =>
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+      (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
 
@@ -510,7 +510,7 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
     await flushPromises();
 
     // Expand book 1
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     // "Delete all" button inside expanded section
@@ -534,7 +534,7 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     const deleteAllBtn = await screen.findByRole("button", { name: /delete all/i });
@@ -560,7 +560,7 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     const retranslateAllBtn = await screen.findByRole("button", {
@@ -588,7 +588,7 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     const retranslateAllBtn = await screen.findByRole("button", {
@@ -609,7 +609,7 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     const retranslateAllBtn = await screen.findByRole("button", {
@@ -633,13 +633,13 @@ describe("AdminBooksPage — chapter-level delete (lines 530-543)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+      (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));
@@ -683,13 +683,13 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const expandBtns = await screen.findAllByTitle("Expand");
+    const expandBtns = await screen.findAllByRole("button", { name: /^Expand / });
     await userEvent.click(expandBtns[0]);
 
     await waitFor(() => screen.getByText("zh"));
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
-      (b) => (b.getAttribute("aria-label") === "Expand" || b.getAttribute("aria-label") === "Collapse") && !b.title,
+      (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
     );
     if (langArrow) await userEvent.click(langArrow);
     await waitFor(() => screen.getByText("Ch. 1"));

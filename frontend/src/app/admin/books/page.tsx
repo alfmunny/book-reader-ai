@@ -285,8 +285,8 @@ export default function BooksPage() {
                     setExpandedLang(null);
                   }}
                   className="text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
-                  title={isExpanded ? "Collapse" : "Expand"}
-                  aria-label={isExpanded ? "Collapse" : "Expand"}
+                  title={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
+                  aria-label={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-expanded={isExpanded}
                 >
                   {isExpanded ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
@@ -368,7 +368,7 @@ export default function BooksPage() {
 
                 <button
                   onClick={() => router.push(`/reader/${b.id}`)}
-                  aria-label="Open reader"
+                  aria-label={`Open reader for ${b.title}`}
                   className="text-xs text-amber-600 hover:text-amber-800 shrink-0 min-h-[44px] flex items-center"
                 >
                   Open
@@ -401,6 +401,7 @@ export default function BooksPage() {
                     if (confirm(`Delete "${b.title}" and all its audio/translations?`))
                       act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" }));
                   }}
+                  aria-label={`Delete ${b.title}`}
                   className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 shrink-0 min-h-[44px]"
                 >
                   Delete
@@ -429,7 +430,7 @@ export default function BooksPage() {
                               <button
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
                                 className="text-xs text-stone-400 hover:text-amber-700 flex items-center min-h-[44px] min-w-[44px] justify-center"
-                                aria-label={isLangExpanded ? "Collapse" : "Expand"}
+                                aria-label={isLangExpanded ? `Collapse ${lang} translations` : `Expand ${lang} translations`}
                                 aria-expanded={isLangExpanded}
                               >
                                 {isLangExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
@@ -464,6 +465,7 @@ export default function BooksPage() {
                                     setBulkRetranslating(null);
                                   }
                                 }}
+                                aria-label={`Retranslate all ${lang} chapters of ${b.title}`}
                                 className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
                               >
                                 {bulkRetranslating === bulkKey ? "Retranslating…" : "Retranslate all"}
@@ -478,6 +480,7 @@ export default function BooksPage() {
                                     }),
                                   );
                                 }}
+                                aria-label={`Delete all ${lang} translations for ${b.title}`}
                                 className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 min-h-[44px]"
                               >
                                 Delete all

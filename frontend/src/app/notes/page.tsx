@@ -103,7 +103,7 @@ export default function NotesOverviewPage() {
   const totalVoc = new Set(vocab.map((v) => v.word)).size;
 
   return (
-    <main className="min-h-screen bg-parchment">
+    <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
           <button

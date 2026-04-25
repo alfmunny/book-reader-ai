@@ -163,7 +163,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-parchment">
+    <main id="main-content" className="min-h-screen bg-parchment">
       {/* Header */}
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">

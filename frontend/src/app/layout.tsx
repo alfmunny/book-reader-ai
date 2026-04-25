@@ -6,6 +6,18 @@ export const metadata: Metadata = {
   title: "Book Reader AI",
   description: "Read public domain classics with AI assistance",
   manifest: "/manifest.json",
+  openGraph: {
+    title: "Book Reader AI",
+    description: "Read public domain classics with AI assistance",
+    type: "website",
+    images: ["/icon.svg"],
+  },
+  twitter: {
+    card: "summary",
+    title: "Book Reader AI",
+    description: "Read public domain classics with AI assistance",
+    images: ["/icon.svg"],
+  },
 };
 
 export const viewport: Viewport = {

@@ -48,7 +48,7 @@ export default function TranslationView({ paragraphs, translations, displayMode,
                   {translations[i]}
                 </p>
               ) : loading ? (
-                <div className="space-y-2 animate-pulse">
+                <div role="status" aria-label="Loading translation" className="space-y-2 animate-pulse">
                   {Array.from({ length: 3 }).map((_, j) => (
                     <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
                   ))}
@@ -70,7 +70,7 @@ export default function TranslationView({ paragraphs, translations, displayMode,
             {renderSource(para)}
           </p>
           {loading && i === 0 && !translations.length && (
-            <div className="mt-1 space-y-1 animate-pulse">
+            <div role="status" aria-label="Loading translation" className="mt-1 space-y-1 animate-pulse">
               <div className="h-3 bg-amber-100 rounded w-full" />
               <div className="h-3 bg-amber-100 rounded w-5/6" />
             </div>

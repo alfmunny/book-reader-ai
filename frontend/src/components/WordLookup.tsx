@@ -85,8 +85,8 @@ export default function WordLookup({ word, position, language, onClose }: Props)
   return (
     <div ref={ref} style={style} className="sm:w-72 max-h-64 overflow-y-auto rounded-xl border border-amber-300 bg-white shadow-lg p-3 text-sm">
       {loading && (
-        <div className="flex items-center gap-2 text-amber-600">
-          <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
+        <div className="flex items-center gap-2 text-amber-600" role="status">
+          <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           Looking up &ldquo;{word}&rdquo;...
         </div>
       )}

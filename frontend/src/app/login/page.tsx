@@ -62,7 +62,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-stone-400 mt-6">
+        <p className="text-center text-xs text-stone-500 mt-6">
           Your reading data stays on your own device.
         </p>
       </div>

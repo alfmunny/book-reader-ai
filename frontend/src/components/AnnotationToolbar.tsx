@@ -121,7 +121,7 @@ export default function AnnotationToolbar({
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded-lg p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-400 hover:text-stone-600 hover:bg-amber-50 transition-colors"
+            className="rounded-lg p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-stone-700 hover:bg-amber-50 transition-colors"
           >
             <CloseIcon className="w-4 h-4" />
           </button>

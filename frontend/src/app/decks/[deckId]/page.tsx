@@ -245,7 +245,7 @@ export default function DeckDetailPage() {
                         type="button"
                         onClick={() => handleRemove(w.id)}
                         aria-label={`Remove ${w.word} from deck`}
-                        className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>

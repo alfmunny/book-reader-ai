@@ -272,7 +272,7 @@ export default function ProfilePage() {
                     <span className="text-xs font-medium text-amber-700 shrink-0">
                       {d.due_today} due
                     </span>
-                    <ChevronRightIcon className="w-4 h-4 text-stone-400 shrink-0" />
+                    <ChevronRightIcon className="w-4 h-4 text-stone-400 shrink-0" aria-hidden="true" />
                   </button>
                 </li>
               ))}

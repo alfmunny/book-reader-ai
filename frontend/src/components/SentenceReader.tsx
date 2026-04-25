@@ -627,7 +627,7 @@ export default function SentenceReader({
           }
           return loaded
             ? "hover:bg-amber-50"
-            : "text-stone-400";
+            : "text-stone-500";
         };
 
         // Long press (500ms) → open word action drawer

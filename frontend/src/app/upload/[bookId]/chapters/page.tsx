@@ -108,7 +108,7 @@ export default function ChapterEditorPage() {
             </button>
             <h1 className="font-serif text-lg font-semibold text-ink">
               Review Chapters
-              <span className="ml-2 text-sm font-normal text-stone-400">({chapters.length} detected)</span>
+              <span className="ml-2 text-sm font-normal text-stone-500">({chapters.length} detected)</span>
             </h1>
           </div>
           <button
@@ -187,17 +187,17 @@ export default function ChapterEditorPage() {
         <div className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto">
           {selectedChapter ? (
             <>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">Preview</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-3">Preview</h2>
               <p className="font-serif font-semibold text-ink mb-3">{selectedChapter.title}</p>
               <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap font-serif">
                 {selectedChapter.preview}
                 {selectedChapter.preview.length >= 300 && (
-                  <span className="text-stone-400">…</span>
+                  <span className="text-stone-500">…</span>
                 )}
               </p>
             </>
           ) : (
-            <p className="text-sm text-stone-400 text-center mt-8">Select a chapter to preview</p>
+            <p className="text-sm text-stone-500 text-center mt-8">Select a chapter to preview</p>
           )}
         </div>
       </div>

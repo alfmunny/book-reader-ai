@@ -141,7 +141,7 @@ function AnnotationCard({
           </a>
           <button
             onClick={onEdit}
-            className="text-stone-400 hover:text-stone-600 transition-colors p-1 min-h-[44px] flex items-center justify-center"
+            className="text-stone-500 hover:text-stone-700 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Edit note"
             aria-label={`Edit annotation: ${ann.sentence_text.slice(0, 60)}`}
           >

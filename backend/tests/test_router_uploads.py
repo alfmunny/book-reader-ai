@@ -223,6 +223,60 @@ async def test_confirm_chapters_makes_book_readable(client, test_user):
     assert len(ch_data["chapters"]) == len(detected)
 
 
+async def test_confirm_chapters_book_not_found_returns_404(client, test_user):
+    """Regression #1354: confirm on a non-existent book_id must return 404."""
+    resp = await client.post(
+        "/api/books/99999/chapters/confirm",
+        json={"chapters": [{"title": "Ch 1", "original_index": 0}]},
+    )
+    assert resp.status_code == 404
+
+
+async def test_confirm_chapters_non_upload_book_returns_400(client, test_user):
+    """Regression #1354: confirm on a Gutenberg (non-upload) book must return 400."""
+    from services.db import save_book
+    await save_book(
+        5050,
+        {"title": "Gutenberg", "authors": [], "languages": [], "subjects": [],
+         "download_count": 0, "cover": ""},
+        "some text",
+    )
+    resp = await client.post(
+        "/api/books/5050/chapters/confirm",
+        json={"chapters": [{"title": "Ch 1", "original_index": 0}]},
+    )
+    assert resp.status_code == 400
+
+
+async def test_confirm_chapters_other_users_book_returns_403(tmp_db, test_user):
+    """Regression #1354: confirming another user's uploaded book must return 403."""
+    async def _test_user_override():
+        return await get_user_by_id(test_user["id"])
+
+    app.dependency_overrides[get_current_user] = _test_user_override
+    app.dependency_overrides[get_optional_user] = _test_user_override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        upload_resp = await c.post("/api/books/upload", files=_txt_upload())
+        book_id = upload_resp.json()["book_id"]
+    app.dependency_overrides.clear()
+
+    other_user = await get_or_create_user(**SECOND_USER)
+
+    async def _other_user_override():
+        return await get_user_by_id(other_user["id"])
+
+    app.dependency_overrides[get_current_user] = _other_user_override
+    app.dependency_overrides[get_optional_user] = _other_user_override
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        resp = await c.post(
+            f"/api/books/{book_id}/chapters/confirm",
+            json={"chapters": [{"title": "Ch 1", "original_index": 0}]},
+        )
+    app.dependency_overrides.clear()
+
+    assert resp.status_code == 403
+
+
 async def test_delete_uploaded_book(client, test_user):
     upload_resp = await client.post("/api/books/upload", files=_txt_upload())
     book_id = upload_resp.json()["book_id"]

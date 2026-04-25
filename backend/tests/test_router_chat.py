@@ -240,3 +240,36 @@ async def test_router_user_isolation(client, test_user):
     res = await client.get(f"/api/chat/{TEST_BOOK_ID}/messages")
     assert res.status_code == 200
     assert res.json()["messages"] == []
+
+
+# ── Issue #1116: whitespace-only content bypasses validation ─────────────────
+
+
+async def test_router_rejects_whitespace_only_content(client, test_user):
+    """Regression #1116: POST /chat/{book_id}/messages with content="   " must
+    return 422, not store an empty whitespace message."""
+    await _seed_book(TEST_BOOK_ID)
+    res = await client.post(
+        f"/api/chat/{TEST_BOOK_ID}/messages",
+        json={"role": "user", "content": "   "},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for whitespace-only content, got {res.status_code}: {res.text}"
+    )
+
+    # Confirm nothing was persisted.
+    get_res = await client.get(f"/api/chat/{TEST_BOOK_ID}/messages")
+    assert get_res.status_code == 200
+    assert get_res.json()["messages"] == []
+
+
+async def test_router_rejects_tab_newline_only_content(client, test_user):
+    """Regression #1116: tabs and newlines also must not bypass validation."""
+    await _seed_book(TEST_BOOK_ID)
+    res = await client.post(
+        f"/api/chat/{TEST_BOOK_ID}/messages",
+        json={"role": "user", "content": "\t\n  "},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for tab/newline-only content, got {res.status_code}: {res.text}"
+    )

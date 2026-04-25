@@ -23,14 +23,14 @@ describe("QueueTab model-chain button touch targets (closes #850)", () => {
   });
 
   it("Move up button has min-h-[44px]", () => {
-    checkAround('"Move up"');
+    checkAround("} up`}");
   });
 
   it("Move down button has min-h-[44px]", () => {
-    checkAround('"Move down"');
+    checkAround("} down`}");
   });
 
   it("Remove from chain button has min-h-[44px]", () => {
-    checkAround("Remove from chain");
+    checkAround("from chain`}");
   });
 });

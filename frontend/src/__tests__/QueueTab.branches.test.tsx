@@ -405,7 +405,7 @@ describe("QueueTab.branches — chain reorder edge cases", () => {
     });
     await renderAndWait(adminFetch);
 
-    const upBtns = screen.getAllByTitle(/move up/i);
+    const upBtns = screen.getAllByTitle(/move .+ up/i);
     expect(upBtns.length).toBeGreaterThan(0);
 
     // The first ↑ button is disabled (idx=0), clicking it does nothing
@@ -418,7 +418,7 @@ describe("QueueTab.branches — chain reorder edge cases", () => {
     fe.click(firstUpBtn);
 
     // No reorder should have happened — chain order unchanged
-    expect(screen.getAllByTitle(/move up/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle(/move .+ up/i).length).toBeGreaterThan(0);
   });
 
   it("clicking ↓ on last chain item (idx=last) does nothing", async () => {
@@ -431,7 +431,7 @@ describe("QueueTab.branches — chain reorder edge cases", () => {
     });
     await renderAndWait(adminFetch);
 
-    const downBtns = screen.getAllByTitle(/move down/i);
+    const downBtns = screen.getAllByTitle(/move .+ down/i);
     expect(downBtns.length).toBeGreaterThan(0);
 
     // The last ↓ button is disabled
@@ -441,7 +441,7 @@ describe("QueueTab.branches — chain reorder edge cases", () => {
     const { fireEvent: fe } = await import("@testing-library/react");
     fe.click(lastDownBtn);
 
-    expect(screen.getAllByTitle(/move down/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle(/move .+ down/i).length).toBeGreaterThan(0);
   });
 
   it("clicking ↑ on second chain item moves it up", async () => {
@@ -454,13 +454,13 @@ describe("QueueTab.branches — chain reorder edge cases", () => {
     });
     await renderAndWait(adminFetch);
 
-    const upBtns = screen.getAllByTitle(/move up/i);
+    const upBtns = screen.getAllByTitle(/move .+ up/i);
     // Second ↑ button (idx=1) should be enabled
     if (upBtns.length > 1) {
       expect(upBtns[1]).not.toBeDisabled();
       await userEvent.click(upBtns[1]);
       // After click, items should reorder — no crash
-      expect(screen.getAllByTitle(/move up/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByTitle(/move .+ up/i).length).toBeGreaterThan(0);
     }
   });
 
@@ -474,11 +474,11 @@ describe("QueueTab.branches — chain reorder edge cases", () => {
     });
     await renderAndWait(adminFetch);
 
-    const downBtns = screen.getAllByTitle(/move down/i);
+    const downBtns = screen.getAllByTitle(/move .+ down/i);
     if (downBtns.length > 0) {
       expect(downBtns[0]).not.toBeDisabled();
       await userEvent.click(downBtns[0]);
-      expect(screen.getAllByTitle(/move down/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByTitle(/move .+ down/i).length).toBeGreaterThan(0);
     }
   });
 });
@@ -694,7 +694,7 @@ describe("QueueTab.branches — refreshCore langs initialization", () => {
     await renderAndWait(adminFetch);
 
     // Chain should be initialized from the model field
-    const chainItems = screen.queryAllByTitle(/remove from chain/i);
+    const chainItems = screen.queryAllByTitle(/remove .+ from chain/i);
     expect(chainItems.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -919,7 +919,7 @@ describe("QueueTab.branches — chain initialization from DEFAULT_CHAIN", () => 
     await renderAndWait(adminFetch);
 
     // Chain items should be rendered from DEFAULT_CHAIN
-    const chainItems = document.querySelectorAll("[title='Remove from chain']");
+    const chainItems = document.querySelectorAll("[title*='from chain']");
     // DEFAULT_CHAIN is non-empty so there should be items
     expect(chainItems.length).toBeGreaterThanOrEqual(0);
   });

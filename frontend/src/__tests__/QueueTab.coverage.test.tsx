@@ -879,13 +879,13 @@ describe("model chain management in settings (lines 826-964 / settings panel)", 
     await renderAndWait(adminFetch);
 
     // Find all ↓ buttons (move down); click the first one
-    const downBtns = screen.getAllByTitle(/move down/i);
+    const downBtns = screen.getAllByTitle(/move .+ down/i);
     if (downBtns.length > 0) {
       await userEvent.click(downBtns[0]);
     }
 
     // The ↑ on the second item should now be enabled — just verify no crash
-    expect(screen.getAllByTitle(/move up/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByTitle(/move .+ up/i).length).toBeGreaterThan(0);
   });
 
   it("× button removes model from chain", async () => {
@@ -898,7 +898,7 @@ describe("model chain management in settings (lines 826-964 / settings panel)", 
     });
     await renderAndWait(adminFetch);
 
-    const removeButtons = screen.getAllByTitle(/remove from chain/i);
+    const removeButtons = screen.getAllByTitle(/remove .+ from chain/i);
     // Remove the last model
     await userEvent.click(removeButtons[removeButtons.length - 1]);
 
@@ -934,10 +934,10 @@ describe("model chain management in settings (lines 826-964 / settings panel)", 
     await renderAndWait(adminFetch);
 
     // Remove all × buttons to empty the chain
-    let removeBtns = screen.queryAllByTitle(/remove from chain/i);
+    let removeBtns = screen.queryAllByTitle(/remove .+ from chain/i);
     while (removeBtns.length > 0) {
       await userEvent.click(removeBtns[0]);
-      removeBtns = screen.queryAllByTitle(/remove from chain/i);
+      removeBtns = screen.queryAllByTitle(/remove .+ from chain/i);
     }
 
     expect(screen.getByText(/chain is empty/i)).toBeInTheDocument();

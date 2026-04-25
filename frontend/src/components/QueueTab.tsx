@@ -1000,8 +1000,8 @@ export default function QueueTab({ adminFetch }: Props) {
                         }}
                         disabled={idx === 0}
                         className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
-                        title="Move up"
-                        aria-label="Move up"
+                        title={`Move ${labelForModel(m)} up`}
+                        aria-label={`Move ${labelForModel(m)} up`}
                       >
                         ↑
                       </button>
@@ -1014,8 +1014,8 @@ export default function QueueTab({ adminFetch }: Props) {
                         }}
                         disabled={idx === chain.length - 1}
                         className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
-                        title="Move down"
-                        aria-label="Move down"
+                        title={`Move ${labelForModel(m)} down`}
+                        aria-label={`Move ${labelForModel(m)} down`}
                       >
                         ↓
                       </button>
@@ -1023,8 +1023,8 @@ export default function QueueTab({ adminFetch }: Props) {
                     <button
                       onClick={() => setChain(chain.filter((_, i) => i !== idx))}
                       className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-red-200 text-red-500 shrink-0"
-                      title="Remove from chain"
-                      aria-label="Remove from chain"
+                      title={`Remove ${labelForModel(m)} from chain`}
+                      aria-label={`Remove ${labelForModel(m)} from chain`}
                     >
                       <CloseIcon aria-hidden="true" className="w-3 h-3" />
                     </button>

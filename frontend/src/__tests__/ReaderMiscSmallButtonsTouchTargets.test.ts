@@ -20,7 +20,7 @@ describe("reader miscellaneous small button touch targets (closes #882)", () => 
   });
 
   it("Typography Aa panel toggle has min-h-[44px]", () => {
-    checkForward('"Typography settings"');
+    checkForward('"Typography settings"', 260);
   });
 
   it("Notes sidebar chapter-section collapse button has min-h-[44px]", () => {

@@ -878,6 +878,7 @@ export default function ReaderPage() {
               }}
               aria-label="Typography settings"
               aria-expanded={showTypographyPanel}
+              aria-controls="typography-panel"
               className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px]"
               title="Typography"
             >Aa</button>
@@ -1004,6 +1005,7 @@ export default function ReaderPage() {
               title="Typography settings"
               aria-label="Typography settings"
               aria-expanded={showTypographyPanel}
+              aria-controls="typography-panel"
               className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-bold transition-colors ${
                 showTypographyPanel || paragraphFocus
                   ? "bg-amber-100 border-amber-400 text-amber-800"

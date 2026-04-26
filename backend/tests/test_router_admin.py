@@ -2438,6 +2438,20 @@ async def test_import_translations_oversized_provider_returns_422(admin_client, 
 
 
 @pytest.mark.asyncio
+async def test_import_translations_oversized_title_translation_returns_422(admin_client, admin_db):
+    """Regression #1494: title_translation > 500 chars in import entry must return 422."""
+    res = await admin_client.post(
+        "/api/admin/translations/import",
+        json={"entries": [{"book_id": 1, "chapter_index": 0,
+                           "target_language": "de", "paragraphs": ["hello"],
+                           "title_translation": "t" * 501}]},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized title_translation in import, got {res.status_code}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_queue_settings_oversized_api_key_returns_422(admin_client, admin_db):
     """Regression #521: PUT /admin/queue/settings with api_key > 500 chars must return 422."""
     res = await admin_client.put(

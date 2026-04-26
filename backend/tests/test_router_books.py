@@ -1299,6 +1299,21 @@ async def test_popular_per_page_too_large_returns_422(client):
     assert resp.status_code == 422, f"Expected 422 for per_page=201 in /books/popular, got {resp.status_code}: {resp.text}"
 
 
+# ── Issue #1516: ge=1 lower-bound on page query param ─────────────────────────
+
+
+async def test_search_page_zero_returns_422(client):
+    """Regression #1516: GET /books/search?page=0 must return 422 (ge=1 violated)."""
+    resp = await client.get("/api/books/search?q=test&page=0")
+    assert resp.status_code == 422, f"Expected 422 for page=0 in /books/search, got {resp.status_code}: {resp.text}"
+
+
+async def test_popular_books_page_zero_returns_422(client):
+    """Regression #1516: GET /books/popular?page=0 must return 422 (ge=1 violated)."""
+    resp = await client.get("/api/books/popular?page=0")
+    assert resp.status_code == 422, f"Expected 422 for page=0 in /books/popular, got {resp.status_code}: {resp.text}"
+
+
 # ── Issue #772: min_length=1 on target_language in RequestTranslationBody ────
 
 

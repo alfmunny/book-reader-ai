@@ -911,3 +911,22 @@ async def test_definition_whitespace_only_word_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for whitespace-only word in /definition, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1516: ge=1 lower-bound on deck_id query param ─────────────────────
+
+
+async def test_flashcards_due_deck_id_zero_returns_422(client, test_user):
+    """Regression #1516: GET /vocabulary/flashcards/due?deck_id=0 must return 422 (ge=1 violated)."""
+    resp = await client.get("/api/vocabulary/flashcards/due?deck_id=0")
+    assert resp.status_code == 422, (
+        f"Expected 422 for deck_id=0 in GET /vocabulary/flashcards/due, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_flashcards_stats_deck_id_zero_returns_422(client, test_user):
+    """Regression #1516: GET /vocabulary/flashcards/stats?deck_id=0 must return 422 (ge=1 violated)."""
+    resp = await client.get("/api/vocabulary/flashcards/stats?deck_id=0")
+    assert resp.status_code == 422, (
+        f"Expected 422 for deck_id=0 in GET /vocabulary/flashcards/stats, got {resp.status_code}: {resp.text}"
+    )

@@ -240,6 +240,22 @@ async def test_create_annotation_rejects_empty_sentence(client, test_user):
     assert resp.status_code == 422
 
 
+async def test_create_annotation_rejects_whitespace_only_sentence_text(client, test_user):
+    """Regression #1382: POST /annotations with sentence_text="   " must return 400.
+
+    Pydantic enforces min_length=1 so "" → 422, but whitespace-only strings ("   ")
+    pass Pydantic and are caught by the manual strip check at routers/annotations.py:28."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    resp = await client.post("/api/annotations", json={
+        "book_id": BOOK_ID,
+        "chapter_index": 0,
+        "sentence_text": "   ",
+    })
+    assert resp.status_code == 400, (
+        f"Expected 400 for whitespace-only sentence_text, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_create_annotation_rejects_negative_chapter_index(client, test_user):
     """POST /annotations with chapter_index < 0 must return 422 (Pydantic ge=0).
     Negative indices are not valid book positions — rejected at validation layer."""

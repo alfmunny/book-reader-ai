@@ -224,6 +224,61 @@ async def test_scope_filter_annotations_only(client, test_user):
     assert len(hits) == 1
 
 
+async def test_scope_filter_vocabulary_only(client, test_user):
+    """Regression #1468: scope=vocabulary must exclude annotation hits."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await _seed_annotation(db, test_user["id"], 1, 0, "a phoenix rose from the ashes", "")
+        await _seed_vocab_occurrence(db, test_user["id"], "phoenix", 1, 0,
+                                     "the phoenix is a mythical bird")
+        await db.commit()
+
+    res = await client.get("/api/search?q=phoenix&scope=vocabulary")
+    assert res.status_code == 200, res.text
+    hits = res.json()["results"]
+    assert all(h["type"] == "vocabulary" for h in hits), (
+        f"Regression #1468: scope=vocabulary returned non-vocabulary hit: {hits}"
+    )
+    assert len(hits) == 1
+
+
+async def test_scope_filter_chapters_only(client, test_user):
+    """Regression #1468: scope=chapters must exclude annotation hits."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await _seed_annotation(db, test_user["id"], 1, 0, "a basilisk lurked nearby", "")
+        await _seed_upload(db, test_user["id"], 8001,
+                           [("Ch1", "the basilisk turned to stone")], is_draft=0)
+        await db.commit()
+
+    res = await client.get("/api/search?q=basilisk&scope=chapters")
+    assert res.status_code == 200, res.text
+    hits = res.json()["results"]
+    assert all(h["type"] == "chapter" for h in hits), (
+        f"Regression #1468: scope=chapters returned non-chapter hit: {hits}"
+    )
+    assert len(hits) == 1
+
+
+async def test_scope_filter_vocabulary_and_chapters(client, test_user):
+    """Regression #1468: scope=vocabulary&scope=chapters must exclude annotations."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await _seed_annotation(db, test_user["id"], 1, 0, "a manticore prowled the desert", "")
+        await _seed_vocab_occurrence(db, test_user["id"], "manticore", 1, 0,
+                                     "manticore: fearsome creature")
+        await _seed_upload(db, test_user["id"], 8002,
+                           [("Ch1", "the manticore roared at dawn")], is_draft=0)
+        await db.commit()
+
+    res = await client.get("/api/search?q=manticore&scope=vocabulary,chapters")
+    assert res.status_code == 200, res.text
+    hits = res.json()["results"]
+    types = {h["type"] for h in hits}
+    assert "annotation" not in types, (
+        f"Regression #1468: scope=vocabulary,chapters must not return annotations, got: {hits}"
+    )
+    assert types <= {"vocabulary", "chapter"}
+    assert len(hits) == 2
+
+
 async def test_invalid_scope_returns_400(client, test_user):
     res = await client.get("/api/search?q=foo&scope=bogus")
     assert res.status_code == 400

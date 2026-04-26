@@ -3322,3 +3322,19 @@ async def test_queue_delete_book_whitespace_language_returns_422(admin_client, a
     assert res.status_code == 422, (
         f"Expected 422 for whitespace target_language in queue_delete_book, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1432: whitespace-only language in enqueue-book target_languages ─────
+
+
+async def test_enqueue_book_whitespace_target_language_returns_422(admin_client):
+    """Regression #1432: POST /admin/queue/enqueue-book with whitespace-only entry in
+    target_languages must return 422 — ' ' passes min_length=1 but is semantically empty."""
+    res = await admin_client.post(
+        "/api/admin/queue/enqueue-book",
+        json={"book_id": 1, "target_languages": ["  "]},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1432: whitespace-only target_language in enqueue-book must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )

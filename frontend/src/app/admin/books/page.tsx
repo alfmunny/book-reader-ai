@@ -312,7 +312,7 @@ export default function BooksPage() {
 
                 <div className="flex flex-wrap gap-1 items-center">
                   {allLangs.length === 0 ? (
-                    <span className="text-xs text-stone-300">no translations</span>
+                    <span className="text-xs text-stone-500">no translations</span>
                   ) : (
                     allLangs.map((lang) => {
                       const count = b.translations?.[lang] || 0;

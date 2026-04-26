@@ -102,7 +102,7 @@ export default function UsersPage() {
               </button>
             </div>
           )}
-          {u.id === myId && <span className="text-xs text-stone-300">You</span>}
+          {u.id === myId && <span className="text-xs text-stone-500">You</span>}
         </div>
       ))}
     </div>

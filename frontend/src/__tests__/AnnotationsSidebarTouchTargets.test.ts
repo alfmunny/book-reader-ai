@@ -35,3 +35,20 @@ describe("AnnotationsSidebar touch targets (closes #806)", () => {
     expect(window).toContain("min-w-[44px]");
   });
 });
+
+describe("AnnotationsSidebar interactive anchors meet 44px mobile touch target (closes #1547)", () => {
+  it("every <a href=...> opening tag carries min-h-[44px]", () => {
+    // Match <a ...> opening tag, allowing => (arrow fn) inside JSX attrs.
+    const anchorRe = /<a\b((?:=>|[^>])*?)>/g;
+    let m: RegExpExecArray | null;
+    const offenders: string[] = [];
+    while ((m = anchorRe.exec(src)) !== null) {
+      const attrs = m[1];
+      if (!attrs.includes("href")) continue;
+      if (!attrs.includes("min-h-[44px]")) {
+        offenders.push(m[0]);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

@@ -84,6 +84,9 @@ async def get_definition(
     lang: str = Query(default="en", min_length=1, max_length=20),
     user: dict = Depends(get_current_user),
 ):
+    word = word.strip()
+    if not word:
+        raise HTTPException(status_code=422, detail="word cannot be blank")
     lang = lang.strip().lower().split("-")[0]
     if not lang:
         raise HTTPException(status_code=422, detail="lang cannot be blank")

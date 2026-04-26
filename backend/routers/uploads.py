@@ -53,11 +53,18 @@ async def _save_upload_book(user_id: int, title: str, author: str, filename: str
                         status_code=429,
                         detail=f"Upload limit reached ({max_books} books). Delete a book to upload more.",
                     )
+            # Assign IDs ≥ 1,000,000 for uploaded books so they don't appear
+            # visually adjacent to Gutenberg IDs (which reach ~78,000) in URLs.
+            async with db.execute(
+                "SELECT MAX(id) FROM books WHERE id >= 1000000"
+            ) as _cur:
+                _row = await _cur.fetchone()
+            next_id = (_row[0] if _row and _row[0] is not None else 999999) + 1
             cur = await db.execute(
-                """INSERT INTO books (title, authors, languages, subjects, download_count,
+                """INSERT INTO books (id, title, authors, languages, subjects, download_count,
                                      cover, text, images, source, owner_user_id)
-                   VALUES (?, ?, '[]', '[]', 0, '', '', '[]', 'upload', ?)""",
-                (title, json.dumps([author]), user_id),
+                   VALUES (?, ?, ?, '[]', '[]', 0, '', '', '[]', 'upload', ?)""",
+                (next_id, title, json.dumps([author]), user_id),
             )
             book_id = cur.lastrowid
             await db.execute(

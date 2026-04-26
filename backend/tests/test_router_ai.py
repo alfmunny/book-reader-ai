@@ -1553,3 +1553,48 @@ async def test_translate_cache_get_rejects_whitespace_target_language(client, te
         f"Regression #1451: whitespace-only target_language in GET /translate/cache "
         f"must return 422, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1506: response_language max_length=20 on insight/qa/references ────
+
+
+@pytest.mark.asyncio
+async def test_insight_oversized_response_language_returns_422(client, test_user):
+    """Regression #1506: POST /ai/insight with response_language > 20 chars must return 422."""
+    resp = await client.post("/api/ai/insight", json={
+        "chapter_text": "Some text.",
+        "book_title": "Book",
+        "author": "Author",
+        "response_language": "x" * 21,
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized response_language in /ai/insight, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_qa_oversized_response_language_returns_422(client, test_user):
+    """Regression #1506: POST /ai/qa with response_language > 20 chars must return 422."""
+    resp = await client.post("/api/ai/qa", json={
+        "question": "What?",
+        "passage": "Some passage text.",
+        "book_title": "Book",
+        "author": "Author",
+        "response_language": "x" * 21,
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized response_language in /ai/qa, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_references_oversized_response_language_returns_422(client, test_user):
+    """Regression #1506: POST /ai/references with response_language > 20 chars must return 422."""
+    resp = await client.post("/api/ai/references", json={
+        "book_title": "Book",
+        "author": "Author",
+        "response_language": "x" * 21,
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized response_language in /ai/references, got {resp.status_code}: {resp.text}"
+    )

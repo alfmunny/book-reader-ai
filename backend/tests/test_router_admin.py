@@ -3496,3 +3496,42 @@ async def test_queue_settings_whitespace_model_returns_422(admin_client):
         f"Regression #1444: whitespace-only model in queue/settings must return 422, "
         f"got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1500: QueuePlanRequest and RetryFailedRequest oversized target_language ──
+
+
+@pytest.mark.asyncio
+async def test_queue_plan_oversized_target_language_returns_422(admin_client):
+    """Regression #1500: POST /admin/queue/plan with target_language > 20 chars must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": "x" * 21},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in queue/plan, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_queue_dry_run_oversized_target_language_returns_422(admin_client):
+    """Regression #1500: POST /admin/queue/dry-run with target_language > 20 chars must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/dry-run",
+        json={"target_language": "x" * 21},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in queue/dry-run, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_retry_failed_oversized_target_language_returns_422(admin_client):
+    """Regression #1500: POST /admin/queue/retry-failed with target_language > 20 chars must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"target_language": "x" * 21},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for oversized target_language in queue/retry-failed, got {res.status_code}: {res.text}"
+    )

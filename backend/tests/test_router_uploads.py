@@ -330,6 +330,17 @@ async def test_delete_uploaded_book_by_non_owner_returns_403(tmp_db, test_user):
     assert "not your book" in del_resp.json()["detail"].lower()
 
 
+async def test_upload_book_id_in_upload_namespace(client, test_user):
+    """Regression #431: uploaded books must receive an ID ≥ 1,000,000 so they
+    don't collide visually with Gutenberg IDs (which reach ~78,000)."""
+    resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert resp.status_code == 200, resp.text
+    book_id = resp.json()["book_id"]
+    assert book_id >= 1_000_000, (
+        f"Regression #431: uploaded book got ID {book_id}, expected ≥ 1,000,000"
+    )
+
+
 async def test_get_draft_chapters_requires_ownership(tmp_db, test_user):
     """Another user cannot access draft chapters that belong to test_user."""
     # Upload as test_user

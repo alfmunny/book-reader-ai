@@ -1057,7 +1057,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     >
                       + {opt.label}
                       {!opt.recommended && (
-                        <span className="ml-1 text-xs text-orange-600">
+                        <span className="ml-1 text-xs text-orange-700">
                           (not recommended)
                         </span>
                       )}

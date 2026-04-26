@@ -212,11 +212,14 @@ async def remove_manual_member(user_id: int, deck_id: int, vocabulary_id: int) -
     async with aiosqlite.connect(_db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT 1 FROM decks WHERE id = ? AND user_id = ?",
+            "SELECT mode FROM decks WHERE id = ? AND user_id = ?",
             (deck_id, user_id),
         ) as cur:
-            if await cur.fetchone() is None:
-                return False
+            deck = await cur.fetchone()
+        if deck is None:
+            return False
+        if deck["mode"] != "manual":
+            raise ValueError("Cannot remove members from a smart deck")
         cur = await db.execute(
             "DELETE FROM deck_members WHERE deck_id = ? AND vocabulary_id = ?",
             (deck_id, vocabulary_id),

@@ -1272,6 +1272,7 @@ async def review_flashcard(
     """Apply SM-2 algorithm to a flashcard review. Returns updated state or None if not found."""
     from datetime import date, timedelta
 
+    await _ensure_flashcard_rows(user_id)
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(

@@ -222,3 +222,26 @@ async def test_flashcards_require_auth(anon_client):
     assert (await anon_client.get("/api/vocabulary/flashcards/due")).status_code == 401
     assert (await anon_client.get("/api/vocabulary/flashcards/stats")).status_code == 401
     assert (await anon_client.post("/api/vocabulary/flashcards/1/review", json={"grade": 3})).status_code == 401
+
+
+async def test_review_without_prior_due_fetch_returns_200(client, test_user):
+    """Regression #1461: POST /vocabulary/flashcards/{id}/review must succeed
+    even when GET /flashcards/due was never called first (flashcard_reviews row
+    may not exist yet).  The service must call _ensure_flashcard_rows before
+    checking for the row."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    row = await save_word(test_user["id"], "unprompted", BOOK_ID, 0, "Unprompted sentence.")
+    vocab_id = row["id"]
+
+    # Deliberately skip GET /flashcards/due so _ensure_flashcard_rows is NOT
+    # called implicitly before the review.
+    resp = await client.post(
+        f"/api/vocabulary/flashcards/{vocab_id}/review", json={"grade": 3}
+    )
+    assert resp.status_code == 200, (
+        f"Regression #1461: expected 200 for review without prior due-fetch, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    data = resp.json()
+    assert "next_due" in data
+    assert "interval_days" in data

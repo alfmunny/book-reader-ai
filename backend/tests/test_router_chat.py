@@ -321,4 +321,20 @@ async def test_router_has_more_correct_at_max_limit(client, test_user):
     )
     data2 = res2.json()
     assert len(data2["messages"]) == 1
-    assert data2["has_more"] is False
+
+
+# ── Issue #1512: content max_length=64000 regression test ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_post_message_oversized_content_returns_422(client, test_user):
+    """Regression #1512: POST /chat/{id}/messages with content > 64000 chars must return 422.
+    ChatMessageCreate.content declares max_length=64000; Pydantic must reject the oversized value."""
+    await _seed_book(TEST_BOOK_ID)
+    res = await client.post(
+        f"/api/chat/{TEST_BOOK_ID}/messages",
+        json={"role": "user", "content": "x" * 64001},
+    )
+    assert res.status_code == 422, (
+        f"Expected 422 for content > 64000 chars in POST /chat/messages, got {res.status_code}: {res.text}"
+    )

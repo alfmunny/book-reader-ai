@@ -76,7 +76,7 @@ function ContextChip({
           {needsToggle && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="ml-1.5 text-amber-500 hover:text-amber-700 font-medium not-italic min-h-[44px] inline-flex items-center"
+              className="ml-1.5 text-amber-700 hover:text-amber-900 font-medium not-italic min-h-[44px] inline-flex items-center"
               aria-label="Toggle context"
               aria-expanded={expanded}
             >

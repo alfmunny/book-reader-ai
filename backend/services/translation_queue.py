@@ -197,7 +197,7 @@ async def enqueue(
     inserted or an existing row was revived; 0 if the INSERT OR IGNORE
     path no-op'd because a non-stale row already exists).
     """
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         if reset_failed:
             cursor = await db.execute(
@@ -1251,7 +1251,7 @@ async def plan_work_for_queue(
     from services.db import list_cached_books
     from services.book_chapters import split_with_html_preference
 
-    target_language = target_language.lower().split("-")[0]
+    target_language = target_language.strip().lower().split("-")[0]
     all_books = await list_cached_books()
     plans = []
 

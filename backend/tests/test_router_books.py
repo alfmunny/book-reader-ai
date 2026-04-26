@@ -1459,3 +1459,31 @@ async def test_fetch_and_cache_continues_when_epub_fetch_fails(client):
         meta, text = await _fetch_and_cache(99002)
     assert meta == fake_meta
     assert text == fake_text
+
+
+# ── Issue #1426: whitespace-only language in /search and /popular ─────────────
+
+
+async def test_search_whitespace_language_stripped(client):
+    """Regression #1426: GET /books/search?language=%20 must strip whitespace and
+    call search_books with an empty string, not pass ' ' to the Gutenberg API."""
+    from unittest.mock import AsyncMock, call
+    mock_result = {"count": 0, "books": []}
+    with patch("routers.books.search_books", new_callable=AsyncMock, return_value=mock_result) as mock_sb:
+        resp = await client.get("/api/books/search?q=test&language=%20%20")
+    assert resp.status_code == 200
+    assert mock_sb.call_args == call("test", "", 1), (
+        f"search_books should be called with stripped language='', got: {mock_sb.call_args}"
+    )
+
+
+async def test_popular_books_whitespace_language_returns_all(client, popular_cache):
+    """Regression #1426: GET /books/popular?language=%20 must treat whitespace as
+    no-filter and return all books, not return 0 results for a bogus ' ' key."""
+    resp_all = await client.get("/api/books/popular")
+    resp_ws = await client.get("/api/books/popular?language=%20%20")
+    assert resp_ws.status_code == 200
+    assert resp_ws.json()["total"] == resp_all.json()["total"], (
+        f"Whitespace language should behave like no filter: total={resp_ws.json()['total']} "
+        f"expected {resp_all.json()['total']}"
+    )

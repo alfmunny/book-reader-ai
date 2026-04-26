@@ -240,7 +240,7 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
 
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(req.book_id, book.get("text") or "")
-    if req.chapter_index < 0 or req.chapter_index >= len(_chapters):
+    if req.chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -293,7 +293,7 @@ async def delete_summary(book_id: int = Query(..., ge=1), chapter_index: int = Q
         raise HTTPException(status_code=404, detail="Book not found")
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(_chapters):
+    if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -328,7 +328,7 @@ async def translate_cache(
     check_book_access(book, _user)
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(_chapters):
+    if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -371,7 +371,7 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
     target_language = req.target_language.lower().split("-")[0]
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(req.book_id, book.get("text") or "")
-    if req.chapter_index < 0 or req.chapter_index >= len(_chapters):
+    if req.chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -414,8 +414,6 @@ async def translate(req: TranslateRequest, user: dict = Depends(get_current_user
             if not _book:
                 raise HTTPException(status_code=404, detail="Book not found")
             check_book_access(_book, user)
-        if req.chapter_index is not None and req.chapter_index < 0:
-            raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
         if req.book_id is not None and req.chapter_index is not None and _book is not None:
             from services.book_chapters import split_with_html_preference as _split
             _chapters = await _split(req.book_id, _book.get("text") or "")

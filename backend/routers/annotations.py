@@ -28,8 +28,6 @@ async def create(req: AnnotationCreate, user: dict = Depends(get_current_user)):
     if not req.sentence_text.strip():
         raise HTTPException(status_code=400, detail="sentence_text cannot be blank")
     note_text = req.note_text.strip() if req.note_text else ""
-    if req.chapter_index < 0:
-        raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     book = await get_cached_book(req.book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")

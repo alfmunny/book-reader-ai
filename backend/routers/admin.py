@@ -529,7 +529,7 @@ async def retranslate(
 
     from services.book_chapters import split_with_html_preference
     chapters = await split_with_html_preference(book_id, book.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(chapters):
+    if chapter_index >= len(chapters):
         raise HTTPException(status_code=400, detail=f"Chapter index {chapter_index} out of range (0–{len(chapters) - 1})")
 
     chapter_text = chapters[chapter_index].text
@@ -814,7 +814,7 @@ async def move_translation(
     from services.book_chapters import split_with_html_preference
     chapters = await split_with_html_preference(book_id, book.get("text") or "")
     new_idx = req.new_chapter_index
-    if new_idx < 0 or new_idx >= len(chapters):
+    if new_idx >= len(chapters):
         raise HTTPException(
             status_code=400,
             detail=f"new_chapter_index {new_idx} out of range (0-{len(chapters) - 1})",

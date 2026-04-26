@@ -173,7 +173,7 @@ async def chapter_queue_status(
     check_book_access(book, user)
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(_chapters):
+    if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -199,7 +199,7 @@ async def get_chapter_translation(
     check_book_access(book, user)
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(_chapters):
+    if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -301,7 +301,7 @@ async def request_chapter_translation(
     # 0e. Guard: reject out-of-bounds chapter_index.
     from services.book_chapters import split_with_html_preference
     _chapters = await split_with_html_preference(book_id, book_meta.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(_chapters):
+    if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
@@ -429,7 +429,7 @@ async def retry_chapter_translation(
     target_language = req.target_language.lower().split("-")[0]
 
     _ch = await _split(book_id, book.get("text") or "")
-    if chapter_index < 0 or chapter_index >= len(_ch):
+    if chapter_index >= len(_ch):
         raise HTTPException(
             status_code=400,
             detail=f"Chapter index out of range (book has {len(_ch)} chapter(s)).",

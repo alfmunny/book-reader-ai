@@ -1284,6 +1284,21 @@ async def test_popular_books_page_too_large_returns_422(client):
     assert resp.status_code == 422, f"Expected 422 for page > 10000, got {resp.status_code}: {resp.text}"
 
 
+# ── Issue #1514: per_page bounds on /books/popular (ge=1, le=200) ─────────────
+
+
+async def test_popular_per_page_zero_returns_422(client):
+    """Regression #1514: GET /books/popular?per_page=0 must return 422 (ge=1 violated)."""
+    resp = await client.get("/api/books/popular?per_page=0")
+    assert resp.status_code == 422, f"Expected 422 for per_page=0 in /books/popular, got {resp.status_code}: {resp.text}"
+
+
+async def test_popular_per_page_too_large_returns_422(client):
+    """Regression #1514: GET /books/popular?per_page=201 must return 422 (le=200 violated)."""
+    resp = await client.get("/api/books/popular?per_page=201")
+    assert resp.status_code == 422, f"Expected 422 for per_page=201 in /books/popular, got {resp.status_code}: {resp.text}"
+
+
 # ── Issue #772: min_length=1 on target_language in RequestTranslationBody ────
 
 

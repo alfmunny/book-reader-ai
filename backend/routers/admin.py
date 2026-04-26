@@ -1170,6 +1170,10 @@ async def queue_items(
     limit: int = Query(default=200, ge=1, le=1000),
     _admin: dict = Depends(_require_admin),
 ):
+    if status is not None:
+        status = status.strip()
+        if not status:
+            raise HTTPException(status_code=422, detail="status cannot be blank")
     return await list_queue(status=status, book_id=book_id, limit=limit)
 
 

@@ -36,6 +36,7 @@ async def search(
     q = q.strip()
     if not q:
         raise HTTPException(status_code=422, detail="q cannot be blank")
+    language = language.strip()
     return await search_books(q, language, page)
 
 
@@ -56,6 +57,7 @@ async def popular_books(
     The manifest is either the new dict format {language: [books]} produced by
     seed_books.py --collections, or the legacy flat list.
     """
+    language = language.strip()
     global _popular_cache
     if _popular_cache is None:
         if not os.path.isfile(_POPULAR_BOOKS_PATH):

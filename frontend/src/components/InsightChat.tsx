@@ -306,9 +306,11 @@ export default function InsightChat({
   }, [selectedText]);
 
   // ── 6. Auto-scroll ───────────────────────────────────────────────────
+  // Scroll only the messages container — not the page — so opening the
+  // Insight panel doesn't jump the reader back to the top.
   useEffect(() => {
-    if (autoScrollRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (autoScrollRef.current && messagesBoxRef.current) {
+      messagesBoxRef.current.scrollTop = messagesBoxRef.current.scrollHeight;
     }
   }, [messages, chatLoading]);
 

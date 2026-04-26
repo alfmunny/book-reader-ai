@@ -15,6 +15,21 @@ def mock_generate(return_value: str):
 
 # ── _lang helper ──────────────────────────────────────────────────────────────
 
+def test_model_name_is_stable_and_valid():
+    """Regression #1388: MODEL must not be a non-existent preview name."""
+    assert "preview" not in gemini.MODEL.lower(), (
+        f"MODEL '{gemini.MODEL}' looks like a preview alias — use a stable model name"
+    )
+    assert gemini.MODEL.startswith("gemini-"), (
+        f"MODEL '{gemini.MODEL}' is not a valid Gemini model identifier"
+    )
+    # Guard against any future typo like 'gemini-3.1' which doesn't exist
+    parts = gemini.MODEL.split("-")
+    assert len(parts) >= 3, (
+        f"MODEL '{gemini.MODEL}' is too short to be a valid Gemini model name"
+    )
+
+
 def test_lang_returns_empty_for_english():
     assert gemini._lang("en") == ""
 

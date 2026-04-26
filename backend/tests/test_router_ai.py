@@ -1510,3 +1510,46 @@ async def test_tts_rejects_whitespace_text(anon_client):
 async def test_tts_chunks_rejects_whitespace_text(anon_client):
     resp = await anon_client.post("/api/ai/tts/chunks", json={"text": "\t\n  "})
     assert resp.status_code == 422, f"Expected 422 for whitespace text in /ai/tts/chunks, got {resp.status_code}"
+
+
+# ── Issue #1451: whitespace-only language params in POST /ai/translate and
+#                GET /ai/translate/cache are handled but untested ────────────
+
+
+async def test_translate_rejects_whitespace_source_language(client, test_user):
+    """Regression #1451: POST /ai/translate with source_language='  ' must return 422.
+    min_length=1 passes a single space through Pydantic; the handler strips and checks."""
+    resp = await client.post("/api/ai/translate", json={
+        "text": "Guten Tag",
+        "source_language": "   ",
+        "target_language": "en",
+    })
+    assert resp.status_code == 422, (
+        f"Regression #1451: whitespace-only source_language must return 422, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_translate_rejects_whitespace_target_language(client, test_user):
+    """Regression #1451: POST /ai/translate with target_language='  ' must return 422."""
+    resp = await client.post("/api/ai/translate", json={
+        "text": "Guten Tag",
+        "source_language": "de",
+        "target_language": "   ",
+    })
+    assert resp.status_code == 422, (
+        f"Regression #1451: whitespace-only target_language must return 422, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_translate_cache_get_rejects_whitespace_target_language(client, test_user):
+    """Regression #1451: GET /ai/translate/cache?target_language=%20%20 must return 422.
+    min_length=1 passes a single space through Pydantic; the handler strips and checks."""
+    resp = await client.get(
+        "/api/ai/translate/cache?book_id=1&chapter_index=0&target_language=%20%20"
+    )
+    assert resp.status_code == 422, (
+        f"Regression #1451: whitespace-only target_language in GET /translate/cache "
+        f"must return 422, got {resp.status_code}: {resp.text}"
+    )

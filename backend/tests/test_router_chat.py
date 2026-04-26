@@ -339,3 +339,36 @@ async def test_post_message_oversized_content_returns_422(client, test_user):
     assert res.status_code == 422, (
         f"Expected 422 for content > 64000 chars in POST /chat/messages, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1515: limit and before_id query param bounds ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_messages_limit_zero_returns_422(client, test_user):
+    """Regression #1515: GET /chat/{id}/messages?limit=0 must return 422 (ge=1 violated)."""
+    await _seed_book(TEST_BOOK_ID)
+    res = await client.get(f"/api/chat/{TEST_BOOK_ID}/messages?limit=0")
+    assert res.status_code == 422, (
+        f"Expected 422 for limit=0 in GET /chat/messages, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_messages_limit_too_large_returns_422(client, test_user):
+    """Regression #1515: GET /chat/{id}/messages?limit=201 must return 422 (le=200 violated)."""
+    await _seed_book(TEST_BOOK_ID)
+    res = await client.get(f"/api/chat/{TEST_BOOK_ID}/messages?limit=201")
+    assert res.status_code == 422, (
+        f"Expected 422 for limit=201 in GET /chat/messages, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_messages_before_id_zero_returns_422(client, test_user):
+    """Regression #1515: GET /chat/{id}/messages?before_id=0 must return 422 (ge=1 violated)."""
+    await _seed_book(TEST_BOOK_ID)
+    res = await client.get(f"/api/chat/{TEST_BOOK_ID}/messages?before_id=0")
+    assert res.status_code == 422, (
+        f"Expected 422 for before_id=0 in GET /chat/messages, got {res.status_code}: {res.text}"
+    )

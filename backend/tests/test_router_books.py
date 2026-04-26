@@ -559,6 +559,19 @@ async def test_get_chapter_translation_not_cached(client):
     assert resp.status_code == 404
 
 
+async def test_get_chapter_translation_book_exists_but_not_translated_returns_404(client):
+    """Regression #1383: GET returns 404 when book exists but translation not cached.
+
+    test_get_chapter_translation_not_cached actually tests book-not-found (line 193),
+    not the translation-not-cached guard (routers/books.py:205). This test covers
+    the correct code path by seeding the book but not the translation."""
+    await save_book(9999, MOCK_META, "text")
+    resp = await client.get("/api/books/9999/chapters/0/translation?target_language=zh")
+    assert resp.status_code == 404, (
+        f"Expected 404 for book with no cached zh translation, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_get_chapter_translation_no_cache_returns_404_for_guest(anon_client):
     """GET returns 404 (not 401) when no cached translation exists — public endpoint."""
     resp = await anon_client.get("/api/books/9999/chapters/0/translation?target_language=de")

@@ -321,6 +321,12 @@ async def test_limit_capped(client, test_user):
     assert len(res.json()["results"]) == 50
 
 
+async def test_limit_zero_returns_422(client, test_user):
+    """Regression #1516: GET /search?limit=0 must return 422 (ge=1 violated)."""
+    res = await client.get("/api/search?q=word&limit=0")
+    assert res.status_code == 422, f"Expected 422 for limit=0 in /search, got {res.status_code}: {res.text}"
+
+
 async def test_query_with_fts5_special_chars_does_not_crash(client, test_user):
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         await _seed_annotation(db, test_user["id"], 1, 0,

@@ -745,6 +745,27 @@ async def test_definition_corrupted_gemini_key_returns_200_not_500(client, test_
     assert data["definitions"] == []
 
 
+async def test_definition_no_ai_fallback_when_no_gemini_key(client, test_user):
+    """Regression #1545: GET /vocabulary/definition returns empty definitions when
+    wiktionary finds nothing AND the user has no Gemini key (line 97→104 branch).
+
+    Without this path covered, the `if raw_key:` false branch is dead in tests.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    empty_wikt = {
+        "lemma": "Fernweh", "language": "de", "definitions": [], "url": "https://en.wiktionary.org/wiki/Fernweh"
+    }
+    # test_user has no Gemini key by default (not set in conftest)
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=empty_wikt)):
+        resp = await client.get("/api/vocabulary/definition/Fernweh?lang=de")
+
+    assert resp.status_code == 200, (
+        f"Regression #1545: expected 200 for empty wiktionary + no key, got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json()["definitions"] == []
+
+
 async def test_save_word_negative_chapter_index_returns_422(client, test_user, tmp_db):
     """Regression #719: POST /vocabulary with chapter_index < 0 must return 422."""
     from services.db import save_book

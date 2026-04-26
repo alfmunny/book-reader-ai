@@ -557,23 +557,6 @@ async def count_draft_user_book_chapters(book_id: int) -> int:
     return row[0] if row else 0
 
 
-async def insert_user_book_chapters_draft(book_id: int, chapters: list[dict]) -> None:
-    """Insert a fresh set of draft chapters for a newly uploaded book.
-
-    Caller provides chapters in final index order with 'title' and 'text'.
-    """
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.executemany(
-            """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
-               VALUES (?, ?, ?, ?, 1)""",
-            [
-                (book_id, i, ch.get("title", "") or "", ch.get("text", "") or "")
-                for i, ch in enumerate(chapters)
-            ],
-        )
-        await db.commit()
-
-
 # ── EPUB cache ────────────────────────────────────────────────────────────────
 
 async def save_book_epub(book_id: int, epub_bytes: bytes, epub_url: str = "") -> None:

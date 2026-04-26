@@ -366,3 +366,55 @@ async def test_confirmed_chapter_delete_removes_fts_entry(client, test_user):
         await db.execute("DELETE FROM user_book_chapters WHERE book_id=7500")
         await db.commit()
     assert (await client.get("/api/search?q=narwhals")).json()["total"] == 0
+
+
+# ── Direct service-level unit tests (closes #1524) ───────────────────────────
+# The router enforces all constraints before calling search_content(), so the
+# service's defensive guards (lines 51-63) are never reached through the API.
+# These tests call the service directly to exercise those branches.
+
+async def test_search_content_empty_query_returns_empty(tmp_db, test_user):
+    """Regression #1524: search_content() with empty string short-circuits immediately."""
+    result = await search_content(test_user["id"], "")
+    assert result == {"query": "", "results": [], "total": 0}
+
+
+async def test_search_content_whitespace_query_returns_empty(tmp_db, test_user):
+    """Regression #1524: search_content() with whitespace-only query short-circuits."""
+    result = await search_content(test_user["id"], "   ")
+    assert result == {"query": "", "results": [], "total": 0}
+
+
+async def test_search_content_query_truncated_to_max_len(tmp_db, test_user):
+    """Regression #1524: search_content() silently truncates queries > MAX_QUERY_LEN."""
+    from services.search import MAX_QUERY_LEN
+    long_q = "a" * (MAX_QUERY_LEN + 50)
+    result = await search_content(test_user["id"], long_q)
+    # No crash; returned query is the truncated version (as stored after strip+truncate)
+    assert len(result["query"]) == MAX_QUERY_LEN
+
+
+async def test_search_content_none_scope_defaults_to_all(tmp_db, test_user):
+    """Regression #1524: search_content() with scope=None uses all three scopes."""
+    result = await search_content(test_user["id"], "anythingxyz", scope=None)
+    # No crash; no results for a nonsense query, but total is 0 not an error
+    assert result["total"] == 0
+
+
+async def test_search_content_all_invalid_scopes_returns_empty(tmp_db, test_user):
+    """Regression #1524: search_content() with all-invalid scope list returns early."""
+    result = await search_content(test_user["id"], "word", scope=["bogus", "invalid"])
+    assert result == {"query": "word", "results": [], "total": 0}
+
+
+async def test_search_content_limit_below_one_clamped(tmp_db, test_user):
+    """Regression #1524: search_content() clamps limit < 1 to 1 without error."""
+    result = await search_content(test_user["id"], "anythingxyz", limit=0)
+    assert result["total"] == 0  # no data; confirmed no crash on limit=0
+
+
+async def test_search_content_limit_above_max_clamped(tmp_db, test_user):
+    """Regression #1524: search_content() clamps limit > MAX_LIMIT to MAX_LIMIT."""
+    from services.search import MAX_LIMIT
+    result = await search_content(test_user["id"], "anythingxyz", limit=MAX_LIMIT + 100)
+    assert result["total"] == 0  # no data; confirmed no crash on oversized limit

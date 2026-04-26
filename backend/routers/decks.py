@@ -36,6 +36,13 @@ class SmartRules(BaseModel):
 
     model_config = {"extra": "forbid"}
 
+    @field_validator("language")
+    @classmethod
+    def language_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("language cannot be blank")
+        return v
+
 
 class DeckCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=80)

@@ -415,3 +415,36 @@ async def test_create_deck_raises_runtime_error_not_assertion_error_on_get_failu
     with patch.object(decks_service, "get_deck", new=AsyncMock(return_value=None)):
         with pytest.raises(RuntimeError, match="deck INSERT succeeded"):
             await decks_service.create_deck(test_user["id"], "TestDeck", "", "manual", None)
+
+
+# ── Issue #1424: whitespace-only language in SmartRules bypasses min_length ───
+
+
+async def test_smart_rules_whitespace_language_returns_422(client, test_user):
+    """Regression #1424: SmartRules.language="  " passes min_length=1 but must
+    still be rejected with 422 — whitespace-only is semantically empty."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "WsLang", "mode": "smart", "rules_json": {"language": "  "}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only language in SmartRules, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_whitespace_language_patch_returns_422(client, test_user):
+    """Regression #1424: PATCH /decks/{id} with whitespace language must also return 422."""
+    create = await client.post(
+        "/api/decks",
+        json={"name": "WsLangPatch", "mode": "smart", "rules_json": {"language": "en"}},
+    )
+    assert create.status_code == 201
+    deck_id = create.json()["id"]
+
+    resp = await client.patch(
+        f"/api/decks/{deck_id}",
+        json={"rules_json": {"language": "\t\n"}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only language in SmartRules PATCH, got {resp.status_code}: {resp.text}"
+    )

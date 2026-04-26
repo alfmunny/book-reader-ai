@@ -174,3 +174,74 @@ async def test_apple_login_whitespace_name_does_not_overwrite_stored_name(client
         f"Regression #1430: whitespace-only name should not overwrite 'Alice', "
         f"got: {second.json()['user']['name']!r}"
     )
+
+
+# ── Issue #1466: generic-Exception fallback → 401 for all three providers ──────
+
+
+async def test_google_login_http_exception_is_reraised(client):
+    """Regression #1466: if verify_google_id_token raises an HTTPException,
+    google_login must re-raise it with the original detail intact."""
+    from fastapi import HTTPException as FastAPIHTTPException
+    with patch(
+        "routers.auth.verify_google_id_token",
+        new_callable=AsyncMock,
+        side_effect=FastAPIHTTPException(status_code=401, detail="Google token revoked"),
+    ):
+        resp = await client.post("/api/auth/google", json={"id_token": "tok"})
+    assert resp.status_code == 401, (
+        f"Regression #1466: expected 401 for google_login HTTPException re-raise, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "Google token revoked" in resp.json().get("detail", "")
+
+
+async def test_google_login_generic_exception_returns_401(client):
+    """Regression #1466: if verify_google_id_token raises a non-HTTPException
+    (e.g. network error, malformed response), google_login must return 401
+    and must NOT leak the exception message."""
+    with patch(
+        "routers.auth.verify_google_id_token",
+        new_callable=AsyncMock,
+        side_effect=ConnectionError("upstream timeout"),
+    ):
+        resp = await client.post("/api/auth/google", json={"id_token": "tok"})
+    assert resp.status_code == 401, (
+        f"Regression #1466: expected 401 for google_login generic Exception, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "upstream" not in resp.json().get("detail", "")
+
+
+async def test_github_login_generic_exception_returns_401(client):
+    """Regression #1466: if verify_github_access_token raises a plain Exception
+    (e.g. network timeout), github_login must return 401."""
+    with patch(
+        "routers.auth.verify_github_access_token",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("provider unreachable"),
+    ):
+        resp = await client.post("/api/auth/github", json={"access_token": "tok"})
+    assert resp.status_code == 401, (
+        f"Regression #1466: expected 401 for github_login generic Exception, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "provider unreachable" not in resp.json().get("detail", "")
+
+
+async def test_apple_login_http_exception_is_reraised(client):
+    """Regression #1466: if verify_apple_id_token raises an HTTPException
+    (e.g. 401 invalid token), apple_login must re-raise it unchanged
+    rather than wrapping it in a new 401."""
+    from fastapi import HTTPException as FastAPIHTTPException
+    with patch(
+        "routers.auth.verify_apple_id_token",
+        new_callable=AsyncMock,
+        side_effect=FastAPIHTTPException(status_code=401, detail="Apple token expired"),
+    ):
+        resp = await client.post("/api/auth/apple", json={"id_token": "tok"})
+    assert resp.status_code == 401, (
+        f"Regression #1466: expected 401 for apple_login HTTPException re-raise, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "Apple token expired" in resp.json().get("detail", "")

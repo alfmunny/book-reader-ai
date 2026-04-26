@@ -151,3 +151,33 @@ async def test_tags_cascade_on_word_delete(client, test_user):
 
     resp = await client.get("/api/vocabulary/tags")
     assert resp.json() == []
+
+
+# ── Issue #1502: oversized tag max_length enforcement ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_add_tag_oversized_returns_422(client, test_user):
+    """Regression #1502: POST /vocabulary/{id}/tags with tag > 50 chars must return 422.
+    TagAdd.tag declares max_length=50; Pydantic must reject the oversized value."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    vid = await _save("taggedword", test_user["id"])
+    resp = await client.post(
+        f"/api/vocabulary/{vid}/tags",
+        json={"tag": "x" * 51},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for tag > 50 chars in POST /vocabulary/tags, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_tag_oversized_path_returns_422(client, test_user):
+    """Regression #1502: DELETE /vocabulary/{id}/tags/{tag} with tag > 50 chars must return 422.
+    The path param declares max_length=50; Pydantic must reject the oversized value."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    vid = await _save("taggedword2", test_user["id"])
+    resp = await client.delete(f"/api/vocabulary/{vid}/tags/{'x' * 51}")
+    assert resp.status_code == 422, (
+        f"Expected 422 for tag > 50 chars in DELETE /vocabulary/tags/{{tag}}, got {resp.status_code}: {resp.text}"
+    )

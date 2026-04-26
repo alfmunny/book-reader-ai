@@ -361,10 +361,11 @@ function buildSegContent(
   text: string,
   targetWord: string | undefined,
   vocabWords: Set<string> | undefined,
+  annotationMatch?: { start: number; end: number; className: string },
 ): React.ReactNode {
-  if (!targetWord && !vocabWords?.size) return text;
+  if (!targetWord && !vocabWords?.size && !annotationMatch) return text;
 
-  type Match = { start: number; end: number; type: "target" | "vocab" };
+  type Match = { start: number; end: number; type: "target" | "vocab" | "annotation"; className?: string };
   const matches: Match[] = [];
 
   const addMatches = (needle: string, type: Match["type"]) => {
@@ -383,10 +384,16 @@ function buildSegContent(
 
   if (targetWord) addMatches(targetWord, "target");
   vocabWords?.forEach((w) => addMatches(w, "vocab"));
+  if (annotationMatch) {
+    matches.push({ ...annotationMatch, type: "annotation" });
+  }
 
   if (!matches.length) return text;
 
-  matches.sort((a, b) => a.start - b.start);
+  // Sort by start; on tie, prefer annotation > target > vocab so the partial
+  // highlight wins over an inner vocab underline.
+  const typeOrder = { annotation: 0, target: 1, vocab: 2 } as const;
+  matches.sort((a, b) => a.start - b.start || typeOrder[a.type] - typeOrder[b.type]);
   const deduped: Match[] = [];
   let lastEnd = 0;
   for (const m of matches) {
@@ -403,6 +410,12 @@ function buildSegContent(
         <mark key={m.start} className="bg-amber-300 text-inherit rounded px-0.5 not-italic animate-pulse">
           {word}
         </mark>,
+      );
+    } else if (m.type === "annotation") {
+      nodes.push(
+        <span key={m.start} className={m.className ?? ""}>
+          {word}
+        </span>,
       );
     } else {
       nodes.push(
@@ -678,9 +691,25 @@ export default function SentenceReader({
             (flashTarget.length >= 10 && seg.text.includes(flashTarget))
           );
           const annotation = showAnnotations ? getAnnotation(seg.text) : undefined;
-          const annotationClass = annotation
+          // Full-segment annotation underlines the whole span; sub-sentence
+          // annotations only underline the matched substring (handled inside
+          // buildSegContent via annotationMatch).
+          const isFullSegmentAnnotation = !!annotation && annotation.sentence_text === seg.text;
+          const annotationColorClass = annotation
             ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
+          const annotationClass = isFullSegmentAnnotation ? annotationColorClass : "";
+          let annotationMatch: { start: number; end: number; className: string } | undefined;
+          if (annotation && !isFullSegmentAnnotation) {
+            const start = seg.text.indexOf(annotation.sentence_text);
+            if (start >= 0) {
+              annotationMatch = {
+                start,
+                end: start + annotation.sentence_text.length,
+                className: annotationColorClass,
+              };
+            }
+          }
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           return (
             <span
@@ -707,7 +736,7 @@ export default function SentenceReader({
               onPointerMove={onWordTap ? handlePointerMove : undefined}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
-              {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords)}
+              {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatch)}
               {annotation?.note_text && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}

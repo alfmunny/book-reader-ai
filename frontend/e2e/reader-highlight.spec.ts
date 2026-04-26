@@ -1,9 +1,10 @@
 /**
- * E2E: SelectionToolbar Highlight passes full sentence context (#407)
+ * E2E: SelectionToolbar Highlight passes the user's selection (#1410)
  *
- * When a user selects a word and clicks Highlight, the annotation POST
- * must send the **full sentence** (from the nearest [data-seg] element)
- * as sentence_text — not just the selected substring.
+ * Originally (#407 / #400) this test asserted the toolbar must send the
+ * **full sentence** because the renderer couldn't paint partial highlights.
+ * Per #1410 the renderer now handles substring annotations correctly, and
+ * the write path was changed to store what the user actually selected.
  */
 import { test, expect } from "./base";
 import { mockBackend, MOCK_CHAPTERS } from "./fixtures";
@@ -12,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   await mockBackend(page);
 });
 
-test("highlight sends full sentence text, not raw selection substring", async ({ page }) => {
+test("highlight sends the user's selected substring, not the full sentence", async ({ page }) => {
   // Capture the annotation POST body for assertion
   let annotationBody: Record<string, unknown> | null = null;
   await page.route("**/api/annotations", (route) => {
@@ -72,11 +73,10 @@ test("highlight sends full sentence text, not raw selection substring", async ({
   await expect(yellowBtn).toBeVisible({ timeout: 6000 });
   await yellowBtn.click();
 
-  // Verify the POST was made with the full sentence, not just "It"
+  // Verify the POST was made with just the user's selection ("It"), not the full sentence
   expect(annotationBody).not.toBeNull();
   const sentenceText = (annotationBody as Record<string, unknown>)?.sentence_text as string;
-  expect(sentenceText).not.toBe("It");
-  expect(sentenceText).toBe(segText);
-  // Confirm it contains the full sentence text
-  expect(sentenceText.length).toBeGreaterThan(5);
+  expect(sentenceText).toBe("It");
+  // Confirm it is NOT the full sentence
+  expect(sentenceText).not.toBe(segText);
 });

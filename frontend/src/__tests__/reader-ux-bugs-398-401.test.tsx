@@ -5,8 +5,10 @@
  *         in focus mode would make it invisible).
  * #399 — seekTo while paused must not let a browser timeupdate event on the
  *         paused audio element override the seeked currentTime.
- * #400 — SelectionToolbar Highlight must pass the full sentence context, not
- *         just the selected substring.
+ * #400 — (revised by #1410) SelectionToolbar Highlight must pass the
+ *         user's actual selection, not the surrounding sentence. Partial
+ *         highlights now render as substring underlines via buildSegContent
+ *         instead of forcing full-sentence storage.
  * #401 — SentenceReader must assign correct chunkIdx even when the segment
  *         text and chunk text differ only in whitespace.
  */
@@ -24,7 +26,7 @@ function makeReaderEl() {
   return el;
 }
 
-describe("SelectionToolbar Highlight — bug #400", () => {
+describe("SelectionToolbar Highlight — bug #400 (revised by #1410)", () => {
   let readerEl: HTMLElement;
 
   beforeEach(() => {
@@ -36,7 +38,7 @@ describe("SelectionToolbar Highlight — bug #400", () => {
     jest.restoreAllMocks();
   });
 
-  it("calls onHighlight with full sentence context when selection is inside a data-seg span", () => {
+  it("calls onHighlight with the user's actual selection (partial), not the full sentence", () => {
     const onHighlight = jest.fn();
     render(<SelectionToolbar onHighlight={onHighlight} />);
 
@@ -72,8 +74,9 @@ describe("SelectionToolbar Highlight — bug #400", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Highlight/i }));
 
-    // Must receive the full sentence, not just "sentence"
-    expect(onHighlight).toHaveBeenCalledWith("Full sentence text.");
+    // Must receive the user's selected substring — partial highlight is
+    // rendered visually as an underline on the substring (see SentenceReader).
+    expect(onHighlight).toHaveBeenCalledWith("sentence");
   });
 
   it("falls back to selected text when no sentence context is found", () => {

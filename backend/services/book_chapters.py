@@ -83,8 +83,10 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
 async def _background_fetch_epub(book_id: int) -> None:
     """Fetch and store EPUB for a pre-existing Gutenberg book (fire-and-forget).
 
-    Does not update the in-memory chapter cache — stored EPUB becomes
-    available on the next cold start.
+    After storing the EPUB, clears the in-memory chapter cache and purges all
+    cached translations for the book. Translations generated under the old
+    plain-text split are misaligned with the new EPUB-based chapter indices
+    (issue #1556).
     """
     try:
         from services.gutenberg import get_book_epub
@@ -96,6 +98,17 @@ async def _background_fetch_epub(book_id: int) -> None:
             logger.info(
                 "Background EPUB cached for book %d (%d KB)", book_id, len(epub_bytes) // 1024
             )
+            # Invalidate the in-memory cache so the next request uses the EPUB-based split.
+            clear_cache(book_id)
+            # Purge translations generated with the old plain-text chapter indices.
+            try:
+                from services.db import delete_translations_for_book
+                await delete_translations_for_book(book_id)
+                logger.info("Cleared stale translations for book %d after EPUB update", book_id)
+            except Exception:
+                logger.warning(
+                    "Failed to clear stale translations for book %d", book_id, exc_info=True
+                )
     except Exception:
         logger.debug("Background EPUB fetch failed for book %d", book_id, exc_info=True)
 

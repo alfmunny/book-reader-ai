@@ -448,3 +448,51 @@ async def test_smart_rules_whitespace_language_patch_returns_422(client, test_us
     assert resp.status_code == 422, (
         f"Expected 422 for whitespace-only language in SmartRules PATCH, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1453: whitespace-only tags in tags_any/tags_all bypass min_length ─
+
+
+async def test_smart_rules_whitespace_tag_in_tags_any_returns_422(client, test_user):
+    """Regression #1453: tags_any=[" "] passes min_length=1 but must return 422.
+    Vocab tags are always normalized (strip+lowercase), so a whitespace-only
+    tag can never match a stored tag — it should be rejected at validation."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "WsTagAny", "mode": "smart", "rules_json": {"tags_any": [" "]}},
+    )
+    assert resp.status_code == 422, (
+        f"Regression #1453: whitespace-only tag in tags_any must return 422, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_whitespace_tag_in_tags_all_returns_422(client, test_user):
+    """Regression #1453: tags_all=["\t"] passes min_length=1 but must return 422."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "WsTagAll", "mode": "smart", "rules_json": {"tags_all": ["\t"]}},
+    )
+    assert resp.status_code == 422, (
+        f"Regression #1453: whitespace-only tag in tags_all must return 422, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_whitespace_tag_patch_returns_422(client, test_user):
+    """Regression #1453: PATCH /decks/{id} with whitespace tag must also return 422."""
+    create = await client.post(
+        "/api/decks",
+        json={"name": "WsTagPatch", "mode": "smart", "rules_json": {"tags_any": ["python"]}},
+    )
+    assert create.status_code == 201
+    deck_id = create.json()["id"]
+
+    resp = await client.patch(
+        f"/api/decks/{deck_id}",
+        json={"rules_json": {"tags_any": ["  "]}},
+    )
+    assert resp.status_code == 422, (
+        f"Regression #1453: whitespace-only tag in PATCH tags_any must return 422, "
+        f"got {resp.status_code}: {resp.text}"
+    )

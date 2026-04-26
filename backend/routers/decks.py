@@ -43,6 +43,15 @@ class SmartRules(BaseModel):
             raise ValueError("language cannot be blank")
         return v
 
+    @field_validator("tags_any", "tags_all")
+    @classmethod
+    def tags_not_blank(cls, v: list | None) -> list | None:
+        if v is not None:
+            for tag in v:
+                if not tag.strip():
+                    raise ValueError("tag entries cannot be blank or whitespace-only")
+        return v
+
 
 class DeckCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=80)

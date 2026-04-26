@@ -181,3 +181,19 @@ async def test_delete_tag_oversized_path_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for tag > 50 chars in DELETE /vocabulary/tags/{{tag}}, got {resp.status_code}: {resp.text}"
     )
+
+
+@pytest.mark.asyncio
+async def test_delete_tag_whitespace_only_returns_400(client, test_user):
+    """Regression #1529: DELETE /vocabulary/{id}/tags/%20 must return 400, not 500.
+
+    A single space satisfies min_length=1 on the path param but normalize_tag()
+    strips it to '' and raises ValueError. The handler's except-ValueError block
+    (routers/vocabulary.py lines 204-205) must catch it and return 400.
+    """
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    vid = await _save("taggedword3", test_user["id"])
+    resp = await client.delete(f"/api/vocabulary/{vid}/tags/%20")
+    assert resp.status_code == 400, (
+        f"Regression #1529: expected 400 for whitespace-only tag in DELETE, got {resp.status_code}: {resp.text}"
+    )

@@ -104,6 +104,67 @@ async def test_verify_google_id_token_audience_mismatch(monkeypatch):
     assert exc.value.status_code == 401
 
 
+# ── GitHub access token verification ─────────────────────────────────────────
+
+async def test_verify_github_access_token_returns_profile():
+    """Regression #1472: success path returns correct profile dict."""
+    from services.auth import verify_github_access_token
+    gh_response = {
+        "id": 98765,
+        "email": "dev@example.com",
+        "name": "Dev User",
+        "login": "devuser",
+        "avatar_url": "https://avatars.githubusercontent.com/u/98765",
+    }
+    with respx.mock:
+        respx.get("https://api.github.com/user").mock(
+            return_value=httpx.Response(200, json=gh_response)
+        )
+        result = await verify_github_access_token("ghp_valid")
+    assert result["id"] == "98765"
+    assert result["email"] == "dev@example.com"
+    assert result["name"] == "Dev User"
+    assert result["picture"] == "https://avatars.githubusercontent.com/u/98765"
+
+
+async def test_verify_github_access_token_falls_back_to_login_for_name():
+    """Regression #1472: when name is absent, login is used as display name."""
+    from services.auth import verify_github_access_token
+    gh_response = {"id": 11111, "email": "", "name": None, "login": "loginonly", "avatar_url": ""}
+    with respx.mock:
+        respx.get("https://api.github.com/user").mock(
+            return_value=httpx.Response(200, json=gh_response)
+        )
+        result = await verify_github_access_token("ghp_tok")
+    assert result["name"] == "loginonly"
+
+
+async def test_verify_github_access_token_non_200_raises_401():
+    """Regression #1472: non-200 response from GitHub raises HTTPException 401."""
+    from services.auth import verify_github_access_token
+    with respx.mock:
+        respx.get("https://api.github.com/user").mock(
+            return_value=httpx.Response(401, json={"message": "Bad credentials"})
+        )
+        with pytest.raises(HTTPException) as exc:
+            await verify_github_access_token("ghp_bad")
+    assert exc.value.status_code == 401
+    assert "Invalid GitHub access token" in exc.value.detail
+
+
+async def test_verify_github_access_token_missing_id_raises_401():
+    """Regression #1472: 200 response with no id field raises HTTPException 401."""
+    from services.auth import verify_github_access_token
+    with respx.mock:
+        respx.get("https://api.github.com/user").mock(
+            return_value=httpx.Response(200, json={"email": "x@x.com"})
+        )
+        with pytest.raises(HTTPException) as exc:
+            await verify_github_access_token("ghp_noid")
+    assert exc.value.status_code == 401
+    assert "missing user id" in exc.value.detail
+
+
 # ── OAuth commit-before-read regression (#359) ───────────────────────────────
 
 def _make_order_tracking_aiosqlite(real_aiosqlite, events):

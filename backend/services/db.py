@@ -443,6 +443,13 @@ async def count_translations_for_book(book_id: int, target_language: str) -> int
     return row[0] if row else 0
 
 
+async def delete_translations_for_book(book_id: int) -> None:
+    """Delete all cached translations for a book across all languages and chapters."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM translations WHERE book_id=?", (book_id,))
+        await db.commit()
+
+
 
 async def get_cached_book(book_id: int) -> dict | None:
     """Return cached book dict (includes 'text') or None."""

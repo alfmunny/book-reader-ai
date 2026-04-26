@@ -265,3 +265,71 @@ async def test_background_fetch_epub_exception_is_swallowed():
                side_effect=RuntimeError("network unreachable")):
         from services.book_chapters import _background_fetch_epub
         await _background_fetch_epub(789)  # Must not raise
+
+
+# ── _background_fetch_epub cache invalidation (issue #1556) ──────────────────
+
+async def test_background_fetch_epub_clears_chapter_cache_on_success():
+    """Regression #1556: successful EPUB fetch must clear the in-memory chapter
+    cache for that book so the next reader request gets EPUB-based chapters
+    rather than waiting for a cold start.
+    """
+    import services.book_chapters as bc_mod
+    from services.book_chapters import _background_fetch_epub
+    bc_mod._chapter_cache[9001] = _make_chapters("Old text-based chapter")
+
+    with (
+        patch("services.gutenberg.get_book_epub", new_callable=AsyncMock,
+              return_value=(b"epub_bytes", "https://example.com/9001.epub")),
+        patch("services.db.save_book_epub", new_callable=AsyncMock),
+        patch("services.db.delete_translations_for_book", new_callable=AsyncMock),
+    ):
+        await _background_fetch_epub(9001)
+
+    assert 9001 not in bc_mod._chapter_cache, (
+        "Regression #1556: _background_fetch_epub must clear _chapter_cache[book_id] "
+        "after storing the EPUB so EPUB-based chapters are used immediately, not after cold start."
+    )
+
+
+async def test_background_fetch_epub_deletes_stale_translations_on_success():
+    """Regression #1556: successful EPUB fetch must delete cached translations for
+    the book because they were generated with plain-text-based chapter indices
+    that are now misaligned with the EPUB-based chapter structure.
+    """
+    from services.book_chapters import _background_fetch_epub
+
+    with (
+        patch("services.gutenberg.get_book_epub", new_callable=AsyncMock,
+              return_value=(b"epub_bytes", "https://example.com/9002.epub")),
+        patch("services.db.save_book_epub", new_callable=AsyncMock),
+        patch("services.db.delete_translations_for_book", new_callable=AsyncMock) as mock_del,
+    ):
+        await _background_fetch_epub(9002)
+
+    mock_del.assert_called_once_with(9002), (
+        "Regression #1556: _background_fetch_epub must call delete_translations_for_book "
+        "after storing the EPUB to purge stale plain-text-indexed translations."
+    )
+
+
+async def test_background_fetch_epub_no_cache_clear_when_epub_not_returned():
+    """Regression #1556: when get_book_epub returns None, the chapter cache and
+    translations must NOT be touched — nothing changed.
+    """
+    import services.book_chapters as bc_mod
+    from services.book_chapters import _background_fetch_epub
+    original = _make_chapters("Existing chapter")
+    bc_mod._chapter_cache[9003] = original
+
+    with (
+        patch("services.gutenberg.get_book_epub", new_callable=AsyncMock, return_value=None),
+        patch("services.db.save_book_epub", new_callable=AsyncMock),
+        patch("services.db.delete_translations_for_book", new_callable=AsyncMock) as mock_del,
+    ):
+        await _background_fetch_epub(9003)
+
+    assert bc_mod._chapter_cache.get(9003) is original, (
+        "Chapter cache must not change when EPUB fetch returns None."
+    )
+    mock_del.assert_not_called()

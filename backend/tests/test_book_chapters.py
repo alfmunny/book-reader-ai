@@ -228,3 +228,40 @@ async def test_concurrent_calls_return_identical_chapter_list():
         f"Concurrent calls returned different chapter lists: "
         f"{[c.title for c in results[0]]} vs {[c.title for c in results[1]]}"
     )
+
+
+# ── _background_fetch_epub ────────────────────────────────────────────────────
+
+async def test_background_fetch_epub_success_saves_to_db():
+    """Regression #1470: success path — epub returned → save_book_epub called."""
+    fake_epub = b"epub content here"
+    fake_url = "https://gutenberg.org/files/123/123.epub"
+    with (
+        patch("services.gutenberg.get_book_epub", new_callable=AsyncMock,
+              return_value=(fake_epub, fake_url)),
+        patch("services.db.save_book_epub", new_callable=AsyncMock) as mock_save,
+    ):
+        from services.book_chapters import _background_fetch_epub
+        await _background_fetch_epub(123)
+
+    mock_save.assert_called_once_with(123, fake_epub, fake_url)
+
+
+async def test_background_fetch_epub_no_result_does_not_save():
+    """Regression #1470: if get_book_epub returns None, save_book_epub is not called."""
+    with (
+        patch("services.gutenberg.get_book_epub", new_callable=AsyncMock, return_value=None),
+        patch("services.db.save_book_epub", new_callable=AsyncMock) as mock_save,
+    ):
+        from services.book_chapters import _background_fetch_epub
+        await _background_fetch_epub(456)
+
+    mock_save.assert_not_called()
+
+
+async def test_background_fetch_epub_exception_is_swallowed():
+    """Regression #1470: exceptions inside the task must not propagate (fire-and-forget)."""
+    with patch("services.gutenberg.get_book_epub", new_callable=AsyncMock,
+               side_effect=RuntimeError("network unreachable")):
+        from services.book_chapters import _background_fetch_epub
+        await _background_fetch_epub(789)  # Must not raise

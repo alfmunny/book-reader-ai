@@ -1175,8 +1175,9 @@ async def get_chat_messages(
     When `before_id` is given, only rows with id < before_id are returned
     — enables reverse-scroll pagination of older history.
     """
-    # Defensive bound — router also enforces but keep the helper safe.
-    safe_limit = max(1, min(limit, 200))
+    # Cap at 201 (one above the router's max of 200) so the router can fetch
+    # limit+1 rows for has_more detection without hitting the cap at limit=200.
+    safe_limit = max(1, min(limit, 201))
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         if before_id is not None:

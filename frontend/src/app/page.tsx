@@ -465,7 +465,7 @@ export default function Home() {
                   </div>
                   <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-amber-100">
                     <div className="px-5 py-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-500 mb-2">Original · Deutsch</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-700 mb-2">Original · Deutsch</p>
                       <p className="font-serif text-sm leading-relaxed text-ink/80">
                         Habe nun, ach! Philosophie,<br />
                         Juristerei und Medizin,<br />
@@ -476,7 +476,7 @@ export default function Home() {
                       </p>
                     </div>
                     <div className="px-5 py-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-500 mb-2">Translation · English</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-700 mb-2">Translation · English</p>
                       <p className="font-serif text-sm leading-relaxed text-ink">
                         I have, alas! Philosophy,<br />
                         Medicine, Jurisprudence too,<br />

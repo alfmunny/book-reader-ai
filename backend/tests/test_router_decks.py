@@ -172,6 +172,23 @@ async def test_patch_deck_name(client, test_user):
     assert resp.json()["name"] == "New"
 
 
+async def test_patch_deck_no_fields_returns_current_deck(client, test_user):
+    """PATCH /decks/{id} with empty body returns the deck unchanged (closes #1498).
+
+    Covers services/decks.py update_deck when fields=[] (no-op path):
+    the SELECT-without-UPDATE short-circuit returns the current row.
+    """
+    created = (await client.post("/api/decks", json={"name": "NoopDeck", "mode": "manual"})).json()
+    deck_id = created["id"]
+
+    resp = await client.patch(f"/api/decks/{deck_id}", json={})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == deck_id
+    assert data["name"] == "NoopDeck"
+    assert data["mode"] == "manual"
+
+
 async def test_patch_deck_404_for_nonexistent_deck(client, test_user):
     """Regression #1365: PATCH /decks/{id} on a non-existent deck must return 404."""
     resp = await client.patch("/api/decks/9999", json={"name": "Ghost"})

@@ -189,6 +189,23 @@ async def test_patch_deck_no_fields_returns_current_deck(client, test_user):
     assert data["mode"] == "manual"
 
 
+async def test_create_deck_whitespace_only_name_returns_422(client, test_user):
+    """Regression #1522: POST /decks with whitespace-only name must return 422."""
+    resp = await client.post("/api/decks", json={"name": "   ", "mode": "manual"})
+    assert resp.status_code == 422, (
+        f"Regression #1522: expected 422 for whitespace-only name, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_patch_deck_whitespace_only_name_returns_422(client, test_user):
+    """Regression #1522: PATCH /decks/{id} with whitespace-only name must return 422."""
+    created = (await client.post("/api/decks", json={"name": "ValidDeck", "mode": "manual"})).json()
+    resp = await client.patch(f"/api/decks/{created['id']}", json={"name": "\t\n  "})
+    assert resp.status_code == 422, (
+        f"Regression #1522: expected 422 for whitespace-only name in PATCH, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_patch_deck_404_for_nonexistent_deck(client, test_user):
     """Regression #1365: PATCH /decks/{id} on a non-existent deck must return 404."""
     resp = await client.patch("/api/decks/9999", json={"name": "Ghost"})

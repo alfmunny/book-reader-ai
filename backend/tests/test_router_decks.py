@@ -750,3 +750,51 @@ async def test_smart_rules_tags_any_whitespace_only_returns_422(client, test_use
         f"Regression #1543: expected 422 for whitespace-only tag in tags_any, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1566: ValueError → 400 in create_deck and update_deck ─────────────
+
+
+async def test_create_deck_service_value_error_returns_400(client, test_user):
+    """Regression #1566: POST /decks must return 400 when the service layer raises
+    ValueError (routers/decks.py line 109).
+    """
+    from unittest.mock import AsyncMock, patch
+    with patch("routers.decks.decks_service.create_deck",
+               new_callable=AsyncMock,
+               side_effect=ValueError("invalid deck configuration")):
+        resp = await client.post(
+            "/api/decks",
+            json={"name": "TestDeck", "mode": "manual"},
+        )
+    assert resp.status_code == 400, (
+        f"Regression #1566: expected 400 when create_deck raises ValueError, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "invalid deck configuration" in resp.json()["detail"]
+
+
+async def test_patch_deck_service_value_error_returns_400(client, test_user):
+    """Regression #1566: PATCH /decks/{id} must return 400 when update_deck raises
+    ValueError for invalid rules_json (routers/decks.py lines 143-144).
+    """
+    from unittest.mock import AsyncMock, patch
+    create_resp = await client.post(
+        "/api/decks",
+        json={"name": "PatchTarget1566", "mode": "manual"},
+    )
+    assert create_resp.status_code == 201
+    deck_id = create_resp.json()["id"]
+
+    with patch("routers.decks.decks_service.update_deck",
+               new_callable=AsyncMock,
+               side_effect=ValueError("rules validation failed")):
+        resp = await client.patch(
+            f"/api/decks/{deck_id}",
+            json={"rules_json": {"tags_any": ["valid-tag"]}},
+        )
+    assert resp.status_code == 400, (
+        f"Regression #1566: expected 400 when update_deck raises ValueError, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "rules validation failed" in resp.json()["detail"]

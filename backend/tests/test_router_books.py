@@ -4,6 +4,7 @@ Tests for routers/books.py
 External calls (Gutenberg) are mocked so tests are fast and offline.
 """
 
+import io
 import pytest
 from unittest.mock import AsyncMock, patch
 import services.db as db_module
@@ -1499,4 +1500,37 @@ async def test_popular_books_whitespace_language_returns_all(client, popular_cac
     assert resp_ws.json()["total"] == resp_all.json()["total"], (
         f"Whitespace language should behave like no filter: total={resp_ws.json()['total']} "
         f"expected {resp_all.json()['total']}"
+    )
+
+
+# ── Regression #1463: enqueue-all must reject unconfirmed uploaded books ──────
+
+
+async def test_enqueue_all_returns_400_for_draft_upload(client, test_user):
+    """Regression #1463: POST /books/{id}/translations/enqueue-all on an uploaded
+    book with unconfirmed (draft) chapters must return 400, not silently return
+    {ok: true, enqueued: 0}.  Consistent with POST /chapters/{idx}/translation
+    which already returns 400 for the same scenario."""
+    sample_txt = (
+        b"My Draft Book\n\nChapter 1\n\nSome content here.\n\n"
+        b"Chapter 2\n\nMore content follows.\n"
+    )
+    upload_resp = await client.post(
+        "/api/books/upload",
+        files={"file": ("draft.txt", io.BytesIO(sample_txt), "text/plain")},
+    )
+    assert upload_resp.status_code == 200, upload_resp.text
+    book_id = upload_resp.json()["book_id"]
+
+    # Deliberately skip confirmation so chapters remain in draft state.
+    resp = await client.post(
+        f"/api/books/{book_id}/translations/enqueue-all",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 400, (
+        f"Regression #1463: expected 400 for enqueue-all on draft upload, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "not yet confirmed" in resp.json().get("detail", "").lower(), (
+        f"Expected 'not yet confirmed' in error detail, got: {resp.json()}"
     )

@@ -354,8 +354,8 @@ async def get_audio_cache(_admin: dict = Depends(_require_admin)):
 @router.delete("/audio/{book_id}")
 async def delete_book_audio(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
-        deleted = db.total_changes
+        cur = await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
+        deleted = cur.rowcount
         await db.commit()
     return {"ok": True, "deleted": deleted}
 
@@ -363,11 +363,11 @@ async def delete_book_audio(book_id: int = Path(..., ge=1), _admin: dict = Depen
 @router.delete("/audio/{book_id}/{chapter_index}")
 async def delete_chapter_audio(book_id: int = Path(..., ge=1), chapter_index: int = Path(..., ge=0), _admin: dict = Depends(_require_admin)):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+        cur = await db.execute(
             "DELETE FROM audio_cache WHERE book_id=? AND chapter_index=?",
             (book_id, chapter_index),
         )
-        deleted = db.total_changes
+        deleted = cur.rowcount
         await db.commit()
     return {"ok": True, "deleted": deleted}
 

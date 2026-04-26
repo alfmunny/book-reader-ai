@@ -3382,3 +3382,46 @@ async def test_retry_failed_whitespace_target_language_returns_422(admin_client)
         f"Regression #1436: whitespace-only target_language in retry-failed must return 422, "
         f"got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1438: audio delete endpoints must report accurate rowcount ─────────
+
+
+async def test_delete_chapter_audio_no_rows_returns_zero_deleted(admin_client, admin_db):
+    """Regression #1438: DELETE /admin/audio/{book_id}/{chapter_index} must return
+    deleted=0 when no audio rows exist — not a stale cumulative total_changes count."""
+    res = await admin_client.delete("/api/admin/audio/999/0")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 0, (
+        f"Regression #1438: expected deleted=0 for non-existent audio, got {res.json()}"
+    )
+
+
+async def test_delete_book_audio_count_matches_rows_seeded(admin_client, admin_db):
+    """Regression #1438: DELETE /admin/audio/{book_id} must return deleted count equal to
+    cursor.rowcount (actual rows removed), not db.total_changes (cumulative)."""
+    await _seed_book(881)
+    await _insert_audio(admin_db, book_id=881, chapter_index=0)
+    await _insert_audio(admin_db, book_id=881, chapter_index=1)
+    await _insert_audio(admin_db, book_id=881, chapter_index=2)
+
+    res = await admin_client.delete("/api/admin/audio/881")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 3, (
+        f"Regression #1438: expected deleted=3, got {res.json()}"
+    )
+
+
+async def test_delete_chapter_audio_count_matches_rows_seeded(admin_client, admin_db):
+    """Regression #1438: DELETE /admin/audio/{book_id}/{chapter_index} must return
+    deleted count equal to the chunk rows removed for that chapter only."""
+    await _seed_book(882)
+    await _insert_audio(admin_db, book_id=882, chapter_index=0, chunk_index=0)
+    await _insert_audio(admin_db, book_id=882, chapter_index=0, chunk_index=1)
+    await _insert_audio(admin_db, book_id=882, chapter_index=1, chunk_index=0)
+
+    res = await admin_client.delete("/api/admin/audio/882/0")
+    assert res.status_code == 200
+    assert res.json()["deleted"] == 2, (
+        f"Regression #1438: expected deleted=2 for chapter 0, got {res.json()}"
+    )

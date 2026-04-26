@@ -372,3 +372,25 @@ async def test_get_messages_before_id_zero_returns_422(client, test_user):
     assert res.status_code == 422, (
         f"Expected 422 for before_id=0 in GET /chat/messages, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1566: persist-failure 500 path ────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_post_message_persist_failure_returns_500(client, test_user):
+    """Regression #1566: POST /chat/{id}/messages must return 500 when
+    append_chat_message returns None (routers/chat.py line 89).
+    """
+    from unittest.mock import AsyncMock, patch
+    await _seed_book(TEST_BOOK_ID)
+    with patch("routers.chat.append_chat_message", new_callable=AsyncMock, return_value=None):
+        res = await client.post(
+            f"/api/chat/{TEST_BOOK_ID}/messages",
+            json={"role": "user", "content": "hello"},
+        )
+    assert res.status_code == 500, (
+        f"Regression #1566: expected 500 when append_chat_message returns None, "
+        f"got {res.status_code}: {res.text}"
+    )
+    assert "persist" in res.json()["detail"].lower()

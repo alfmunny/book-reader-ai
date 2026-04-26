@@ -720,3 +720,33 @@ async def test_create_deck_bad_mode_raises(tmp_db, test_user):
     from services.decks import create_deck
     with pytest.raises(ValueError, match="mode must be"):
         await create_deck(test_user["id"], "Deck", "", "invalid_mode", None)
+
+
+# ── Issue #1543: SmartRules tags_not_blank null and blank-tag paths ────────────
+
+
+async def test_smart_rules_tags_any_null_is_valid(client, test_user):
+    """Regression #1543: POST /decks with tags_any=null must succeed (line 49→53 branch).
+    The tags_not_blank validator must return early when v is None.
+    """
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "NullTagsDeck", "mode": "smart", "rules_json": {"tags_any": None}},
+    )
+    assert resp.status_code == 201, (
+        f"Regression #1543: expected 201 for tags_any=null, got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_smart_rules_tags_any_whitespace_only_returns_422(client, test_user):
+    """Regression #1543: POST /decks with whitespace-only tag in tags_any must return 422.
+    Covers line 52 — the raise ValueError branch inside the tags_not_blank for-loop.
+    """
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "BlankTagDeck", "mode": "smart", "rules_json": {"tags_any": ["   "]}},
+    )
+    assert resp.status_code == 422, (
+        f"Regression #1543: expected 422 for whitespace-only tag in tags_any, "
+        f"got {resp.status_code}: {resp.text}"
+    )

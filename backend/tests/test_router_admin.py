@@ -3451,3 +3451,34 @@ async def test_queue_items_whitespace_status_returns_422(admin_client):
         f"Regression #1442: whitespace-only status in GET /admin/queue/items must return 422, "
         f"got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1444: whitespace-only api_key / model in PUT /admin/queue/settings ─
+
+
+async def test_queue_settings_whitespace_api_key_returns_422(admin_client):
+    """Regression #1444: PUT /admin/queue/settings with api_key='  ' must return 422.
+    A whitespace api_key passes the == '' check and gets encrypted + stored as an
+    invalid Anthropic API key, causing silent translation failures."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"api_key": "   "},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1444: whitespace-only api_key in queue/settings must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_settings_whitespace_model_returns_422(admin_client):
+    """Regression #1444: PUT /admin/queue/settings with model='  ' must return 422.
+    A whitespace model name passes min_length=1 and gets stored as-is, causing
+    the worker to call the API with an invalid model identifier."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model": "   "},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1444: whitespace-only model in queue/settings must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )

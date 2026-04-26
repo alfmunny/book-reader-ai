@@ -1129,10 +1129,13 @@ async def queue_set_settings(
     if req.enabled is not None:
         await set_setting(SETTING_ENABLED, "1" if req.enabled else "0")
     if req.api_key is not None:
-        if req.api_key == "":
-            await set_setting(SETTING_API_KEY, "")
+        stripped_key = req.api_key.strip()
+        if not stripped_key and req.api_key:
+            raise HTTPException(status_code=422, detail="api_key cannot be blank")
+        if stripped_key:
+            await set_setting(SETTING_API_KEY, encrypt_api_key(stripped_key))
         else:
-            await set_setting(SETTING_API_KEY, encrypt_api_key(req.api_key))
+            await set_setting(SETTING_API_KEY, "")
     if req.auto_translate_languages is not None:
         await set_setting(
             SETTING_AUTO_LANGS,
@@ -1147,7 +1150,10 @@ async def queue_set_settings(
     if req.rpd is not None:
         await set_setting(SETTING_RPD, str(req.rpd))
     if req.model is not None:
-        await set_setting(SETTING_MODEL, req.model)
+        stripped_model = req.model.strip()
+        if not stripped_model:
+            raise HTTPException(status_code=422, detail="model cannot be blank")
+        await set_setting(SETTING_MODEL, stripped_model)
     if req.model_chain is not None:
         if not req.model_chain:
             raise HTTPException(status_code=400, detail="model_chain cannot be empty")

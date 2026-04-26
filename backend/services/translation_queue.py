@@ -260,7 +260,7 @@ async def enqueue_for_book(
 
     inserted = 0
     for lang in target_languages:
-        lang = lang.lower().split("-")[0]
+        lang = lang.strip().lower().split("-")[0]
         if not lang or lang == source:
             continue
         for idx, ch in enumerate(chapters):

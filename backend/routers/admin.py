@@ -1171,6 +1171,18 @@ class EnqueueBookRequest(BaseModel):
     priority: int = 50   # lower than default so admin enqueues jump the line
     reset_failed: bool = False
 
+    @field_validator("target_languages")
+    @classmethod
+    def target_languages_not_blank(
+        cls, v: list[str] | None
+    ) -> list[str] | None:
+        if v is None:
+            return v
+        for lang in v:
+            if not lang.strip():
+                raise ValueError("target_languages entries cannot be blank")
+        return v
+
 
 @router.post("/queue/enqueue-book")
 async def queue_enqueue_book(

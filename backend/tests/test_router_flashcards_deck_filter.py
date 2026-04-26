@@ -94,3 +94,30 @@ async def test_smart_deck_by_tag_filters_due(client, test_user):
     resp = await client.get(f"/api/vocabulary/flashcards/due?deck_id={deck['id']}")
     assert resp.status_code == 200
     assert [c["word"] for c in resp.json()] == ["apfel"]
+
+
+async def test_due_with_empty_deck_returns_empty_list(client, test_user):
+    """Empty manual deck (no members) must return [] without hitting the DB query.
+
+    Covers services/db.py get_flashcards_due early-return guard (vocabulary_ids=[]).
+    """
+    deck = (await client.post("/api/decks", json={"name": "EmptyDeck", "mode": "manual"})).json()
+
+    resp = await client.get(f"/api/vocabulary/flashcards/due?deck_id={deck['id']}")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+async def test_stats_with_empty_deck_returns_zeros(client, test_user):
+    """Empty manual deck (no members) must return zero stats without hitting the DB query.
+
+    Covers services/db.py get_flashcard_stats early-return guard (vocabulary_ids=[]).
+    """
+    deck = (await client.post("/api/decks", json={"name": "EmptyStatsDeck", "mode": "manual"})).json()
+
+    resp = await client.get(f"/api/vocabulary/flashcards/stats?deck_id={deck['id']}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 0
+    assert body["due_today"] == 0
+    assert body["reviewed_today"] == 0

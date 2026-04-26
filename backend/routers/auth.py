@@ -90,6 +90,6 @@ async def apple_login(req: AppleAuthRequest):
     user = await get_or_create_user_apple(
         apple_id=apple_id,
         email=payload.get("email", ""),
-        name=req.name,
+        name=req.name.strip(),
     )
     return _user_response(user)

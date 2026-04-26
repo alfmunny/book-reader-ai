@@ -151,3 +151,26 @@ async def test_apple_login_empty_id_token_returns_422(client):
     """Regression #918: POST /auth/apple with id_token='' must return 422."""
     resp = await client.post("/api/auth/apple", json={"id_token": "", "name": "Alice"})
     assert resp.status_code == 422, f"Expected 422 for empty id_token, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #1430: whitespace-only Apple name must not overwrite stored name ─────
+
+
+async def test_apple_login_whitespace_name_does_not_overwrite_stored_name(client, tmp_db):
+    """Regression #1430: POST /auth/apple with name='   ' (whitespace) must not
+    overwrite an existing display name in the DB.  NULLIF(?, '') only guards
+    against empty string; whitespace-only passes through and clobbers the name."""
+    apple_payload = {"sub": "apple-ws-1430", "email": "ws1430@example.com"}
+
+    with patch("routers.auth.verify_apple_id_token", new_callable=AsyncMock, return_value=apple_payload):
+        first = await client.post("/api/auth/apple", json={"id_token": "tok", "name": "Alice"})
+    assert first.status_code == 200
+    assert first.json()["user"]["name"] == "Alice"
+
+    with patch("routers.auth.verify_apple_id_token", new_callable=AsyncMock, return_value=apple_payload):
+        second = await client.post("/api/auth/apple", json={"id_token": "tok", "name": "   "})
+    assert second.status_code == 200
+    assert second.json()["user"]["name"] == "Alice", (
+        f"Regression #1430: whitespace-only name should not overwrite 'Alice', "
+        f"got: {second.json()['user']['name']!r}"
+    )

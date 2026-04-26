@@ -377,6 +377,13 @@ async def enqueue_all_chapters(
     if not book_meta:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book_meta, user)
+    if book_meta.get("source") == "upload":
+        from services.db import count_draft_user_book_chapters
+        if await count_draft_user_book_chapters(book_id) > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Book chapters not yet confirmed. Confirm the chapter structure before translating.",
+            )
     source = (book_meta.get("languages") or [None])[0]
     if source and source.lower().split("-")[0] == target_language:
         raise HTTPException(

@@ -433,9 +433,10 @@ export default function InsightChat({
         {hasEarlier && (
           <button
             onClick={loadEarlier}
-            className="w-full text-xs text-gray-400 hover:text-gray-600 py-1.5 min-h-[44px] rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+            className="w-full text-xs text-gray-400 hover:text-gray-600 py-1.5 min-h-[44px] rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors inline-flex items-center justify-center gap-1.5"
           >
-            ↑ Load earlier ({loadedFrom} more)
+            <ArrowUpIcon className="w-3 h-3" />
+            <span>Load earlier ({loadedFrom} more)</span>
           </button>
         )}
 

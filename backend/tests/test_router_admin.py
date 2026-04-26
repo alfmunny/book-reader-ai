@@ -2309,6 +2309,20 @@ async def test_queue_settings_rejects_model_chain_with_empty_entry(admin_client,
     )
 
 
+async def test_queue_settings_rejects_model_chain_with_whitespace_entry(admin_client, admin_db):
+    """Regression #1449: model_chain with whitespace-only entry must return 400.
+    Pydantic min_length=1 passes a single space, so the handler's strip() check fires.
+    Distinct from the empty-string case which returns 422 from Pydantic."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": ["  ", "gemini-1.5-flash"]},
+    )
+    assert res.status_code == 400, (
+        f"Regression #1449: whitespace-only model_chain entry must return 400, "
+        f"got {res.status_code}: {res.text}"
+    )
+
+
 async def test_queue_settings_rejects_auto_translate_languages_with_whitespace_entry(admin_client, admin_db):
     """Regression #474: whitespace-only language codes in auto_translate_languages
     must be stripped, resulting in valid stored codes only."""

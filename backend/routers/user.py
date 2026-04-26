@@ -67,8 +67,6 @@ async def update_reading_progress(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
-    if req.chapter_index < 0:
-        raise HTTPException(status_code=400, detail="chapter_index must be >= 0")
     from services.book_chapters import split_with_html_preference as _split
     _chapters = await _split(book_id, book.get("text") or "")
     if req.chapter_index >= len(_chapters):

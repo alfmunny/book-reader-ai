@@ -2577,6 +2577,18 @@ async def test_queue_settings_oversized_model_chain_item_returns_422(admin_clien
 
 
 @pytest.mark.asyncio
+async def test_queue_settings_too_many_model_chain_items_returns_422(admin_client, admin_db):
+    """Regression #1520: model_chain list > 20 items must return 422 (max_length=20 violated)."""
+    res = await admin_client.put(
+        "/api/admin/queue/settings",
+        json={"model_chain": ["gemini-1.5-flash"] * 21},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1520: expected 422 for model_chain with 21 items, got {res.status_code}: {res.text}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_queue_settings_too_many_languages_returns_422(admin_client, admin_db):
     """Regression #531: auto_translate_languages list > 50 items must return 422."""
     res = await admin_client.put(

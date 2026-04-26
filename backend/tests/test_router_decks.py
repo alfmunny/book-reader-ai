@@ -568,3 +568,34 @@ async def test_patch_deck_oversized_description_returns_422(client, test_user):
     deck_id = create.json()["id"]
     resp = await client.patch(f"/api/decks/{deck_id}", json={"description": "d" * 501})
     assert resp.status_code == 422, f"Expected 422 for oversized description in PATCH, got {resp.status_code}: {resp.text}"
+
+
+# ── Issue #1504: SmartRules.language and tags_any list max_length ─────────────
+
+
+@pytest.mark.asyncio
+async def test_smart_rules_oversized_language_returns_422(client, test_user):
+    """Regression #1504: SmartRules.language > 20 chars must return 422.
+    language declares max_length=20; the empty/whitespace cases are already covered
+    but the oversized-string case was missing."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "LangDeck", "mode": "smart", "rules_json": {"language": "x" * 21}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized language in SmartRules, got {resp.status_code}: {resp.text}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_smart_rules_oversized_tags_any_list_returns_422(client, test_user):
+    """Regression #1504: SmartRules.tags_any list with > 100 items must return 422.
+    tags_any declares max_length=100 on the list; the per-item max_length=50 case is covered
+    but the list-length cap was missing (by contrast tags_all list > 100 already has a test)."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "HugeTagsAny", "mode": "smart", "rules_json": {"tags_any": ["t"] * 101}},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for tags_any list > 100 items in SmartRules, got {resp.status_code}: {resp.text}"
+    )

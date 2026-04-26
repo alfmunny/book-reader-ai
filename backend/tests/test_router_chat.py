@@ -288,3 +288,37 @@ async def test_router_rejects_tab_newline_only_content(client, test_user):
     assert res.status_code == 422, (
         f"Expected 422 for tab/newline-only content, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1455: has_more incorrect at max limit ─────────────────────────────
+
+
+async def test_router_has_more_correct_at_max_limit(client, test_user):
+    """Regression #1455: GET /chat/{id}/messages?limit=200 with 201 messages must
+    return has_more=True, not False.
+
+    The internal helper get_chat_messages capped the DB query at 200 rows,
+    preventing the router from fetching the extra row needed for has_more detection
+    when limit=200 (the maximum allowed value). Messages beyond position 200 were
+    silently inaccessible.
+    """
+    await _seed_book(TEST_BOOK_ID)
+    for i in range(201):
+        await append_chat_message(test_user["id"], TEST_BOOK_ID, "user", f"m{i}")
+
+    res = await client.get(f"/api/chat/{TEST_BOOK_ID}/messages?limit=200")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["messages"]) == 200
+    assert data["has_more"] is True, (
+        "Regression #1455: has_more must be True when 201 messages exist and limit=200"
+    )
+
+    # Second page must contain the remaining 1 message.
+    last_id = data["messages"][-1]["id"]
+    res2 = await client.get(
+        f"/api/chat/{TEST_BOOK_ID}/messages?limit=200&before_id={last_id}"
+    )
+    data2 = res2.json()
+    assert len(data2["messages"]) == 1
+    assert data2["has_more"] is False

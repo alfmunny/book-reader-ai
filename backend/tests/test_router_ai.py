@@ -1065,6 +1065,20 @@ async def test_summary_oversized_book_title_returns_422(client, test_user, tmp_d
     assert resp.status_code == 422, f"Expected 422 for oversized book_title, got {resp.status_code}"
 
 
+async def test_summary_oversized_chapter_title_returns_422(client, test_user, tmp_db):
+    """Regression #1508: POST /ai/summary rejects chapter_title longer than 500 chars.
+    chapter_text and book_title oversized tests exist; chapter_title was the gap."""
+    await save_book(9898, {"title": "T", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}, "text")
+    resp = await client.post(
+        "/api/ai/summary",
+        json={"book_id": 9898, "chapter_index": 0, "chapter_text": "some text",
+              "book_title": "T", "author": "A", "chapter_title": "t" * 501},
+    )
+    assert resp.status_code == 422, (
+        f"Expected 422 for oversized chapter_title in /ai/summary, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_insight_oversized_author_returns_422(client, test_user):
     """POST /ai/insight rejects author longer than 500 chars (issue #507)."""
     resp = await client.post(

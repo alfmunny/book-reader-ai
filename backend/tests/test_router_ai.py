@@ -168,6 +168,25 @@ async def test_translate_cache_get_returns_404_when_missing(client):
     assert resp.status_code == 404
 
 
+async def test_translate_cache_get_returns_404_not_cached(client):
+    """Regression #1533: GET /translate/cache for a book with chapters but no translation
+    must return 404 with detail 'Not cached' (routers/ai.py line 345).
+
+    The existing test uses book_id=999 (nonexistent) and hits 'Book not found' at
+    line 325 — never reaching the 'Not cached' path at line 345.
+    """
+    _m = {"title": "Cache Miss Book", "authors": [], "languages": ["en"],
+          "subjects": [], "download_count": 0, "cover": ""}
+    await save_book(7771, _m, "Chapter 1\n\nSome text.")
+    resp = await client.get(
+        "/api/ai/translate/cache?book_id=7771&chapter_index=0&target_language=de"
+    )
+    assert resp.status_code == 404, (
+        f"Regression #1533: expected 404 for untranslated chapter, got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json()["detail"] == "Not cached"
+
+
 async def test_translate_cache_get_normalizes_language(client):
     """GET /translate/cache?target_language=ZH must hit a 'zh' row.
 

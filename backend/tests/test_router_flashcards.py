@@ -142,6 +142,38 @@ async def test_review_second_pass_sets_interval_6(client, test_user):
     assert resp.json()["interval_days"] == 6
 
 
+async def test_review_third_pass_multiplies_interval_by_ease(client, test_user):
+    """Regression #1478: third review (reps >= 2) uses interval * ease_factor.
+
+    SM-2 schedule:
+      review 1 (reps=0, grade=4): interval=1, ease starts at 2.5
+      review 2 (reps=1, grade=4): interval=6
+      review 3 (reps=2, grade=4): interval=round(6 * ease_after_review_2)
+
+    ease after each grade-4 review: max(1.3, prev + 0.1 - 1*(0.08 + 1*0.02)) = prev + 0.0
+    (grade=4: 0.1 - (5-4)*(0.08+(5-4)*0.02) = 0.1 - 0.1 = 0.0, so ease stays at 2.5)
+    → third-review interval = round(6 * 2.5) = 15
+    """
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "ephemeral", BOOK_ID, 0, "Ephemeral beauty.")
+
+    cards = (await client.get("/api/vocabulary/flashcards/due")).json()
+    vocab_id = cards[0]["vocabulary_id"]
+
+    await client.post(f"/api/vocabulary/flashcards/{vocab_id}/review", json={"grade": 4})
+    r2 = await client.post(f"/api/vocabulary/flashcards/{vocab_id}/review", json={"grade": 4})
+    ease_after_r2 = r2.json()["ease_factor"]
+
+    r3 = await client.post(f"/api/vocabulary/flashcards/{vocab_id}/review", json={"grade": 4})
+    assert r3.status_code == 200
+    expected = round(6 * ease_after_r2)
+    assert r3.json()["interval_days"] == expected, (
+        f"Regression #1478: third-review interval expected {expected} "
+        f"(6 * ease {ease_after_r2}), got {r3.json()['interval_days']}"
+    )
+    assert r3.json()["repetitions"] == 3
+
+
 # ── GET /vocabulary/flashcards/stats ─────────────────────────────────────────
 
 async def test_stats_zeros_when_no_vocab(client, test_user):

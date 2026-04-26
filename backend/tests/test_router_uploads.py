@@ -1123,3 +1123,29 @@ async def test_upload_txt_file_too_large_returns_413(client, test_user, monkeypa
         f"Regression #1530: expected 413 for oversized .txt upload, got {resp.status_code}: {resp.text}"
     )
     assert "too large" in resp.json()["detail"].lower()
+
+
+# ── Issue #1534: unmatched original_index in confirm_chapters ─────────────────
+
+
+async def test_confirm_chapters_unmatched_original_index_saves_empty_text(client, test_user):
+    """Regression #1534: confirm with an original_index that doesn't match any detected
+    chapter saves the chapter with empty text (routers/uploads.py line 270).
+    """
+    upload_resp = await client.post("/api/books/upload", files=_txt_upload())
+    assert upload_resp.status_code == 200
+    book_id = upload_resp.json()["book_id"]
+
+    # Use original_index=999 — a value that won't match any detected chapter (max index is ~1)
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/confirm",
+        json={"chapters": [{"title": "Phantom Chapter", "original_index": 999}]},
+    )
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    assert resp.json()["chapter_count"] == 1
+
+    chapters_resp = await client.get(f"/api/books/{book_id}/chapters")
+    assert chapters_resp.status_code == 200
+    ch = chapters_resp.json()["chapters"][0]
+    assert ch["title"] == "Phantom Chapter"
+    assert ch["text"] == ""  # text="" because orig_idx not in orig_by_idx (line 270)

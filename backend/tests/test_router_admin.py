@@ -3438,3 +3438,16 @@ async def test_queue_clear_whitespace_status_returns_422(admin_client):
         f"Regression #1440: whitespace-only status in DELETE /admin/queue must return 422, "
         f"got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1442: whitespace-only status in GET /admin/queue/items ─────────────
+
+
+async def test_queue_items_whitespace_status_returns_422(admin_client):
+    """Regression #1442: GET /admin/queue/items?status=%20 must return 422.
+    min_length=1 passes for a single space; the handler must strip and reject."""
+    res = await admin_client.get("/api/admin/queue/items?status=%20%20")
+    assert res.status_code == 422, (
+        f"Regression #1442: whitespace-only status in GET /admin/queue/items must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )

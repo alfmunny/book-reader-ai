@@ -680,30 +680,44 @@ async def test_summary_empty_chapter_text_returns_422(client, test_user):
 
 
 @pytest.mark.parametrize("chapter_text", ["   ", "\n\t\n"])
-async def test_summary_whitespace_chapter_text_returns_400(client, test_user, tmp_db, chapter_text):
-    """Regression #492: whitespace-only chapter_text must return 400 (handler strip check)."""
-    from services.db import save_book
-    from services.auth import encrypt_api_key as _enc
-    await save_book(7771, _BOOK_META, "word " * 300)
-    async with aiosqlite.connect(db_module.DB_PATH) as db:
-        await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('queue_api_key', ?)",
-                         (_enc("AIza-test"),))
-        await db.commit()
-    with patch("routers.ai.gemini") as mock_gemini:
-        mock_gemini.generate_chapter_summary = AsyncMock(return_value="summary")
-        resp = await client.post("/api/ai/summary", json={
-            "book_id": 7771,
-            "chapter_index": 0,
-            "chapter_text": chapter_text,
-            "book_title": "Test Book",
-            "author": "Author",
-            "chapter_title": "Ch 1",
-        })
-    assert resp.status_code == 400, (
-        f"Expected 400 for whitespace-only chapter_text={repr(chapter_text)}, "
+async def test_summary_whitespace_chapter_text_returns_422(client, test_user, chapter_text):
+    """Regression #492/#1411: whitespace-only chapter_text must return 422 (Pydantic validator)."""
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": 7771,
+        "chapter_index": 0,
+        "chapter_text": chapter_text,
+        "book_title": "Test Book",
+        "author": "Author",
+        "chapter_title": "Ch 1",
+    })
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only chapter_text={repr(chapter_text)}, "
         f"got {resp.status_code}: {resp.text}"
     )
-    mock_gemini.generate_chapter_summary.assert_not_called()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("book_title", "   "),
+    ("author", "\t\n"),
+])
+async def test_summary_whitespace_only_book_title_author_returns_422(client, test_user, field, value):
+    """Regression #1411: whitespace-only book_title or author must return 422.
+
+    SummaryRequest was missing _not_blank validators for these fields unlike
+    all sibling request models (InsightRequest, QARequest, etc.)."""
+    payload = {
+        "book_id": 7771,
+        "chapter_index": 0,
+        "chapter_text": "Some real chapter text.",
+        "book_title": "Test Book",
+        "author": "Author",
+    }
+    payload[field] = value
+    resp = await client.post("/api/ai/summary", json=payload)
+    assert resp.status_code == 422, (
+        f"Expected 422 for whitespace-only {field}={repr(value)}, "
+        f"got {resp.status_code}: {resp.text}"
+    )
 
 
 # ── Chapter summary concurrent generation ────────────────────────────────────

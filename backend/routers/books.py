@@ -33,6 +33,9 @@ async def search(
     language: str = Query("", max_length=20, description="Language code e.g. en, de, fr"),
     page: int = Query(1, ge=1, le=10000),
 ):
+    q = q.strip()
+    if not q:
+        raise HTTPException(status_code=422, detail="q cannot be blank")
     return await search_books(q, language, page)
 
 

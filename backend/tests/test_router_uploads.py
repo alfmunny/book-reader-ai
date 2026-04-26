@@ -1106,3 +1106,20 @@ async def test_upload_whitespace_title_author_falls_back_to_defaults(client, tes
     assert authors_list[0] == "Unknown", (
         f"Expected fallback 'Unknown' for whitespace author, got {authors_list[0]!r}"
     )
+
+
+# ── Issue #1530: oversized file upload returns 413 ────────────────────────────
+
+async def test_upload_txt_file_too_large_returns_413(client, test_user, monkeypatch):
+    """Regression #1530: POST /upload with a .txt file exceeding the size limit must return 413.
+
+    Monkeypatches MAX_TXT_BYTES to 10 bytes so the test doesn't need a 3 MB payload.
+    """
+    import routers.uploads as _uploads_mod
+    monkeypatch.setattr(_uploads_mod, "MAX_TXT_BYTES", 10)
+    oversized = b"x" * 11
+    resp = await client.post("/api/books/upload", files=_txt_upload(content=oversized))
+    assert resp.status_code == 413, (
+        f"Regression #1530: expected 413 for oversized .txt upload, got {resp.status_code}: {resp.text}"
+    )
+    assert "too large" in resp.json()["detail"].lower()

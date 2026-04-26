@@ -951,3 +951,88 @@ async def test_flashcards_stats_deck_id_zero_returns_422(client, test_user):
     assert resp.status_code == 422, (
         f"Expected 422 for deck_id=0 in GET /vocabulary/flashcards/stats, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1570: vocabulary export uncovered branches ────────────────────────
+
+
+async def test_export_all_skips_check_book_access_when_book_not_in_cache(client, test_user):
+    """Regression #1570: _build_and_push_book must handle get_cached_book returning
+    None (line 430→432) — when exporting all books, an uncached book_id derived from
+    vocab occurrences must not crash the export (check_book_access is correctly skipped).
+
+    The single-book path (book_id=N) raises 404 first; the export-all path (book_id=None)
+    calls _build_and_push_book directly and is the only path that reaches line 430.
+    """
+    enc_token = encrypt_api_key("ghp_test_token")
+    await update_obsidian_settings(
+        test_user["id"], enc_token, "user/obsidian-notes", "Books",
+    )
+    orphan_book_id = 9700
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images, source) VALUES (?, 'Ghost Book', '[]', 'gutenberg')",
+            (orphan_book_id,),
+        )
+        await db.commit()
+    await save_word(test_user["id"], "phantom", orphan_book_id, 0, "A phantom sentence.")
+
+    # Export all (no book_id) so _build_and_push_book is called directly.
+    # Patch get_cached_book to return None to hit the 430→432 branch.
+    with patch("routers.vocabulary.get_cached_book", new_callable=AsyncMock, return_value=None), \
+         patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/url"), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
+        resp = await client.post("/api/vocabulary/export/obsidian", json={})
+    assert resp.status_code == 200, (
+        f"Regression #1570: export-all must succeed when get_cached_book returns None, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_export_silently_drops_translate_exception_in_gather(client, test_user):
+    """Regression #1570: when a translation subtask raises inside asyncio.gather
+    (return_exceptions=True), the exception object must be silently dropped and
+    the export must succeed (line 456→455 branch).
+    """
+    await _setup_export(test_user)
+
+    async def _failing_translate(*args, **kwargs):
+        raise RuntimeError("translate service unavailable")
+
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/url"), \
+         patch("routers.vocabulary.translate_text", side_effect=_failing_translate):
+        resp = await client.post(
+            "/api/vocabulary/export/obsidian", json={"book_id": BOOK_ID}
+        )
+    assert resp.status_code == 200, (
+        f"Regression #1570: export must succeed when translation raises, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
+
+async def test_find_connected_books_skips_words_not_in_target_book(client, test_user):
+    """Regression #1570: _find_connected_books must skip (continue) words from
+    all_vocab that are not in the target book's word set (line 383 branch).
+    """
+    book_a = 9701
+    book_b = 9702
+    await save_book(book_a, {**_BOOK_META, "title": "Book A"}, "text")
+    await save_book(book_b, {**_BOOK_META, "title": "Book B"}, "text")
+    enc_token = encrypt_api_key("ghp_test_token")
+    await update_obsidian_settings(
+        test_user["id"], enc_token, "user/obsidian-notes", "Books",
+    )
+    # Save word "whale" only in book_a, and word "exclusive" only in book_b
+    await save_word(test_user["id"], "whale", book_a, 0, "A great whale.")
+    await save_word(test_user["id"], "exclusive", book_b, 0, "An exclusive word.")
+
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock, return_value="https://github.com/url"), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
+        resp = await client.post(
+            "/api/vocabulary/export/obsidian", json={"book_id": book_a}
+        )
+    # Export succeeds: "exclusive" (book_b only) is correctly skipped in _find_connected_books
+    assert resp.status_code == 200, (
+        f"Regression #1570: export for book_a must succeed when vocab contains words "
+        f"only in book_b, got {resp.status_code}: {resp.text}"
+    )

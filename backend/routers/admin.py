@@ -990,6 +990,14 @@ class QueuePlanRequest(BaseModel):
     target_language: str = Field(..., min_length=1, max_length=20)
     book_ids: list[Annotated[int, Field(ge=1)]] | None = Field(default=None, max_length=1000)
 
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str) -> str:
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
+
 
 @router.post("/queue/plan")
 async def queue_plan(req: QueuePlanRequest, _admin: dict = Depends(_require_admin)):

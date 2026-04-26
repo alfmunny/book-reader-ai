@@ -3338,3 +3338,31 @@ async def test_enqueue_book_whitespace_target_language_returns_422(admin_client)
         f"Regression #1432: whitespace-only target_language in enqueue-book must return 422, "
         f"got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1434: whitespace-only target_language in queue/plan and queue/dry-run ─
+
+
+async def test_queue_plan_whitespace_target_language_returns_422(admin_client):
+    """Regression #1434: POST /admin/queue/plan with target_language='  ' must return 422.
+    min_length=1 passes for single space; the endpoint should still reject it."""
+    res = await admin_client.post(
+        "/api/admin/queue/plan",
+        json={"target_language": "  "},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1434: whitespace-only target_language in queue/plan must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )
+
+
+async def test_queue_dry_run_whitespace_target_language_returns_422(admin_client):
+    """Regression #1434: POST /admin/queue/dry-run with target_language='  ' must return 422."""
+    res = await admin_client.post(
+        "/api/admin/queue/dry-run",
+        json={"target_language": "  "},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1434: whitespace-only target_language in queue/dry-run must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )

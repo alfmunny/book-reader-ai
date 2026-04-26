@@ -3425,3 +3425,16 @@ async def test_delete_chapter_audio_count_matches_rows_seeded(admin_client, admi
     assert res.json()["deleted"] == 2, (
         f"Regression #1438: expected deleted=2 for chapter 0, got {res.json()}"
     )
+
+
+# ── Issue #1440: whitespace-only status in DELETE /admin/queue ────────────────
+
+
+async def test_queue_clear_whitespace_status_returns_422(admin_client):
+    """Regression #1440: DELETE /admin/queue?status=%20 must return 422.
+    min_length=1 passes for a single space; the handler must strip and reject."""
+    res = await admin_client.delete("/api/admin/queue?status=%20%20")
+    assert res.status_code == 422, (
+        f"Regression #1440: whitespace-only status in DELETE /admin/queue must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )

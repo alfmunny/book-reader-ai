@@ -1254,6 +1254,10 @@ async def queue_clear(
     ?status=failed  → wipe just the failed rows (safe to retry clean).
     No filter       → clear the entire queue (admin confirms in the UI).
     """
+    if status is not None:
+        status = status.strip()
+        if not status:
+            raise HTTPException(status_code=422, detail="status cannot be blank")
     deleted = await clear_queue(status)
     return {"ok": True, "deleted": deleted}
 

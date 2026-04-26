@@ -50,7 +50,6 @@ from services.translation_queue import (
     plan_work_for_queue,
     clear_queue,
     delete_queue_for_book,
-    delete_queue_item,
     enqueue_for_book,
     get_auto_languages,
     list_queue,

@@ -321,6 +321,7 @@ async def test_router_has_more_correct_at_max_limit(client, test_user):
     )
     data2 = res2.json()
     assert len(data2["messages"]) == 1
+    assert data2["has_more"] is False
 
 
 # ── Issue #1512: content max_length=64000 regression test ────────────────────

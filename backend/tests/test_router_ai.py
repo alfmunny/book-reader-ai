@@ -1691,3 +1691,20 @@ async def test_references_oversized_response_language_returns_422(client, test_u
     assert resp.status_code == 422, (
         f"Expected 422 for oversized response_language in /ai/references, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1538: DELETE /ai/summary non-admin 403 ────────────────────────────
+
+
+async def test_delete_summary_non_admin_returns_403(client, test_user):
+    """Regression #1538: DELETE /ai/summary by a non-admin user must return 403.
+    The admin-only guard at routers/ai.py line 290 was uncovered because the default
+    test_user is always auto-promoted to admin in a fresh tmp_db.
+    """
+    from services.db import set_user_role
+    await set_user_role(test_user["id"], "user")
+    resp = await client.delete("/api/ai/summary", params={"book_id": 1, "chapter_index": 0})
+    assert resp.status_code == 403, (
+        f"Regression #1538: expected 403 for non-admin DELETE /ai/summary, "
+        f"got {resp.status_code}: {resp.text}"
+    )

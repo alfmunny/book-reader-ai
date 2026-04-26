@@ -1236,7 +1236,11 @@ async def queue_delete_book(
     target_language: str | None = Query(default=None, min_length=1, max_length=20),
     _admin: dict = Depends(_require_admin),
 ):
-    norm = target_language.lower().split("-")[0] if target_language else None
+    if target_language is not None:
+        target_language = target_language.strip().lower().split("-")[0]
+        if not target_language:
+            raise HTTPException(status_code=422, detail="target_language cannot be blank")
+    norm = target_language
     deleted = await delete_queue_for_book(book_id, target_language=norm)
     return {"ok": True, "deleted": deleted}
 

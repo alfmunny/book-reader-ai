@@ -3270,3 +3270,15 @@ async def test_import_translations_whitespace_target_language_returns_422(admin_
     assert res.status_code == 422, (
         f"Expected 422 for whitespace target_language in import, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1422: whitespace-only target_language in queue_delete_book ─────────
+
+
+async def test_queue_delete_book_whitespace_language_returns_422(admin_client, admin_db):
+    """Regression #1422: DELETE /admin/queue/book/{id}?target_language=%20%20
+    must return 422, not silently pass a whitespace language to the DB."""
+    res = await admin_client.delete("/api/admin/queue/book/1?target_language=%20%20")
+    assert res.status_code == 422, (
+        f"Expected 422 for whitespace target_language in queue_delete_book, got {res.status_code}: {res.text}"
+    )

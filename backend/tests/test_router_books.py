@@ -421,6 +421,22 @@ async def test_translation_status_cached_book_no_translations(client):
     assert "bulk_active" not in data
 
 
+async def test_translation_status_empty_text_book_returns_zero_chapters(client):
+    """Regression #1528: book saved with empty text (not yet fetched) returns total_chapters=0.
+
+    Covers routers/books.py line 120 else-branch: when cached.get('text') is '' and
+    source is not 'upload', the if-condition is False and total_chapters stays 0.
+    """
+    book_id = 9997
+    meta = {**MOCK_META, "id": book_id}
+    await save_book(book_id, meta, "")  # empty text — not yet fetched
+    resp = await client.get(f"/api/books/{book_id}/translation-status?target_language=de")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_chapters"] == 0
+    assert data["translated_chapters"] == 0
+
+
 async def test_translation_status_with_translations(client):
     """Cached book with one chapter translated returns correct counts."""
     from services.db import save_translation

@@ -301,6 +301,12 @@ async def test_query_max_length_rejected(client, test_user):
     assert res.status_code == 422
 
 
+async def test_scope_max_length_rejected(client, test_user):
+    """GET /search with scope longer than max_length=200 must return 422 (closes #1496)."""
+    res = await client.get(f"/api/search?q=word&scope={'a' * 201}")
+    assert res.status_code == 422, f"Expected 422 for oversized scope, got {res.status_code}: {res.text}"
+
+
 async def test_limit_capped(client, test_user):
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         for i in range(60):

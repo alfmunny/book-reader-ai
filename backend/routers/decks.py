@@ -178,7 +178,10 @@ async def remove_member(
     vocabulary_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
-    removed = await decks_service.remove_manual_member(user["id"], deck_id, vocabulary_id)
+    try:
+        removed = await decks_service.remove_manual_member(user["id"], deck_id, vocabulary_id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not removed:
         raise HTTPException(status_code=404, detail="Deck member not found")
     return None

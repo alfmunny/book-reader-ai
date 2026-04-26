@@ -262,6 +262,22 @@ async def test_remove_member_404_for_nonexistent_deck(client, test_user):
     assert resp.status_code == 404
 
 
+async def test_remove_member_409_for_smart_deck(client, test_user):
+    """Regression #1459: DELETE /decks/{id}/members/{vid} on a smart deck must return 409,
+    not 404 (consistent with POST /decks/{id}/members which already returns 409)."""
+    await _book()
+    vid = await _save("smart_word", test_user["id"])
+    deck = (await client.post(
+        "/api/decks",
+        json={"name": "SmartD", "mode": "smart", "rules_json": {}},
+    )).json()
+
+    resp = await client.delete(f"/api/decks/{deck['id']}/members/{vid}")
+    assert resp.status_code == 409, (
+        f"Regression #1459: expected 409 for smart deck member removal, got {resp.status_code}: {resp.text}"
+    )
+
+
 # ── Smart deck rule resolution ──────────────────────────────────────────────
 
 

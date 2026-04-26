@@ -616,3 +616,107 @@ async def test_smart_rules_oversized_tags_any_list_returns_422(client, test_user
     assert resp.status_code == 422, (
         f"Expected 422 for tags_any list > 100 items in SmartRules, got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1526: update_deck description + rules_provided coverage ────────────
+
+
+async def test_patch_deck_description(client, test_user):
+    """PATCH /decks/{id} with description updates it (covers services/decks.py lines 154-155)."""
+    created = (await client.post("/api/decks", json={"name": "DescDeck", "mode": "manual"})).json()
+    resp = await client.patch(
+        f"/api/decks/{created['id']}", json={"description": "A new description"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["description"] == "A new description"
+
+
+async def test_patch_smart_deck_rules_json(client, test_user):
+    """PATCH /decks/{id} with rules_json on a smart deck updates rules (covers lines 157-159)."""
+    created = (await client.post(
+        "/api/decks",
+        json={"name": "SmartPatch", "mode": "smart", "rules_json": {"language": "de"}},
+    )).json()
+    resp = await client.patch(
+        f"/api/decks/{created['id']}", json={"rules_json": {"language": "fr"}}
+    )
+    assert resp.status_code == 200
+    assert '"language": "fr"' in resp.json()["rules_json"]
+
+
+async def test_patch_deck_description_and_name_together(client, test_user):
+    """PATCH /decks/{id} updating both name and description in one request."""
+    created = (await client.post("/api/decks", json={"name": "OldName", "mode": "manual"})).json()
+    resp = await client.patch(
+        f"/api/decks/{created['id']}",
+        json={"name": "NewName", "description": "Updated desc"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["name"] == "NewName"
+    assert data["description"] == "Updated desc"
+
+
+# ── Issue #1526: direct service-level tests for _validate_rules + create_deck ─
+
+
+async def test_validate_rules_none_returns_without_error(tmp_db):
+    """_validate_rules(None) must return immediately (covers line 33)."""
+    from services.decks import _validate_rules
+    _validate_rules(None)  # no exception
+
+
+async def test_validate_rules_non_dict_raises(tmp_db):
+    """_validate_rules with a non-dict raises ValueError (covers line 35)."""
+    import pytest
+    from services.decks import _validate_rules
+    with pytest.raises(ValueError, match="must be an object"):
+        _validate_rules("not_a_dict")
+
+
+async def test_validate_rules_unknown_key_raises(tmp_db):
+    """_validate_rules with an unknown key raises ValueError (covers line 38)."""
+    import pytest
+    from services.decks import _validate_rules
+    with pytest.raises(ValueError, match="Unknown rule keys"):
+        _validate_rules({"totally_unknown": "x"})
+
+
+async def test_validate_rules_language_non_string_raises(tmp_db):
+    """_validate_rules with language=integer raises ValueError (covers line 40)."""
+    import pytest
+    from services.decks import _validate_rules
+    with pytest.raises(ValueError, match="language must be a string"):
+        _validate_rules({"language": 42})
+
+
+async def test_validate_rules_book_ids_non_list_raises(tmp_db):
+    """_validate_rules with book_ids as non-list raises ValueError (covers line 45)."""
+    import pytest
+    from services.decks import _validate_rules
+    with pytest.raises(ValueError, match="book_ids must be a list of integers"):
+        _validate_rules({"book_ids": "not_a_list"})
+
+
+async def test_validate_rules_tags_any_non_string_items_raises(tmp_db):
+    """_validate_rules with tags_any containing non-strings raises ValueError (covers line 50)."""
+    import pytest
+    from services.decks import _validate_rules
+    with pytest.raises(ValueError, match="tags_any must be a list of strings"):
+        _validate_rules({"tags_any": [1, 2, 3]})
+
+
+async def test_validate_rules_saved_after_non_string_raises(tmp_db):
+    """_validate_rules with saved_after as integer raises ValueError (covers line 53)."""
+    import pytest
+    from services.decks import _validate_rules
+    with pytest.raises(ValueError, match="saved_after must be a YYYY-MM-DD string"):
+        _validate_rules({"saved_after": 20260101})
+
+
+async def test_create_deck_bad_mode_raises(tmp_db, test_user):
+    """create_deck() with an invalid mode raises ValueError (covers line 116)."""
+    import pytest
+    from services.decks import create_deck
+    with pytest.raises(ValueError, match="mode must be"):
+        await create_deck(test_user["id"], "Deck", "", "invalid_mode", None)

@@ -640,3 +640,26 @@ async def test_create_annotation_whitespace_only_sentence_text_returns_400(clien
         f"Expected 400 for whitespace-only sentence_text, got {resp.status_code}: {resp.text}"
     )
     assert "sentence_text" in resp.json()["detail"].lower()
+
+
+# ── Issue #1488: update_annotation no-op path (both fields omitted) ───────────
+
+
+@pytest.mark.asyncio
+async def test_patch_annotation_no_fields_returns_current_annotation(client, test_user, tmp_db):
+    """PATCH /annotations/{id} with empty body returns the annotation unchanged.
+
+    Covers services/db.py update_annotation when clauses=[] (both note_text and
+    color are None). The SELECT still runs and the current row is returned.
+    """
+    from services.db import save_book
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    ann = await create_annotation(test_user["id"], BOOK_ID, 0, "A test sentence.", "original note", "yellow")
+    ann_id = ann["id"]
+
+    patch_resp = await client.patch(f"/api/annotations/{ann_id}", json={})
+    assert patch_resp.status_code == 200
+    updated = patch_resp.json()
+    assert updated["id"] == ann_id
+    assert updated["note_text"] == "original note"
+    assert updated["color"] == "yellow"

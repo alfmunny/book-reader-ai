@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, AlertCircleIcon, CloseIcon } from "@/components/Icons";
+import { CheckIcon, AlertCircleIcon, CloseIcon, ChevronUpIcon, ChevronDownIcon } from "@/components/Icons";
 import {
   CHAIN_PRESETS,
   DEFAULT_CHAIN,
@@ -1003,7 +1003,7 @@ export default function QueueTab({ adminFetch }: Props) {
                         title={`Move ${labelForModel(m)} up`}
                         aria-label={`Move ${labelForModel(m)} up`}
                       >
-                        ↑
+                        <ChevronUpIcon className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => {
@@ -1017,7 +1017,7 @@ export default function QueueTab({ adminFetch }: Props) {
                         title={`Move ${labelForModel(m)} down`}
                         aria-label={`Move ${labelForModel(m)} down`}
                       >
-                        ↓
+                        <ChevronDownIcon className="w-4 h-4" />
                       </button>
                     </div>
                     <button

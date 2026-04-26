@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, AlertCircleIcon } from "@/components/Icons";
+import { CheckIcon, AlertCircleIcon, ChevronDownIcon } from "@/components/Icons";
 
 type AdminFetch = (path: string, options?: RequestInit) => Promise<any>;
 
@@ -196,8 +196,9 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
           )}
 
           {running && state.current_book_title && (
-            <p className="text-xs text-amber-700 truncate">
-              ↓ {state.current_book_title}
+            <p className="text-xs text-amber-700 truncate flex items-center gap-1">
+              <ChevronDownIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{state.current_book_title}</span>
             </p>
           )}
 

@@ -386,6 +386,26 @@ async def test_export_obsidian_blocked_for_private_book_non_owner(client, test_u
     )
 
 
+async def test_export_obsidian_404_for_missing_book(client, test_user):
+    """Regression #1457: POST /vocabulary/export/obsidian with a non-existent book_id
+    must return 404, not silently export an empty markdown file."""
+    enc_token = encrypt_api_key("ghp_test_token")
+    from services.db import update_obsidian_settings
+    await update_obsidian_settings(
+        test_user["id"], enc_token, "user/notes", "Books",
+    )
+
+    with patch("routers.vocabulary._github_put", new_callable=AsyncMock), \
+         patch("routers.vocabulary.translate_text", new_callable=AsyncMock, return_value=[]):
+        resp = await client.post(
+            "/api/vocabulary/export/obsidian", json={"book_id": 99999}
+        )
+
+    assert resp.status_code == 404, (
+        f"Regression #1457: expected 404 for non-existent book, got {resp.status_code}: {resp.text}"
+    )
+
+
 async def test_export_github_api_error_returns_502(client, test_user):
     await _setup_export(test_user)
 

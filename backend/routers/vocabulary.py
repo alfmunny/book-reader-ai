@@ -469,6 +469,10 @@ async def export_obsidian(
 
     try:
         if req.book_id is not None:
+            book = await get_cached_book(req.book_id)
+            if not book:
+                raise HTTPException(status_code=404, detail="Book not found")
+            check_book_access(book, user)
             url = await _build_and_push_book(req.book_id)
             return {"urls": [url]}
         else:

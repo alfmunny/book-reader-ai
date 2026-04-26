@@ -512,3 +512,42 @@ async def test_smart_rules_whitespace_tag_patch_returns_422(client, test_user):
         f"Regression #1453: whitespace-only tag in PATCH tags_any must return 422, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1492: max_length on name and description fields ───────────────────
+
+
+async def test_create_deck_oversized_name_returns_422(client, test_user):
+    """POST /decks with name longer than max_length=80 must return 422 (closes #1492)."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "n" * 81, "mode": "manual"},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized name, got {resp.status_code}: {resp.text}"
+
+
+async def test_create_deck_oversized_description_returns_422(client, test_user):
+    """POST /decks with description longer than max_length=500 must return 422 (closes #1492)."""
+    resp = await client.post(
+        "/api/decks",
+        json={"name": "ValidName", "mode": "manual", "description": "d" * 501},
+    )
+    assert resp.status_code == 422, f"Expected 422 for oversized description, got {resp.status_code}: {resp.text}"
+
+
+async def test_patch_deck_oversized_name_returns_422(client, test_user):
+    """PATCH /decks/{id} with name longer than max_length=80 must return 422 (closes #1492)."""
+    create = await client.post("/api/decks", json={"name": "PatchTarget", "mode": "manual"})
+    assert create.status_code == 201
+    deck_id = create.json()["id"]
+    resp = await client.patch(f"/api/decks/{deck_id}", json={"name": "n" * 81})
+    assert resp.status_code == 422, f"Expected 422 for oversized name in PATCH, got {resp.status_code}: {resp.text}"
+
+
+async def test_patch_deck_oversized_description_returns_422(client, test_user):
+    """PATCH /decks/{id} with description longer than max_length=500 must return 422 (closes #1492)."""
+    create = await client.post("/api/decks", json={"name": "PatchDescTarget", "mode": "manual"})
+    assert create.status_code == 201
+    deck_id = create.json()["id"]
+    resp = await client.patch(f"/api/decks/{deck_id}", json={"description": "d" * 501})
+    assert resp.status_code == 422, f"Expected 422 for oversized description in PATCH, got {resp.status_code}: {resp.text}"

@@ -3366,3 +3366,19 @@ async def test_queue_dry_run_whitespace_target_language_returns_422(admin_client
         f"Regression #1434: whitespace-only target_language in queue/dry-run must return 422, "
         f"got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1436: whitespace-only target_language in queue/retry-failed ─────────
+
+
+async def test_retry_failed_whitespace_target_language_returns_422(admin_client):
+    """Regression #1436: POST /admin/queue/retry-failed with target_language='  ' must
+    return 422 — whitespace passes min_length=1 but silently matches zero rows."""
+    res = await admin_client.post(
+        "/api/admin/queue/retry-failed",
+        json={"target_language": "  "},
+    )
+    assert res.status_code == 422, (
+        f"Regression #1436: whitespace-only target_language in retry-failed must return 422, "
+        f"got {res.status_code}: {res.text}"
+    )

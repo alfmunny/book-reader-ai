@@ -1312,6 +1312,16 @@ class RetryFailedRequest(BaseModel):
     book_id: int | None = Field(default=None, ge=1)
     target_language: str | None = Field(default=None, min_length=1, max_length=20)
 
+    @field_validator("target_language")
+    @classmethod
+    def target_language_not_blank(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
+
 
 @router.post("/queue/retry-failed")
 async def queue_retry_failed(

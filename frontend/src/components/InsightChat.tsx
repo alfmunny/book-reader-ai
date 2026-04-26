@@ -87,7 +87,7 @@ function ContextChip({
         {onRemove && (
           <button
             onClick={onRemove}
-            className="shrink-0 text-amber-400 hover:text-amber-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="shrink-0 text-amber-600 hover:text-amber-700 min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Remove context"
             aria-label="Remove context"
           >

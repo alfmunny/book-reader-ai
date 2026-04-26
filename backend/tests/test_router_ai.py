@@ -966,6 +966,21 @@ async def test_delete_summary_out_of_bounds_chapter_returns_400(client, test_use
     )
 
 
+async def test_delete_summary_nonexistent_summary_returns_404(client, test_user, tmp_db):
+    """Regression #1428: DELETE /ai/summary must return 404 when the book and chapter exist
+    but no summary row exists — not silently return 200 with no rowcount check."""
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200
+    await save_book(9883, {"id": 9883, "title": "NoSummary", "authors": [], "languages": ["en"], "subjects": [], "download_count": 0, "cover": ""}, text)
+    _clear()
+
+    resp = await client.delete("/api/ai/summary", params={"book_id": 9883, "chapter_index": 0})
+    assert resp.status_code == 404, (
+        f"Regression #1428: DELETE /ai/summary with no summary row must return 404, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+
 
 # ── Issue #500: AI endpoint input bounds ──────────────────────────────────────
 

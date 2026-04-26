@@ -301,11 +301,13 @@ async def delete_summary(book_id: int = Query(..., ge=1), chapter_index: int = Q
     from services.db import DB_PATH
     import aiosqlite
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+        cur = await db.execute(
             "DELETE FROM chapter_summaries WHERE book_id=? AND chapter_index=?",
             (book_id, chapter_index),
         )
         await db.commit()
+    if cur.rowcount == 0:
+        raise HTTPException(status_code=404, detail="No cached summary found for this chapter")
     return {"ok": True}
 
 

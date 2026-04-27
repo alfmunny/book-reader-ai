@@ -245,3 +245,42 @@ async def test_apple_login_http_exception_is_reraised(client):
         f"got {resp.status_code}: {resp.text}"
     )
     assert "Apple token expired" in resp.json().get("detail", "")
+
+
+# ── Issue #1581: apple_login generic-exception and missing-sub paths ──────────
+
+
+async def test_apple_login_generic_exception_returns_401(client):
+    """Regression #1581: when verify_apple_id_token raises a non-HTTP exception
+    (e.g. a network error), apple_login must return 401 with a generic
+    'Authentication failed' message — not a 500."""
+    with patch(
+        "routers.auth.verify_apple_id_token",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("Apple JWKS endpoint unreachable"),
+    ):
+        resp = await client.post("/api/auth/apple", json={"id_token": "tok"})
+    assert resp.status_code == 401, (
+        f"Regression #1581: expected 401 for apple_login generic exception, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json()["detail"] == "Authentication failed"
+
+
+async def test_apple_login_missing_sub_claim_returns_401(client):
+    """Regression #1581: if verify_apple_id_token returns a payload with no
+    'sub' claim, apple_login must return 401 with 'Apple ID token missing sub
+    claim' — not crash or create a user with an empty apple_id."""
+    with patch(
+        "routers.auth.verify_apple_id_token",
+        new_callable=AsyncMock,
+        return_value={"email": "user@example.com"},  # sub absent
+    ):
+        resp = await client.post("/api/auth/apple", json={"id_token": "tok"})
+    assert resp.status_code == 401, (
+        f"Regression #1581: expected 401 for missing sub claim, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "sub" in resp.json()["detail"].lower() or "missing" in resp.json()["detail"].lower(), (
+        f"Expected sub/missing in detail, got: {resp.json()}"
+    )

@@ -58,7 +58,15 @@ async def tmp_db(monkeypatch, tmp_path):
 
 @pytest.fixture
 async def test_user(tmp_db):
-    return await get_or_create_user(**TEST_USER)
+    user = await get_or_create_user(**TEST_USER)
+    # Default test_user to 'pro' so tier-gated routes (translation creation,
+    # /ai/translate, etc.) don't 402 in tests that don't specifically care
+    # about tier gating. Tests that DO test gating (test_pricing_tier_gating)
+    # downgrade to 'free' or upgrade to 'premium' explicitly.
+    async with aiosqlite.connect(db_module.DB_PATH) as conn:
+        await conn.execute("UPDATE users SET tier = 'pro' WHERE id = ?", (user["id"],))
+        await conn.commit()
+    return await get_user_by_id(user["id"])
 
 
 @pytest.fixture

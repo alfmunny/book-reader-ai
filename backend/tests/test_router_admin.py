@@ -1700,6 +1700,21 @@ async def test_move_translation_rejects_out_of_range(admin_client, admin_db):
     assert res.status_code == 400
 
 
+async def test_move_translation_rejects_same_source_dest(admin_client, admin_db):
+    """Regression #1588: move with new_chapter_index == chapter_index must return 400."""
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+    await save_translation(100, 0, "en", ["Same slot."])
+    res = await admin_client.post(
+        "/api/admin/translations/100/0/en/move",
+        json={"new_chapter_index": 0},
+    )
+    assert res.status_code == 400, (
+        f"Regression #1588: expected 400 when new_chapter_index == source, "
+        f"got {res.status_code}: {res.text}"
+    )
+    assert "same" in res.json()["detail"].lower()
+
+
 async def test_move_translation_404_when_source_missing(admin_client, admin_db):
     await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
     res = await admin_client.post(

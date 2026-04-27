@@ -1641,3 +1641,33 @@ async def test_import_stream_split_failure_yields_sse_error(client):
     assert error_events[0].get("stage") == "unknown", (
         f"Expected stage='unknown' in error event, got: {error_events[0]}"
     )
+
+
+# ── Issue #1590: GET /books/{id}/chapters draft-upload guard ──────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_chapters_returns_400_for_draft_upload(client, test_user):
+    """Regression #1590: GET /books/{id}/chapters on an uploaded book with
+    unconfirmed (draft) chapters must return 400, not silently return chapters.
+    Guard: routers/books.py — count_draft_user_book_chapters > 0 path."""
+    sample_txt = (
+        b"Draft Book\n\nChapter 1\n\nSome content.\n\n"
+        b"Chapter 2\n\nMore content.\n"
+    )
+    upload_resp = await client.post(
+        "/api/books/upload",
+        files={"file": ("draft.txt", io.BytesIO(sample_txt), "text/plain")},
+    )
+    assert upload_resp.status_code == 200, upload_resp.text
+    book_id = upload_resp.json()["book_id"]
+
+    # Deliberately skip confirmation so chapters remain in draft state.
+    resp = await client.get(f"/api/books/{book_id}/chapters")
+    assert resp.status_code == 400, (
+        f"Regression #1590: expected 400 for GET /chapters on draft upload, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "not yet confirmed" in resp.json().get("detail", "").lower(), (
+        f"Expected 'not yet confirmed' in detail, got: {resp.json()}"
+    )

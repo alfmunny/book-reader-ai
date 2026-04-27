@@ -267,7 +267,24 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 |------|--------|---------|----|
 | 2026-04-28 | Delete-annotation buttons: `text-red-400` (#f87171, 2.8:1) → `text-red-500` (#ef4444, 3.8:1) on white | notes/[bookId]/page.tsx | #1797 |
 
+## Wave 11 — Accessibility Round 3 (2026-04-28)
+
+### WAI-ARIA 1.2 — Accordion Pattern (heading wraps button)
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | Flashcard context sentence shown on answer side (`word_occurrences.sentence_text`) | flashcards/page.tsx, db.py | #1800 |
+| 2026-04-28 | Vocabulary sort control: added `role="group" aria-label="Sort by"` wrapper | vocabulary/page.tsx | #1805 |
+| 2026-04-28 | SelectionToolbar: Escape key dismisses floating toolbar (WAI-ARIA toolbar convention) | SelectionToolbar.tsx | #1806 |
+| 2026-04-28 | CollapseHeading in notes: inverted `<button><h2>` → `<h2><button>` per WAI-ARIA accordion pattern | notes/[bookId]/page.tsx | #1809 |
+| 2026-04-28 | Profile Obsidian accordion: inverted `<button><h2>` → `<h2><button>` per WAI-ARIA accordion pattern | profile/page.tsx | #1810 |
+
+### UX polish
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | Focus-mode HUD truncated chapter title: added `title` tooltip for hover-reveal | reader/[bookId]/page.tsx | #1770 |
+
 ---
+
 
 ## #364 — Mobile sub-sentence selection (design note, 2026-04-27)
 

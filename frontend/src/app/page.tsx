@@ -310,7 +310,7 @@ export default function Home() {
                       Chapter {recentBooks[0].lastChapter + 1} · {timeAgo(recentBooks[0].lastRead)}
                     </p>
                   </div>
-                  <ArrowRightIcon className="w-4 h-4 text-amber-400 shrink-0" />
+                  <ArrowRightIcon className="w-4 h-4 text-amber-700 shrink-0" />
                 </button>
               </section>
             )}

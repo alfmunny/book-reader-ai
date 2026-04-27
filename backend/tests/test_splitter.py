@@ -2577,3 +2577,49 @@ def test_build_chapters_from_epub_all_skipped_returns_empty_list():
         result = build_chapters_from_epub(b"fake")
 
     assert result == []
+
+
+# ── Lines 1096, 1102: _segment_body_by_anchors <a name> and None-anchor ──────
+
+def test_segment_body_by_anchors_indexes_a_name_attribute():
+    """Regression #1689: line 1096 — when the body contains an <a name='...'>
+    tag, its name attribute is added to anchor_positions so it can be used
+    as a navPoint target."""
+    from services.splitter import _segment_body_by_anchors
+    from lxml import html as lxmlhtml
+
+    doc = lxmlhtml.fromstring(
+        "<html><body>"
+        "<a name='sect1'>old-style anchor</a>"
+        "<p>Chapter content.</p>"
+        "</body></html>"
+    )
+    body = doc.find(".//body")
+    # "sect1" is resolvable only via the <a name> path (line 1096)
+    result = _segment_body_by_anchors(body, [("sect1", "Section One")], "My Book")
+
+    assert len(result) == 1
+    assert result[0][0] == "Section One"
+
+
+def test_segment_body_by_anchors_none_anchor_id_is_skipped_in_validation():
+    """Regression #1689: line 1102 — a None anchor_id in the anchors list is
+    skipped during the validation loop (it represents 'top of spine item') and
+    the function proceeds normally."""
+    from services.splitter import _segment_body_by_anchors
+    from lxml import html as lxmlhtml
+
+    doc = lxmlhtml.fromstring(
+        "<html><body>"
+        "<p>Lead content.</p>"
+        "<p id='ch2'>Chapter 2 start.</p>"
+        "</body></html>"
+    )
+    body = doc.find(".//body")
+    # None anchor = top-of-file slice; "ch2" must exist in DOM to not bail out
+    anchors = [(None, "Chapter 1"), ("ch2", "Chapter 2")]
+    result = _segment_body_by_anchors(body, anchors, "My Book")
+
+    assert len(result) == 2
+    assert result[0][0] == "Chapter 1"
+    assert result[1][0] == "Chapter 2"

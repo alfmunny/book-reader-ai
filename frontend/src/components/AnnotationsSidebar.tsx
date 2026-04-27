@@ -73,7 +73,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
       >
         <NoteIcon className="w-3.5 h-3.5" /> Notes
         {totalCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-bold px-1">
+          <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-amber-800 text-white text-[10px] font-bold px-1">
             {totalCount}
           </span>
         )}

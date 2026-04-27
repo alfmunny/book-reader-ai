@@ -2309,7 +2309,7 @@ export default function ReaderPage() {
             >
               <NoteIcon className="w-5 h-5" />
               {annotations.length > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[8px] font-bold px-0.5">
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-800 text-white text-[8px] font-bold px-0.5">
                   {annotations.length}
                 </span>
               )}

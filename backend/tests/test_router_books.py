@@ -1671,3 +1671,24 @@ async def test_get_chapters_returns_400_for_draft_upload(client, test_user):
     assert "not yet confirmed" in resp.json().get("detail", "").lower(), (
         f"Expected 'not yet confirmed' in detail, got: {resp.json()}"
     )
+
+
+@pytest.mark.asyncio
+async def test_get_chapter_translation_out_of_range_chapter_returns_400(client, test_user):
+    """Regression #1602: GET /books/{id}/chapters/{idx}/translation with chapter_index
+    beyond the book's chapter count must return 400.
+    Guard: routers/books.py lines 202-206 inside get_chapter_translation."""
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    await save_book(9880, {**MOCK_META, "id": 9880}, text)
+    _clear()
+
+    resp = await client.get(
+        "/api/books/9880/chapters/999/translation?target_language=de"
+    )
+    assert resp.status_code == 400, (
+        f"Regression #1602: expected 400 for out-of-bounds chapter_index=999 on 2-chapter book, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()

@@ -1580,3 +1580,64 @@ async def test_enqueue_all_returns_400_for_draft_upload(client, test_user):
     assert "not yet confirmed" in resp.json().get("detail", "").lower(), (
         f"Expected 'not yet confirmed' in error detail, got: {resp.json()}"
     )
+
+
+# ── Issue #1574: import_stream error paths have no test coverage ──────────────
+
+
+@pytest.mark.asyncio
+async def test_import_stream_fetch_failure_yields_sse_error(client):
+    """Regression #1574: when _fetch_and_cache raises inside the generator,
+    the stream must yield an SSE error event with stage='fetching' and then
+    stop — not crash silently or leave the client hanging."""
+    with patch(
+        "routers.books._fetch_and_cache",
+        new_callable=AsyncMock,
+        side_effect=Exception("Gutenberg unreachable"),
+    ):
+        resp = await client.get("/api/books/99999/import-stream")
+
+    assert resp.status_code == 200, (
+        "SSE endpoint always returns 200; errors are signalled in the stream body"
+    )
+    events = _parse_sse(resp.text)
+    error_events = [e for e in events if e["event"] == "error"]
+    assert error_events, (
+        "Regression #1574: expected at least one SSE error event when fetch fails, "
+        f"got events: {[e['event'] for e in events]}"
+    )
+    assert error_events[0].get("stage") == "fetching", (
+        f"Expected stage='fetching' in error event, got: {error_events[0]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_import_stream_split_failure_yields_sse_error(client):
+    """Regression #1574: when split_with_html_preference raises after a
+    successful fetch, the outer except handler must yield an SSE error event
+    with stage='unknown' — not propagate the exception as an HTTP 500."""
+    text = "CHAPTER I\n\n" + "Word " * 50
+    with (
+        patch(
+            "routers.books._fetch_and_cache",
+            new_callable=AsyncMock,
+            return_value=(MOCK_META, text),
+        ),
+        patch(
+            "services.book_chapters.split_with_html_preference",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("splitter exploded"),
+        ),
+    ):
+        resp = await client.get("/api/books/99999/import-stream")
+
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    error_events = [e for e in events if e["event"] == "error"]
+    assert error_events, (
+        "Regression #1574: expected SSE error event when split_with_html_preference "
+        f"raises, got events: {[e['event'] for e in events]}"
+    )
+    assert error_events[0].get("stage") == "unknown", (
+        f"Expected stage='unknown' in error event, got: {error_events[0]}"
+    )

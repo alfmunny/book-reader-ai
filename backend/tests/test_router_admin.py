@@ -1136,6 +1136,37 @@ async def test_retranslate_returns_502_when_both_gemini_and_google_fail(admin_us
     )
 
 
+@pytest.mark.asyncio
+async def test_retranslate_gemini_fails_google_succeeds(admin_user, admin_client, admin_db):
+    """Regression #1712: when Gemini fails but Google Translate succeeds, retranslate
+    must return 200 with provider='google'.
+    Covers the TRUE branch of admin.py line 577 (provider == 'gemini') and
+    the successful fallback path setting provider = 'google' at line 582."""
+    from services.auth import encrypt_api_key
+    from services.db import set_user_gemini_key
+
+    await set_user_gemini_key(admin_user["id"], encrypt_api_key("fake-api-key"))
+    await save_book(100, BOOK_META, BOOK_TEXT)
+
+    call_count = {"n": 0}
+
+    async def _gemini_fails_google_succeeds(text, src, tgt, *, provider="google", gemini_key=None):
+        call_count["n"] += 1
+        if provider == "gemini":
+            raise RuntimeError("simulated Gemini failure")
+        return ["Translated paragraph one.", "Translated paragraph two."]
+
+    with patch("routers.admin.do_translate", side_effect=_gemini_fails_google_succeeds):
+        res = await admin_client.post("/api/admin/translations/100/0/de/retranslate")
+
+    assert res.status_code == 200, f"Expected 200 on Google fallback, got {res.status_code}: {res.text}"
+    data = res.json()
+    assert data["ok"] is True
+    assert data["provider"] == "google"
+    assert data["paragraphs_count"] == 2
+    assert call_count["n"] == 2  # called once for gemini, once for google
+
+
 async def test_retranslate_non_admin_forbidden(admin_db, admin_user):
     user2 = await get_or_create_user(
         google_id="user2", email="user2@example.com", name="User 2", picture=""

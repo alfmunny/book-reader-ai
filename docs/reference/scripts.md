@@ -42,6 +42,52 @@ Exits 0 on success.
 python -m scripts.backfill_epubs
 ```
 
+## `check_translation_alignment.py`
+
+Verify source-vs-translation structural alignment for any cached book.
+
+Generalised from `/tmp/check_faust_alignment.py` per the design doc at
+`docs/design/translation-alignment-checker.md` (issue #1073).
+
+What it checks per chapter:
+
+    1. Row existence       — one translations row per splitter chapter.
+    2. Paragraph count     — src paragraph count == translated paragraph count.
+    3. Paragraph line drift — for paragraphs with ≥4 lines, |src_lines − tr_lines|
+                              must be 0. Catches Opus's typical off-by-one drop
+                              on chunked input (the 18 drifts in Rilke/zh that
+                              the original Faust-only checker found).
+    4. Stanza line count   — for paragraphs flagged as VERSE by the classifier,
+                              src and translated lines must match exactly.
+    5. Speaker cues        — per-source-language detector (de/fr/en/ru) flags
+                              source cues; checker requires a translated cue at
+                              the same line position.
+    6. Title (informational) — null `title_translation` is reported but does
+                              not fail the check.
+
+Usage:
+    python -m scripts.check_translation_alignment --book-id 24288 --target-lang zh
+    python -m scripts.check_translation_alignment --all-books --target-lang zh
+    python -m scripts.check_translation_alignment --book-id 24288 --target-lang zh         --format json --severity-threshold error
+
+Exit code 0 when no issues at the requested severity threshold; non-zero
+otherwise. Output is markdown by default (issue-body friendly), JSON via
+`--format json` for CI gating.
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--book-id` | Single book id |
+| `--all-books` | Check all books with translations in the target language |
+| `--target-lang` | Target language code (default: zh) |
+| `--format` | — |
+| `--severity-threshold` | Issues at or above this severity affect the exit code (default: error) |
+
+```bash
+python -m scripts.check_translation_alignment
+```
+
 ## `epub_split_audit.py`
 
 EPUB split quality audit (issues #769, #834).
@@ -189,6 +235,78 @@ Usage:
 python -m scripts.preseed_translations
 ```
 
+## `save_translation.py`
+
+Save an in-session literary translation to local DB and append to JSON backup.
+
+Companion tool for in-session literary translation: when the assistant produces a
+chapter translation directly in conversation (no API call to a model provider),
+pipe the JSON entry to this script. It will:
+
+    1. Write the row to the local `translations` table so the local reader serves
+       it immediately on the next request.
+    2. Append the entry to a JSON backup at
+       `backend/data/translations/{book_id}_{target_language}.json` so the work
+       survives DB wipes.
+
+The backup is the durable record. Hard-coded chapter-cache invalidation
+migrations (e.g. 029_invalidate_shifted_chapter_cache, 030_invalidate_chapter0_cache)
+have wiped Faust translations once already; the JSON backup is what lets us
+re-seed without paying for the work twice. The backup is also the input
+for `scripts/seed_translations.py`, which pushes the rows to production.
+
+End-to-end workflow for translating a new book/language:
+
+    # 1. Dump source chapters via the splitter (one-time, ad hoc):
+    DB_PATH=backend/books.db python -c "
+        import asyncio, json
+        from services.book_chapters import split_with_html_preference
+        from services.db import get_cached_book
+        async def m():
+            b = await get_cached_book(BOOK_ID)
+            chs = await split_with_html_preference(BOOK_ID, b['text'])
+            json.dump([{'index': i, 'title': c.title, 'text': c.text}
+                       for i, c in enumerate(chs)],
+                      open('/tmp/src.json','w'), ensure_ascii=False, indent=2)
+        asyncio.run(m())"
+
+    # 2. For each chapter, the assistant produces translation in conversation
+    #    and pipes a JSON entry through this script:
+    echo '{"book_id":2229,"chapter_index":0,"target_language":"zh",
+           "paragraphs":["..."],"provider":"anthropic",
+           "model":"claude-opus-4-7 (in-session)",
+           "title_translation":"献辞"}'       | python scripts/save_translation.py
+
+    # 3. After all chapters are saved, push to prod:
+    BACKEND_URL=... ADMIN_JWT=... python scripts/seed_translations.py         --file backend/data/translations/2229_zh.json
+
+Required JSON fields (read from stdin):
+    book_id          int          Gutenberg book ID
+    chapter_index    int          0-based, must align with the live splitter
+    target_language  str          e.g. "zh", "en", "fr" — short code, no region
+    paragraphs       list[str]    one entry per source paragraph (\n\n-separated
+                                  block); within a paragraph, \n line breaks are
+                                  preserved as-is — important for drama / verse
+
+Optional JSON fields:
+    provider           str        default "anthropic"
+    model              str        default "claude-opus-4-7 (in-session)"
+    title_translation  str | null translated chapter title (drives reader chrome)
+
+Idempotency:
+    Re-running with the same (book_id, chapter_index, target_language) replaces
+    both the DB row (INSERT OR REPLACE) and the backup entry — safe to re-run.
+
+Environment overrides:
+    DB_PATH     Path to the sqlite DB the local backend serves
+                (default: backend/books.db relative to this script).
+    BACKUP_DIR  Path to the backup directory
+                (default: backend/data/translations relative to this script).
+
+```bash
+python -m scripts.save_translation
+```
+
 ## `seed_books.py`
 
 Seed the database with popular Project Gutenberg books.
@@ -241,7 +359,8 @@ service). Keep it short-lived.
 | `--file` | Path to the JSON file produced by translate_book.py --output |
 | `--api-url` | Prod API base URL, e.g. https://api.book-reader.railway.app/api (or set BACKEND_URL env var) |
 | `--token` | Admin Bearer JWT (or set ADMIN_JWT env var) |
-| `--chunk` | Upload in chunks of N entries per request (default 50). Keeps request bodies under proxy limits for big books. |
+| `--chunk` | Upload in chunks of N entries per request (default 50). Keeps request bodies under proxy limits for big books. Ignored when --overwrite is set (all entries sent in one request). |
+| `--overwrite` | Atomically replace all translations for each (book_id, language) pair in the file. Sends the entire file in a single request — safe because the server rolls back on failure. |
 
 ```bash
 python -m scripts.seed_translations
@@ -299,4 +418,63 @@ Usage:
 
 ```bash
 python -m scripts.translate_book
+```
+
+## `translation_alignment_detectors.py`
+
+Per-source-language speaker-cue detectors for the translation alignment
+checker (issue #1073, design doc `docs/design/translation-alignment-checker.md`).
+
+Each detector is a pair of pure functions:
+
+    is_cue(line: str) -> bool
+        True iff the source-language line is a speaker cue (a stage-play line
+        like "FAUST." in Goethe, "Le Roi." in classical French theatre).
+
+    is_translated_cue(line: str, target_language: str) -> bool
+        True iff the translated line preserves the speaker-cue typography
+        for the given target language. Currently only zh is wired up
+        (heuristic: ≤20 chars, ends with "。"), but the signature leaves
+        room for future targets.
+
+Detectors are looked up by source-language ISO code (`de`, `fr`, `en`, `ru`).
+Languages without a registered detector fall through to `no_cue_detector`,
+which makes the cue check a no-op (every line passes).
+
+Adding a language: implement the two functions and register in DETECTORS.
+
+```bash
+python -m scripts.translation_alignment_detectors
+```
+
+## `translation_alignment_overrides.py`
+
+Per-book overrides for the translation alignment checker (#1073).
+
+The checker's verse-vs-prose classifier is heuristic. Some books legitimately
+need explicit per-book pinning — Faust is verse-and-prose mixed, Moby Dick
+has occasional inset hymns inside prose chapters, etc. This registry lets us
+encode that knowledge as code without bloating the heuristic.
+
+Books not in the registry fall through to the heuristic (zero-config for new
+books).
+
+Schema:
+    OVERRIDES[book_id] = {
+        'source_language': 'de' | 'fr' | 'en' | 'ru' | …,
+        'verse_chapters': 'all' | list[int] | None,
+            # 'all'   = every chapter is verse
+            # [3, 8] = chapter indices 3 and 8 are verse, others heuristic
+            # None  = pure heuristic (default)
+        'verse_paragraph_indices': dict[int, list[int]] | None,
+            # per-chapter verse paragraph index list. Wins over `verse_chapters`
+            # for those chapters. e.g. {42: [3, 7]} means in chapter 42,
+            # paragraphs 3 and 7 are verse, the rest is prose.
+    }
+
+Adding a book: append an entry. Keep entries minimal — only override what
+the heuristic gets wrong.
+
+```bash
+python -m scripts.translation_alignment_overrides
 ```

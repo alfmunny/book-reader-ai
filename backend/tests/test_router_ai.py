@@ -810,6 +810,33 @@ async def test_summary_gemini_error_returns_500_without_detail_leak(client, test
     assert ":" not in detail
 
 
+# ── Issue #1578: corrupt queue_api_key must return 503, not 500 ──────────────
+
+
+async def test_summary_corrupt_queue_api_key_returns_503(client, test_user, tmp_db):
+    """Regression #1578: when the stored queue_api_key is present but cannot be
+    decrypted (e.g. written with a different secret key), POST /ai/summary must
+    return 503 with a safe detail message, not crash with a 500 that leaks the
+    decryption traceback."""
+    await save_book(9872, _BOOK_META, "word " * 300)
+    await set_setting("queue_api_key", "not-a-valid-fernet-token")
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": 9872,
+        "chapter_index": 0,
+        "chapter_text": "Chapter text here.",
+        "book_title": "Test Book",
+        "author": "Author",
+        "chapter_title": "Ch 1",
+    })
+    assert resp.status_code == 503, (
+        f"Regression #1578: expected 503 for corrupt queue_api_key, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "configuration" in resp.json()["detail"].lower(), (
+        f"Expected 'configuration' in error detail, got: {resp.json()}"
+    )
+
+
 # ── Access control for private uploaded books ────────────────────────────────
 
 

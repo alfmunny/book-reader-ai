@@ -482,6 +482,25 @@ def test_build_book_markdown_format():
     assert "**Q:** Book theme?" in content
 
 
+def test_build_book_markdown_skips_cross_book_occurrences():
+    """Regression #1727: vocabulary occurrences from other books must not appear
+    in the exported markdown for the target book."""
+    from routers.vocabulary import _build_book_markdown
+    book = {"title": "Moby Dick", "authors": ["Herman Melville"], "languages": ["en"]}
+    # "whale" appears in both book 1 (target) and book 2 (another book)
+    words = [{"word": "whale", "occurrences": [
+        {"book_id": 1, "book_title": "Moby Dick", "chapter_index": 0, "sentence_text": "The whale breached."},
+        {"book_id": 2, "book_title": "Faust", "chapter_index": 3, "sentence_text": "A whale of a problem."},
+    ]}]
+    content = _build_book_markdown(book, words, [], [], [], 1, "2026-04-27")
+
+    # Only the book-1 occurrence should appear
+    assert "The whale breached." in content
+    # Book-2 occurrence must be excluded
+    assert "A whale of a problem." not in content
+    assert "Ch.4" not in content  # chapter_index=3 → Ch.4 for book 2
+
+
 async def test_export_annotation_translation_uses_book_language(client, test_user):
     """Regression for #285: annotation translations must use the book's actual source
     language, not hardcoded 'en'.  Before the fix, exporting a German book always

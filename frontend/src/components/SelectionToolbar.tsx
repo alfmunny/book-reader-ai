@@ -62,6 +62,19 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     return () => document.removeEventListener("selectionchange", handleSelection);
   }, []);
 
+  // Dismiss on Escape key
+  useEffect(() => {
+    if (!selection) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        window.getSelection()?.removeAllRanges();
+        setSelection(null);
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [selection]);
+
   // Close when clicking outside or when the reader scrolls
   useEffect(() => {
     if (!selection) return;

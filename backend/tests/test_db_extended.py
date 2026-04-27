@@ -13,6 +13,9 @@ from services.db import (
     get_or_create_user,
     get_or_create_user_github,
     get_or_create_user_apple,
+    save_book,
+    get_cached_book,
+    delete_translations_for_book,
     get_user_by_id,
     list_users,
     set_user_approved,
@@ -669,3 +672,52 @@ async def test_update_lemma_swallows_wiktionary_exception():
     assert row["lemma"] is None, (
         f"lemma must stay NULL when wiktionary raises, got '{row['lemma']}'"
     )
+
+
+# ── Issue #1634: db.py uncovered statements/branches ─────────────────────────
+
+_BOOK_META_1634 = {
+    "title": "Coverage Book",
+    "authors": ["Author"],
+    "languages": ["en"],
+    "subjects": [],
+    "download_count": 0,
+    "cover": "",
+}
+
+
+async def test_delete_translations_for_book_executes():
+    """Regression #1634: line 450 — delete_translations_for_book body was never
+    reached because all existing tests mock it. Call it directly to cover line 450."""
+    await save_book(9901, _BOOK_META_1634, "some text")
+    # No error expected — even with no translation rows the commit path is hit.
+    await delete_translations_for_book(9901)
+
+
+async def test_get_cached_book_images_not_string():
+    """Regression #1634: lines 468→470 False branch — when images is not a string
+    (e.g. None / absent), the json.loads branch is skipped."""
+    await save_book(9902, _BOOK_META_1634, "some text", images=None)
+    result = await get_cached_book(9902)
+    assert result is not None
+    # images field is None or absent — no json.loads should be called
+    assert result.get("images") is None or isinstance(result.get("images"), list)
+
+
+async def test_get_vocabulary_word_without_occurrence():
+    """Regression #1634: lines 994→983 False branch — a vocabulary row with no
+    word_occurrences produces book_id=NULL via LEFT JOIN; the False path is taken."""
+    import aiosqlite
+    user = await get_or_create_user("cov1634u", "cov1634@test.com", "Cov1634", "")
+    # Insert a vocabulary row directly with no word_occurrence so LEFT JOIN gives NULL
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO vocabulary (user_id, word) VALUES (?, ?)",
+            (user["id"], "orphanword"),
+        )
+        await db.commit()
+
+    words = await get_vocabulary(user["id"])
+    assert len(words) == 1
+    assert words[0]["word"] == "orphanword"
+    assert words[0]["occurrences"] == []

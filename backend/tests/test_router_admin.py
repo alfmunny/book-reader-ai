@@ -2071,6 +2071,45 @@ async def test_import_translations_overwrite_false_default_unchanged(admin_clien
     assert await get_cached_translation(202, 1, "zh") == ["untouched"]
 
 
+@pytest.mark.asyncio
+async def test_import_translations_overwrite_skips_empty_paragraph_entries(admin_client, admin_db):
+    """Regression #1717: import with overwrite=true must skip entries whose
+    paragraphs list is empty, exactly as the non-overwrite path does.
+    Covers admin.py line 694 (the `if not entry.paragraphs: continue` inside
+    the `if overwrite:` grouping block)."""
+    await save_book(203, {**BOOK_META, "id": 203}, BOOK_TEXT)
+    await save_translation(203, 0, "de", ["existing-ch0"])
+
+    resp = await admin_client.post(
+        "/api/admin/translations/import?overwrite=true",
+        json={
+            "entries": [
+                {
+                    "book_id": 203,
+                    "chapter_index": 0,
+                    "target_language": "de",
+                    "paragraphs": ["valid paragraph"],
+                },
+                {
+                    "book_id": 203,
+                    "chapter_index": 1,
+                    "target_language": "de",
+                    "paragraphs": [],  # empty — must be skipped
+                },
+            ],
+        },
+    )
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    # Only the non-empty entry counts toward the import total
+    assert resp.json()["imported"] == 1
+
+    from services.db import get_cached_translation
+    # The valid chapter was saved
+    assert await get_cached_translation(203, 0, "de") == ["valid paragraph"]
+    # The empty-paragraph chapter was skipped — no row should exist
+    assert await get_cached_translation(203, 1, "de") is None
+
+
 async def test_queue_retry_failed_normalizes_language(admin_client, admin_db):
     """POST /admin/queue/retry-failed with target_language='ZH-CN' must
     revive rows stored under 'zh'."""

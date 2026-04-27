@@ -2043,6 +2043,8 @@ export default function ReaderPage() {
                             <span className="text-green-700">Translated · <span className="font-mono">{translationUsedProvider.slice(13)}</span></span>
                           ) : translationUsedProvider.startsWith("queue failed") ? (
                             <span className="text-red-600">{translationUsedProvider}</span>
+                          ) : translationUsedProvider.startsWith("error") ? (
+                            <span className="text-red-600">Translation failed — please try again</span>
                           ) : null
                         )}
                       </div>

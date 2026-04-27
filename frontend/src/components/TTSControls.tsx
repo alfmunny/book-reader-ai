@@ -509,7 +509,7 @@ export default function TTSControls({
             <span className="font-medium">
               Generating chunk {loadingState.index + 1} of {loadingState.total}
             </span>
-            <span className="text-amber-600">
+            <span className="text-amber-700">
               {Math.round(((loadingState.index) / loadingState.total) * 100)}%
             </span>
           </div>

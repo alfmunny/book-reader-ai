@@ -1,0 +1,59 @@
+name: Frontend Build
+
+# Standalone `next build` check — decouples build correctness from the
+# Vercel preview-deploy quota (issue #1661). When Vercel rate-limits its
+# free-tier 100/day cap, the existing Vercel check fails or never runs,
+# and a healthy PR can look broken. This workflow runs the same
+# `npm run build` invocation Vercel runs, in GitHub-paid CI minutes, so
+# build correctness has a deterministic signal that doesn't depend on a
+# third-party quota.
+#
+# Note: the existing `test-frontend` job in ci.yml also runs `npm run
+# build` at the end. That step stays as belt-and-suspenders for now;
+# this workflow is the dedicated, required check called out by branch
+# protection. A follow-up PR can consolidate if desired.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-build.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # Same invocation and dummy env-var set as the build step in
+      # ci.yml's test-frontend job — keeps the two checks behaviourally
+      # identical while we run them in parallel.
+      - name: Verify Next.js production build
+        run: npm run build
+        env:
+          # next-auth v5 validates config at module load. Provide
+          # throwaway values so the build can boot the auth() factory
+          # without crashing.
+          AUTH_SECRET: ci-build-dummy-secret-do-not-use-in-prod
+          AUTH_GOOGLE_ID: ci-build-dummy-id
+          AUTH_GOOGLE_SECRET: ci-build-dummy-secret
+          NEXT_PUBLIC_API_URL: http://stub.test/api

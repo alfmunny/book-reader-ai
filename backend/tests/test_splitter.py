@@ -2319,3 +2319,97 @@ def test_walk_toc_with_path_non_tuple_no_href_silently_skipped():
     _walk_toc_with_path(toc_items, lambda href, title, path: calls.append((href, title)))
 
     assert calls == []
+
+
+# ── Lines 973-976, 986: _epub_nav_titles fallback resolve and None-item-id ───
+
+def test_epub_nav_titles_resolve_fallback_endswith_match():
+    """Regression #1687: lines 973-975 — when a TOC href ('ch1.xhtml') doesn't
+    match the item name ('chapters/ch1.xhtml') directly, the endswith fallback
+    loop resolves it and returns the correct title."""
+    from services.splitter import _epub_nav_titles
+    import ebooklib
+
+    class _Item:
+        def get_name(self): return "chapters/ch1.xhtml"
+        def get_id(self): return "ch1"
+
+    class _TocLeaf:
+        href = "ch1.xhtml"
+        title = "Chapter One"
+
+    class _Book:
+        toc = [_TocLeaf()]
+        def get_items_of_type(self, _type): return [_Item()]
+
+    result = _epub_nav_titles(_Book())
+    assert result == {"ch1": "Chapter One"}
+
+
+def test_epub_nav_titles_resolve_returns_none_entry_skipped():
+    """Regression #1687: lines 976, 986 — when href resolves to nothing,
+    on_entry returns early and the title is not added to the result."""
+    from services.splitter import _epub_nav_titles
+    import ebooklib
+
+    class _Item:
+        def get_name(self): return "chapters/ch1.xhtml"
+        def get_id(self): return "ch1"
+
+    class _TocLeaf:
+        href = "nonexistent.xhtml"
+        title = "Chapter One"
+
+    class _Book:
+        toc = [_TocLeaf()]
+        def get_items_of_type(self, _type): return [_Item()]
+
+    result = _epub_nav_titles(_Book())
+    assert result == {}
+
+
+# ── Lines 1036-1039, 1046: _epub_nav_anchors fallback resolve and None-item-id
+
+def test_epub_nav_anchors_resolve_fallback_endswith_match():
+    """Regression #1687: lines 1036-1038 — endswith fallback resolve in
+    _epub_nav_anchors when direct name lookup fails."""
+    from services.splitter import _epub_nav_anchors
+    import ebooklib
+
+    class _Item:
+        def get_name(self): return "chapters/ch1.xhtml"
+        def get_id(self): return "ch1"
+
+    class _TocLeaf:
+        href = "ch1.xhtml#sect1"
+        title = "Section 1"
+
+    class _Book:
+        toc = [_TocLeaf()]
+        def get_items_of_type(self, _type): return [_Item()]
+
+    result = _epub_nav_anchors(_Book())
+    assert "ch1" in result
+    assert result["ch1"] == [("sect1", "Section 1")]
+
+
+def test_epub_nav_anchors_resolve_returns_none_entry_skipped():
+    """Regression #1687: lines 1039, 1046 — when href resolves to nothing in
+    _epub_nav_anchors, on_entry returns early and result stays empty."""
+    from services.splitter import _epub_nav_anchors
+    import ebooklib
+
+    class _Item:
+        def get_name(self): return "chapters/ch1.xhtml"
+        def get_id(self): return "ch1"
+
+    class _TocLeaf:
+        href = "ghost.xhtml#sect1"
+        title = "Ghost Section"
+
+    class _Book:
+        toc = [_TocLeaf()]
+        def get_items_of_type(self, _type): return [_Item()]
+
+    result = _epub_nav_anchors(_Book())
+    assert result == {}

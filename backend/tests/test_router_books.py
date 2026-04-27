@@ -1692,3 +1692,86 @@ async def test_get_chapter_translation_out_of_range_chapter_returns_400(client, 
         f"got {resp.status_code}: {resp.text}"
     )
     assert "out of range" in resp.json()["detail"].lower()
+
+
+# ── Issue #1706: draft-upload guard in POST /chapters/{ch}/translation ─────────
+
+
+@pytest.mark.asyncio
+async def test_chapter_translation_returns_400_for_draft_upload(client, test_user):
+    """Regression #1706: POST /books/{id}/chapters/0/translation on an uploaded
+    book whose chapters are still draft must return 400 'not yet confirmed'.
+    Guard: routers/books.py lines 285-291 (inner-if TRUE branch)."""
+    sample_txt = (
+        b"Draft Book\n\nChapter 1\n\nSome content here.\n\n"
+        b"Chapter 2\n\nMore content follows.\n"
+    )
+    upload_resp = await client.post(
+        "/api/books/upload",
+        files={"file": ("draft.txt", io.BytesIO(sample_txt), "text/plain")},
+    )
+    assert upload_resp.status_code == 200, upload_resp.text
+    book_id = upload_resp.json()["book_id"]
+
+    # Deliberately skip confirmation so chapters remain in draft state.
+    resp = await client.post(
+        f"/api/books/{book_id}/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 400, (
+        f"Regression #1706: expected 400 for translate on draft upload, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "not yet confirmed" in resp.json().get("detail", "").lower(), (
+        f"Expected 'not yet confirmed' in error detail, got: {resp.json()}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_chapter_translation_succeeds_for_confirmed_upload(
+    client, test_user, insert_private_book
+):
+    """Regression #1706: POST /books/{id}/chapters/0/translation on a fully
+    confirmed upload book must proceed past the draft guard (line 287->294).
+    The chapter should be queued for translation."""
+    from services.auth import encrypt_api_key
+    from services.db import set_user_gemini_key
+
+    await insert_private_book(book_id=9870, owner_user_id=test_user["id"])
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("fake-gemini-key"))
+
+    resp = await client.post(
+        "/api/books/9870/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 200, (
+        f"Regression #1706: expected 200 (queued) for translate on confirmed upload, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json()["status"] in ("pending", "running"), (
+        f"Expected status pending/running, got: {resp.json()}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_enqueue_all_succeeds_for_confirmed_upload(
+    client, test_user, insert_private_book
+):
+    """Regression #1706: POST /books/{id}/translations/enqueue-all on a fully
+    confirmed upload book must proceed past the draft guard (line 382->387).
+    At least one chapter should be enqueued."""
+    await insert_private_book(book_id=9871, owner_user_id=test_user["id"])
+
+    resp = await client.post(
+        f"/api/books/9871/translations/enqueue-all",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 200, (
+        f"Regression #1706: expected 200 for enqueue-all on confirmed upload, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    data = resp.json()
+    assert data.get("ok") is True, f"Expected ok=True, got: {data}"
+    assert data.get("enqueued", 0) >= 1, (
+        f"Expected at least 1 chapter enqueued for confirmed upload, got: {data}"
+    )

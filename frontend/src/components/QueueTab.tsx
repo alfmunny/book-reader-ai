@@ -573,7 +573,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 : ""}
             </div>
             {s.retry_reason && (
-              <div className="text-amber-600 truncate">{s.retry_reason}</div>
+              <div className="truncate">{s.retry_reason}</div>
             )}
           </div>
         ) : null}

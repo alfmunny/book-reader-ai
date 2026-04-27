@@ -1843,3 +1843,111 @@ async def test_summary_uses_db_chapter_text_not_client_supplied(client, test_use
     assert "word" in captured_text[0], (
         f"Expected DB chapter text to be passed to Gemini, got: {repr(captured_text[0][:120])}"
     )
+
+
+# ── Issue #1771: Gemini exception text must reach server logs (operability) ───
+#
+# All four AI endpoints catch Gemini exceptions and surface a generic 500 to
+# the user. The user-facing message stays vague (no provider detail leak), but
+# the underlying exception MUST appear in server logs so operators can diagnose
+# the actual cause (deprecated model, quota, bad key, etc.) without attaching
+# a debugger or commenting out the catch block.
+
+
+_DIAG_MSG = "GEMINI_DIAG_TOKEN_xyzqq_42 — model not found"
+
+
+def _has_diag_in_logs(caplog) -> bool:
+    """The underlying exception message must appear somewhere in the log
+    record's text (message or formatted output, including traceback)."""
+    for r in caplog.records:
+        # logger.exception("...: %s", exc) embeds the exception via %s, AND
+        # also attaches the traceback as exc_info — both can carry the diag
+        # token. getMessage() formats the args; format() includes traceback.
+        formatted = r.getMessage()
+        if _DIAG_MSG in formatted:
+            return True
+        if r.exc_info and any(_DIAG_MSG in str(part) for part in r.exc_info if part):
+            return True
+    return False
+
+
+async def test_insight_gemini_error_logs_underlying_exception(client, test_user, caplog):
+    """Regression #1771: POST /ai/insight must log the underlying Gemini
+    exception so operators can diagnose without server-log surgery."""
+    import logging
+    await _set_key(test_user)
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.generate_insight = AsyncMock(side_effect=RuntimeError(_DIAG_MSG))
+        with caplog.at_level(logging.ERROR, logger="routers.ai"):
+            resp = await client.post("/api/ai/insight", json={
+                "chapter_text": "text", "book_title": "Book", "author": "Author",
+            })
+    assert resp.status_code == 500
+    assert _DIAG_MSG not in resp.json()["detail"], "Provider detail must not leak to wire"
+    assert _has_diag_in_logs(caplog), (
+        f"Regression #1771: insight 500 must log the underlying exception. "
+        f"Captured records: {[(r.levelname, r.getMessage()) for r in caplog.records]}"
+    )
+
+
+async def test_qa_gemini_error_logs_underlying_exception(client, test_user, caplog):
+    """Regression #1771: POST /ai/qa must log the underlying Gemini exception."""
+    import logging
+    await _set_key(test_user)
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.answer_question = AsyncMock(side_effect=RuntimeError(_DIAG_MSG))
+        with caplog.at_level(logging.ERROR, logger="routers.ai"):
+            resp = await client.post("/api/ai/qa", json={
+                "question": "?", "passage": "text", "book_title": "Book", "author": "Author",
+            })
+    assert resp.status_code == 500
+    assert _DIAG_MSG not in resp.json()["detail"]
+    assert _has_diag_in_logs(caplog), (
+        f"Regression #1771: qa 500 must log the underlying exception. "
+        f"Captured records: {[(r.levelname, r.getMessage()) for r in caplog.records]}"
+    )
+
+
+async def test_references_gemini_error_logs_underlying_exception(client, test_user, caplog):
+    """Regression #1771: POST /ai/references must log the underlying Gemini exception."""
+    import logging
+    await _set_key(test_user)
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.answer_question = AsyncMock(side_effect=RuntimeError(_DIAG_MSG))
+        with caplog.at_level(logging.ERROR, logger="routers.ai"):
+            resp = await client.post("/api/ai/references", json={
+                "book_title": "Faust", "author": "Goethe",
+            })
+    assert resp.status_code == 500
+    assert _DIAG_MSG not in resp.json()["detail"]
+    assert _has_diag_in_logs(caplog), (
+        f"Regression #1771: references 500 must log the underlying exception. "
+        f"Captured records: {[(r.levelname, r.getMessage()) for r in caplog.records]}"
+    )
+
+
+async def test_summary_gemini_error_logs_underlying_exception(client, test_user, tmp_db, caplog):
+    """Regression #1771: POST /ai/summary must log the underlying Gemini exception."""
+    import logging
+    from services.auth import encrypt_api_key as _enc
+    await save_book(9881, _BOOK_META, "word " * 300)
+    await set_setting("queue_api_key", _enc("test-gemini-key"))
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.generate_chapter_summary = AsyncMock(side_effect=RuntimeError(_DIAG_MSG))
+        mock_gemini.MODEL = "gemini-2.0"
+        with caplog.at_level(logging.ERROR, logger="routers.ai"):
+            resp = await client.post("/api/ai/summary", json={
+                "book_id": 9881,
+                "chapter_index": 0,
+                "chapter_text": "Chapter text here.",
+                "book_title": "Test Book",
+                "author": "Author",
+                "chapter_title": "Ch 1",
+            })
+    assert resp.status_code == 500
+    assert _DIAG_MSG not in resp.json()["detail"]
+    assert _has_diag_in_logs(caplog), (
+        f"Regression #1771: summary 500 must log the underlying exception. "
+        f"Captured records: {[(r.levelname, r.getMessage()) for r in caplog.records]}"
+    )

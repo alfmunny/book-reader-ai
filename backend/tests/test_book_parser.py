@@ -266,3 +266,46 @@ def test_multiple_blank_lines_collapsed():
     for ch in result["chapters"]:
         # No run of 3+ consecutive newlines
         assert "\n\n\n" not in ch["text"], f"Excess blank lines in chapter '{ch['title']}'"
+
+
+# ── Issue #1630: uncovered branches ─────────────────────────────────────────
+
+def test_find_boundaries_ignores_marker_after_nonblank_line():
+    """Regression #1630: line 34→28 — chapter marker immediately after a non-blank
+    line must NOT be added as a boundary (prev_blank=False)."""
+    txt = "My Novel\nCHAPTER 1\n\nText.\n\nCHAPTER 2\n\nMore text.\n\nCHAPTER 3\n\nEnd."
+    result = parse_txt(txt)
+    titles = [ch["title"] for ch in result["chapters"]]
+    # CHAPTER 1 follows non-blank "My Novel" → ignored; CHAPTER 2 and 3 have blank lines before → detected
+    assert "CHAPTER 2" in titles
+    assert "CHAPTER 3" in titles
+    assert "CHAPTER 1" not in titles
+
+
+def test_extract_author_ignores_too_short_candidate():
+    """Regression #1630: line 60→56 — 'by X' where X is ≤1 char fails the
+    length guard and the loop continues, eventually returning 'Unknown'."""
+    txt = "My Novel\nby A\n\n1\n\nText.\n\n2\n\nMore text.\n"
+    result = parse_txt(txt)
+    assert result["author"] == "Unknown"
+
+
+def test_parse_txt_short_front_matter_not_prepended():
+    """Regression #1630: line 92 False — front matter with ≤50 words is not
+    prepended as a 'Front Matter' chapter."""
+    txt = "Title\n\nCHAPTER 1\n\nBody text here.\n\nCHAPTER 2\n\nMore body text here.\n"
+    result = parse_txt(txt)
+    titles = [ch["title"] for ch in result["chapters"]]
+    assert "Front Matter" not in titles
+
+
+def test_parse_epub_raises_on_missing_dependency():
+    """Regression #1630: line 130 — ImportError on ebooklib is re-raised
+    as RuntimeError('ebooklib is not installed')."""
+    import sys
+    from unittest.mock import patch
+    from services.book_parser import parse_epub
+
+    with patch.dict(sys.modules, {"ebooklib": None, "ebooklib.epub": None}):
+        with pytest.raises((RuntimeError, ImportError)):
+            parse_epub(b"fake epub bytes")

@@ -317,6 +317,11 @@ interface Props {
     chapterIndex: number;
     translationText?: string;
   }) => void;
+  /**
+   * Called on a 500ms long-press when onWordTap is not provided.
+   * Opens the note/highlight editor for the pressed sentence.
+   */
+  onAnnotate?: (sentenceText: string, chapterIndex: number) => void;
   /** When false, annotation underlines and note dots are hidden. Default true. */
   showAnnotations?: boolean;
   /** Word to highlight (amber pulse) inside the flash-target sentence. */
@@ -446,6 +451,7 @@ export default function SentenceReader({
   annotations,
   scrollTargetSentence,
   onWordTap,
+  onAnnotate,
   showAnnotations = true,
   scrollTargetWord,
   vocabWords,
@@ -500,11 +506,27 @@ export default function SentenceReader({
     return best;
   }, [allSegments, currentTime, duration]);
 
-  // Auto-scroll active segment into view
+  // Auto-scroll active segment into view — scroll only #reader-scroll, not the window.
+  // scrollIntoView() on iOS Safari scrolls multiple ancestors including the body,
+  // which causes the whole page to jump upward (#1736). Use container.scrollTo() directly.
   const activeRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (currentIdx >= 0 && isPlaying) {
-      activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (currentIdx < 0 || !isPlaying || !activeRef.current) return;
+    const el = activeRef.current;
+    const container = document.getElementById("reader-scroll");
+    if (!container) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const relTop = elRect.top - containerRect.top;
+    const relBottom = elRect.bottom - containerRect.top;
+    if (relTop < 0 || relBottom > containerRect.height) {
+      container.scrollTo({
+        top: container.scrollTop + relTop - containerRect.height / 3,
+        behavior: "smooth",
+      });
     }
   }, [currentIdx, isPlaying]);
 
@@ -652,7 +674,7 @@ export default function SentenceReader({
             : "text-stone-500";
         };
 
-        // Long press (500ms) → open word action drawer.
+        // Long press (500ms) → open word action drawer or annotation panel.
         // Note: we intentionally do NOT preventDefault() on touch pointerdown.
         // Suppressing the native selection loupe also blocks sub-sentence
         // drag-selection on mobile (see #364). Motion-based disambiguation
@@ -661,7 +683,7 @@ export default function SentenceReader({
         // the drawer; if the loupe briefly appears before the timer fires,
         // removeAllRanges() inside the timer clears it.
         const handleSegLongPress = (e: React.PointerEvent, seg: Segment) => {
-          if (!onWordTap) return;
+          if (!onWordTap && !onAnnotate) return;
           const startX = e.clientX;
           const startY = e.clientY;
           longPressStartPos.current = { x: startX, y: startY };
@@ -670,29 +692,33 @@ export default function SentenceReader({
             // Prevent text selection
             window.getSelection()?.removeAllRanges();
 
-            // Extract word at press position
-            let word = "";
-            if ("caretRangeFromPoint" in document) {
-              const range = (document as any).caretRangeFromPoint(startX, startY);
-              if (range) { range.expand("word"); word = range.toString().trim(); }
-            }
-            if (!word) {
-              word = seg.text.split(/\s+/).reduce((a: string, b: string) => (b.length > a.length ? b : a), "");
-            }
-            word = word.replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
-                       .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "");
-            if (!word || word.length < 2) word = seg.text.split(/\s+/)[0] ?? "";
-
             // Haptic feedback
             if (navigator.vibrate) navigator.vibrate(10);
 
-            onWordTap({
-              word,
-              sentenceText: seg.text,
-              startTime: seg.startTime,
-              chapterIndex,
-              translationText: translationText || undefined,
-            });
+            if (onWordTap) {
+              // Extract word at press position
+              let word = "";
+              if ("caretRangeFromPoint" in document) {
+                const range = (document as any).caretRangeFromPoint(startX, startY);
+                if (range) { range.expand("word"); word = range.toString().trim(); }
+              }
+              if (!word) {
+                word = seg.text.split(/\s+/).reduce((a: string, b: string) => (b.length > a.length ? b : a), "");
+              }
+              word = word.replace(/^[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+/, "")
+                         .replace(/[^a-zA-Z\u00C0-\u024F\u0400-\u04FF]+$/, "");
+              if (!word || word.length < 2) word = seg.text.split(/\s+/)[0] ?? "";
+
+              onWordTap({
+                word,
+                sentenceText: seg.text,
+                startTime: seg.startTime,
+                chapterIndex,
+                translationText: translationText || undefined,
+              });
+            } else if (onAnnotate) {
+              onAnnotate(seg.text, chapterIndex);
+            }
           }, 500);
         };
 
@@ -761,10 +787,10 @@ export default function SentenceReader({
                   onSegmentClick(seg.startTime, seg.text);
                 }
               }}
-              onPointerDown={onWordTap ? (e) => handleSegLongPress(e, seg) : undefined}
-              onPointerUp={onWordTap ? cancelLongPress : undefined}
-              onPointerCancel={onWordTap ? cancelLongPress : undefined}
-              onPointerMove={onWordTap ? handlePointerMove : undefined}
+              onPointerDown={(onWordTap || onAnnotate) ? (e) => handleSegLongPress(e, seg) : undefined}
+              onPointerUp={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
+              onPointerCancel={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
+              onPointerMove={(onWordTap || onAnnotate) ? handlePointerMove : undefined}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
               {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatches)}

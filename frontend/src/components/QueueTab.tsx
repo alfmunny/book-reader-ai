@@ -836,7 +836,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   onClick={() => {
                     if (confirm("Clear queue API key?")) saveSettings({ api_key: "" });
                   }}
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 min-h-[44px]"
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
                 >
                   Clear
                 </button>
@@ -1022,7 +1022,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     </div>
                     <button
                       onClick={() => setChain(chain.filter((_, i) => i !== idx))}
-                      className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-red-200 text-red-500 shrink-0"
+                      className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-red-200 text-red-600 shrink-0"
                       title={`Remove ${labelForModel(m)} from chain`}
                       aria-label={`Remove ${labelForModel(m)} from chain`}
                     >
@@ -1248,7 +1248,7 @@ export default function QueueTab({ adminFetch }: Props) {
           <button
             onClick={clearAll}
             disabled={items.length === 0}
-            className="text-xs px-2 py-0.5 min-h-[44px] flex items-center rounded border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-40"
+            className="text-xs px-2 py-0.5 min-h-[44px] flex items-center rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
             title={itemFilter === "all" ? "Clear entire queue" : `Clear all ${itemFilter}`}
           >
             {itemFilter === "all" ? "Clear queue" : `Clear ${itemFilter}`}
@@ -1302,7 +1302,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 )}
                 {it.last_error && (
                   <span
-                    className="text-red-500 truncate flex-1 min-w-0"
+                    className="text-red-600 truncate flex-1 min-w-0"
                     title={it.last_error}
                   >
                     {it.last_error}
@@ -1319,7 +1319,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   )}
                   <button
                     onClick={() => remove(it)}
-                    className="px-1.5 py-0.5 rounded border border-red-200 text-red-500 min-h-[44px] flex items-center"
+                    className="px-1.5 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px] flex items-center"
                   >
                     Del
                   </button>

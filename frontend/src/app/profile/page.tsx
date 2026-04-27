@@ -383,7 +383,7 @@ export default function ProfilePage() {
                       <button
                         onClick={handleRemoveObsidianToken}
                         disabled={obsidianSaving}
-                        className="text-xs text-red-500 hover:text-red-700 underline disabled:opacity-50 min-h-[44px] inline-flex items-center"
+                        className="text-xs text-red-600 hover:text-red-700 underline disabled:opacity-50 min-h-[44px] inline-flex items-center"
                       >
                         Remove
                       </button>

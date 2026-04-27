@@ -1422,6 +1422,36 @@ async def test_enqueue_draft_book_returns_400(admin_client, admin_db):
     assert "draft" in res.json()["detail"].lower() or "confirm" in res.json()["detail"].lower()
 
 
+@pytest.mark.asyncio
+async def test_enqueue_confirmed_upload_book_proceeds(admin_client, admin_db):
+    """Regression #1709: confirmed upload book (no draft chapters) must pass the
+    draft guard in POST /admin/queue/enqueue-book and return 200.
+    Covers FALSE branch admin.py 1244->1249."""
+    import aiosqlite
+    async with aiosqlite.connect(admin_db) as db:
+        cur = await db.execute(
+            """INSERT INTO books (title, authors, languages, subjects, download_count,
+                                  cover, text, images, source, owner_user_id)
+               VALUES ('Confirmed Upload', '[]', '["en"]', '[]', 0, '', '', '[]', 'upload', 1)"""
+        )
+        book_id = cur.lastrowid
+        await db.execute(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft) "
+            "VALUES (?, 0, 'Chapter 1', ?, 0)",
+            (book_id, "word " * 200),
+        )
+        await db.commit()
+
+    res = await admin_client.post("/api/admin/queue/enqueue-book", json={
+        "book_id": book_id,
+        "target_languages": ["de"],
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data.get("ok") is True
+    assert data.get("enqueued", -1) >= 0
+
+
 # ── Retry-failed bulk endpoint ───────────────────────────────────────────────
 
 async def _seed_failed(book_id: int, chapter_index: int, target_language: str):

@@ -321,3 +321,56 @@ def test_parse_epub_raises_on_missing_dependency():
     with patch.dict(sys.modules, {"ebooklib": None, "ebooklib.epub": None}):
         with pytest.raises((RuntimeError, ImportError)):
             parse_epub(b"fake epub bytes")
+
+
+def test_parse_epub_happy_path_returns_title_author_chapters():
+    """Regression #1698: lines 118-127 — parse_epub returns title, author, and chapters
+    extracted from the EPUB DC metadata and build_chapters_from_epub."""
+    from unittest.mock import MagicMock, patch
+    from services.book_parser import parse_epub
+    from services.splitter import Chapter as SplitterChapter
+
+    fake_chapters = [
+        SplitterChapter(title="Chapter 1", text="Text one"),
+        SplitterChapter(title="Chapter 2", text="Text two"),
+    ]
+    mock_book = MagicMock()
+    mock_book.get_metadata.side_effect = lambda ns, name: (
+        [("My Great Novel", {})] if name == "title" else [("A. Author", {})]
+    )
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book), \
+         patch("services.splitter.build_chapters_from_epub", return_value=fake_chapters):
+        result = parse_epub(b"fake-epub-bytes")
+
+    assert result["title"] == "My Great Novel"
+    assert result["author"] == "A. Author"
+    assert len(result["chapters"]) == 2
+    assert result["chapters"][0] == {"title": "Chapter 1", "text": "Text one"}
+
+
+def test_parse_epub_falls_back_when_no_dc_metadata():
+    """Regression #1698: lines 120, 122 — missing DC title/creator yields 'Untitled'/'Unknown'."""
+    from unittest.mock import MagicMock, patch
+    from services.book_parser import parse_epub
+
+    mock_book = MagicMock()
+    mock_book.get_metadata.return_value = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book), \
+         patch("services.splitter.build_chapters_from_epub", return_value=[]):
+        result = parse_epub(b"fake-epub-bytes")
+
+    assert result["title"] == "Untitled"
+    assert result["author"] == "Unknown"
+    assert result["chapters"] == []
+
+
+def test_extract_title_returns_untitled_when_all_lines_exceed_100_chars():
+    """Regression #1698: line 52 — when every candidate line in the first 20 is
+    longer than 100 chars, _extract_title returns 'Untitled'."""
+    from services.book_parser import _extract_title
+
+    long_line = "x" * 101
+    text = "\n".join([long_line] * 25)
+    assert _extract_title(text) == "Untitled"

@@ -247,7 +247,7 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 
 ## #364 — Mobile sub-sentence selection (design note, 2026-04-27)
 
-**Status:** Design phase. Implementation deferred to a follow-up PR.
+**Status:** Shipped. Design note merged in #1671; implementation drops the touch `preventDefault` per Approach B.
 
 **Problem.** Mobile users cannot highlight a sub-sentence phrase. `SentenceReader` calls `e.preventDefault()` on touch `pointerdown` (introduced in PR #324, UX-003 fix) to suppress the browser's native selection loupe so the 500ms long-press cleanly opens the word-action drawer. Side-effect: native text selection is also blocked, so a mobile user can only annotate the **full sentence** via long-press, never a sub-phrase. Documented as #UX-001 in `docs/reader-interaction-design.md`.
 

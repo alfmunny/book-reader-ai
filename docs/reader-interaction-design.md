@@ -79,7 +79,7 @@ Text selection is **not supported** on mobile because:
 **Current mobile annotation path:**
 - Long-press (400 ms) → `onAnnotate(sentenceText, ci, position)` → AnnotationToolbar (full sentence only, not sub-sentence selection).
 
-**Gap (#UX-001 / #364)**: Mobile users cannot highlight a sub-sentence phrase. The proposed fix — drop the touch `preventDefault` and let pointer-motion disambiguation route quick-still holds to the word-action drawer and drag motions to native selection + the existing `SelectionToolbar` — is documented in `docs/design-improvement-plan.md` under "#364 — Mobile sub-sentence selection". Implementation pending.
+**Resolved (#UX-001 / #364)**: Mobile users can now drag-select sub-sentence phrases. `SentenceReader` no longer calls `e.preventDefault()` on touch pointerdown — the existing pointermove `>10px` cancel routes drag gestures to the browser's native selection (which then mounts the existing `SelectionToolbar`), while a still hold for 500ms still opens the word-action drawer. See `docs/design-improvement-plan.md` "#364 — Mobile sub-sentence selection" for the rationale and approaches considered.
 
 ---
 
@@ -148,9 +148,9 @@ When multiple interactions are triggered simultaneously, resolve in this order:
 
 ## 7. Known Issues (to be filed)
 
-| ID | Title | Severity |
-|----|-------|----------|
-| #UX-001 | Mobile: no text selection path for sub-sentence highlight | Medium |
+| ID | Title | Severity | Status |
+|----|-------|----------|--------|
+| #UX-001 | Mobile: no text selection path for sub-sentence highlight | Medium | Resolved (#364) |
 | #UX-002 | Empty / error state when chapters fail to load | High |
 | #UX-003 | SelectionToolbar "Read" plays simultaneously with chapter TTS | High |
 | #UX-004 | Pause chapter TTS when selection "Read" fires | High |

@@ -36,6 +36,7 @@ from services.db import (
     save_insight,
     get_insights,
     delete_insight,
+    list_cached_books,
 )
 
 
@@ -721,3 +722,63 @@ async def test_get_vocabulary_word_without_occurrence():
     assert len(words) == 1
     assert words[0]["word"] == "orphanword"
     assert words[0]["occurrences"] == []
+
+
+# ── Issue #1650: db.py defensive branch coverage ─────────────────────────────
+
+async def test_init_db_bare_db_path_skips_makedirs():
+    """Regression #1650: line 99→102 False branch — when DB_PATH is a bare filename
+    (no directory component), os.path.dirname returns '' and os.makedirs is skipped."""
+    import pathlib
+    bare = "cov1650_init_bare.db"
+    original = db_module.DB_PATH
+    db_module.DB_PATH = bare
+    try:
+        await init_db()
+    finally:
+        db_module.DB_PATH = original
+        pathlib.Path(bare).unlink(missing_ok=True)
+
+
+async def test_save_translation_queue_cleanup_exception_swallowed():
+    """Regression #1650: lines 426-430 — non-ImportError from mark_queue_row_done
+    is caught and logged; does not re-raise."""
+    book_id = 99513
+    await save_book(book_id, _BOOK_META_1634, "some text")
+    with patch(
+        "services.translation_queue.mark_queue_row_done",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("queue oops"),
+    ):
+        await save_translation(book_id, 0, "de", ["translated text"])
+
+
+async def test_save_book_auto_enqueue_exception_swallowed():
+    """Regression #1650: lines 520-522 — RuntimeError from enqueue_for_book
+    is caught and logged; does not re-raise."""
+    book_id = 99514
+    with patch(
+        "services.translation_queue.enqueue_for_book",
+        new_callable=AsyncMock,
+        side_effect=RuntimeError("enqueue fail"),
+    ):
+        await save_book(book_id, _BOOK_META_1634, "some text")
+
+
+async def test_list_cached_books_null_json_fields_not_parsed():
+    """Regression #1650: line 807→806 — when authors/languages/subjects is NULL
+    in the DB, isinstance(d.get(field), str) is False and json.loads is skipped."""
+    import aiosqlite
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO books"
+            " (id, title, authors, languages, subjects, download_count, cover, source)"
+            " VALUES (99515, 'Null JSON Test', NULL, NULL, NULL, 0, '', NULL)"
+        )
+        await db.commit()
+    result = await list_cached_books()
+    entry = next((b for b in result if b["id"] == 99515), None)
+    assert entry is not None
+    assert entry["authors"] is None
+    assert entry["languages"] is None
+    assert entry["subjects"] is None

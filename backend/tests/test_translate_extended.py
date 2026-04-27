@@ -192,6 +192,25 @@ async def test_translate_text_gemini_without_key_raises():
         )
 
 
+async def test_google_translate_verse_empty_line_preserved():
+    """Regression #1626: a whitespace-only line within a verse paragraph maps to \"\"
+    (lines 121-122 in _google_translate). The empty line must NOT be sent to
+    GoogleTranslator — only non-empty lines should be translated."""
+    # 5 short lines + 1 whitespace-only line = detected as verse (6 lines, 5 non-empty < 55 chars)
+    verse = "Short line one\nShort line two\n   \nShort line four\nShort line five\nShort line six"
+    with patch("deep_translator.GoogleTranslator") as MockGT:
+        instance = MockGT.return_value
+        instance.translate.side_effect = ["Zeile eins", "Zeile zwei", "Zeile vier", "Zeile fünf", "Zeile sechs"]
+
+        result = await _google_translate(verse, "en", "de")
+
+    assert len(result) == 1
+    output_lines = result[0].split("\n")
+    assert len(output_lines) == 6
+    assert output_lines[2] == ""  # whitespace-only line becomes empty string
+    assert instance.translate.call_count == 5  # only the 5 non-empty lines translated
+
+
 async def test_translate_text_defaults_to_google():
     with patch("deep_translator.GoogleTranslator") as MockGT:
         instance = MockGT.return_value

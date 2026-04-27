@@ -2260,3 +2260,22 @@ def test_build_chapters_from_epub_strips_heading_when_ncx_title_is_substring():
     assert body.lstrip().startswith("It was a dark"), (
         f"Body should start with the actual prose, got: {body[:120]!r}"
     )
+
+
+# ── Lines 1150-1154: _epub_heading_title heading-found and exception paths ────
+
+def test_epub_heading_title_returns_first_heading_text():
+    """Regression #1681: lines 1150-1152 — when XHTML contains a heading,
+    _epub_heading_title returns its text content."""
+    from services.splitter import _epub_heading_title
+    raw = b"<html><body><h1>My Chapter</h1><p>Some prose.</p></body></html>"
+    assert _epub_heading_title(raw) == "My Chapter"
+
+
+def test_epub_heading_title_returns_empty_on_parse_exception(monkeypatch):
+    """Regression #1681: lines 1153-1154 — when lxml.html.fromstring raises,
+    _epub_heading_title catches the exception and returns empty string."""
+    from services.splitter import _epub_heading_title
+    import lxml.html
+    monkeypatch.setattr(lxml.html, "fromstring", lambda _: (_ for _ in ()).throw(ValueError("bad xml")))
+    assert _epub_heading_title(b"<html></html>") == ""

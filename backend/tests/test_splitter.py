@@ -2413,3 +2413,34 @@ def test_epub_nav_anchors_resolve_returns_none_entry_skipped():
 
     result = _epub_nav_anchors(_Book())
     assert result == {}
+
+
+# ── Line 797: _epub_toc_containers empty container skipped ───────────────────
+
+def test_epub_toc_containers_empty_table_is_skipped():
+    """Regression #1691: line 797 — when a container (table/ol/ul) has no
+    tr/li children, the loop continues without adding it to the result."""
+    from services.splitter import _epub_toc_containers
+    from lxml import html as lxmlhtml
+
+    body = lxmlhtml.fromstring(
+        "<body>"
+        "<table></table>"
+        "<p>Some content.</p>"
+        "</body>"
+    )
+    result = _epub_toc_containers(body)
+    assert result == []
+
+
+# ── Line 854→852: _strip_leading_headings parentless heading gracefully skipped
+
+def test_strip_leading_headings_handles_parentless_heading():
+    """Regression #1691: line 854 False branch — when a heading element has no
+    parent (it IS the root of the tree), getparent() returns None and the
+    remove() call is skipped without error."""
+    from services.splitter import _strip_leading_headings
+    from lxml import html as lxmlhtml
+
+    root = lxmlhtml.fromstring("<h1>Title<p>Paragraph text.</p></h1>")
+    _strip_leading_headings(root)

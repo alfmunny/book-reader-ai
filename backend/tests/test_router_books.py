@@ -458,6 +458,42 @@ async def test_translation_status_with_translations(client):
     assert data["total_chapters"] >= 2
 
 
+@pytest.mark.asyncio
+async def test_translation_status_includes_queue_counts(client):
+    """Regression #1723: translation-status must report pending/running/failed
+    queue counts when translation_queue rows exist for the book.
+
+    Covers books.py line 140 — the `async for row in cursor` loop body is only
+    executed when the grouped status query returns rows."""
+    from services.db import save_translation, save_book as _save_book
+    from services.translation_queue import enqueue
+    from services.book_chapters import clear_cache
+    import aiosqlite
+
+    book_id = 8877
+    meta = {**MOCK_META, "id": book_id}
+    text = (
+        "CHAPTER I\n\n" + ("First chapter content. " * 80) + "\n\n"
+        + "CHAPTER II\n\n" + ("Second chapter content. " * 80)
+    )
+    clear_cache(book_id)
+    await _save_book(book_id, meta, text)
+    # ch0 already translated
+    await save_translation(book_id, 0, "de", ["Übersetzung."])
+    # ch1 queued (pending)
+    await enqueue(book_id, 1, "de")
+
+    resp = await client.get(f"/api/books/{book_id}/translation-status?target_language=de")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["translated_chapters"] == 1
+    assert data["queue_pending"] == 1, (
+        f"Expected queue_pending=1 for ch1 in queue, got: {data}"
+    )
+    assert data["queue_running"] == 0
+    assert data["queue_failed"] == 0
+
+
 # ── Chapter queue-status endpoint ────────────────────────────────────────────
 
 async def test_chapter_queue_status_nonexistent_book_returns_404(client):

@@ -219,7 +219,7 @@ export default function Home() {
               className={`px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors ${
                 tab === key
                   ? "border-amber-700 text-amber-900"
-                  : "border-transparent text-amber-600 hover:text-amber-800"
+                  : "border-transparent text-amber-700 hover:text-amber-900"
               }`}
             >
               {label}
@@ -658,7 +658,7 @@ export default function Home() {
                     title="Grid view"
                     aria-label="Grid view"
                     aria-pressed={popularView === "grid"}
-                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
+                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
                   >
                     <GridViewIcon className="w-4 h-4" />
                   </button>
@@ -667,7 +667,7 @@ export default function Home() {
                     title="List view"
                     aria-label="List view"
                     aria-pressed={popularView === "list"}
-                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-500 hover:text-amber-700"}`}
+                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
                   >
                     <ListViewIcon className="w-4 h-4" />
                   </button>

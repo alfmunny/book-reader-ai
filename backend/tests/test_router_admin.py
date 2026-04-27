@@ -3561,3 +3561,32 @@ async def test_retry_failed_oversized_target_language_returns_422(admin_client):
     assert res.status_code == 422, (
         f"Expected 422 for oversized target_language in queue/retry-failed, got {res.status_code}: {res.text}"
     )
+
+
+# ── Issue #1586: dry-run no-key and corrupt-key paths ─────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_queue_dry_run_no_api_key_returns_400(admin_client):
+    """Regression #1586: POST /admin/queue/dry-run with no queue_api_key must return 400."""
+    with patch("routers.admin.get_setting", new_callable=AsyncMock, return_value=""):
+        res = await admin_client.post("/api/admin/queue/dry-run", json={"target_language": "zh"})
+    assert res.status_code == 400, (
+        f"Regression #1586: expected 400 when queue_api_key is not configured, "
+        f"got {res.status_code}: {res.text}"
+    )
+    assert "api key" in res.json()["detail"].lower() or "key" in res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_queue_dry_run_corrupt_api_key_returns_400(admin_client):
+    """Regression #1586: POST /admin/queue/dry-run with a corrupt queue_api_key must return 400."""
+    from fastapi import HTTPException as FastAPIHTTPException
+    with patch("routers.admin.get_setting", new_callable=AsyncMock, return_value="not-a-valid-fernet-token"), \
+         patch("routers.admin.decrypt_api_key", side_effect=FastAPIHTTPException(status_code=500, detail="Could not decrypt API key")):
+        res = await admin_client.post("/api/admin/queue/dry-run", json={"target_language": "zh"})
+    assert res.status_code == 400, (
+        f"Regression #1586: expected 400 for corrupt queue_api_key in dry-run, "
+        f"got {res.status_code}: {res.text}"
+    )
+    assert "decrypt" in res.json()["detail"].lower() or "key" in res.json()["detail"].lower()

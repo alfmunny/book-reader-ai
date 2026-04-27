@@ -106,10 +106,11 @@ async def upload_book(
     filename = file.filename or ""
     if len(filename) > 255:
         raise HTTPException(status_code=422, detail="Filename too long (max 255 characters).")
-    if filename.endswith(".txt"):
+    filename_lower = filename.lower()
+    if filename_lower.endswith(".txt"):
         fmt = "txt"
         max_size = MAX_TXT_BYTES
-    elif filename.endswith(".epub"):
+    elif filename_lower.endswith(".epub"):
         fmt = "epub"
         max_size = MAX_EPUB_BYTES
     else:

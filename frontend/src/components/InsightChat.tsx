@@ -459,7 +459,7 @@ export default function InsightChat({
             return (
               <div key={i} className="flex items-center gap-2 py-1">
                 <div className="flex-1 h-px bg-gray-100" />
-                <span className="text-[11px] text-gray-400 font-medium px-1 shrink-0">
+                <span className="text-[11px] text-gray-600 font-medium px-1 shrink-0">
                   {msg.content}
                 </span>
                 <div className="flex-1 h-px bg-gray-100" />
@@ -538,8 +538,8 @@ export default function InsightChat({
                       title={isSaved ? "Already saved" : "Save to notes"}
                       className={`mt-1.5 flex items-center gap-1 min-h-[44px] text-[11px] transition-colors ${
                         isSaved
-                          ? "text-gray-300 cursor-default"
-                          : "text-gray-400 hover:text-amber-700"
+                          ? "text-gray-500 cursor-default"
+                          : "text-gray-600 hover:text-amber-700"
                       }`}
                     >
                       <BookmarkIcon className="w-3 h-3" fill={isSaved ? "currentColor" : "none"} />
@@ -611,7 +611,7 @@ export default function InsightChat({
             <ArrowUpIcon className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[11px] text-gray-400 mt-1">Enter to send · Shift+Enter for newline</p>
+        <p className="text-[11px] text-gray-600 mt-1">Enter to send · Shift+Enter for newline</p>
       </div>
     </div>
   );

@@ -99,7 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className={`px-3 md:px-4 py-2.5 md:py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap min-h-[44px] md:min-h-0 flex items-center ${
                 current === key
                   ? "border-amber-700 text-amber-900"
-                  : "border-transparent text-amber-600 hover:text-amber-800"
+                  : "border-transparent text-amber-700 hover:text-amber-900"
               }`}
             >
               {label}

@@ -980,7 +980,7 @@ export default function ReaderPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500" />
+                  <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-700" />
                 </div>
                 <button
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
@@ -2259,7 +2259,7 @@ export default function ReaderPage() {
                   </option>
                 ))}
               </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-500" />
+              <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-700" />
             </div>
 
             <button

@@ -226,16 +226,23 @@ export default function FlashcardsPage() {
               style={{ boxShadow: "var(--shadow-card)" }}
             >
               <span className="text-xs text-stone-500 uppercase tracking-wide">
-                {flipped ? "Definition" : "Word"}
+                {flipped ? "Context" : "Word"}
               </span>
               {!flipped ? (
                 <span className="font-serif text-3xl text-ink font-bold text-center">
                   {currentCard.word}
                 </span>
               ) : (
-                <div className="text-center space-y-2">
-                  <p className="text-sm text-stone-500 italic">
-                    Tap a grade button below to continue
+                <div className="text-center space-y-2" aria-live="polite">
+                  {currentCard.context ? (
+                    <p className="font-serif text-base text-ink leading-relaxed">
+                      {currentCard.context}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-stone-500 italic">No context saved</p>
+                  )}
+                  <p className="text-xs text-stone-500 mt-2">
+                    How well did you remember <span className="font-medium text-ink">{currentCard.word}</span>?
                   </p>
                 </div>
               )}

@@ -150,7 +150,7 @@ function AnnotationCard({
           <button
             onClick={onDelete}
             disabled={isDeleting}
-            className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] flex items-center justify-center"
+            className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Delete annotation"
             aria-label={`Delete annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
@@ -202,7 +202,7 @@ function InsightCard({
         <button
           onClick={onDelete}
           disabled={isDeleting}
-          className="text-red-400 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="Delete insight"
           aria-label={`Delete insight: ${ins.question.slice(0, 60)}`}
         >

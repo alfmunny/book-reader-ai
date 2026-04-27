@@ -273,7 +273,7 @@ async def summary(req: SummaryRequest, _user: dict = Depends(get_current_user)):
 
         try:
             content = await gemini.generate_chapter_summary(
-                api_key, req.chapter_text, req.book_title, req.author, req.chapter_title
+                api_key, _chapters[req.chapter_index].text, req.book_title, req.author, req.chapter_title
             )
         except Exception as exc:
             logger.exception("POST /ai/summary book=%s ch=%s: %s", req.book_id, req.chapter_index, exc)

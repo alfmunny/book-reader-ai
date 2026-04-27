@@ -2279,3 +2279,43 @@ def test_epub_heading_title_returns_empty_on_parse_exception(monkeypatch):
     import lxml.html
     monkeypatch.setattr(lxml.html, "fromstring", lambda _: (_ for _ in ()).throw(ValueError("bad xml")))
     assert _epub_heading_title(b"<html></html>") == ""
+
+
+# ── Lines 937→939, 943→932: _walk_toc_with_path False branches ───────────────
+
+def test_walk_toc_with_path_tuple_no_href_still_recurses_children():
+    """Regression #1685: line 937→939 — when a tuple entry's section has no
+    href/title, on_entry is not called for that section but children are still
+    walked so their entries can fire on_entry."""
+    from services.splitter import _walk_toc_with_path
+
+    class _Section:
+        href = None
+        title = None
+
+    class _Leaf:
+        href = "child.xhtml"
+        title = "Child Chapter"
+
+    calls = []
+    toc_items = [(_Section(), [_Leaf()])]
+    _walk_toc_with_path(toc_items, lambda href, title, path: calls.append((href, title)))
+
+    assert len(calls) == 1
+    assert calls[0] == ("child.xhtml", "Child Chapter")
+
+
+def test_walk_toc_with_path_non_tuple_no_href_silently_skipped():
+    """Regression #1685: line 943→932 — a non-tuple TOC leaf with no href
+    (or no title) is silently skipped; on_entry is never called."""
+    from services.splitter import _walk_toc_with_path
+
+    class _EmptyLeaf:
+        href = None
+        title = None
+
+    calls = []
+    toc_items = [_EmptyLeaf()]
+    _walk_toc_with_path(toc_items, lambda href, title, path: calls.append((href, title)))
+
+    assert calls == []

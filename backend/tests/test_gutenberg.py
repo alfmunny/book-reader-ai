@@ -154,3 +154,142 @@ async def test_get_book_text_normalizes_line_endings():
     assert result == "Line1\nLine2\nLine3"
 
 
+# ── get_book_epub (issue #1615) ───────────────────────────────────────────────
+
+
+async def test_get_book_epub_returns_noimages_epub():
+    """Regression #1615: get_book_epub must prefer the noimages EPUB URL over
+    any other EPUB format (lines 116-117: epub_url = url; break)."""
+    from services.gutenberg import get_book_epub
+    formats = {
+        "application/epub+zip": "https://www.gutenberg.org/ebooks/1342.epub",
+        "application/epub+zip; noimages": "https://www.gutenberg.org/ebooks/1342.epub.noimages",
+    }
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(
+            return_value=httpx.Response(200, json={"formats": formats})
+        )
+        respx.get("https://www.gutenberg.org/ebooks/1342.epub.noimages").mock(
+            return_value=httpx.Response(200, content=b"epub-bytes")
+        )
+        result = await get_book_epub(1342)
+
+    assert result is not None
+    assert result[0] == b"epub-bytes"
+    assert "noimages" in result[1]
+
+
+async def test_get_book_epub_returns_none_when_no_epub_format():
+    """Regression #1615: get_book_epub must return None when the formats dict
+    has no EPUB key (line 122: return None)."""
+    from services.gutenberg import get_book_epub
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(
+            return_value=httpx.Response(200, json={"formats": {"text/plain": "https://example.com/1342.txt"}})
+        )
+        result = await get_book_epub(1342)
+
+    assert result is None
+
+
+async def test_get_book_epub_returns_none_on_metadata_fetch_error():
+    """Regression #1615: get_book_epub must return None when the Gutendex API
+    call raises (lines 109-110: except Exception: return None)."""
+    from services.gutenberg import get_book_epub
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(side_effect=httpx.ConnectError("timeout"))
+        result = await get_book_epub(1342)
+
+    assert result is None
+
+
+async def test_get_book_epub_returns_none_on_download_error():
+    """Regression #1615: get_book_epub must return None when the EPUB download
+    raises (lines 129-131: except Exception: return None)."""
+    from services.gutenberg import get_book_epub
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(
+            return_value=httpx.Response(200, json={
+                "formats": {"application/epub+zip": "https://www.gutenberg.org/ebooks/1342.epub"}
+            })
+        )
+        respx.get("https://www.gutenberg.org/ebooks/1342.epub").mock(
+            side_effect=httpx.ConnectError("download failed")
+        )
+        result = await get_book_epub(1342)
+
+    assert result is None
+
+
+async def test_get_book_epub_returns_none_on_non_200_download():
+    """Regression #1615: get_book_epub must return None when the EPUB download
+    returns a non-200 status (line 131: return None after try block)."""
+    from services.gutenberg import get_book_epub
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(
+            return_value=httpx.Response(200, json={
+                "formats": {"application/epub+zip": "https://www.gutenberg.org/ebooks/1342.epub"}
+            })
+        )
+        respx.get("https://www.gutenberg.org/ebooks/1342.epub").mock(
+            return_value=httpx.Response(404)
+        )
+        result = await get_book_epub(1342)
+
+    assert result is None
+
+
+async def test_get_book_text_uses_api_text_url_when_available():
+    """Regression #1615: get_book_text must use the API-provided text_url fast
+    path when get_book_meta returns a non-empty text_url (lines 145-149)."""
+    from services.gutenberg import get_book_text
+    api_text_url = "https://www.gutenberg.org/cache/epub/1342/pg1342.txt"
+    meta_response = {
+        "id": 1342,
+        "title": "Pride and Prejudice",
+        "authors": [{"name": "Austen, Jane"}],
+        "languages": ["en"],
+        "subjects": [],
+        "download_count": 50000,
+        "formats": {
+            "text/plain; charset=utf-8": api_text_url,
+            "image/jpeg": "https://covers.example.com/1342.jpg",
+        },
+    }
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(
+            return_value=httpx.Response(200, json=meta_response)
+        )
+        respx.get(api_text_url).mock(
+            return_value=httpx.Response(200, text="API fast path text.")
+        )
+        result = await get_book_text(1342)
+
+    assert result == "API fast path text."
+
+
+async def test_get_book_text_falls_back_when_api_text_url_empty():
+    """Regression #1615: when metadata returns no text_url, get_book_text must
+    fall through to the pattern-based fallback (branch 145->154 False branch)."""
+    from services.gutenberg import get_book_text
+    meta_response = {
+        "id": 1342,
+        "title": "Pride and Prejudice",
+        "authors": [{"name": "Austen, Jane"}],
+        "languages": ["en"],
+        "subjects": [],
+        "download_count": 50000,
+        "formats": {"image/jpeg": "https://covers.example.com/1342.jpg"},
+    }
+    with respx.mock:
+        respx.get("https://gutendex.com/books/1342").mock(
+            return_value=httpx.Response(200, json=meta_response)
+        )
+        respx.get("https://www.gutenberg.org/files/1342/1342-0.txt").mock(
+            return_value=httpx.Response(200, text="Fallback text.")
+        )
+        result = await get_book_text(1342)
+
+    assert result == "Fallback text."
+
+

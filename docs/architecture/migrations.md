@@ -232,3 +232,46 @@ Same pattern as #851 (PR 1/4): orphan DELETE first (mandatory per
 CLAUDE.md migration policy), then table rewrite, then recreate indexes.
 Runner context: migrations run with PRAGMA foreign_keys = OFF, so the
 INSERT … SELECT * step doesn't trigger the new FKs.
+
+## 033 — `033_fk_translations_audio_cache.sql`
+
+Issue #754 / #842 / design doc: docs/design/declared-fks-schema.md
+PR 3 of 4: declare REFERENCES books(id) ON DELETE CASCADE on
+translations(book_id) and audio_cache(book_id). These are read-heavy
+cache tables with the largest row counts in the series; isolating them
+to their own migration keeps transaction lock time contained on
+Railway's resource-constrained SQLite instance.
+
+Same pattern as #851 (PR 1/4) and #858 (PR 2/4): orphan DELETE first
+(mandatory per CLAUDE.md migration policy), then table rewrite, then
+recreate indexes. Runner context: migrations run with
+PRAGMA foreign_keys = OFF, so the INSERT … SELECT * step doesn't
+trigger the new FKs.
+
+## 034 — `034_fk_word_occurrences_translation_queue.sql`
+
+Issue #754 / #843 / design doc: docs/design/declared-fks-schema.md
+PR 4 of 4 (final): declare REFERENCES books(id) ON DELETE CASCADE on
+word_occurrences(book_id) and translation_queue(book_id). Closes out
+the declared-FK hardening series started in #700.
+
+word_occurrences already has a declared FK on vocabulary_id (migration 014);
+we preserve that and add the books FK alongside.
+
+translation_queue.queued_by is free-form TEXT (admin email or NULL,
+migration 009) — not a user_id reference — so no users FK is needed.
+
+Same pattern as #851 / #858 / #975: orphan DELETE first (mandatory
+per CLAUDE.md migration policy), then table rewrite, then recreate
+indexes. Runner context: PRAGMA foreign_keys = OFF during migrations,
+so the INSERT … SELECT step doesn't trigger the new FKs.
+
+## 035 — `035_chat_messages.sql`
+
+Issue #907 / design doc: docs/design/insightchat-history-persistence.md
+Persist InsightChat conversation history on the backend so threads
+carry across browsers / devices / cache clears. See the design for
+the "why a separate table vs reusing book_insights" decision.
+
+Declared FKs from day one per the #754 policy: ON DELETE CASCADE
+means delete_user and admin.delete_book need no shadow-cleanup.

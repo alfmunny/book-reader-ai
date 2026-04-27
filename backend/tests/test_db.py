@@ -398,3 +398,64 @@ async def test_get_or_create_user_github_stale_return():
     assert result["role"] == "admin", (
         f"Stale return #541: expected role='admin' (post-injection DB state), got {result['role']!r}"
     )
+
+
+# ── Regression #1703: save_book must not cascade-delete translations ──────────
+
+BOOK_1703_META = {
+    "title": "Test Book",
+    "authors": ["Author"],
+    "languages": ["en"],
+    "subjects": [],
+    "download_count": 0,
+    "cover": "",
+}
+
+
+async def test_save_book_twice_preserves_translations():
+    """Regression #1703: calling save_book() on an already-cached Gutenberg book
+    must NOT delete its translations (INSERT OR REPLACE fires ON DELETE CASCADE)."""
+    await save_book(9999, BOOK_1703_META, "chapter text")
+    await save_translation(9999, 0, "zh", ["first translation"])
+
+    # Re-import the book (simulates user clicking 'import' in reader)
+    await save_book(9999, {**BOOK_1703_META, "title": "Updated Title"}, "updated text")
+
+    cached = await get_cached_translation(9999, 0, "zh")
+    assert cached == ["first translation"], (
+        "save_book() wiped translations via ON DELETE CASCADE (#1703)"
+    )
+
+
+async def test_save_book_twice_preserves_audio_cache():
+    """Regression #1703: re-importing a book must not cascade-delete audio_cache rows."""
+    import aiosqlite
+    await save_book(9998, BOOK_1703_META, "text")
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO audio_cache "
+            "(book_id, chapter_index, chunk_index, provider, voice, content_type, audio) "
+            "VALUES (?,0,0,'tts','en','audio/mp3',X'deadbeef')",
+            (9998,),
+        )
+        await db.commit()
+
+    await save_book(9998, BOOK_1703_META, "new text")
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM audio_cache WHERE book_id=9998"
+        ) as cur:
+            (count,) = await cur.fetchone()
+    assert count == 1, "save_book() wiped audio_cache via ON DELETE CASCADE (#1703)"
+
+
+async def test_save_book_updates_metadata_on_reimport():
+    """save_book() on an existing book should still update title and text."""
+    await save_book(9997, BOOK_1703_META, "old text")
+    await save_book(9997, {**BOOK_1703_META, "title": "New Title"}, "new text")
+
+    book = await get_cached_book(9997)
+    assert book["title"] == "New Title"
+    assert book["text"] == "new text"

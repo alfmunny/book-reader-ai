@@ -882,6 +882,42 @@ async def test_trigger_migration_applies_cleanly(tmp_db, tmp_migrations, monkeyp
         assert count == 2
 
 
+# ── _split_sql_statements unit tests (issue #1613) ───────────────────────────
+
+
+def test_split_sql_last_statement_no_trailing_semicolon():
+    """Regression #1613: SQL whose last statement has no trailing ';' must still
+    be captured.  Covers lines 59-60 (next_semi==-1 branch) and 82-84 (residual
+    current after loop exit) in _split_sql_statements."""
+    from services.migrations import _split_sql_statements
+    sql = "CREATE TABLE a (id INTEGER);\nCREATE TABLE b (id INTEGER)"
+    stmts = _split_sql_statements(sql)
+    assert len(stmts) == 2, f"Expected 2 statements, got {len(stmts)}: {stmts}"
+    assert any("CREATE TABLE a" in s for s in stmts)
+    assert any("CREATE TABLE b" in s for s in stmts)
+
+
+def test_split_sql_only_statement_no_semicolon():
+    """Regression #1613: SQL with no semicolon at all is returned as a single
+    statement.  Exercises the next_semi==-1 break path (lines 59-60)."""
+    from services.migrations import _split_sql_statements
+    sql = "SELECT 1"
+    stmts = _split_sql_statements(sql)
+    assert stmts == ["SELECT 1"]
+
+
+def test_split_sql_orphan_end_keyword_does_not_crash():
+    """Regression #1613: an END token appearing when in_trigger==0 must not
+    crash or corrupt parsing.  Covers the False branch of
+    'if in_trigger > 0:' (line 77->79 in _split_sql_statements)."""
+    from services.migrations import _split_sql_statements
+    sql = "CREATE TABLE t (id INTEGER); END;"
+    stmts = _split_sql_statements(sql)
+    assert any("CREATE TABLE t" in s for s in stmts), (
+        f"CREATE TABLE t must be in parsed statements, got: {stmts}"
+    )
+
+
 async def test_migration_025_unique_constraint_enforced(tmp_db):
     """user_book_chapters (book_id, chapter_index) UNIQUE must reject duplicates."""
     await run_migrations(tmp_db)

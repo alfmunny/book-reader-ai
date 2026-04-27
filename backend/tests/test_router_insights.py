@@ -455,3 +455,28 @@ async def test_save_insight_returns_dict_when_row_is_none(tmp_db, monkeypatch):
     # Must not raise TypeError even when fetchone returns None.
     result = await save_insight(1, 1, None, "Q?", "A.")
     assert isinstance(result, dict), f"save_insight must return a dict, got {type(result)}"
+
+
+# ── Issue #1598: POST /insights chapter-index out-of-range ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_insight_out_of_range_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #1598: POST /insights with chapter_index beyond the book's
+    chapter count must return 400. Guard: routers/insights.py lines 31-34."""
+    from services.book_chapters import clear_cache as _clear
+    text = "Chapter I\n\n" + "word " * 100 + "\n\nChapter II\n\n" + "word " * 100
+    ins_book_id = 8060
+    await save_book(ins_book_id, {**_META, "id": ins_book_id}, text)
+    _clear()
+    resp = await client.post("/api/insights", json={
+        "book_id": ins_book_id,
+        "chapter_index": 999,
+        "question": "Why?",
+        "answer": "Because.",
+    })
+    assert resp.status_code == 400, (
+        f"Regression #1598: expected 400 for out-of-range chapter_index in insights, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()

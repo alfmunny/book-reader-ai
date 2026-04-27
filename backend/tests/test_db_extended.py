@@ -5,6 +5,7 @@ get_cached_translation_with_meta.
 """
 
 import pytest
+from unittest.mock import AsyncMock, patch
 import services.db as db_module
 from services.db import (
     init_db,
@@ -615,3 +616,56 @@ async def test_get_vocabulary_multiple_words_multiple_occurrences(tmp_db):
     assert occ["book_id"] == 1
     assert occ["chapter_index"] == 0
     assert occ["sentence_text"] == "First zeitgeist sentence."
+
+
+# ── _update_lemma unit tests (issue #1617) ─────────────────────────────────────
+#
+# conftest.py patches db_module._update_lemma for the whole suite so tests
+# never make real Wiktionary HTTP calls.  We import the real function at module
+# load time (before any monkeypatching happens) so these tests can exercise the
+# actual implementation.
+
+from services.db import _update_lemma as _real_update_lemma  # noqa: E402
+
+
+async def test_update_lemma_writes_lemma_and_language_to_db():
+    """Regression #1617: _update_lemma must update vocabulary.lemma and
+    vocabulary.language when wiktionary.lookup succeeds."""
+    import aiosqlite
+    user = await get_or_create_user("lemma_test_u1", "lemma1@test.com", "L1", "")
+    saved = await save_word(user["id"], "running", 1, 0, "He was running fast.")
+    vocab_id = saved["id"]
+
+    wikt_result = {"lemma": "run", "language": "en", "definitions": []}
+    with patch("services.wiktionary.lookup", new=AsyncMock(return_value=wikt_result)):
+        await _real_update_lemma(vocab_id, "running", 1)
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT lemma, language FROM vocabulary WHERE id=?", (vocab_id,)) as cur:
+            row = await cur.fetchone()
+
+    assert row["lemma"] == "run", f"Expected lemma='run', got '{row['lemma']}'"
+    assert row["language"] == "en", f"Expected language='en', got '{row['language']}'"
+
+
+async def test_update_lemma_swallows_wiktionary_exception():
+    """Regression #1617: _update_lemma must not propagate exceptions — the
+    except Exception block (lines 924-926) must silently absorb failures."""
+    import aiosqlite
+    user = await get_or_create_user("lemma_test_u2", "lemma2@test.com", "L2", "")
+    saved = await save_word(user["id"], "unknown", 1, 0, "An unknown thing.")
+    vocab_id = saved["id"]
+
+    with patch("services.wiktionary.lookup", new=AsyncMock(side_effect=RuntimeError("wikt down"))):
+        # Must not raise
+        await _real_update_lemma(vocab_id, "unknown", 1)
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT lemma FROM vocabulary WHERE id=?", (vocab_id,)) as cur:
+            row = await cur.fetchone()
+
+    assert row["lemma"] is None, (
+        f"lemma must stay NULL when wiktionary raises, got '{row['lemma']}'"
+    )

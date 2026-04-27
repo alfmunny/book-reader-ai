@@ -1,6 +1,8 @@
 /**
- * Tests for issue #1739: per-chapter Gemini cost estimate in the reader
- * translation sidebar, shown only when hasGeminiKey === true.
+ * Tests for translation cost estimate in the reader sidebar.
+ * Originally issue #1739 (per-chapter estimate under "Translate this chapter").
+ * Updated: cost moved to the "Translate remaining N" queue button area,
+ * showing total queue cost estimate (notStarted × avg chapter cost).
  */
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
@@ -175,7 +177,13 @@ const SAMPLE_SESSION = {
   user: { id: 1 },
 };
 
-function setupMocks({ hasGeminiKey }: { hasGeminiKey: boolean }) {
+function setupMocks({
+  hasGeminiKey,
+  translationStatus = null,
+}: {
+  hasGeminiKey: boolean;
+  translationStatus?: Record<string, number> | null;
+}) {
   mockUseSession.mockReturnValue({ data: { ...SAMPLE_SESSION }, status: "authenticated" });
 
   mockGetBookChapters.mockResolvedValue({
@@ -194,7 +202,7 @@ function setupMocks({ hasGeminiKey }: { hasGeminiKey: boolean }) {
 
   mockGetAnnotations.mockResolvedValue([]);
   mockGetVocabulary.mockResolvedValue([]);
-  mockGetBookTranslationStatus.mockResolvedValue(null);
+  mockGetBookTranslationStatus.mockResolvedValue(translationStatus);
   mockGetChapterTranslation.mockResolvedValue({ status: "not_found" });
   mockGetChapterQueueStatus.mockResolvedValue({ status: "not_found" });
   mockSaveReadingProgress.mockResolvedValue({});
@@ -209,34 +217,58 @@ async function openTranslateSidebar() {
   fireEvent.click(translateTab);
 }
 
-describe("Reader — Gemini cost estimate in translation sidebar (issue #1739)", () => {
-  it("shows cost estimate near the translate button when hasGeminiKey is true", async () => {
-    setupMocks({ hasGeminiKey: true });
+const STATUS_WITH_UNTRANSLATED = {
+  translated_chapters: 0,
+  total_chapters: 5,
+  queue_pending: 0,
+  queue_running: 0,
+  queue_failed: 0,
+  active: true,
+  active_language: "de",
+};
+
+describe("Reader — cost estimate near queue button (translation sidebar)", () => {
+  it("shows cost estimate near the queue button when hasGeminiKey is true and chapters remain", async () => {
+    setupMocks({ hasGeminiKey: true, translationStatus: STATUS_WITH_UNTRANSLATED });
     render(<ReaderPage />);
 
     await openTranslateSidebar();
 
-    // The translate button should appear
-    const translateBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    expect(translateBtn).toBeInTheDocument();
+    // The "Translate remaining N" queue button should appear
+    const queueBtn = await screen.findByRole("button", { name: /translate remaining/i });
+    expect(queueBtn).toBeInTheDocument();
 
-    // Cost estimate should be visible near the button
+    // Cost estimate should be visible near the queue button (not under "Translate this chapter")
     await waitFor(() => {
-      const costEl = screen.queryByText(/\$|tokens/i);
+      const costEl = screen.queryByText(/rough estimate/i);
       expect(costEl).toBeInTheDocument();
     });
   });
 
-  it("does not show cost estimate when hasGeminiKey is false", async () => {
-    setupMocks({ hasGeminiKey: false });
+  it("does not show cost estimate under the single-chapter translate button", async () => {
+    setupMocks({ hasGeminiKey: true, translationStatus: null });
     render(<ReaderPage />);
 
     await openTranslateSidebar();
 
-    await screen.findByRole("button", { name: /translate this chapter/i });
+    const translateBtn = await screen.findByRole("button", { name: /translate this chapter/i });
+    expect(translateBtn).toBeInTheDocument();
 
-    // Cost estimate should NOT appear when no Gemini key
-    const costEl = screen.queryByText(/\$\d|\d+K tokens/i);
+    // No cost estimate should appear when there's no book-level queue section
+    const costEl = screen.queryByText(/rough estimate/i);
+    expect(costEl).not.toBeInTheDocument();
+  });
+
+  it("does not show cost estimate when hasGeminiKey is false", async () => {
+    setupMocks({ hasGeminiKey: false, translationStatus: STATUS_WITH_UNTRANSLATED });
+    render(<ReaderPage />);
+
+    await openTranslateSidebar();
+
+    await screen.findByRole("button", { name: /translate remaining/i });
+
+    // Cost estimate should NOT appear without a Gemini key
+    const costEl = screen.queryByText(/rough estimate/i);
     expect(costEl).not.toBeInTheDocument();
   });
 });

@@ -866,3 +866,81 @@ def test_append_log_trims_to_max_len():
     # The log should contain the LAST 100 entries (not the first).
     assert w._state.log[0]["n"] == 5
     assert w._state.log[-1]["n"] == 104
+
+
+# ── Line 476: rescan_for_missing_translations progress callback ───────────────
+
+async def test_rescan_calls_progress_callback():
+    """Regression #1679: line 476 — progress(i+1, total, title) is called once
+    per book when a progress callback is supplied."""
+    await set_setting(SETTING_AUTO_LANGS, json.dumps(["zh"]))
+    await save_book(1, BOOK_META, BOOK_TEXT)
+
+    calls: list[tuple[int, int, str]] = []
+
+    def progress(current: int, total: int, title: str) -> None:
+        calls.append((current, total, title))
+
+    await rescan_for_missing_translations(progress=progress)
+
+    assert len(calls) == 1
+    assert calls[0][0] == 1   # current
+    assert calls[0][1] == 1   # total
+    assert "Branch Test Book" in calls[0][2]
+
+
+# ── Lines 1093-1100: _translate_with_retry retry-backoff state ───────────────
+
+async def test_translate_with_retry_sets_backoff_state_on_retry(monkeypatch):
+    """Regression #1679: lines 1093-1100 — when delay > 0 on a retry, the
+    worker's state fields (waiting_reason, retry_delay_seconds, retry_next_at)
+    are set before asyncio.sleep is awaited."""
+    import services.translation_queue as tq_module
+
+    monkeypatch.setattr(tq_module, "RETRY_BACKOFF", (0.001,))
+
+    slept: list[float] = []
+
+    async def fake_sleep(secs: float) -> None:
+        slept.append(secs)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    w = TranslationQueueWorker()
+    call_count = 0
+
+    async def mock_api(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise RuntimeError("first attempt fails")
+        return {0: ["translated"]}
+
+    with patch.object(w, "_call_api_with_chain", side_effect=mock_api):
+        result = await w._translate_with_retry(
+            chapters=[(0, "some text")],
+            source_language="en",
+            target_language="zh",
+            api_key="fake-key",
+            chain=["gemini-2.5-flash"],
+        )
+
+    assert call_count == 2
+    assert any(abs(s - 0.001) < 1e-6 for s in slept), f"expected 0.001s sleep, got {slept}"
+    assert result == {0: ["translated"]}
+
+
+# ── Line 1265-1266: plan_work_for_queue — get_cached_book returns None ────────
+
+async def test_plan_work_for_queue_skips_book_when_get_cached_book_none():
+    """Regression #1679: line 1265-1266 — when get_cached_book returns None for
+    a book that list_cached_books returned, plan_work_for_queue skips it."""
+    from services.translation_queue import plan_work_for_queue
+
+    meta = {**BOOK_META, "languages": ["en"]}
+    await save_book(1, meta, BOOK_TEXT)
+
+    with patch("services.translation_queue.get_cached_book", new_callable=AsyncMock, return_value=None):
+        plans = await plan_work_for_queue("zh")
+
+    assert plans == []

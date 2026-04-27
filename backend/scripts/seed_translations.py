@@ -42,7 +42,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--chunk", type=int, default=50,
         help="Upload in chunks of N entries per request (default 50). "
-             "Keeps request bodies under proxy limits for big books.",
+             "Keeps request bodies under proxy limits for big books. "
+             "Ignored when --overwrite is set (all entries sent in one request).",
+    )
+    parser.add_argument(
+        "--overwrite", action="store_true", default=False,
+        help="Atomically replace all translations for each (book_id, language) "
+             "pair in the file. Sends the entire file in a single request — "
+             "safe because the server rolls back on failure.",
     )
     return parser.parse_args(argv)
 
@@ -64,12 +71,19 @@ def main() -> int:
         print("ERROR: file is empty or not a JSON array", file=sys.stderr)
         return 2
 
-    url = args.api_url.rstrip("/") + "/admin/translations/import"
-    print(f"Uploading {len(entries)} entries to {url} in chunks of {args.chunk}")
+    base_url = args.api_url.rstrip("/") + "/admin/translations/import"
+    url = base_url + ("?overwrite=true" if args.overwrite else "")
+
+    if args.overwrite:
+        print(f"Uploading {len(entries)} entries to {url} (overwrite mode — single request)")
+        chunks = [entries]
+    else:
+        print(f"Uploading {len(entries)} entries to {url} in chunks of {args.chunk}")
+        chunks = [entries[i:i + args.chunk] for i in range(0, len(entries), args.chunk)]
 
     total_imported = 0
-    for start in range(0, len(entries), args.chunk):
-        chunk = entries[start:start + args.chunk]
+    for start_idx, chunk in enumerate(chunks):
+        start = start_idx * args.chunk if not args.overwrite else 0
         body = json.dumps({"entries": chunk}).encode()
         req = urllib.request.Request(
             url,
@@ -92,10 +106,13 @@ def main() -> int:
             return 1
         imported = payload.get("imported", 0)
         total_imported += imported
-        print(
-            f"  [{start + 1}-{start + len(chunk)}/{len(entries)}] "
-            f"imported={imported}",
-        )
+        if args.overwrite:
+            print(f"  [all {len(chunk)}] imported={imported}")
+        else:
+            print(
+                f"  [{start + 1}-{start + len(chunk)}/{len(entries)}] "
+                f"imported={imported}",
+            )
 
     print(f"\nDone — {total_imported} rows imported into production.")
     return 0

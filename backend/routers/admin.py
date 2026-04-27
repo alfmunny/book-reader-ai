@@ -23,6 +23,7 @@ from services.db import (
     get_cached_book,
     save_book,
     save_translation,
+    replace_translations_for_book,
     get_setting,
     set_setting,
 )
@@ -643,6 +644,7 @@ class ImportTranslationsRequest(BaseModel):
 @router.post("/translations/import")
 async def import_translations(
     req: ImportTranslationsRequest,
+    overwrite: bool = Query(False),
     _admin: dict = Depends(_require_admin),
 ):
     """Bulk-import pre-translated chapters from an offline run.
@@ -652,9 +654,11 @@ async def import_translations(
     the rows to JSON, then POST them here to seed prod without paying
     for Gemini a second time.
 
-    Overwrites existing cache entries — safer than silently skipping,
-    since the whole point of seeding is usually to replace bad
-    translations. Skips empty paragraphs arrays.
+    When overwrite=true, all existing translations for each (book_id,
+    target_language) pair present in the payload are deleted atomically
+    before the new rows are inserted. On any failure the original rows are
+    preserved. Default (overwrite=false) uses INSERT OR REPLACE per row.
+    Skips empty paragraphs arrays in both modes.
     """
     # Pre-validate all referenced books exist before writing any row.
     book_ids = {e.book_id for e in req.entries if e.paragraphs}
@@ -681,20 +685,46 @@ async def import_translations(
                 ),
             )
 
-    count = 0
-    for entry in req.entries:
-        if not entry.paragraphs:
-            continue
-        await save_translation(
-            entry.book_id,
-            entry.chapter_index,
-            entry.target_language.lower().split("-")[0],
-            entry.paragraphs,
-            provider=entry.provider,
-            model=entry.model,
-            title_translation=entry.title_translation,
-        )
-        count += 1
+    if overwrite:
+        # Group non-empty entries by (book_id, target_language) and replace atomically.
+        from collections import defaultdict
+        groups: dict[tuple[int, str], list[dict]] = defaultdict(list)
+        for entry in req.entries:
+            if not entry.paragraphs:
+                continue
+            lang = entry.target_language.lower().split("-")[0]
+            groups[(entry.book_id, lang)].append({
+                "chapter_index": entry.chapter_index,
+                "paragraphs": entry.paragraphs,
+                "provider": entry.provider,
+                "model": entry.model,
+                "title_translation": entry.title_translation,
+            })
+        count = 0
+        for (book_id, lang), entries in groups.items():
+            try:
+                await replace_translations_for_book(book_id, lang, entries)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Import failed for book {book_id} ({lang}) — original rows preserved",
+                ) from exc
+            count += len(entries)
+    else:
+        count = 0
+        for entry in req.entries:
+            if not entry.paragraphs:
+                continue
+            await save_translation(
+                entry.book_id,
+                entry.chapter_index,
+                entry.target_language.lower().split("-")[0],
+                entry.paragraphs,
+                provider=entry.provider,
+                model=entry.model,
+                title_translation=entry.title_translation,
+            )
+            count += 1
     return {"ok": True, "imported": count}
 
 

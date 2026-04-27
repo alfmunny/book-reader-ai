@@ -890,6 +890,7 @@ export interface Flashcard {
   repetitions: number;
   last_reviewed_at: string | null;
   saved_at: string | null;
+  context: string | null;
 }
 
 export interface FlashcardReviewResult {

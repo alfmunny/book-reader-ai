@@ -60,6 +60,20 @@ async def test_due_flashcards_include_vocab_fields(client, test_user):
     assert "due_date" in card
 
 
+async def test_due_flashcards_include_context_sentence(client, test_user):
+    """Due card response includes the context sentence where the word was saved (closes #1798)."""
+    await save_book(BOOK_ID, _BOOK_META, "text")
+    await save_word(test_user["id"], "ephemera", BOOK_ID, 0, "Life is ephemera.")
+
+    resp = await client.get("/api/vocabulary/flashcards/due")
+    assert resp.status_code == 200
+    cards = resp.json()
+    card = next((c for c in cards if c["word"] == "ephemera"), None)
+    assert card is not None
+    assert "context" in card
+    assert card["context"] == "Life is ephemera."
+
+
 async def test_due_flashcards_own_only(client, test_user):
     """Due cards are scoped to the requesting user only."""
     from services.db import get_or_create_user

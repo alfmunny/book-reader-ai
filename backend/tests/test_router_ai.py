@@ -607,6 +607,40 @@ async def test_tts_max_length_boundary_accepted(client):
     )
 
 
+# ── Issue #1550: X-TTS-Timings header with non-empty boundaries ───────────────
+
+
+async def test_tts_returns_timings_header_when_boundaries_non_empty(client):
+    """Regression #1550: POST /ai/tts with non-empty word boundaries must include
+    X-TTS-Timings header (routers/ai.py lines 524-526).
+
+    All existing tests mock boundaries=[] so the header path was never exercised.
+    """
+    boundaries = [{"text": "Hello", "offset": 0, "duration": 400}]
+    with patch("routers.ai.synthesize", new_callable=AsyncMock,
+               return_value=(b"mp3", "audio/mpeg", boundaries)):
+        resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en"})
+    assert resp.status_code == 200
+    assert "x-tts-timings" in resp.headers, (
+        f"Regression #1550: expected X-TTS-Timings header when boundaries non-empty, "
+        f"headers were: {dict(resp.headers)}"
+    )
+    import json as _json
+    assert _json.loads(resp.headers["x-tts-timings"]) == boundaries
+
+
+async def test_tts_omits_timings_header_when_boundaries_oversized(client):
+    """Regression #1550: POST /ai/tts must omit X-TTS-Timings when the serialized
+    boundaries exceed 8000 bytes (routers/ai.py line 525 False branch).
+    """
+    big_boundary = [{"text": "x" * 500, "offset": i, "duration": 100} for i in range(20)]
+    with patch("routers.ai.synthesize", new_callable=AsyncMock,
+               return_value=(b"mp3", "audio/mpeg", big_boundary)):
+        resp = await client.post("/api/ai/tts", json={"text": "Hello", "language": "en"})
+    assert resp.status_code == 200
+    assert "x-tts-timings" not in resp.headers
+
+
 # ── References ────────────────────────────────────────────────────────────────
 
 async def test_references_without_key_returns_400(client):

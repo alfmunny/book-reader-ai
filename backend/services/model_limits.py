@@ -42,12 +42,6 @@ DEFAULT_CHAIN: list[str] = [
 UNLIMITED_RPD = 1_000_000  # treat as effectively unlimited
 
 MODEL_LIMITS: dict[str, _Limits] = {
-    # "" = server-side default (currently gemini-3.1-flash-lite-preview).
-    # Same quota + pricing as gemini-3.1-flash-lite on Tier 1.
-    "": {
-        "rpm": 4000, "rpd": 150000, "max_output_tokens": 7500,
-        "input_usd_per_m": 0.10, "output_usd_per_m": 0.40,
-    },
     # Frontier 3.1 family
     "gemini-3.1-pro-preview": {
         "rpm": 25, "rpd": 250, "max_output_tokens": 60000,

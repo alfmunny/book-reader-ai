@@ -1723,7 +1723,7 @@ export default function ReaderPage() {
                     role="button"
                     tabIndex={0}
                     aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
-                    className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity ${colorBadge[ann.color] ?? colorBadge.yellow}`}
+                    className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${colorBadge[ann.color] ?? colorBadge.yellow}`}
                     onClick={() => {
                       if (ann.chapter_index !== chapterIndex) {
                         goToChapter(ann.chapter_index);

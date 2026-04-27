@@ -1998,7 +1998,7 @@ export default function ReaderPage() {
                     {translationEnabled && (
                       <div role="status" className="text-xs">
                         {translationLoading && !translationUsedProvider && (
-                          <span className="animate-pulse text-amber-600">Checking for translation…</span>
+                          <span className="animate-pulse text-amber-700">Checking for translation…</span>
                         )}
                         {translationLoading && translationUsedProvider.startsWith("queue") && (
                           <span className="animate-pulse text-sky-600">

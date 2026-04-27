@@ -145,3 +145,43 @@ async def test_default_time_fn_works_inside_running_loop(tmp_db):
     t = limiter._time()
     assert isinstance(t, float)
     assert t > 0
+
+
+# ── Validation and edge-case branches (issue #1621) ──────────────────────────
+
+
+def test_rate_limiter_rejects_rpm_zero():
+    """Regression #1621: AsyncRateLimiter(rpm=0) must raise ValueError (line 68).
+    Without the guard, rpm=0 would cause a ZeroDivisionError or infinite loop."""
+    with pytest.raises(ValueError, match="rpm must be >= 1"):
+        AsyncRateLimiter(rpm=0, rpd=100)
+
+
+async def test_rate_limiter_no_sleep_when_wait_not_positive(tmp_db):
+    """Regression #1621: when the oldest window entry is >= 60s old the
+    calculated wait is <= 0 and the sleep call must be skipped (branch 103->107).
+    Without this path, a non-positive wait could still trigger an unnecessary sleep."""
+    sleep_calls = []
+
+    async def fake_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+
+    # Clock starts at 100s so the first acquire is at t=100.
+    tick = [100.0]
+
+    def fake_time() -> float:
+        return tick[0]
+
+    limiter = AsyncRateLimiter(rpm=1, rpd=1000, time_fn=fake_time, sleep_fn=fake_sleep)
+    # First acquire fills the window slot at t=100.
+    await limiter.acquire()
+
+    # Advance clock by exactly 60s — the window slot is now on the boundary
+    # (60.0 - (160.0 - 100.0) = 0.0 → wait == 0.0 → no sleep).
+    tick[0] = 160.0
+    await limiter.acquire()
+
+    positive_sleeps = [s for s in sleep_calls if s > 0]
+    assert not positive_sleeps, (
+        f"No sleep should be needed when wait <= 0, but got sleeps: {sleep_calls}"
+    )

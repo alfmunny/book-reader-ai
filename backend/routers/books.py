@@ -182,6 +182,29 @@ async def chapter_queue_status(
     return await queue_status_for_chapter(book_id, chapter_index, target_language)
 
 
+def _reconcile_subtitle(
+    paragraphs: list[str], source_text: str, title_translation: str | None
+) -> tuple[list[str], str | None]:
+    """Shift an extra leading translated paragraph into title_translation.
+
+    When a book was translated from plain text before its EPUB became available,
+    the plain-text splitter may have left the chapter subtitle as the first body
+    paragraph. Later the EPUB splitter strips it, leaving the translation one
+    paragraph longer than the source. Shifts the surplus leading paragraph into
+    title_translation so alignment is restored without re-translating.
+    """
+    if title_translation is not None:
+        return paragraphs, title_translation
+    source_paragraphs = [p.strip() for p in source_text.split("\n\n") if p.strip()]
+    if len(paragraphs) != len(source_paragraphs) + 1:
+        return paragraphs, title_translation
+    first = paragraphs[0]
+    # Accept as a subtitle only if it's a single short line (no embedded newlines).
+    if "\n" in first or len(first) > 120:
+        return paragraphs, title_translation
+    return paragraphs[1:], first
+
+
 @router.get("/{book_id}/chapters/{chapter_index}/translation")
 async def get_chapter_translation(
     book_id: int = Path(..., ge=1),
@@ -208,12 +231,15 @@ async def get_chapter_translation(
     cached = await get_cached_translation_with_meta(book_id, chapter_index, target_language)
     if not cached:
         raise HTTPException(status_code=404, detail="Translation not cached")
+    paragraphs, title_translation = _reconcile_subtitle(
+        cached["paragraphs"], _chapters[chapter_index].text, cached.get("title_translation")
+    )
     return {
         "status": "ready",
-        "paragraphs": cached["paragraphs"],
+        "paragraphs": paragraphs,
         "provider": cached.get("provider"),
         "model": cached.get("model"),
-        "title_translation": cached.get("title_translation"),
+        "title_translation": title_translation,
     }
 
 
@@ -269,12 +295,21 @@ async def request_chapter_translation(
         book_id, chapter_index, target_language,
     )
     if cached:
+        paragraphs = cached["paragraphs"]
+        title_translation = cached.get("title_translation")
+        if book_meta:
+            from services.book_chapters import split_with_html_preference as _split
+            _ch = await _split(book_id, book_meta.get("text") or "")
+            if chapter_index < len(_ch):
+                paragraphs, title_translation = _reconcile_subtitle(
+                    paragraphs, _ch[chapter_index].text, title_translation
+                )
         return {
             "status": "ready",
-            "paragraphs": cached["paragraphs"],
+            "paragraphs": paragraphs,
             "provider": cached.get("provider"),
             "model": cached.get("model"),
-            "title_translation": cached.get("title_translation"),
+            "title_translation": title_translation,
         }
 
     # 0b. Book must exist before we can enqueue a new translation.

@@ -230,6 +230,72 @@ async def test_concurrent_calls_return_identical_chapter_list():
     )
 
 
+# ── Upload path (lines 53-58) ─────────────────────────────────────────────────
+
+async def test_upload_source_returns_chapters_from_user_book_table():
+    """Regression #1700: lines 53-58 — when source=='upload', chapters are read
+    from user_book_chapters table, not EPUB or plain-text splitter."""
+    rows = [
+        {"title": "Chapter 1", "text": "Text one"},
+        {"title": "Chapter 2", "text": "Text two"},
+    ]
+    with (
+        patch("services.db.get_book_source", new_callable=AsyncMock, return_value="upload"),
+        patch("services.db.get_user_book_chapters", new_callable=AsyncMock, return_value=rows),
+    ):
+        result = await split_with_html_preference(60, "irrelevant text")
+
+    assert len(result) == 2
+    assert result[0].title == "Chapter 1"
+    assert result[1].text == "Text two"
+
+
+async def test_upload_source_is_cached_after_first_call():
+    """Regression #1700: line 57 — upload chapters are stored in _chapter_cache."""
+    rows = [{"title": "Ch 1", "text": "Body 1"}, {"title": "Ch 2", "text": "Body 2"}]
+    with (
+        patch("services.db.get_book_source", new_callable=AsyncMock, return_value="upload"),
+        patch("services.db.get_user_book_chapters", new_callable=AsyncMock, return_value=rows) as mock_get,
+    ):
+        first = await split_with_html_preference(61, "text")
+        second = await split_with_html_preference(61, "text")
+
+    assert first is second
+    mock_get.assert_called_once()
+
+
+# ── get_chapter_source (lines 135-141) ───────────────────────────────────────
+
+async def test_get_chapter_source_returns_upload_for_upload_books():
+    """Regression #1700: line 137 — upload source returns 'upload'."""
+    from services.book_chapters import get_chapter_source
+    with patch("services.db.get_book_source", new_callable=AsyncMock, return_value="upload"):
+        result = await get_chapter_source(99)
+    assert result == "upload"
+
+
+async def test_get_chapter_source_returns_epub_when_epub_stored():
+    """Regression #1700: line 139 — book with stored EPUB returns 'epub'."""
+    from services.book_chapters import get_chapter_source
+    with (
+        patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None),
+        patch("services.db.has_book_epub", new_callable=AsyncMock, return_value=True),
+    ):
+        result = await get_chapter_source(98)
+    assert result == "epub"
+
+
+async def test_get_chapter_source_returns_text_when_no_epub():
+    """Regression #1700: line 141 — book without EPUB returns 'text'."""
+    from services.book_chapters import get_chapter_source
+    with (
+        patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None),
+        patch("services.db.has_book_epub", new_callable=AsyncMock, return_value=False),
+    ):
+        result = await get_chapter_source(97)
+    assert result == "text"
+
+
 # ── _background_fetch_epub ────────────────────────────────────────────────────
 
 async def test_background_fetch_epub_success_saves_to_db():

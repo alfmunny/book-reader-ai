@@ -183,6 +183,26 @@ async def test_delete_tag_oversized_path_returns_422(client, test_user):
     )
 
 
+# ── normalize_tag unit tests (issue #1624) ───────────────────────────────────
+
+
+def test_normalize_tag_rejects_non_string():
+    """Regression #1624: normalize_tag must raise ValueError when given a non-str (line 20).
+    Direct callers (not going through HTTP/pydantic) could pass an int or None."""
+    from services.vocab_tags import normalize_tag
+    with pytest.raises(ValueError, match="string"):
+        normalize_tag(123)
+
+
+def test_normalize_tag_rejects_oversized_tag():
+    """Regression #1624: normalize_tag must raise ValueError when stripped tag > 50 chars (line 25).
+    The HTTP router caps at max_length=50 before the service is called, so this
+    guard is only reachable by direct callers."""
+    from services.vocab_tags import normalize_tag, MAX_TAG_LEN
+    with pytest.raises(ValueError, match="exceeds"):
+        normalize_tag("x" * (MAX_TAG_LEN + 1))
+
+
 @pytest.mark.asyncio
 async def test_delete_tag_whitespace_only_returns_400(client, test_user):
     """Regression #1529: DELETE /vocabulary/{id}/tags/%20 must return 400, not 500.

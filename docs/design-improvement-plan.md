@@ -245,6 +245,30 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-25 | Desktop touch-target scoping: `md:min-h-0` on reader header buttons (44px becomes mobile-only) | reader/[bookId]/page.tsx, CLAUDE.md | #1081 |
 | 2026-04-25 | Browse-books CTA on vocabulary + notes empty states | vocabulary/page.tsx, notes/page.tsx | #1093 |
 
+## Wave 10 — Accessibility Round 2 (2026-04-28)
+
+### WCAG 2.4.7 Focus Visible — focus rings on card-style buttons
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | `focus-visible:ring-2 focus-visible:ring-amber-400` on flashcard, reader annotation, and sidebar cards | flashcards/page.tsx, reader/[bookId]/page.tsx, AnnotationsSidebar.tsx | #1793 |
+
+### WCAG 1.4.3 Contrast (text) — amber-600 → amber-700
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | "Translate this chapter" button: `bg-amber-600` → `bg-amber-700` (3.75:1 → 5:1 on white) | reader/[bookId]/page.tsx | #1794 |
+
+### WCAG 4.1.2 Name, Role, Value — settings panel semantics
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | Removed `role="dialog"` from TypographyPanel — non-modal popover should not declare dialog role without `aria-modal="true"` | TypographyPanel.tsx | #1795 |
+
+### WCAG 1.4.11 Non-text Contrast — icon color
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | Delete-annotation buttons: `text-red-400` (#f87171, 2.8:1) → `text-red-500` (#ef4444, 3.8:1) on white | notes/[bookId]/page.tsx | #1797 |
+
+---
+
 ## #364 — Mobile sub-sentence selection (design note, 2026-04-27)
 
 **Status:** Shipped. Design note merged in #1671; implementation drops the touch `preventDefault` per Approach B.

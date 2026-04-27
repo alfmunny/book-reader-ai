@@ -20,17 +20,21 @@ import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 
-// Gemini Flash pricing constants — used for per-chapter cost estimate in the translation sidebar.
+// Gemini Flash pricing constants — used for total queue cost estimate in the translation sidebar.
 const FLASH_COST_PER_M = 2.5; // USD per 1M output tokens
 const TOKENS_PER_WORD = 1.4;
 const WORDS_DEFAULT = 2000;
 
-function chapterCostLabel(text?: string): string {
+function queueTotalCostLabel(text: string | undefined, chapterCount: number): string {
   const words = text ? text.split(/\s+/).filter(Boolean).length : WORDS_DEFAULT;
-  const tokens = Math.round(words * TOKENS_PER_WORD);
+  const tokens = Math.round(words * TOKENS_PER_WORD) * chapterCount;
   const usd = (tokens / 1_000_000) * FLASH_COST_PER_M;
   const cost = usd < 0.005 ? "< $0.01" : `~$${usd.toFixed(2)}`;
-  const tok = tokens >= 1000 ? `~${(tokens / 1000).toFixed(1)}K` : `~${tokens}`;
+  const tok = tokens >= 1_000_000
+    ? `~${(tokens / 1_000_000).toFixed(1)}M`
+    : tokens >= 1000
+    ? `~${(tokens / 1000).toFixed(1)}K`
+    : `~${tokens}`;
   return `${cost} · ${tok} tokens`;
 }
 
@@ -2004,11 +2008,6 @@ export default function ReaderPage() {
                             >
                               Translate this chapter
                             </button>
-                            {hasGeminiKey === true && (
-                              <p className="mt-1 text-xs text-stone-500 text-center" aria-label="Estimated Gemini translation cost for this chapter">
-                                {chapterCostLabel(current?.text)}
-                              </p>
-                            )}
                           </>
                         ) : (
                           <p className="text-xs text-amber-700">
@@ -2067,13 +2066,20 @@ export default function ReaderPage() {
                             </span>
                           </div>
                           {notStarted > 0 && (
-                            <button
-                              onClick={handleTranslateWholeBook}
-                              disabled={enqueueingBook}
-                              className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
-                            >
-                              {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
-                            </button>
+                            <>
+                              <button
+                                onClick={handleTranslateWholeBook}
+                                disabled={enqueueingBook}
+                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
+                              >
+                                {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
+                              </button>
+                              {hasGeminiKey === true && !enqueueingBook && (
+                                <p className="mt-1 text-xs text-stone-500 text-center" aria-label="Rough cost estimate for queuing remaining chapters">
+                                  Rough estimate: {queueTotalCostLabel(current?.text, notStarted)}
+                                </p>
+                              )}
+                            </>
                           )}
                         </div>
                       );

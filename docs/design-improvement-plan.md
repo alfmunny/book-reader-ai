@@ -244,3 +244,52 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-25 | Native `confirm()` → optimistic delete + UndoToast in notes/library pages | notes/[bookId]/page.tsx, app/page.tsx | #1084 |
 | 2026-04-25 | Desktop touch-target scoping: `md:min-h-0` on reader header buttons (44px becomes mobile-only) | reader/[bookId]/page.tsx, CLAUDE.md | #1081 |
 | 2026-04-25 | Browse-books CTA on vocabulary + notes empty states | vocabulary/page.tsx, notes/page.tsx | #1093 |
+
+## #364 — Mobile sub-sentence selection (design note, 2026-04-27)
+
+**Status:** Design phase. Implementation deferred to a follow-up PR.
+
+**Problem.** Mobile users cannot highlight a sub-sentence phrase. `SentenceReader` calls `e.preventDefault()` on touch `pointerdown` (introduced in PR #324, UX-003 fix) to suppress the browser's native selection loupe so the 500ms long-press cleanly opens the word-action drawer. Side-effect: native text selection is also blocked, so a mobile user can only annotate the **full sentence** via long-press, never a sub-phrase. Documented as #UX-001 in `docs/reader-interaction-design.md`.
+
+The `SelectionToolbar` infrastructure (selection-change listener, Highlight / Note / Chat / Vocab actions) already exists and works on desktop. The blocker is purely that touch input never produces a selection in the first place.
+
+### Approaches considered
+
+**A. Custom selection handles (issue's original proposal).**
+Build draggable iOS-style start/end handles after the long-press fires, let the user drag them to extend/shrink the selection inside the AnnotationToolbar.
+
+- Pros: full control, no race with the browser's native loupe, consistent across iOS/Android.
+- Cons: meaningful new component (~200+ LOC), hit-testing characters during drag, edge cases at line wraps, must keep scroll/zoom under control during drag, accessibility (touch handles need aria-grabbed semantics or equivalent).
+- Cost: 2-3 PRs minimum.
+
+**B. Drop `preventDefault`, rely on motion-based gesture disambiguation. (Recommended)**
+Stop calling `e.preventDefault()` on `pointerdown`. The 500ms timer + the existing pointermove `>10px` cancel already disambiguate cleanly:
+
+- Quick tap (<200ms): seek-to-time (existing onClick path).
+- Hold still ≥500ms: timer fires → `removeAllRanges()` clears any nascent selection → word-action drawer opens (existing path).
+- Drag >10px before 500ms: pointermove cancels the long-press timer → browser's native loupe + selection handles take over → user lifts finger → existing `SelectionToolbar` mounts above the selection rect → Highlight saves a sub-sentence annotation.
+
+- Pros: ~5 LOC change in `SentenceReader.tsx`; no new component; uses the platform's familiar selection UI; reuses `SelectionToolbar` end-to-end.
+- Cons: Brief visual jank possible if the user holds still long enough for the browser to *start* showing its loupe (typically ~300-450ms across iOS/Android) before our 500ms timer clears the selection. In practice the loupe-flash is acceptable and ships in many native apps with similar gesture stacks.
+- Cost: 1 PR for the implementation + 1 regression test asserting `preventDefault` is gone from the touch branch.
+
+**C. Mode-toggle button on the reader top bar.**
+Add an explicit "Select text" toggle that, while on, suspends the long-press handler entirely and lets native selection work normally. Toggle off to restore long-press → annotation flow.
+
+- Pros: zero ambiguity; user opts into selection mode explicitly.
+- Cons: extra chrome cluttering the toolbar; users have to know the toggle exists; adds a mode where there isn't one today; doesn't fix the discoverability problem (most users won't find the toggle).
+- Cost: 1 PR but UX regression compared to platform native.
+
+### Recommendation
+
+Approach **B** is the smallest change with the highest leverage. The `SelectionToolbar` is already wired and tested on desktop; making touch produce a selection is the only missing link. The brief loupe-flash is a tolerable cost compared to building a custom handle system for marginal polish.
+
+If post-ship telemetry or user feedback shows the loupe-flash is intrusive, we can iterate toward Approach A or C; both are additive on top of B.
+
+### Implementation outline (next PR)
+
+1. In `SentenceReader.tsx` `handleSegLongPress`: remove the `if (e.pointerType === "touch") e.preventDefault();` line at the top of the handler. Keep everything else (timer, removeAllRanges, drawer open).
+2. Confirm by hand on iOS Safari + Android Chrome: long-press still opens the word-action drawer; drag-select produces a selection; existing SelectionToolbar Highlight/Note/Chat/Vocab actions all work on the touch-produced selection.
+3. Update `docs/reader-interaction-design.md` mobile section: replace the "no sub-sentence path" note with the new gesture model, mark #UX-001 resolved.
+4. Regression test: assert the `e.pointerType === "touch"` guard is no longer paired with `preventDefault()` in `SentenceReader.tsx`. (Negative regex on the file source is sufficient — the runtime semantics belong to manual + E2E coverage.)
+5. Optional follow-up: extend an existing E2E in `frontend/e2e/` to simulate a `pointermove >10px` drag and assert the SelectionToolbar mounts.

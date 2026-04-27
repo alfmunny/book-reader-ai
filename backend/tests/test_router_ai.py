@@ -1769,3 +1769,30 @@ async def test_delete_summary_non_admin_returns_403(client, test_user):
         f"Regression #1538: expected 403 for non-admin DELETE /ai/summary, "
         f"got {resp.status_code}: {resp.text}"
     )
+
+
+# ── Issue #1600: POST /ai/summary no-queue-api-key 503 ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_summary_no_queue_api_key_returns_503(client, test_user, tmp_db):
+    """Regression #1600: POST /ai/summary must return 503 when no queue_api_key
+    is configured in the DB. Guard: routers/ai.py lines 264-268."""
+    from services.book_chapters import clear_cache as _clear
+    text = "Chapter I\n\n" + "word " * 200
+    await save_book(9993, {**_BOOK_META, "id": 9993}, text)
+    _clear()
+    # Do NOT set queue_api_key — the setting row is absent in a fresh tmp_db.
+    resp = await client.post("/api/ai/summary", json={
+        "book_id": 9993,
+        "chapter_index": 0,
+        "chapter_text": "Some chapter text.",
+        "book_title": "Test Book",
+        "author": "Author",
+        "chapter_title": "Chapter I",
+    })
+    assert resp.status_code == 503, (
+        f"Regression #1600: expected 503 when no queue_api_key is configured, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "not available" in resp.json()["detail"].lower() or "configured" in resp.json()["detail"].lower()

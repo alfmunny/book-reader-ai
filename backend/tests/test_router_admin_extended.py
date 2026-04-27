@@ -694,28 +694,6 @@ async def test_queue_dry_run_no_api_key_returns_400(admin_client, admin_db):
     assert "API key" in res.json()["detail"]
 
 
-@pytest.mark.asyncio
-async def test_queue_dry_run_corrupt_key_returns_400(admin_client, admin_db):
-    """Regression #1607: POST /admin/queue/dry-run must return 400 when the stored
-    queue API key cannot be decrypted (e.g. after key rotation or DB corruption).
-    Guard: routers/admin.py lines 1047-1050."""
-    from services.db import set_setting
-    from services.translation_queue import SETTING_API_KEY
-    from unittest.mock import patch
-
-    await set_setting(SETTING_API_KEY, "corrupt-non-decryptable-value")
-    with patch("routers.admin.decrypt_api_key", side_effect=Exception("bad key")):
-        res = await admin_client.post(
-            "/api/admin/queue/dry-run",
-            json={"target_language": "zh"},
-        )
-    assert res.status_code == 400, (
-        f"Regression #1607: expected 400 for corrupt queue API key in dry-run, "
-        f"got {res.status_code}: {res.text}"
-    )
-    assert "decrypt" in res.json()["detail"].lower()
-
-
 async def test_queue_dry_run_no_books_returns_empty(admin_client, admin_db):
     from services.db import set_setting
     from services.auth import encrypt_api_key

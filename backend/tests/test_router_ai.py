@@ -1796,3 +1796,50 @@ async def test_summary_no_queue_api_key_returns_503(client, test_user, tmp_db):
         f"got {resp.status_code}: {resp.text}"
     )
     assert "not available" in resp.json()["detail"].lower() or "configured" in resp.json()["detail"].lower()
+
+
+# ── Issue #1738: summary cache poison via client-supplied chapter_text ─────────
+
+
+async def test_summary_uses_db_chapter_text_not_client_supplied(client, test_user, tmp_db):
+    """Regression #1738: POST /ai/summary must use the chapter text from the DB,
+    not req.chapter_text. Any authenticated user can supply arbitrary chapter_text
+    to poison the shared summary cache; the endpoint must ignore it and use the
+    server-side chapter text instead."""
+    from services.auth import encrypt_api_key as _enc
+    from services.book_chapters import clear_cache as _clear
+
+    real_chapter_text = "word " * 200
+    book_text = "CHAPTER I\n\n" + real_chapter_text
+    await save_book(9974, {**_BOOK_META, "id": 9974}, book_text)
+    _clear()
+    await set_setting("queue_api_key", _enc("test-gemini-key"))
+
+    captured_text: list[str] = []
+
+    async def _capture_generate(api_key, chapter_text, *args, **kwargs):
+        captured_text.append(chapter_text)
+        return "A legitimate summary."
+
+    attacker_text = "INJECTED ATTACKER CONTENT: cache poisoned!"
+
+    with patch("routers.ai.gemini") as mock_gemini:
+        mock_gemini.generate_chapter_summary = _capture_generate
+        mock_gemini.MODEL = "gemini-pro"
+        resp = await client.post("/api/ai/summary", json={
+            "book_id": 9974,
+            "chapter_index": 0,
+            "chapter_text": attacker_text,
+            "book_title": "Faust",
+            "author": "Goethe",
+        })
+
+    assert resp.status_code == 200
+    assert len(captured_text) == 1, "generate_chapter_summary should be called exactly once"
+    assert attacker_text not in captured_text[0], (
+        f"Regression #1738: req.chapter_text was forwarded to Gemini instead of "
+        f"the DB chapter text. Captured: {repr(captured_text[0][:120])}"
+    )
+    assert "word" in captured_text[0], (
+        f"Expected DB chapter text to be passed to Gemini, got: {repr(captured_text[0][:120])}"
+    )

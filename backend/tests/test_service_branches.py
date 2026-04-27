@@ -247,6 +247,14 @@ async def test_translate_chapters_batch_chapter_block_all_empty_paragraphs():
     assert 0 not in result
 
 
+# ── Issue #1636: _split_paragraphs_into_budget_chunks empty-input guard ──────
+
+def test_split_paragraphs_into_budget_chunks_empty_input():
+    """Regression #1636: line 217 — empty paragraphs list returns [] immediately."""
+    from services.gemini import _split_paragraphs_into_budget_chunks
+    assert _split_paragraphs_into_budget_chunks([], 1000) == []
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # gemini.py — _translate_chapter_in_chunks() branches
 # ─────────────────────────────────────────────────────────────────────────────

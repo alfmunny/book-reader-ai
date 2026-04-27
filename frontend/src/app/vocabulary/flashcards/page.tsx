@@ -222,7 +222,7 @@ export default function FlashcardsPage() {
               aria-label={flipped ? `${currentCard.word} — definition side, press to flip back` : `Word: ${currentCard.word}. Press to reveal definition.`}
               onClick={() => setFlipped(f => !f)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setFlipped(f => !f); }}
-              className="cursor-pointer rounded-2xl border border-amber-200 bg-white p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 hover:-translate-y-0.5 transition-all duration-200 select-none"
+              className="cursor-pointer rounded-2xl border border-amber-200 bg-white p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 hover:-translate-y-0.5 transition-all duration-200 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               style={{ boxShadow: "var(--shadow-card)" }}
             >
               <span className="text-xs text-stone-500 uppercase tracking-wide">

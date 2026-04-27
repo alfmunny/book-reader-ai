@@ -1710,6 +1710,33 @@ async def test_get_chapters_returns_400_for_draft_upload(client, test_user):
 
 
 @pytest.mark.asyncio
+async def test_get_chapters_returns_chapters_for_confirmed_upload(
+    client, test_user, insert_private_book
+):
+    """Regression #1725: GET /books/{id}/chapters on a confirmed uploaded book
+    (all is_draft=0) must return 200 with chapter_source='upload' and the chapter list.
+
+    Covers books.py lines 499-501 — the path that calls get_user_book_chapters
+    and returns the chapter payload for a fully confirmed upload."""
+    await insert_private_book(book_id=9860, owner_user_id=test_user["id"])
+
+    resp = await client.get("/api/books/9860/chapters")
+    assert resp.status_code == 200, (
+        f"Regression #1725: expected 200 for confirmed upload GET /chapters, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    data = resp.json()
+    assert data.get("chapter_source") == "upload", (
+        f"Expected chapter_source='upload', got: {data.get('chapter_source')}"
+    )
+    chapters = data.get("chapters", [])
+    assert len(chapters) >= 1, f"Expected at least 1 chapter, got: {chapters}"
+    # The fixture inserts one chapter with title='Ch1' and text='private'
+    assert chapters[0]["title"] == "Ch1"
+    assert chapters[0]["text"] == "private"
+
+
+@pytest.mark.asyncio
 async def test_get_chapter_translation_out_of_range_chapter_returns_400(client, test_user):
     """Regression #1602: GET /books/{id}/chapters/{idx}/translation with chapter_index
     beyond the book's chapter count must return 400.

@@ -953,6 +953,35 @@ async def test_flashcards_stats_deck_id_zero_returns_422(client, test_user):
     )
 
 
+# ── Issue #1583: flashcard due/stats with nonexistent deck_id must return 404 ─
+
+
+async def test_flashcards_due_nonexistent_deck_returns_404(client, test_user):
+    """Regression #1583: GET /vocabulary/flashcards/due?deck_id=N for a deck that
+    does not exist must return 404, not 200 with an empty list.
+
+    Without this test, a refactor that changes resolve_deck_vocab_ids to return []
+    instead of None for missing decks would silently change the behaviour from
+    'Deck not found' to an empty success response."""
+    resp = await client.get("/api/vocabulary/flashcards/due?deck_id=99999")
+    assert resp.status_code == 404, (
+        f"Regression #1583: expected 404 for nonexistent deck_id=99999 in "
+        f"GET /vocabulary/flashcards/due, got {resp.status_code}: {resp.text}"
+    )
+    assert "deck" in resp.json()["detail"].lower()
+
+
+async def test_flashcards_stats_nonexistent_deck_returns_404(client, test_user):
+    """Regression #1583: GET /vocabulary/flashcards/stats?deck_id=N for a deck that
+    does not exist must return 404, not 200 with zeroed stats."""
+    resp = await client.get("/api/vocabulary/flashcards/stats?deck_id=99999")
+    assert resp.status_code == 404, (
+        f"Regression #1583: expected 404 for nonexistent deck_id=99999 in "
+        f"GET /vocabulary/flashcards/stats, got {resp.status_code}: {resp.text}"
+    )
+    assert "deck" in resp.json()["detail"].lower()
+
+
 # ── Issue #1570: vocabulary export uncovered branches ────────────────────────
 
 

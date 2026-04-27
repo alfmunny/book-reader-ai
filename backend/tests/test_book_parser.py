@@ -299,6 +299,18 @@ def test_parse_txt_short_front_matter_not_prepended():
     assert "Front Matter" not in titles
 
 
+def test_parse_txt_long_front_matter_prepended():
+    """Regression #1632: line 92 True — front matter with >50 words before the first
+    chapter boundary is prepended as a 'Front Matter' chapter."""
+    front = " ".join([f"word{i}" for i in range(60)])  # 60 words > 50
+    txt = f"{front}\n\nCHAPTER 1\n\nBody text here.\n\nCHAPTER 2\n\nMore body text here.\n"
+    result = parse_txt(txt)
+    titles = [ch["title"] for ch in result["chapters"]]
+    assert "Front Matter" in titles
+    fm = next(ch for ch in result["chapters"] if ch["title"] == "Front Matter")
+    assert "word0" in fm["text"]
+
+
 def test_parse_epub_raises_on_missing_dependency():
     """Regression #1630: line 130 — ImportError on ebooklib is re-raised
     as RuntimeError('ebooklib is not installed')."""

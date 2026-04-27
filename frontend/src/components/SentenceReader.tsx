@@ -361,11 +361,11 @@ function buildSegContent(
   text: string,
   targetWord: string | undefined,
   vocabWords: Set<string> | undefined,
-  annotationMatch?: { start: number; end: number; className: string },
+  annotationMatches?: Array<{ start: number; end: number; className: string; annId: number }>,
 ): React.ReactNode {
-  if (!targetWord && !vocabWords?.size && !annotationMatch) return text;
+  if (!targetWord && !vocabWords?.size && (!annotationMatches || annotationMatches.length === 0)) return text;
 
-  type Match = { start: number; end: number; type: "target" | "vocab" | "annotation"; className?: string };
+  type Match = { start: number; end: number; type: "target" | "vocab" | "annotation"; className?: string; annId?: number };
   const matches: Match[] = [];
 
   const addMatches = (needle: string, type: Match["type"]) => {
@@ -384,8 +384,8 @@ function buildSegContent(
 
   if (targetWord) addMatches(targetWord, "target");
   vocabWords?.forEach((w) => addMatches(w, "vocab"));
-  if (annotationMatch) {
-    matches.push({ ...annotationMatch, type: "annotation" });
+  if (annotationMatches) {
+    for (const m of annotationMatches) matches.push({ ...m, type: "annotation" });
   }
 
   if (!matches.length) return text;
@@ -413,7 +413,7 @@ function buildSegContent(
       );
     } else if (m.type === "annotation") {
       nodes.push(
-        <span key={m.start} className={m.className ?? ""}>
+        <span key={m.start} className={m.className ?? ""} data-ann-id={m.annId}>
           {word}
         </span>,
       );
@@ -593,13 +593,22 @@ export default function SentenceReader({
   }, [annotations]);
 
   // Lookup with substring fallback: annotations from text-selection may store a
-  // substring of the segment text rather than the full sentence.
-  const getAnnotation = useMemo(() => {
+  // substring of the segment text rather than the full sentence. Returns ALL
+  // matching annotations (a single segment may contain multiple sub-sentence
+  // annotations — see #1707). The exact full-segment match (if any) is first.
+  const getAnnotations = useMemo(() => {
     const anns = annotations ?? [];
-    return (segText: string): Annotation | undefined => {
+    return (segText: string): Annotation[] => {
+      const out: Annotation[] = [];
       const exact = annotationMap.get(segText);
-      if (exact) return exact;
-      return anns.find((a) => a.sentence_text.length >= 10 && segText.includes(a.sentence_text));
+      if (exact) out.push(exact);
+      for (const a of anns) {
+        if (a === exact) continue;
+        if (a.sentence_text.length >= 10 && a.sentence_text !== segText && segText.includes(a.sentence_text)) {
+          out.push(a);
+        }
+      }
+      return out;
     };
   }, [annotations, annotationMap]);
 
@@ -694,26 +703,31 @@ export default function SentenceReader({
             seg.text === flashTarget ||
             (flashTarget.length >= 10 && seg.text.includes(flashTarget))
           );
-          const annotation = showAnnotations ? getAnnotation(seg.text) : undefined;
-          // Full-segment annotation underlines the whole span; sub-sentence
-          // annotations only underline the matched substring (handled inside
-          // buildSegContent via annotationMatch).
-          const isFullSegmentAnnotation = !!annotation && annotation.sentence_text === seg.text;
-          const annotationColorClass = annotation
-            ? (ANNOTATION_COLOR_CLASS[annotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
+          // All annotations whose sentence_text matches this segment (#1707).
+          // The first-matching full-segment annotation drives the wrapping span
+          // colour; every sub-sentence annotation becomes its own data-ann-id
+          // span inside buildSegContent so per-annotation clicks route correctly.
+          const segAnns = showAnnotations ? getAnnotations(seg.text) : [];
+          const fullSegmentAnnotation = segAnns.find((a) => a.sentence_text === seg.text);
+          const annotationClass = fullSegmentAnnotation
+            ? (ANNOTATION_COLOR_CLASS[fullSegmentAnnotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
-          const annotationClass = isFullSegmentAnnotation ? annotationColorClass : "";
-          let annotationMatch: { start: number; end: number; className: string } | undefined;
-          if (annotation && !isFullSegmentAnnotation) {
-            const start = seg.text.indexOf(annotation.sentence_text);
+          const annotationMatches: Array<{ start: number; end: number; className: string; annId: number }> = [];
+          for (const a of segAnns) {
+            if (a === fullSegmentAnnotation) continue;
+            const start = seg.text.indexOf(a.sentence_text);
             if (start >= 0) {
-              annotationMatch = {
+              annotationMatches.push({
                 start,
-                end: start + annotation.sentence_text.length,
-                className: annotationColorClass,
-              };
+                end: start + a.sentence_text.length,
+                className: ANNOTATION_COLOR_CLASS[a.color] ?? ANNOTATION_COLOR_CLASS.yellow,
+                annId: a.id,
+              });
             }
           }
+          // For the existing note-dot UI keep keying off "first annotation
+          // with a note" — multi-note rendering is a separate follow-up.
+          const noteAnnotation = segAnns.find((a) => a.note_text);
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           return (
             <span
@@ -725,10 +739,23 @@ export default function SentenceReader({
                 if (disabled || !isSegmentLoaded(seg)) return;
                 // Ignore clicks that are the tail of a text-selection drag
                 if (window.getSelection()?.toString().length) return;
-                const ann = showAnnotations ? getAnnotation(seg.text) : undefined;
-                if (ann && onAnnotationClick) {
-                  onAnnotationClick(ann, { x: e.clientX, y: e.clientY });
-                  return;
+                // Multi-annotation click routing (#1707): walk up from the
+                // event target to the nearest [data-ann-id]; a click that does
+                // not land on any annotation span falls through to the
+                // segment-click path so a fresh selection can begin.
+                if (showAnnotations && onAnnotationClick) {
+                  const annHost = (e.target as HTMLElement | null)?.closest?.("[data-ann-id]") as HTMLElement | null;
+                  if (annHost) {
+                    const id = Number(annHost.getAttribute("data-ann-id"));
+                    const ann = (annotations ?? []).find((a) => a.id === id);
+                    if (ann) {
+                      onAnnotationClick(ann, { x: e.clientX, y: e.clientY });
+                      return;
+                    }
+                  } else if (fullSegmentAnnotation) {
+                    onAnnotationClick(fullSegmentAnnotation, { x: e.clientX, y: e.clientY });
+                    return;
+                  }
                 }
                 if (isPlaying || duration > 0) {
                   onSegmentClick(seg.startTime, seg.text);
@@ -740,15 +767,15 @@ export default function SentenceReader({
               onPointerMove={onWordTap ? handlePointerMove : undefined}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
             >
-              {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatch)}
-              {annotation?.note_text && (
+              {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatches)}
+              {noteAnnotation?.note_text && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}
                   className="inline-flex items-center justify-center ml-0.5 align-middle cursor-pointer min-h-[44px] min-w-[44px] -m-[19px] p-[19px]"
                   aria-label={`Toggle note for: ${seg.text.slice(0, 60)}`}
                   aria-expanded={expandedNoteFlatIdx === seg.flatIdx}
                 >
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[annotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[noteAnnotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
                 </button>
               )}
               {trailingSpace ? " " : ""}
@@ -778,9 +805,14 @@ export default function SentenceReader({
           );
         }
 
-        // Expanded note card for any annotated sentence in this paragraph
+        // Expanded note card for any annotated sentence in this paragraph.
+        // With multi-annotation support (#1707), pick the first annotation
+        // with a note on the expanded segment.
         const expandedAnn = expandedNoteFlatIdx !== null
-          ? (para.segments.map((s) => s.flatIdx === expandedNoteFlatIdx ? getAnnotation(s.text) : null).find((a) => a != null) ?? null)
+          ? (para.segments
+              .filter((s) => s.flatIdx === expandedNoteFlatIdx)
+              .flatMap((s) => getAnnotations(s.text))
+              .find((a) => a.note_text) ?? null)
           : null;
         const noteCard = expandedAnn?.note_text ? (
           <div className={`mt-1.5 text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[expandedAnn.color] ?? NOTE_CARD_CLASS.yellow}`}>

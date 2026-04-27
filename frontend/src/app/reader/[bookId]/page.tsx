@@ -1115,7 +1115,7 @@ export default function ReaderPage() {
             <NoteIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden lg:inline">Notes</span>
             {annotations.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-800 text-white text-[9px] font-bold px-1">
                 {annotations.length}
               </span>
             )}
@@ -1162,7 +1162,7 @@ export default function ReaderPage() {
             <BookOpenIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden lg:inline">Vocab</span>
             {vocabWords.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-600 text-white text-[9px] font-bold px-1">
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-800 text-white text-[9px] font-bold px-1">
                 {vocabWords.length}
               </span>
             )}

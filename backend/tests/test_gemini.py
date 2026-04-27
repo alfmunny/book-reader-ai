@@ -384,3 +384,66 @@ async def test_translate_chapters_batch_error_includes_raw_preview():
             await gemini.translate_chapters_batch(
                 "key", [(0, "t"), (1, "t")], "en", "zh",
             )
+
+
+# ── generate_chapter_summary (issue #1619) ────────────────────────────────────
+
+
+async def test_generate_chapter_summary_with_chapter_title():
+    """Regression #1619: generate_chapter_summary must include the chapter title
+    in the prompt when chapter_title is provided (line 124: chapter_label)."""
+    captured = {}
+
+    async def fake_generate(api_key, system, prompt, max_tokens):
+        captured["prompt"] = prompt
+        return "Summary text."
+
+    with patch("services.gemini._generate", side_effect=fake_generate):
+        result = await gemini.generate_chapter_summary(
+            "key", "Some chapter text.", "Moby Dick", "Melville", chapter_title="The Chase"
+        )
+
+    assert result == "Summary text."
+    assert "The Chase" in captured["prompt"], (
+        f"chapter_title must appear in prompt, got: {captured['prompt']!r}"
+    )
+    assert "Moby Dick" in captured["prompt"]
+    assert "Melville" in captured["prompt"]
+
+
+async def test_generate_chapter_summary_without_chapter_title():
+    """Regression #1619: when chapter_title is omitted, no label should appear
+    in the prompt (branch 124: empty chapter_label)."""
+    captured = {}
+
+    async def fake_generate(api_key, system, prompt, max_tokens):
+        captured["prompt"] = prompt
+        return "Summary."
+
+    with patch("services.gemini._generate", side_effect=fake_generate):
+        await gemini.generate_chapter_summary("key", "Text.", "Pride and Prejudice", "Austen")
+
+    assert " — " not in captured["prompt"], (
+        f"No chapter label expected when chapter_title='', got: {captured['prompt']!r}"
+    )
+
+
+async def test_generate_chapter_summary_truncates_long_text():
+    """Regression #1619: chapter_text longer than 4000 chars must be truncated
+    to 4000 chars in the prompt (line 123: excerpt = chapter_text[:4000].strip())."""
+    long_text = "x" * 8000
+    captured = {}
+
+    async def fake_generate(api_key, system, prompt, max_tokens):
+        captured["prompt"] = prompt
+        return "Summary."
+
+    with patch("services.gemini._generate", side_effect=fake_generate):
+        await gemini.generate_chapter_summary("key", long_text, "Book", "Author")
+
+    assert "x" * 4001 not in captured["prompt"], (
+        "Prompt must not contain more than 4000 chars of excerpt"
+    )
+    assert "x" * 4000 in captured["prompt"], (
+        "Prompt must contain exactly 4000 chars of excerpt"
+    )

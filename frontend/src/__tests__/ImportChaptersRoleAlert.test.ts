@@ -15,13 +15,6 @@ const chaptersPage = fs.readFileSync(
 );
 
 describe("Import + chapters error states", () => {
-  it("import translateError block has role=alert", () => {
-    const idx = importPage.indexOf("{translateError &&");
-    expect(idx).toBeGreaterThan(0);
-    const block = importPage.slice(idx, idx + 500);
-    expect(block).toContain('role="alert"');
-  });
-
   it("import error block has role=alert", () => {
     // The 'error' state block (different from translateError)
     const idx = importPage.indexOf("bg-red-50 border border-red-200 text-red-700 rounded-lg");

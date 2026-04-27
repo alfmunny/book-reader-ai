@@ -42,16 +42,11 @@ jest.mock("@/lib/api", () => {
   return {
     ...actual,
     importBookStream: jest.fn(),
-    enqueueBookTranslation: jest.fn(),
     ApiError: actual.ApiError,
   };
 });
 
-jest.mock("@/lib/settings", () => ({
-  getSettings: jest.fn().mockReturnValue({ translationLang: "de" }),
-}));
-
-const { importBookStream, enqueueBookTranslation } = require("@/lib/api");
+const { importBookStream } = require("@/lib/api");
 
 async function* makeStream(events: object[]) {
   for (const ev of events) yield ev;
@@ -326,258 +321,14 @@ describe("ImportPage — skipToReading (lines 213-216)", () => {
   });
 });
 
-// ── handleTranslate — success path ───────────────────────────────────────────
+// ── canStartReading shows "Start reading now" ────────────────────────────────
 
-describe("ImportPage — handleTranslate success (lines 218-224)", () => {
-  it("shows translation queued banner after successful enqueue", async () => {
+describe("ImportPage — canStartReading shows Start reading now button", () => {
+  it("shows 'Start reading now' after chapters event before done", async () => {
     importBookStream.mockReturnValue(
       makeStream([
-        { event: "meta", title: "Test Book", source_language: "en" },
-        { event: "chapters", total: 5 },
-        { event: "done" },
-      ])
-    );
-    enqueueBookTranslation.mockResolvedValue(undefined);
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    await clickAndFlush(/Translate in background/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Translation queued/i)).toBeInTheDocument()
-    );
-    expect(enqueueBookTranslation).toHaveBeenCalledWith(42, "de");
-  });
-
-  it("shows 'Enqueuing…' while handleTranslate is in flight", async () => {
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
         { event: "chapters", total: 3 },
-        { event: "done" },
-      ])
-    );
-
-    let resolveEnqueue!: () => void;
-    enqueueBookTranslation.mockReturnValue(
-      new Promise<void>((res) => { resolveEnqueue = res; })
-    );
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    await clickAndFlush(/Translate in background/i);
-
-    // While pending, shows "Enqueuing…"
-    await waitFor(() =>
-      expect(screen.getByText(/Enqueuing…/i)).toBeInTheDocument()
-    );
-
-    await act(async () => { resolveEnqueue(); });
-  });
-});
-
-// ── handleTranslate — failure path ───────────────────────────────────────────
-
-describe("ImportPage — handleTranslate failure (lines 224-228)", () => {
-  it("shows translateError when enqueue fails with Error", async () => {
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 3 },
-        { event: "done" },
-      ])
-    );
-    enqueueBookTranslation.mockRejectedValue(new Error("Quota exceeded"));
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    await clickAndFlush(/Translate in background/i);
-
-    await waitFor(() =>
-      expect(screen.getByText("Quota exceeded")).toBeInTheDocument()
-    );
-  });
-
-  it("shows fallback error when non-Error is thrown during handleTranslate", async () => {
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 3 },
-        { event: "done" },
-      ])
-    );
-    enqueueBookTranslation.mockRejectedValue("string error");
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    await clickAndFlush(/Translate in background/i);
-
-    await waitFor(() =>
-      expect(screen.getByText("Failed to enqueue translation")).toBeInTheDocument()
-    );
-  });
-});
-
-// ── "Skip for now" button in translate prompt ─────────────────────────────────
-
-describe("ImportPage — skip translation prompt (line 396-400)", () => {
-  it("'Skip for now' hides translate prompt and shows Done message", async () => {
-    jest.useFakeTimers();
-    const { useRouter } = require("next/navigation");
-    const push = jest.fn();
-    useRouter.mockReturnValue({ push });
-
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 3 },
-        { event: "done" },
-      ])
-    );
-
-    render(<BookImportPage />);
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /start import/i })); });
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    const skipForNowBtn = screen.getByRole("button", { name: /Skip for now/i });
-    await act(async () => { fireEvent.click(skipForNowBtn); });
-
-    // After skip, readyToRedirect=true → shows Done message
-    await waitFor(() =>
-      expect(screen.getByText(/Done — opening your book/i)).toBeInTheDocument()
-    );
-
-    act(() => jest.advanceTimersByTime(1200));
-    expect(push).toHaveBeenCalledWith("/reader/42");
-
-    jest.useRealTimers();
-  });
-});
-
-// ── fmtCost helper (lines 47-50) ─────────────────────────────────────────────
-
-describe("ImportPage — fmtCost helper via translate prompt (lines 47-50)", () => {
-  it("shows '< $0.01' for very cheap books (line 48)", async () => {
-    // 1 word → tokens ≈ 1.4 → usd ≈ 0.0000035 < 0.005 → "< $0.01"
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 1, total_words: 1 },
-        { event: "done" },
-      ])
-    );
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    expect(screen.getByText(/< \$0\.01/)).toBeInTheDocument();
-  });
-
-  it("shows formatted cost for larger books (line 49)", async () => {
-    // 1M words → tokens = 1.4M → usd = 3.5 → "~$3.50"
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 10, total_words: 1_000_000 },
-        { event: "done" },
-      ])
-    );
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    expect(screen.getByText(/~\$3\.50/)).toBeInTheDocument();
-  });
-});
-
-// ── estimateCost with no totalWords (line 41) ─────────────────────────────────
-
-describe("ImportPage — estimateCost without totalWords (line 41)", () => {
-  it("shows cost estimate based on chapter count alone", async () => {
-    // No total_words → estimateCost uses chapters * 2000 avg
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 5 },  // no total_words
-        { event: "done" },
-      ])
-    );
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    // Cost display should be visible (any format)
-    const costEl = screen.getByText(/~\$|< \$/);
-    expect(costEl).toBeInTheDocument();
-  });
-
-  it("shows word count when total_words is available", async () => {
-    // With total_words, the prompt shows "~N words"
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "en" },
-        { event: "chapters", total: 3, total_words: 12000 },
-        { event: "done" },
-      ])
-    );
-
-    render(<BookImportPage />);
-    await clickAndFlush(/start import/i);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
-    );
-
-    // Word count appears in the description
-    expect(screen.getByText(/12,000 words/)).toBeInTheDocument();
-  });
-});
-
-// ── canStartReading shows "Start reading now" (lines 441-447) ────────────────
-
-describe("ImportPage — canStartReading + showTranslatePrompt interaction", () => {
-  it("shows 'Start reading now' when canStartReading and !showTranslatePrompt", async () => {
-    // Source language = target language → no translate prompt
-    // chapters → canStartReading = true
-    importBookStream.mockReturnValue(
-      makeStream([
-        { event: "meta", source_language: "de" }, // same as target "de"
-        { event: "chapters", total: 3 },
+        // no done event → not redirecting yet
       ])
     );
 
@@ -589,11 +340,10 @@ describe("ImportPage — canStartReading + showTranslatePrompt interaction", () 
     );
   });
 
-  it("hides 'Start reading now' when showTranslatePrompt is true", async () => {
-    // source != target → showTranslatePrompt=true → button hidden
+  it("hides 'Start reading now' after done event (redirect takes over)", async () => {
+    jest.useFakeTimers();
     importBookStream.mockReturnValue(
       makeStream([
-        { event: "meta", source_language: "en" },
         { event: "chapters", total: 3 },
         { event: "done" },
       ])
@@ -602,14 +352,16 @@ describe("ImportPage — canStartReading + showTranslatePrompt interaction", () 
     render(<BookImportPage />);
     await clickAndFlush(/start import/i);
 
+    // After done, redirect message shows and Start reading now is hidden
     await waitFor(() =>
-      expect(screen.getByText(/Pre-translate this book/i)).toBeInTheDocument()
+      expect(screen.getByText(/Done — opening your book/i)).toBeInTheDocument()
     );
 
-    // "Start reading now" should NOT be visible when translate prompt is shown
     expect(
       screen.queryByRole("button", { name: /Start reading now/i })
     ).not.toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 });
 

@@ -18,16 +18,11 @@ jest.mock("@/lib/api", () => {
   return {
     ...actual,
     importBookStream: jest.fn(),
-    enqueueBookTranslation: jest.fn().mockResolvedValue({ ok: true, enqueued: 5 }),
     ApiError: actual.ApiError,
   };
 });
 
-jest.mock("@/lib/settings", () => ({
-  getSettings: jest.fn().mockReturnValue({ translationLang: "de" }),
-}));
-
-const { importBookStream, enqueueBookTranslation } = require("@/lib/api");
+const { importBookStream } = require("@/lib/api");
 
 async function* makeStream(events: object[]) {
   for (const ev of events) yield ev;

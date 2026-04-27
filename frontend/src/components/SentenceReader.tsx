@@ -667,7 +667,7 @@ export default function SentenceReader({
           if (disabled) {
             return loaded
               ? "text-stone-500"
-              : "text-stone-400/70";
+              : "text-stone-500";
           }
           return loaded
             ? "hover:bg-amber-50"

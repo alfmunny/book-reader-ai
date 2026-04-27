@@ -918,6 +918,17 @@ def test_split_sql_orphan_end_keyword_does_not_crash():
     )
 
 
+def test_split_sql_trailing_whitespace_after_semicolon_not_added():
+    """Regression #1639: line 83 False branch — SQL ending with only whitespace
+    after the last ';' must not add an empty statement to the result."""
+    from services.migrations import _split_sql_statements
+    sql = "CREATE TABLE a (id INTEGER);\n   \n   "
+    stmts = _split_sql_statements(sql)
+    assert len(stmts) == 1
+    assert stmts[0].startswith("CREATE TABLE a")
+    assert all(s.strip() for s in stmts)  # no empty or whitespace-only statements
+
+
 async def test_migration_025_unique_constraint_enforced(tmp_db):
     """user_book_chapters (book_id, chapter_index) UNIQUE must reject duplicates."""
     await run_migrations(tmp_db)

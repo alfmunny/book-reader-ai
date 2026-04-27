@@ -663,3 +663,27 @@ async def test_patch_annotation_no_fields_returns_current_annotation(client, tes
     assert updated["id"] == ann_id
     assert updated["note_text"] == "original note"
     assert updated["color"] == "yellow"
+
+
+# ── Issue #1596: POST /annotations chapter-index out-of-range ─────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_annotation_out_of_range_chapter_returns_400(client, test_user, tmp_db):
+    """Regression #1596: POST /annotations with chapter_index beyond the book's
+    chapter count must return 400. Guard: routers/annotations.py lines 37-40."""
+    from services.book_chapters import clear_cache as _clear
+    text = "Chapter I\n\n" + "word " * 100 + "\n\nChapter II\n\n" + "word " * 100
+    ann_book_id = 8050
+    await save_book(ann_book_id, {**_BOOK_META, "id": ann_book_id}, text)
+    _clear()
+    resp = await client.post("/api/annotations", json={
+        "book_id": ann_book_id,
+        "chapter_index": 999,
+        "sentence_text": "A sentence.",
+    })
+    assert resp.status_code == 400, (
+        f"Regression #1596: expected 400 for out-of-range chapter_index, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()

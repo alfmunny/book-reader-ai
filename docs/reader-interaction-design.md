@@ -79,7 +79,7 @@ Text selection is **not supported** on mobile because:
 **Current mobile annotation path:**
 - Long-press (400 ms) → `onAnnotate(sentenceText, ci, position)` → AnnotationToolbar (full sentence only, not sub-sentence selection).
 
-**Gap**: Mobile users cannot highlight a sub-sentence phrase. Possible future fix: add a native-like word/phrase selection mode using a custom handle-drag UI after the long-press fires.
+**Gap (#UX-001 / #364)**: Mobile users cannot highlight a sub-sentence phrase. The proposed fix — drop the touch `preventDefault` and let pointer-motion disambiguation route quick-still holds to the word-action drawer and drag motions to native selection + the existing `SelectionToolbar` — is documented in `docs/design-improvement-plan.md` under "#364 — Mobile sub-sentence selection". Implementation pending.
 
 ---
 

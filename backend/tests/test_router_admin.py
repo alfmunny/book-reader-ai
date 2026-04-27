@@ -1785,6 +1785,20 @@ async def test_move_translation_404_when_source_missing(admin_client, admin_db):
     assert res.status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_move_translation_404_when_book_not_in_cache(admin_client, admin_db):
+    """Regression #1719: move must return 404 when the book itself doesn't
+    exist in the cache — distinct from the 404 when only the source
+    translation is missing.
+    Covers admin.py line ~842 (raise HTTPException 404 'Book not found in cache')."""
+    res = await admin_client.post(
+        "/api/admin/translations/99999/0/de/move",
+        json={"new_chapter_index": 1},
+    )
+    assert res.status_code == 404
+    assert "Book not found" in res.json()["detail"]
+
+
 async def test_move_translation_clears_queue_at_destination(admin_client, admin_db):
     """If a queue row exists at the destination (pending/failed/whatever),
     it would later cause the worker to translate over the moved row.

@@ -96,7 +96,7 @@ export default function UsersPage() {
                     act(() => adminFetch(`/admin/users/${u.id}`, { method: "DELETE" }));
                 }}
                 aria-label={`Delete ${u.name}`}
-                className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center border-red-200 text-red-500"
+                className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center border-red-200 text-red-600"
               >
                 Delete
               </button>

@@ -402,7 +402,7 @@ export default function BooksPage() {
                       act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" }));
                   }}
                   aria-label={`Delete ${b.title}`}
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 shrink-0 min-h-[44px]"
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 shrink-0 min-h-[44px]"
                 >
                   Delete
                 </button>
@@ -481,7 +481,7 @@ export default function BooksPage() {
                                   );
                                 }}
                                 aria-label={`Delete all ${lang} translations for ${b.title}`}
-                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 min-h-[44px]"
+                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
                               >
                                 Delete all
                               </button>
@@ -550,7 +550,7 @@ export default function BooksPage() {
                                                 ),
                                               )
                                             }
-                                            className="px-2 py-0.5 rounded border border-red-200 text-red-500 min-h-[44px]"
+                                            className="px-2 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px]"
                                           >
                                             Delete
                                           </button>

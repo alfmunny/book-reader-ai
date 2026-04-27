@@ -68,7 +68,7 @@ export default function AudioPage() {
               act(() => adminFetch(`/admin/audio/${a.book_id}/${a.chapter_index}`, { method: "DELETE" }))
             }
             aria-label={`Delete audio for Book ${a.book_id}, Chapter ${a.chapter_index + 1}`}
-            className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 min-h-[44px]"
+            className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
           >
             Delete
           </button>

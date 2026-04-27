@@ -3452,6 +3452,37 @@ async def test_retranslate_all_chapter_failure_logs_warning(admin_user, admin_cl
 
 
 @pytest.mark.asyncio
+async def test_retranslate_all_gemini_fails_google_succeeds_per_chapter(admin_user, admin_client, admin_db):
+    """Regression #1714: when Gemini fails for a chapter but Google Translate succeeds,
+    retranslate-all must mark that chapter as 'ok' (not 'failed').
+    Covers the TRUE branch of admin.py line 790 (provider == 'gemini') and
+    the successful Google fallback path inside the retranslate_all loop."""
+    from services.auth import encrypt_api_key
+    from services.db import set_user_gemini_key
+
+    await set_user_gemini_key(admin_user["id"], encrypt_api_key("fake-api-key"))
+    await save_book(100, BOOK_META, MOVE_BOOK_TEXT)
+
+    async def _gemini_fails_google_succeeds(text, src, tgt, *, provider="google", gemini_key=None):
+        if provider == "gemini":
+            raise RuntimeError("simulated Gemini failure")
+        return ["Google fallback paragraph."]
+
+    with patch("routers.admin.do_translate", side_effect=_gemini_fails_google_succeeds):
+        res = await admin_client.post(
+            "/api/admin/translations/100/retranslate-all",
+            json={"target_language": "de"},
+        )
+
+    assert res.status_code == 200, f"Expected 200 on Google fallback, got {res.status_code}: {res.text}"
+    body = res.json()
+    assert body["ok"] is True
+    results = {r["chapter"]: r for r in body["results"]}
+    assert results[0]["status"] == "ok", f"Chapter 0 must be 'ok' after Google fallback, got: {results[0]}"
+    assert results[0]["paragraphs"] == 1
+
+
+@pytest.mark.asyncio
 async def test_queue_dry_run_translation_failure_logs_warning(admin_client, admin_db, caplog):
     """Regression #1086: POST /admin/queue/dry-run translation failure must log a WARNING."""
     import logging

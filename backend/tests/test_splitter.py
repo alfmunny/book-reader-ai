@@ -2444,3 +2444,136 @@ def test_strip_leading_headings_handles_parentless_heading():
 
     root = lxmlhtml.fromstring("<h1>Title<p>Paragraph text.</p></h1>")
     _strip_leading_headings(root)
+# ── Lines 616, 619, 623, 630, 649, 704: build_chapters_from_epub spine branches
+
+def test_build_chapters_from_epub_spine_id_missing_from_id_to_item():
+    """Regression #1693: line 616 — spine item_id absent from id_to_item is silently skipped."""
+    from unittest.mock import patch, MagicMock
+    from services.splitter import build_chapters_from_epub
+
+    mock_book = MagicMock()
+    mock_book.title = "Test Book"
+    mock_book.spine = [("nonexistent-id", None)]
+    mock_book.get_items_of_type.return_value = []
+    mock_book.toc = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book):
+        result = build_chapters_from_epub(b"fake")
+
+    assert result == []
+
+
+def test_build_chapters_from_epub_skip_suffix_basename_skipped():
+    """Regression #1693: line 619 — spine item whose basename is in _SKIP_SUFFIXES is skipped."""
+    from unittest.mock import patch, MagicMock
+    from services.splitter import build_chapters_from_epub
+
+    nav_item = MagicMock()
+    nav_item.get_id.return_value = "nav"
+    nav_item.get_name.return_value = "OEBPS/nav.xhtml"
+
+    mock_book = MagicMock()
+    mock_book.title = "Test Book"
+    mock_book.spine = [("nav", None)]
+    mock_book.get_items_of_type.return_value = [nav_item]
+    mock_book.toc = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book):
+        result = build_chapters_from_epub(b"fake")
+
+    assert result == []
+
+
+def test_build_chapters_from_epub_pg_footer_item_skipped():
+    """Regression #1693: line 623 — spine item with item_id 'pg-footer' is skipped."""
+    from unittest.mock import patch, MagicMock
+    from services.splitter import build_chapters_from_epub
+
+    footer_item = MagicMock()
+    footer_item.get_id.return_value = "pg-footer"
+    footer_item.get_name.return_value = "pg-footer.xhtml"
+
+    mock_book = MagicMock()
+    mock_book.title = "Test Book"
+    mock_book.spine = [("pg-footer", None)]
+    mock_book.get_items_of_type.return_value = [footer_item]
+    mock_book.toc = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book):
+        result = build_chapters_from_epub(b"fake")
+
+    assert result == []
+
+
+def test_build_chapters_from_epub_no_body_element_falls_back_to_doc():
+    """Regression #1693: line 630 — HTML without <body> causes body to fall back to the root doc."""
+    from unittest.mock import patch, MagicMock
+    from services.splitter import build_chapters_from_epub
+
+    raw = b"<h1>Chapter One</h1>" + b"<p>word </p>" * 50
+
+    chapter_item = MagicMock()
+    chapter_item.get_id.return_value = "ch1"
+    chapter_item.get_name.return_value = "ch1.xhtml"
+    chapter_item.get_content.return_value = raw
+
+    mock_book = MagicMock()
+    mock_book.title = "Test Book"
+    mock_book.spine = [("ch1", None)]
+    mock_book.get_items_of_type.return_value = [chapter_item]
+    mock_book.toc = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book):
+        result = build_chapters_from_epub(b"fake")
+
+    assert isinstance(result, list)
+
+
+def test_build_chapters_from_epub_fromstring_raises_skips_item():
+    """Regression #1693: line 649 — when lxmlhtml.fromstring raises, the except
+    clause catches it and the item is skipped (get_content is outside the try block)."""
+    from unittest.mock import patch, MagicMock
+    from services.splitter import build_chapters_from_epub
+
+    bad_item = MagicMock()
+    bad_item.get_id.return_value = "ch1"
+    bad_item.get_name.return_value = "ch1.xhtml"
+    bad_item.get_content.return_value = b"<html><body><p>text</p></body></html>"
+
+    mock_book = MagicMock()
+    mock_book.title = "Test Book"
+    mock_book.spine = [("ch1", None)]
+    mock_book.get_items_of_type.return_value = [bad_item]
+    mock_book.toc = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book), \
+         patch("lxml.html.fromstring", side_effect=ValueError("bad html")):
+        result = build_chapters_from_epub(b"fake")
+
+    assert result == []
+
+
+def test_build_chapters_from_epub_all_skipped_returns_empty_list():
+    """Regression #1693: line 704 — when every spine item is skipped, returns []."""
+    from unittest.mock import patch, MagicMock
+    from services.splitter import build_chapters_from_epub
+
+    items = []
+    spine = []
+    for i, name in enumerate(["nav.xhtml", "cover.xhtml", "toc.html"]):
+        item = MagicMock()
+        item.get_id.return_value = f"item{i}"
+        item.get_name.return_value = name
+        items.append(item)
+        spine.append((f"item{i}", None))
+
+    mock_book = MagicMock()
+    mock_book.title = "Test Book"
+    mock_book.spine = spine
+    mock_book.get_items_of_type.return_value = items
+    mock_book.toc = []
+
+    with patch("ebooklib.epub.read_epub", return_value=mock_book):
+        result = build_chapters_from_epub(b"fake")
+
+    assert result == []

@@ -1,6 +1,6 @@
 # Splitter-Version Cache Invalidation + `resplit_book.py` CLI
 
-**Status:** Draft
+**Status:** Merged (PR #1741, 2026-04-27) — implementation pending
 **Author:** Architect
 **Date:** 2026-04-27
 **Priority:** P2

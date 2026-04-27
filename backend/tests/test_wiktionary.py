@@ -378,3 +378,57 @@ async def test_ai_lookup_url_is_empty_string():
     assert result["url"] == "", (
         "AI fallback must not return a Wiktionary URL — the user would land on a missing page"
     )
+
+
+# ── Issue #1628: uncovered branches ─────────────────────────────────────────
+
+
+def test_extract_lemma_fallback_plain_text_same_as_current_word():
+    """Regression #1628: fallback plain-text regex (line 38) matches but candidate ==
+    current_word → branch 41→44 (return None) must be taken.
+
+    The existing same-word test uses '<b>whale</b>' — HTML tags prevent the fallback
+    regex from matching because it requires plain alpha chars directly after 'of '.
+    This test uses plain text so the fallback regex fires and line 41 is reached."""
+    assert _extract_lemma("plural of whale", "whale") is None
+
+
+@pytest.mark.asyncio
+async def test_lookup_caps_at_three_across_multiple_entries():
+    """Regression #1628: when definitions span 2+ entries the inner break (line 108)
+    and outer break (line 110) must both fire once the total reaches 3.
+
+    test_lookup_caps_definitions_at_three only uses 1 entry with 5 definitions;
+    the inner loop slices [:2] so it adds at most 2 per entry — neither break fires."""
+    json_data = {
+        "en": [
+            {
+                "partOfSpeech": "noun",
+                "definitions": [{"definition": "Def 1"}, {"definition": "Def 2"}],
+            },
+            {
+                "partOfSpeech": "verb",
+                "definitions": [{"definition": "Def 3"}, {"definition": "Def 4"}],
+            },
+        ]
+    }
+    with patch("services.wiktionary.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=_make_mock_response(200, json_data))
+
+        result = await lookup("word", "en")
+
+    assert len(result["definitions"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_ai_lookup_strips_code_fences():
+    """Regression #1628: Gemini sometimes wraps JSON in ``` fences.
+    Lines 142-143 strip them; without this the json.loads call raises."""
+    fenced = '```json\n{"lemma":"laufen","definitions":[{"pos":"verb","text":"to run"}]}\n```'
+    with patch("services.gemini._generate", new=AsyncMock(return_value=fenced)):
+        result = await ai_lookup("lief", "de", api_key="test-key")
+    assert result["lemma"] == "laufen"
+    assert len(result["definitions"]) == 1

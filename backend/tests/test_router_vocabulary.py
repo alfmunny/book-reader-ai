@@ -1116,3 +1116,40 @@ async def test_export_obsidian_corrupt_github_token_returns_400(client, test_use
         f"got {resp.status_code}: {resp.text}"
     )
     assert "decrypted" in resp.json()["detail"].lower() or "decrypt" in resp.json()["detail"].lower()
+
+
+# ── Issue #1721: _find_connected_books deduplication ──────────────────────────
+
+
+def test_find_connected_books_deduplicates_shared_word():
+    """Regression #1721: _find_connected_books must count a word only once per
+    foreign book even if that word appears in multiple chapters of the foreign book.
+
+    Covers vocabulary.py line 390 — the FALSE branch of
+    `if word not in book_words[bid]["shared_words"]:` (deduplication guard).
+
+    Without the guard a word appearing in 3 chapters would be counted 3 times,
+    potentially inflating the shared-words count and producing false positives."""
+    from routers.vocabulary import _find_connected_books
+
+    BOOK_A = 1
+    BOOK_B = 2
+
+    all_vocab = [
+        {
+            "word": "whale",
+            "occurrences": [
+                {"book_id": BOOK_A, "chapter_index": 0, "sentence_text": "A whale.", "book_title": "Book A"},
+                # same word appears in TWO chapters of Book B — must be counted once
+                {"book_id": BOOK_B, "chapter_index": 0, "sentence_text": "The whale breached.", "book_title": "Book B"},
+                {"book_id": BOOK_B, "chapter_index": 1, "sentence_text": "Another whale sighting.", "book_title": "Book B"},
+            ],
+        },
+    ]
+
+    connected = _find_connected_books(BOOK_A, all_vocab, min_shared=1)
+
+    assert len(connected) == 1, f"Expected 1 connected book, got {len(connected)}: {connected}"
+    assert connected[0]["shared_words"] == ["whale"], (
+        f"Expected ['whale'] once (deduplicated), got: {connected[0]['shared_words']}"
+    )

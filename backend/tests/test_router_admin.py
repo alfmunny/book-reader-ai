@@ -3605,3 +3605,21 @@ async def test_queue_dry_run_corrupt_api_key_returns_400(admin_client):
         f"got {res.status_code}: {res.text}"
     )
     assert "decrypt" in res.json()["detail"].lower() or "key" in res.json()["detail"].lower()
+
+
+# ── Issue #1592: retranslate_all 404 for nonexistent book ────────────────────
+
+
+@pytest.mark.asyncio
+async def test_retranslate_all_returns_404_for_nonexistent_book(admin_client):
+    """Regression #1592: POST /admin/translations/{id}/retranslate-all must return
+    404 when the book doesn't exist in cache. Guard: routers/admin.py line 716."""
+    res = await admin_client.post(
+        "/api/admin/translations/99999/retranslate-all",
+        json={"target_language": "zh"},
+    )
+    assert res.status_code == 404, (
+        f"Regression #1592: expected 404 for nonexistent book in retranslate-all, "
+        f"got {res.status_code}: {res.text}"
+    )
+    assert "not found" in res.json()["detail"].lower()

@@ -1065,3 +1065,28 @@ async def test_find_connected_books_skips_words_not_in_target_book(client, test_
         f"Regression #1570: export for book_a must succeed when vocab contains words "
         f"only in book_b, got {resp.status_code}: {resp.text}"
     )
+
+
+@pytest.mark.asyncio
+async def test_save_word_out_of_range_chapter_returns_400(client, test_user):
+    """Regression #1605: POST /vocabulary with chapter_index beyond the book's
+    chapter count must return 400.
+    Guard: routers/vocabulary.py lines 61-66 inside save()."""
+    from services.book_chapters import clear_cache as _clear
+
+    text = "CHAPTER I\n\n" + "word " * 200 + "\n\nCHAPTER II\n\n" + "word " * 200
+    book_id = 9801
+    await save_book(book_id, {**_BOOK_META, "id": book_id}, text)
+    _clear()
+
+    resp = await client.post("/api/vocabulary", json={
+        "word": "whale",
+        "book_id": book_id,
+        "chapter_index": 999,
+        "sentence_text": "A great whale surfaced.",
+    })
+    assert resp.status_code == 400, (
+        f"Regression #1605: expected 400 for chapter_index=999 on 2-chapter book, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "out of range" in resp.json()["detail"].lower()

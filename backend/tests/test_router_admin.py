@@ -445,6 +445,19 @@ async def test_get_books_includes_translation_counts(admin_client, admin_db):
     assert book["translations"] == {"en": 2, "zh": 1}
 
 
+async def test_get_books_includes_queue_counts(admin_client, admin_db):
+    """Regression #1729: GET /admin/books must include queue status counts per language."""
+    from services.translation_queue import enqueue
+    await save_book(100, BOOK_META, BOOK_TEXT)
+    await enqueue(100, 0, "de")
+    await enqueue(100, 1, "de")
+
+    res = await admin_client.get("/api/admin/books")
+    assert res.status_code == 200
+    book = next(b for b in res.json() if b["id"] == 100)
+    assert book["queue"] == {"de": {"pending": 2}}
+
+
 async def test_delete_book(admin_client, admin_db):
     await save_book(100, BOOK_META, BOOK_TEXT)
     res = await admin_client.delete("/api/admin/books/100")

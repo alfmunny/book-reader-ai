@@ -1404,6 +1404,9 @@ export default function ReaderPage() {
                   onSegmentClick={(startTime) => {
                     ttsSeekRef.current(startTime);
                   }}
+                  onAnnotate={session?.backendToken ? (text, ci) => {
+                    setAnnotationPanel({ sentenceText: text, chapterIndex: ci });
+                  } : undefined}
                   focusParagraphIdx={paragraphFocus ? focusParagraphIdx : undefined}
                   paragraphFocusEnabled={paragraphFocus}
                   onParagraphVisible={handleParagraphVisible}

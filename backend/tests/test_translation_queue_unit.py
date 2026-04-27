@@ -231,8 +231,8 @@ async def test_enqueue_preserves_lower_priority():
     assert row[0] == 10  # MIN(100, 10) = 10
 
 
-async def test_enqueue_reset_failed_does_not_touch_running_row():
-    """enqueue(reset_failed=True) must not reset a row that is currently running.
+async def test_enqueue_reset_failed_running_row_status_preserved():
+    """Regression #1611: enqueue(reset_failed=True) must not reset a row that is currently running.
 
     Without the WHERE guard, the UPSERT unconditionally sets status='pending',
     turning a live in-flight row into a pending row. The worker's _mark_done

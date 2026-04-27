@@ -1149,3 +1149,29 @@ async def test_confirm_chapters_unmatched_original_index_saves_empty_text(client
     ch = chapters_resp.json()["chapters"][0]
     assert ch["title"] == "Phantom Chapter"
     assert ch["text"] == ""  # text="" because orig_idx not in orig_by_idx (line 270)
+
+
+# ── Issue #1781: extension check must be case-insensitive ─────────────────────
+
+
+@pytest.mark.parametrize("filename", ["BOOK.TXT", "Book.Txt", "novel.TXT"])
+async def test_upload_accepts_uppercase_txt_extension(client, test_user, filename):
+    """Regression #1781: file upload must accept uppercase/mixed-case .txt extensions."""
+    resp = await client.post("/api/books/upload", files=_txt_upload(filename=filename))
+    assert resp.status_code == 200, (
+        f"Regression #1781: filename {filename!r} must be accepted as .txt, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json()["format"] == "txt"
+
+
+@pytest.mark.parametrize("filename", ["BOOK.EPUB", "Book.Epub", "novel.EPub"])
+async def test_upload_accepts_uppercase_epub_extension(client, test_user, filename):
+    """Regression #1781: file upload must accept uppercase/mixed-case .epub extensions."""
+    epub_bytes = _make_test_epub([("Chapter 1", "Body text. " * 5)])
+    resp = await client.post("/api/books/upload", files=_epub_upload(epub_bytes, filename=filename))
+    assert resp.status_code == 200, (
+        f"Regression #1781: filename {filename!r} must be accepted as .epub, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert resp.json()["format"] == "epub"

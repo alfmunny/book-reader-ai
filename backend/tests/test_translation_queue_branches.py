@@ -25,6 +25,8 @@ from services.translation_queue import (
     rescan_for_missing_translations,
     reset_stale_running_rows,
     cleanup_orphan_done_rows,
+    delete_queue_item,
+    plan_work_for_queue,
 )
 
 
@@ -755,6 +757,161 @@ async def test_mark_failed_increments_chapters_failed():
     initial = w._state.chapters_failed
     await w._mark_failed(rows, "unit test failure")
     assert w._state.chapters_failed == initial + 2
+
+
+# ── Lines 114-116, 119→121: group_chapters_for_batch edge cases ──────────────
+
+def test_group_chapters_for_batch_empty_input_returns_empty():
+    """Regression #1673: line 119→121 False branch — empty chapters list means
+    `current` stays [] and `if current:` is False, returning [] directly."""
+    from services.translation_queue import group_chapters_for_batch, ChapterWork
+    result = group_chapters_for_batch([])
+    assert result == []
+
+
+def test_group_chapters_for_batch_splits_on_token_budget():
+    """Regression #1673: lines 114-116 True branch — when adding a chapter would
+    exceed max_output_tokens, the current batch is flushed and a new one starts."""
+    from services.translation_queue import group_chapters_for_batch, ChapterWork, _WORDS_TO_OUTPUT_TOKENS
+    # Each chapter has 10 words → est = 10 * 1.4 = 14 tokens.
+    # max_output_tokens=10 means the second chapter always causes a split.
+    ch1 = ChapterWork(book_id=1, book_title="T", source_language="en",
+                      chapter_index=0, chapter_text=" ".join(["word"] * 10))
+    ch2 = ChapterWork(book_id=1, book_title="T", source_language="en",
+                      chapter_index=1, chapter_text=" ".join(["word"] * 10))
+    batches = group_chapters_for_batch([ch1, ch2], max_output_tokens=10)
+    assert len(batches) == 2
+    assert batches[0] == [ch1]
+    assert batches[1] == [ch2]
+
+
+# ── Lines 621-626: delete_queue_item ─────────────────────────────────────────
+
+async def test_delete_queue_item_removes_row_and_returns_rowcount():
+    """Regression #1673: lines 621-626 — delete_queue_item removes the row
+    and returns rowcount == 1; a second call returns 0."""
+    from services.translation_queue import delete_queue_item
+    await save_book(1, BOOK_META, BOOK_TEXT)
+    row_id = await enqueue(1, 0, "zh")
+    # Find the real row id inserted.
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT id FROM translation_queue WHERE book_id=1 AND chapter_index=0"
+        ) as cur:
+            row = await cur.fetchone()
+    assert row is not None
+    real_id = row[0]
+    deleted = await delete_queue_item(real_id)
+    assert deleted == 1
+    deleted_again = await delete_queue_item(real_id)
+    assert deleted_again == 0
+
+
+# ── Lines 1259, 1262, 1270, 1272, 1280→1257: plan_work_for_queue branches ────
+
+async def test_plan_work_for_queue_book_ids_filter_excludes_book():
+    """Regression #1673: line 1259 — when book_ids is provided, books not in
+    the list are skipped (continue)."""
+    from services.translation_queue import plan_work_for_queue
+    from services.splitter import Chapter as _Chapter
+
+    meta1 = {**BOOK_META, "languages": ["en"]}
+    meta2 = {**BOOK_META, "title": "Other Book", "languages": ["en"]}
+    await save_book(1, meta1, BOOK_TEXT)
+    await save_book(2, meta2, BOOK_TEXT)
+
+    fake_chapter = _Chapter(title="Ch", text="Some content.")
+    with patch(
+        "services.book_chapters.split_with_html_preference",
+        new_callable=AsyncMock,
+        return_value=[fake_chapter],
+    ):
+        plans = await plan_work_for_queue("zh", book_ids=[1])
+
+    book_ids_in_plan = [p["book_id"] for p in plans]
+    assert 1 in book_ids_in_plan
+    assert 2 not in book_ids_in_plan
+
+
+async def test_plan_work_for_queue_skips_same_source_target_language():
+    """Regression #1673: line 1262 — when a book's source language equals the
+    target, the book is skipped (continue)."""
+    from services.translation_queue import plan_work_for_queue
+
+    meta = {**BOOK_META, "languages": ["zh"]}
+    await save_book(1, meta, BOOK_TEXT)
+
+    plans = await plan_work_for_queue("zh")
+    assert plans == []
+
+
+async def test_plan_work_for_queue_skips_empty_chapter_text():
+    """Regression #1673: line 1270 — chapters with only whitespace are skipped."""
+    from services.translation_queue import plan_work_for_queue
+    from services.splitter import Chapter as _Chapter
+
+    meta = {**BOOK_META, "languages": ["en"]}
+    await save_book(1, meta, BOOK_TEXT)
+
+    # Two chapters: first is blank, second has text.
+    blank = _Chapter(title="Empty", text="   ")
+    real = _Chapter(title="Real", text="Actual chapter content.")
+    with patch(
+        "services.book_chapters.split_with_html_preference",
+        new_callable=AsyncMock,
+        return_value=[blank, real],
+    ):
+        plans = await plan_work_for_queue("zh")
+
+    assert len(plans) == 1
+    chapters_in_plan = plans[0]["chapters"]
+    # Only the non-blank chapter (index 1) should be in the plan.
+    assert all(c.chapter_index == 1 for c in chapters_in_plan)
+
+
+async def test_plan_work_for_queue_skips_already_translated_chapter():
+    """Regression #1673: line 1272 — chapters with cached translations are skipped."""
+    from services.translation_queue import plan_work_for_queue
+    from services.splitter import Chapter as _Chapter
+
+    meta = {**BOOK_META, "languages": ["en"]}
+    await save_book(1, meta, BOOK_TEXT)
+    await save_translation(1, 0, "zh", ["已翻译"])
+
+    fake_chapter = _Chapter(title="Ch", text="Some content.")
+    with patch(
+        "services.book_chapters.split_with_html_preference",
+        new_callable=AsyncMock,
+        return_value=[fake_chapter],
+    ):
+        plans = await plan_work_for_queue("zh")
+
+    assert plans == []
+
+
+async def test_plan_work_for_queue_excludes_book_when_all_chapters_done():
+    """Regression #1673: line 1280→1257 False branch — when all chapters are
+    already translated, to_translate is empty and no plan entry is added."""
+    from services.translation_queue import plan_work_for_queue
+    from services.splitter import Chapter as _Chapter
+
+    meta = {**BOOK_META, "languages": ["en"]}
+    await save_book(1, meta, BOOK_TEXT)
+    await save_translation(1, 0, "zh", ["done"])
+    await save_translation(1, 1, "zh", ["done"])
+
+    fake_chapters = [
+        _Chapter(title="Ch1", text="First chapter."),
+        _Chapter(title="Ch2", text="Second chapter."),
+    ]
+    with patch(
+        "services.book_chapters.split_with_html_preference",
+        new_callable=AsyncMock,
+        return_value=fake_chapters,
+    ):
+        plans = await plan_work_for_queue("zh")
+
+    assert plans == []
 
 
 # ── Lines 1090-1101: _update_status body ─────────────────────────────────────

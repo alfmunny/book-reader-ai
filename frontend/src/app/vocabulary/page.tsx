@@ -490,7 +490,7 @@ function VocabularyPageContent() {
               placeholder="Search words…"
               className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
-            <div className="flex rounded-lg border border-amber-200 overflow-hidden" data-testid="sort-mode-control">
+            <div role="group" aria-label="Sort by" className="flex rounded-lg border border-amber-200 overflow-hidden" data-testid="sort-mode-control">
               {SORT_MODES.map(({ value, label }) => (
                 <button
                   key={value}

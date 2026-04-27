@@ -1090,3 +1090,29 @@ async def test_save_word_out_of_range_chapter_returns_400(client, test_user):
         f"got {resp.status_code}: {resp.text}"
     )
     assert "out of range" in resp.json()["detail"].lower()
+
+
+# ── Issue #1594: corrupt GitHub token decrypt path ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_export_obsidian_corrupt_github_token_returns_400(client, test_user, tmp_db):
+    """Regression #1594: POST /vocabulary/export/obsidian must return 400 when
+    the stored GitHub token cannot be decrypted (e.g. key rotation or DB corruption).
+    Guard: routers/vocabulary.py lines 417-420."""
+    from fastapi import HTTPException as FastAPIHTTPException
+    # Store a valid-looking (non-empty) encrypted token so the "not configured" guard passes.
+    enc_token = encrypt_api_key("ghp_real_token")
+    await update_obsidian_settings(
+        test_user["id"], enc_token, "user/obsidian-notes", "Books",
+    )
+    with patch(
+        "routers.vocabulary.decrypt_api_key",
+        side_effect=FastAPIHTTPException(status_code=500, detail="Could not decrypt API key"),
+    ):
+        resp = await client.post("/api/vocabulary/export/obsidian", json={})
+    assert resp.status_code == 400, (
+        f"Regression #1594: expected 400 for corrupt GitHub token, "
+        f"got {resp.status_code}: {resp.text}"
+    )
+    assert "decrypted" in resp.json()["detail"].lower() or "decrypt" in resp.json()["detail"].lower()

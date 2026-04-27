@@ -50,7 +50,7 @@ function CollapseHeading({
           : "mt-5 mb-2"
       }`}
     >
-      {isCollapsed ? <ChevronRightIcon className="w-3 h-3 text-amber-400 shrink-0" /> : <ChevronDownIcon className="w-3 h-3 text-amber-400 shrink-0" />}
+      {isCollapsed ? <ChevronRightIcon className="w-3 h-3 text-amber-700 shrink-0" /> : <ChevronDownIcon className="w-3 h-3 text-amber-700 shrink-0" />}
       <Tag className={level === 2
         ? "text-lg font-serif font-semibold text-ink group-hover:text-amber-800 transition-colors"
         : "text-sm font-semibold text-amber-800 uppercase tracking-wide group-hover:text-amber-900 transition-colors"

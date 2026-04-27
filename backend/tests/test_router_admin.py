@@ -1928,6 +1928,88 @@ async def test_queue_delete_book_normalizes_language(admin_client, admin_db):
     assert count == 0
 
 
+# ── overwrite=true flag ───────────────────────────────────────────────────────
+
+async def test_import_translations_overwrite_replaces_stale_rows(admin_client, admin_db):
+    """overwrite=true deletes ALL rows for a (book_id, lang) pair first, so
+    stale chapters not present in the new payload are removed."""
+    await save_book(200, {**BOOK_META, "id": 200}, BOOK_TEXT)
+    # Seed three stale chapters
+    for ch in range(3):
+        await save_translation(200, ch, "zh", [f"stale-{ch}"])
+
+    resp = await admin_client.post(
+        "/api/admin/translations/import?overwrite=true",
+        json={"entries": [
+            {"book_id": 200, "chapter_index": 0, "target_language": "zh",
+             "paragraphs": ["fresh-0"]},
+            {"book_id": 200, "chapter_index": 1, "target_language": "zh",
+             "paragraphs": ["fresh-1"]},
+            # chapter 2 intentionally omitted — should be deleted
+        ]},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["imported"] == 2
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            "SELECT chapter_index, paragraphs FROM translations "
+            "WHERE book_id=200 AND target_language='zh' ORDER BY chapter_index",
+        ) as cur:
+            rows = await cur.fetchall()
+    assert len(rows) == 2
+    assert rows[0][0] == 0
+    assert json.loads(rows[0][1]) == ["fresh-0"]
+    assert rows[1][0] == 1
+    assert json.loads(rows[1][1]) == ["fresh-1"]
+
+
+async def test_import_translations_overwrite_rollback_on_duplicate(admin_client, admin_db):
+    """overwrite=true with a duplicate chapter_index in the payload triggers a
+    PRIMARY KEY violation; the transaction rolls back and original rows survive."""
+    await save_book(201, {**BOOK_META, "id": 201}, BOOK_TEXT)
+    await save_translation(201, 0, "zh", ["original"])
+
+    resp = await admin_client.post(
+        "/api/admin/translations/import?overwrite=true",
+        json={"entries": [
+            {"book_id": 201, "chapter_index": 0, "target_language": "zh",
+             "paragraphs": ["first"]},
+            {"book_id": 201, "chapter_index": 0, "target_language": "zh",
+             "paragraphs": ["duplicate — causes PK violation"]},
+        ]},
+    )
+    # Request must fail (500 or 422)
+    assert resp.status_code >= 400
+
+    # Original row must still be present (rollback)
+    from services.db import get_cached_translation
+    cached = await get_cached_translation(201, 0, "zh")
+    assert cached == ["original"]
+
+
+async def test_import_translations_overwrite_false_default_unchanged(admin_client, admin_db):
+    """overwrite=false (default) preserves existing insert-or-replace behaviour —
+    chapters not mentioned in the payload are untouched."""
+    await save_book(202, {**BOOK_META, "id": 202}, BOOK_TEXT)
+    await save_translation(202, 0, "zh", ["keep-me"])
+    await save_translation(202, 1, "zh", ["untouched"])
+
+    resp = await admin_client.post(
+        "/api/admin/translations/import",  # no ?overwrite flag
+        json={"entries": [
+            {"book_id": 202, "chapter_index": 0, "target_language": "zh",
+             "paragraphs": ["replaced"]},
+        ]},
+    )
+    assert resp.status_code == 200
+
+    from services.db import get_cached_translation
+    assert await get_cached_translation(202, 0, "zh") == ["replaced"]
+    # chapter 1 untouched — overwrite=false should not delete it
+    assert await get_cached_translation(202, 1, "zh") == ["untouched"]
+
+
 async def test_queue_retry_failed_normalizes_language(admin_client, admin_db):
     """POST /admin/queue/retry-failed with target_language='ZH-CN' must
     revive rows stored under 'zh'."""

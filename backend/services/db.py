@@ -450,6 +450,47 @@ async def delete_translations_for_book(book_id: int) -> None:
         await db.commit()
 
 
+async def replace_translations_for_book(
+    book_id: int,
+    target_language: str,
+    entries: list[dict],
+) -> None:
+    """Atomically replace all translations for (book_id, target_language).
+
+    Deletes every existing row for the pair and inserts the new batch in a
+    single transaction. On any failure the original rows are preserved.
+    Each dict in entries must have: chapter_index, paragraphs (list[str]),
+    and optionally provider, model, title_translation.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        try:
+            await db.execute(
+                "DELETE FROM translations WHERE book_id=? AND target_language=?",
+                (book_id, target_language),
+            )
+            await db.executemany(
+                """INSERT INTO translations
+                   (book_id, chapter_index, target_language, paragraphs,
+                    provider, model, title_translation)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                [
+                    (
+                        book_id,
+                        e["chapter_index"],
+                        target_language,
+                        json.dumps(e["paragraphs"]),
+                        e.get("provider"),
+                        e.get("model"),
+                        e.get("title_translation"),
+                    )
+                    for e in entries
+                ],
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
+
 
 async def get_cached_book(book_id: int) -> dict | None:
     """Return cached book dict (includes 'text') or None."""

@@ -44,11 +44,6 @@ describe("Contrast wave 8 (closes #1369)", () => {
     expect(chaptersPage).toContain("text-sm text-stone-500 text-center mt-8");
   });
 
-  it("import page cost breakdown uses text-stone-500 not text-stone-400", () => {
-    expect(importPage).not.toContain('"text-stone-400">');
-    expect(importPage).toContain('"text-stone-500">');
-  });
-
   it("import page footer note uses text-stone-500 not text-stone-400", () => {
     expect(importPage).not.toContain("text-xs text-stone-400 mt-4");
     expect(importPage).toContain("text-xs text-stone-500 mt-4");

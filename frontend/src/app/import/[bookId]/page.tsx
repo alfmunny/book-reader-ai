@@ -4,11 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   importBookStream,
-  enqueueBookTranslation,
   ImportEvent,
   ApiError,
 } from "@/lib/api";
-import { getSettings } from "@/lib/settings";
 import { CheckCircleIcon, AlertCircleIcon, RetryIcon, CircleDotIcon } from "@/components/Icons";
 
 type Stage = "fetching" | "splitting";
@@ -30,30 +28,6 @@ const STAGE_LABELS: Record<Stage, string> = {
   splitting: "Split chapters",
 };
 
-// Gemini Flash paid-tier pricing for cost estimate display only.
-const FLASH_OUTPUT_COST_PER_M = 2.5; // USD per 1M output tokens
-const WORDS_PER_CHAPTER_AVG = 2000;
-const TOKENS_PER_WORD = 1.4;
-
-function estimateCost(
-  chapters: number,
-  totalWords?: number,
-): { tokens: number; usd: number } {
-  const words = totalWords ?? chapters * WORDS_PER_CHAPTER_AVG;
-  const tokens = Math.round(words * TOKENS_PER_WORD);
-  const usd = (tokens / 1_000_000) * FLASH_OUTPUT_COST_PER_M;
-  return { tokens, usd };
-}
-
-function fmtCost(usd: number): string {
-  if (usd < 0.005) return "< $0.01";
-  return `~$${usd.toFixed(2)}`;
-}
-
-function fmtNum(n: number): string {
-  return n.toLocaleString();
-}
-
 export default function BookImportPage() {
   const { bookId } = useParams<{ bookId: string }>();
   const router = useRouter();
@@ -65,24 +39,12 @@ export default function BookImportPage() {
   const [stages, setStages] = useState<Record<Stage, StageState>>(INITIAL);
   const [bookTitle, setBookTitle] = useState("");
   const [chapterCount, setChapterCount] = useState(0);
-  const [totalWords, setTotalWords] = useState<number | undefined>();
-  const [sourceLanguage, setSourceLanguage] = useState("");
   const [error, setError] = useState("");
   const [loginRequired, setLoginRequired] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [started, setStarted] = useState(false);
-  // "idle" | "pending" | "enqueued" | "skipped"
-  const [translateState, setTranslateState] = useState<
-    "idle" | "pending" | "enqueued" | "skipped"
-  >("idle");
-  const [translateError, setTranslateError] = useState("");
 
-  const targetLangRef = useRef("");
   const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    targetLangRef.current = getSettings().translationLang || "en";
-  }, []);
 
   function updateStage(stage: Stage, patch: Partial<StageState>) {
     setStages((prev) => ({ ...prev, [stage]: { ...prev[stage], ...patch } }));
@@ -122,13 +84,11 @@ export default function BookImportPage() {
 
     if (ev.event === "meta") {
       if (ev.title) setBookTitle(ev.title);
-      if (ev.source_language) setSourceLanguage(ev.source_language);
       return;
     }
 
     if (ev.event === "chapters") {
       setChapterCount(ev.total || 0);
-      setTotalWords(ev.total_words);
       updateStage("splitting", {
         status: "done",
         total: ev.total || 0,
@@ -188,23 +148,11 @@ export default function BookImportPage() {
     return () => abortRef.current?.abort();
   }, []);
 
-  // Redirect once done AND user has acted on the translation prompt (or it doesn't apply).
-  const translationActioned =
-    translateState === "enqueued" || translateState === "skipped";
-  const tl = targetLangRef.current;
-  const showTranslatePrompt =
-    isDone &&
-    chapterCount > 0 &&
-    !!tl &&
-    tl !== sourceLanguage &&
-    !translationActioned;
-  const readyToRedirect = isDone && (translationActioned || !showTranslatePrompt);
-
   useEffect(() => {
-    if (!readyToRedirect) return;
+    if (!isDone) return;
     const t = setTimeout(() => router.push(nextUrl), 1200);
     return () => clearTimeout(t);
-  }, [readyToRedirect, nextUrl, router]);
+  }, [isDone, nextUrl, router]);
 
   function cancel() {
     abortRef.current?.abort();
@@ -216,23 +164,8 @@ export default function BookImportPage() {
     router.push(nextUrl);
   }
 
-  async function handleTranslate() {
-    setTranslateState("pending");
-    setTranslateError("");
-    try {
-      await enqueueBookTranslation(Number(bookId), tl);
-      setTranslateState("enqueued");
-    } catch (e) {
-      setTranslateError(
-        e instanceof Error ? e.message : "Failed to enqueue translation",
-      );
-      setTranslateState("idle");
-    }
-  }
-
   const canStartReading =
     stages.splitting.status === "done" && chapterCount > 0;
-  const cost = estimateCost(chapterCount, totalWords);
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4 py-8">
@@ -347,70 +280,6 @@ export default function BookImportPage() {
             </div>
           )}
 
-          {/* Translation cost confirmation panel — shown after import completes */}
-          {showTranslatePrompt && (
-            <div className="border border-amber-200 rounded-xl p-5 mb-4 bg-amber-50/50">
-              <p className="text-sm font-semibold text-ink mb-1">
-                Pre-translate this book?
-              </p>
-              <p className="text-xs text-stone-500 mb-3">
-                {chapterCount} chapters
-                {totalWords ? ` · ~${fmtNum(totalWords)} words` : ""}
-                {" · target: "}
-                <span className="font-medium text-ink">{tl}</span>
-              </p>
-
-              <div className="space-y-2 mb-4">
-                {/* Primary option — Gemini */}
-                <div className="rounded-lg bg-white border border-amber-200 px-3 py-2.5 text-xs">
-                  <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                    <span className="font-semibold text-ink">Gemini Flash</span>
-                    <span className="font-semibold text-amber-700">{fmtCost(cost.usd)}</span>
-                  </div>
-                  <p className="text-stone-500">
-                    ~{fmtNum(cost.tokens)} output tokens · $2.50/M on paid tier.{" "}
-                    <span className="text-emerald-600 font-medium">Free on free tier.</span>
-                    {" Runs in background."}
-                  </p>
-                </div>
-                {/* Secondary option — Google Translate */}
-                <div className="rounded-lg bg-stone-50 border border-stone-200 px-3 py-2 text-xs text-stone-500">
-                  <span className="font-medium text-stone-600">Google Translate</span>
-                  {" — always free, lower quality. Available chapter-by-chapter in the reader sidebar."}
-                </div>
-              </div>
-
-              {translateError && (
-                <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-2">{translateError}</p>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleTranslate}
-                  disabled={translateState === "pending"}
-                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] text-xs font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center justify-center"
-                >
-                  {translateState === "pending"
-                    ? "Enqueuing…"
-                    : "Translate in background"}
-                </button>
-                <button
-                  onClick={() => setTranslateState("skipped")}
-                  className="rounded-lg border border-stone-300 text-stone-600 px-3 min-h-[44px] text-xs hover:bg-stone-50 flex items-center"
-                >
-                  Skip for now
-                </button>
-              </div>
-            </div>
-          )}
-
-          {translateState === "enqueued" && (
-            <p className="text-xs text-emerald-700 mb-3">
-              Translation queued — you can read now while it runs in the
-              background.
-            </p>
-          )}
-
           {loginRequired && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center mb-4">
               <p className="font-serif text-base font-semibold text-ink mb-1">Login required</p>
@@ -432,15 +301,15 @@ export default function BookImportPage() {
             </div>
           )}
 
-          {readyToRedirect && (
+          {isDone && (
             <p className="text-sm text-emerald-700 mb-4">
               Done — opening your book…
             </p>
           )}
 
-          {started && !readyToRedirect && (
+          {started && !isDone && (
             <div className="flex gap-2">
-              {canStartReading && !showTranslatePrompt && (
+              {canStartReading && (
                 <button
                   onClick={skipToReading}
                   className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] text-sm font-medium hover:bg-amber-800 flex items-center justify-center"

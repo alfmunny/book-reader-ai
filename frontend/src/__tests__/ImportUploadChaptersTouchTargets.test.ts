@@ -26,14 +26,6 @@ describe("Import and upload-chapters flow touch targets (closes #838)", () => {
     checkBefore(importPage, "Skip\n");
   });
 
-  it("Translate in background button has min-h-[44px]", () => {
-    checkBefore(importPage, "Translate in background");
-  });
-
-  it("Skip for now button has min-h-[44px]", () => {
-    checkBefore(importPage, "Skip for now");
-  });
-
   it("Start reading now button has min-h-[44px]", () => {
     checkBefore(importPage, "Start reading now");
   });

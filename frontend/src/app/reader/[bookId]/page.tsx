@@ -20,6 +20,20 @@ import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 
+// Gemini Flash pricing constants — used for per-chapter cost estimate in the translation sidebar.
+const FLASH_COST_PER_M = 2.5; // USD per 1M output tokens
+const TOKENS_PER_WORD = 1.4;
+const WORDS_DEFAULT = 2000;
+
+function chapterCostLabel(text?: string): string {
+  const words = text ? text.split(/\s+/).filter(Boolean).length : WORDS_DEFAULT;
+  const tokens = Math.round(words * TOKENS_PER_WORD);
+  const usd = (tokens / 1_000_000) * FLASH_COST_PER_M;
+  const cost = usd < 0.005 ? "< $0.01" : `~$${usd.toFixed(2)}`;
+  const tok = tokens >= 1000 ? `~${(tokens / 1000).toFixed(1)}K` : `~${tokens}`;
+  return `${cost} · ${tok} tokens`;
+}
+
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
 const metaCache = new Map<string, BookMeta>();
@@ -1983,12 +1997,19 @@ export default function ReaderPage() {
                     {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
                       <div className="mb-4">
                         {session?.backendToken ? (
-                          <button
-                            onClick={handleTranslateThisChapter}
-                            className="w-full px-3 py-2 min-h-[44px] rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
-                          >
-                            Translate this chapter
-                          </button>
+                          <>
+                            <button
+                              onClick={handleTranslateThisChapter}
+                              className="w-full px-3 py-2 min-h-[44px] rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
+                            >
+                              Translate this chapter
+                            </button>
+                            {hasGeminiKey === true && (
+                              <p className="mt-1 text-xs text-stone-500 text-center" aria-label="Estimated Gemini translation cost for this chapter">
+                                {chapterCostLabel(current?.text)}
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <p className="text-xs text-amber-700">
                             <a href="/api/auth/signin" className="underline font-medium">Sign in</a> to translate this chapter.

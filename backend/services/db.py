@@ -512,7 +512,7 @@ async def get_cached_book(book_id: int) -> dict | None:
 
 
 async def save_book(book_id: int, meta: dict, text: str, images: list | None = None) -> None:
-    """Insert or replace a book record (meta + full text + images).
+    """Insert or update a book record (meta + full text + images).
 
     After saving, the translation queue is auto-seeded with this book's
     chapters for every configured target language. The worker (if running)
@@ -521,8 +521,7 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
     async with aiosqlite.connect(DB_PATH) as db:
         # Guard against clobbering a user's uploaded private book that happens
         # to share the same auto-assigned SQLite ID as a Gutenberg catalog ID.
-        # INSERT OR REPLACE would delete the uploaded row (losing source='upload'
-        # and owner_user_id) and re-insert without those fields. (#467)
+        # (#467)
         async with db.execute(
             "SELECT source FROM books WHERE id=?", (book_id,)
         ) as _cur:
@@ -530,24 +529,35 @@ async def save_book(book_id: int, meta: dict, text: str, images: list | None = N
         if _existing and _existing[0] == "upload":
             return
 
-        await db.execute(
-            """
-            INSERT OR REPLACE INTO books
-                (id, title, authors, languages, subjects, download_count, cover, text, images)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                book_id,
-                meta.get("title", ""),
-                json.dumps(meta.get("authors", [])),
-                json.dumps(meta.get("languages", [])),
-                json.dumps(meta.get("subjects", [])),
-                meta.get("download_count", 0),
-                meta.get("cover", ""),
-                text,
-                json.dumps(images or []),
-            ),
+        params = (
+            meta.get("title", ""),
+            json.dumps(meta.get("authors", [])),
+            json.dumps(meta.get("languages", [])),
+            json.dumps(meta.get("subjects", [])),
+            meta.get("download_count", 0),
+            meta.get("cover", ""),
+            text,
+            json.dumps(images or []),
         )
+
+        if _existing:
+            # UPDATE — never DELETE+INSERT on an existing row; INSERT OR REPLACE
+            # would fire ON DELETE CASCADE and wipe translations, audio_cache,
+            # annotations, etc. (#1703)
+            await db.execute(
+                """UPDATE books
+                   SET title=?, authors=?, languages=?, subjects=?,
+                       download_count=?, cover=?, text=?, images=?
+                   WHERE id=?""",
+                (*params, book_id),
+            )
+        else:
+            await db.execute(
+                """INSERT INTO books
+                   (title, authors, languages, subjects, download_count, cover, text, images, id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (*params, book_id),
+            )
         await db.commit()
 
     # Auto-enqueue for translation. Lazy-imported to avoid a circular import

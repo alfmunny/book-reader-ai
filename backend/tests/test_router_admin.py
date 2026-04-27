@@ -458,6 +458,29 @@ async def test_get_books_includes_queue_counts(admin_client, admin_db):
     assert book["queue"] == {"de": {"pending": 2}}
 
 
+async def test_get_books_shows_active_when_worker_translating(admin_client, admin_db):
+    """Regression #1731: GET /admin/books active/active_language fields must reflect
+    the worker's current_book_id when a translation job is in progress."""
+    from services.translation_queue import worker as queue_worker
+    await save_book(100, BOOK_META, BOOK_TEXT)
+
+    state = queue_worker().state()
+    orig_book_id = state.current_book_id
+    orig_lang = state.current_target_language
+    try:
+        state.current_book_id = 100
+        state.current_target_language = "zh"
+
+        res = await admin_client.get("/api/admin/books")
+        assert res.status_code == 200
+        book = next(b for b in res.json() if b["id"] == 100)
+        assert book["active"] is True
+        assert book["active_language"] == "zh"
+    finally:
+        state.current_book_id = orig_book_id
+        state.current_target_language = orig_lang
+
+
 async def test_delete_book(admin_client, admin_db):
     await save_book(100, BOOK_META, BOOK_TEXT)
     res = await admin_client.delete("/api/admin/books/100")

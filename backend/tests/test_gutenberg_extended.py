@@ -3,7 +3,7 @@
 import pytest
 import respx
 import httpx
-from services.gutenberg import search_books, get_book_meta, get_book_html, get_book_text
+from services.gutenberg import search_books, get_book_meta, get_book_html, get_book_text, get_book_epub
 
 
 BOOK_ID = 1342
@@ -238,3 +238,32 @@ async def test_get_book_text_exception_during_url_fetch_continues():
         result = await get_book_text(BOOK_ID)
 
     assert result == "Cache text."
+
+
+# ── get_book_epub — issue #1659 ───────────────────────────────────────────────
+
+async def test_get_book_epub_multiple_non_noimages_epub_formats_uses_first():
+    """Regression #1659: line 118→113 False branch — when a book has multiple epub
+    format entries and none contains 'noimages', the first entry sets epub_url and
+    subsequent epub entries skip the elif (epub_url already set) to the next iteration."""
+    epub_url_1 = "https://www.gutenberg.org/ebooks/1342.epub"
+    epub_url_2 = "https://www.gutenberg.org/ebooks/1342-v2.epub"
+    fake_formats = {
+        "application/epub+zip": epub_url_1,
+        "application/epub": epub_url_2,
+    }
+    epub_bytes = b"fake epub content"
+
+    with respx.mock:
+        respx.get(META_URL).mock(
+            return_value=httpx.Response(200, json={"formats": fake_formats})
+        )
+        respx.get(epub_url_1).mock(
+            return_value=httpx.Response(200, content=epub_bytes)
+        )
+        result = await get_book_epub(BOOK_ID)
+
+    assert result is not None
+    content, url = result
+    assert content == epub_bytes
+    assert url == epub_url_1

@@ -1118,7 +1118,7 @@ export default function ReaderPage() {
               className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
                 showAnnotations
                   ? "bg-amber-100 text-amber-900 border-amber-400"
-                  : "border-amber-300 text-amber-500 hover:bg-amber-50 opacity-60"
+                  : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-900"
               }`}
             >
               <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />

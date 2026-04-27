@@ -345,26 +345,28 @@ export default function ProfilePage() {
 
         {/* ── Obsidian Export Settings ────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
-          {/* Accordion header */}
-          <button
-            onClick={() => setObsidianOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-amber-50/50 transition-colors"
-            aria-expanded={obsidianOpen}
-            aria-controls="obsidian-export-panel"
-          >
-            <div>
-              <h2 className="font-serif text-lg font-semibold text-ink">Obsidian Export</h2>
-              <p className="text-xs text-stone-500 mt-0.5">
-                {hasObsidianToken
-                  ? "GitHub token configured — vault sync ready"
-                  : "Configure GitHub integration to push vocab to Obsidian"}
-              </p>
-            </div>
-            <ChevronRightIcon
-              className={`w-4 h-4 text-amber-600 transition-transform duration-200 ${obsidianOpen ? "rotate-90" : ""}`}
-              aria-hidden="true"
-            />
-          </button>
+          {/* Accordion header — WAI-ARIA: heading wraps button */}
+          <h2 className="m-0">
+            <button
+              onClick={() => setObsidianOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-amber-50/50 transition-colors"
+              aria-expanded={obsidianOpen}
+              aria-controls="obsidian-export-panel"
+            >
+              <div>
+                <span className="font-serif text-lg font-semibold text-ink">Obsidian Export</span>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  {hasObsidianToken
+                    ? "GitHub token configured — vault sync ready"
+                    : "Configure GitHub integration to push vocab to Obsidian"}
+                </p>
+              </div>
+              <ChevronRightIcon
+                className={`w-4 h-4 text-amber-600 transition-transform duration-200 ${obsidianOpen ? "rotate-90" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+          </h2>
 
           {/* Collapsible body */}
           {obsidianOpen && (

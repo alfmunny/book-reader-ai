@@ -1858,3 +1858,96 @@ async def test_enqueue_all_succeeds_for_confirmed_upload(
     assert data.get("enqueued", 0) >= 1, (
         f"Expected at least 1 chapter enqueued for confirmed upload, got: {data}"
     )
+
+
+# ── Issue #1385: subtitle paragraph shift in translation alignment ─────────────
+
+_SUBTITLE_BOOK_TEXT = (
+    "CHAPTER I\n\n"
+    + "First body paragraph. " * 30 + "\n\n"
+    + "Second body paragraph. " * 30 + "\n\n"
+    + "CHAPTER II\n\n"
+    + "Chapter two body text. " * 100
+)
+_STALE_TRANSLATION = [
+    "Untertitel.",           # extra leading subtitle from old plain-text translation
+    "Erster Absatz.",        # paragraph 0 in current source
+    "Zweiter Absatz.",       # paragraph 1 in current source
+]
+_SUBTITLE_BOOK_META = {**MOCK_META, "id": 9880}
+
+
+async def test_get_translation_reconciles_subtitle_shift(client):
+    """Regression #1385: GET /books/{id}/chapters/0/translation must shift an extra
+    leading translated paragraph into title_translation when len(trans)==len(src)+1
+    and the leading paragraph is a short single-line subtitle."""
+    from services.db import save_translation
+    from services.book_chapters import clear_cache as _clear_ch
+    await save_book(9880, _SUBTITLE_BOOK_META, _SUBTITLE_BOOK_TEXT)
+    _clear_ch(9880)
+    await save_translation(9880, 0, "de", _STALE_TRANSLATION, title_translation=None)
+
+    resp = await client.get("/api/books/9880/chapters/0/translation?target_language=de")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["paragraphs"] == ["Erster Absatz.", "Zweiter Absatz."], (
+        f"Regression #1385: expected subtitle shifted out of paragraphs, got {data['paragraphs']}"
+    )
+    assert data["title_translation"] == "Untertitel.", (
+        f"Regression #1385: expected subtitle in title_translation, got {data['title_translation']!r}"
+    )
+
+
+async def test_get_translation_no_reconcile_when_title_already_set(client):
+    """Regression #1385: reconciliation must not overwrite an existing title_translation."""
+    from services.db import save_translation
+    from services.book_chapters import clear_cache as _clear_ch
+    await save_book(9880, _SUBTITLE_BOOK_META, _SUBTITLE_BOOK_TEXT)
+    _clear_ch(9880)
+    await save_translation(9880, 0, "de", _STALE_TRANSLATION, title_translation="Erstes Kapitel")
+
+    resp = await client.get("/api/books/9880/chapters/0/translation?target_language=de")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    # Should NOT shift — title_translation already has a value
+    assert data["paragraphs"] == _STALE_TRANSLATION
+    assert data["title_translation"] == "Erstes Kapitel"
+
+
+async def test_get_translation_no_reconcile_when_lengths_match(client):
+    """Regression #1385: reconciliation must not fire when paragraph counts already match."""
+    from services.db import save_translation
+    from services.book_chapters import clear_cache as _clear_ch
+    await save_book(9880, _SUBTITLE_BOOK_META, _SUBTITLE_BOOK_TEXT)
+    _clear_ch(9880)
+    matched_translation = ["Erster Absatz.", "Zweiter Absatz."]
+    await save_translation(9880, 0, "de", matched_translation, title_translation=None)
+
+    resp = await client.get("/api/books/9880/chapters/0/translation?target_language=de")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["paragraphs"] == matched_translation
+    assert data["title_translation"] is None
+
+
+async def test_post_translation_cache_hit_reconciles_subtitle_shift(anon_client):
+    """Regression #1385: POST /books/{id}/chapters/0/translation cache-hit path
+    must also reconcile the subtitle shift."""
+    from services.db import save_translation
+    from services.book_chapters import clear_cache as _clear_ch
+    await save_book(9880, _SUBTITLE_BOOK_META, _SUBTITLE_BOOK_TEXT)
+    _clear_ch(9880)
+    await save_translation(9880, 0, "de", _STALE_TRANSLATION, title_translation=None)
+
+    resp = await anon_client.post(
+        "/api/books/9880/chapters/0/translation",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["status"] == "ready"
+    assert data["paragraphs"] == ["Erster Absatz.", "Zweiter Absatz."], (
+        f"Regression #1385: POST cache-hit must reconcile subtitle, got {data['paragraphs']}"
+    )
+    assert data["title_translation"] == "Untertitel."

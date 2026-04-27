@@ -234,3 +234,38 @@ def check_book_access(book: dict | None, user: dict | None) -> None:
         return
     if user is None or (user["id"] != owner_id and user.get("role") != "admin"):
         raise HTTPException(status_code=403, detail="Not your book")
+
+
+# ── Tier-based authorization ────────────────────────────────────────────────
+# See docs/design/pricing-plans.md §"Authorization layer". Free is the
+# default for every user; Pro / Premium are reached via Stripe checkout
+# (PR C) which writes the tier column on webhook receipt.
+
+TIER_RANK = {"free": 0, "pro": 1, "premium": 2}
+
+
+def require_tier(min_tier: str):
+    """Dependency factory: caller passes the minimum tier the route needs.
+
+    Returns 402 Payment Required (not 403) for under-tier users — the
+    HTTP semantic for "your auth is fine, you just need to pay". The
+    structured `detail` lets the frontend pick the right paywall
+    variant without parsing the message string.
+    """
+    if min_tier not in TIER_RANK:
+        raise ValueError(f"Unknown tier: {min_tier!r}")
+
+    async def _dep(user: dict = Depends(get_current_user)) -> dict:
+        current = user.get("tier") or "free"
+        if TIER_RANK.get(current, 0) < TIER_RANK[min_tier]:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "error": "tier_required",
+                    "current_tier": current,
+                    "required_tier": min_tier,
+                },
+            )
+        return user
+
+    return _dep

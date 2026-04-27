@@ -15,7 +15,7 @@ from services.db import (
     list_cached_books,
 )
 from services.splitter import build_chapters
-from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access
+from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access, require_tier, TIER_RANK
 
 logger = logging.getLogger(__name__)
 
@@ -342,11 +342,23 @@ async def request_chapter_translation(
             detail=f"Chapter index out of range (book has {len(_chapters)} chapter(s)).",
         )
 
-    # 1. New translation requires login.
+    # 1. New translation requires login + paid tier (Pro / Premium).
+    # Read path (cache hit above) stays open to anonymous users — only
+    # CREATING a new translation costs LLM tokens and is gated.
+    # See docs/design/pricing-plans.md §"Translation-creation gating".
     if user is None:
         raise HTTPException(
             status_code=401,
             detail="Login required to translate this chapter.",
+        )
+    if TIER_RANK.get(user.get("tier") or "free", 0) < TIER_RANK["pro"]:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "tier_required",
+                "current_tier": user.get("tier") or "free",
+                "required_tier": "pro",
+            },
         )
 
     # 3. Already queued / running?
@@ -396,7 +408,7 @@ async def request_chapter_translation(
 async def enqueue_all_chapters(
     req: RequestTranslationBody,
     book_id: int = Path(..., ge=1),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_tier("pro")),
 ):
     """Queue every not-yet-translated chapter of a book for one language.
 
@@ -456,7 +468,7 @@ async def retry_chapter_translation(
     req: RequestTranslationBody,
     book_id: int = Path(..., ge=1),
     chapter_index: int = Path(..., ge=0),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_tier("pro")),
 ):
     """Re-queue a single chapter whose queue row is in 'failed' state.
 

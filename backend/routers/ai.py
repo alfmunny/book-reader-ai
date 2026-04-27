@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
-from services.auth import get_current_user, decrypt_api_key, check_book_access
+from services.auth import get_current_user, decrypt_api_key, check_book_access, require_tier
 from services.db import (
     get_cached_translation,
     save_translation,
@@ -397,7 +397,7 @@ async def save_translate_cache(req: SaveTranslationRequest, _user: dict = Depend
 
 
 @router.post("/translate")
-async def translate(req: TranslateRequest, user: dict = Depends(get_current_user)):
+async def translate(req: TranslateRequest, user: dict = Depends(require_tier("pro"))):
     """Translate text with auto-fallback: Gemini if key available, else Google Translate (free)."""
     src = req.source_language.strip().lower().split("-")[0]
     tgt = req.target_language.strip().lower().split("-")[0]

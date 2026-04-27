@@ -643,12 +643,16 @@ export default function SentenceReader({
             : "text-stone-500";
         };
 
-        // Long press (500ms) → open word action drawer
+        // Long press (500ms) → open word action drawer.
+        // Note: we intentionally do NOT preventDefault() on touch pointerdown.
+        // Suppressing the native selection loupe also blocks sub-sentence
+        // drag-selection on mobile (see #364). Motion-based disambiguation
+        // (pointermove >10px cancels the timer) routes drag gestures to the
+        // browser's native selection while a still hold for 500ms triggers
+        // the drawer; if the loupe briefly appears before the timer fires,
+        // removeAllRanges() inside the timer clears it.
         const handleSegLongPress = (e: React.PointerEvent, seg: Segment) => {
           if (!onWordTap) return;
-          // Prevent the browser's native text-selection loupe on touch so
-          // the hold gesture cleanly triggers the word-tap drawer.
-          if (e.pointerType === "touch") e.preventDefault();
           const startX = e.clientX;
           const startY = e.clientY;
           longPressStartPos.current = { x: startX, y: startY };

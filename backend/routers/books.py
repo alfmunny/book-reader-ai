@@ -391,6 +391,18 @@ async def enqueue_all_chapters(
             detail="Cannot translate to the same language as the original.",
         )
 
+    # Require user's own Gemini key — do not drain the admin queue key.
+    raw_key = user.get("gemini_key")
+    try:
+        decrypted_key = decrypt_api_key(raw_key) if raw_key else None
+    except HTTPException:
+        decrypted_key = None
+    if not decrypted_key:
+        raise HTTPException(
+            status_code=403,
+            detail="A Gemini API key is required to translate chapters. Please add one in your profile settings.",
+        )
+
     from services.translation_queue import enqueue_for_book, worker
 
     queued_by = user.get("email") or user.get("name") or f"user#{user.get('id')}"

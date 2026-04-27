@@ -335,12 +335,15 @@ async def test_retry_chapter_translation_revives_failed_row(client):
     assert row["priority"] == 10
 
 
-async def test_enqueue_all_chapters_for_user(client):
+async def test_enqueue_all_chapters_for_user(client, test_user):
     """POST /books/{id}/translations/enqueue-all queues every not-yet-
     translated chapter of the book in the requested language at
     priority=20 (between admin per-book 50 and reader on-demand 10)."""
     import aiosqlite
     import services.db as db_module
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-key"))
     # Long enough text to split into 2 chapters under the plain-text splitter.
     text = (
         "CHAPTER I\n\n" + ("First chapter word. " * 40) + "\n\n"
@@ -713,6 +716,20 @@ async def test_enqueue_all_same_language_returns_400(client):
         json={"target_language": "en"},
     )
     assert resp.status_code == 400
+
+
+async def test_enqueue_all_requires_gemini_key(client):
+    """Regression #1733: POST /books/{id}/translations/enqueue-all must return 403
+    when the authenticated user has no Gemini key, consistent with the single-chapter
+    endpoint which has the same guard."""
+    en_meta = {**MOCK_META, "id": 7003}
+    await save_book(7003, en_meta, "Chapter I\n\nSome text here.")
+    resp = await client.post(
+        "/api/books/7003/translations/enqueue-all",
+        json={"target_language": "de"},
+    )
+    assert resp.status_code == 403, f"Expected 403 for user without Gemini key, got {resp.status_code}: {resp.text}"
+    assert "Gemini" in resp.json()["detail"]
 
 
 async def test_chapter_translation_corrupted_gemini_key_returns_403(client, test_user):
@@ -1823,6 +1840,9 @@ async def test_enqueue_all_succeeds_for_confirmed_upload(
     """Regression #1706: POST /books/{id}/translations/enqueue-all on a fully
     confirmed upload book must proceed past the draft guard (line 382->387).
     At least one chapter should be enqueued."""
+    from services.db import set_user_gemini_key
+    from services.auth import encrypt_api_key
+    await set_user_gemini_key(test_user["id"], encrypt_api_key("my-key"))
     await insert_private_book(book_id=9871, owner_user_id=test_user["id"])
 
     resp = await client.post(

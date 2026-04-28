@@ -40,6 +40,7 @@ function timeAgo(ms: number): string {
 }
 
 type Tab = "library" | "discover";
+const TAB_ORDER: Tab[] = ["library", "discover"];
 
 export default function Home() {
   const router = useRouter();
@@ -214,7 +215,23 @@ export default function Home() {
       {/* Tab bar */}
       <div className="border-b border-amber-200 bg-white/40 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          <div role="tablist" aria-label="Main navigation" className="flex gap-1 items-center">
+          <div
+            role="tablist"
+            aria-label="Main navigation"
+            className="flex gap-1 items-center"
+            onKeyDown={(e) => {
+              const idx = TAB_ORDER.indexOf(tab);
+              if (e.key === "ArrowRight") {
+                const next = TAB_ORDER[(idx + 1) % TAB_ORDER.length];
+                setTab(next);
+                document.getElementById(`tab-${next}`)?.focus();
+              } else if (e.key === "ArrowLeft") {
+                const prev = TAB_ORDER[(idx - 1 + TAB_ORDER.length) % TAB_ORDER.length];
+                setTab(prev);
+                document.getElementById(`tab-${prev}`)?.focus();
+              }
+            }}
+          >
           {([
             { key: "library" as Tab, label: "Home", count: recentBooks.length || undefined },
             { key: "discover" as Tab, label: "Discover" },
@@ -225,6 +242,7 @@ export default function Home() {
               role="tab"
               aria-selected={tab === key}
               aria-controls={`tabpanel-${key}`}
+              tabIndex={tab === key ? 0 : -1}
               onClick={() => setTab(key)}
               className={`px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors ${
                 tab === key

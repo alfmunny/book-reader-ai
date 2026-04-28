@@ -456,8 +456,8 @@ export default function BooksPage() {
                 <button
                   onClick={() => queueLanguageForBook(b, newLangInput[b.id] ?? "zh")}
                   disabled={queueingLangFor?.startsWith(`${b.id}:`)}
+                  aria-label={`Translate ${b.title} into ${QUEUE_LANG_OPTIONS.find((o) => o.code === (newLangInput[b.id] ?? "zh"))?.label ?? (newLangInput[b.id] ?? "zh")}`}
                   className="text-xs px-2 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0 disabled:opacity-50 min-h-[44px]"
-                  title="Queue this book for translation into the selected language"
                 >
                   {queueingLangFor?.startsWith(`${b.id}:`) ? "Queueing…" : "+ Translate"}
                 </button>

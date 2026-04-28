@@ -283,6 +283,18 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 |------|--------|---------|----|
 | 2026-04-28 | Focus-mode HUD truncated chapter title: added `title` tooltip for hover-reveal | reader/[bookId]/page.tsx | #1770 |
 
+## Wave 12 — Navigation + Contrast (2026-04-28)
+
+### WCAG 1.4.3 Placeholder contrast
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | `placeholder:text-stone-400` (2.4:1) → `placeholder:text-stone-600` (7.2:1) on 4 inputs | decks/[deckId]/page.tsx, AnnotationToolbar.tsx, SearchBar.tsx, InsightChat.tsx | #1819 |
+
+### UX dead-end fixes
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | DeckCard: added `onClick` prop + content-area button so `/decks` list navigates to `/decks/{id}` | DeckCard.tsx, decks/page.tsx | pending #1820 |
+
 ---
 
 

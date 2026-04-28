@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
 import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
-import { ChevronDownIcon, ChevronRightIcon, RetryIcon } from "@/components/Icons";
+import { ChevronDownIcon, ChevronRightIcon, RetryIcon, CloseIcon } from "@/components/Icons";
 
 interface TranslationStat {
   chapters: number;
@@ -273,9 +273,9 @@ export default function BooksPage() {
             type="button"
             onClick={() => setActError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 text-red-500 hover:text-red-700 text-lg leading-none"
+            className="shrink-0 text-red-500 hover:text-red-700"
           >
-            ×
+            <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}
@@ -287,9 +287,9 @@ export default function BooksPage() {
             type="button"
             onClick={() => setToast(null)}
             aria-label="Dismiss message"
-            className="shrink-0 text-emerald-500 hover:text-emerald-700 text-lg leading-none"
+            className="shrink-0 text-emerald-500 hover:text-emerald-700"
           >
-            ×
+            <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}

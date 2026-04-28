@@ -287,6 +287,8 @@ interface Props {
   translations?: string[];
   /** Layout for translation mode. "parallel" = side by side, "inline" = below. */
   translationDisplayMode?: "parallel" | "inline";
+  /** BCP-47 language tag for the translation (e.g. "zh", "de"). Added as lang= on translated paragraphs so screen readers use the correct pronunciation engine (WCAG 3.1.2). */
+  translationLang?: string;
   /** Show a loading skeleton for translations that haven't arrived yet. */
   translationLoading?: boolean;
   /** Sentence text to scroll to and briefly highlight. */
@@ -445,6 +447,7 @@ export default function SentenceReader({
   disabled = false,
   translations,
   translationDisplayMode = "parallel",
+  translationLang,
   translationLoading = false,
   onAnnotationClick,
   chapterIndex = 0,
@@ -871,7 +874,7 @@ export default function SentenceReader({
                 </div>
                 <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6" data-translation="true">
                   {translationText ? (
-                    <p className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
+                    <p lang={translationLang} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
                       {translationText}
                     </p>
                   ) : translationLoading ? (
@@ -905,7 +908,7 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p data-translation="true" className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+              <p lang={translationLang} data-translation="true" className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
                 {translationText}
               </p>
             )}

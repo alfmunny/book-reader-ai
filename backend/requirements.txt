@@ -18,3 +18,4 @@ cryptography>=42.0.0
 respx
 pytest-cov
 ebooklib>=0.18
+stripe>=10.0.0

@@ -692,9 +692,10 @@ export default function ReaderPage() {
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Skip if user is typing in an input/select/textarea
+      // Skip if focus is on an interactive element — let the element handle its own keys.
+      // Without BUTTON/A here, Space would suppress native button activation (WCAG 2.1.1).
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON" || tag === "A") return;
 
       if (e.key === "ArrowLeft" && chapterIndex > 0) {
         e.preventDefault();

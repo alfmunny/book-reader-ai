@@ -99,6 +99,7 @@ export default function ChapterSummary({
       <div className="flex-1 overflow-y-auto p-4">
         {loading && (
           <div role="status" aria-label="Loading summary">
+            <span className="sr-only">Loading summary...</span>
             <div className="space-y-3 animate-pulse">
               <div className="h-4 bg-amber-100 rounded w-3/4" />
               <div className="h-4 bg-amber-100 rounded w-full" />

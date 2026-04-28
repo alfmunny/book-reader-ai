@@ -443,6 +443,7 @@ export default function InsightChat({
         {/* Initial loading skeleton */}
         {chatLoading && messages.length === 0 && (
           <div role="status" aria-label="Loading messages">
+            <span className="sr-only">Loading messages...</span>
             <div className="space-y-2 animate-pulse pt-1 px-1">
               {[1, 0.85, 1, 0.7, 1, 0.8].map((w, i) => (
                 <div key={i} className="h-3 bg-stone-100 rounded" style={{ width: `${w * 100}%` }} />
@@ -555,6 +556,7 @@ export default function InsightChat({
         {/* Typing indicator */}
         {chatLoading && messages.length > 0 && (
           <div className="flex gap-2" role="status" aria-label="AI is typing" aria-live="polite">
+            <span className="sr-only">AI is typing...</span>
             <div className="w-5 h-5 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5" aria-hidden="true">
               <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
             </div>

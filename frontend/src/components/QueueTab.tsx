@@ -437,6 +437,7 @@ export default function QueueTab({ adminFetch }: Props) {
   if (!initialLoaded && !error) {
     return (
       <div role="status" aria-label="Loading queue" className="space-y-3 animate-pulse">
+        <span className="sr-only">Loading queue...</span>
         <div className="bg-white rounded-xl border border-amber-200 p-4">
           <div className="flex items-center gap-3">
             <div className="w-2.5 h-2.5 rounded-full bg-stone-300" />

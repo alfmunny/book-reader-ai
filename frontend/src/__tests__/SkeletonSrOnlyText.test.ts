@@ -29,6 +29,7 @@ function findStatusWithoutSrOnly(src: string): string[] {
 }
 
 const FILES = [
+  // app/ pages (covered by #1871 / PR #1872)
   "src/app/loading.tsx",
   "src/app/page.tsx",
   "src/app/admin/layout.tsx",
@@ -46,9 +47,17 @@ const FILES = [
   "src/app/search/page.tsx",
   "src/app/upload/page.tsx",
   "src/app/upload/[bookId]/chapters/page.tsx",
+  // components/ (follow-up #1873)
+  "src/components/ReadingStats.tsx",
+  "src/components/AnnotationsSidebar.tsx",
+  "src/components/ChapterSummary.tsx",
+  "src/components/InsightChat.tsx",
+  "src/components/QueueTab.tsx",
+  "src/components/SentenceReader.tsx",
+  "src/components/TranslationView.tsx",
 ];
 
-describe("Skeleton live regions have sr-only text (WCAG 4.1.3 / #1871)", () => {
+describe("Skeleton live regions have sr-only text (WCAG 4.1.3 / #1871 #1873)", () => {
   for (const file of FILES) {
     it(`${file} — all role="status" aria-label skeletons include sr-only text`, () => {
       const src = readSrc(file);

@@ -876,6 +876,7 @@ export default function SentenceReader({
                     </p>
                   ) : translationLoading ? (
                     <div role="status" aria-label="Loading translation">
+                      <span className="sr-only">Loading translation...</span>
                       <div className="space-y-2 animate-pulse">
                         {Array.from({ length: 3 }).map((_, j) => (
                           <div key={j} className={`h-3 bg-amber-100 rounded ${j === 2 ? "w-2/3" : "w-full"}`} />
@@ -896,6 +897,7 @@ export default function SentenceReader({
             {noteCard}
             {translationLoading && textParaIdx === 0 && !translationText && (
               <div role="status" aria-label="Loading translation">
+                <span className="sr-only">Loading translation...</span>
                 <div className="mt-1 space-y-1 animate-pulse">
                   <div className="h-3 bg-amber-100 rounded w-full" />
                   <div className="h-3 bg-amber-100 rounded w-5/6" />

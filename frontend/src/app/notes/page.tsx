@@ -174,7 +174,17 @@ export default function NotesOverviewPage() {
                 </button>
               </>
             ) : (
-              <p className="text-sm">No books match your search.</p>
+              <>
+                <p className="font-serif text-lg text-stone-500 mt-1">No books match &ldquo;{search}&rdquo;</p>
+                <p className="text-sm">Try a different search term.</p>
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                >
+                  Clear search
+                </button>
+              </>
             )}
           </div>
         ) : (

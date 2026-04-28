@@ -144,6 +144,8 @@ export default function TagEditor({
           maxLength={50}
           placeholder="new tag"
           aria-label="New tag"
+          aria-invalid={!!error}
+          aria-describedby={error ? `tag-editor-error-${vocabularyId}` : undefined}
           className="rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-amber-400 w-24 placeholder:text-stone-600"
           data-testid={`tag-input-${vocabularyId}`}
         />
@@ -161,7 +163,7 @@ export default function TagEditor({
       )}
 
       {error && (
-        <span className="text-xs text-red-600" role="alert">
+        <span id={`tag-editor-error-${vocabularyId}`} className="text-xs text-red-600" role="alert">
           {error}
         </span>
       )}

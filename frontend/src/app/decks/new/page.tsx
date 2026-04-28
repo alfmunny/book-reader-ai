@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, createDeck, DeckMode } from "@/lib/api";
 import { ArrowLeftIcon, DeckIcon } from "@/components/Icons";
@@ -13,6 +13,11 @@ function splitTags(input: string): string[] {
 
 export default function DecksNewPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    document.title = "New Deck — Book Reader AI";
+  }, []);
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [mode, setMode] = useState<DeckMode>("manual");

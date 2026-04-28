@@ -43,6 +43,11 @@ const QUEUE_LANG_OPTIONS = [
 
 export default function BooksPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    document.title = "Admin: Books — Book Reader AI";
+  }, []);
+
   const [books, setBooks] = useState<Book[]>([]);
   const [translations, setTranslations] = useState<TranslationEntry[]>([]);
   const [loading, setLoading] = useState(true);

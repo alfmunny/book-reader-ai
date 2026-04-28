@@ -19,6 +19,10 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    document.title = "Admin: Users — Book Reader AI";
+  }, []);
+
   const load = useCallback(async () => {
     setError("");
     try {

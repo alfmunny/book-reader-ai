@@ -566,8 +566,8 @@ describe("QueueTab.branches — worker start/stop", () => {
     const stopBtn = screen.getByRole("button", { name: /^stop$/i });
     await userEvent.click(stopBtn);
 
-    // Inline dialog appears — cancel it
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // Inline alertdialog appears — cancel it
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     // Should NOT call stop endpoint since we cancelled

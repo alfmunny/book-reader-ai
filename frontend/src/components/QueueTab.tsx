@@ -504,7 +504,7 @@ export default function QueueTab({ adminFetch }: Props) {
       )}
 
       {pendingConfirm && (
-        <div role="dialog" aria-modal="true" aria-label="Confirm action" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3">
+        <div role="alertdialog" aria-modal="true" aria-label="Confirm action" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3">
           <p className="flex-1 text-amber-900">{pendingConfirm.message}</p>
           <div className="flex gap-2 shrink-0">
             <button

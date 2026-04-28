@@ -1,6 +1,7 @@
 /**
- * Regression test for #1995 — confirmation dialogs in admin/books and QueueTab
- * must include aria-modal="true" so screen readers treat them as modal.
+ * Regression tests for #1995 and #1999 — confirmation dialogs in admin/books and QueueTab
+ * must use role="alertdialog" (announced immediately as an assertive live region) with
+ * aria-modal="true" so screen readers cannot navigate behind the dialog.
  */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -46,7 +47,7 @@ beforeAll(async () => {
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
 
-test("admin/books confirm dialog has aria-modal='true'", async () => {
+test("admin/books confirm dialog has role='alertdialog' and aria-modal='true' (#1995, #1999)", async () => {
   mockAdminFetch.mockResolvedValue([BOOK]);
 
   render(<AdminBooksPage />);
@@ -56,6 +57,8 @@ test("admin/books confirm dialog has aria-modal='true'", async () => {
   // Click the Delete button to open the confirmation dialog
   await userEvent.click(screen.getByRole("button", { name: /delete moby dick/i }));
 
-  const dialog = screen.getByRole("dialog", { name: /confirm action/i });
+  // role="alertdialog" causes screen readers to announce the prompt immediately
+  // aria-modal="true" prevents virtual cursor from escaping into background content
+  const dialog = screen.getByRole("alertdialog", { name: /confirm action/i });
   expect(dialog).toHaveAttribute("aria-modal", "true");
 });

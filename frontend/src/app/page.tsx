@@ -602,8 +602,9 @@ export default function Home() {
               </div>
 
               {searchError && (
-                <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm">
-                  {searchError}
+                <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm flex items-center gap-2">
+                  <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>{searchError}</span>
                 </div>
               )}
 

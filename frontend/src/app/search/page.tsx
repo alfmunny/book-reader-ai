@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-import { SearchIcon, ArrowLeftIcon, ArrowRightIcon } from "@/components/Icons";
+import { AlertCircleIcon, SearchIcon, ArrowLeftIcon, ArrowRightIcon } from "@/components/Icons";
 import { InAppSearchResponse, InAppSearchResult, searchInAppContent } from "@/lib/api";
 
 function SnippetHtml({ snippet }: { snippet: string }) {
@@ -166,8 +166,9 @@ function SearchResultsInner() {
       )}
 
       {!loading && error && (
-        <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-          Error: {error}
+        <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2">
+          <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span>Error: {error}</span>
         </div>
       )}
 

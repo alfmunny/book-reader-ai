@@ -175,6 +175,29 @@ export default function ReaderPage() {
     setToolbarVisible((v) => !v);
   }
 
+  // Chat sheet (mobile bottom dialog) ref — needed for focus management
+  const chatSheetRef = useRef<HTMLDivElement>(null);
+
+  // Move focus into the chat sheet when it opens; restore on close (WCAG 2.4.3)
+  useEffect(() => {
+    const open = sidebarOpen || !!chatSheetText;
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    chatSheetRef.current?.focus();
+    return () => { prev?.focus?.(); };
+  }, [sidebarOpen, chatSheetText]);
+
+  // Dismiss chat sheet on Escape (WAI-ARIA dialog pattern)
+  useEffect(() => {
+    const open = sidebarOpen || !!chatSheetText;
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { setSidebarOpen(false); setChatSheetText(null); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [sidebarOpen, chatSheetText]);
+
   // Swipe gesture for chapter navigation
   const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
@@ -2142,7 +2165,7 @@ export default function ReaderPage() {
             onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
           />
           {/* Chat sheet (bottom half) */}
-          <div role="dialog" aria-modal="true" aria-label="Chat" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom">
+          <div ref={chatSheetRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Chat" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom focus:outline-none">
             {/* Drag handle + close */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-amber-200 shrink-0">
               <div className="w-10 h-1 bg-amber-200 rounded-full" />

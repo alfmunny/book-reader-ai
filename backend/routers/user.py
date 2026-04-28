@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
-from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
+from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access, require_tier
 from services.db import (
     set_user_gemini_key, get_user_by_id, get_reading_progress,
     get_obsidian_settings, update_obsidian_settings, get_cached_book,
@@ -32,8 +32,15 @@ class GeminiKeyRequest(BaseModel):
 @router.post("/gemini-key")
 async def save_gemini_key(
     req: GeminiKeyRequest,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_tier("pro")),
 ):
+    """BYOK: store a per-user Gemini API key. Pro+ tier required.
+
+    See docs/design/pricing-plans.md §"BYOK — bring your own API key".
+    Free users can't set / unset; existing free users who had keys set
+    pre-pricing-launch keep their keys (no migration), but cannot
+    update them until they upgrade.
+    """
     if not req.api_key.strip():
         raise HTTPException(status_code=400, detail="API key cannot be empty")
     encrypted = encrypt_api_key(req.api_key.strip())
@@ -42,7 +49,8 @@ async def save_gemini_key(
 
 
 @router.delete("/gemini-key")
-async def delete_gemini_key(user: dict = Depends(get_current_user)):
+async def delete_gemini_key(user: dict = Depends(require_tier("pro"))):
+    """BYOK: clear the per-user Gemini API key. Pro+ tier required."""
     await set_user_gemini_key(user["id"], None)
     return {"ok": True}
 

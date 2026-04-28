@@ -358,7 +358,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Filter your vocabulary…"
-              className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+              className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-ink placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-amber-300"
             />
           </div>
         )}

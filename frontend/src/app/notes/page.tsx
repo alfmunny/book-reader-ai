@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
-import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, ArrowRightIcon, WordIcon } from "@/components/Icons";
+import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, ArrowRightIcon, WordIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 
 interface BookSummary {
   bookId: number;
@@ -39,10 +39,9 @@ export default function NotesOverviewPage() {
     document.title = "Notes — Book Reader AI";
   }, []);
 
-  useEffect(() => {
-    if (status === "unauthenticated") { router.replace("/login"); return; }
-    if (status !== "authenticated") return;
+  const loadNotes = useCallback(() => {
     setFetchError(false);
+    setLoading(true);
     Promise.all([getAllAnnotations(), getAllInsights(), getVocabulary()])
       .then(([anns, ins, voc]) => {
         setAnnotations(anns);
@@ -51,6 +50,12 @@ export default function NotesOverviewPage() {
       })
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (status === "unauthenticated") { router.replace("/login"); return; }
+    if (status !== "authenticated") return;
+    loadNotes();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
@@ -155,8 +160,17 @@ export default function NotesOverviewPage() {
           </div>
         ) : fetchError ? (
           <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
+            <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
             <p className="font-serif text-lg text-red-700 mt-1">Failed to load notes.</p>
-            <p className="text-sm">Please refresh the page to try again.</p>
+            <p className="text-sm">Check your connection and try again.</p>
+            <button
+              type="button"
+              onClick={loadNotes}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+            >
+              <RetryIcon className="w-4 h-4" aria-hidden="true" />
+              Try again
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-stone-500">

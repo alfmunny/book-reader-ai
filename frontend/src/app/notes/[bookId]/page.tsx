@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -19,7 +19,7 @@ import {
 } from "@/lib/api";
 
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
-import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/Icons";
 import UndoToast from "@/components/UndoToast";
 
 type ViewMode = "section" | "chapter";
@@ -283,10 +283,9 @@ export default function BookNotesPage() {
 
   const didScrollRef = useRef(false);
 
-  useEffect(() => {
-    if (status === "unauthenticated") { router.replace("/login"); return; }
-    if (status !== "authenticated") return;
+  const loadData = useCallback(() => {
     setFetchError(false);
+    setLoading(true);
     Promise.all([
       getBookChapters(bookId),
       getAnnotations(bookId),
@@ -300,6 +299,13 @@ export default function BookNotesPage() {
       setVocab(voc);
     }).catch(() => setFetchError(true))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId]);
+
+  useEffect(() => {
+    if (status === "unauthenticated") { router.replace("/login"); return; }
+    if (status !== "authenticated") return;
+    loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, bookId]);
 
@@ -708,8 +714,17 @@ export default function BookNotesPage() {
           </div>
         ) : fetchError ? (
           <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
+            <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
             <p className="font-serif text-lg text-red-700 mt-1">Failed to load notes.</p>
-            <p className="text-sm">Please refresh the page to try again.</p>
+            <p className="text-sm">Check your connection and try again.</p>
+            <button
+              type="button"
+              onClick={loadData}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+            >
+              <RetryIcon className="w-4 h-4" aria-hidden="true" />
+              Try again
+            </button>
           </div>
         ) : annCount + insCount + vocCount === 0 ? (
           <div className="text-center py-24 text-stone-500">

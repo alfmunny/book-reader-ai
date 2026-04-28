@@ -392,24 +392,25 @@ export default function Home() {
                     Your Library
                   </h2>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <ul role="list" aria-label="Your Library" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
                   {recentBooks.map((book) => (
-                    <BookCard
-                      key={book.id}
-                      book={book}
-                      onClick={() => handleBookClick(book)}
-                      badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
-                      onRemove={() => {
-                        if (removedBookToast) {
-                          setRemovedBookToast(null);
-                        }
-                        removeRecentBook(book.id);
-                        setRecentBooks(getRecentBooks());
-                        setRemovedBookToast(book);
-                      }}
-                    />
+                    <li key={book.id}>
+                      <BookCard
+                        book={book}
+                        onClick={() => handleBookClick(book)}
+                        badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
+                        onRemove={() => {
+                          if (removedBookToast) {
+                            setRemovedBookToast(null);
+                          }
+                          removeRecentBook(book.id);
+                          setRecentBooks(getRecentBooks());
+                          setRemovedBookToast(book);
+                        }}
+                      />
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
             ) : (
               <div className="text-center py-20">

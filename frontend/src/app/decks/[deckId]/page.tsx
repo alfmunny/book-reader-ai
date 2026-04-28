@@ -152,6 +152,7 @@ export default function DeckDetailPage() {
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {loading ? (
           <div role="status" aria-label="Loading deck">
+            <span className="sr-only">Loading deck...</span>
             <div className="space-y-3 animate-pulse">
               <div className="h-6 w-2/3 bg-amber-100 rounded" />
               <div className="h-4 w-full bg-amber-100 rounded" />

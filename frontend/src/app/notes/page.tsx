@@ -150,6 +150,7 @@ export default function NotesOverviewPage() {
 
         {loading ? (
           <div role="status" aria-label="Loading notes" className="flex justify-center py-20">
+            <span className="sr-only">Loading notes...</span>
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           </div>
         ) : fetchError ? (

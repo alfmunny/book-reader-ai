@@ -45,6 +45,7 @@ export default function AudioPage() {
   if (loading)
     return (
       <div role="status" aria-label="Loading audio jobs" className="flex items-center justify-center py-16">
+        <span className="sr-only">Loading audio jobs...</span>
         <div className="w-6 h-6 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
       </div>
     );

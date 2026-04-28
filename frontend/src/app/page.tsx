@@ -612,6 +612,7 @@ export default function Home() {
 
               {searching && (
                 <div role="status" aria-label="Loading search results">
+                  <span className="sr-only">Loading search results...</span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
                     {Array.from({ length: 10 }).map((_, i) => (
                       <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
@@ -685,6 +686,7 @@ export default function Home() {
 
               {popularLoading && (
                 <div role="status" aria-label="Loading popular books">
+                  <span className="sr-only">Loading popular books...</span>
                   {popularView === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                       {Array.from({ length: 10 }).map((_, i) => (

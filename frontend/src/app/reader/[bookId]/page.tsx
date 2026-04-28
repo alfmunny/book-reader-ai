@@ -1360,6 +1360,7 @@ export default function ReaderPage() {
           >
             {loading ? (
               <div role="status" aria-label="Loading chapter" className="max-w-prose mx-auto space-y-3 animate-pulse">
+                <span className="sr-only">Loading chapter...</span>
                 {Array.from({ length: 14 }).map((_, i) => (
                   <div key={i} className={`h-4 bg-amber-200 rounded ${i % 5 === 4 ? "w-2/3" : "w-full"}`} />
                 ))}
@@ -1796,6 +1797,7 @@ export default function ReaderPage() {
                     </div>
                     {annotationsLoading && annotations.length === 0 ? (
                       <div className="flex justify-center mt-10" role="status" aria-label="Loading annotations">
+                        <span className="sr-only">Loading annotations...</span>
                         <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
                       </div>
                     ) : filteredNotes.length === 0 ? (

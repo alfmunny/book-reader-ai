@@ -72,6 +72,7 @@ export default function UploadsPage() {
   if (loading) {
     return (
       <div role="status" aria-label="Loading uploads" className="flex items-center justify-center py-16">
+        <span className="sr-only">Loading uploads...</span>
         <div className="w-6 h-6 border-4 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
       </div>
     );

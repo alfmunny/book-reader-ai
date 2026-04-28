@@ -120,6 +120,7 @@ export default function FlashcardsPage() {
   if (status === "loading" || loading) {
     return (
       <div role="status" aria-label="Loading flashcards" className="min-h-screen bg-parchment flex items-center justify-center">
+        <span className="sr-only">Loading flashcards...</span>
         <div className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
       </div>
     );

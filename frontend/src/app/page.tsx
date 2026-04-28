@@ -728,6 +728,7 @@ export default function Home() {
                         <button
                           key={book.id}
                           onClick={() => handleBookClick(book)}
+                          aria-label={`Open ${book.title}${book.authors.length ? ` by ${book.authors.join(", ")}` : ""}`}
                           className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
                         >
                           <span className="text-xs text-stone-500 w-7 text-right shrink-0 tabular-nums">

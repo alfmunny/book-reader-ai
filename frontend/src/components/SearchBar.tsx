@@ -87,7 +87,7 @@ export function SearchBar() {
         placeholder="Search notes, vocabulary, chapters…"
         aria-label="Search your content"
         maxLength={200}
-        className="bg-transparent outline-none min-w-[14rem] py-1 text-sm text-ink placeholder:text-stone-400"
+        className="bg-transparent outline-none min-w-[14rem] py-1 text-sm text-ink placeholder:text-stone-600"
       />
       <button
         type="button"

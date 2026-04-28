@@ -6,12 +6,12 @@ Step-by-step walkthroughs for the most common workflows. Tutorials are written a
 
 - **[Read your first Gutenberg book](first-book.md)** — from zero to a translated Faust chapter.
 - **[Enable AI translation](ai-translation.md)** — provider keys, model chains, and cost controls.
+- **[Set up the reading queue](queue.md)** — background pre-translation while you read.
 
 ## Coming soon
 
 These stubs exist so the nav is complete; they fill in over subsequent PRs.
 
-- 🔲 **Set up the reading queue** — background pre-translation while you read.
 - 🔲 **Export to Obsidian** — annotations and vocabulary to your personal knowledge base.
 - 🔲 **Add your own EPUB** — uploads, chapter splitting, and the confirm-draft flow.
 

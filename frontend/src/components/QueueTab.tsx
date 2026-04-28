@@ -920,6 +920,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       fn: () => saveSettings({ api_key: "" }),
                     })
                   }
+                  aria-label="Clear Gemini API key"
                   className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
                 >
                   Clear
@@ -1396,6 +1397,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   {it.status === "failed" && (
                     <button
                       onClick={() => retry(it)}
+                      aria-label={`Retry ${it.book_title || `book ${it.book_id}`} ch${it.chapter_index + 1} → ${it.target_language}`}
                       className="px-1.5 py-0.5 rounded border border-amber-300 text-amber-700 min-h-[44px] flex items-center"
                     >
                       Retry
@@ -1403,6 +1405,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   )}
                   <button
                     onClick={() => remove(it)}
+                    aria-label={`Remove ${it.book_title || `book ${it.book_id}`} ch${it.chapter_index + 1} → ${it.target_language} from queue`}
                     className="px-1.5 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px] flex items-center"
                   >
                     Del

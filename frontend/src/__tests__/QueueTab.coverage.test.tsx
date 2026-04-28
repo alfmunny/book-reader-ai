@@ -413,7 +413,7 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
 
     await renderAndWait(adminFetch);
 
-    const delBtn = await screen.findByRole("button", { name: /del/i });
+    const delBtn = await screen.findByRole("button", { name: /remove.*from queue/i });
     await userEvent.click(delBtn);
     // Confirm via inline dialog
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
@@ -432,7 +432,7 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
 
     await renderAndWait(adminFetch);
 
-    const delBtn = await screen.findByRole("button", { name: /del/i });
+    const delBtn = await screen.findByRole("button", { name: /remove.*from queue/i });
     await userEvent.click(delBtn);
     // Cancel via inline dialog
     await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
@@ -1012,7 +1012,7 @@ describe("QueueTab — retry/remove error handling (issue #273)", () => {
 
     await renderAndWait(adminFetch);
 
-    const delBtn = await screen.findByRole("button", { name: /del/i });
+    const delBtn = await screen.findByRole("button", { name: /remove.*from queue/i });
     await userEvent.click(delBtn);
     // Confirm via inline dialog
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));

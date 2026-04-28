@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { uploadBook, getUploadQuota, UploadQuota, ApiError } from "@/lib/api";
-import { UploadIcon, ArrowLeftIcon } from "@/components/Icons";
+import { AlertCircleIcon, UploadIcon, ArrowLeftIcon } from "@/components/Icons";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -186,8 +186,9 @@ export default function UploadPage() {
 
         {/* Error */}
         {error && (
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+            <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
           </div>
         )}
 

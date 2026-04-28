@@ -374,10 +374,10 @@ export default function InsightChat({
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* ── Toolbar ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-100 shrink-0 bg-gray-50">
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-stone-100 shrink-0 bg-stone-50">
         <select
           aria-label="Insight language"
-          className="flex-1 text-xs rounded border border-gray-200 px-2 py-1 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className="flex-1 text-xs rounded border border-stone-200 px-2 py-1 text-stone-700 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
           value={lang}
           onChange={(e) => { setLang(e.target.value); saveSettings({ insightLang: e.target.value }); }}
         >
@@ -396,7 +396,7 @@ export default function InsightChat({
           className={`shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded text-xs font-bold transition-colors ${
             chatFontSize === "sm"
               ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-              : "text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+              : "text-stone-500 hover:bg-stone-200 hover:text-stone-700"
           }`}
         >
           {chatFontSize === "xs" ? "A" : "a"}
@@ -406,7 +406,7 @@ export default function InsightChat({
           title={hasGeminiKey ? "Append a fresh insight" : "Gemini API key required"}
           aria-label="Append a fresh insight"
           disabled={!hasGeminiKey}
-          className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 hover:text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <RetryIcon className="w-3.5 h-3.5" />
         </button>
@@ -433,7 +433,7 @@ export default function InsightChat({
         {hasEarlier && (
           <button
             onClick={loadEarlier}
-            className="w-full text-xs text-gray-600 hover:text-gray-800 py-1.5 min-h-[44px] rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors inline-flex items-center justify-center gap-1.5"
+            className="w-full text-xs text-stone-600 hover:text-stone-800 py-1.5 min-h-[44px] rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors inline-flex items-center justify-center gap-1.5"
           >
             <ArrowUpIcon className="w-3 h-3" />
             <span>Load earlier ({loadedFrom} more)</span>
@@ -445,7 +445,7 @@ export default function InsightChat({
           <div role="status" aria-label="Loading messages">
             <div className="space-y-2 animate-pulse pt-1 px-1">
               {[1, 0.85, 1, 0.7, 1, 0.8].map((w, i) => (
-                <div key={i} className="h-3 bg-gray-100 rounded" style={{ width: `${w * 100}%` }} />
+                <div key={i} className="h-3 bg-stone-100 rounded" style={{ width: `${w * 100}%` }} />
               ))}
             </div>
           </div>
@@ -458,11 +458,11 @@ export default function InsightChat({
           if (msg.isChapterHeader) {
             return (
               <div key={i} className="flex items-center gap-2 py-1">
-                <div className="flex-1 h-px bg-gray-100" />
-                <span className="text-[11px] text-gray-600 font-medium px-1 shrink-0">
+                <div className="flex-1 h-px bg-stone-100" />
+                <span className="text-[11px] text-stone-600 font-medium px-1 shrink-0">
                   {msg.content}
                 </span>
-                <div className="flex-1 h-px bg-gray-100" />
+                <div className="flex-1 h-px bg-stone-100" />
               </div>
             );
           }
@@ -507,15 +507,15 @@ export default function InsightChat({
                 <div
                   className={[
                     "prose max-w-none break-words",
-                    "prose-p:my-1.5 prose-p:leading-[1.8] prose-p:text-gray-700",
-                    "prose-headings:text-gray-800 prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1",
-                    "prose-strong:text-gray-800 prose-em:text-gray-600",
-                    "prose-li:text-gray-700 prose-li:leading-[1.8] prose-li:my-0",
+                    "prose-p:my-1.5 prose-p:leading-[1.8] prose-p:text-stone-700",
+                    "prose-headings:text-stone-800 prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1",
+                    "prose-strong:text-stone-800 prose-em:text-stone-600",
+                    "prose-li:text-stone-700 prose-li:leading-[1.8] prose-li:my-0",
                     "prose-ul:my-1.5 prose-ol:my-1.5",
-                    "prose-blockquote:border-l-2 prose-blockquote:border-amber-300 prose-blockquote:text-gray-600 prose-blockquote:not-italic prose-blockquote:pl-3 prose-blockquote:my-2",
+                    "prose-blockquote:border-l-2 prose-blockquote:border-amber-300 prose-blockquote:text-stone-600 prose-blockquote:not-italic prose-blockquote:pl-3 prose-blockquote:my-2",
                     "prose-code:text-amber-700 prose-code:bg-amber-50 prose-code:px-1 prose-code:rounded prose-code:font-mono prose-code:text-[0.85em]",
-                    "prose-pre:bg-gray-900 prose-pre:text-gray-100 prose-pre:text-[0.8em] prose-pre:rounded-lg prose-pre:overflow-x-auto",
-                    "text-gray-700",
+                    "prose-pre:bg-stone-900 prose-pre:text-stone-100 prose-pre:text-[0.8em] prose-pre:rounded-lg prose-pre:overflow-x-auto",
+                    "text-stone-700",
                   ].join(" ")}
                 >
                   <span className="sr-only">Assistant: </span>
@@ -538,8 +538,8 @@ export default function InsightChat({
                       title={isSaved ? "Already saved" : "Save to notes"}
                       className={`mt-1.5 flex items-center gap-1 min-h-[44px] text-[11px] transition-colors ${
                         isSaved
-                          ? "text-gray-500 cursor-default"
-                          : "text-gray-600 hover:text-amber-700"
+                          ? "text-stone-500 cursor-default"
+                          : "text-stone-600 hover:text-amber-700"
                       }`}
                     >
                       <BookmarkIcon className="w-3 h-3" fill={isSaved ? "currentColor" : "none"} />
@@ -559,9 +559,9 @@ export default function InsightChat({
               <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
             </div>
             <div className="flex items-center gap-1 py-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" aria-hidden="true" style={{ animationDelay: "0ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" aria-hidden="true" style={{ animationDelay: "150ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce" aria-hidden="true" style={{ animationDelay: "300ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-300 animate-bounce" aria-hidden="true" style={{ animationDelay: "0ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-300 animate-bounce" aria-hidden="true" style={{ animationDelay: "150ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-300 animate-bounce" aria-hidden="true" style={{ animationDelay: "300ms" }} />
             </div>
           </div>
         )}
@@ -570,7 +570,7 @@ export default function InsightChat({
       </div>
 
       {/* ── Input area ────────────────────────────────────────────────── */}
-      <div className="border-t border-gray-100 px-3 pt-2 pb-3 shrink-0 bg-white">
+      <div className="border-t border-stone-100 px-3 pt-2 pb-3 shrink-0 bg-white">
         {/* Context chip */}
         {contextText && (
           <div className="mb-2">
@@ -588,7 +588,7 @@ export default function InsightChat({
         <div className="flex gap-2 items-end">
           <textarea
             aria-label="Ask about this chapter"
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white focus:border-transparent resize-none leading-relaxed transition-colors placeholder:text-gray-600"
+            className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white focus:border-transparent resize-none leading-relaxed transition-colors placeholder:text-stone-600"
             rows={2}
             placeholder={hasGeminiKey ? "Ask about this chapter…" : "Gemini API key required"}
             value={input}
@@ -611,7 +611,7 @@ export default function InsightChat({
             <ArrowUpIcon className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[11px] text-gray-600 mt-1">Enter to send · Shift+Enter for newline</p>
+        <p className="text-[11px] text-stone-600 mt-1">Enter to send · Shift+Enter for newline</p>
       </div>
     </div>
   );

@@ -178,7 +178,7 @@ describe("InsightChat — loading skeleton (L355 map callback)", () => {
 
     // chatLoading=true, messages=[] → skeleton bars visible
     await waitFor(() => {
-      const bars = document.querySelectorAll(".h-3.bg-gray-100.rounded");
+      const bars = document.querySelectorAll(".h-3.bg-stone-100.rounded");
       expect(bars.length).toBeGreaterThan(0);
     });
 

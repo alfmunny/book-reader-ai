@@ -121,7 +121,12 @@ export default function DecksPage() {
         ) : (
           <div className="space-y-4">
             {decks.map((d) => (
-              <DeckCard key={d.id} deck={d} onDelete={handleDelete} />
+              <DeckCard
+                key={d.id}
+                deck={d}
+                onClick={() => router.push(`/decks/${d.id}`)}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}

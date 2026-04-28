@@ -39,6 +39,10 @@ src-tauri/target/
 # Docs site (MkDocs build output; site/ is where `mkdocs build` writes)
 site/
 
+# Python bytecode (project-wide — covers scripts/, root, etc.)
+**/__pycache__/
+**/*.pyc
+
 # General
 .DS_Store
 *.db

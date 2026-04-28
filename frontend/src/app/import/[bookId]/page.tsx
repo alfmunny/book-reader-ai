@@ -302,7 +302,7 @@ export default function BookImportPage() {
           )}
 
           {isDone && (
-            <p className="text-sm text-emerald-700 mb-4">
+            <p role="status" className="text-sm text-emerald-700 mb-4">
               Done — opening your book…
             </p>
           )}

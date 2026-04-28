@@ -41,28 +41,28 @@ function CollapseHeading({
 }) {
   const Tag = `h${level}` as "h2" | "h3";
   return (
-    <button
-      onClick={onToggle}
-      aria-expanded={!isCollapsed}
-      className={`w-full flex items-center gap-2 text-left group min-h-[44px] ${
-        level === 2
-          ? "mt-8 mb-3 pb-1.5 border-b border-amber-200"
-          : "mt-5 mb-2"
-      }`}
-    >
-      {isCollapsed ? <ChevronRightIcon className="w-3 h-3 text-amber-700 shrink-0" /> : <ChevronDownIcon className="w-3 h-3 text-amber-700 shrink-0" />}
-      <Tag className={level === 2
-        ? "text-lg font-serif font-semibold text-ink group-hover:text-amber-800 transition-colors"
-        : "text-sm font-semibold text-amber-800 uppercase tracking-wide group-hover:text-amber-900 transition-colors"
-      }>
-        {label}
-      </Tag>
-      {count !== undefined && (
-        <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-medium text-amber-700 font-sans ml-1 shrink-0">
-          {count}
+    <Tag className={level === 2 ? "mt-8 mb-3" : "mt-5 mb-2"}>
+      <button
+        onClick={onToggle}
+        aria-expanded={!isCollapsed}
+        className={`w-full flex items-center gap-2 text-left group min-h-[44px] ${
+          level === 2 ? "pb-1.5 border-b border-amber-200" : ""
+        }`}
+      >
+        {isCollapsed ? <ChevronRightIcon className="w-3 h-3 text-amber-700 shrink-0" /> : <ChevronDownIcon className="w-3 h-3 text-amber-700 shrink-0" />}
+        <span className={level === 2
+          ? "text-lg font-serif font-semibold text-ink group-hover:text-amber-800 transition-colors"
+          : "text-sm font-semibold text-amber-800 uppercase tracking-wide group-hover:text-amber-900 transition-colors"
+        }>
+          {label}
         </span>
-      )}
-    </button>
+        {count !== undefined && (
+          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-medium text-amber-700 font-sans ml-1 shrink-0">
+            {count}
+          </span>
+        )}
+      </button>
+    </Tag>
   );
 }
 

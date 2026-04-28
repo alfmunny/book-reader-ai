@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getDraftChapters, confirmChapters, DraftChapter, ApiError } from "@/lib/api";
-import { TrashIcon, ArrowLeftIcon } from "@/components/Icons";
+import { TrashIcon, ArrowLeftIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 
 interface ChapterSpec {
   title: string;
@@ -25,8 +25,10 @@ export default function ChapterEditorPage() {
     document.title = "Upload: Review Chapters — Book Reader AI";
   }, []);
 
-  useEffect(() => {
+  function loadChapters() {
     if (!bookId) return;
+    setError(null);
+    setLoading(true);
     getDraftChapters(Number(bookId))
       .then((data) => {
         setChapters(
@@ -42,7 +44,10 @@ export default function ChapterEditorPage() {
         setError(e instanceof ApiError ? e.message : "Failed to load chapters.");
       })
       .finally(() => setLoading(false));
-  }, [bookId]);
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadChapters(); }, [bookId]);
 
   function handleTitleChange(idx: number, value: string) {
     setChapters((prev) => prev.map((ch, i) => (i === idx ? { ...ch, title: value } : ch)));
@@ -86,14 +91,26 @@ export default function ChapterEditorPage() {
     return (
       <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
         <div role="alert" className="text-center max-w-sm">
+          <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto mb-3" aria-hidden="true" />
           <p className="font-serif text-lg text-ink mb-2">Could not load chapters</p>
-          <p className="text-sm text-red-600 mb-6">{error}</p>
-          <button
-            onClick={() => router.push("/upload")}
-            className="rounded-lg bg-amber-700 px-6 min-h-[44px] text-white font-medium hover:bg-amber-800 transition-colors flex items-center"
-          >
-            Try another file
-          </button>
+          <p className="text-sm text-stone-500 mb-6">{error}</p>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={loadChapters}
+              className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+            >
+              <RetryIcon className="w-4 h-4" aria-hidden="true" />
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push("/upload")}
+              className="px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+            >
+              Try another file
+            </button>
+          </div>
         </div>
       </main>
     );

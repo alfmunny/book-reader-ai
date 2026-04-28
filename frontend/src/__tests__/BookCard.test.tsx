@@ -29,8 +29,13 @@ test("renders author name", () => {
 
 test("renders cover image when cover URL is provided", () => {
   render(<BookCard book={BOOK} onClick={jest.fn()} />);
-  const img = screen.getByRole("img", { name: "Pride and Prejudice" });
+  // Cover image uses alt="" (decorative — button label comes from the <p> text)
+  // eslint-disable-next-line testing-library/no-container
+  const { container } = render(<BookCard book={BOOK} onClick={jest.fn()} />);
+  const img = container.querySelector("img");
+  expect(img).not.toBeNull();
   expect(img).toHaveAttribute("src", BOOK.cover);
+  expect(img).toHaveAttribute("alt", "");
 });
 
 test("renders SVG placeholder when no cover URL", () => {

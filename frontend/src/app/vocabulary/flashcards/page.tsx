@@ -11,7 +11,7 @@ import {
   Flashcard,
   FlashcardStats,
 } from "@/lib/api";
-import { ArrowLeftIcon, FlashcardIcon, CheckIcon } from "@/components/Icons";
+import { AlertCircleIcon, ArrowLeftIcon, FlashcardIcon, CheckIcon, RetryIcon } from "@/components/Icons";
 
 const GRADES = [
   { label: "Again", value: 0, className: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200" },
@@ -56,8 +56,10 @@ export default function FlashcardsPage() {
   const [done, setDone] = useState(false);
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [selectedDeckId, setSelectedDeckId] = useState<number | undefined>(undefined);
+  const [fetchError, setFetchError] = useState(false);
 
   const loadData = useCallback(async () => {
+    setFetchError(false);
     setLoading(true);
     try {
       const [due, statsData] = await Promise.all([
@@ -69,6 +71,8 @@ export default function FlashcardsPage() {
       setCurrentIndex(0);
       setFlipped(false);
       setDone(due.length === 0);
+    } catch {
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
@@ -203,8 +207,25 @@ export default function FlashcardsPage() {
           />
         </div>
 
+        {/* Error state */}
+        {fetchError && (
+          <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
+            <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto" aria-hidden="true" />
+            <p className="font-serif text-lg text-ink">Failed to load flashcards.</p>
+            <p className="text-sm text-stone-500">Check your connection and try again.</p>
+            <button
+              type="button"
+              onClick={loadData}
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+            >
+              <RetryIcon className="w-4 h-4" aria-hidden="true" />
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Done state */}
-        {done ? (
+        {!fetchError && done ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <CheckIcon className="w-12 h-12 text-green-500" />
             <h2 className="font-serif text-2xl text-ink">All done for today!</h2>
@@ -220,7 +241,7 @@ export default function FlashcardsPage() {
               Back to Vocabulary
             </button>
           </div>
-        ) : currentCard ? (
+        ) : !fetchError && currentCard ? (
           <div className="space-y-4">
             {/* Card */}
             <div

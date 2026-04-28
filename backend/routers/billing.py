@@ -1,19 +1,19 @@
 """Billing & subscription endpoints.
 
-PR C1 of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
-Ships a read-only `GET /billing/me` returning the current user's tier
-+ period end + book / translation usage. Stripe checkout / portal /
-webhook routes are out-of-scope for C1 — see PR C2.
+PR C1 + C2 of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
+- `GET /billing/me` (PR C1): read-only tier + this-month usage.
+- `POST /billing/webhook` (PR C2): receives Stripe webhook events,
+  verifies signature, idempotent insert into `billing_events`, dispatches
+  to per-event handler in `services.stripe_billing`.
 
-The usage counters are computed live from existing tables
-(`reading_history` for distinct books this month, `translations` for
-authored translations this month). No new schema.
+Checkout-session creation + customer-portal session lands in PR C3.
 """
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Request
 import aiosqlite
 
 from services import db as _db
+from services import stripe_billing
 from services.auth import (
     get_current_user, FREE_TIER_MONTHLY_BOOK_QUOTA,
 )
@@ -85,3 +85,24 @@ async def _count_translations_this_month(user_id: int) -> int:
     so v1 returns 0. Hooks for per-user attribution land in PR C2 along
     with the Stripe webhook + tier transitions."""
     return 0
+
+
+@router.post("/webhook")
+async def stripe_webhook(request: Request) -> dict:
+    """Stripe webhook receiver.
+
+    Stripe POSTs events here on subscription create/update/delete +
+    invoice failures. Signature is verified via STRIPE_WEBHOOK_SECRET
+    env var. The handler is idempotent — replays of the same event_id
+    are caught by UNIQUE on `billing_events.stripe_event_id` and return
+    200 (so Stripe stops retrying).
+
+    No auth gate — Stripe IPs aren't fixed, so the signature header is
+    the only authentication mechanism. Any unauthenticated POST to this
+    endpoint is rejected with 400 by the signature check inside
+    `stripe_billing.construct_event`.
+    """
+    payload = await request.body()
+    signature = request.headers.get("stripe-signature", "")
+    event = stripe_billing.construct_event(payload, signature)
+    return await stripe_billing.record_and_handle(event)

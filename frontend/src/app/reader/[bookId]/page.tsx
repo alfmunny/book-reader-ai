@@ -1398,7 +1398,7 @@ export default function ReaderPage() {
                 ))}
               </div>
             ) : error ? (
-              <div className="max-w-prose mx-auto text-center py-16 px-4">
+              <div role="alert" className="max-w-prose mx-auto text-center py-16 px-4">
                 <BookOpenIcon className="w-10 h-10 text-amber-300 mx-auto mb-4" aria-hidden="true" />
                 <h2 className="font-serif text-lg text-ink mb-2">Failed to load chapter</h2>
                 <p className="text-sm text-stone-500 mb-6">{error}</p>

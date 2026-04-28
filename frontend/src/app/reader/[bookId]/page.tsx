@@ -1767,8 +1767,8 @@ export default function ReaderPage() {
                   pink: "bg-pink-100 border-pink-300 text-pink-800",
                 };
                 const renderCard = (ann: (typeof annotations)[0]) => (
+                  <li key={ann.id}>
                   <div
-                    key={ann.id}
                     role="button"
                     tabIndex={0}
                     aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
@@ -1821,6 +1821,7 @@ export default function ReaderPage() {
                       </p>
                     )}
                   </div>
+                  </li>
                 );
                 return (
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -1851,9 +1852,9 @@ export default function ReaderPage() {
                         <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
                       </div>
                     ) : notesView === "chapter" ? (
-                      <div className="space-y-2">
+                      <ul role="list" aria-label="Annotations" className="space-y-2 list-none p-0 m-0">
                         {filteredNotes.map(renderCard)}
-                      </div>
+                      </ul>
                     ) : (
                       <>
                         {Object.keys(
@@ -1875,9 +1876,9 @@ export default function ReaderPage() {
                                 <span>Chapter {ch + 1}</span>
                               </button>
                               {!isCollapsed && (
-                                <div className="space-y-2">
+                                <ul role="list" aria-label="Annotations" className="space-y-2 list-none p-0 m-0">
                                   {annotations.filter((a) => a.chapter_index === ch).map(renderCard)}
-                                </div>
+                                </ul>
                               )}
                             </div>
                           );
@@ -1940,7 +1941,7 @@ export default function ReaderPage() {
                         <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <ul role="list" aria-label="Vocabulary" className="space-y-2 list-none p-0 m-0">
                         {filteredVocab.map((w) => {
                           const lemma = w.lemma || w.word;
                           const isForm = w.lemma && w.lemma.toLowerCase() !== w.word.toLowerCase();
@@ -1948,7 +1949,8 @@ export default function ReaderPage() {
                             ? w.occurrences.filter((o) => o.book_id === Number(bookId) && o.chapter_index === chapterIndex)
                             : w.occurrences.filter((o) => o.book_id === Number(bookId));
                           return (
-                            <div key={w.id} className="rounded-lg bg-amber-50 border border-amber-200 overflow-hidden">
+                            <li key={w.id}>
+                            <div className="rounded-lg bg-amber-50 border border-amber-200 overflow-hidden">
                               {/* Lemma header */}
                               <button
                                 onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
@@ -1982,9 +1984,10 @@ export default function ReaderPage() {
                                 </button>
                               ))}
                             </div>
+                            </li>
                           );
                         })}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 );
@@ -2267,10 +2270,10 @@ export default function ReaderPage() {
                   <p className="text-xs mt-1">Long-press text to add one.</p>
                 </div>
               ) : (
-                <div className="space-y-1.5">
+                <ul role="list" aria-label="Annotations" className="space-y-1.5 list-none p-0 m-0">
                   {annotations.map((ann) => (
+                    <li key={ann.id}>
                     <button
-                      key={ann.id}
                       onClick={() => {
                         if (ann.chapter_index !== chapterIndex) {
                           goToChapter(ann.chapter_index);
@@ -2288,8 +2291,9 @@ export default function ReaderPage() {
                         <div className="text-stone-500 mt-0.5 line-clamp-1 italic">{ann.note_text}</div>
                       )}
                     </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           )}

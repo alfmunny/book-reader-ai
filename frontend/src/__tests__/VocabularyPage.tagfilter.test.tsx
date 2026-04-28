@@ -184,5 +184,5 @@ test("shows a tag-specific empty state message when filter matches nothing", asy
   const user = userEvent.setup();
   await user.click(screen.getByTestId("tag-filter-orphan"));
 
-  expect(await screen.findByText(/no words tagged with/i)).toBeInTheDocument();
+  expect(await screen.findByText(/no words tagged/i)).toBeInTheDocument();
 });

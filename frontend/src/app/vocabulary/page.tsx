@@ -588,13 +588,34 @@ function VocabularyPageContent() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          selectedTag ? (
-            <p className="text-center text-stone-500 mt-12 text-sm">
-              No words tagged with &ldquo;<span className="font-medium text-ink">{selectedTag}</span>&rdquo;
-            </p>
-          ) : (
-            <p className="text-center text-stone-500 mt-12 text-sm">No words match &ldquo;{search}&rdquo;</p>
-          )
+          <div className="text-center text-stone-500 mt-16 flex flex-col items-center gap-2">
+            <EmptyVocabIcon className="w-14 h-14 text-amber-300" aria-hidden="true" />
+            {selectedTag ? (
+              <>
+                <p className="font-serif text-lg text-stone-500 mt-1">No words tagged &ldquo;{selectedTag}&rdquo;</p>
+                <p className="text-sm">This tag has no vocabulary words yet.</p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTag(null)}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                >
+                  Clear tag filter
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="font-serif text-lg text-stone-500 mt-1">No words match &ldquo;{search}&rdquo;</p>
+                <p className="text-sm">Try a different search term.</p>
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                >
+                  Clear search
+                </button>
+              </>
+            )}
+          </div>
         ) : (
           <div className="space-y-8">
             {sections.map(({ heading, groups: sectionGroups }) => (

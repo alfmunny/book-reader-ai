@@ -296,8 +296,9 @@ export default function BookImportPage() {
           )}
 
           {error && (
-            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm mb-4">
-              {error}
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm mb-4 flex items-center gap-2">
+              <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+              <span>{error}</span>
             </div>
           )}
 

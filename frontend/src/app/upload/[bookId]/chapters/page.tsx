@@ -150,8 +150,9 @@ export default function ChapterEditorPage() {
 
       {error && (
         <div className="max-w-5xl mx-auto w-full px-4 md:px-6 pt-4">
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+            <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
           </div>
         </div>
       )}

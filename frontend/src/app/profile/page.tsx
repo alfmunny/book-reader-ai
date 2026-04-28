@@ -567,6 +567,9 @@ export default function ProfilePage() {
           </div>
 
           {/* Single save button at the bottom of the preferences section */}
+          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+            {prefsSaved ? "Preferences saved." : ""}
+          </div>
           <button
             onClick={savePreferences}
             className={`w-full rounded-lg py-2.5 min-h-[44px] text-sm font-medium transition-colors ${

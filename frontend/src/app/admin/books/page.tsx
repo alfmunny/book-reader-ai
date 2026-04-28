@@ -234,6 +234,7 @@ export default function BooksPage() {
 
   return (
     <div className="space-y-4">
+      <h2 className="sr-only">Books</h2>
       {error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-3">
           <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />

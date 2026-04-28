@@ -75,6 +75,7 @@ export default function AudioPage() {
 
   return (
     <div className="space-y-3">
+      <h2 className="sr-only">Audio Cache</h2>
       {actError && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{actError}</span>

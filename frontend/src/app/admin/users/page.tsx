@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getMe } from "@/lib/api";
 import { adminFetch } from "@/lib/adminFetch";
-import { CloseIcon } from "@/components/Icons";
+import { AlertCircleIcon, CloseIcon, RetryIcon } from "@/components/Icons";
 
 interface User {
   id: number;
@@ -59,7 +59,21 @@ export default function UsersPage() {
 
   if (loading) return <SpinnerRow />;
   if (error)
-    return <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>;
+    return (
+      <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
+        <AlertCircleIcon className="w-10 h-10 text-red-300" aria-hidden="true" />
+        <p className="font-serif text-lg text-ink">Failed to load users.</p>
+        <p className="text-sm text-stone-500">{error}</p>
+        <button
+          type="button"
+          onClick={load}
+          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+        >
+          <RetryIcon className="w-4 h-4" aria-hidden="true" />
+          Retry
+        </button>
+      </div>
+    );
 
   return (
     <div className="space-y-3">

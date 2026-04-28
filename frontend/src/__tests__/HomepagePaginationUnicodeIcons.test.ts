@@ -23,8 +23,9 @@ describe("Homepage pagination Unicode icon replacements", () => {
   });
 
   it("Prev button uses ArrowLeftIcon", () => {
-    const prevIdx = src.indexOf("Prev");
-    const snippet = src.slice(Math.max(0, prevIdx - 100), prevIdx + 10);
+    // Search for the button content "/> Prev" and check ArrowLeftIcon precedes it
+    const prevIdx = src.indexOf("/> Prev");
+    const snippet = src.slice(Math.max(0, prevIdx - 80), prevIdx + 10);
     expect(snippet).toMatch(/ArrowLeftIcon/);
   });
 

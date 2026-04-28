@@ -775,16 +775,24 @@ export default function Home() {
                       <button
                         onClick={() => setPopularPage((p) => p - 1)}
                         disabled={popularPage === 1}
+                        aria-label="Previous page of popular books"
                         className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
                       >
                         <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Prev
                       </button>
-                      <span className="text-sm text-amber-700">
+                      <span
+                        role="status"
+                        aria-live="polite"
+                        aria-atomic="true"
+                        aria-label={`Page ${popularPage} of ${Math.ceil(popularTotal / PER_PAGE)}`}
+                        className="text-sm text-amber-700"
+                      >
                         Page {popularPage} of {Math.ceil(popularTotal / PER_PAGE)}
                       </span>
                       <button
                         onClick={() => setPopularPage((p) => p + 1)}
                         disabled={popularPage >= Math.ceil(popularTotal / PER_PAGE)}
+                        aria-label="Next page of popular books"
                         className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0"
                       >
                         Next <ArrowRightIcon className="w-4 h-4 inline" aria-hidden="true" />

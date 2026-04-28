@@ -72,3 +72,32 @@ test("delete button has an accessible label", () => {
     expect.stringMatching(/delete/i),
   );
 });
+
+test("calls onClick when the card content area is clicked", async () => {
+  const onClick = jest.fn();
+  render(<DeckCard deck={MANUAL_DECK} onClick={onClick} />);
+  const user = userEvent.setup();
+  await user.click(screen.getByTestId(`deck-card-link-${MANUAL_DECK.id}`));
+  expect(onClick).toHaveBeenCalledTimes(1);
+});
+
+test("card content button has accessible label including deck name", () => {
+  render(<DeckCard deck={MANUAL_DECK} onClick={jest.fn()} />);
+  const btn = screen.getByTestId(`deck-card-link-${MANUAL_DECK.id}`);
+  expect(btn).toHaveAttribute("aria-label", expect.stringMatching(/German verbs/i));
+});
+
+test("does not render content button when onClick is not supplied", () => {
+  render(<DeckCard deck={MANUAL_DECK} />);
+  expect(screen.queryByTestId(`deck-card-link-${MANUAL_DECK.id}`)).not.toBeInTheDocument();
+});
+
+test("clicking content button does not trigger onDelete", async () => {
+  const onClick = jest.fn();
+  const onDelete = jest.fn();
+  render(<DeckCard deck={MANUAL_DECK} onClick={onClick} onDelete={onDelete} />);
+  const user = userEvent.setup();
+  await user.click(screen.getByTestId(`deck-card-link-${MANUAL_DECK.id}`));
+  expect(onDelete).not.toHaveBeenCalled();
+  expect(onClick).toHaveBeenCalledTimes(1);
+});

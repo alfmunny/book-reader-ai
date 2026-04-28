@@ -90,7 +90,7 @@ export default function UploadsPage() {
           value={filterInput}
           onChange={(e) => setFilterInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleFilter()}
-          className="w-48 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+          className="w-48 rounded-lg border border-amber-300 px-3 py-2 text-sm placeholder:text-stone-600"
           aria-label="User ID filter"
           min={1}
         />

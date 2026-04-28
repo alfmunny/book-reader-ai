@@ -787,7 +787,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 aria-label="Auto-translate languages"
                 value={langs}
                 onChange={(e) => setLangs(e.target.value)}
-                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"
+                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm placeholder:text-stone-600"
                 placeholder="zh, de, ja"
               />
               <button
@@ -817,7 +817,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 aria-label="Gemini API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm"
+                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm placeholder:text-stone-600"
                 placeholder={settings?.has_api_key ? "•••• (leave empty to keep)" : "Paste key"}
               />
               <button
@@ -1070,7 +1070,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   value={customModel}
                   onChange={(e) => setCustomModel(e.target.value)}
                   placeholder="Custom model (e.g. gemini-exp-1206)"
-                  className="flex-1 rounded border border-amber-300 px-2 py-1 text-xs font-mono"
+                  className="flex-1 rounded border border-amber-300 px-2 py-1 text-xs font-mono placeholder:text-stone-600"
                 />
                 <button
                   onClick={() => {

@@ -232,7 +232,7 @@ export default function BooksPage() {
           value={importId}
           onChange={(e) => setImportId(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleImport()}
-          className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm placeholder:text-stone-600"
         />
         <button
           onClick={handleImport}
@@ -254,7 +254,7 @@ export default function BooksPage() {
           placeholder="Search books by title, author, or ID…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm placeholder:text-stone-600"
           aria-label="Filter books"
         />
         {searchQuery && (
@@ -524,7 +524,7 @@ export default function BooksPage() {
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter") handleMove(t, moveInput[rowKey] ?? "");
                                             }}
-                                            className="w-14 rounded border border-amber-300 px-1 py-0.5 text-xs"
+                                            className="w-14 rounded border border-amber-300 px-1 py-0.5 text-xs placeholder:text-stone-600"
                                             title="Reassign this translation to another chapter number (1-based)"
                                           />
                                           <button

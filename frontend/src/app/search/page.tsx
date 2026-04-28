@@ -131,57 +131,66 @@ function SearchResultsInner() {
       });
   }, [q]);
 
-  if (!q.trim()) {
-    return (
-      <div className="text-center text-stone-500 py-16">
-        <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
-        <p className="font-serif text-lg text-ink">Search your notes, vocabulary, and uploads</p>
-        <p className="text-sm mt-2">Start typing in the search bar.</p>
-      </div>
-    );
-  }
+  const annotations = data?.results.filter((r): r is Extract<InAppSearchResult, { type: "annotation" }> => r.type === "annotation") ?? [];
+  const vocabulary = data?.results.filter((r): r is Extract<InAppSearchResult, { type: "vocabulary" }> => r.type === "vocabulary") ?? [];
+  const chapters = data?.results.filter((r): r is Extract<InAppSearchResult, { type: "chapter" }> => r.type === "chapter") ?? [];
 
-  if (loading) {
-    return (
-      <div role="status" aria-label="Searching" className="space-y-3 animate-pulse py-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-amber-100 rounded-md" />
-        ))}
-      </div>
-    );
+  let liveMessage = "";
+  if (!loading && q.trim()) {
+    if (error) liveMessage = "Search failed.";
+    else if (data && data.total > 0) liveMessage = `Found ${data.total} result${data.total === 1 ? "" : "s"} for ${q}.`;
+    else if (data) liveMessage = `Search complete. No results found for ${q}.`;
   }
-  if (error) {
-    return (
-      <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-        Error: {error}
-      </div>
-    );
-  }
-  if (!data || data.total === 0) {
-    return (
-      <div className="text-center text-stone-500 py-12">
-        <p className="font-serif text-lg text-ink">No matches for &ldquo;{q}&rdquo;.</p>
-        <p className="text-sm mt-2">Try a shorter or different word.</p>
-        <Link
-          href="/"
-          className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
-        >
-          Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
-        </Link>
-      </div>
-    );
-  }
-
-  const annotations = data.results.filter((r): r is Extract<InAppSearchResult, { type: "annotation" }> => r.type === "annotation");
-  const vocabulary = data.results.filter((r): r is Extract<InAppSearchResult, { type: "vocabulary" }> => r.type === "vocabulary");
-  const chapters = data.results.filter((r): r is Extract<InAppSearchResult, { type: "chapter" }> => r.type === "chapter");
 
   return (
-    <div className="space-y-10">
-      <ResultsSection title="Annotations" items={annotations} />
-      <ResultsSection title="Vocabulary" items={vocabulary} />
-      <ResultsSection title="Chapters" items={chapters} />
-    </div>
+    <>
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {liveMessage}
+      </div>
+
+      {!q.trim() && (
+        <div className="text-center text-stone-500 py-16">
+          <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
+          <p className="font-serif text-lg text-ink">Search your notes, vocabulary, and uploads</p>
+          <p className="text-sm mt-2">Start typing in the search bar.</p>
+        </div>
+      )}
+
+      {loading && (
+        <div role="status" aria-label="Searching" className="space-y-3 animate-pulse py-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-amber-100 rounded-md" />
+          ))}
+        </div>
+      )}
+
+      {!loading && error && (
+        <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          Error: {error}
+        </div>
+      )}
+
+      {!loading && !error && data && data.total === 0 && (
+        <div className="text-center text-stone-500 py-12">
+          <p className="font-serif text-lg text-ink">No matches for &ldquo;{q}&rdquo;.</p>
+          <p className="text-sm mt-2">Try a shorter or different word.</p>
+          <Link
+            href="/"
+            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+          >
+            Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
+          </Link>
+        </div>
+      )}
+
+      {!loading && !error && data && data.total > 0 && (
+        <div className="space-y-10">
+          <ResultsSection title="Annotations" items={annotations} />
+          <ResultsSection title="Vocabulary" items={vocabulary} />
+          <ResultsSection title="Chapters" items={chapters} />
+        </div>
+      )}
+    </>
   );
 }
 

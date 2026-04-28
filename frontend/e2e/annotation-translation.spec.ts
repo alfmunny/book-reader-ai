@@ -171,7 +171,7 @@ test("Notes sidebar shows empty state when no annotations", async ({ page }) => 
   await page.getByRole("button", { name: /notes/i }).click();
 
   // Empty state text should appear (default "This chapter" filter view)
-  await expect(page.getByText("No annotations in this chapter yet.")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("No annotations in this chapter")).toBeVisible({ timeout: 3000 });
 });
 
 test("Notes sidebar shows existing annotations from API", async ({ page }) => {

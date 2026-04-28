@@ -1847,7 +1847,7 @@ export default function ReaderPage() {
                     ) : filteredNotes.length === 0 ? (
                       <div className="text-center text-stone-500 mt-10 text-sm">
                         <NoteIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p>{notesView === "chapter" ? "No annotations in this chapter yet." : "No annotations yet."}</p>
+                        <p className="font-serif text-lg text-stone-500 mt-1">{notesView === "chapter" ? "No annotations in this chapter" : "No annotations yet"}</p>
                         <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
                       </div>
                     ) : notesView === "chapter" ? (
@@ -1936,7 +1936,7 @@ export default function ReaderPage() {
                     {filteredVocab.length === 0 ? (
                       <div className="text-center text-stone-500 mt-10 text-sm">
                         <EmptyVocabIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
-                        <p>No words saved{vocabView === "chapter" ? " in this chapter" : ""} yet.</p>
+                        <p className="font-serif text-lg text-stone-500 mt-1">{vocabView === "chapter" ? "No vocabulary in this chapter" : "No vocabulary saved yet"}</p>
                         <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
                       </div>
                     ) : (

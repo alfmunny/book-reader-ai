@@ -592,6 +592,7 @@ export default function BooksPage() {
                                           <button
                                             onClick={() => handleMove(t, moveInput[rowKey] ?? "")}
                                             disabled={moving === rowKey || !(moveInput[rowKey] ?? "").trim()}
+                                            aria-label={`Move Ch. ${t.chapter_index + 1} ${t.target_language} translation`}
                                             className="px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50 min-h-[44px]"
                                           >
                                             {moving === rowKey ? "…" : "Move"}
@@ -599,6 +600,7 @@ export default function BooksPage() {
                                           <button
                                             onClick={() => handleRetranslate(t)}
                                             disabled={retranslating === rowKey}
+                                            aria-label={`Retranslate Ch. ${t.chapter_index + 1} ${t.target_language}`}
                                             className="px-2 py-0.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
                                           >
                                             {retranslating === rowKey ? "…" : "Retranslate"}
@@ -612,6 +614,7 @@ export default function BooksPage() {
                                                 ),
                                               )
                                             }
+                                            aria-label={`Delete Ch. ${t.chapter_index + 1} ${t.target_language} translation`}
                                             className="px-2 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px]"
                                           >
                                             Delete

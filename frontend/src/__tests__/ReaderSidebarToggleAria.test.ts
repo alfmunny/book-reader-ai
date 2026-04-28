@@ -15,27 +15,29 @@ function checkButton(anchorText: string, label: string) {
   const hasStaticLabel = window.includes(`aria-label="${label}"`);
   const hasDynamicLabel = window.includes(`aria-label={`) && window.includes(label);
   expect(hasStaticLabel || hasDynamicLabel).toBe(true);
-  expect(window).toContain("aria-expanded");
+  // aria-pressed is correct for toggle buttons that open a panel;
+  // aria-expanded was replaced in #1862 (it's for accordion/disclosure patterns)
+  expect(window).toContain("aria-pressed");
 }
 
-describe("reader desktop header sidebar toggle buttons aria-label and aria-expanded (closes #951)", () => {
-  it("Insight chat toggle has aria-label and aria-expanded", () => {
+describe("reader desktop header sidebar toggle buttons aria-label and aria-pressed (closes #951, #1862)", () => {
+  it("Insight chat toggle has aria-label and aria-pressed", () => {
     checkButton('setSidebarTab("chat")', "Insight sidebar");
   });
 
-  it("Translate toggle has aria-label and aria-expanded", () => {
+  it("Translate toggle has aria-label and aria-pressed", () => {
     checkButton('setSidebarTab("translate")', "Translate");
   });
 
-  it("Chapter summary toggle has aria-label and aria-expanded", () => {
+  it("Chapter summary toggle has aria-label and aria-pressed", () => {
     checkButton('setSidebarTab("summary")', "Chapter summary");
   });
 
-  it("Notes toggle has aria-label and aria-expanded", () => {
+  it("Notes toggle has aria-label and aria-pressed", () => {
     checkButton('setSidebarTab("notes")', "Annotations & notes");
   });
 
-  it("Vocabulary toggle has aria-label and aria-expanded", () => {
+  it("Vocabulary toggle has aria-label and aria-pressed", () => {
     checkButton('setSidebarTab("vocab")', "Vocabulary");
   });
 });

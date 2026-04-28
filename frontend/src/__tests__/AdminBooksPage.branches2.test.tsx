@@ -220,7 +220,7 @@ describe("AdminBooksPage — handleMove non-Error catch (line 190)", () => {
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "5");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     await userEvent.click(moveBtns[0]);
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
@@ -558,7 +558,7 @@ describe("AdminBooksPage — moveInput onChange (lines 512-518)", () => {
     await userEvent.type(moveInputs[0], "4");
     expect(moveInputs[0].value).toBe("4");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     expect(moveBtns[0]).not.toBeDisabled();
   });
 });

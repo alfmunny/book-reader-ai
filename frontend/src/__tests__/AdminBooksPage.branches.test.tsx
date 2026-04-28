@@ -110,7 +110,7 @@ describe("AdminBooksPage — handleRetranslate error path (line 134)", () => {
     mockAdminFetch.mockRejectedValueOnce(new Error("Retranslation API error"));
 
     const retranslateBtns = await screen.findAllByRole("button", {
-      name: /^Retranslate$/i,
+      name: /^Retranslate Ch\./i,
     });
     await userEvent.click(retranslateBtns[0]);
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
@@ -127,7 +127,7 @@ describe("AdminBooksPage — handleRetranslate error path (line 134)", () => {
     mockAdminFetch.mockRejectedValueOnce("something went wrong");
 
     const retranslateBtns = await screen.findAllByRole("button", {
-      name: /^Retranslate$/i,
+      name: /^Retranslate Ch\./i,
     });
     await userEvent.click(retranslateBtns[0]);
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
@@ -148,7 +148,7 @@ describe("AdminBooksPage — handleMove confirm cancelled (line 177)", () => {
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "3");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     await userEvent.click(moveBtns[0]);
     // Inline dialog appears — dismiss without confirming
     await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));

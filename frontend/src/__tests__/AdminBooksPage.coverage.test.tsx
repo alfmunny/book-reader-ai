@@ -226,9 +226,9 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     );
     if (langArrow) await userEvent.click(langArrow);
 
-    // Now "Retranslate" per-chapter button should appear
+    // Now "Retranslate Ch." per-chapter button should appear
     const retranslateBtns = await screen.findAllByRole("button", {
-      name: /^Retranslate$/i,
+      name: /^Retranslate Ch\./i,
     });
     expect(retranslateBtns.length).toBeGreaterThan(0);
 
@@ -270,7 +270,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
     if (langArrow) await userEvent.click(langArrow);
 
     const retranslateBtns = await screen.findAllByRole("button", {
-      name: /^Retranslate$/i,
+      name: /^Retranslate Ch\./i,
     });
     await userEvent.click(retranslateBtns[0]);
     await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
@@ -652,13 +652,9 @@ describe("AdminBooksPage — chapter-level delete (lines 530-543)", () => {
 
     // After expanding, we have these buttons in order:
     //   Expand/Collapse book, ▶/▼ lang, "Retranslate all", "Delete all" (lang-level),
-    //   then per-chapter: "Move", "Retranslate", "Delete"
-    // The chapter-level Delete buttons have no red border class that matches
-    // "Delete all". Use getAllByRole and pick the last "Delete" (chapter row).
-    const deleteBtns = screen.getAllByRole("button", { name: /^Delete$/i });
-    // The last Delete buttons are the chapter-level ones (after book-level Delete
-    // which only appears once since we have one book)
-    // Chapter Delete is the very last button named "Delete"
+    //   then per-chapter: "Move Ch.", "Retranslate Ch.", "Delete Ch."
+    // Chapter-level Delete buttons have aria-label "Delete Ch. N zh translation".
+    const deleteBtns = screen.getAllByRole("button", { name: /^Delete Ch\./i });
     await userEvent.click(deleteBtns[deleteBtns.length - 1]);
 
     await waitFor(() =>
@@ -698,7 +694,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "1");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     await userEvent.click(moveBtns[0]);
 
     await waitFor(() =>
@@ -713,7 +709,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "0");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     await userEvent.click(moveBtns[0]);
 
     await waitFor(() =>
@@ -733,7 +729,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "5");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     await userEvent.click(moveBtns[0]);
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
@@ -754,7 +750,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "5");
 
-    const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
+    const moveBtns = screen.getAllByRole("button", { name: /^Move Ch\./i });
     await userEvent.click(moveBtns[0]);
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 

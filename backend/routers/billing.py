@@ -1,15 +1,18 @@
 """Billing & subscription endpoints.
 
-PR C1 + C2 of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
+PR C1 + C2 + C3 of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
 - `GET /billing/me` (PR C1): read-only tier + this-month usage.
 - `POST /billing/webhook` (PR C2): receives Stripe webhook events,
   verifies signature, idempotent insert into `billing_events`, dispatches
   to per-event handler in `services.stripe_billing`.
-
-Checkout-session creation + customer-portal session lands in PR C3.
+- `POST /billing/checkout` (PR C3): create a Stripe Checkout Session and
+  return the redirect URL.
+- `POST /billing/portal` (PR C3): create a Customer Portal session for
+  managing the existing subscription.
 """
 
 from fastapi import APIRouter, Depends, Path, Request
+from pydantic import BaseModel, Field
 import aiosqlite
 
 from services import db as _db
@@ -106,3 +109,48 @@ async def stripe_webhook(request: Request) -> dict:
     signature = request.headers.get("stripe-signature", "")
     event = stripe_billing.construct_event(payload, signature)
     return await stripe_billing.record_and_handle(event)
+
+
+class CheckoutRequest(BaseModel):
+    tier: str = Field(..., pattern="^(pro|premium)$")
+    success_url: str = Field(..., min_length=1)
+    cancel_url: str = Field(..., min_length=1)
+
+
+@router.post("/checkout")
+async def create_checkout(req: CheckoutRequest, user: dict = Depends(get_current_user)) -> dict:
+    """Initiate a Stripe Checkout for the requested tier. Returns
+    `{url: ...}` for the frontend to redirect to. The user finishes
+    payment on Stripe; the webhook handler fires the tier promotion."""
+    url = await stripe_billing.create_checkout_session(
+        user_id=user["id"],
+        user_email=user.get("email"),
+        tier=req.tier,
+        success_url=req.success_url,
+        cancel_url=req.cancel_url,
+        existing_customer_id=user.get("stripe_customer_id"),
+    )
+    return {"url": url}
+
+
+class PortalRequest(BaseModel):
+    return_url: str = Field(..., min_length=1)
+
+
+@router.post("/portal")
+async def create_portal(req: PortalRequest, user: dict = Depends(get_current_user)) -> dict:
+    """Create a Customer Portal session for managing the existing
+    subscription. 400 if the user has never checked out (no Stripe
+    customer record yet)."""
+    customer_id = user.get("stripe_customer_id")
+    if not customer_id:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400,
+            detail="No Stripe customer; subscribe first via /billing/checkout.",
+        )
+    url = await stripe_billing.create_portal_session(
+        customer_id=customer_id,
+        return_url=req.return_url,
+    )
+    return {"url": url}

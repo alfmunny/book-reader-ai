@@ -1,12 +1,11 @@
-"""Stripe webhook handling + tier-state transitions.
+"""Stripe billing — webhook receive-side + checkout/portal session creation.
 
-PR C2 of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
-Receives Stripe webhook events, verifies the signature, and applies
-tier transitions to the `users` row. Idempotent via the UNIQUE
-constraint on `billing_events.stripe_event_id` (migration 039 from PR A).
-
-Checkout-session creation + customer-portal session creation will land
-in PR C3. This module is webhook-only.
+PR C2 + C3 of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
+- C2: webhook signature verification, idempotent insert into billing_events,
+  tier-state transitions on subscription lifecycle events.
+- C3: create_checkout_session() + create_portal_session() — invoked from
+  POST /billing/checkout and POST /billing/portal. Stripe SDK calls run
+  on a worker thread so the FastAPI event loop stays responsive.
 """
 
 from __future__ import annotations
@@ -41,9 +40,86 @@ def _webhook_secret() -> str:
 def _api_key() -> str:
     """Set on the stripe SDK module before any API call. The webhook
     handler itself doesn't need an API key (signature verification is
-    secret-based), but the broader billing module needs it for portal /
-    checkout calls in PR C3."""
-    return os.environ.get("STRIPE_API_KEY", "")
+    secret-based), but checkout / portal calls do."""
+    key = os.environ.get("STRIPE_API_KEY", "")
+    if not key:
+        raise HTTPException(
+            status_code=500,
+            detail="STRIPE_API_KEY not configured",
+        )
+    return key
+
+
+def _price_id(tier: str) -> str:
+    """Map tier → Stripe price ID via env var. 422 on unsupported tier
+    (free / unknown), 500 if a Pro/Premium env var isn't configured."""
+    if tier == "pro":
+        price = os.environ.get("STRIPE_PRICE_PRO", "")
+    elif tier == "premium":
+        price = os.environ.get("STRIPE_PRICE_PREMIUM", "")
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported tier: {tier!r}. Use 'pro' or 'premium'.",
+        )
+    if not price:
+        raise HTTPException(
+            status_code=500,
+            detail=f"STRIPE_PRICE_{tier.upper()} not configured",
+        )
+    return price
+
+
+async def create_checkout_session(*, user_id: int, user_email: str | None,
+                                   tier: str, success_url: str, cancel_url: str,
+                                   existing_customer_id: str | None) -> str:
+    """Create a Stripe Checkout Session and return the redirect URL.
+
+    On first checkout, `existing_customer_id` is None and Stripe creates
+    a new Customer keyed to `user_email`. The local user_id is passed
+    via `client_reference_id` so the webhook handler can resolve to the
+    right user before stripe_customer_id is set on the users row.
+    """
+    stripe.api_key = _api_key()
+    price = _price_id(tier)
+    kwargs: dict[str, Any] = {
+        "mode": "subscription",
+        "line_items": [{"price": price, "quantity": 1}],
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "client_reference_id": str(user_id),
+    }
+    if existing_customer_id:
+        kwargs["customer"] = existing_customer_id
+    elif user_email:
+        kwargs["customer_email"] = user_email
+
+    session = await _to_thread(stripe.checkout.Session.create, **kwargs)
+    url = getattr(session, "url", None)
+    if not url:
+        raise HTTPException(status_code=502, detail="Stripe returned no checkout URL")
+    return url
+
+
+async def create_portal_session(*, customer_id: str, return_url: str) -> str:
+    """Create a Customer Portal session for managing the subscription
+    (cancel, update payment, view invoices)."""
+    stripe.api_key = _api_key()
+    session = await _to_thread(
+        stripe.billing_portal.Session.create,
+        customer=customer_id,
+        return_url=return_url,
+    )
+    url = getattr(session, "url", None)
+    if not url:
+        raise HTTPException(status_code=502, detail="Stripe returned no portal URL")
+    return url
+
+
+async def _to_thread(fn, /, *args, **kwargs):
+    """Run a sync Stripe SDK call off the event loop."""
+    import asyncio
+    return await asyncio.to_thread(fn, *args, **kwargs)
 
 
 def construct_event(payload: bytes, signature: str) -> dict[str, Any]:

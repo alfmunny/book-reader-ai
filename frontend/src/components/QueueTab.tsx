@@ -140,6 +140,8 @@ export default function QueueTab({ adminFetch }: Props) {
     message: string;
     fn: () => void | Promise<void>;
   } | null>(null);
+  const confirmContainerRef = useRef<HTMLDivElement>(null);
+  const confirmTriggerRef = useRef<HTMLElement | null>(null);
   const [saving, setSaving] = useState(false);
   // Per-section loading flags so a slow fetch spins only its own panel
   // instead of freezing the whole tab. Each is set true at the start of
@@ -295,6 +297,16 @@ export default function QueueTab({ adminFetch }: Props) {
     refreshItems(itemFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemFilter]);
+
+  useEffect(() => {
+    if (pendingConfirm) {
+      confirmTriggerRef.current = document.activeElement as HTMLElement;
+      confirmContainerRef.current?.focus();
+    } else if (confirmTriggerRef.current) {
+      confirmTriggerRef.current.focus();
+      confirmTriggerRef.current = null;
+    }
+  }, [pendingConfirm]);
 
   async function saveSettings(
     patch: Record<string, unknown>,
@@ -504,7 +516,7 @@ export default function QueueTab({ adminFetch }: Props) {
       )}
 
       {pendingConfirm && (
-        <div role="alertdialog" aria-modal="true" aria-label="Confirm action" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3">
+        <div ref={confirmContainerRef} role="alertdialog" aria-modal="true" aria-label="Confirm action" tabIndex={-1} className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3 outline-none">
           <p className="flex-1 text-amber-900">{pendingConfirm.message}</p>
           <div className="flex gap-2 shrink-0">
             <button

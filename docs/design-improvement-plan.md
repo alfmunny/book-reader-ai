@@ -176,6 +176,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-28 | 8.4 | Import and chapter-editor error banners: AlertCircleIcon added | ✅ Done |
 | 2026-04-28 | 8.5 | Admin tables: title attributes on truncated book/user/file text | ✅ Done |
 | 2026-04-28 | 8.6 | Admin dismiss error/message buttons: 44×44px mobile touch targets | ✅ Done |
+| 2026-04-28 | 8.7 | Admin/QueueTab confirm dialogs: role="alertdialog" + aria-modal (PR #2000) | ✅ Done |
+| 2026-04-28 | 8.8 | Admin/QueueTab confirm dialogs: focus on container open, restore on close (PR #2002) | ✅ Done |
 
 ---
 

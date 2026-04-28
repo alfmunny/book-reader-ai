@@ -3,7 +3,10 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "Book Reader AI",
+  title: {
+    template: "%s — Book Reader AI",
+    default: "My Library — Book Reader AI",
+  },
   description: "Read public domain classics with AI assistance",
   manifest: "/manifest.json",
   openGraph: {

@@ -1,39 +1,60 @@
 /**
- * Static assertions: top-level pages set document.title for browser tabs.
- * Closes #1173
+ * Regression for #1841 — every routable page must export a distinct <title>
+ * so screen readers can announce the page name on navigation (WCAG 2.4.2).
+ *
+ * All page.tsx files use "use client" and cannot export metadata directly.
+ * Metadata lives in co-located layout.tsx (server components) at each route.
  */
-import fs from "fs";
-import path from "path";
+import { readFileSync } from "fs";
+import { join } from "path";
 
-function readPage(rel: string): string {
-  return fs.readFileSync(path.join(process.cwd(), rel), "utf8");
+function readLayout(rel: string) {
+  return readFileSync(join(__dirname, "..", "app", rel), "utf-8");
 }
 
-describe("Per-page document.title", () => {
-  it("notes overview sets a Notes title", () => {
-    const src = readPage("src/app/notes/page.tsx");
-    expect(src).toMatch(/document\.title\s*=\s*["'`]Notes.*Book Reader AI/);
+const SUFFIX = "Book Reader AI";
+
+function hasMetadataExport(src: string): boolean {
+  return src.includes("export const metadata") || /export\s+(async\s+)?function\s+generateMetadata/.test(src);
+}
+
+function hasDistinctTitle(src: string): boolean {
+  // Simple string: title: "Vocabulary"
+  const m1 = src.match(/\btitle:\s*["'`]([^"'`]+)["'`]/);
+  if (m1 && m1[1].trim() !== SUFFIX) return true;
+  // Template object default — root layout uses: default: "My Library — Book Reader AI"
+  const m2 = src.match(/\bdefault:\s*["'`]([^"'`]+)["'`]/);
+  if (m2 && m2[1].trim() !== SUFFIX) return true;
+  return false;
+}
+
+describe("WCAG 2.4.2 — per-page <title> (closes #1841)", () => {
+  const staticLayouts = [
+    "layout.tsx",                      // root → My Library (template default)
+    "vocabulary/layout.tsx",
+    "vocabulary/flashcards/layout.tsx",
+    "notes/layout.tsx",
+    "profile/layout.tsx",
+    "upload/layout.tsx",
+    "login/layout.tsx",
+    "search/layout.tsx",
+  ];
+
+  staticLayouts.forEach((rel) => {
+    it(`${rel} has a distinct metadata title`, () => {
+      const src = readLayout(rel);
+      expect(hasMetadataExport(src)).toBe(true);
+      expect(hasDistinctTitle(src)).toBe(true);
+    });
   });
 
-  it("vocabulary page sets a Vocabulary title", () => {
-    const src = readPage("src/app/vocabulary/page.tsx");
-    expect(src).toMatch(/document\.title\s*=\s*["'`]Vocabulary.*Book Reader AI/);
+  it("reader/[bookId]/layout.tsx exports generateMetadata for dynamic book title", () => {
+    const src = readLayout("reader/[bookId]/layout.tsx");
+    expect(src).toMatch(/export\s+(async\s+)?function\s+generateMetadata/);
   });
 
-  it("profile page sets a Profile title", () => {
-    const src = readPage("src/app/profile/page.tsx");
-    expect(src).toMatch(/document\.title\s*=\s*["'`]Profile.*Book Reader AI/);
-  });
-
-  it("decks page sets a Decks title", () => {
-    const src = readPage("src/app/decks/page.tsx");
-    expect(src).toMatch(/document\.title\s*=\s*["'`]Decks.*Book Reader AI/);
-  });
-
-  it("search page sets a Search title", () => {
-    const src = readPage("src/app/search/page.tsx");
-    // Search uses a conditional title to include the query — match either branch
-    expect(src).toMatch(/document\.title/);
-    expect(src).toMatch(/Search.*Book Reader AI/);
+  it("notes/[bookId]/layout.tsx exports generateMetadata for dynamic book title", () => {
+    const src = readLayout("notes/[bookId]/layout.tsx");
+    expect(src).toMatch(/export\s+(async\s+)?function\s+generateMetadata/);
   });
 });

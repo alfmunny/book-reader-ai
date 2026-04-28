@@ -1441,6 +1441,7 @@ export default function ReaderPage() {
                   disabled={ttsIsLoading}
                   translations={translationEnabled ? translatedParagraphs : undefined}
                   translationDisplayMode={displayMode}
+                  translationLang={translationEnabled ? translationLang : undefined}
                   translationLoading={translationLoading}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}

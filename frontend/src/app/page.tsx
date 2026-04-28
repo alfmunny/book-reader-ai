@@ -601,6 +601,15 @@ export default function Home() {
                 </div>
               )}
 
+              {/* Visually-hidden live region: announces search result count to screen readers */}
+              {!searching && searchedQuery && !searchError && (
+                <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+                  {searchResults.length > 0
+                    ? `Found ${searchResults.length} book${searchResults.length === 1 ? "" : "s"} for ${searchedQuery}.`
+                    : `Search complete. No results for ${searchedQuery}.`}
+                </div>
+              )}
+
               {searching && (
                 <div role="status" aria-label="Loading search results">
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">

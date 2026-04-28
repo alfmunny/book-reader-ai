@@ -258,7 +258,7 @@ export default function BooksPage() {
           aria-label="Filter books"
         />
         {searchQuery && (
-          <span className="text-xs text-stone-500">
+          <span role="status" aria-live="polite" aria-atomic="true" className="text-xs text-stone-500">
             {books.filter((b) =>
               fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
             ).length}{" "}

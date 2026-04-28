@@ -160,12 +160,12 @@ export default function ChapterEditorPage() {
       {/* Two-panel layout */}
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
         {/* Left: chapter list */}
-        <div className="overflow-y-auto space-y-2 pr-1">
+        <ul role="list" aria-label="Chapters" className="overflow-y-auto space-y-2 pr-1 list-none p-0 m-0">
           {chapters.map((ch, i) => {
             const wordWarn = ch.word_count > 8000 || ch.word_count < 100;
             return (
+              <li key={ch.original_index + "-" + i}>
               <div
-                key={ch.original_index + "-" + i}
                 role="button"
                 tabIndex={0}
                 aria-label={`Chapter ${i + 1}: ${ch.title}${selected === i ? " (selected)" : ""}`}
@@ -208,9 +208,10 @@ export default function ChapterEditorPage() {
                   </button>
                 </div>
               </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
 
         {/* Right: preview */}
         <div className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto">

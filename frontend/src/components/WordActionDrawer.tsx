@@ -156,18 +156,18 @@ export default function WordActionDrawer({
           )}
 
           {result && result.meanings.length > 0 && (
-            <div className="space-y-2">
+            <ul role="list" aria-label="Meanings" className="space-y-2 list-none p-0 m-0">
               {result.meanings.map((m, i) => (
-                <div key={i}>
+                <li key={i}>
                   <span className="text-xs font-medium text-amber-700 italic">{m.partOfSpeech}</span>
                   <ol className="list-decimal list-inside ml-1 mt-0.5 space-y-0.5">
                     {m.definitions.map((d, j) => (
                       <li key={j} className="text-ink text-sm leading-relaxed">{d.definition}</li>
                     ))}
                   </ol>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
           {/* Translation context */}

@@ -1147,7 +1147,7 @@ describe("ReaderPage.branches — mobile notes expand panel", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const mobileNotesBtn = await screen.findByRole("button", { name: "Notes" });
+    const mobileNotesBtn = await screen.findByRole("button", { name: /^Notes/ });
     await userEvent.click(mobileNotesBtn);
 
     await waitFor(() => {
@@ -1173,7 +1173,7 @@ describe("ReaderPage.branches — mobile notes expand panel", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const mobileNotesBtn = await screen.findByRole("button", { name: "Notes" });
+    const mobileNotesBtn = await screen.findByRole("button", { name: /^Notes/ });
     await userEvent.click(mobileNotesBtn);
 
     await waitFor(() => {

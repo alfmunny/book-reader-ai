@@ -10,7 +10,11 @@ function checkButton(anchorText: string, label: string) {
   const idx = src.indexOf(anchorText);
   expect(idx).toBeGreaterThan(-1);
   const window = src.slice(idx, idx + 600);
-  expect(window).toContain(`aria-label="${label}"`);
+  // Accept either a static aria-label="..." or a dynamic aria-label={...} that
+  // contains the label text (e.g. when the label includes a runtime count).
+  const hasStaticLabel = window.includes(`aria-label="${label}"`);
+  const hasDynamicLabel = window.includes(`aria-label={`) && window.includes(label);
+  expect(hasStaticLabel || hasDynamicLabel).toBe(true);
   expect(window).toContain("aria-expanded");
 }
 

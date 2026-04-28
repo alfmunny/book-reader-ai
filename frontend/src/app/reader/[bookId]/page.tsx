@@ -1108,7 +1108,7 @@ export default function ReaderPage() {
               setSidebarTab("notes"); setSidebarOpen((v) => sidebarTab === "notes" ? !v : true);
             }}
             title="Annotations & notes"
-            aria-label="Annotations & notes"
+            aria-label={annotations.length > 0 ? `Annotations & notes (${annotations.length})` : "Annotations & notes"}
             aria-expanded={sidebarOpen && sidebarTab === "notes"}
             className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "notes"
@@ -1119,7 +1119,7 @@ export default function ReaderPage() {
             <NoteIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden lg:inline">Notes</span>
             {annotations.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-800 text-white text-[9px] font-bold px-1">
+              <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-800 text-white text-[9px] font-bold px-1">
                 {annotations.length}
               </span>
             )}
@@ -1155,7 +1155,7 @@ export default function ReaderPage() {
               setSidebarTab("vocab"); setSidebarOpen((v) => sidebarTab === "vocab" ? !v : true);
             }}
             title="Vocabulary"
-            aria-label="Vocabulary"
+            aria-label={vocabWords.length > 0 ? `Vocabulary (${vocabWords.length} words)` : "Vocabulary"}
             aria-expanded={sidebarOpen && sidebarTab === "vocab"}
             className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
               sidebarOpen && sidebarTab === "vocab"
@@ -1166,7 +1166,7 @@ export default function ReaderPage() {
             <BookOpenIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden lg:inline">Vocab</span>
             {vocabWords.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-800 text-white text-[9px] font-bold px-1">
+              <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-800 text-white text-[9px] font-bold px-1">
                 {vocabWords.length}
               </span>
             )}
@@ -2308,12 +2308,12 @@ export default function ReaderPage() {
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
               }`}
-              aria-label="Notes"
+              aria-label={annotations.length > 0 ? `Notes (${annotations.length})` : "Notes"}
               aria-expanded={notesExpanded}
             >
               <NoteIcon className="w-5 h-5" />
               {annotations.length > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-800 text-white text-[8px] font-bold px-0.5">
+                <span aria-hidden="true" className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full bg-amber-800 text-white text-[8px] font-bold px-0.5">
                   {annotations.length}
                 </span>
               )}

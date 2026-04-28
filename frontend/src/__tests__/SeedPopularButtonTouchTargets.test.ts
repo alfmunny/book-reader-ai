@@ -8,10 +8,10 @@ const src = fs.readFileSync(
 
 describe("SeedPopularButton touch targets (closes #865)", () => {
   it("Seed all popular books button has min-h-[44px]", () => {
-    // className follows onClick={start} — forward window
-    const idx = src.indexOf("onClick={start}");
+    // Button now uses setPendingStart(true) instead of calling start() directly
+    const idx = src.indexOf("setPendingStart(true)");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
+    const window = src.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");
   });
 
@@ -33,10 +33,10 @@ describe("SeedPopularButton touch targets (closes #865)", () => {
   });
 
   it("Stop button has min-h-[44px]", () => {
-    // className follows onClick={stop} — forward window
-    const idx = src.indexOf("onClick={stop}");
+    // Stop button now uses setPendingStop(true) instead of calling stop() directly
+    const idx = src.indexOf("setPendingStop(true)");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
+    const window = src.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");
   });
 });

@@ -16,6 +16,7 @@ export default function AudioPage() {
   const [audio, setAudio] = useState<AudioEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actError, setActError] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Admin: Audio — Book Reader AI";
@@ -41,8 +42,9 @@ export default function AudioPage() {
     try {
       await fn();
       await load();
+      setActError(null);
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed");
+      setActError(e instanceof Error ? e.message : "Failed");
     }
   }
 
@@ -57,6 +59,20 @@ export default function AudioPage() {
     return <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>;
 
   return (
+    <div className="space-y-3">
+      {actError && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+          <span>{actError}</span>
+          <button
+            type="button"
+            onClick={() => setActError(null)}
+            aria-label="Dismiss error"
+            className="shrink-0 text-red-500 hover:text-red-700 text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
     <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
       {audio.map((a, i) => (
         <div key={i} className="px-4 py-3 flex items-center gap-3">
@@ -82,6 +98,7 @@ export default function AudioPage() {
       {audio.length === 0 && (
         <div className="px-4 py-8 text-center text-amber-700 text-sm">No audio cached.</div>
       )}
+    </div>
     </div>
   );
 }

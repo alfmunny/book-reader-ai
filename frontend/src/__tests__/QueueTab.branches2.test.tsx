@@ -263,11 +263,6 @@ describe("QueueTab.branches2 — refreshCore non-Error catch (line 187)", () => 
 // ── Lines 325/350: clearAll with itemFilter="all" ─────────────────────────────
 
 describe("QueueTab.branches2 — clearAll with filter='all' (lines 325, 350)", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-    window.alert = jest.fn();
-  });
-
   it("calls DELETE /admin/queue when itemFilter is 'all'", async () => {
     const item = makeItem();
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
@@ -291,7 +286,10 @@ describe("QueueTab.branches2 — clearAll with filter='all' (lines 325, 350)", (
       expect(screen.getByRole("button", { name: /clear queue/i })).toBeInTheDocument(),
     );
 
+    // Click "Clear queue" → inline confirmation appears
     await userEvent.click(screen.getByRole("button", { name: /clear queue/i }));
+    // Confirm the action
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -299,7 +297,10 @@ describe("QueueTab.branches2 — clearAll with filter='all' (lines 325, 350)", (
         expect.objectContaining({ method: "DELETE" }),
       ),
     );
-    expect(window.alert).toHaveBeenCalledWith(expect.stringContaining("5"));
+    // Success shown as inline toast (role="status") instead of alert()
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/5/),
+    );
   });
 });
 
@@ -425,15 +426,17 @@ describe("QueueTab.branches2 — last_error banner (line 514)", () => {
 
 describe("QueueTab.branches2 — Clear API key button (line 620)", () => {
   it("calls saveSettings({api_key: ''}) when Clear is clicked and confirmed", async () => {
-    window.confirm = jest.fn(() => true);
     const adminFetch = makeAdminFetch({
       settings: { ...BASE_SETTINGS, has_api_key: true },
       status: makeStatus(),
     });
     await renderAndWait(adminFetch);
 
+    // Click "Clear" → inline confirmation appears
     const clearBtn = screen.getByRole("button", { name: /^Clear$/i });
     await userEvent.click(clearBtn);
+    // Confirm via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -447,7 +450,6 @@ describe("QueueTab.branches2 — Clear API key button (line 620)", () => {
   });
 
   it("does NOT call saveSettings when Clear is cancelled", async () => {
-    window.confirm = jest.fn(() => false);
     const adminFetch = makeAdminFetch({
       settings: { ...BASE_SETTINGS, has_api_key: true },
       status: makeStatus(),
@@ -458,8 +460,11 @@ describe("QueueTab.branches2 — Clear API key button (line 620)", () => {
       (c: any[]) => c[1]?.method === "PUT",
     ).length;
 
+    // Click "Clear" → inline confirmation appears
     const clearBtn = screen.getByRole("button", { name: /^Clear$/i });
     await userEvent.click(clearBtn);
+    // Cancel via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     const callsAfter = adminFetch.mock.calls.filter(
       (c: any[]) => c[1]?.method === "PUT",

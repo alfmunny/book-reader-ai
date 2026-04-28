@@ -31,8 +31,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(window, "alert").mockImplementation(() => {});
-  jest.spyOn(window, "confirm").mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -163,7 +161,6 @@ describe("AdminBooksPage — book actions", () => {
   });
 
   it("calls delete when Delete confirmed", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -175,6 +172,7 @@ describe("AdminBooksPage — book actions", () => {
 
     const deleteBtns = await screen.findAllByRole("button", { name: /delete/i });
     await userEvent.click(deleteBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() => {
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -185,7 +183,6 @@ describe("AdminBooksPage — book actions", () => {
   });
 
   it("does not delete when confirm is cancelled", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
@@ -194,7 +191,8 @@ describe("AdminBooksPage — book actions", () => {
 
     const deleteBtns = await screen.findAllByRole("button", { name: /delete/i });
     await userEvent.click(deleteBtns[0]);
-    // Only initial 2 calls (books + translations)
+    // Inline dialog appears but we don't click confirm — only initial 2 calls
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
   });
 

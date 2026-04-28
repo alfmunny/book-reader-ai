@@ -61,17 +61,17 @@ test("SeedPopularButton error has role=alert when start fails", async () => {
     .mockResolvedValueOnce({ running: false, state: RUNNING_STATE })
     .mockRejectedValueOnce(new Error("Start failed"));
 
-  window.confirm = jest.fn().mockReturnValue(true);
-
   render(<SeedPopularButton adminFetch={adminFetch} />);
 
-  // Wait for initial status load (makes Start button not disabled and state non-null)
+  // Wait for initial status load
   await waitFor(() => {
     expect(adminFetch).toHaveBeenCalledWith("/admin/books/seed-popular/status");
   });
 
-  const startBtn = screen.getByRole("button", { name: /seed all popular books/i });
-  fireEvent.click(startBtn);
+  // Click main button → inline confirmation
+  fireEvent.click(screen.getByRole("button", { name: /seed all popular books/i }));
+  // Confirm the action
+  fireEvent.click(screen.getByRole("button", { name: /confirm seed popular books/i }));
 
   await waitFor(() => {
     expect(screen.getByRole("alert")).toBeInTheDocument();

@@ -110,7 +110,6 @@ function makeFetch(statusSeq: any[], { startReject = null as any, stopReject = n
 
 beforeEach(() => {
   jest.useFakeTimers();
-  jest.spyOn(window, "confirm").mockReturnValue(true);
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -169,7 +168,11 @@ describe("SeedPopularButton — start flow", () => {
     const adminFetch = makeFetch([idleStatus(), runningStatus()]);
     render(<SeedPopularButton adminFetch={adminFetch} />);
 
+    // Click main button → inline confirmation appears
     fireEvent.click(screen.getByRole("button", { name: /seed all popular/i }));
+    // Click "Yes, start" to confirm
+    const confirmBtn = screen.getByRole("button", { name: /confirm seed popular books/i });
+    fireEvent.click(confirmBtn);
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -180,11 +183,14 @@ describe("SeedPopularButton — start flow", () => {
   });
 
   it("does NOT call start when user cancels confirm", async () => {
-    (window.confirm as jest.Mock).mockReturnValue(false);
     const adminFetch = makeFetch([idleStatus()]);
     render(<SeedPopularButton adminFetch={adminFetch} />);
 
+    // Click main button → inline confirmation appears
     fireEvent.click(screen.getByRole("button", { name: /seed all popular/i }));
+    // Click "Cancel" to cancel
+    const cancelBtn = screen.getByRole("button", { name: /cancel seed/i });
+    fireEvent.click(cancelBtn);
 
     await act(async () => {});
     expect(adminFetch).not.toHaveBeenCalledWith(
@@ -194,8 +200,6 @@ describe("SeedPopularButton — start flow", () => {
   });
 
   it("shows error message when start throws an Error", async () => {
-    // Return a non-idle state after start so the expanded panel is rendered
-    // (the error display lives inside the expanded panel)
     const failedState = {
       running: false,
       state: {
@@ -212,6 +216,7 @@ describe("SeedPopularButton — start flow", () => {
     await waitFor(() => screen.getByRole("button", { name: /show progress/i }));
 
     fireEvent.click(screen.getByRole("button", { name: /seed all popular/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm seed popular books/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Network error")).toBeInTheDocument()
@@ -233,6 +238,7 @@ describe("SeedPopularButton — start flow", () => {
     await waitFor(() => screen.getByRole("button", { name: /show progress/i }));
 
     fireEvent.click(screen.getByRole("button", { name: /seed all popular/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm seed popular books/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Start failed")).toBeInTheDocument()
@@ -300,8 +306,13 @@ describe("SeedPopularButton — stop flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /show progress/i }));
 
-    const stopBtn = screen.getByRole("button", { name: /stop/i });
+    // Click "Stop" → inline confirmation appears
+    const stopBtn = screen.getByRole("button", { name: /^stop$/i });
     fireEvent.click(stopBtn);
+
+    // Click "Yes" to confirm
+    const yesBtn = screen.getByRole("button", { name: /confirm stop seed job/i });
+    fireEvent.click(yesBtn);
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -312,13 +323,15 @@ describe("SeedPopularButton — stop flow", () => {
   });
 
   it("does NOT call stop when user cancels confirm", async () => {
-    (window.confirm as jest.Mock).mockReturnValue(false);
     const adminFetch = makeFetch([runningStatus()]);
     render(<SeedPopularButton adminFetch={adminFetch} />);
     await waitFor(() => screen.getByText("Seeding…"));
 
     fireEvent.click(screen.getByRole("button", { name: /show progress/i }));
-    fireEvent.click(screen.getByRole("button", { name: /stop/i }));
+    // Click "Stop" → inline confirmation
+    fireEvent.click(screen.getByRole("button", { name: /^stop$/i }));
+    // Click "No" to cancel
+    fireEvent.click(screen.getByRole("button", { name: /cancel stop/i }));
 
     await act(async () => {});
     expect(adminFetch).not.toHaveBeenCalledWith(
@@ -333,7 +346,8 @@ describe("SeedPopularButton — stop flow", () => {
     await waitFor(() => screen.getByText("Seeding…"));
 
     fireEvent.click(screen.getByRole("button", { name: /show progress/i }));
-    fireEvent.click(screen.getByRole("button", { name: /stop/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^stop$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirm stop seed job/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Stop failed")).toBeInTheDocument()

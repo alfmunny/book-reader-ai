@@ -392,24 +392,25 @@ export default function Home() {
                     Your Library
                   </h2>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <ul role="list" aria-label="Your Library" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
                   {recentBooks.map((book) => (
-                    <BookCard
-                      key={book.id}
-                      book={book}
-                      onClick={() => handleBookClick(book)}
-                      badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
-                      onRemove={() => {
-                        if (removedBookToast) {
-                          setRemovedBookToast(null);
-                        }
-                        removeRecentBook(book.id);
-                        setRecentBooks(getRecentBooks());
-                        setRemovedBookToast(book);
-                      }}
-                    />
+                    <li key={book.id}>
+                      <BookCard
+                        book={book}
+                        onClick={() => handleBookClick(book)}
+                        badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
+                        onRemove={() => {
+                          if (removedBookToast) {
+                            setRemovedBookToast(null);
+                          }
+                          removeRecentBook(book.id);
+                          setRecentBooks(getRecentBooks());
+                          setRemovedBookToast(book);
+                        }}
+                      />
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
             ) : (
               <div className="text-center py-20">
@@ -638,11 +639,13 @@ export default function Home() {
               )}
 
               {!searching && searchResults.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <ul role="list" aria-label="Search results" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
                   {searchResults.map((book) => (
-                    <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
+                    <li key={book.id}>
+                      <BookCard book={book} onClick={() => handleBookClick(book)} />
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
 
               {!searching && searchedQuery && searchResults.length === 0 && !searchError && (
@@ -730,43 +733,46 @@ export default function Home() {
               {!popularLoading && popularBooks.length > 0 && (
                 <>
                   {popularView === "grid" ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <ul role="list" aria-label="Popular Classics" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
                       {popularBooks.map((book) => (
-                        <BookCard key={book.id} book={book} onClick={() => handleBookClick(book)} />
+                        <li key={book.id}>
+                          <BookCard book={book} onClick={() => handleBookClick(book)} />
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   ) : (
-                    <div className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white">
+                    <ul role="list" aria-label="Popular Classics" className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white list-none p-0 m-0">
                       {popularBooks.map((book, idx) => (
-                        <button
-                          key={book.id}
-                          onClick={() => handleBookClick(book)}
-                          aria-label={`Open ${book.title}${book.authors.length ? ` by ${book.authors.join(", ")}` : ""}`}
-                          className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
-                        >
-                          <span className="text-xs text-stone-500 w-7 text-right shrink-0 tabular-nums">
-                            {(popularPage - 1) * PER_PAGE + idx + 1}
-                          </span>
-                          {book.cover ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={book.cover} alt="" className="w-9 h-14 object-cover rounded shrink-0" />
-                          ) : (
-                            <div className="w-9 h-14 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-100 rounded shrink-0 flex items-center justify-center">
-                              <BookCoverPlaceholderIcon className="w-5 h-7 text-amber-500" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-serif text-sm font-semibold text-ink truncate">{book.title}</p>
-                            <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
-                          </div>
-                          {book.download_count > 0 ? (
-                            <span className="text-xs text-stone-500 shrink-0 tabular-nums">
-                              {book.download_count.toLocaleString()}
+                        <li key={book.id}>
+                          <button
+                            onClick={() => handleBookClick(book)}
+                            aria-label={`Open ${book.title}${book.authors.length ? ` by ${book.authors.join(", ")}` : ""}`}
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
+                          >
+                            <span className="text-xs text-stone-500 w-7 text-right shrink-0 tabular-nums">
+                              {(popularPage - 1) * PER_PAGE + idx + 1}
                             </span>
-                          ) : null}
-                        </button>
+                            {book.cover ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={book.cover} alt="" className="w-9 h-14 object-cover rounded shrink-0" />
+                            ) : (
+                              <div className="w-9 h-14 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-100 rounded shrink-0 flex items-center justify-center">
+                                <BookCoverPlaceholderIcon className="w-5 h-7 text-amber-500" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-serif text-sm font-semibold text-ink truncate">{book.title}</p>
+                              <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
+                            </div>
+                            {book.download_count > 0 ? (
+                              <span className="text-xs text-stone-500 shrink-0 tabular-nums">
+                                {book.download_count.toLocaleString()}
+                              </span>
+                            ) : null}
+                          </button>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
 
                   {/* Pagination */}

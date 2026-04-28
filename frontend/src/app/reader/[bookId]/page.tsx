@@ -2300,7 +2300,6 @@ export default function ReaderPage() {
                 if (!translationEnabled) {
                   setTranslationEnabled(true);
                   setTranslateExpanded(true);
-                  setTranslationRequested(true);
                 } else {
                   setTranslationEnabled(false);
                   setTranslateExpanded(false);

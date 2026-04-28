@@ -365,12 +365,13 @@ describe("HomePage — Discover tab", () => {
     resolve!(makePopularResponse());
   });
 
-  it("shows 'No popular books available yet.' when list is empty", async () => {
+  it("shows proper empty state with icon, headline, and CTA when popular books list is empty", async () => {
     mockGetPopularBooks.mockResolvedValue({ books: [], total: 0, page: 1, per_page: 50 });
     await renderHome();
     await waitFor(() => {
-      expect(screen.getByText("No popular books available yet.")).toBeInTheDocument();
+      expect(screen.getByText("No popular books yet")).toBeInTheDocument();
     });
+    expect(screen.getByRole("button", { name: "Search for a book" })).toBeInTheDocument();
   });
 
   it("clicking a popular book opens BookDetailModal", async () => {

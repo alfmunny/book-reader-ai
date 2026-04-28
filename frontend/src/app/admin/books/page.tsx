@@ -52,6 +52,12 @@ export default function BooksPage() {
   const [translations, setTranslations] = useState<TranslationEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actError, setActError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    message: string;
+    fn: () => void | Promise<void>;
+  } | null>(null);
   const [importId, setImportId] = useState("");
   const [importing, setImporting] = useState(false);
   const [expandedBookId, setExpandedBookId] = useState<number | null>(null);
@@ -61,19 +67,19 @@ export default function BooksPage() {
   const [retranslating, setRetranslating] = useState<string | null>(null);
   const [bulkRetranslating, setBulkRetranslating] = useState<string | null>(null);
   const [retryingFailed, setRetryingFailed] = useState<string | null>(null);
-  // Per-row input for "Move to chapter N" action — keyed by
-  // `${book_id}:${chapter_index}:${lang}` so two open books don't share state.
   const [moveInput, setMoveInput] = useState<Record<string, string>>({});
   const [moving, setMoving] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }
 
   const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
     setError("");
     try {
-      // Books endpoint is the main payload. Translations drives the per-chapter
-      // drill-down; lazy-load it only when a book row is expanded? For now keep
-      // it parallel since translations is small relative to books.
       const [b, t] = await Promise.all([adminFetch("/admin/books"), adminFetch("/admin/translations")]);
       setBooks(b);
       setTranslations(t);
@@ -92,8 +98,9 @@ export default function BooksPage() {
     try {
       await fn();
       await load({ silent: true });
+      setActError(null);
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed");
+      setActError(e instanceof Error ? e.message : "Failed");
     }
   }
 
@@ -106,7 +113,7 @@ export default function BooksPage() {
         method: "POST",
         body: JSON.stringify({ book_id: id }),
       });
-      alert(
+      showToast(
         res.status === "already_cached"
           ? `"${res.title}" is already cached.`
           : `Imported "${res.title}" (${res.text_length?.toLocaleString()} chars)`,
@@ -114,33 +121,32 @@ export default function BooksPage() {
       setImportId("");
       await load({ silent: true });
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Import failed");
+      setActError(e instanceof Error ? e.message : "Import failed");
     } finally {
       setImporting(false);
     }
   }
 
-  async function handleRetranslate(t: TranslationEntry) {
+  function handleRetranslate(t: TranslationEntry) {
     const key = `${t.book_id}:${t.chapter_index}:${t.target_language}`;
-    if (
-      !confirm(
-        `Retranslate Book ${t.book_id}, Ch. ${t.chapter_index + 1} → ${t.target_language}?\nThis will delete the cached version and generate a fresh translation.`,
-      )
-    )
-      return;
-    setRetranslating(key);
-    try {
-      const res = await adminFetch(
-        `/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/retranslate`,
-        { method: "POST" },
-      );
-      alert(`Retranslated via ${res.provider}: ${res.paragraphs_count} paragraphs`);
-      await load({ silent: true });
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Retranslation failed");
-    } finally {
-      setRetranslating(null);
-    }
+    setPendingConfirm({
+      message: `Retranslate Book ${t.book_id}, Ch. ${t.chapter_index + 1} → ${t.target_language}? This will delete the cached version and generate a fresh translation.`,
+      fn: async () => {
+        setRetranslating(key);
+        try {
+          const res = await adminFetch(
+            `/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/retranslate`,
+            { method: "POST" },
+          );
+          showToast(`Retranslated via ${res.provider}: ${res.paragraphs_count} paragraphs`);
+          await load({ silent: true });
+        } catch (e: unknown) {
+          setActError(e instanceof Error ? e.message : "Retranslation failed");
+        } finally {
+          setRetranslating(null);
+        }
+      },
+    });
   }
 
   async function queueLanguageForBook(book: Book, lang: string) {
@@ -152,69 +158,70 @@ export default function BooksPage() {
         method: "POST",
         body: JSON.stringify({ book_id: book.id, target_languages: [lang], priority: 50 }),
       });
-      alert(`Queued ${res.enqueued} chapter(s) of "${book.title}" → ${lang}.`);
+      showToast(`Queued ${res.enqueued} chapter(s) of "${book.title}" → ${lang}.`);
       await load({ silent: true });
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Enqueue failed");
+      setActError(e instanceof Error ? e.message : "Enqueue failed");
     } finally {
       setQueueingLangFor(null);
     }
   }
 
-  async function handleMove(t: TranslationEntry, rawInput: string) {
-    // User types a 1-based chapter number to match the visible "Ch. N"
-    // label; convert to 0-based for the backend.
+  function handleMove(t: TranslationEntry, rawInput: string) {
     const parsed = parseInt(rawInput.trim(), 10);
     if (isNaN(parsed) || parsed < 1) {
-      alert("Enter a chapter number (1-based, e.g. 6).");
+      setActError("Enter a chapter number (1-based, e.g. 6).");
       return;
     }
     const newIdx = parsed - 1;
     if (newIdx === t.chapter_index) {
-      alert("Target chapter is the same as the source.");
+      setActError("Target chapter is the same as the source.");
       return;
     }
     const rowKey = `${t.book_id}:${t.chapter_index}:${t.target_language}`;
-    if (
-      !confirm(
-        `Reassign translation from Ch. ${t.chapter_index + 1} to Ch. ${parsed} for ${t.target_language}?\nNo tokens are used — this only moves the existing cached paragraphs.`,
-      )
-    )
-      return;
-    setMoving(rowKey);
-    try {
-      await adminFetch(
-        `/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/move`,
-        {
-          method: "POST",
-          body: JSON.stringify({ new_chapter_index: newIdx }),
-        },
-      );
-      setMoveInput({ ...moveInput, [rowKey]: "" });
-      await load({ silent: true });
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Move failed");
-    } finally {
-      setMoving(null);
-    }
+    setPendingConfirm({
+      message: `Reassign translation from Ch. ${t.chapter_index + 1} to Ch. ${parsed} for ${t.target_language}? No tokens are used — this only moves the existing cached paragraphs.`,
+      fn: async () => {
+        setMoving(rowKey);
+        try {
+          await adminFetch(
+            `/admin/translations/${t.book_id}/${t.chapter_index}/${t.target_language}/move`,
+            {
+              method: "POST",
+              body: JSON.stringify({ new_chapter_index: newIdx }),
+            },
+          );
+          setMoveInput((prev) => ({ ...prev, [rowKey]: "" }));
+          await load({ silent: true });
+        } catch (e: unknown) {
+          setActError(e instanceof Error ? e.message : "Move failed");
+        } finally {
+          setMoving(null);
+        }
+      },
+    });
   }
 
-  async function retryFailedForLang(book: Book, lang: string, failedCount: number) {
+  function retryFailedForLang(book: Book, lang: string, failedCount: number) {
     const key = `${book.id}:${lang}`;
-    if (!confirm(`Retry ${failedCount} failed chapter(s) of "${book.title}" → ${lang}?`)) return;
-    setRetryingFailed(key);
-    try {
-      const res = await adminFetch("/admin/queue/retry-failed", {
-        method: "POST",
-        body: JSON.stringify({ book_id: book.id, target_language: lang }),
-      });
-      alert(`Re-queued ${res.updated} failed chapter(s) of "${book.title}" → ${lang}.`);
-      await load({ silent: true });
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Retry failed");
-    } finally {
-      setRetryingFailed(null);
-    }
+    setPendingConfirm({
+      message: `Retry ${failedCount} failed chapter(s) of "${book.title}" → ${lang}?`,
+      fn: async () => {
+        setRetryingFailed(key);
+        try {
+          const res = await adminFetch("/admin/queue/retry-failed", {
+            method: "POST",
+            body: JSON.stringify({ book_id: book.id, target_language: lang }),
+          });
+          showToast(`Re-queued ${res.updated} failed chapter(s) of "${book.title}" → ${lang}.`);
+          await load({ silent: true });
+        } catch (e: unknown) {
+          setActError(e instanceof Error ? e.message : "Retry failed");
+        } finally {
+          setRetryingFailed(null);
+        }
+      },
+    });
   }
 
   if (loading)
@@ -229,6 +236,62 @@ export default function BooksPage() {
     <div className="space-y-4">
       {error && (
         <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
+      )}
+
+      {pendingConfirm && (
+        <div role="dialog" aria-label="Confirm action" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3">
+          <p className="flex-1 text-amber-900">{pendingConfirm.message}</p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                const fn = pendingConfirm.fn;
+                setPendingConfirm(null);
+                await fn();
+              }}
+              aria-label="Confirm action"
+              className="px-3 py-1.5 rounded border border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingConfirm(null)}
+              aria-label="Cancel action"
+              className="px-3 py-1.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {actError && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+          <span>{actError}</span>
+          <button
+            type="button"
+            onClick={() => setActError(null)}
+            aria-label="Dismiss error"
+            className="shrink-0 text-red-500 hover:text-red-700 text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {toast && (
+        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-center justify-between gap-3">
+          <span>{toast}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            aria-label="Dismiss message"
+            className="shrink-0 text-emerald-500 hover:text-emerald-700 text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
       )}
 
       <div className="flex gap-2">
@@ -251,9 +314,6 @@ export default function BooksPage() {
 
       <SeedPopularButton adminFetch={adminFetch} onComplete={() => load({ silent: true })} />
 
-      {/* Fuzzy filter — matches against title + authors + book ID. Stays
-          client-side since the admin endpoint already returns the full
-          books list. Preserves existing expansion state while typing. */}
       <div className="flex items-center gap-2">
         <input
           type="search"
@@ -403,10 +463,12 @@ export default function BooksPage() {
                 </button>
 
                 <button
-                  onClick={() => {
-                    if (confirm(`Delete "${b.title}" and all its audio/translations?`))
-                      act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" }));
-                  }}
+                  onClick={() =>
+                    setPendingConfirm({
+                      message: `Delete "${b.title}" and all its audio/translations?`,
+                      fn: () => act(() => adminFetch(`/admin/books/${b.id}`, { method: "DELETE" })),
+                    })
+                  }
                   aria-label={`Delete ${b.title}`}
                   className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 shrink-0 min-h-[44px]"
                 >
@@ -448,44 +510,43 @@ export default function BooksPage() {
 
                               <button
                                 disabled={bulkRetranslating === bulkKey}
-                                onClick={async () => {
-                                  if (
-                                    !confirm(
-                                      `Retranslate ALL ${count} chapters of "${b.title}" → ${lang}? This deletes the current cache and regenerates.`,
-                                    )
-                                  )
-                                    return;
-                                  setBulkRetranslating(bulkKey);
-                                  try {
-                                    const res = await adminFetch(`/admin/translations/${b.id}/retranslate-all`, {
-                                      method: "POST",
-                                      body: JSON.stringify({ target_language: lang }),
-                                    });
-                                    alert(
-                                      `Retranslated ${res.chapters} chapters of "${b.title}" → ${lang}`,
-                                    );
-                                    await load({ silent: true });
-                                  } catch (e: unknown) {
-                                    alert(e instanceof Error ? e.message : "Failed");
-                                  } finally {
-                                    setBulkRetranslating(null);
-                                  }
-                                }}
+                                onClick={() =>
+                                  setPendingConfirm({
+                                    message: `Retranslate ALL ${count} chapters of "${b.title}" → ${lang}? This deletes the current cache and regenerates.`,
+                                    fn: async () => {
+                                      setBulkRetranslating(bulkKey);
+                                      try {
+                                        const res = await adminFetch(`/admin/translations/${b.id}/retranslate-all`, {
+                                          method: "POST",
+                                          body: JSON.stringify({ target_language: lang }),
+                                        });
+                                        showToast(`Retranslated ${res.chapters} chapters of "${b.title}" → ${lang}`);
+                                        await load({ silent: true });
+                                      } catch (e: unknown) {
+                                        setActError(e instanceof Error ? e.message : "Failed");
+                                      } finally {
+                                        setBulkRetranslating(null);
+                                      }
+                                    },
+                                  })
+                                }
                                 aria-label={`Retranslate all ${lang} chapters of ${b.title}`}
                                 className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
                               >
                                 {bulkRetranslating === bulkKey ? "Retranslating…" : "Retranslate all"}
                               </button>
                               <button
-                                onClick={() => {
-                                  if (!confirm(`Delete all ${count} cached ${lang} translations for "${b.title}"?`))
-                                    return;
-                                  act(() =>
-                                    adminFetch(`/admin/translations/${b.id}/${lang}`, {
-                                      method: "DELETE",
-                                    }),
-                                  );
-                                }}
+                                onClick={() =>
+                                  setPendingConfirm({
+                                    message: `Delete all ${count} cached ${lang} translations for "${b.title}"?`,
+                                    fn: () =>
+                                      act(() =>
+                                        adminFetch(`/admin/translations/${b.id}/${lang}`, {
+                                          method: "DELETE",
+                                        }),
+                                      ),
+                                  })
+                                }
                                 aria-label={`Delete all ${lang} translations for ${b.title}`}
                                 className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
                               >
@@ -513,11 +574,6 @@ export default function BooksPage() {
                                           <span className="text-stone-500 flex-1">
                                             {(t.size_chars / 1000).toFixed(1)}K chars
                                           </span>
-                                          {/* Move-to: reassign the cached translation
-                                              to a different chapter index without
-                                              burning tokens. Used to fix splitter-
-                                              realignment cases where paragraphs are
-                                              correct but the chapter_index is wrong. */}
                                           <input
                                             aria-label="Move to chapter number"
                                             type="number"

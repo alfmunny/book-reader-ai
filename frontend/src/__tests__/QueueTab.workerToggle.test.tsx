@@ -56,10 +56,6 @@ const COST = {
 };
 
 describe("QueueTab worker start/stop button", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-  });
-
   it('shows "Stopping…" while the stop PUT is in flight', async () => {
     let workerRunning = true;
     let resolveStop: (v: unknown) => void = () => {};
@@ -77,8 +73,13 @@ describe("QueueTab worker start/stop button", () => {
     });
 
     render(<QueueTab adminFetch={adminFetch} />);
+    // Click Stop — now shows inline confirmation dialog
     const stopBtn = await screen.findByRole("button", { name: /^stop$/i });
     await userEvent.click(stopBtn);
+
+    // Confirm the stop via the inline dialog
+    const confirmBtn = screen.getByRole("button", { name: /confirm action/i });
+    await userEvent.click(confirmBtn);
 
     // While the PUT is in flight we should see "Stopping…" and the button
     // should be disabled.

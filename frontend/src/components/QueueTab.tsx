@@ -134,6 +134,12 @@ export default function QueueTab({ adminFetch }: Props) {
   // the initial "pending" captured in its closure.
   const itemFilterRef = useRef(itemFilter);
   const [error, setError] = useState("");
+  const [actError, setActError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    message: string;
+    fn: () => void | Promise<void>;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   // Per-section loading flags so a slow fetch spins only its own panel
   // instead of freezing the whole tab. Each is set true at the start of
@@ -332,29 +338,39 @@ export default function QueueTab({ adminFetch }: Props) {
     }
   }
 
-  async function stopWorker() {
-    if (!confirm("Stop the translation queue worker? Pending items stay in the queue.")) return;
-    setTogglingWorker("stop");
-    try {
-      // Backend waits up to ~20s for the in-flight batch to finish, so
-      // this PUT can hang for a while. The button shows a spinner +
-      // "Stopping…" during the wait.
-      await adminFetch("/admin/queue/stop", { method: "POST" });
-      refreshCore();
-    } finally {
-      setTogglingWorker(null);
-    }
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
   }
 
-  async function enqueueAll() {
-    if (!confirm("Queue EVERY cached book for translation into all configured languages?")) return;
-    try {
-      const res = await adminFetch("/admin/queue/enqueue-all", { method: "POST" });
-      alert(`Enqueued ${res.enqueued} chapter(s) across ${res.books_scanned} book(s).`);
-      await refresh();
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Failed");
-    }
+  function stopWorker() {
+    setPendingConfirm({
+      message: "Stop the translation queue worker? Pending items stay in the queue.",
+      fn: async () => {
+        setTogglingWorker("stop");
+        try {
+          await adminFetch("/admin/queue/stop", { method: "POST" });
+          refreshCore();
+        } finally {
+          setTogglingWorker(null);
+        }
+      },
+    });
+  }
+
+  function enqueueAll() {
+    setPendingConfirm({
+      message: "Queue EVERY cached book for translation into all configured languages?",
+      fn: async () => {
+        try {
+          const res = await adminFetch("/admin/queue/enqueue-all", { method: "POST" });
+          showToast(`Enqueued ${res.enqueued} chapter(s) across ${res.books_scanned} book(s).`);
+          await refresh();
+        } catch (e: unknown) {
+          setActError(e instanceof Error ? e.message : "Failed");
+        }
+      },
+    });
   }
 
   async function retry(item: QueueItem) {
@@ -362,33 +378,41 @@ export default function QueueTab({ adminFetch }: Props) {
       await adminFetch(`/admin/queue/items/${item.id}/retry`, { method: "POST" });
       await refresh();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Retry failed");
+      setActError(e instanceof Error ? e.message : "Retry failed");
     }
   }
 
-  async function remove(item: QueueItem) {
-    if (!confirm(`Remove queue item #${item.id}?`)) return;
-    try {
-      await adminFetch(`/admin/queue/items/${item.id}`, { method: "DELETE" });
-      await refresh();
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Delete failed");
-    }
+  function remove(item: QueueItem) {
+    setPendingConfirm({
+      message: `Remove queue item #${item.id}?`,
+      fn: async () => {
+        try {
+          await adminFetch(`/admin/queue/items/${item.id}`, { method: "DELETE" });
+          await refresh();
+        } catch (e: unknown) {
+          setActError(e instanceof Error ? e.message : "Delete failed");
+        }
+      },
+    });
   }
 
-  async function clearAll() {
+  function clearAll() {
     const scope = itemFilter === "all" ? "ALL" : itemFilter;
-    if (!confirm(`Delete ${scope} queue items? This is irreversible (but you can re-enqueue via the Books tab).`)) return;
-    try {
-      const path = itemFilter === "all"
-        ? "/admin/queue"
-        : `/admin/queue?status=${itemFilter}`;
-      const res = await adminFetch(path, { method: "DELETE" });
-      alert(`Deleted ${res.deleted} queue item(s).`);
-      await refresh();
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Clear failed");
-    }
+    setPendingConfirm({
+      message: `Delete ${scope} queue items? This is irreversible (but you can re-enqueue via the Books tab).`,
+      fn: async () => {
+        try {
+          const path = itemFilter === "all"
+            ? "/admin/queue"
+            : `/admin/queue?status=${itemFilter}`;
+          const res = await adminFetch(path, { method: "DELETE" });
+          showToast(`Deleted ${res.deleted} queue item(s).`);
+          await refresh();
+        } catch (e: unknown) {
+          setActError(e instanceof Error ? e.message : "Clear failed");
+        }
+      },
+    });
   }
 
   async function runDryRun() {
@@ -476,6 +500,62 @@ export default function QueueTab({ adminFetch }: Props) {
       {error && (
         <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">
           {error}
+        </div>
+      )}
+
+      {pendingConfirm && (
+        <div role="dialog" aria-label="Confirm action" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3">
+          <p className="flex-1 text-amber-900">{pendingConfirm.message}</p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                const fn = pendingConfirm.fn;
+                setPendingConfirm(null);
+                await fn();
+              }}
+              aria-label="Confirm action"
+              className="px-3 py-1.5 rounded border border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingConfirm(null)}
+              aria-label="Cancel action"
+              className="px-3 py-1.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {actError && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+          <span>{actError}</span>
+          <button
+            type="button"
+            onClick={() => setActError(null)}
+            aria-label="Dismiss error"
+            className="shrink-0 text-red-500 hover:text-red-700 text-lg leading-none"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {toast && (
+        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-center justify-between gap-3">
+          <span>{toast}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            aria-label="Dismiss message"
+            className="shrink-0 text-emerald-500 hover:text-emerald-700 text-lg leading-none"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -834,9 +914,12 @@ export default function QueueTab({ adminFetch }: Props) {
               </button>
               {settings?.has_api_key && (
                 <button
-                  onClick={() => {
-                    if (confirm("Clear queue API key?")) saveSettings({ api_key: "" });
-                  }}
+                  onClick={() =>
+                    setPendingConfirm({
+                      message: "Clear queue API key?",
+                      fn: () => saveSettings({ api_key: "" }),
+                    })
+                  }
                   className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
                 >
                   Clear

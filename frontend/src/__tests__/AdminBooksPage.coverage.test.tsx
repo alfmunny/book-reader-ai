@@ -45,8 +45,6 @@ beforeAll(async () => {
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnComplete = null;
-  jest.spyOn(window, "alert").mockImplementation(() => {});
-  jest.spyOn(window, "confirm").mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -103,7 +101,6 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 // ─────────────────────────────────────────────────────────────────────────────
 describe("AdminBooksPage — act() error path (line 90)", () => {
   it("alerts error message when delete throws", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -114,14 +111,14 @@ describe("AdminBooksPage — act() error path (line 90)", () => {
 
     const deleteBtns = await screen.findAllByRole("button", { name: (n) => n.startsWith("Delete ") && !n.startsWith("Delete all") });
     await userEvent.click(deleteBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Delete failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Delete failed"),
     );
   });
 
   it("alerts fallback message when delete throws non-Error", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -132,9 +129,10 @@ describe("AdminBooksPage — act() error path (line 90)", () => {
 
     const deleteBtns = await screen.findAllByRole("button", { name: (n) => n.startsWith("Delete ") && !n.startsWith("Delete all") });
     await userEvent.click(deleteBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Failed"),
     );
   });
 });
@@ -159,9 +157,7 @@ describe("AdminBooksPage — import already_cached branch (line 111)", () => {
     await userEvent.click(screen.getByRole("button", { name: /import book/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining("already cached"),
-      ),
+      expect(screen.getByRole("status")).toHaveTextContent(/already cached/i),
     );
   });
 
@@ -179,7 +175,7 @@ describe("AdminBooksPage — import already_cached branch (line 111)", () => {
     await userEvent.click(screen.getByRole("button", { name: /import book/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Import failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Import failed"),
     );
   });
 });
@@ -213,7 +209,6 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
   }
 
   it("calls retranslate endpoint when confirmed", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
@@ -225,7 +220,6 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
 
     // Expand the zh language row
     await waitFor(() => screen.getByText("zh"));
-    // Click the small arrow to expand the language
     const allBtns = screen.getAllByRole("button");
     const langArrow = allBtns.find(
       (b) => (b.getAttribute("aria-label")?.startsWith("Expand") || b.getAttribute("aria-label")?.startsWith("Collapse")) && !b.title,
@@ -245,6 +239,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
 
     await userEvent.click(retranslateBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -252,13 +247,12 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
         expect.objectContaining({ method: "POST" }),
       ),
     );
-    expect(window.alert).toHaveBeenCalledWith(
-      expect.stringContaining("paragraphs"),
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/paragraphs/i),
     );
   });
 
   it("does not retranslate when confirm is cancelled", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
@@ -279,6 +273,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
       name: /^Retranslate$/i,
     });
     await userEvent.click(retranslateBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     // Only initial 2 calls — no retranslate call
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
@@ -304,7 +299,7 @@ describe("AdminBooksPage — queueLanguageForBook error path (line 152)", () => 
     await userEvent.click(translateBtns[0]);
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Queue error"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Queue error"),
     );
   });
 });
@@ -434,7 +429,6 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
   ];
 
   it("calls retry endpoint when confirmed", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(BOOKS_WITH_FAILED)
       .mockResolvedValueOnce([])
@@ -447,6 +441,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
 
     const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -454,13 +449,12 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
         expect.objectContaining({ method: "POST" }),
       ),
     );
-    expect(window.alert).toHaveBeenCalledWith(
-      expect.stringContaining("Re-queued"),
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/Re-queued/i),
     );
   });
 
   it("does not call retry when confirm is cancelled", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
     mockAdminFetch
       .mockResolvedValueOnce(BOOKS_WITH_FAILED)
       .mockResolvedValueOnce([]);
@@ -470,12 +464,12 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
 
     const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
   });
 
   it("alerts error when retry API fails", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(BOOKS_WITH_FAILED)
       .mockResolvedValueOnce([])
@@ -486,9 +480,10 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
 
     const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Retry failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Retry failed"),
     );
   });
 });
@@ -498,7 +493,6 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe("AdminBooksPage — Delete all translations per-lang (line 373)", () => {
   it("calls DELETE /admin/translations/:id/:lang when Delete all confirmed", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -516,6 +510,7 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
     // "Delete all" button inside expanded section
     const deleteAllBtn = await screen.findByRole("button", { name: /delete all/i });
     await userEvent.click(deleteAllBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -526,7 +521,6 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
   });
 
   it("does not call DELETE when Delete all confirm is cancelled", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
@@ -539,6 +533,7 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
 
     const deleteAllBtn = await screen.findByRole("button", { name: /delete all/i });
     await userEvent.click(deleteAllBtn);
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
   });
@@ -549,7 +544,6 @@ describe("AdminBooksPage — Delete all translations per-lang (line 373)", () =>
 // ─────────────────────────────────────────────────────────────────────────────
 describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
   it("calls bulk retranslate endpoint when confirmed", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -567,6 +561,7 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
       name: /retranslate all/i,
     });
     await userEvent.click(retranslateAllBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -574,13 +569,12 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
         expect.objectContaining({ method: "POST" }),
       ),
     );
-    expect(window.alert).toHaveBeenCalledWith(
-      expect.stringContaining("chapters"),
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/chapters/i),
     );
   });
 
   it("does not call bulk retranslate when confirm is cancelled", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
@@ -595,12 +589,12 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
       name: /retranslate all/i,
     });
     await userEvent.click(retranslateAllBtn);
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);
   });
 
   it("alerts error when bulk retranslate fails", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -616,9 +610,10 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
       name: /retranslate all/i,
     });
     await userEvent.click(retranslateAllBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Bulk failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Bulk failed"),
     );
   });
 });
@@ -696,10 +691,9 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
   }
 
   it("alerts when move target is same chapter", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithChapterRows();
 
-    // ch_index 0 means Ch. 1 (1-based). Entering 1 is same chapter.
+    // ch_index 0 means Ch. 1 (1-based). Entering 1 is same chapter — setActError fires directly.
     const moveInputs = screen.getAllByPlaceholderText("→Ch");
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "1");
@@ -708,14 +702,11 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await userEvent.click(moveBtns[0]);
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining("same"),
-      ),
+      expect(screen.getByRole("alert")).toHaveTextContent(/same/i),
     );
   });
 
   it("alerts when move target is not a valid number", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithChapterRows();
 
     const moveInputs = screen.getAllByPlaceholderText("→Ch");
@@ -726,14 +717,11 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     await userEvent.click(moveBtns[0]);
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining("chapter number"),
-      ),
+      expect(screen.getByRole("alert")).toHaveTextContent(/chapter number/i),
     );
   });
 
   it("calls move endpoint and clears input on success", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithChapterRows();
 
     mockAdminFetch
@@ -747,6 +735,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
 
     const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
     await userEvent.click(moveBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -757,7 +746,6 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
   });
 
   it("alerts error when move API fails", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithChapterRows();
 
     mockAdminFetch.mockRejectedValueOnce(new Error("Move error"));
@@ -768,14 +756,14 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
 
     const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
     await userEvent.click(moveBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Move error"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Move error"),
     );
   });
 
   it("triggers move via Enter keydown on move input", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithChapterRows();
 
     mockAdminFetch
@@ -786,6 +774,7 @@ describe("AdminBooksPage — chapter move (lines 496-519)", () => {
     const moveInputs = screen.getAllByPlaceholderText("→Ch");
     await userEvent.clear(moveInputs[0]);
     await userEvent.type(moveInputs[0], "3{Enter}");
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(mockAdminFetch).toHaveBeenCalledWith(

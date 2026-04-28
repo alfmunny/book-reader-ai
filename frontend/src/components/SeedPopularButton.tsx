@@ -39,6 +39,8 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
   const [status, setStatus] = useState<StatusResp | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState("");
+  const [pendingStart, setPendingStart] = useState(false);
+  const [pendingStop, setPendingStop] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completedKeyRef = useRef<string | null>(null);
 
@@ -71,14 +73,8 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function start() {
-    if (!confirm(
-      "Download every popular book listed in popular_books.json into the DB.\n\n" +
-      "This hits Gutenberg for each uncached book (~1 second each). Books " +
-      "already cached are skipped. Can take 5–15 minutes.\n\n" +
-      "The job runs in the background — you can navigate away and come back; " +
-      "progress keeps going on the server."
-    )) return;
+  async function confirmStart() {
+    setPendingStart(false);
     setError("");
     setExpanded(true);
     try {
@@ -89,8 +85,8 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
     }
   }
 
-  async function stop() {
-    if (!confirm("Stop the seed job? Already-downloaded books stay cached.")) return;
+  async function confirmStop() {
+    setPendingStop(false);
     try {
       await adminFetch("/admin/books/seed-popular/stop", { method: "POST" });
       await refresh();
@@ -107,15 +103,39 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <button
-          onClick={start}
-          disabled={running}
-          className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2 min-h-[44px] text-sm hover:bg-amber-50 disabled:opacity-50"
-        >
-          {running ? "Seeding…" : "Seed all popular books"}
-        </button>
-        {state && state.status !== "idle" && !expanded && (
+      <div className="flex items-center gap-2 flex-wrap">
+        {pendingStart ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-amber-800">
+              Download all popular books from Gutenberg? (5–15 min, runs in background)
+            </span>
+            <button
+              type="button"
+              onClick={confirmStart}
+              aria-label="Confirm seed popular books"
+              className="rounded-lg border border-emerald-300 text-emerald-700 px-3 py-1.5 min-h-[44px] md:min-h-0 text-sm hover:bg-emerald-50"
+            >
+              Yes, start
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingStart(false)}
+              aria-label="Cancel seed"
+              className="rounded-lg border border-stone-200 text-stone-600 px-3 py-1.5 min-h-[44px] md:min-h-0 text-sm hover:bg-stone-50"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setPendingStart(true)}
+            disabled={running}
+            className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2 min-h-[44px] text-sm hover:bg-amber-50 disabled:opacity-50"
+          >
+            {running ? "Seeding…" : "Seed all popular books"}
+          </button>
+        )}
+        {state && state.status !== "idle" && !expanded && !pendingStart && (
           <button
             onClick={() => setExpanded(true)}
             className="text-xs text-amber-700 hover:text-amber-900 min-h-[44px] flex items-center"
@@ -123,7 +143,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
             Show progress
           </button>
         )}
-        {state && state.status !== "idle" && expanded && !running && (
+        {state && state.status !== "idle" && expanded && !running && !pendingStart && (
           <button
             onClick={() => setExpanded(false)}
             className="text-xs text-stone-500 hover:text-stone-700 min-h-[44px] flex items-center"
@@ -147,13 +167,35 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
               }`}>
                 {running ? "Running" : state.status}
               </span>
-              {running && (
+              {running && !pendingStop && (
                 <button
-                  onClick={stop}
+                  type="button"
+                  onClick={() => setPendingStop(true)}
                   className="text-xs text-red-600 hover:text-red-800 min-h-[44px] flex items-center"
                 >
                   Stop
                 </button>
+              )}
+              {running && pendingStop && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-red-600 whitespace-nowrap">Stop job?</span>
+                  <button
+                    type="button"
+                    onClick={confirmStop}
+                    aria-label="Confirm stop seed job"
+                    className="text-xs px-2 py-1 rounded border border-red-400 bg-red-50 text-red-700 min-h-[44px] md:min-h-0 flex items-center"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingStop(false)}
+                    aria-label="Cancel stop"
+                    className="text-xs px-2 py-1 rounded border border-stone-200 text-stone-600 min-h-[44px] md:min-h-0 flex items-center"
+                  >
+                    No
+                  </button>
+                </div>
               )}
             </div>
           </div>

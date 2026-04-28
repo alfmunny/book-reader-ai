@@ -37,8 +37,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(window, "alert").mockImplementation(() => {});
-  jest.spyOn(window, "confirm").mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -106,7 +104,6 @@ async function renderWithLangExpanded() {
 
 describe("AdminBooksPage — handleRetranslate error path (line 134)", () => {
   it("alerts error message from Error when retranslate API throws", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithLangExpanded();
 
     // Mock the retranslate endpoint to fail
@@ -116,14 +113,14 @@ describe("AdminBooksPage — handleRetranslate error path (line 134)", () => {
       name: /^Retranslate$/i,
     });
     await userEvent.click(retranslateBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Retranslation API error"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Retranslation API error"),
     );
   });
 
   it("alerts fallback message when retranslate API throws non-Error", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithLangExpanded();
 
     // Mock the retranslate endpoint to fail with a non-Error
@@ -133,9 +130,10 @@ describe("AdminBooksPage — handleRetranslate error path (line 134)", () => {
       name: /^Retranslate$/i,
     });
     await userEvent.click(retranslateBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Retranslation failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Retranslation failed"),
     );
   });
 });
@@ -144,7 +142,6 @@ describe("AdminBooksPage — handleRetranslate error path (line 134)", () => {
 
 describe("AdminBooksPage — handleMove confirm cancelled (line 177)", () => {
   it("does not call move API when user cancels confirm dialog", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
     await renderWithLangExpanded();
 
     const moveInputs = screen.getAllByPlaceholderText("→Ch");
@@ -153,6 +150,8 @@ describe("AdminBooksPage — handleMove confirm cancelled (line 177)", () => {
 
     const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
     await userEvent.click(moveBtns[0]);
+    // Inline dialog appears — dismiss without confirming
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     // No additional calls beyond initial load (2 calls)
     expect(mockAdminFetch).toHaveBeenCalledTimes(2);

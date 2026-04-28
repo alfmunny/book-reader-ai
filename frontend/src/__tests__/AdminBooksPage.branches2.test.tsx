@@ -50,8 +50,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(window, "alert").mockImplementation(() => {});
-  jest.spyOn(window, "confirm").mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -162,7 +160,7 @@ describe("AdminBooksPage — handleImport non-Error catch (line 111)", () => {
     await userEvent.click(screen.getByRole("button", { name: /import book/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Import failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Import failed"),
     );
   });
 });
@@ -185,7 +183,7 @@ describe("AdminBooksPage — queueLanguageForBook non-Error catch (lines 141-152
     await userEvent.click(translateBtns[0]);
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Enqueue failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Enqueue failed"),
     );
   });
 });
@@ -193,8 +191,6 @@ describe("AdminBooksPage — queueLanguageForBook non-Error catch (lines 141-152
 // ── Line 190: handleMove non-Error catch ──────────────────────────────────────
 
 describe("AdminBooksPage — handleMove non-Error catch (line 190)", () => {
-  jest.spyOn(window, "confirm").mockReturnValue(true);
-
   async function renderWithChapterRows() {
     const singleBook = [SAMPLE_BOOKS[0]];
     mockAdminFetch
@@ -216,7 +212,6 @@ describe("AdminBooksPage — handleMove non-Error catch (line 190)", () => {
   }
 
   it("shows 'Move failed' fallback when non-Error is thrown during move", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     await renderWithChapterRows();
 
     mockAdminFetch.mockRejectedValueOnce("non-error string");
@@ -227,9 +222,10 @@ describe("AdminBooksPage — handleMove non-Error catch (line 190)", () => {
 
     const moveBtns = screen.getAllByRole("button", { name: /^Move$/i });
     await userEvent.click(moveBtns[0]);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Move failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Move failed"),
     );
   });
 });
@@ -238,7 +234,6 @@ describe("AdminBooksPage — handleMove non-Error catch (line 190)", () => {
 
 describe("AdminBooksPage — retryFailedForLang non-Error catch (line 208)", () => {
   it("shows 'Retry failed' fallback when non-Error is thrown", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     const BOOKS_WITH_FAILED = [
       {
         id: 3,
@@ -262,9 +257,10 @@ describe("AdminBooksPage — retryFailedForLang non-Error catch (line 208)", () 
 
     const retryBtn = await screen.findByRole("button", { name: /Retry.*failed.*chapter/i });
     await userEvent.click(retryBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Retry failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Retry failed"),
     );
   });
 });
@@ -454,7 +450,6 @@ describe("AdminBooksPage — singular chapter count (line 430)", () => {
 
 describe("AdminBooksPage — bulk retranslate non-Error catch (line 453)", () => {
   it("shows 'Failed' fallback when bulk retranslate throws non-Error", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS)
@@ -470,9 +465,10 @@ describe("AdminBooksPage — bulk retranslate non-Error catch (line 453)", () =>
       name: /retranslate all/i,
     });
     await userEvent.click(retranslateAllBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Failed"),
     );
   });
 });

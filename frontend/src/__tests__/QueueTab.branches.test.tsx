@@ -277,12 +277,7 @@ describe("QueueTab.branches — saveSettings error path", () => {
 // ── Line 331: enqueueAll error path ───────────────────────────────────────────
 
 describe("QueueTab.branches — enqueueAll error path", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-    window.alert = jest.fn();
-  });
-
-  it("shows alert error message when enqueueAll fails with Error", async () => {
+  it("shows inline error when enqueueAll fails with Error", async () => {
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
       if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
       if (path === "/admin/queue/settings") return Promise.resolve(BASE_SETTINGS);
@@ -300,13 +295,15 @@ describe("QueueTab.branches — enqueueAll error path", () => {
       name: /queue every book for all configured languages/i,
     });
     await userEvent.click(enqueueBtn);
+    // Confirm the action via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Enqueue service unavailable"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Enqueue service unavailable"),
     );
   });
 
-  it("shows generic 'Failed' alert when enqueueAll fails with non-Error", async () => {
+  it("shows generic 'Failed' inline error when enqueueAll fails with non-Error", async () => {
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
       if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
       if (path === "/admin/queue/settings") return Promise.resolve(BASE_SETTINGS);
@@ -324,9 +321,10 @@ describe("QueueTab.branches — enqueueAll error path", () => {
       name: /queue every book for all configured languages/i,
     });
     await userEvent.click(enqueueBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Failed"),
     );
   });
 });
@@ -334,12 +332,7 @@ describe("QueueTab.branches — enqueueAll error path", () => {
 // ── Line 357: clearAll error path ─────────────────────────────────────────────
 
 describe("QueueTab.branches — clearAll error path", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-    window.alert = jest.fn();
-  });
-
-  it("shows alert error when clearAll DELETE request fails with Error", async () => {
+  it("shows inline error when clearAll DELETE request fails with Error", async () => {
     const item = makeItem();
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
       if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
@@ -357,13 +350,14 @@ describe("QueueTab.branches — clearAll error path", () => {
 
     const clearBtn = screen.getByRole("button", { name: /clear pending/i });
     await userEvent.click(clearBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Database lock error"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Database lock error"),
     );
   });
 
-  it("shows 'Clear failed' alert when clearAll fails with non-Error", async () => {
+  it("shows 'Clear failed' inline error when clearAll fails with non-Error", async () => {
     const item = makeItem();
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
       if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
@@ -381,9 +375,10 @@ describe("QueueTab.branches — clearAll error path", () => {
 
     const clearBtn = screen.getByRole("button", { name: /clear pending/i });
     await userEvent.click(clearBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith("Clear failed"),
+      expect(screen.getByRole("alert")).toHaveTextContent("Clear failed"),
     );
   });
 });
@@ -549,11 +544,6 @@ describe("QueueTab.branches — add model from panel", () => {
 // ── stopWorker / startWorker toggle ──────────────────────────────────────────
 
 describe("QueueTab.branches — worker start/stop", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-    window.alert = jest.fn();
-  });
-
   it("Start button calls /admin/queue/start POST endpoint", async () => {
     const adminFetch = makeAdminFetch({ status: makeStatus({ running: false }) });
     await renderAndWait(adminFetch);
@@ -569,16 +559,18 @@ describe("QueueTab.branches — worker start/stop", () => {
     );
   });
 
-  it("Stop button shows confirm dialog before stopping", async () => {
-    window.confirm = jest.fn(() => false); // cancel
+  it("Stop button shows inline confirmation before stopping", async () => {
     const adminFetch = makeAdminFetch({ status: makeStatus({ running: true }) });
     await renderAndWait(adminFetch);
 
     const stopBtn = screen.getByRole("button", { name: /^stop$/i });
     await userEvent.click(stopBtn);
 
-    expect(window.confirm).toHaveBeenCalled();
-    // Should NOT call stop endpoint since confirm returned false
+    // Inline dialog appears — cancel it
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
+
+    // Should NOT call stop endpoint since we cancelled
     expect(adminFetch).not.toHaveBeenCalledWith(
       "/admin/queue/stop",
       expect.objectContaining({ method: "POST" }),
@@ -586,12 +578,13 @@ describe("QueueTab.branches — worker start/stop", () => {
   });
 
   it("Stop button calls /admin/queue/stop POST when confirmed", async () => {
-    window.confirm = jest.fn(() => true);
     const adminFetch = makeAdminFetch({ status: makeStatus({ running: true }) });
     await renderAndWait(adminFetch);
 
     const stopBtn = screen.getByRole("button", { name: /^stop$/i });
     await userEvent.click(stopBtn);
+    // Confirm via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(

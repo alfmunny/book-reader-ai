@@ -366,6 +366,8 @@ describe("saveSettings calls (lines 264-291)", () => {
     );
     expect(clearBtns.length).toBeGreaterThan(0);
     await userEvent.click(clearBtns[0]);
+    // Confirm via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -382,11 +384,6 @@ describe("saveSettings calls (lines 264-291)", () => {
 // ── Lines 325-357: clearAll and retry/remove queue items ─────────────────────
 
 describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-    window.alert = jest.fn();
-  });
-
   it("clicking Retry on a failed item calls retry endpoint", async () => {
     const failedItem = makeItem({ id: 99, status: "failed", attempts: 2 });
     const adminFetch = makeAdminFetch({
@@ -407,7 +404,7 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
     );
   });
 
-  it("clicking Del calls DELETE endpoint after confirm", async () => {
+  it("clicking Del calls DELETE endpoint after inline confirmation", async () => {
     const item = makeItem({ id: 55 });
     const adminFetch = makeAdminFetch({
       items: [item],
@@ -418,6 +415,8 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
 
     const delBtn = await screen.findByRole("button", { name: /del/i });
     await userEvent.click(delBtn);
+    // Confirm via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -427,8 +426,7 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
     );
   });
 
-  it("Del does not call DELETE if confirm returns false", async () => {
-    window.confirm = jest.fn(() => false);
+  it("Del does not call DELETE when inline confirmation is cancelled", async () => {
     const item = makeItem({ id: 77 });
     const adminFetch = makeAdminFetch({ items: [item], status: makeStatus() });
 
@@ -436,6 +434,8 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
 
     const delBtn = await screen.findByRole("button", { name: /del/i });
     await userEvent.click(delBtn);
+    // Cancel via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));
 
     expect(adminFetch).not.toHaveBeenCalledWith(
       "/admin/queue/items/77",
@@ -455,6 +455,7 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
 
     const clearBtn = screen.getByRole("button", { name: /clear pending/i });
     await userEvent.click(clearBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -484,6 +485,7 @@ describe("queue item actions: retry, remove, clearAll (lines 325-357)", () => {
 
     const clearBtn = screen.getByRole("button", { name: /clear queue/i });
     await userEvent.click(clearBtn);
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -810,6 +812,8 @@ describe("worker status panel details (lines 1013-1095)", () => {
       name: /queue every book for all configured languages/i,
     });
     await userEvent.click(enqueueBtn);
+    // Confirm via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
       expect(adminFetch).toHaveBeenCalledWith(
@@ -972,12 +976,7 @@ describe("initial loading skeleton", () => {
 // ── Issue #273: retry and remove must alert on error ─────────────────────────
 
 describe("QueueTab — retry/remove error handling (issue #273)", () => {
-  beforeEach(() => {
-    window.confirm = jest.fn(() => true);
-    window.alert = jest.fn();
-  });
-
-  it("shows alert when retry API call fails", async () => {
+  it("shows inline error when retry API call fails", async () => {
     const failedItem = makeItem({ id: 9, status: "failed" });
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
       if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
@@ -995,13 +994,11 @@ describe("QueueTab — retry/remove error handling (issue #273)", () => {
     await userEvent.click(retryBtn);
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining("Server error"),
-      ),
+      expect(screen.getByRole("alert")).toHaveTextContent("Server error"),
     );
   });
 
-  it("shows alert when delete API call fails", async () => {
+  it("shows inline error when delete API call fails", async () => {
     const item = makeItem({ id: 7 });
     const adminFetch = jest.fn((path: string, opts?: RequestInit) => {
       if (path === "/admin/queue/status") return Promise.resolve(makeStatus());
@@ -1017,11 +1014,11 @@ describe("QueueTab — retry/remove error handling (issue #273)", () => {
 
     const delBtn = await screen.findByRole("button", { name: /del/i });
     await userEvent.click(delBtn);
+    // Confirm via inline dialog
+    await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining("Not found"),
-      ),
+      expect(screen.getByRole("alert")).toHaveTextContent("Not found"),
     );
   });
 });

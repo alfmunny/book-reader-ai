@@ -129,8 +129,7 @@ describe("AdminAudioPage", () => {
     await waitFor(() => expect(mockAdminFetch).toHaveBeenCalledTimes(3));
   });
 
-  it("alerts with error message when delete action throws Error", async () => {
-    jest.spyOn(window, "alert").mockImplementation(() => {});
+  it("shows inline error banner when delete action throws Error", async () => {
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_AUDIO)
       .mockRejectedValueOnce(new Error("Delete failed"));
@@ -140,11 +139,10 @@ describe("AdminAudioPage", () => {
     const [firstDelete] = await screen.findAllByRole("button", { name: /delete/i });
     await userEvent.click(firstDelete);
 
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Delete failed"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Delete failed"));
   });
 
-  it("alerts 'Failed' when delete action throws non-Error", async () => {
-    jest.spyOn(window, "alert").mockImplementation(() => {});
+  it("shows inline error banner with 'Failed' when delete throws non-Error", async () => {
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_AUDIO)
       .mockRejectedValueOnce("oops");
@@ -154,6 +152,6 @@ describe("AdminAudioPage", () => {
     const [firstDelete] = await screen.findAllByRole("button", { name: /delete/i });
     await userEvent.click(firstDelete);
 
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Failed"));
   });
 });

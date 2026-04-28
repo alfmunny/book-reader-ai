@@ -16,7 +16,9 @@ describe("Admin books action buttons touch targets", () => {
   });
 
   it("book Delete button has min-h-[44px]", () => {
-    expect(src).toMatch(/Delete.*and all its audio[\s\S]{0,300}min-h-\[44px\]/);
+    // Delete book button uses setPendingConfirm with the confirmation message;
+    // aria-label="Delete <title>" is on the button itself alongside min-h-[44px]
+    expect(src).toMatch(/aria-label=.*Delete.*[\s\S]{0,150}min-h-\[44px\]/);
   });
 
   it("Retranslate all button has min-h-[44px]", () => {

@@ -110,7 +110,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             ) : annotations.length === 0 ? (
               <div className="text-center text-stone-500 mt-10 text-sm">
                 <EmptyNotesIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
-                <p>No annotations yet.</p>
+                <p className="font-serif text-lg text-stone-500 mt-1">No annotations yet</p>
                 <p className="mt-1 text-xs">Click a sentence and choose Note to add one.</p>
               </div>
             ) : (

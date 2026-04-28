@@ -55,7 +55,9 @@ export default function FlashcardsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [decks, setDecks] = useState<DeckSummary[]>([]);
-  const [selectedDeckId, setSelectedDeckId] = useState<number | undefined>(undefined);
+  // Initialize from localStorage synchronously so loadData fires once with the saved deck,
+  // avoiding a second setLoading(true) cycle that would briefly hide the deck selector.
+  const [selectedDeckId, setSelectedDeckId] = useState<number | undefined>(() => readLastDeckId());
   const [fetchError, setFetchError] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -89,9 +91,11 @@ export default function FlashcardsPage() {
       .then((d) => {
         if (!alive) return;
         setDecks(d);
+        // Clear the saved selection only if the deck no longer exists in the list.
+        // We do NOT re-set it here because useState already initialised from localStorage.
         const saved = readLastDeckId();
-        if (saved && d.some((deck) => deck.id === saved)) {
-          setSelectedDeckId(saved);
+        if (saved && !d.some((deck) => deck.id === saved)) {
+          setSelectedDeckId(undefined);
         }
       })
       .catch(() => {});

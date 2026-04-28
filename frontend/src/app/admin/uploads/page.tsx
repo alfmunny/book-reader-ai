@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
-import { CloseIcon, EmptyUploadIcon } from "@/components/Icons";
+import { AlertCircleIcon, CloseIcon, EmptyUploadIcon, RetryIcon } from "@/components/Icons";
 
 interface UploadEntry {
   book_id: number;
@@ -85,7 +85,18 @@ export default function UploadsPage() {
   return (
     <div className="space-y-4">
       {error && (
-        <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-3">
+          <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+          <span className="flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={() => load()}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 text-xs font-medium transition-colors min-h-[36px]"
+          >
+            <RetryIcon className="w-3.5 h-3.5" aria-hidden="true" />
+            Retry
+          </button>
+        </div>
       )}
 
       <div className="flex gap-2 items-center">

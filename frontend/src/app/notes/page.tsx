@@ -141,6 +141,13 @@ export default function NotesOverviewPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
+        {/* Visually-hidden live region: announces filter result counts to screen readers */}
+        {search.trim() && !loading && (
+          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+            {`${filtered.length} book${filtered.length === 1 ? "" : "s"} found.`}
+          </div>
+        )}
+
         {loading ? (
           <div role="status" aria-label="Loading notes" className="flex justify-center py-20">
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />

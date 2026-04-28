@@ -32,7 +32,9 @@ describe("reader desktop toolbar touch targets (closes #871)", () => {
   });
 
   it("Notes toggle has min-h-[44px]", () => {
-    checkForward('"Annotations & notes"');
+    // Radius enlarged: dynamic aria-label expression is longer than the old static form,
+    // so min-h-[44px] now sits further from the title="..." anchor.
+    checkForward('"Annotations & notes"', 400);
   });
 
   it("Show/hide annotation marks button has min-h-[44px]", () => {
@@ -41,7 +43,8 @@ describe("reader desktop toolbar touch targets (closes #871)", () => {
   });
 
   it("Vocabulary toggle has min-h-[44px]", () => {
-    checkForward('title="Vocabulary"');
+    // Radius enlarged: dynamic aria-label is longer than the old static form.
+    checkForward('title="Vocabulary"', 400);
   });
 
   it("Obsidian export button has min-h-[44px]", () => {

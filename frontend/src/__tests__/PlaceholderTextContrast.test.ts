@@ -11,6 +11,9 @@ const homePageSrc = readFileSync(join(__dirname, "../app/page.tsx"), "utf-8");
 const decksNewSrc = readFileSync(join(__dirname, "../app/decks/new/page.tsx"), "utf-8");
 const profileSrc = readFileSync(join(__dirname, "../app/profile/page.tsx"), "utf-8");
 const tagEditorSrc = readFileSync(join(__dirname, "../components/TagEditor.tsx"), "utf-8");
+const queueTabSrc = readFileSync(join(__dirname, "../components/QueueTab.tsx"), "utf-8");
+const adminUploadsSrc = readFileSync(join(__dirname, "../app/admin/uploads/page.tsx"), "utf-8");
+const adminBooksSrc = readFileSync(join(__dirname, "../app/admin/books/page.tsx"), "utf-8");
 
 function countOccurrences(src: string, pattern: RegExp): number {
   return (src.match(pattern) ?? []).length;
@@ -57,5 +60,19 @@ describe("Placeholder text contrast — WCAG 1.4.3", () => {
 
   it("TagEditor.tsx tag input must use placeholder:text-stone-600", () => {
     expect(countOccurrences(tagEditorSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- QueueTab and admin pages (wave 13) ---
+
+  it("QueueTab.tsx must use placeholder:text-stone-600 on all 3 settings inputs", () => {
+    expect(countOccurrences(queueTabSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("admin/uploads/page.tsx filter input must use placeholder:text-stone-600", () => {
+    expect(countOccurrences(adminUploadsSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(1);
+  });
+
+  it("admin/books/page.tsx must use placeholder:text-stone-600 on all 3 inputs", () => {
+    expect(countOccurrences(adminBooksSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(3);
   });
 });

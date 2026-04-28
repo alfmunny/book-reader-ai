@@ -289,11 +289,19 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | Date | Change | File(s) | PR |
 |------|--------|---------|----|
 | 2026-04-28 | `placeholder:text-stone-400` (2.4:1) → `placeholder:text-stone-600` (7.2:1) on 4 inputs | decks/[deckId]/page.tsx, AnnotationToolbar.tsx, SearchBar.tsx, InsightChat.tsx | #1819 |
+| 2026-04-28 | Browser-default placeholder (~3.95:1) → `placeholder:text-stone-600` (7.2:1) on 14 inputs across 6 files | notes/page.tsx, vocabulary/page.tsx, page.tsx, decks/new/page.tsx, profile/page.tsx, TagEditor.tsx | #1824 |
 
 ### UX dead-end fixes
 | Date | Change | File(s) | PR |
 |------|--------|---------|----|
-| 2026-04-28 | DeckCard: added `onClick` prop + content-area button so `/decks` list navigates to `/decks/{id}` | DeckCard.tsx, decks/page.tsx | pending #1820 |
+| 2026-04-28 | DeckCard: added `onClick` prop + content-area button so `/decks` list navigates to `/decks/{id}` | DeckCard.tsx, decks/page.tsx | #1821 |
+
+## Wave 13 — Placeholder Contrast Sweep Round 3 (2026-04-28)
+
+### WCAG 1.4.3 Placeholder contrast
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-28 | Browser-default placeholder → `placeholder:text-stone-600` on 7 remaining inputs in QueueTab and admin pages | QueueTab.tsx, admin/uploads/page.tsx, admin/books/page.tsx | #1828 |
 
 ---
 

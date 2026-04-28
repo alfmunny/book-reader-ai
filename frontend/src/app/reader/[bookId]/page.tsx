@@ -988,6 +988,7 @@ export default function ReaderPage() {
                       rel="noopener noreferrer"
                       className="shrink-0 text-xs text-amber-700 hover:text-amber-800"
                       title="View on Project Gutenberg"
+                      aria-label="View on Project Gutenberg"
                     ><ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" /></a>
                   )}
                 </div>

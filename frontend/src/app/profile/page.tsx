@@ -336,11 +336,9 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {keyMessage && (
-            <p role="status" className={`mt-3 text-sm ${keyMessage.ok ? "text-emerald-700" : "text-red-600"}`}>
-              {keyMessage.text}
-            </p>
-          )}
+          <p role="status" aria-live="polite" aria-atomic="true" className={`mt-3 text-sm ${keyMessage ? (keyMessage.ok ? "text-emerald-700" : "text-red-600") : ""}`}>
+            {keyMessage?.text ?? ""}
+          </p>
         </section>
 
         {/* ── Obsidian Export Settings ────────────────────────────────────── */}
@@ -441,11 +439,9 @@ export default function ProfilePage() {
                 {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
               </button>
 
-              {obsidianMsg && (
-                <p role="status" className={`text-sm ${obsidianMsg.ok ? "text-emerald-700" : "text-red-600"}`}>
-                  {obsidianMsg.text}
-                </p>
-              )}
+              <p role="status" aria-live="polite" aria-atomic="true" className={`text-sm ${obsidianMsg ? (obsidianMsg.ok ? "text-emerald-700" : "text-red-600") : ""}`}>
+                {obsidianMsg?.text ?? ""}
+              </p>
             </div>
           )}
         </section>

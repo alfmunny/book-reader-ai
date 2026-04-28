@@ -202,10 +202,10 @@ export default function NotesOverviewPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
+          <ul role="list" aria-label="Books with notes" className="space-y-3 list-none p-0 m-0">
             {filtered.map((book) => (
+              <li key={book.bookId}>
               <button
-                key={book.bookId}
                 onClick={() => router.push(`/notes/${book.bookId}`)}
                 className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 hover:shadow-sm transition-all group"
               >
@@ -241,8 +241,9 @@ export default function NotesOverviewPage() {
                   </div>
                 </div>
               </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </main>

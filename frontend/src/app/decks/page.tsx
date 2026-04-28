@@ -134,16 +134,17 @@ export default function DecksPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <ul role="list" aria-label="Your decks" className="space-y-4 list-none p-0 m-0">
             {decks.map((d) => (
-              <DeckCard
-                key={d.id}
-                deck={d}
-                onClick={() => router.push(`/decks/${d.id}`)}
-                onDelete={handleDelete}
-              />
+              <li key={d.id}>
+                <DeckCard
+                  deck={d}
+                  onClick={() => router.push(`/decks/${d.id}`)}
+                  onDelete={handleDelete}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </div>
 

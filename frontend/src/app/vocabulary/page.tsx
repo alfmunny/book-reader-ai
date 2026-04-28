@@ -13,7 +13,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 import TagEditor from "@/components/TagEditor";
 
 type SortMode = "alpha" | "language" | "book" | "recent";
@@ -232,12 +232,18 @@ function VocabularyPageContent() {
     document.title = "Vocabulary — Book Reader AI";
   }, []);
 
-  useEffect(() => {
+  const loadVocab = useCallback(() => {
     setFetchError(false);
+    setLoading(true);
     getVocabulary()
       .then(setWords)
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    loadVocab();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.backendToken]);
 
   useEffect(() => {
@@ -571,8 +577,17 @@ function VocabularyPageContent() {
           </div>
         ) : fetchError ? (
           <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
+            <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
             <p className="font-serif text-lg text-red-700 mt-1">Failed to load vocabulary.</p>
-            <p className="text-sm">Please refresh the page to try again.</p>
+            <p className="text-sm">Check your connection and try again.</p>
+            <button
+              type="button"
+              onClick={loadVocab}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+            >
+              <RetryIcon className="w-4 h-4" aria-hidden="true" />
+              Try again
+            </button>
           </div>
         ) : words.length === 0 ? (
           <div className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">

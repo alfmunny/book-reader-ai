@@ -173,6 +173,7 @@ function SearchResultsInner() {
 
       {!loading && !error && data && data.total === 0 && (
         <div className="text-center text-stone-500 py-12">
+          <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
           <p className="font-serif text-lg text-ink">No matches for &ldquo;{q}&rdquo;.</p>
           <p className="text-sm mt-2">Try a shorter or different word.</p>
           <Link

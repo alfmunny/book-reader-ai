@@ -6,7 +6,7 @@ import BookCard from "@/components/BookCard";
 import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon } from "@/components/Icons";
+import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon, SearchIcon } from "@/components/Icons";
 import { SearchBar } from "@/components/SearchBar";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -635,6 +635,7 @@ export default function Home() {
 
               {!searching && searchedQuery && searchResults.length === 0 && !searchError && (
                 <div className="text-center py-10 text-amber-700">
+                  <SearchIcon className="w-10 h-10 mx-auto mb-2 text-amber-400" aria-hidden="true" />
                   <p className="text-lg font-serif mb-1">No books found for &ldquo;{searchedQuery}&rdquo;</p>
                   <p className="text-sm text-amber-700">Try a different title, author, or language filter.</p>
                 </div>

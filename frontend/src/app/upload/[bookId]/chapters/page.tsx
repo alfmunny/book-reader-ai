@@ -143,7 +143,11 @@ export default function ChapterEditorPage() {
             return (
               <div
                 key={ch.original_index + "-" + i}
+                role="button"
+                tabIndex={0}
+                aria-label={`Chapter ${i + 1}: ${ch.title}${selected === i ? " (selected)" : ""}`}
                 onClick={() => setSelected(i)}
+                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setSelected(i)}
                 className={`rounded-xl border p-3 cursor-pointer transition-all duration-150 ${
                   selected === i
                     ? "border-amber-400 bg-amber-50"

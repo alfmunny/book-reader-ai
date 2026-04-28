@@ -212,16 +212,20 @@ export default function Home() {
       </header>
 
       {/* Tab bar */}
-      <nav aria-label="Main navigation" className="border-b border-amber-200 bg-white/40 backdrop-blur">
+      <div className="border-b border-amber-200 bg-white/40 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
+          <div role="tablist" aria-label="Main navigation" className="flex gap-1 items-center">
           {([
             { key: "library" as Tab, label: "Home", count: recentBooks.length || undefined },
             { key: "discover" as Tab, label: "Discover" },
           ]).map(({ key, label, count }) => (
             <button
               key={key}
+              id={`tab-${key}`}
+              role="tab"
+              aria-selected={tab === key}
+              aria-controls={`tabpanel-${key}`}
               onClick={() => setTab(key)}
-              aria-current={tab === key ? "page" : undefined}
               className={`px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors ${
                 tab === key
                   ? "border-amber-700 text-amber-900"
@@ -234,6 +238,7 @@ export default function Home() {
               )}
             </button>
           ))}
+          </div>
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/upload")}
@@ -270,13 +275,13 @@ export default function Home() {
             </button>
           )}
         </div>
-      </nav>
+      </div>
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
 
         {/* ════════════ Home Tab ════════════ */}
         {tab === "library" && (
-          <div className="space-y-8">
+          <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" tabIndex={0} className="space-y-8 focus:outline-none">
 
             {/* Greeting */}
             {status === "authenticated" && session?.backendUser?.name && (
@@ -434,7 +439,7 @@ export default function Home() {
 
         {/* ════════════ Discover Tab ════════════ */}
         {tab === "discover" && (
-          <div className="space-y-10">
+          <div id="tabpanel-discover" role="tabpanel" aria-labelledby="tab-discover" tabIndex={0} className="space-y-10 focus:outline-none">
 
             {/* ── Landing hero (unauthenticated visitors only) ── */}
             {status === "unauthenticated" && (

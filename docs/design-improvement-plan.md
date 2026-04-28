@@ -170,6 +170,12 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-22 | 6.1 | Vocabulary: EmptyVocabIcon SVG empty state | ✅ Done |
 | 2026-04-22 | 6.2 | Notes header: icon+count stat pills | ✅ Done |
 | 2026-04-22 | 6.3 | Profile: section category labels | ✅ Done |
+| 2026-04-28 | 8.1 | Admin error pages: AlertCircleIcon + Retry button (audio, users) | ✅ Done |
+| 2026-04-28 | 8.2 | Admin inline error banners: AlertCircleIcon + Retry (books, uploads) | ✅ Done |
+| 2026-04-28 | 8.3 | Upload, search, home page error banners: AlertCircleIcon added | ✅ Done |
+| 2026-04-28 | 8.4 | Import and chapter-editor error banners: AlertCircleIcon added | ✅ Done |
+| 2026-04-28 | 8.5 | Admin tables: title attributes on truncated book/user/file text | ✅ Done |
+| 2026-04-28 | 8.6 | Admin dismiss error/message buttons: 44×44px mobile touch targets | ✅ Done |
 
 ---
 

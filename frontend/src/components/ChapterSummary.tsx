@@ -136,6 +136,7 @@ export default function ChapterSummary({
         {!summary && !loading && !error && (
           <div className="flex flex-col items-center justify-center h-full text-center text-stone-500 gap-3 py-8">
             <SummaryIcon className="w-10 h-10 text-amber-300" />
+            <p className="font-serif text-lg text-stone-500 mt-1">Chapter Summary</p>
             <p className="text-sm">Get a quick overview of this chapter before continuing.</p>
             <button
               onClick={load}

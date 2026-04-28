@@ -11,7 +11,7 @@ const homePage = fs.readFileSync(
 );
 
 describe("Home page tab aria-current", () => {
-  it("tab buttons include aria-current bound to active tab", () => {
-    expect(homePage).toMatch(/aria-current=\{tab === key \? "page" : undefined\}/);
+  it("tab buttons include aria-selected bound to active tab", () => {
+    expect(homePage).toMatch(/aria-selected=\{tab === key\}/);
   });
 });

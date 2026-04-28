@@ -155,13 +155,13 @@ describe("HomePage — initial render", () => {
 
   it("shows Discover tab by default when library is empty", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: /Discover/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Discover/i })).toBeInTheDocument();
   });
 
   it("renders Library and Discover tab buttons", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: /Home/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Discover/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Home/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Discover/i })).toBeInTheDocument();
   });
 });
 
@@ -313,7 +313,7 @@ describe("HomePage — Library tab with books", () => {
     await act(flushPromises);
     // Tab should switch to discover automatically, but manual click to Library shows empty
     // Switch to library tab
-    await userEvent.click(screen.getByRole("button", { name: /Home/i }));
+    await userEvent.click(screen.getByRole("tab", { name: /Home/i }));
     expect(screen.getByText("Your library is empty")).toBeInTheDocument();
   });
 
@@ -326,7 +326,7 @@ describe("HomePage — Library tab with books", () => {
     const user = userEvent.setup();
     render(<Home />);
     await act(flushPromises);
-    await user.click(screen.getByRole("button", { name: /Home/i }));
+    await user.click(screen.getByRole("tab", { name: /Home/i }));
     await user.click(screen.getByRole("button", { name: "Discover Books" }));
     // Use exact-match to avoid matching the global header "Open search" button (SearchBar).
     expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
@@ -503,14 +503,14 @@ describe("HomePage — tab switching", () => {
     const user = userEvent.setup();
     render(<Home />);
     await act(flushPromises);
-    await user.click(screen.getByRole("button", { name: /Discover/i }));
+    await user.click(screen.getByRole("tab", { name: /Discover/i }));
     expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
   });
 
   it("clicking Library tab shows library content", async () => {
     const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByRole("button", { name: /Home/i }));
+    await user.click(screen.getByRole("tab", { name: /Home/i }));
     // Library tab is now active; heading or empty state visible
     expect(
       screen.getByText("Your library is empty") ||
@@ -586,7 +586,7 @@ describe("HomePage — Home dashboard (UX-008)", () => {
 
   it("tab is labelled Home not Your Library", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: /^Home/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Your Library/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^Home/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Your Library/i })).not.toBeInTheDocument();
   });
 });

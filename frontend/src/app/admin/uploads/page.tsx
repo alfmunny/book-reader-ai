@@ -154,8 +154,8 @@ export default function UploadsPage() {
               <tbody className="divide-y divide-amber-100">
                 {uploads.map((u) => (
                   <tr key={`${u.book_id}-${u.filename}`} className="hover:bg-amber-50/40">
-                    <td className="px-4 py-2.5 font-medium text-ink max-w-[200px] truncate">{u.title}</td>
-                    <td className="px-4 py-2.5 text-stone-500 max-w-[160px] truncate">{u.filename}</td>
+                    <td className="px-4 py-2.5 font-medium text-ink max-w-[200px] truncate" title={u.title}>{u.title}</td>
+                    <td className="px-4 py-2.5 text-stone-500 max-w-[160px] truncate" title={u.filename}>{u.filename}</td>
                     <td className="px-4 py-2.5">
                       <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
                         {u.format}

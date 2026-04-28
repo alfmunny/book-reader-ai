@@ -1208,6 +1208,7 @@ export default function ReaderPage() {
             <button
               onClick={handleObsidianExport}
               title="Export vocabulary to Obsidian"
+              aria-label="Export vocabulary to Obsidian"
               className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
             >
               <ExportIcon className="w-3.5 h-3.5 shrink-0" />

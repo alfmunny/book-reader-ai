@@ -166,7 +166,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           <div className="flex items-baseline justify-between gap-2">
             <span className="font-serif font-bold text-ink text-xl">{word}</span>
             {def && def.lemma !== word && (
-              <span className="text-sm text-amber-700">← {def.lemma}</span>
+              <span className="text-sm text-amber-700" aria-label={`base form: ${def.lemma}`}>← {def.lemma}</span>
             )}
           </div>
 

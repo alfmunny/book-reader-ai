@@ -143,7 +143,7 @@ export default function ChapterEditorPage() {
             {confirming && (
               <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true" />
             )}
-            {confirming ? "Saving…" : "Confirm & Start Reading →"}
+            {confirming ? "Saving…" : "Confirm & Start Reading"}
           </button>
         </div>
       </header>

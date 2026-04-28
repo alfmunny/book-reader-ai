@@ -144,7 +144,7 @@ export default function TagEditor({
           maxLength={50}
           placeholder="new tag"
           aria-label="New tag"
-          className="rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-amber-400 w-24"
+          className="rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-amber-400 w-24 placeholder:text-stone-600"
           data-testid={`tag-input-${vocabularyId}`}
         />
       ) : (

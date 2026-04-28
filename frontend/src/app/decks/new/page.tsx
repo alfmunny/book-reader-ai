@@ -96,7 +96,7 @@ export default function DecksNewPage() {
               onChange={(e) => setName(e.target.value)}
               maxLength={80}
               data-testid="deck-name-input"
-              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
               placeholder="e.g. German verbs"
             />
           </div>
@@ -115,7 +115,7 @@ export default function DecksNewPage() {
               maxLength={500}
               rows={3}
               data-testid="deck-description-input"
-              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
               placeholder="What kind of words will go here?"
             />
           </div>
@@ -182,7 +182,7 @@ export default function DecksNewPage() {
                   value={ruleLanguage}
                   onChange={(e) => setRuleLanguage(e.target.value)}
                   maxLength={10}
-                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                   placeholder="de"
                 />
               </div>
@@ -199,7 +199,7 @@ export default function DecksNewPage() {
                   type="text"
                   value={ruleTagsAny}
                   onChange={(e) => setRuleTagsAny(e.target.value)}
-                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                   placeholder="grammar, verbs"
                 />
               </div>
@@ -216,7 +216,7 @@ export default function DecksNewPage() {
                   type="text"
                   value={ruleTagsAll}
                   onChange={(e) => setRuleTagsAll(e.target.value)}
-                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                   placeholder="advanced"
                 />
               </div>

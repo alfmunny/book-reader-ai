@@ -11,10 +11,12 @@ import {
   removeDeckMember,
 } from "@/lib/api";
 import {
+  AlertCircleIcon,
   ArrowLeftIcon,
   CloseIcon,
   DeckIcon,
   PlusIcon,
+  RetryIcon,
   TrashIcon,
 } from "@/components/Icons";
 import UndoToast from "@/components/UndoToast";
@@ -36,12 +38,14 @@ export default function DeckDetailPage() {
     document.title = "Deck — Book Reader AI";
   }, []);
 
-  useEffect(() => {
+  const loadDeck = useCallback(() => {
     if (!Number.isFinite(deckId) || deckId <= 0) {
       setError(true);
       setLoading(false);
       return;
     }
+    setError(false);
+    setLoading(true);
     let alive = true;
     Promise.all([getDeck(deckId), getVocabulary()])
       .then(([d, v]) => {
@@ -61,6 +65,12 @@ export default function DeckDetailPage() {
     return () => {
       alive = false;
     };
+  }, [deckId]);
+
+  useEffect(() => {
+    const cleanup = loadDeck();
+    return cleanup;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deckId, session?.backendToken]);
 
   const memberIds = useMemo(
@@ -166,18 +176,28 @@ export default function DeckDetailPage() {
             role="alert"
             className="text-center mt-16 flex flex-col items-center gap-3"
           >
-            <DeckIcon className="w-14 h-14 text-amber-300" />
-            <p className="font-serif text-lg text-stone-500 mt-1">
+            <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto" aria-hidden="true" />
+            <p className="font-serif text-lg text-ink mt-1">
               Could not load deck.
             </p>
-            <button
-              type="button"
-              onClick={() => router.push("/decks")}
-              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
-            >
-              <ArrowLeftIcon className="w-4 h-4" />
-              Back to decks
-            </button>
+            <p className="text-sm text-stone-500">Check your connection and try again.</p>
+            <div className="flex items-center justify-center gap-3 mt-1">
+              <button
+                type="button"
+                onClick={loadDeck}
+                className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+              >
+                <RetryIcon className="w-4 h-4" aria-hidden="true" />
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/decks")}
+                className="px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+              >
+                Back to decks
+              </button>
+            </div>
           </div>
         ) : (
           <>

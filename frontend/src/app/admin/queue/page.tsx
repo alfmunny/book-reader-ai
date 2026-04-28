@@ -8,5 +8,10 @@ export default function QueuePage() {
     document.title = "Admin: Queue — Book Reader AI";
   }, []);
 
-  return <QueueTab adminFetch={adminFetch} />;
+  return (
+    <div>
+      <h2 className="sr-only">Translation Queue</h2>
+      <QueueTab adminFetch={adminFetch} />
+    </div>
+  );
 }

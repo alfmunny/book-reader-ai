@@ -547,7 +547,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <input
                   aria-label="Search by title or author"
-                  className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 text-base"
+                  className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 text-base placeholder:text-stone-600"
                   placeholder="Search by title or author..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}

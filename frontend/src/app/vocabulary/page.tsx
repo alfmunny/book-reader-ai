@@ -488,7 +488,7 @@ function VocabularyPageContent() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search words…"
-              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
             />
             <div role="group" aria-label="Sort by" className="flex rounded-lg border border-amber-200 overflow-hidden" data-testid="sort-mode-control">
               {SORT_MODES.map(({ value, label }) => (

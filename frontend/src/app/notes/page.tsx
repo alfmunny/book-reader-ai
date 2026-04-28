@@ -135,7 +135,7 @@ export default function NotesOverviewPage() {
         {/* Search */}
         <input
           aria-label="Search notes by book"
-          className="w-full rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          className="w-full rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
           placeholder="Search books…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

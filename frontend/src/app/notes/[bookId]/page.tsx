@@ -687,13 +687,16 @@ export default function BookNotesPage() {
           </button>
         </div>
 
-        {exportMsg && (
-          <div className="max-w-3xl mx-auto mt-2">
-            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-1.5 truncate">
-              {exportMsg}
-            </p>
-          </div>
-        )}
+        <div className="max-w-3xl mx-auto mt-2">
+          <p
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={`text-xs truncate px-3 py-1.5 rounded transition-all ${exportMsg ? "bg-amber-50 border border-amber-200 text-amber-800" : ""}`}
+          >
+            {exportMsg ?? ""}
+          </p>
+        </div>
       </header>
 
       {/* Content */}

@@ -178,7 +178,7 @@ describe("AdminBooksPage — queueLanguageForBook non-Error catch (lines 141-152
     await flushPromises();
 
     const translateBtns = await screen.findAllByRole("button", {
-      name: /\+ translate/i,
+      name: /^Translate .* into/i,
     });
     await userEvent.click(translateBtns[0]);
 

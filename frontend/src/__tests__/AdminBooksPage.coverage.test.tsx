@@ -294,7 +294,7 @@ describe("AdminBooksPage — queueLanguageForBook error path (line 152)", () => 
     await flushPromises();
 
     const translateBtns = await screen.findAllByRole("button", {
-      name: /\+ translate/i,
+      name: /^Translate .* into/i,
     });
     await userEvent.click(translateBtns[0]);
 
@@ -831,7 +831,7 @@ describe("AdminBooksPage — language selector (lines 371-373)", () => {
     await userEvent.selectOptions(langSelects[0], "de");
 
     // Then queue it
-    const translateBtns = screen.getAllByRole("button", { name: /\+ translate/i });
+    const translateBtns = screen.getAllByRole("button", { name: /^Translate .* into/i });
     await userEvent.click(translateBtns[0]);
 
     await waitFor(() =>

@@ -206,7 +206,7 @@ describe("AdminBooksPage — book actions", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const translateBtns = await screen.findAllByRole("button", { name: /\+ translate/i });
+    const translateBtns = await screen.findAllByRole("button", { name: /^Translate .* into/i });
     await userEvent.click(translateBtns[0]);
 
     await waitFor(() => {

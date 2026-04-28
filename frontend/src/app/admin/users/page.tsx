@@ -103,7 +103,7 @@ export default function UsersPage() {
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-ink text-sm truncate">{u.name}</span>
+                <span className="font-medium text-ink text-sm truncate" title={u.name}>{u.name}</span>
                 {u.role === "admin" && (
                   <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">admin</span>
                 )}
@@ -111,7 +111,7 @@ export default function UsersPage() {
                   <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">pending</span>
                 )}
               </div>
-              <p className="text-xs text-stone-500 truncate">{u.email}</p>
+              <p className="text-xs text-stone-500 truncate" title={u.email}>{u.email}</p>
             </div>
             {u.id !== myId && (
               <div className="flex gap-1 items-center">

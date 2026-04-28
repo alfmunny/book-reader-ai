@@ -371,7 +371,7 @@ export default function BooksPage() {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-ink text-sm truncate">{b.title}</span>
+                    <span className="font-medium text-ink text-sm truncate" title={b.title}>{b.title}</span>
                     {b.active && (
                       <span className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse">
                         translating → {b.active_language}

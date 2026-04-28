@@ -90,11 +90,13 @@ function ResultsSection({ title, items }: { title: string; items: InAppSearchRes
       <h2 className="text-sm uppercase tracking-wide text-stone-500">
         {title} · {items.length}
       </h2>
-      <div className="grid gap-3">
+      <ul role="list" aria-label={title} className="grid gap-3 list-none p-0 m-0">
         {items.map((r, i) => (
-          <ResultCard key={`${r.type}-${i}`} r={r} />
+          <li key={`${r.type}-${i}`}>
+            <ResultCard r={r} />
+          </li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }

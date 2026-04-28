@@ -5,38 +5,38 @@ import { useSession } from "next-auth/react";
 import { DeckSummary, deleteDeck, listDecks } from "@/lib/api";
 import DeckCard from "@/components/DeckCard";
 import UndoToast from "@/components/UndoToast";
-import { ArrowLeftIcon, DeckIcon } from "@/components/Icons";
+import { ArrowLeftIcon, DeckIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 
 export default function DecksPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [removedDeckToast, setRemovedDeckToast] = useState<DeckSummary | null>(null);
 
   useEffect(() => {
     document.title = "Decks — Book Reader AI";
   }, []);
 
-  useEffect(() => {
-    let alive = true;
+  const loadDecks = useCallback(() => {
+    setFetchError(false);
+    setLoading(true);
     listDecks()
       .then((d) => {
-        if (!alive) return;
         setDecks(d);
       })
       .catch(() => {
-        if (!alive) return;
-        setError(true);
+        setFetchError(true);
       })
       .finally(() => {
-        if (!alive) return;
         setLoading(false);
       });
-    return () => {
-      alive = false;
-    };
+  }, []);
+
+  useEffect(() => {
+    loadDecks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.backendToken]);
 
   const handleDelete = useCallback((id: number) => {
@@ -55,7 +55,7 @@ export default function DecksPage() {
     });
   }, []);
 
-  const isEmpty = !loading && (error || decks.length === 0);
+  const showNewDeckBtn = !loading && !fetchError && decks.length > 0;
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
@@ -68,13 +68,13 @@ export default function DecksPage() {
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Decks</h1>
-          {!loading && !error && (
+          {!loading && !fetchError && (
             <p className="text-xs text-stone-500 mt-0.5">
               {decks.length} deck{decks.length !== 1 ? "s" : ""}
             </p>
           )}
         </div>
-        {!isEmpty && (
+        {showNewDeckBtn && (
           <button
             type="button"
             onClick={() => router.push("/decks/new")}
@@ -98,7 +98,21 @@ export default function DecksPage() {
               ))}
             </div>
           </div>
-        ) : isEmpty ? (
+        ) : fetchError ? (
+          <div role="alert" className="text-center text-stone-500 mt-16 flex flex-col items-center gap-2">
+            <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
+            <p className="font-serif text-lg text-red-700 mt-1">Failed to load decks.</p>
+            <p className="text-sm">Check your connection and try again.</p>
+            <button
+              type="button"
+              onClick={loadDecks}
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+            >
+              <RetryIcon className="w-4 h-4" aria-hidden="true" />
+              Try again
+            </button>
+          </div>
+        ) : decks.length === 0 ? (
           <div
             data-testid="decks-empty-state"
             className="text-center mt-16 flex flex-col items-center gap-3"

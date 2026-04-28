@@ -1700,7 +1700,18 @@ export default function ReaderPage() {
         {sidebarOpen && (
           <div
             onMouseDown={onResizeStart}
-            className="hidden md:block w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 transition-colors relative group"
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") setSidebarWidth((w) => Math.max(240, w - 25));
+              else if (e.key === "ArrowRight") setSidebarWidth((w) => Math.min(700, w + 25));
+            }}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize reader sidebar"
+            aria-valuenow={sidebarWidth}
+            aria-valuemin={240}
+            aria-valuemax={700}
+            tabIndex={0}
+            className="hidden md:block w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 focus:bg-amber-400 focus:outline-none transition-colors relative group"
             title="Drag to resize"
           >
             {/* Three-dot grip indicator */}

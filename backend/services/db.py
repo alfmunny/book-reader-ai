@@ -1020,7 +1020,7 @@ async def get_vocabulary(user_id: int) -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT v.id, v.word, v.lemma, v.language, v.created_at,
-                      wo.book_id, b.title AS book_title, b.language AS book_language, wo.chapter_index, wo.sentence_text
+                      wo.book_id, b.title AS book_title, json_extract(b.languages, '$[0]') AS book_language, wo.chapter_index, wo.sentence_text
                FROM vocabulary v
                LEFT JOIN word_occurrences wo ON wo.vocabulary_id = v.id
                LEFT JOIN books b ON b.id = wo.book_id

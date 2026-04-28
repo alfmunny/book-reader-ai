@@ -27,7 +27,7 @@ describe("QueueTab planning/settings buttons touch targets", () => {
   });
 
   it("Clear API key button has min-h-[44px]", () => {
-    expect(src).toMatch(/Clear queue API key[\s\S]{0,200}min-h-\[44px\]/);
+    expect(src).toMatch(/Clear queue API key[\s\S]{0,280}min-h-\[44px\]/);
   });
 
   it("model chain add buttons have min-h-[44px]", () => {

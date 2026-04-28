@@ -433,7 +433,7 @@ describe("QueueTab.branches2 — Clear API key button (line 620)", () => {
     await renderAndWait(adminFetch);
 
     // Click "Clear" → inline confirmation appears
-    const clearBtn = screen.getByRole("button", { name: /^Clear$/i });
+    const clearBtn = screen.getByRole("button", { name: /clear gemini api key/i });
     await userEvent.click(clearBtn);
     // Confirm via inline dialog
     await userEvent.click(screen.getByRole("button", { name: /confirm action/i }));
@@ -461,7 +461,7 @@ describe("QueueTab.branches2 — Clear API key button (line 620)", () => {
     ).length;
 
     // Click "Clear" → inline confirmation appears
-    const clearBtn = screen.getByRole("button", { name: /^Clear$/i });
+    const clearBtn = screen.getByRole("button", { name: /clear gemini api key/i });
     await userEvent.click(clearBtn);
     // Cancel via inline dialog
     await userEvent.click(screen.getByRole("button", { name: /cancel action/i }));

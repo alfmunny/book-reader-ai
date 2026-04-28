@@ -15,7 +15,7 @@ from services.db import (
     list_cached_books,
 )
 from services.splitter import build_chapters
-from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access, require_tier, TIER_RANK
+from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access, require_tier, require_book_quota, TIER_RANK
 
 logger = logging.getLogger(__name__)
 
@@ -546,7 +546,14 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
       1. Try Gutenberg's HTML edition (<div class="chapter"> is semantically
          clean — much better for hierarchical books like War and Peace).
       2. Fall back to regex-based splitting on the plain text otherwise.
+
+    Free-tier reading quota: signed-in free users are limited to 3
+    distinct book_ids per calendar month (PR B of pricing-plans series,
+    docs/design/pricing-plans.md §"Reading-quota enforcement"). Anonymous
+    visitors and paid tiers are unaffected.
     """
+    await require_book_quota(user, book_id)
+
     cached = await get_cached_book(book_id)
 
     # Handle uploaded books (chapters in the user_book_chapters table).

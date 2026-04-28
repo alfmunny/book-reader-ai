@@ -269,3 +269,55 @@ def require_tier(min_tier: str):
         return user
 
     return _dep
+
+
+# Free tier reading-quota: distinct book_ids in `reading_history` for the
+# current calendar month. PR B of pricing-plans series (#1790).
+# See docs/design/pricing-plans.md §"Reading-quota enforcement".
+FREE_TIER_MONTHLY_BOOK_QUOTA = 3
+
+
+async def require_book_quota(user: dict | None, book_id: int) -> None:
+    """Enforce the free-tier 3-distinct-books-per-calendar-month rule.
+
+    No-op for anonymous users (None) and for paid tiers. For free users:
+    if they've already opened FREE_TIER_MONTHLY_BOOK_QUOTA distinct
+    book_ids this month AND book_id is NOT one of those, raise 402.
+    The 4th, 5th, ... chapter of an already-opened book stays accessible
+    because that book_id is already "spent" against the quota.
+    """
+    if user is None:
+        return
+    if (user.get("tier") or "free") != "free":
+        return
+
+    # Aggregate cheap query — index on (user_id, read_at) covers it.
+    import aiosqlite
+    from services import db as _db
+
+    async with aiosqlite.connect(_db.DB_PATH) as conn:
+        # Calendar-month bound. SQLite's `start of month` modifier returns
+        # the first instant of the current month in the local tz of the
+        # connection — we treat reading_history.read_at as UTC-naive
+        # (matches DEFAULT CURRENT_TIMESTAMP), so this comparison is
+        # consistent without explicit tz coercion.
+        rows = await (await conn.execute(
+            """SELECT DISTINCT book_id FROM reading_history
+                WHERE user_id = ? AND read_at >= datetime('now', 'start of month')""",
+            (user["id"],),
+        )).fetchall()
+
+    distinct_books = {row[0] for row in rows}
+    if book_id in distinct_books:
+        return  # already counted this month — keep reading
+    if len(distinct_books) >= FREE_TIER_MONTHLY_BOOK_QUOTA:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "book_quota_reached",
+                "current_tier": "free",
+                "required_tier": "pro",
+                "books_used": len(distinct_books),
+                "books_quota": FREE_TIER_MONTHLY_BOOK_QUOTA,
+            },
+        )

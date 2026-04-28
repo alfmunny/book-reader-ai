@@ -45,9 +45,11 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // Move focus into the dialog on mount so screen readers announce it
+  // Move focus into the dialog on mount so screen readers announce it; restore on close
   useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
     ref.current?.focus();
+    return () => { prev?.focus?.(); };
   }, []);
 
   // Position near the selection, keep within viewport

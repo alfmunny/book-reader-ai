@@ -58,7 +58,10 @@ beforeEach(() => {
 async function renderPage() {
   render(<UploadsPage />);
   await flushPromises();
-  await waitFor(() => expect(screen.queryByText("Loading…")).not.toBeInTheDocument());
+  // Wait for the loading spinner (role=status + aria-label="Loading uploads") to disappear
+  await waitFor(() =>
+    expect(screen.queryByRole("status", { name: "Loading uploads" })).not.toBeInTheDocument(),
+  );
 }
 
 describe("Admin Uploads page", () => {

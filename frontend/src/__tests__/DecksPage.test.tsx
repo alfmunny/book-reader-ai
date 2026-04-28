@@ -103,8 +103,9 @@ test("deleting a deck removes it from the list optimistically and shows UndoToas
   expect(screen.getByText(/"German verbs" deleted/)).toBeInTheDocument();
 });
 
-test("falls back to the empty state when the API errors", async () => {
+test("shows error state (not empty state) when the API errors", async () => {
   mockListDecks.mockRejectedValue(new Error("boom"));
   render(<DecksPage />);
-  expect(await screen.findByTestId("decks-empty-state")).toBeInTheDocument();
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  expect(screen.queryByTestId("decks-empty-state")).not.toBeInTheDocument();
 });

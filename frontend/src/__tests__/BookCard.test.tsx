@@ -99,3 +99,26 @@ test("remove button meets 44px minimum touch target size", () => {
   expect(removeBtn.className).toContain("min-w-[44px]");
   expect(removeBtn.className).toContain("min-h-[44px]");
 });
+
+// ── aria-label on main card button (#1963) ─────────────────────────────────────
+
+test("main card button has aria-label announcing the open action and book title", () => {
+  render(<BookCard book={BOOK} onClick={jest.fn()} />);
+  // When onRemove is absent there is only one button — the card itself.
+  const card = screen.getByRole("button", { name: `Open ${BOOK.title} by ${BOOK.authors[0]}` });
+  expect(card).toBeInTheDocument();
+});
+
+test("main card button aria-label omits 'by ...' when no authors", () => {
+  render(<BookCard book={{ ...BOOK, authors: [] }} onClick={jest.fn()} />);
+  const card = screen.getByRole("button", { name: `Open ${BOOK.title}` });
+  expect(card).toBeInTheDocument();
+});
+
+test("main card button aria-label joins multiple authors", () => {
+  render(
+    <BookCard book={{ ...BOOK, authors: ["Author A", "Author B"] }} onClick={jest.fn()} />,
+  );
+  const card = screen.getByRole("button", { name: "Open Pride and Prejudice by Author A, Author B" });
+  expect(card).toBeInTheDocument();
+});

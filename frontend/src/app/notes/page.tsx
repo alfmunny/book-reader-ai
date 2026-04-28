@@ -116,15 +116,15 @@ export default function NotesOverviewPage() {
             <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>
           </div>
           {!loading && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-                <NoteIcon className="w-3 h-3" />{totalAnn}
+            <div className="flex items-center gap-1.5 shrink-0" aria-label="Notes summary">
+              <span aria-label={`${totalAnn} annotation${totalAnn !== 1 ? "s" : ""}`} className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                <NoteIcon className="w-3 h-3" aria-hidden="true" /><span aria-hidden="true">{totalAnn}</span>
               </span>
-              <span className="inline-flex items-center gap-1 text-xs bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-2 py-0.5">
-                <InsightIcon className="w-3 h-3" />{totalIns}
+              <span aria-label={`${totalIns} AI insight${totalIns !== 1 ? "s" : ""}`} className="inline-flex items-center gap-1 text-xs bg-sky-50 text-sky-700 border border-sky-200 rounded-full px-2 py-0.5">
+                <InsightIcon className="w-3 h-3" aria-hidden="true" /><span aria-hidden="true">{totalIns}</span>
               </span>
-              <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
-                <WordIcon className="w-3 h-3" />{totalVoc}
+              <span aria-label={`${totalVoc} vocabulary word${totalVoc !== 1 ? "s" : ""}`} className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+                <WordIcon className="w-3 h-3" aria-hidden="true" /><span aria-hidden="true">{totalVoc}</span>
               </span>
             </div>
           )}

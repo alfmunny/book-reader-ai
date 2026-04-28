@@ -357,7 +357,7 @@ export default function BooksPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+      <ul role="list" aria-label="Books" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">
         {books
           .filter((b) => fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]))
           .map((b) => {
@@ -367,7 +367,7 @@ export default function BooksPage() {
           const allLangs = Array.from(new Set([...translatedLangs, ...queuedLangs]));
 
           return (
-            <div key={b.id}>
+            <li key={b.id}>
               <div className={`px-4 py-3 flex items-center gap-3 ${b.active ? "bg-emerald-50/60" : ""}`}>
                 <button
                   onClick={() => {
@@ -660,21 +660,21 @@ export default function BooksPage() {
                   )}
                 </div>
               )}
-            </div>
+            </li>
           );
         })}
         {books.length === 0 ? (
-          <div className="px-4 py-8 text-center text-amber-700 text-sm">No books cached.</div>
+          <li className="px-4 py-8 text-center text-amber-700 text-sm">No books cached.</li>
         ) : (
           books.filter((b) =>
             fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
           ).length === 0 && (
-            <div className="px-4 py-8 text-center text-amber-700 text-sm">
+            <li className="px-4 py-8 text-center text-amber-700 text-sm">
               No books match &ldquo;{searchQuery}&rdquo;.
-            </div>
+            </li>
           )
         )}
-      </div>
+      </ul>
     </div>
   );
 }

@@ -92,9 +92,9 @@ export default function UsersPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+      <ul role="list" aria-label="Users" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">
         {users.map((u) => (
-          <div key={u.id} className="px-4 py-3 flex items-center gap-3">
+          <li key={u.id} className="px-4 py-3 flex items-center gap-3">
             {u.picture ? (
               <img src={u.picture} alt="" className="w-8 h-8 rounded-full" />
             ) : (
@@ -169,9 +169,9 @@ export default function UsersPage() {
               </div>
             )}
             {u.id === myId && <span className="text-xs text-stone-500">You</span>}
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

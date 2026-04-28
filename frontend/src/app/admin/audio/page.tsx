@@ -89,9 +89,9 @@ export default function AudioPage() {
           </button>
         </div>
       )}
-    <div className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden">
+    <ul role="list" aria-label="Audio files" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">
       {audio.map((a, i) => (
-        <div key={i} className="px-4 py-3 flex items-center gap-3">
+        <li key={i} className="px-4 py-3 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="text-sm text-ink">
               Book {a.book_id}, Ch. {a.chapter_index + 1}
@@ -109,12 +109,12 @@ export default function AudioPage() {
           >
             Delete
           </button>
-        </div>
+        </li>
       ))}
       {audio.length === 0 && (
-        <div className="px-4 py-8 text-center text-amber-700 text-sm">No audio cached.</div>
+        <li className="px-4 py-8 text-center text-amber-700 text-sm">No audio cached.</li>
       )}
-    </div>
+    </ul>
     </div>
   );
 }

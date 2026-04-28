@@ -80,8 +80,8 @@ test("shows error state (not empty-state) when getPopularBooks fails", async () 
   render(<Home />);
   await flushPromises();
 
-  // Should NOT show the "no books available" empty state
-  expect(screen.queryByText(/No popular books available/i)).not.toBeInTheDocument();
+  // Should NOT show the "no books yet" empty state
+  expect(screen.queryByText(/No popular books yet/i)).not.toBeInTheDocument();
 
   // Should show an error state with retry
   expect(await screen.findByRole("alert")).toBeInTheDocument();
@@ -114,7 +114,7 @@ test("genuine empty response shows no-books message, not error state", async () 
   mockGetPopularBooks.mockResolvedValue({ books: [], total: 0 });
   render(<Home />);
 
-  expect(await screen.findByText(/No popular books available/i)).toBeInTheDocument();
+  expect(await screen.findByText(/No popular books yet/i)).toBeInTheDocument();
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
 });

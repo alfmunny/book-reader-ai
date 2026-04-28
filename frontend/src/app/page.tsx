@@ -806,9 +806,25 @@ export default function Home() {
               )}
 
               {!popularLoading && !popularError && popularBooks.length === 0 && (
-                <p className="text-center py-10 text-amber-700 text-sm">
-                  No popular books available yet.
-                </p>
+                <div className="text-center py-10 flex flex-col items-center gap-3">
+                  <BookOpenIcon className="w-12 h-12 text-amber-300 mx-auto" aria-hidden="true" />
+                  <p className="font-serif text-lg text-ink">No popular books yet</p>
+                  <p className="text-sm text-stone-500 max-w-xs">
+                    Popular classics from Project Gutenberg haven&apos;t been loaded yet.
+                    Search above to find any title or author.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.querySelector<HTMLInputElement>('[aria-label="Search by title or author"]');
+                      el?.focus();
+                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }}
+                    className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
+                  >
+                    Search for a book
+                  </button>
+                </div>
               )}
             </section>
           </div>

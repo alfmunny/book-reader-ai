@@ -320,7 +320,6 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
     <div
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-stone-900/40"
       onClick={onClose}
-      aria-hidden="true"
     >
       <div
         role="dialog"

@@ -415,33 +415,35 @@ export default function BookNotesPage() {
   // Shared rendering helpers
   function renderAnnotation(ann: Annotation) {
     return (
-      <AnnotationCard
-        key={ann.id}
-        ann={ann}
-        chapters={chapters}
-        bookId={bookId}
-        isEditing={editingId === ann.id}
-        editNote={editNote}
-        onEdit={() => startEdit(ann)}
-        onEditChange={setEditNote}
-        onSave={saveEdit}
-        onCancel={() => setEditingId(null)}
-        onDelete={() => handleDeleteAnnotation(ann.id)}
-        isDeleting={deletingAnns.has(ann.id)}
-      />
+      <li key={ann.id}>
+        <AnnotationCard
+          ann={ann}
+          chapters={chapters}
+          bookId={bookId}
+          isEditing={editingId === ann.id}
+          editNote={editNote}
+          onEdit={() => startEdit(ann)}
+          onEditChange={setEditNote}
+          onSave={saveEdit}
+          onCancel={() => setEditingId(null)}
+          onDelete={() => handleDeleteAnnotation(ann.id)}
+          isDeleting={deletingAnns.has(ann.id)}
+        />
+      </li>
     );
   }
 
   function renderInsight(ins: BookInsight) {
     return (
-      <InsightCard
-        key={ins.id}
-        ins={ins}
-        chapters={chapters}
-        bookId={bookId}
-        onDelete={() => handleDeleteInsight(ins.id)}
-        isDeleting={deletingIns.has(ins.id)}
-      />
+      <li key={ins.id}>
+        <InsightCard
+          ins={ins}
+          chapters={chapters}
+          bookId={bookId}
+          onDelete={() => handleDeleteInsight(ins.id)}
+          isDeleting={deletingIns.has(ins.id)}
+        />
+      </li>
     );
   }
 
@@ -484,9 +486,9 @@ export default function BookNotesPage() {
                       level={3}
                     />
                     {!collapsed.has(`ann-ch-${ch}`) && (
-                      <div className="pl-2">
+                      <ul role="list" aria-label="Annotations" className="pl-2 list-none p-0 m-0">
                         {byChapterAnn.get(ch)!.map(renderAnnotation)}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 ))}
@@ -516,7 +518,9 @@ export default function BookNotesPage() {
                       level={3}
                     />
                     {!collapsed.has("ins-book") && (
-                      <div className="pl-2">{bookLevelIns.map(renderInsight)}</div>
+                      <ul role="list" aria-label="Insights" className="pl-2 list-none p-0 m-0">
+                        {bookLevelIns.map(renderInsight)}
+                      </ul>
                     )}
                   </div>
                 )}
@@ -530,9 +534,9 @@ export default function BookNotesPage() {
                       level={3}
                     />
                     {!collapsed.has(`ins-ch-${ch}`) && (
-                      <div className="pl-2">
+                      <ul role="list" aria-label="Insights" className="pl-2 list-none p-0 m-0">
                         {byChapterIns.get(ch)!.map(renderInsight)}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 ))}
@@ -601,8 +605,16 @@ export default function BookNotesPage() {
               />
               {!collapsed.has(key) && (
                 <div className="pl-2 space-y-1">
-                  {chAnns.map(renderAnnotation)}
-                  {chIns.map(renderInsight)}
+                  {chAnns.length > 0 && (
+                    <ul role="list" aria-label="Annotations" className="list-none p-0 m-0">
+                      {chAnns.map(renderAnnotation)}
+                    </ul>
+                  )}
+                  {chIns.length > 0 && (
+                    <ul role="list" aria-label="Insights" className="list-none p-0 m-0">
+                      {chIns.map(renderInsight)}
+                    </ul>
+                  )}
                   {chVoc.length > 0 && (
                     <ul className="mt-2 ml-4 space-y-1 list-none">
                       {chVoc.map((v) => {
@@ -628,7 +640,9 @@ export default function BookNotesPage() {
               onToggle={() => toggleCollapse("ch-book")}
             />
             {!collapsed.has("ch-book") && (
-              <div className="pl-2">{bookLevelIns.map(renderInsight)}</div>
+              <ul role="list" aria-label="Insights" className="pl-2 list-none p-0 m-0">
+                {bookLevelIns.map(renderInsight)}
+              </ul>
             )}
           </section>
         )}

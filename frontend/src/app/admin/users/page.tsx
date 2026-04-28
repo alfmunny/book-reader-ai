@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getMe } from "@/lib/api";
 import { adminFetch } from "@/lib/adminFetch";
+import { CloseIcon } from "@/components/Icons";
 
 interface User {
   id: number;
@@ -69,9 +70,9 @@ export default function UsersPage() {
             type="button"
             onClick={() => setActError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 text-red-500 hover:text-red-700 text-lg leading-none"
+            className="shrink-0 text-red-500 hover:text-red-700"
           >
-            ×
+            <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       )}

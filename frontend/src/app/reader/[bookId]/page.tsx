@@ -864,7 +864,10 @@ export default function ReaderPage() {
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
             ><ArrowLeftIcon className="w-3 h-3" aria-hidden="true" /> Prev</button>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
-            <span className="text-stone-600 max-w-[180px] truncate font-medium">
+            <span
+              className="text-stone-600 max-w-[180px] truncate font-medium"
+              title={chapters[chapterIndex]?.title || `Ch. ${chapterIndex + 1}`}
+            >
               {chapters[chapterIndex]?.title || `Ch. ${chapterIndex + 1}`}
             </span>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>

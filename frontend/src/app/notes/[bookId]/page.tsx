@@ -697,7 +697,7 @@ export default function BookNotesPage() {
           </div>
         ) : fetchError ? (
           <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
-            <p className="font-serif text-lg text-red-500 mt-1">Failed to load notes.</p>
+            <p className="font-serif text-lg text-red-700 mt-1">Failed to load notes.</p>
             <p className="text-sm">Please refresh the page to try again.</p>
           </div>
         ) : annCount + insCount + vocCount === 0 ? (

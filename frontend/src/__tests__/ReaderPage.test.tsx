@@ -493,7 +493,7 @@ describe("ReaderPage — sidebar tabs", () => {
     const notesBtn = await screen.findByTitle("Annotations & notes");
     await userEvent.click(notesBtn);
 
-    expect(await screen.findByText("No annotations in this chapter yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No annotations in this chapter")).toBeInTheDocument();
   });
 
   it("opens vocab sidebar when 📚 Vocab button is clicked", async () => {
@@ -504,7 +504,7 @@ describe("ReaderPage — sidebar tabs", () => {
     const vocabBtn = await screen.findByTitle("Vocabulary");
     await userEvent.click(vocabBtn);
 
-    expect(await screen.findByText("No words saved in this chapter yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No vocabulary in this chapter")).toBeInTheDocument();
   });
 
   it("toggling the same sidebar button twice closes it", async () => {
@@ -1125,7 +1125,7 @@ describe("ReaderPage — notes sidebar content", () => {
 
     // Sidebar should be closed (no more annotation text visible)
     await waitFor(() => {
-      expect(screen.queryByText("No annotations yet.")).not.toBeInTheDocument();
+      expect(screen.queryByText("No annotations yet")).not.toBeInTheDocument();
     });
   });
 });
@@ -1657,7 +1657,7 @@ describe("ReaderPage — notes sidebar chapter filter", () => {
     const notesBtn = await screen.findByTitle("Annotations & notes");
     await userEvent.click(notesBtn);
 
-    expect(await screen.findByText("No annotations in this chapter yet.")).toBeInTheDocument();
+    expect(await screen.findByText("No annotations in this chapter")).toBeInTheDocument();
   });
 
   it("switching to 'All chapters' shows annotations from all chapters grouped by chapter", async () => {

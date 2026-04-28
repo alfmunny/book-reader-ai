@@ -41,7 +41,7 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
         {book.cover ? (
           <img
             src={book.cover}
-            alt={book.title}
+            alt=""
             className="w-full h-40 object-cover rounded-lg mb-2"
           />
         ) : (

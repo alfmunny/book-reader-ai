@@ -58,3 +58,26 @@ describe("WCAG 2.4.2 — per-page <title> (closes #1841)", () => {
     expect(src).toMatch(/export\s+(async\s+)?function\s+generateMetadata/);
   });
 });
+
+describe("WCAG 2.4.2 — follow-up page titles (closes #1844)", () => {
+  const staticLayouts = [
+    "pending/layout.tsx",
+    "decks/layout.tsx",
+    "decks/new/layout.tsx",
+    "import/[bookId]/layout.tsx",
+    "upload/[bookId]/chapters/layout.tsx",
+  ];
+
+  staticLayouts.forEach((rel) => {
+    it(`${rel} has a distinct metadata title`, () => {
+      const src = readLayout(rel);
+      expect(hasMetadataExport(src)).toBe(true);
+      expect(hasDistinctTitle(src)).toBe(true);
+    });
+  });
+
+  it("decks/[deckId]/layout.tsx exports generateMetadata for dynamic deck title", () => {
+    const src = readLayout("decks/[deckId]/layout.tsx");
+    expect(src).toMatch(/export\s+(async\s+)?function\s+generateMetadata/);
+  });
+});

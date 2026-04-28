@@ -145,8 +145,7 @@ describe("AdminUsersPage", () => {
     });
   });
 
-  it("calls delete endpoint when Del is confirmed", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
+  it("calls delete endpoint after two-step confirmation", async () => {
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_USERS)
       .mockResolvedValueOnce({})
@@ -154,8 +153,13 @@ describe("AdminUsersPage", () => {
     render(<UsersPage />);
     await flushPromises();
 
-    const delBtns = await screen.findAllByRole("button", { name: /del/i });
+    // First click opens the inline confirmation
+    const delBtns = await screen.findAllByRole("button", { name: /^delete/i });
     await userEvent.click(delBtns[0]);
+
+    // "Yes" button appears — click it to confirm
+    const yesBtn = await screen.findByRole("button", { name: /confirm delete/i });
+    await userEvent.click(yesBtn);
 
     await waitFor(() => {
       expect(mockAdminFetch).toHaveBeenCalledWith(
@@ -165,32 +169,38 @@ describe("AdminUsersPage", () => {
     });
   });
 
-  it("does not call delete when confirm is cancelled", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(false);
+  it("does not call delete when two-step confirmation is cancelled", async () => {
     mockAdminFetch.mockResolvedValueOnce(SAMPLE_USERS);
     render(<UsersPage />);
     await flushPromises();
 
-    const delBtns = await screen.findAllByRole("button", { name: /del/i });
+    // First click opens the inline confirmation
+    const delBtns = await screen.findAllByRole("button", { name: /^delete/i });
     await userEvent.click(delBtns[0]);
 
-    // Only the initial GET call
+    // "No" button cancels
+    const noBtn = await screen.findByRole("button", { name: /cancel delete/i });
+    await userEvent.click(noBtn);
+
+    // Only the initial GET call — delete was never called
     expect(mockAdminFetch).toHaveBeenCalledTimes(1);
   });
 
-  it("alerts 'Failed' when delete action throws non-Error", async () => {
-    jest.spyOn(window, "confirm").mockReturnValue(true);
-    jest.spyOn(window, "alert").mockImplementation(() => {});
+  it("shows inline error when delete action throws", async () => {
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_USERS)
       .mockRejectedValueOnce("boom");
     render(<UsersPage />);
     await flushPromises();
 
-    const delBtns = await screen.findAllByRole("button", { name: /del/i });
+    const delBtns = await screen.findAllByRole("button", { name: /^delete/i });
     await userEvent.click(delBtns[0]);
+    const yesBtn = await screen.findByRole("button", { name: /confirm delete/i });
+    await userEvent.click(yesBtn);
 
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed"));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Failed"),
+    );
   });
 
   it("shows 'You' label for the current user instead of action buttons", async () => {

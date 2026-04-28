@@ -178,6 +178,14 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-28 | 8.6 | Admin dismiss error/message buttons: 44×44px mobile touch targets | ✅ Done |
 | 2026-04-28 | 8.7 | Admin/QueueTab confirm dialogs: role="alertdialog" + aria-modal (PR #2000) | ✅ Done |
 | 2026-04-28 | 8.8 | Admin/QueueTab confirm dialogs: focus on container open, restore on close (PR #2002) | ✅ Done |
+| 2026-04-29 | 9.1 | Homepage: `<ul role="list">` on book grids (library + search results) for WCAG 1.3.1 (PR #2042) | ✅ Done |
+| 2026-04-29 | 9.2 | ARIA live region + descriptive labels on Popular Classics pagination (PR #2040) | ✅ Done |
+| 2026-04-29 | 9.3 | Notes/decks index pages: `<ul role="list">` on book and deck lists (PR #2044) | ✅ Done |
+| 2026-04-29 | 9.4 | Search results: `<ul role="list">` in ResultsSection (PR #2046) | ✅ Done |
+| 2026-04-29 | 9.5 | Vocabulary word groups: `<ul role="list">` wrapping sectionGroups map (PR #2048) | ✅ Done |
+| 2026-04-29 | 9.6 | Homepage tablist: roving tabIndex + ArrowLeft/Right keyboard nav (PR #2050) | ✅ Done |
+| 2026-04-29 | 9.7 | Notes/[bookId]: `<ul role="list">` on annotation and insight lists — all 6 map sites (PR #2052) | ✅ Done |
+| 2026-04-29 | 9.8 | Reader sidebar: `<ul role="list">` on annotation panels + vocab panel + bottom notes expand (PR #2054) | ✅ Done |
 
 ---
 

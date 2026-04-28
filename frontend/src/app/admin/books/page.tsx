@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
@@ -58,6 +58,8 @@ export default function BooksPage() {
     message: string;
     fn: () => void | Promise<void>;
   } | null>(null);
+  const confirmContainerRef = useRef<HTMLDivElement>(null);
+  const confirmTriggerRef = useRef<HTMLElement | null>(null);
   const [importId, setImportId] = useState("");
   const [importing, setImporting] = useState(false);
   const [expandedBookId, setExpandedBookId] = useState<number | null>(null);
@@ -93,6 +95,16 @@ export default function BooksPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (pendingConfirm) {
+      confirmTriggerRef.current = document.activeElement as HTMLElement;
+      confirmContainerRef.current?.focus();
+    } else if (confirmTriggerRef.current) {
+      confirmTriggerRef.current.focus();
+      confirmTriggerRef.current = null;
+    }
+  }, [pendingConfirm]);
 
   async function act(fn: () => Promise<unknown>) {
     try {
@@ -251,7 +263,7 @@ export default function BooksPage() {
       )}
 
       {pendingConfirm && (
-        <div role="alertdialog" aria-modal="true" aria-label="Confirm action" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3">
+        <div ref={confirmContainerRef} role="alertdialog" aria-modal="true" aria-label="Confirm action" tabIndex={-1} className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm flex items-start gap-3 outline-none">
           <p className="flex-1 text-amber-900">{pendingConfirm.message}</p>
           <div className="flex gap-2 shrink-0">
             <button

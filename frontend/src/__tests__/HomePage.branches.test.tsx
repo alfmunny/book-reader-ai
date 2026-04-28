@@ -320,15 +320,17 @@ describe("HomePage — getReadingProgress merges backend data (lines 73-83)", ()
 // ── Line 116: getPopularBooks catch branch ────────────────────────────────────
 
 describe("HomePage — getPopularBooks error (line 116)", () => {
-  it("sets empty popular books when API fails", async () => {
+  it("shows error state (not empty-state) when API fails", async () => {
     mockGetPopularBooks.mockRejectedValue(new Error("Network error"));
 
     await renderHome();
 
-    // Should show "No popular books available yet."
+    // Should show error state with retry button, not the empty-library message
     await waitFor(() =>
-      expect(screen.getByText("No popular books available yet.")).toBeInTheDocument(),
+      expect(screen.getByRole("alert")).toBeInTheDocument(),
     );
+    expect(screen.queryByText("No popular books available yet.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 });
 

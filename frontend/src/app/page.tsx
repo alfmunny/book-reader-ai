@@ -6,7 +6,7 @@ import BookCard from "@/components/BookCard";
 import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon, SearchIcon } from "@/components/Icons";
+import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon, SearchIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 import { SearchBar } from "@/components/SearchBar";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -103,6 +103,7 @@ export default function Home() {
 
   const [popularBooks, setPopularBooks] = useState<BookMeta[]>([]);
   const [popularLoading, setPopularLoading] = useState(false);
+  const [popularError, setPopularError] = useState(false);
   const [popularLang, setPopularLang] = useState("");
   const [popularPage, setPopularPage] = useState(1);
   const [popularTotal, setPopularTotal] = useState(0);
@@ -112,17 +113,22 @@ export default function Home() {
 
   const searchGenRef = useRef(0);
 
-  useEffect(() => {
-    if (tab !== "discover") return;
+  function loadPopularBooks() {
+    setPopularError(false);
     setPopularLoading(true);
-    const fetch = getPopularBooks(popularLang, popularPage);
-    fetch
+    getPopularBooks(popularLang, popularPage)
       .then((data) => {
         setPopularBooks(data.books);
         setPopularTotal(data.total);
       })
-      .catch(() => { setPopularBooks([]); setPopularTotal(0); })
+      .catch(() => { setPopularError(true); })
       .finally(() => setPopularLoading(false));
+  }
+
+  useEffect(() => {
+    if (tab !== "discover") return;
+    loadPopularBooks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, popularLang, popularPage]);
 
   function handlePopularLangChange(lang: string) {
@@ -782,7 +788,23 @@ export default function Home() {
                 </>
               )}
 
-              {!popularLoading && popularBooks.length === 0 && (
+              {!popularLoading && popularError && (
+                <div role="alert" className="text-center py-10 flex flex-col items-center gap-2">
+                  <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto" aria-hidden="true" />
+                  <p className="font-serif text-base text-red-700">Failed to load books.</p>
+                  <p className="text-sm text-stone-500">Check your connection and try again.</p>
+                  <button
+                    type="button"
+                    onClick={loadPopularBooks}
+                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                  >
+                    <RetryIcon className="w-4 h-4" aria-hidden="true" />
+                    Try again
+                  </button>
+                </div>
+              )}
+
+              {!popularLoading && !popularError && popularBooks.length === 0 && (
                 <p className="text-center py-10 text-amber-700 text-sm">
                   No popular books available yet.
                 </p>

@@ -17,6 +17,10 @@ export default function AudioPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    document.title = "Admin: Audio — Book Reader AI";
+  }, []);
+
   const load = useCallback(async () => {
     setError("");
     try {

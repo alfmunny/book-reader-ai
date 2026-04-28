@@ -1,8 +1,13 @@
 "use client";
+import { useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { ClockIcon } from "@/components/Icons";
 
 export default function PendingApprovalPage() {
+  useEffect(() => {
+    document.title = "Account Pending — Book Reader AI";
+  }, []);
+
   return (
     <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">

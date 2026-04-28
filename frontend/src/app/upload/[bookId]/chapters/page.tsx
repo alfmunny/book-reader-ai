@@ -22,6 +22,10 @@ export default function ChapterEditorPage() {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
+    document.title = "Upload: Review Chapters — Book Reader AI";
+  }, []);
+
+  useEffect(() => {
     if (!bookId) return;
     getDraftChapters(Number(bookId))
       .then((data) => {

@@ -36,6 +36,10 @@ export default function UploadsPage() {
   const [filterInput, setFilterInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("");
 
+  useEffect(() => {
+    document.title = "Admin: Uploads — Book Reader AI";
+  }, []);
+
   const load = useCallback(
     async (userId?: string) => {
       setLoading(true);

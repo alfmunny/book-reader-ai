@@ -10,6 +10,10 @@ export default function UploadPage() {
   const { status } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    document.title = "Upload a Book — Book Reader AI";
+  }, []);
+
   const [quota, setQuota] = useState<UploadQuota | null>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);

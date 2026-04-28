@@ -42,7 +42,9 @@ export default function AnnotationToolbar({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
     textareaRef.current?.focus();
+    return () => { prev?.focus?.(); };
   }, []);
 
   useEffect(() => {

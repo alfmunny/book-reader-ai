@@ -538,7 +538,7 @@ export default function QueueTab({ adminFetch }: Props) {
             type="button"
             onClick={() => setActError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 text-red-500 hover:text-red-700"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -552,7 +552,7 @@ export default function QueueTab({ adminFetch }: Props) {
             type="button"
             onClick={() => setToast(null)}
             aria-label="Dismiss message"
-            className="shrink-0 text-emerald-500 hover:text-emerald-700"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-emerald-500 hover:text-emerald-700"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>

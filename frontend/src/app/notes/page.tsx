@@ -192,21 +192,21 @@ export default function NotesOverviewPage() {
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1.5">
                       {book.annCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">
+                        <span aria-label={`${book.annCount} annotation${book.annCount !== 1 ? "s" : ""}`} className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">
                           <NoteIcon className="w-3 h-3 shrink-0" />
-                          {book.annCount}
+                          <span aria-hidden="true">{book.annCount}</span>
                         </span>
                       )}
                       {book.insCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-50 border border-sky-100 rounded-full px-2 py-0.5">
+                        <span aria-label={`${book.insCount} AI insight${book.insCount !== 1 ? "s" : ""}`} className="inline-flex items-center gap-1 text-xs text-sky-700 bg-sky-50 border border-sky-100 rounded-full px-2 py-0.5">
                           <InsightIcon className="w-3 h-3 shrink-0" />
-                          {book.insCount}
+                          <span aria-hidden="true">{book.insCount}</span>
                         </span>
                       )}
                       {book.vocCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                        <span aria-label={`${book.vocCount} vocabulary word${book.vocCount !== 1 ? "s" : ""}`} className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
                           <VocabIcon className="w-3 h-3 shrink-0" />
-                          {book.vocCount}
+                          <span aria-hidden="true">{book.vocCount}</span>
                         </span>
                       )}
                     </div>

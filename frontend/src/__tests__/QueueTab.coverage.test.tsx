@@ -961,8 +961,8 @@ describe("initial loading skeleton", () => {
 
     render(<QueueTab adminFetch={adminFetch} />);
 
-    // Should show loading skeleton text
-    expect(screen.getByText(/loading queue/i)).toBeInTheDocument();
+    // Should show loading skeleton text (sr-only + visible copy both match)
+    expect(screen.getAllByText(/loading queue/i).length).toBeGreaterThanOrEqual(1);
 
     // Resolve status so test can clean up
     resolveStatus(makeStatus());

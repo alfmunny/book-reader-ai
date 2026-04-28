@@ -357,7 +357,6 @@ function VocabularyPageContent() {
     );
     return (
       <div
-        key={group.lemma}
         ref={target ? highlightRef : undefined}
         className={`rounded-xl border p-4 transition-colors ${
           target
@@ -640,9 +639,11 @@ function VocabularyPageContent() {
                     {heading}
                   </h2>
                 )}
-                <div className="space-y-4">
-                  {sectionGroups.map(renderGroup)}
-                </div>
+                <ul role="list" className="space-y-4 list-none p-0 m-0">
+                  {sectionGroups.map((group) => (
+                    <li key={group.lemma}>{renderGroup(group)}</li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>

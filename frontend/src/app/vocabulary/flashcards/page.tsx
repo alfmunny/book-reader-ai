@@ -96,6 +96,12 @@ export default function FlashcardsPage() {
     };
   }, [status]);
 
+  // Update page title (WCAG 2.4.2)
+  useEffect(() => {
+    document.title = "Flashcards — Book Reader AI";
+    return () => { document.title = "Vocabulary — Book Reader AI"; };
+  }, []);
+
   const currentCard = cards[currentIndex] ?? null;
 
   const handleGrade = useCallback(async (grade: number) => {

@@ -1,6 +1,6 @@
 /**
- * Regression tests for issue #1888 — reader and notes pages must update
- * document.title when book metadata loads (WCAG 2.4.2 Page Titled).
+ * Regression tests for issue #1888 — reader, notes, and flashcards pages must
+ * update document.title with a descriptive label (WCAG 2.4.2 Page Titled).
  */
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -42,5 +42,22 @@ describe("Notes page — document.title (WCAG 2.4.2, #1888)", () => {
     const region = notesSrc.slice(idx, idx + 200);
     expect(region).toMatch(/meta[.\?!]title/);
     expect(region.toLowerCase()).toMatch(/note/);
+  });
+});
+
+describe("Flashcards page — document.title (WCAG 2.4.2, #1888)", () => {
+  const flashSrc = readFileSync(
+    join(__dirname, "../app/vocabulary/flashcards/page.tsx"),
+    "utf8",
+  );
+
+  it("sets a descriptive document.title", () => {
+    expect(flashSrc).toMatch(/document\.title\s*=/);
+  });
+
+  it("includes Flashcards in document.title", () => {
+    const idx = flashSrc.indexOf("document.title");
+    const region = flashSrc.slice(idx, idx + 100);
+    expect(region.toLowerCase()).toMatch(/flashcard/);
   });
 });

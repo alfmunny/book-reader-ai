@@ -313,6 +313,13 @@ export default function BookNotesPage() {
     if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
   }, [loading]);
 
+  // Update page title when book metadata loads (WCAG 2.4.2)
+  useEffect(() => {
+    if (!meta?.title) return;
+    document.title = `${meta.title} — Notes — Book Reader AI`;
+    return () => { document.title = "My Library — Book Reader AI"; };
+  }, [meta]);
+
   const bookVocab = vocab.filter((v) => v.occurrences.some((o) => o.book_id === bookId));
 
   function toggleCollapse(key: string) {

@@ -386,6 +386,13 @@ export default function ReaderPage() {
       .finally(() => setLoading(false));
   }, [bookId]);
 
+  // Update page title when book metadata loads (WCAG 2.4.2)
+  useEffect(() => {
+    if (!meta?.title) return;
+    document.title = `${meta.title} — Book Reader AI`;
+    return () => { document.title = "My Library — Book Reader AI"; };
+  }, [meta]);
+
   // Load annotations for this book (requires auth)
   useEffect(() => {
     if (!bookId || !session?.backendToken) return;

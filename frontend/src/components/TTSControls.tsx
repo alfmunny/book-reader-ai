@@ -411,11 +411,11 @@ export default function TTSControls({
           <button
             onClick={cancelLoad}
             className="rounded-lg bg-amber-300 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm flex items-center gap-2 hover:bg-amber-400 min-h-[44px] md:min-h-0"
-            title="Click to cancel"
+            aria-label="Cancel audio loading"
           >
             <span className="w-3 h-3 border-2 border-amber-700/40 border-t-amber-800 rounded-full animate-spin" aria-hidden="true" />
             Preparing…
-            <CloseIcon className="w-3.5 h-3.5" />
+            <CloseIcon className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         ) : status === "playing" ? (
           <button
@@ -423,7 +423,7 @@ export default function TTSControls({
             onClick={pause}
             className="rounded-lg bg-amber-200 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-300 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
-            <PauseIcon className="w-3.5 h-3.5" />
+            <PauseIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Pause
           </button>
         ) : status === "paused" ? (
@@ -432,7 +432,7 @@ export default function TTSControls({
             onClick={play}
             className="rounded-lg bg-amber-700 text-white px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-800 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
-            <PlayIcon className="w-3.5 h-3.5" />
+            <PlayIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Read
           </button>
         ) : status === "error" ? (
@@ -441,7 +441,7 @@ export default function TTSControls({
             className="rounded-lg bg-red-100 text-red-800 border border-red-300 px-3 py-2.5 md:py-1.5 text-sm hover:bg-red-200 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
             title={errorMsg || "Audio failed"}
           >
-            <RetryIcon className="w-3.5 h-3.5" />
+            <RetryIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Retry
           </button>
         ) : (
@@ -449,7 +449,7 @@ export default function TTSControls({
             disabled
             className="rounded-lg bg-amber-100 text-amber-400 px-4 py-2.5 md:py-1.5 text-sm cursor-not-allowed min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
-            <PlayIcon className="w-3.5 h-3.5" />
+            <PlayIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Read
           </button>
         )}

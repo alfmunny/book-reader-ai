@@ -301,7 +301,9 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
   const closeRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
+    return () => { prev?.focus?.(); };
   }, []);
 
   useEffect(() => {

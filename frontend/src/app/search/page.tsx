@@ -158,6 +158,7 @@ function SearchResultsInner() {
 
       {loading && (
         <div role="status" aria-label="Searching" className="space-y-3 animate-pulse py-2">
+          <span className="sr-only">Searching...</span>
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-20 bg-amber-100 rounded-md" />
           ))}
@@ -208,6 +209,7 @@ export default function SearchPage() {
       </div>
       <Suspense fallback={
         <div role="status" aria-label="Loading search" className="space-y-3 animate-pulse py-2">
+          <span className="sr-only">Loading search...</span>
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-20 bg-amber-100 rounded-md" />
           ))}

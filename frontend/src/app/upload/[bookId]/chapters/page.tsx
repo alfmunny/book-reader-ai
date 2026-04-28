@@ -71,6 +71,7 @@ export default function ChapterEditorPage() {
     return (
       <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center">
         <div role="status" aria-label="Loading chapters">
+          <span className="sr-only">Loading chapters...</span>
           <span className="w-6 h-6 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin block" aria-hidden="true" />
         </div>
       </main>

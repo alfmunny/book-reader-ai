@@ -5,6 +5,7 @@ export default function Loading() {
       aria-label="Loading page"
       className="min-h-screen bg-parchment flex items-center justify-center"
     >
+      <span className="sr-only">Loading page...</span>
       <span
         className="w-8 h-8 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin"
         aria-hidden="true"

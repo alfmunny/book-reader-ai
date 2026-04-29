@@ -137,7 +137,7 @@ export default function AnnotationToolbar({
 
         <div className="px-5 pt-3 pb-5 space-y-4">
           {/* Quoted sentence */}
-          <p lang={bookLanguage ?? undefined} className="text-xs text-amber-700 font-serif italic line-clamp-2 leading-relaxed border-l-2 border-amber-300 pl-3">
+          <p lang={bookLanguage ?? undefined} title={sentenceText} className="text-xs text-amber-700 font-serif italic line-clamp-2 leading-relaxed border-l-2 border-amber-300 pl-3">
             {sentenceText}
           </p>
 

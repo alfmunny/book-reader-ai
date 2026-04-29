@@ -677,7 +677,7 @@ export default function BookNotesPage() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-stone-600 truncate">
+            <p className="text-xs text-stone-600 truncate" title={`${annCount} annotations · ${insCount} insights · ${vocCount} words`}>
               {annCount} annotations · {insCount} insights · {vocCount} words
             </p>
           </div>
@@ -726,6 +726,7 @@ export default function BookNotesPage() {
             role="status"
             aria-live="polite"
             aria-atomic="true"
+            title={exportMsg || undefined}
             className={`text-xs truncate px-3 py-1.5 rounded transition-all ${exportMsg ? "bg-amber-50 border border-amber-200 text-amber-800" : ""}`}
           >
             {exportMsg ?? ""}

@@ -265,6 +265,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
                 {state.log.slice().reverse().map((entry, i) => (
                   <li
                     key={i}
+                    title={`#${entry.book_id} ${entry.title || ""}${entry.chars ? ` (${Math.round(entry.chars / 1000)}K)` : ""}${entry.error ? ` — ${entry.error}` : ""}`}
                     className={`font-mono truncate ${
                       entry.event === "failed" ? "text-red-600" : "text-stone-600"
                     }`}

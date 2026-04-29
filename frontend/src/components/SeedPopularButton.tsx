@@ -258,7 +258,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
 
           {state.log.length > 0 && (
             <details className="mt-2">
-              <summary className="text-xs text-amber-700 cursor-pointer">
+              <summary className="text-xs text-amber-700 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
                 Recent events ({state.log.length})
               </summary>
               <ul role="list" className="mt-1 text-xs space-y-0.5 max-h-40 overflow-y-auto list-none p-0 m-0">

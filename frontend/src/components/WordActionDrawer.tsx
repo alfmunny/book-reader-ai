@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon, CloseIcon } from "@/components/Icons";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon, CloseIcon, RetryIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useScrollLock } from "@/lib/useScrollLock";
 
@@ -50,7 +50,7 @@ export default function WordActionDrawer({
 
   const word = action?.word ?? "";
 
-  useEffect(() => {
+  const lookup = useCallback(() => {
     if (!word || word.length < 2) return;
     setSaved(false);
     setLoading(true);
@@ -77,7 +77,9 @@ export default function WordActionDrawer({
       })
       .catch(() => setError("No definition found"))
       .finally(() => setLoading(false));
-  }, [word]);
+  }, [word, language]);
+
+  useEffect(() => { lookup(); }, [word]);
 
   useEffect(() => {
     if (!action) return;
@@ -163,7 +165,17 @@ export default function WordActionDrawer({
           )}
 
           {error && (
-            <p role="alert" className="text-sm text-amber-700 italic">{error}</p>
+            <div className="flex items-center gap-2">
+              <p role="alert" className="text-sm text-amber-700 italic">{error}</p>
+              <button
+                type="button"
+                onClick={lookup}
+                aria-label="Retry dictionary lookup"
+                className="p-1 rounded hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              >
+                <RetryIcon className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
+              </button>
+            </div>
           )}
 
           {result && result.meanings.length > 0 && (

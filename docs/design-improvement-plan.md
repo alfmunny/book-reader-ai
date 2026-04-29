@@ -230,9 +230,13 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.32 | decks word list and picker missing lang attribute on foreign vocabulary words — WCAG 3.1.2 fix — closes #2255 (PR #2256) | ✅ Done |
 | 2026-04-29 | 11.33 | VocabWordTooltip and WordActionDrawer missing lang attribute on displayed word — WCAG 3.1.2 fix — closes #2257 (PR #2259) | ✅ Done |
 | 2026-04-29 | 11.34 | flashcard review page missing lang attribute + backend language field in due API — WCAG 3.1.2 fix — closes #2258 (PR #2260) | ✅ Done |
-| 2026-04-29 | 11.35 | DefinitionSheet missing lang attribute on word and lemma spans — WCAG 3.1.2 fix — closes #2261 (PR #2262) | 🔄 In progress |
+| 2026-04-29 | 11.35 | DefinitionSheet missing lang attribute on word and lemma spans — WCAG 3.1.2 fix — closes #2261 (PR #2262) | ✅ Done |
 | 2026-04-29 | 11.36 | Search result snippets (AnnotationCard + VocabularyCard) missing lang on foreign text — backend book_language field + lang wrappers — WCAG 3.1.2 fix — closes #2265 (PR #2266) | ✅ Done |
-| 2026-04-29 | 11.37 | Notes InsightCard context blockquote missing lang attribute — added bookLanguage prop to InsightCard + lang on blockquote — WCAG 3.1.2 fix — closes #2267 | 🔄 In progress |
+| 2026-04-29 | 11.37 | Notes InsightCard context blockquote missing lang attribute — added bookLanguage prop to InsightCard + lang on blockquote — WCAG 3.1.2 fix — closes #2267 (PR #2268) | ✅ Done |
+| 2026-04-29 | 11.38 | ChapterCard search snippet missing lang attribute — backend book_language + span lang wrapper in ChapterCard — WCAG 3.1.2 fix — closes #2269 (PR #2270) | ✅ Done |
+| 2026-04-29 | 11.39 | Reader sidebar Notes tab annotation sentence_text missing lang attribute — added lang={bookLanguage} to annotation <p> tag — WCAG 3.1.2 fix — closes #2271 (PR #2272) | ✅ Done |
+| 2026-04-29 | 11.40 | Flashcard status counter word in template literal missing lang — converted to JSX span with lang attribute — WCAG 3.1.2 fix — closes #2273 (PR #2274) | ✅ Done |
+| 2026-04-29 | 11.41 | AnnotationsSidebar sentence_text and reader notes-expand panel missing lang — added bookLanguage prop to AnnotationsSidebar + lang on both elements — WCAG 3.1.2 fix — closes #2275 (PR #2276) | 🔄 In progress |
 
 ---
 

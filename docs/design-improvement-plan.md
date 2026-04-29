@@ -211,7 +211,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.13 | Add loading="lazy" to 7 remote img elements (book covers, user avatars) across 5 files — closes #2214 (PR #2215) | ✅ Done |
 | 2026-04-29 | 11.14 | AnnotationToolbar missing useScrollLock — body scroll locked while note editor open — closes #2216 (PR #2217) | ✅ Done |
 | 2026-04-29 | 11.15 | focus-visible ring to not-found and error page CTA links — closes #2218 (PR #2219) | ✅ Done |
-| 2026-04-29 | 11.16 | focus-visible ring to &lt;summary&gt; disclosures in QueueTab and SeedPopularButton — closes #2220 | 🔄 In progress |
+| 2026-04-29 | 11.16 | focus-visible ring to &lt;summary&gt; disclosures in QueueTab and SeedPopularButton — closes #2220 (PR #2221) | ✅ Done |
+| 2026-04-29 | 11.17 | dark-mode WCAG AA contrast for text-stone-600/700/500 — closes #2223 | 🔄 In progress |
 
 ---
 

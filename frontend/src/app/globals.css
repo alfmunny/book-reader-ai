@@ -51,6 +51,12 @@ body, [data-theme="light"] {
 [data-theme="dark"] .hover\:bg-amber-100:hover { background-color: #2e2e4a; }
 [data-theme="dark"] .hover\:bg-amber-50:hover { background-color: #252540; }
 [data-theme="dark"] .highlighted-sentence { background-color: #5c4a1e; }
+/* Secondary text: stone-600/700 on dark surfaces fails WCAG AA — lift to ~stone-400 */
+[data-theme="dark"] .text-stone-600 { color: #a8a29e; }
+[data-theme="dark"] .text-stone-700 { color: #b5b1ad; }
+[data-theme="dark"] .text-stone-500 { color: #a8a29e; }
+[data-theme="dark"] .hover\:text-stone-700:hover { color: #b5b1ad; }
+[data-theme="dark"] .hover\:text-stone-600:hover { color: #a8a29e; }
 [data-theme="dark"] input, [data-theme="dark"] select {
   background-color: #252540;
   color: #e0dcd4;

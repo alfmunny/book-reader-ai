@@ -128,6 +128,7 @@ export default function TypographyPanel({
   return (
     <div
       ref={panelRef}
+      role="group"
       id="typography-panel"
       aria-label="Typography settings"
       style={fixedStyle}

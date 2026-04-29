@@ -13,6 +13,10 @@ const cardSrc = fs.readFileSync(
   path.join(__dirname, "../components/BookCard.tsx"),
   "utf8"
 );
+const readerSrc = fs.readFileSync(
+  path.join(__dirname, "../app/reader/[bookId]/page.tsx"),
+  "utf8"
+);
 
 describe("Truncated title tooltip coverage (closes #2212)", () => {
   it("Popular Classics list-view book title has title attribute", () => {
@@ -37,6 +41,18 @@ describe("Truncated title tooltip coverage (closes #2212)", () => {
 
   it("BookCard author paragraph has title attribute", () => {
     const idx = cardSrc.indexOf('line-clamp-1" title={book.authors.join(", ")}');
+    expect(idx).toBeGreaterThan(-1);
+  });
+});
+
+describe("Truncated title tooltip coverage — reader header (closes #2237)", () => {
+  it("reader header h1 book title has title attribute", () => {
+    const idx = readerSrc.indexOf('truncate text-sm" title={meta.title}');
+    expect(idx).toBeGreaterThan(-1);
+  });
+
+  it("reader header authors paragraph has title attribute", () => {
+    const idx = readerSrc.indexOf('text-amber-700 truncate" title={meta.authors.join(", ")}');
     expect(idx).toBeGreaterThan(-1);
   });
 });

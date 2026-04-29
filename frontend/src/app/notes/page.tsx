@@ -207,7 +207,12 @@ export default function NotesOverviewPage() {
               <li key={book.bookId}>
               <button
                 onClick={() => router.push(`/notes/${book.bookId}`)}
-                className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 hover:shadow-sm transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                style={{ boxShadow: "var(--shadow-card)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+                onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+                className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">

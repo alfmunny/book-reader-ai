@@ -161,5 +161,5 @@ test("notes page: export button shows obsidian URL on success", async ({ page })
 
   await page.getByRole("button", { name: /Export/ }).click();
 
-  await expect(page.getByText(/Exported → obsidian:\/\//)).toBeVisible();
+  await expect(page.getByText(/obsidian:\/\//)).toBeVisible();
 });

@@ -412,7 +412,7 @@ export default function BookNotesPage() {
     try {
       const { urls } = await exportVocabularyToObsidian(bookId);
       const url = urls[0] ?? null;
-      setExportUrl(url?.startsWith("http") ? url : null);
+      setExportUrl(url);
       setExportMsg(url ? "Exported!" : "Exported successfully");
     } catch (e) {
       setExportUrl(null);
@@ -734,13 +734,17 @@ export default function BookNotesPage() {
             className={`text-xs px-3 py-1.5 rounded transition-all ${exportMsg ? "bg-amber-50 border border-amber-200 text-amber-800" : ""}`}
           >
             {exportMsg ?? ""}{exportUrl && (
-              <> <a
-                href={exportUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
-                title={exportUrl}
-              >{exportUrl}<span className="sr-only"> (opens in new tab)</span></a></>
+              exportUrl.startsWith("http") ? (
+                <> <a
+                  href={exportUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                  title={exportUrl}
+                >{exportUrl}<span className="sr-only"> (opens in new tab)</span></a></>
+              ) : (
+                <> <span className="break-all">{exportUrl}</span></>
+              )
             )}
           </p>
         </div>

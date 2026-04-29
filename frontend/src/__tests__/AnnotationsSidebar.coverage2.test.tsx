@@ -33,7 +33,7 @@ test("close (✕) button closes the sidebar", async () => {
   await userEvent.click(screen.getByTestId("annotations-toggle"));
   expect(screen.getByTestId("annotations-sidebar")).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close annotations sidebar" }));
   expect(screen.queryByTestId("annotations-sidebar")).not.toBeInTheDocument();
 });
 

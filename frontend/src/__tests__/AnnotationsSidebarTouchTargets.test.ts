@@ -8,14 +8,14 @@ const src = fs.readFileSync(
 
 describe("AnnotationsSidebar touch targets (closes #806)", () => {
   it("Close button has min-h-[44px]", () => {
-    const idx = src.indexOf('aria-label="Close"');
+    const idx = src.indexOf('aria-label="Close annotations sidebar"');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 300), idx + 100);
     expect(window).toContain("min-h-[44px]");
   });
 
   it("Close button has min-w-[44px]", () => {
-    const idx = src.indexOf('aria-label="Close"');
+    const idx = src.indexOf('aria-label="Close annotations sidebar"');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 300), idx + 100);
     expect(window).toContain("min-w-[44px]");

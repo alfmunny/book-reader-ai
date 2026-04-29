@@ -424,6 +424,12 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-29 | AnnotationsSidebar annotation card: added title tooltip on role=button for truncated sentence/note text (closes #2312) | AnnotationsSidebar.tsx | #2313 |
 | 2026-04-29 | AnnotationToolbar sentence preview: added title={sentenceText} on line-clamp-2 paragraph (closes #2314) | AnnotationToolbar.tsx | #2315 |
 | 2026-04-29 | Vocabulary sidebar occurrence buttons: added title={occ.sentence_text} on buttons wrapping line-clamp-2 sentence context (closes #2316) | reader/[bookId]/page.tsx | #2317 |
+| 2026-04-29 | Deck word-list: added title={w.word} on member span and add-word picker button for truncated vocabulary words (closes #2318) | decks/[deckId]/page.tsx | #2319 |
+| 2026-04-29 | TTSControls loading preview: added title={loadingState.preview} on truncate paragraph (closes #2320) | TTSControls.tsx | #2322 |
+| 2026-04-30 | Import stage status messages: added title={s.message} on truncate paragraph during active stages (closes #2321) | import/[bookId]/page.tsx | #2324 |
+| 2026-04-30 | Notes page stats/export + SeedPopularButton log entries: title tooltips for truncated count summary, export message, and log list items (closes #2325) | notes/[bookId]/page.tsx, SeedPopularButton.tsx | #2326 |
+| 2026-04-30 | QueueTab admin: title tooltips for truncated preset chain div and cost comparison model name (closes #2323) | QueueTab.tsx | #2327 |
+| 2026-04-30 | Design system: replace hardcoded shadow-sm on card containers (import, login, notes) with --shadow-card CSS variable and hover handlers (closes #2328) | import/[bookId]/page.tsx, login/page.tsx, notes/page.tsx | #2328 |
 
 ---
 

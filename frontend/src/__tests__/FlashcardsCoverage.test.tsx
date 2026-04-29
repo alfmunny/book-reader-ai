@@ -85,7 +85,7 @@ test("grading first card of two advances to second card instead of showing done"
 
   // Flip and grade first card
   await userEvent.click(screen.getByText("Show answer"));
-  await userEvent.click(screen.getByRole("button", { name: "Good" }));
+  await userEvent.click(screen.getByRole("button", { name: /Good/i }));
 
   // Should advance to second card, not show "All done"
   await waitFor(() => screen.getByText("stoic"));
@@ -107,7 +107,7 @@ test("card counter shows correct position after advancing", async () => {
   expect(counter).toBeInTheDocument();
 
   await userEvent.click(screen.getByText("Show answer"));
-  await userEvent.click(screen.getByRole("button", { name: "Again" }));
+  await userEvent.click(screen.getByRole("button", { name: /Again/i }));
 
   // Now showing card 2 of 2
   await waitFor(() => screen.getByText("stoic"));
@@ -218,7 +218,7 @@ test("pressing Enter on card flips it to reveal answer side", async () => {
   await userEvent.keyboard("{Enter}");
 
   // Grade buttons now visible
-  await waitFor(() => screen.getByRole("button", { name: "Good" }));
+  await waitFor(() => screen.getByRole("button", { name: /Good/i }));
   expect(screen.queryByText("Show answer")).not.toBeInTheDocument();
 });
 
@@ -233,7 +233,7 @@ test("pressing Space on card flips it to reveal answer side", async () => {
   card.focus();
   await userEvent.keyboard(" ");
 
-  await waitFor(() => screen.getByRole("button", { name: "Good" }));
+  await waitFor(() => screen.getByRole("button", { name: /Good/i }));
 });
 
 // ── Done state with selected deck ─────────────────────────────────────────────
@@ -266,7 +266,7 @@ test("done state shows deck-specific message when a deck is selected", async () 
 
   // Grade the card
   await userEvent.click(screen.getByText("Show answer"));
-  await userEvent.click(screen.getByRole("button", { name: "Easy" }));
+  await userEvent.click(screen.getByRole("button", { name: /Easy/i }));
 
   // Done state should show deck-specific message
   await waitFor(() => screen.getByText(/all done for today/i));

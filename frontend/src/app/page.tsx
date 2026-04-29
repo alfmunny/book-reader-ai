@@ -337,8 +337,8 @@ export default function Home() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-serif font-semibold text-sm text-ink line-clamp-1">{recentBooks[0].title}</p>
-                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{recentBooks[0].authors?.join(", ")}</p>
+                    <p className="font-serif font-semibold text-sm text-ink line-clamp-1" title={recentBooks[0].title}>{recentBooks[0].title}</p>
+                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1" title={recentBooks[0].authors?.join(", ")}>{recentBooks[0].authors?.join(", ")}</p>
                     <p className="text-xs text-stone-600 mt-1">
                       Chapter {recentBooks[0].lastChapter + 1} · {timeAgo(recentBooks[0].lastRead)}
                     </p>
@@ -785,8 +785,8 @@ export default function Home() {
                               </div>
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className="font-serif text-sm font-semibold text-ink truncate">{book.title}</p>
-                              <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
+                              <p className="font-serif text-sm font-semibold text-ink truncate" title={book.title}>{book.title}</p>
+                              <p className="text-xs text-amber-700 truncate" title={book.authors.join(", ")}>{book.authors.join(", ")}</p>
                             </div>
                             {book.download_count > 0 ? (
                               <span className="text-xs text-stone-600 shrink-0 tabular-nums">

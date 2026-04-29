@@ -53,10 +53,10 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
             </p>
           </div>
         )}
-        <p className="font-serif font-semibold text-sm text-ink line-clamp-2 flex-1">
+        <p className="font-serif font-semibold text-sm text-ink line-clamp-2 flex-1" title={book.title}>
           {book.title}
         </p>
-        <p className="text-xs text-amber-700 mt-1 line-clamp-1">
+        <p className="text-xs text-amber-700 mt-1 line-clamp-1" title={book.authors.join(", ")}>
           {book.authors.join(", ")}
         </p>
         {badge && (

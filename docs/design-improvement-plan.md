@@ -191,6 +191,11 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 10.3 | Docs: vocabulary word-saving tutorial added (PR #2098, closes #2097) | ✅ Done |
 | 2026-04-29 | 10.4 | Pending approval page: 30s polling via getMe() + auto-redirect on approved=true (PR #2100, closes #2099) | ✅ Done |
 | 2026-04-29 | 10.5 | Home/library page: added `document.title` in useEffect for WCAG 2.4.2 compliance (PR #2104, closes #2103) | ✅ Done |
+| 2026-04-29 | 10.6 | Flashcards: 1/2/3/4 keyboard shortcuts for grading + Space/Enter to flip; key hints shown on grade buttons (PR #2114, closes #2113) | ✅ Done |
+| 2026-04-29 | 10.7 | Import page: `document.title` updates to book name once SSE meta event fires, WCAG 2.4.2 (PR #2116, closes #2115) | ✅ Done |
+| 2026-04-29 | 10.8 | Docs: decks tutorial added covering manual/smart modes and flashcard filtering (PR #2118, closes #2117) | ✅ Done |
+| 2026-04-29 | 10.9 | Docs: in-app search tutorial added covering annotations, vocabulary, and chapter search (PR #2120, closes #2119) | ✅ Done |
+| 2026-04-29 | 10.10 | Login page: `document.title` set to "Sign In — Book Reader AI", WCAG 2.4.2 (PR #2122, closes #2121) | ✅ Done |
 
 ---
 

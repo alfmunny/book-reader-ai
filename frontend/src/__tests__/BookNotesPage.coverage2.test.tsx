@@ -205,7 +205,7 @@ test("export button calls exportVocabularyToObsidian and shows success", async (
 
   fireEvent.click(screen.getByRole("button", { name: /Export/i }));
   await waitFor(() => expect(mockExportVocabularyToObsidian).toHaveBeenCalledWith(10));
-  await waitFor(() => expect(screen.getByText(/Exported → https:/)).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByRole("link", { name: /https:\/\/github\.com\/example\/1/ })).toBeInTheDocument());
 });
 
 test("export shows 'Exported successfully' when no URL returned", async () => {

@@ -289,6 +289,7 @@ export default function BookNotesPage() {
 
   // Export
   const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const didScrollRef = useRef(false);
@@ -410,12 +411,15 @@ export default function BookNotesPage() {
     setExporting(true);
     try {
       const { urls } = await exportVocabularyToObsidian(bookId);
-      setExportMsg(urls[0] ? `Exported → ${urls[0]}` : "Exported successfully");
+      const url = urls[0] ?? null;
+      setExportUrl(url?.startsWith("http") ? url : null);
+      setExportMsg(url ? "Exported!" : "Exported successfully");
     } catch (e) {
+      setExportUrl(null);
       setExportMsg(e instanceof Error ? e.message : "Export failed");
     } finally {
       setExporting(false);
-      setTimeout(() => setExportMsg(null), 5000);
+      setTimeout(() => { setExportMsg(null); setExportUrl(null); }, 5000);
     }
   }
 
@@ -727,9 +731,17 @@ export default function BookNotesPage() {
             aria-live="polite"
             aria-atomic="true"
             title={exportMsg || undefined}
-            className={`text-xs truncate px-3 py-1.5 rounded transition-all ${exportMsg ? "bg-amber-50 border border-amber-200 text-amber-800" : ""}`}
+            className={`text-xs px-3 py-1.5 rounded transition-all ${exportMsg ? "bg-amber-50 border border-amber-200 text-amber-800" : ""}`}
           >
-            {exportMsg ?? ""}
+            {exportMsg ?? ""}{exportUrl && (
+              <> <a
+                href={exportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                title={exportUrl}
+              >{exportUrl}<span className="sr-only"> (opens in new tab)</span></a></>
+            )}
           </p>
         </div>
       </header>

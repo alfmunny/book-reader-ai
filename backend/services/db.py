@@ -1290,7 +1290,7 @@ async def get_flashcards_due(
         sql = """
             SELECT fr.vocabulary_id, fr.interval_days, fr.ease_factor,
                    fr.repetitions, fr.due_date, fr.last_reviewed_at,
-                   v.word, v.created_at AS saved_at,
+                   v.word, v.language, v.created_at AS saved_at,
                    (SELECT wo.sentence_text FROM word_occurrences wo
                     WHERE wo.vocabulary_id = fr.vocabulary_id
                     ORDER BY wo.id ASC LIMIT 1) AS context

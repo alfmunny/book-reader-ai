@@ -892,6 +892,7 @@ export interface Flashcard {
   last_reviewed_at: string | null;
   saved_at: string | null;
   context: string | null;
+  language?: string;
 }
 
 export interface FlashcardReviewResult {

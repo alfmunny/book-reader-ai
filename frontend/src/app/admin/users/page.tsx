@@ -63,7 +63,7 @@ export default function UsersPage() {
       <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
         <AlertCircleIcon className="w-10 h-10 text-red-300" aria-hidden="true" />
         <p className="font-serif text-lg text-ink">Failed to load users.</p>
-        <p className="text-sm text-stone-500">{error}</p>
+        <p className="text-sm text-stone-600">{error}</p>
         <button
           type="button"
           onClick={load}
@@ -112,7 +112,7 @@ export default function UsersPage() {
                   <span className="text-xs bg-orange-100 text-orange-800 px-1.5 py-0.5 rounded">pending</span>
                 )}
               </div>
-              <p className="text-xs text-stone-500 truncate" title={u.email}>{u.email}</p>
+              <p className="text-xs text-stone-600 truncate" title={u.email}>{u.email}</p>
             </div>
             {u.id !== myId && (
               <div className="flex gap-1 items-center">
@@ -168,7 +168,7 @@ export default function UsersPage() {
                 )}
               </div>
             )}
-            {u.id === myId && <span className="text-xs text-stone-500">You</span>}
+            {u.id === myId && <span className="text-xs text-stone-600">You</span>}
           </li>
         ))}
       </ul>

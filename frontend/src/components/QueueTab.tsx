@@ -500,7 +500,7 @@ export default function QueueTab({ adminFetch }: Props) {
           <div className="h-4 w-3/4 bg-stone-100 rounded" />
           <div className="h-4 w-5/6 bg-stone-100 rounded" />
         </div>
-        <div className="text-center text-xs text-stone-500">
+        <div className="text-center text-xs text-stone-600">
           Loading queue…
         </div>
       </div>
@@ -594,7 +594,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     }`
                 : "Worker stopped"}
             </div>
-            <div className="text-xs text-stone-500">
+            <div className="text-xs text-stone-600">
               {totalPending} pending · {totalRunning} running · {totalDone} done · {totalFailed} failed
               {s?.requests_made !== undefined && ` · ${s.requests_made} API calls this session`}
             </div>
@@ -721,29 +721,29 @@ export default function QueueTab({ adminFetch }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
             <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2">
               <div className="text-lg font-bold text-emerald-700">{s.chapters_done}</div>
-              <div className="text-xs text-stone-500">Translated</div>
+              <div className="text-xs text-stone-600">Translated</div>
             </div>
             {(s.total_chapters ?? 0) > 0 && (
               <div className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
                 <div className="text-lg font-bold text-ink">{s.total_chapters}</div>
-                <div className="text-xs text-stone-500">Remaining</div>
+                <div className="text-xs text-stone-600">Remaining</div>
               </div>
             )}
             {(s.skipped_chapters ?? 0) > 0 && (
               <div className="rounded-lg bg-stone-50 border border-stone-100 px-3 py-2">
                 <div className="text-lg font-bold text-stone-600">{s.skipped_chapters}</div>
-                <div className="text-xs text-stone-500">Skipped</div>
+                <div className="text-xs text-stone-600">Skipped</div>
               </div>
             )}
             {s.chapters_failed > 0 && (
               <div className="rounded-lg bg-red-50 border border-red-100 px-3 py-2">
                 <div className="text-lg font-bold text-red-700">{s.chapters_failed}</div>
-                <div className="text-xs text-stone-500">Failed</div>
+                <div className="text-xs text-stone-600">Failed</div>
               </div>
             )}
           </div>
           {s.ended_at && (
-            <p className="text-xs text-stone-500 mt-2">Last completed {relTime(s.ended_at)}</p>
+            <p className="text-xs text-stone-600 mt-2">Last completed {relTime(s.ended_at)}</p>
           )}
         </div>
       )}
@@ -800,11 +800,11 @@ export default function QueueTab({ adminFetch }: Props) {
               ].map(({ label, value }) => (
                 <div key={label} className="rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-center">
                   <div className="text-base font-bold text-ink">{value}</div>
-                  <div className="text-xs text-stone-500">{label}</div>
+                  <div className="text-xs text-stone-600">{label}</div>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-stone-500 mb-2">
+            <p className="text-xs text-stone-600 mb-2">
               ~<strong>{planResult.estimated_minutes_at_rpm} min</strong> at configured RPM
               {" · "}~<strong>{planResult.estimated_days_at_rpd} days</strong> at RPD
             </p>
@@ -833,7 +833,7 @@ export default function QueueTab({ adminFetch }: Props) {
 
         {dryRunResult && Object.keys(dryRunResult.preview).length > 0 && (
           <div className="border-t border-amber-100 pt-3">
-            <p className="text-xs text-stone-500 mb-2">
+            <p className="text-xs text-stone-600 mb-2">
               Preview: <strong>{dryRunResult.preview_book_title || "book"}</strong>
               {" · "}{dryRunResult.total_chapters} chapters total across {dryRunResult.total_books} book(s)
             </p>
@@ -851,7 +851,7 @@ export default function QueueTab({ adminFetch }: Props) {
         )}
 
         {dryRunResult && Object.keys(dryRunResult.preview).length === 0 && (
-          <p className="text-xs text-stone-500">No chapters need translation for this language.</p>
+          <p className="text-xs text-stone-600">No chapters need translation for this language.</p>
         )}
       </div>
 
@@ -987,7 +987,7 @@ export default function QueueTab({ adminFetch }: Props) {
 
             {/* Live summary — show the configured chain and what the
                 worker is actually using at the moment. */}
-            <div className="text-[11px] text-stone-500 leading-relaxed">
+            <div className="text-[11px] text-stone-600 leading-relaxed">
               Active chain:{" "}
               {(settings?.model_chain ?? [])
                 .map((m, i) => `${i + 1}. ${labelForModel(m)}`)
@@ -1030,10 +1030,10 @@ export default function QueueTab({ adminFetch }: Props) {
                         )}
                       </div>
                       <div className="text-[11px] text-amber-700">{p.tagline}</div>
-                      <div className="text-[11px] text-stone-500 mt-1 leading-snug">
+                      <div className="text-[11px] text-stone-600 mt-1 leading-snug">
                         {p.description}
                       </div>
-                      <div className="text-xs font-mono text-stone-500 mt-1 truncate">
+                      <div className="text-xs font-mono text-stone-600 mt-1 truncate">
                         {p.chain.join(" → ")}
                       </div>
                     </button>
@@ -1056,7 +1056,7 @@ export default function QueueTab({ adminFetch }: Props) {
                         : "border-amber-200 bg-white"
                     }`}
                   >
-                    <div className="text-xs text-stone-500 font-mono w-6 shrink-0 pt-0.5">
+                    <div className="text-xs text-stone-600 font-mono w-6 shrink-0 pt-0.5">
                       {idx + 1}.
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1073,18 +1073,18 @@ export default function QueueTab({ adminFetch }: Props) {
                           </span>
                         )}
                         {opt ? (
-                          <span className="text-[11px] text-stone-500">
+                          <span className="text-[11px] text-stone-600">
                             {opt.rpm} rpm · {opt.rpd} rpd · ≤
                             {opt.maxOutputTokens.toLocaleString()} tok
                           </span>
                         ) : (
-                          <span className="text-[11px] text-stone-500">
+                          <span className="text-[11px] text-stone-600">
                             custom — conservative defaults
                           </span>
                         )}
                       </div>
                       {opt?.note && (
-                        <div className="text-xs text-stone-500 mt-0.5">{opt.note}</div>
+                        <div className="text-xs text-stone-600 mt-0.5">{opt.note}</div>
                       )}
                     </div>
                     <div className="flex flex-col gap-0.5 shrink-0">
@@ -1096,7 +1096,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           setChain(copy);
                         }}
                         disabled={idx === 0}
-                        className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-amber-700 disabled:opacity-30"
                         title={`Move ${labelForModel(m)} up`}
                         aria-label={`Move ${labelForModel(m)} up`}
                       >
@@ -1110,7 +1110,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           setChain(copy);
                         }}
                         disabled={idx === chain.length - 1}
-                        className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-amber-700 disabled:opacity-30"
                         title={`Move ${labelForModel(m)} down`}
                         aria-label={`Move ${labelForModel(m)} down`}
                       >
@@ -1129,7 +1129,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 );
               })}
               {chain.length === 0 && (
-                <div className="text-xs text-stone-500 italic">
+                <div className="text-xs text-stone-600 italic">
                   Chain is empty — add a model below.
                 </div>
               )}
@@ -1148,7 +1148,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       className={`text-xs px-2 py-1 rounded border font-mono min-h-[44px] md:min-h-0 ${
                         opt.recommended
                           ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          : "border-stone-200 text-stone-500 hover:bg-stone-50"
+                          : "border-stone-200 text-stone-600 hover:bg-stone-50"
                       }`}
                       title={opt.note}
                     >
@@ -1199,7 +1199,7 @@ export default function QueueTab({ adminFetch }: Props) {
           across each model. Helps decide whether to route through pro vs flash.
           Shows its own spinner (not full-tab) because this is the slowest fetch. */}
       {loadingCost && !cost && (
-        <div role="status" className="bg-white rounded-xl border border-amber-200 p-4 flex items-center gap-2 text-sm text-stone-500">
+        <div role="status" className="bg-white rounded-xl border border-amber-200 p-4 flex items-center gap-2 text-sm text-stone-600">
           <Spinner />
           Computing cost estimate…
         </div>
@@ -1220,7 +1220,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 Cost estimate (to drain queue)
                 {loadingCost && <Spinner />}
               </h3>
-              <span className="text-[11px] text-stone-500">
+              <span className="text-[11px] text-stone-600">
                 {cost.pending_items} pending across {cost.pending_books} book
                 {cost.pending_books === 1 ? "" : "s"} ·{" "}
                 ~{(cost.estimated_input_tokens / 1_000_000).toFixed(1)}M in /{" "}
@@ -1238,7 +1238,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 </div>
                 <div className="flex flex-wrap gap-4 items-baseline">
                   <div>
-                    <div className="text-xs text-stone-500">if primary handles all</div>
+                    <div className="text-xs text-stone-600">if primary handles all</div>
                     <div className="text-lg font-semibold text-emerald-800">
                       ${(
                         byModel[activeChain[0]] ??
@@ -1248,7 +1248,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-stone-500">per book (avg)</div>
+                    <div className="text-xs text-stone-600">per book (avg)</div>
                     <div className="text-lg font-semibold text-emerald-800">
                       ${(
                         (byModel[activeChain[0]] ??
@@ -1259,7 +1259,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   </div>
                   {activeChain.length > 1 && (
                     <div>
-                      <div className="text-xs text-stone-500">
+                      <div className="text-xs text-stone-600">
                         fallback min · {labelForModel(activeChain[activeChain.length - 1])}
                       </div>
                       <div className="text-lg font-semibold text-emerald-800">
@@ -1276,7 +1276,7 @@ export default function QueueTab({ adminFetch }: Props) {
             {/* Grid: all models, with total + per-book so admins can
                 compare any alternative to their current chain. */}
             <div>
-              <div className="text-[11px] text-stone-500 mb-1">
+              <div className="text-[11px] text-stone-600 mb-1">
                 All models — total / per-book
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1292,13 +1292,13 @@ export default function QueueTab({ adminFetch }: Props) {
                           : "border-amber-100"
                       }`}
                     >
-                      <div className="text-[11px] text-stone-500 font-mono truncate">
+                      <div className="text-[11px] text-stone-600 font-mono truncate">
                         {row.model}
                       </div>
                       <div className="text-sm font-semibold text-ink">
                         ${row.usd.toFixed(2)}
                       </div>
-                      <div className="text-xs text-stone-500">
+                      <div className="text-xs text-stone-600">
                         ${(row.usd / books).toFixed(3)}/book
                       </div>
                     </div>
@@ -1307,7 +1307,7 @@ export default function QueueTab({ adminFetch }: Props) {
               </div>
             </div>
 
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-600">
               Rough estimate — assumes ~3 chars/token and 1:1 input-to-output ratio.
               Actual cost depends on tokenizer, chapter lengths, and batching.
               Chain advance on 429/quota means multiple models may contribute — the
@@ -1341,7 +1341,7 @@ export default function QueueTab({ adminFetch }: Props) {
               {f}
             </button>
           ))}
-          <span className="ml-auto text-xs text-stone-500">{items.length} shown</span>
+          <span className="ml-auto text-xs text-stone-600">{items.length} shown</span>
           <button
             onClick={clearAll}
             disabled={items.length === 0}
@@ -1352,7 +1352,7 @@ export default function QueueTab({ adminFetch }: Props) {
           </button>
         </div>
         {items.length === 0 ? (
-          <div role="status" className="px-4 py-8 text-center text-stone-500 text-sm flex items-center justify-center gap-2">
+          <div role="status" className="px-4 py-8 text-center text-stone-600 text-sm flex items-center justify-center gap-2">
             {loadingItems && <Spinner />}
             <span>{loadingItems ? "Loading items…" : "No items in this view."}</span>
           </div>
@@ -1381,21 +1381,21 @@ export default function QueueTab({ adminFetch }: Props) {
                 >
                   {it.book_title || `book ${it.book_id}`}
                 </span>
-                <span className="text-stone-500 font-mono shrink-0">
+                <span className="text-stone-600 font-mono shrink-0">
                   · ch {it.chapter_index + 1} → {it.target_language}
                 </span>
                 <span
-                  className="text-stone-500 shrink-0"
+                  className="text-stone-600 shrink-0"
                   title={`Queued ${it.created_at} by ${it.queued_by || "auto (save_book)"}`}
                 >
                   · {relTime(it.created_at)}
                   {" by "}
-                  <span className={it.queued_by ? "text-stone-500" : "italic"}>
+                  <span className={it.queued_by ? "text-stone-600" : "italic"}>
                     {it.queued_by || "auto"}
                   </span>
                 </span>
                 {it.attempts > 0 && (
-                  <span className="text-stone-500 shrink-0">· {it.attempts} attempts</span>
+                  <span className="text-stone-600 shrink-0">· {it.attempts} attempts</span>
                 )}
                 {it.last_error && (
                   <span

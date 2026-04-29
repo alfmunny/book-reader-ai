@@ -150,7 +150,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
             onClick={() => setExpanded(false)}
             aria-expanded={true}
             aria-controls="seed-progress-panel"
-            className="text-xs text-stone-500 hover:text-stone-700 min-h-[44px] md:min-h-0 flex items-center"
+            className="text-xs text-stone-600 hover:text-stone-700 min-h-[44px] md:min-h-0 flex items-center"
           >
             Hide
           </button>
@@ -234,7 +234,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
               </div>
             </>
           ) : (
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-stone-600">
               {state.status === "running"
                 ? "Planning…"
                 : "No books need downloading."}

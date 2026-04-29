@@ -219,7 +219,7 @@ export default function ProfilePage() {
             )}
             <div>
               <p className="font-medium text-ink">{user?.name}</p>
-              <p className="text-sm text-stone-500">{user?.email}</p>
+              <p className="text-sm text-stone-600">{user?.email}</p>
             </div>
           </div>
           <div className="mt-6 flex items-center gap-4">
@@ -281,12 +281,12 @@ export default function ProfilePage() {
         ) : null}
 
         {/* Section label */}
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 px-1">AI &amp; Integrations</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 px-1">AI &amp; Integrations</h2>
 
         {/* ── Gemini API key ──────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 p-6">
           <h2 className="font-serif text-lg font-semibold text-ink mb-1">Gemini API Key</h2>
-          <p className="text-sm text-stone-500 mb-5">
+          <p className="text-sm text-stone-600 mb-5">
             Add your own key from{" "}
             <a
               href="https://aistudio.google.com/app/apikey"
@@ -355,7 +355,7 @@ export default function ProfilePage() {
             >
               <div>
                 <span className="font-serif text-lg font-semibold text-ink">Obsidian Export</span>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p className="text-xs text-stone-600 mt-0.5">
                   {hasObsidianToken
                     ? "GitHub token configured — vault sync ready"
                     : "Configure GitHub integration to push vocab to Obsidian"}
@@ -400,7 +400,7 @@ export default function ProfilePage() {
                   onChange={(e) => setObsidianToken(e.target.value)}
                   className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                 />
-                <p className="text-xs text-stone-500 mt-1">
+                <p className="text-xs text-stone-600 mt-1">
                   Requires <code>contents:write</code> permission on your vault repo.
                 </p>
               </div>
@@ -449,13 +449,13 @@ export default function ProfilePage() {
         </section>
 
         {/* Section label */}
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 px-1">Reader Preferences</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 px-1">Reader Preferences</h2>
 
         {/* ── Preferences ─────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-6">
           <div>
             <h2 className="font-serif text-lg font-semibold text-ink">Preferences</h2>
-            <p className="text-sm text-stone-500 mt-1">
+            <p className="text-sm text-stone-600 mt-1">
               Defaults applied across the reader. You can still override most of these per-session.
             </p>
           </div>
@@ -475,7 +475,7 @@ export default function ProfilePage() {
                 <option key={l.code} value={l.code}>{l.label}</option>
               ))}
             </select>
-            <p className="text-xs text-stone-500 mt-1">
+            <p className="text-xs text-stone-600 mt-1">
               Language used for chapter insights and follow-up chat responses.
             </p>
           </div>
@@ -495,7 +495,7 @@ export default function ProfilePage() {
                 <option key={l.code} value={l.code}>{l.label}</option>
               ))}
             </select>
-            <p className="text-xs text-stone-500 mt-1">
+            <p className="text-xs text-stone-600 mt-1">
               Target language when the translation panel is enabled.
             </p>
           </div>
@@ -505,7 +505,7 @@ export default function ProfilePage() {
             <label className="block text-sm font-medium text-ink mb-1.5">
               Text-to-speech voice
             </label>
-            <p className="text-xs text-stone-500 mb-2">
+            <p className="text-xs text-stone-600 mb-2">
               Uses Microsoft Edge TTS (free, no API key required).
             </p>
             <div className="flex gap-2">
@@ -561,7 +561,7 @@ export default function ProfilePage() {
                   />
                   <div className="flex-1">
                     <div className="text-sm font-medium text-ink">{opt.label}</div>
-                    <div className="text-xs text-stone-500 mt-0.5">{opt.hint}</div>
+                    <div className="text-xs text-stone-600 mt-0.5">{opt.hint}</div>
                   </div>
                 </label>
               ))}

@@ -69,7 +69,7 @@ export default function DecksPage() {
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Decks</h1>
           {!loading && !fetchError && (
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-600 mt-0.5">
               {decks.length} deck{decks.length !== 1 ? "s" : ""}
             </p>
           )}
@@ -99,7 +99,7 @@ export default function DecksPage() {
             </div>
           </div>
         ) : fetchError ? (
-          <div role="alert" className="text-center text-stone-500 mt-16 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-600 mt-16 flex flex-col items-center gap-2">
             <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
             <p className="font-serif text-lg text-red-700 mt-1">Failed to load decks.</p>
             <p className="text-sm">Check your connection and try again.</p>
@@ -118,8 +118,8 @@ export default function DecksPage() {
             className="text-center mt-16 flex flex-col items-center gap-3"
           >
             <DeckIcon className="w-14 h-14 text-amber-300" />
-            <p className="font-serif text-lg text-stone-500 mt-1">No study decks yet.</p>
-            <p className="text-sm text-stone-500 max-w-xs">
+            <p className="font-serif text-lg text-stone-600 mt-1">No study decks yet.</p>
+            <p className="text-sm text-stone-600 max-w-xs">
               Build focused review lists from your saved vocabulary. Start with a manual
               deck — pick a few words and study just them.
             </p>

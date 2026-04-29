@@ -23,7 +23,7 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
           }}
           title={`Remove ${book.title} from library`}
           aria-label={`Remove ${book.title} from library`}
-          className="absolute top-0 right-0 z-10 min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 inline-flex items-center justify-center rounded-full bg-white/80 text-stone-500 border border-amber-200 text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+          className="absolute top-0 right-0 z-10 min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 inline-flex items-center justify-center rounded-full bg-white/80 text-stone-600 border border-amber-200 text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
         >
           <CloseIcon className="w-3.5 h-3.5" />
         </button>

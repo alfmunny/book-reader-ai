@@ -93,7 +93,7 @@ export default function ChapterEditorPage() {
         <div role="alert" className="text-center max-w-sm">
           <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto mb-3" aria-hidden="true" />
           <p className="font-serif text-lg text-ink mb-2">Could not load chapters</p>
-          <p className="text-sm text-stone-500 mb-6">{error}</p>
+          <p className="text-sm text-stone-600 mb-6">{error}</p>
           <div className="flex items-center justify-center gap-3">
             <button
               type="button"
@@ -132,7 +132,7 @@ export default function ChapterEditorPage() {
             </button>
             <h1 className="font-serif text-lg font-semibold text-ink">
               Review Chapters
-              <span className="ml-2 text-sm font-normal text-stone-500">({chapters.length} detected)</span>
+              <span className="ml-2 text-sm font-normal text-stone-600">({chapters.length} detected)</span>
             </h1>
           </div>
           <button
@@ -192,7 +192,7 @@ export default function ChapterEditorPage() {
                         className={`text-xs px-1.5 py-0.5 rounded font-mono ${
                           wordWarn
                             ? "bg-amber-100 text-amber-700"
-                            : "bg-stone-100 text-stone-500"
+                            : "bg-stone-100 text-stone-600"
                         }`}
                       >
                         {ch.word_count.toLocaleString()} words
@@ -202,7 +202,7 @@ export default function ChapterEditorPage() {
                   <button
                     aria-label={`Remove chapter ${i + 1}`}
                     onClick={(e) => { e.stopPropagation(); handleRemove(i); }}
-                    className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded text-stone-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded text-stone-600 hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <TrashIcon className="w-3.5 h-3.5" />
                   </button>
@@ -217,17 +217,17 @@ export default function ChapterEditorPage() {
         <div className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto">
           {selectedChapter ? (
             <>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-3">Preview</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-3">Preview</h2>
               <p className="font-serif font-semibold text-ink mb-3">{selectedChapter.title}</p>
               <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap font-serif">
                 {selectedChapter.preview}
                 {selectedChapter.preview.length >= 300 && (
-                  <span className="text-stone-500">…</span>
+                  <span className="text-stone-600">…</span>
                 )}
               </p>
             </>
           ) : (
-            <p className="text-sm text-stone-500 text-center mt-8">Select a chapter to preview</p>
+            <p className="text-sm text-stone-600 text-center mt-8">Select a chapter to preview</p>
           )}
         </div>
       </div>

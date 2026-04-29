@@ -26,9 +26,9 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
         </span>
       </div>
       {deck.description && (
-        <p className="text-sm text-stone-500 mt-1.5 line-clamp-2">{deck.description}</p>
+        <p className="text-sm text-stone-600 mt-1.5 line-clamp-2">{deck.description}</p>
       )}
-      <div className="mt-3 flex items-center gap-3 text-xs text-stone-500">
+      <div className="mt-3 flex items-center gap-3 text-xs text-stone-600">
         <span>
           <span
             data-testid={`deck-member-count-${deck.id}`}
@@ -73,7 +73,7 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
             onClick={() => onDelete(deck.id)}
             aria-label={`Delete deck ${deck.name}`}
             data-testid={`deck-delete-${deck.id}`}
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-red-600 transition-colors shrink-0"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-red-600 transition-colors shrink-0"
           >
             <TrashIcon className="w-4 h-4" />
           </button>

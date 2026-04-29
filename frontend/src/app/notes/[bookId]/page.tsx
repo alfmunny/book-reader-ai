@@ -119,7 +119,7 @@ function AnnotationCard({
             </button>
             <button
               onClick={onCancel}
-              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0"
+              className="px-3 py-1 text-xs text-stone-600 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0"
             >
               Cancel
             </button>
@@ -141,7 +141,7 @@ function AnnotationCard({
           </a>
           <button
             onClick={onEdit}
-            className="text-stone-500 hover:text-stone-700 transition-colors p-1 min-h-[44px] md:min-h-0 flex items-center justify-center"
+            className="text-stone-600 hover:text-stone-700 transition-colors p-1 min-h-[44px] md:min-h-0 flex items-center justify-center"
             title="Edit note"
             aria-label={`Edit annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
@@ -183,7 +183,7 @@ function InsightCard({
   return (
     <div className="my-3 space-y-1.5">
       {ins.context_text && (
-        <blockquote className="border-l-4 border-amber-200 pl-4 italic text-stone-500 text-sm leading-relaxed">
+        <blockquote className="border-l-4 border-amber-200 pl-4 italic text-stone-600 text-sm leading-relaxed">
           &ldquo;{truncate(ins.context_text, 200)}&rdquo;
         </blockquote>
       )}
@@ -234,7 +234,7 @@ function VocabRow({
         >
           {word}
         </a>{" "}
-        <span className="text-stone-500 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
+        <span className="text-stone-600 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
         {" — "}
         <a
           href={readerHref}
@@ -665,7 +665,7 @@ export default function BookNotesPage() {
           </button>
 
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-stone-500 truncate">
+            <p className="text-xs text-stone-600 truncate">
               {annCount} annotations · {insCount} insights · {vocCount} words
             </p>
           </div>
@@ -675,7 +675,7 @@ export default function BookNotesPage() {
             <button
               onClick={toggleCollapseAll}
               aria-expanded={!isAllCollapsed}
-              className="text-xs text-stone-500 hover:text-stone-600 shrink-0 transition-colors min-h-[44px] md:min-h-0"
+              className="text-xs text-stone-600 hover:text-stone-700 shrink-0 transition-colors min-h-[44px] md:min-h-0"
             >
               {isAllCollapsed ? "Expand all" : "Collapse all"}
             </button>
@@ -729,7 +729,7 @@ export default function BookNotesPage() {
             <span className="w-6 h-6 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           </div>
         ) : fetchError ? (
-          <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-600 mt-20 flex flex-col items-center gap-2">
             <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
             <p className="font-serif text-lg text-red-700 mt-1">Failed to load notes.</p>
             <p className="text-sm">Check your connection and try again.</p>
@@ -743,7 +743,7 @@ export default function BookNotesPage() {
             </button>
           </div>
         ) : annCount + insCount + vocCount === 0 ? (
-          <div className="text-center py-24 text-stone-500">
+          <div className="text-center py-24 text-stone-600">
             <EmptyNotesIcon className="w-16 h-16 mx-auto mb-3 text-amber-300" aria-hidden="true" />
             <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
             <p className="text-sm">Annotate sentences, save AI insights, or add words to vocabulary while reading.</p>
@@ -760,7 +760,7 @@ export default function BookNotesPage() {
               <div className="mb-6">
                 <h1 className="text-2xl font-serif font-bold text-ink">{meta.title}</h1>
                 {(meta.authors ?? []).length > 0 && (
-                  <p className="text-sm text-stone-500 italic mt-0.5">{meta.authors.join(", ")}</p>
+                  <p className="text-sm text-stone-600 italic mt-0.5">{meta.authors.join(", ")}</p>
                 )}
               </div>
             )}

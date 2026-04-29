@@ -396,7 +396,7 @@ export default function InsightChat({
           className={`shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded text-xs font-bold transition-colors ${
             chatFontSize === "sm"
               ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-              : "text-stone-500 hover:bg-stone-200 hover:text-stone-700"
+              : "text-stone-600 hover:bg-stone-200 hover:text-stone-700"
           }`}
         >
           {chatFontSize === "xs" ? "A" : "a"}
@@ -406,7 +406,7 @@ export default function InsightChat({
           title={hasGeminiKey ? "Append a fresh insight" : "Gemini API key required"}
           aria-label="Append a fresh insight"
           disabled={!hasGeminiKey}
-          className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded hover:bg-stone-200 text-stone-500 hover:text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded hover:bg-stone-200 text-stone-600 hover:text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <RetryIcon className="w-3.5 h-3.5" />
         </button>
@@ -539,7 +539,7 @@ export default function InsightChat({
                       title={isSaved ? "Already saved" : "Save to notes"}
                       className={`mt-1.5 flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] transition-colors ${
                         isSaved
-                          ? "text-stone-500 cursor-default"
+                          ? "text-stone-600 cursor-default"
                           : "text-stone-600 hover:text-amber-700"
                       }`}
                     >

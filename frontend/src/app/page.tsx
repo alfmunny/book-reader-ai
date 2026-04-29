@@ -315,7 +315,7 @@ export default function Home() {
             {/* Continue Reading */}
             {recentBooks.length > 0 && (
               <section>
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-2">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
                   Continue Reading
                 </h2>
                 <button
@@ -339,7 +339,7 @@ export default function Home() {
                   <div className="flex-1 min-w-0">
                     <p className="font-serif font-semibold text-sm text-ink line-clamp-1">{recentBooks[0].title}</p>
                     <p className="text-xs text-amber-700 mt-0.5 line-clamp-1">{recentBooks[0].authors?.join(", ")}</p>
-                    <p className="text-xs text-stone-500 mt-1">
+                    <p className="text-xs text-stone-600 mt-1">
                       Chapter {recentBooks[0].lastChapter + 1} · {timeAgo(recentBooks[0].lastRead)}
                     </p>
                   </div>
@@ -352,7 +352,7 @@ export default function Home() {
             {status === "authenticated" && userStats && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 flex-1">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 flex-1">
                     Your Progress
                   </h2>
                   <button
@@ -371,7 +371,7 @@ export default function Home() {
                       <FireIcon className="w-5 h-5 text-amber-600 shrink-0" />
                       <div>
                         <p className="text-lg font-bold text-amber-900 leading-none">{userStats.streak}</p>
-                        <p className="text-[10px] text-stone-500 mt-0.5">day streak</p>
+                        <p className="text-[10px] text-stone-600 mt-0.5">day streak</p>
                       </div>
                     </div>
                   )}
@@ -379,21 +379,21 @@ export default function Home() {
                     <BookOpenIcon className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.books_started}</p>
-                      <p className="text-[10px] text-stone-500 mt-0.5">books started</p>
+                      <p className="text-[10px] text-stone-600 mt-0.5">books started</p>
                     </div>
                   </div>
                   <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
                     <VocabIcon className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.vocabulary_words}</p>
-                      <p className="text-[10px] text-stone-500 mt-0.5">words saved</p>
+                      <p className="text-[10px] text-stone-600 mt-0.5">words saved</p>
                     </div>
                   </div>
                   <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
                     <NoteIcon className="w-5 h-5 text-amber-600 shrink-0" />
                     <div>
                       <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.annotations}</p>
-                      <p className="text-[10px] text-stone-500 mt-0.5">annotations</p>
+                      <p className="text-[10px] text-stone-600 mt-0.5">annotations</p>
                     </div>
                   </div>
                 </div>
@@ -411,7 +411,7 @@ export default function Home() {
             {recentBooks.length > 0 ? (
               <section>
                 {recentBooks.length > 1 && (
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-500 mb-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-3">
                     Your Library
                   </h2>
                 )}
@@ -773,7 +773,7 @@ export default function Home() {
                             aria-label={`Open ${book.title}${book.authors.length ? ` by ${book.authors.join(", ")}` : ""}`}
                             className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors"
                           >
-                            <span className="text-xs text-stone-500 w-7 text-right shrink-0 tabular-nums">
+                            <span className="text-xs text-stone-600 w-7 text-right shrink-0 tabular-nums">
                               {(popularPage - 1) * PER_PAGE + idx + 1}
                             </span>
                             {book.cover ? (
@@ -789,7 +789,7 @@ export default function Home() {
                               <p className="text-xs text-amber-700 truncate">{book.authors.join(", ")}</p>
                             </div>
                             {book.download_count > 0 ? (
-                              <span className="text-xs text-stone-500 shrink-0 tabular-nums">
+                              <span className="text-xs text-stone-600 shrink-0 tabular-nums">
                                 {book.download_count.toLocaleString()}
                               </span>
                             ) : null}
@@ -836,7 +836,7 @@ export default function Home() {
                 <div role="alert" className="text-center py-10 flex flex-col items-center gap-2">
                   <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto" aria-hidden="true" />
                   <p className="font-serif text-base text-red-700">Failed to load books.</p>
-                  <p className="text-sm text-stone-500">Check your connection and try again.</p>
+                  <p className="text-sm text-stone-600">Check your connection and try again.</p>
                   <button
                     type="button"
                     onClick={loadPopularBooks}
@@ -852,7 +852,7 @@ export default function Home() {
                 <div className="text-center py-10 flex flex-col items-center gap-3">
                   <BookOpenIcon className="w-12 h-12 text-amber-300 mx-auto" aria-hidden="true" />
                   <p className="font-serif text-lg text-ink">No popular books yet</p>
-                  <p className="text-sm text-stone-500 max-w-xs">
+                  <p className="text-sm text-stone-600 max-w-xs">
                     Popular classics from Project Gutenberg haven&apos;t been loaded yet.
                     Search above to find any title or author.
                   </p>

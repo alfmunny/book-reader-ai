@@ -25,7 +25,7 @@ function LoginForm() {
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-amber-100 p-8">
           <h2 className="font-serif text-xl font-semibold text-ink mb-1">Sign in</h2>
-          <p className="text-sm text-stone-500 mb-8">
+          <p className="text-sm text-stone-600 mb-8">
             Sign in to access your library and AI features.
           </p>
 
@@ -66,7 +66,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-stone-500 mt-6">
+        <p className="text-center text-xs text-stone-600 mt-6">
           Your reading data stays on your own device.
         </p>
       </div>

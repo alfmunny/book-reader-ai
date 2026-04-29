@@ -35,7 +35,7 @@ export default function AuthPromptModal({ open, feature, onClose }: Props) {
       <div className="absolute inset-0 bg-black/40" aria-hidden="true" onClick={onClose} />
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Sign in required" className="relative bg-white rounded-t-2xl md:rounded-2xl shadow-xl p-6 w-full max-w-sm animate-slide-up focus:outline-none">
         <p className="font-serif text-lg text-ink mb-1">Sign in to {feature}</p>
-        <p className="text-sm text-stone-500 mb-5">
+        <p className="text-sm text-stone-600 mb-5">
           Create a free account or sign in to unlock this feature.
         </p>
         <a
@@ -46,7 +46,7 @@ export default function AuthPromptModal({ open, feature, onClose }: Props) {
         </a>
         <button
           onClick={onClose}
-          className="flex items-center justify-center w-full min-h-[44px] md:min-h-0 text-sm text-stone-500 mt-2 hover:text-stone-700 transition-colors"
+          className="flex items-center justify-center w-full min-h-[44px] md:min-h-0 text-sm text-stone-600 mt-2 hover:text-stone-700 transition-colors"
         >
           Maybe later
         </button>

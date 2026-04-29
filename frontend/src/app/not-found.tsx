@@ -10,7 +10,7 @@ export default function NotFound() {
       <div className="text-center max-w-sm">
         <BookOpenIcon className="w-14 h-14 mx-auto mb-4 text-amber-300" aria-hidden="true" />
         <h1 className="font-serif text-2xl font-bold text-ink mb-2">Page not found</h1>
-        <p className="text-sm text-stone-500 mb-6">
+        <p className="text-sm text-stone-600 mb-6">
           The page you&rsquo;re looking for doesn&rsquo;t exist or has been moved.
         </p>
         <Link

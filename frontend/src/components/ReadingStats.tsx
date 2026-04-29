@@ -69,7 +69,7 @@ function StatCard({ label, value, icon }: StatCardProps) {
       <span className="text-amber-600">{icon}</span>
       <div>
         <p className="text-2xl font-bold text-stone-800">{value.toLocaleString()}</p>
-        <p className="text-xs text-stone-500 mt-0.5">{label}</p>
+        <p className="text-xs text-stone-600 mt-0.5">{label}</p>
       </div>
     </div>
   );
@@ -152,7 +152,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
       >
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-stone-700">Activity — last year</p>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-stone-600">
             {activeDays} active {activeDays === 1 ? "day" : "days"}
           </p>
         </div>
@@ -165,7 +165,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
           {weeks.map((_, wi) => {
             const m = months.find((m) => m.colStart === wi);
             return (
-              <div key={wi} className="text-[9px] text-stone-500 truncate">
+              <div key={wi} className="text-[9px] text-stone-600 truncate">
                 {m?.label ?? ""}
               </div>
             );
@@ -200,11 +200,11 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
 
         {/* Legend */}
         <div className="flex items-center gap-1 mt-2 justify-end">
-          <span className="text-[9px] text-stone-500 mr-1">Less</span>
+          <span className="text-[9px] text-stone-600 mr-1">Less</span>
           {["bg-stone-100", "bg-amber-200", "bg-amber-400", "bg-amber-600", "bg-amber-800"].map((c) => (
             <div key={c} className={`w-3 h-3 rounded-[2px] ${c}`} />
           ))}
-          <span className="text-[9px] text-stone-500 ml-1">More</span>
+          <span className="text-[9px] text-stone-600 ml-1">More</span>
         </div>
       </div>
     </div>

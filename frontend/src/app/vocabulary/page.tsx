@@ -166,7 +166,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           <button
             onClick={onClose}
             aria-label="Close definition"
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -187,7 +187,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           )}
 
           {!loading && (!def || def.definitions.length === 0) && (
-            <p className="text-sm text-stone-500 italic">No definition found.</p>
+            <p className="text-sm text-stone-600 italic">No definition found.</p>
           )}
 
           {def && def.definitions.length > 0 && (
@@ -384,7 +384,7 @@ function VocabularyPageContent() {
               {group.lemma}
             </button>
             {alternateForms.length > 0 && (
-              <span className="text-xs text-stone-500">
+              <span className="text-xs text-stone-600">
                 ({alternateForms.map((f) => f.word).join(", ")})
               </span>
             )}
@@ -427,9 +427,9 @@ function VocabularyPageContent() {
                     {occ.book_title}
                   </a>
                 ) : (
-                  <span className="text-stone-500 font-medium">(deleted book)</span>
+                  <span className="text-stone-600 font-medium">(deleted book)</span>
                 )}{" "}
-                <span className="text-stone-500">{`Ch.${occ.chapter_index + 1}`}</span>
+                <span className="text-stone-600">{`Ch.${occ.chapter_index + 1}`}</span>
                 {" — "}
                 <span className="italic">&ldquo;{occ.sentence_text}&rdquo;</span>
               </div>
@@ -459,7 +459,7 @@ function VocabularyPageContent() {
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-600 mt-0.5">
               {words.length} word{words.length !== 1 ? "s" : ""} · {totalOccurrences} occurrence{totalOccurrences !== 1 ? "s" : ""}
             </p>
           )}
@@ -577,7 +577,7 @@ function VocabularyPageContent() {
                   }`}
                 >
                   {tag}
-                  <span className={`ml-1 ${active ? "opacity-80" : "text-stone-500"}`}>
+                  <span className={`ml-1 ${active ? "opacity-80" : "text-stone-600"}`}>
                     · {word_count}
                   </span>
                 </button>
@@ -594,7 +594,7 @@ function VocabularyPageContent() {
             ))}
           </div>
         ) : fetchError ? (
-          <div role="alert" className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
+          <div role="alert" className="text-center text-stone-600 mt-20 flex flex-col items-center gap-2">
             <AlertCircleIcon className="w-12 h-12 text-red-300 mx-auto mb-1" aria-hidden="true" />
             <p className="font-serif text-lg text-red-700 mt-1">Failed to load vocabulary.</p>
             <p className="text-sm">Check your connection and try again.</p>
@@ -608,9 +608,9 @@ function VocabularyPageContent() {
             </button>
           </div>
         ) : words.length === 0 ? (
-          <div className="text-center text-stone-500 mt-20 flex flex-col items-center gap-2">
+          <div className="text-center text-stone-600 mt-20 flex flex-col items-center gap-2">
             <EmptyVocabIcon className="w-14 h-14 text-amber-300" />
-            <p className="font-serif text-lg text-stone-500 mt-1">No saved words yet.</p>
+            <p className="font-serif text-lg text-stone-600 mt-1">No saved words yet.</p>
             <p className="text-sm">Double-click any word while reading to save it here.</p>
             <button
               type="button"
@@ -621,11 +621,11 @@ function VocabularyPageContent() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center text-stone-500 mt-16 flex flex-col items-center gap-2">
+          <div className="text-center text-stone-600 mt-16 flex flex-col items-center gap-2">
             <EmptyVocabIcon className="w-14 h-14 text-amber-300" aria-hidden="true" />
             {selectedTag ? (
               <>
-                <p className="font-serif text-lg text-stone-500 mt-1">No words tagged &ldquo;{selectedTag}&rdquo;</p>
+                <p className="font-serif text-lg text-stone-600 mt-1">No words tagged &ldquo;{selectedTag}&rdquo;</p>
                 <p className="text-sm">This tag has no vocabulary words yet.</p>
                 <button
                   type="button"
@@ -637,7 +637,7 @@ function VocabularyPageContent() {
               </>
             ) : (
               <>
-                <p className="font-serif text-lg text-stone-500 mt-1">No words match &ldquo;{search}&rdquo;</p>
+                <p className="font-serif text-lg text-stone-600 mt-1">No words match &ldquo;{search}&rdquo;</p>
                 <p className="text-sm">Try a different search term.</p>
                 <button
                   type="button"

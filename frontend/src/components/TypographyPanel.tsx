@@ -62,7 +62,7 @@ function SegmentedControl<T extends string>({
           key={opt.value}
           onClick={() => onChange(opt.value)}
           aria-pressed={value === opt.value}
-          className={`flex-1 px-2 py-1.5 min-h-[44px] md:min-h-0 text-xs font-medium transition-colors flex items-center justify-center ${
+          className={`flex-1 px-2 py-1.5 min-h-[44px] md:min-h-0 text-xs font-medium transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
             value === opt.value
               ? "bg-amber-700 text-white"
               : "bg-white text-amber-700 hover:bg-amber-50"
@@ -176,7 +176,7 @@ export default function TypographyPanel({
               onParagraphFocus(next);
               saveSettings({ paragraphFocus: next });
             }}
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center -mr-1.5"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center -mr-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             role="switch"
             aria-label="Paragraph focus"
             aria-checked={paragraphFocus}

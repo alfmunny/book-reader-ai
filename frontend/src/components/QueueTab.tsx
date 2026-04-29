@@ -756,7 +756,7 @@ export default function QueueTab({ adminFetch }: Props) {
             aria-label="Preview language"
             value={dryRunLang}
             onChange={(e) => { setDryRunLang(e.target.value); setDryRunResult(null); setPlanResult(null); }}
-            className="rounded border border-amber-300 px-2 py-1 text-sm bg-white"
+            className="rounded border border-amber-300 px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             {[
               { code: "zh", label: "Chinese (zh)" },

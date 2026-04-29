@@ -17,8 +17,8 @@ describe("admin/books page form controls aria-label (closes #959)", () => {
   it("translation language select has aria-label", () => {
     const idx = src.indexOf('title="Pick a language to queue for translation"');
     expect(idx).toBeGreaterThan(-1);
-    // aria-label sits before a long className, look back 350 chars
-    const window = src.slice(Math.max(0, idx - 350), idx + 60);
+    // aria-label sits before a long className, look back 400 chars
+    const window = src.slice(Math.max(0, idx - 400), idx + 60);
     expect(window).toContain('aria-label="Translation language"');
   });
 

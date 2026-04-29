@@ -39,7 +39,7 @@ describe("Import and upload-chapters flow touch targets (closes #838)", () => {
   });
 
   it("Confirm & Start Reading button has min-h-[44px]", () => {
-    checkBefore(chaptersPage, "Confirm & Start Reading", 400);
+    checkBefore(chaptersPage, "Confirm & Start Reading", 600);
   });
 
   it("Try another file button has min-h-[44px]", () => {

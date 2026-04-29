@@ -995,7 +995,7 @@ export default function ReaderPage() {
                       href={`https://www.gutenberg.org/ebooks/${meta.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 text-xs text-amber-700 hover:text-amber-800"
+                      className="shrink-0 text-xs text-amber-700 hover:text-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                       title="View on Project Gutenberg"
                       aria-label="View on Project Gutenberg"
                     ><ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" /></a>
@@ -1662,7 +1662,7 @@ export default function ReaderPage() {
                     href={obsidianToast}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-amber-700 underline break-all"
+                    className="text-amber-700 underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                   >
                     {obsidianToast}
                   </a>
@@ -1895,13 +1895,13 @@ export default function ReaderPage() {
                     <div className="border-t border-amber-100 pb-2 pt-3 flex gap-3 justify-between shrink-0">
                       <a
                         href={`/notes/${bookId}`}
-                        className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors"
+                        className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                       >
                         Book notes <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </a>
                       <a
                         href="/notes"
-                        className="text-xs text-stone-600 hover:text-stone-700 transition-colors"
+                        className="text-xs text-stone-600 hover:text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                       >
                         All books
                       </a>

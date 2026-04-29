@@ -295,7 +295,7 @@ export default function BookImportPage() {
               </p>
               <a
                 href="/api/auth/signin"
-                className="inline-flex items-center rounded-lg bg-amber-700 text-white px-5 min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800"
+                className="inline-flex items-center rounded-lg bg-amber-700 text-white px-5 min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
               >
                 Sign in
               </a>

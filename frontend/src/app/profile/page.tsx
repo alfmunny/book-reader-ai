@@ -292,7 +292,7 @@ export default function ProfilePage() {
               href="https://aistudio.google.com/app/apikey"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-amber-700 underline"
+              className="text-amber-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             >
               Google AI Studio
             </a>{" "}

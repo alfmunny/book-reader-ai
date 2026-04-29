@@ -122,7 +122,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
             href={def.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] text-amber-700 hover:text-amber-800"
+            className="text-[11px] text-amber-700 hover:text-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
           >
             Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
           </a>

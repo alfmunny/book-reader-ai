@@ -35,13 +35,13 @@ describe("Reader page touch targets", () => {
   });
 
   it("notes view filter buttons have min-h-[44px]", () => {
-    // min-h-[44px] appears before notesView in the className template literal
-    expect(src).toMatch(/min-h-\[44px\][\s\S]{0,100}notesView === v/);
+    // min-h-[44px] is in className before the ${notesView === v ? ...} conditional
+    expect(src).toMatch(/min-h-\[44px\][\s\S]{0,200}notesView === v/);
   });
 
   it("vocab view filter buttons have min-h-[44px]", () => {
-    // min-h-[44px] appears before vocabView in the className template literal
-    expect(src).toMatch(/min-h-\[44px\][\s\S]{0,100}vocabView === v/);
+    // min-h-[44px] is in className before the ${vocabView === v ? ...} conditional
+    expect(src).toMatch(/min-h-\[44px\][\s\S]{0,200}vocabView === v/);
   });
 
   it("vocab occurrence list buttons have min-h-[44px]", () => {

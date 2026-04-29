@@ -23,9 +23,10 @@ describe("Reader page disclosure button aria-expanded (closes #1245)", () => {
   it("Notes button has aria-expanded", () => {
     // Mobile notes button uses a dynamic aria-label (includes count when > 0).
     // Anchor on the setNotesExpanded call inside the button's onClick.
+    // aria-expanded comes after the long className template literal (~545 chars)
     const idx = src.indexOf('setNotesExpanded((v) => !v)');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 500);
+    const window = src.slice(idx, idx + 600);
     expect(window).toContain("aria-expanded");
   });
 

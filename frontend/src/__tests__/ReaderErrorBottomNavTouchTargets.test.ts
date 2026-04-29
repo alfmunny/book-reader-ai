@@ -16,10 +16,10 @@ describe("reader error-state and bottom-nav touch targets (closes #870)", () => 
   });
 
   it("error-state Back to library button has min-h-[44px]", () => {
-    // "Back to library" text appears after className
+    // "Back to library" text appears after className — look 300 chars back
     const idx = src.indexOf("Back to library");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 200), idx + 20);
+    const window = src.slice(Math.max(0, idx - 300), idx + 20);
     expect(window).toContain("min-h-[44px]");
   });
 

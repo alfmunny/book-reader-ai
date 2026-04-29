@@ -140,7 +140,7 @@ export default function DeckDetailPage() {
             {deck?.name ?? "Deck"}
           </h1>
           {deck && (
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-stone-600 mt-0.5">
               {deck.members.length} word{deck.members.length !== 1 ? "s" : ""}
               {deck.mode === "smart" ? " · smart" : ""}
             </p>
@@ -181,7 +181,7 @@ export default function DeckDetailPage() {
             <p className="font-serif text-lg text-ink mt-1">
               Could not load deck.
             </p>
-            <p className="text-sm text-stone-500">Check your connection and try again.</p>
+            <p className="text-sm text-stone-600">Check your connection and try again.</p>
             <div className="flex items-center justify-center gap-3 mt-1">
               <button
                 type="button"
@@ -214,10 +214,10 @@ export default function DeckDetailPage() {
                 className="text-center mt-16 flex flex-col items-center gap-3"
               >
                 <DeckIcon className="w-14 h-14 text-amber-300" />
-                <p className="font-serif text-lg text-stone-500 mt-1">
+                <p className="font-serif text-lg text-stone-600 mt-1">
                   No words in this deck yet.
                 </p>
-                <p className="text-sm text-stone-500 max-w-xs">
+                <p className="text-sm text-stone-600 max-w-xs">
                   {isManual
                     ? "Add words from your vocabulary to study them as a focused set."
                     : "This smart deck has no matching words yet — saved vocabulary that matches the rules will appear here."}
@@ -259,7 +259,7 @@ export default function DeckDetailPage() {
                       {w.word}
                     </span>
                     {w.language && (
-                      <span className="text-xs uppercase tracking-wide text-stone-500 shrink-0">
+                      <span className="text-xs uppercase tracking-wide text-stone-600 shrink-0">
                         {w.language}
                       </span>
                     )}
@@ -268,7 +268,7 @@ export default function DeckDetailPage() {
                         type="button"
                         onClick={() => handleRemove(w.id)}
                         aria-label={`Remove ${w.word} from deck`}
-                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-red-600 hover:bg-red-50 transition-colors"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -368,7 +368,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
             type="button"
             onClick={onClose}
             aria-label="Close add-word picker"
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-100 transition-colors"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-100 transition-colors"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -392,11 +392,11 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {candidates.length === 0 ? (
-            <p className="text-sm text-stone-500 text-center py-6">
+            <p className="text-sm text-stone-600 text-center py-6">
               All your saved words are already in this deck.
             </p>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-stone-500 text-center py-6">
+            <p className="text-sm text-stone-600 text-center py-6">
               No matches.
             </p>
           ) : (
@@ -415,7 +415,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
                       {w.word}
                     </span>
                     {w.language && (
-                      <span className="text-xs uppercase tracking-wide text-stone-500 shrink-0">
+                      <span className="text-xs uppercase tracking-wide text-stone-600 shrink-0">
                         {w.language}
                       </span>
                     )}

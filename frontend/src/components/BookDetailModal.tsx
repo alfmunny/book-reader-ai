@@ -96,7 +96,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
           <button
             onClick={onClose}
             aria-label="Close book details"
-            className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+            className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full text-stone-600 hover:bg-stone-100 hover:text-stone-700 transition-colors"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -144,7 +144,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
 
         <div className="flex items-center justify-between mt-3">
           {book.download_count > 0 && (
-            <p className="text-xs text-stone-500">
+            <p className="text-xs text-stone-600">
               {book.download_count.toLocaleString()} downloads
             </p>
           )}

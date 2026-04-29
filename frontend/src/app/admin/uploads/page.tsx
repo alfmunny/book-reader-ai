@@ -126,14 +126,14 @@ export default function UploadsPage() {
             <CloseIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Clear filter (user {activeFilter})
           </button>
         )}
-        <span className="ml-auto text-xs text-stone-500">{uploads.length} upload{uploads.length !== 1 ? "s" : ""}</span>
+        <span className="ml-auto text-xs text-stone-600">{uploads.length} upload{uploads.length !== 1 ? "s" : ""}</span>
       </div>
 
       {uploads.length === 0 ? (
         <div className="bg-white rounded-xl border border-amber-200 px-4 py-12 text-center">
           <EmptyUploadIcon className="mx-auto mb-3 w-10 h-10 text-amber-200" />
           <p className="font-serif text-ink mb-1">No uploads yet</p>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-600">
             {activeFilter ? `No uploads found for user ${activeFilter}.` : "No books have been uploaded by users."}
           </p>
         </div>
@@ -156,17 +156,17 @@ export default function UploadsPage() {
                 {uploads.map((u) => (
                   <tr key={`${u.book_id}-${u.filename}`} className="hover:bg-amber-50/40">
                     <td className="px-4 py-2.5 font-medium text-ink max-w-[200px] truncate" title={u.title}>{u.title}</td>
-                    <td className="px-4 py-2.5 text-stone-500 max-w-[160px] truncate" title={u.filename}>{u.filename}</td>
+                    <td className="px-4 py-2.5 text-stone-600 max-w-[160px] truncate" title={u.filename}>{u.filename}</td>
                     <td className="px-4 py-2.5">
                       <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
                         {u.format}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-stone-500 whitespace-nowrap">{fmt_size(u.file_size)}</td>
-                    <td className="px-4 py-2.5 text-stone-500 max-w-[160px] truncate" title={u.uploader_email}>
+                    <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{fmt_size(u.file_size)}</td>
+                    <td className="px-4 py-2.5 text-stone-600 max-w-[160px] truncate" title={u.uploader_email}>
                       {u.uploader_email}
                     </td>
-                    <td className="px-4 py-2.5 text-stone-500 whitespace-nowrap">{fmt_date(u.uploaded_at)}</td>
+                    <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{fmt_date(u.uploaded_at)}</td>
                     <td className="px-4 py-2.5">
                       <button
                         onClick={() => router.push(`/reader/${u.book_id}`)}

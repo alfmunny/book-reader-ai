@@ -30,7 +30,7 @@ function AnnotationCard({ r }: { r: Extract<InAppSearchResult, { type: "annotati
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <div className="font-serif text-base text-ink">{r.book_title || `Book #${r.book_id}`}</div>
-        <div className="text-xs text-stone-500">Annotation · Ch.&nbsp;{r.chapter_index + 1}</div>
+        <div className="text-xs text-stone-600">Annotation · Ch.&nbsp;{r.chapter_index + 1}</div>
       </div>
       <SnippetHtml snippet={r.snippet} />
       {r.note_text ? (
@@ -50,7 +50,7 @@ function VocabularyCard({ r }: { r: Extract<InAppSearchResult, { type: "vocabula
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <div className="font-serif text-base text-ink">{r.word}</div>
-        <div className="text-xs text-stone-500">Vocabulary · Ch.&nbsp;{r.chapter_index + 1}</div>
+        <div className="text-xs text-stone-600">Vocabulary · Ch.&nbsp;{r.chapter_index + 1}</div>
       </div>
       <SnippetHtml snippet={r.snippet} />
       <div className="mt-2 text-xs text-stone-600">in {r.book_title || `Book #${r.book_id}`}</div>
@@ -70,7 +70,7 @@ function ChapterCard({ r }: { r: Extract<InAppSearchResult, { type: "chapter" }>
         <div className="font-serif text-base text-ink">
           {r.book_title || `Book #${r.book_id}`} — {r.chapter_title || `Chapter ${r.chapter_index + 1}`}
         </div>
-        <div className="text-xs text-stone-500">Chapter</div>
+        <div className="text-xs text-stone-600">Chapter</div>
       </div>
       <SnippetHtml snippet={r.snippet} />
     </Link>
@@ -87,7 +87,7 @@ function ResultsSection({ title, items }: { title: string; items: InAppSearchRes
   if (!items.length) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-sm uppercase tracking-wide text-stone-500">
+      <h2 className="text-sm uppercase tracking-wide text-stone-600">
         {title} · {items.length}
       </h2>
       <ul role="list" aria-label={title} className="grid gap-3 list-none p-0 m-0">
@@ -151,7 +151,7 @@ function SearchResultsInner() {
       </div>
 
       {!q.trim() && (
-        <div className="text-center text-stone-500 py-16">
+        <div className="text-center text-stone-600 py-16">
           <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
           <h2 className="font-serif text-lg text-ink">Search your notes, vocabulary, and uploads</h2>
           <p className="text-sm mt-2">Start typing in the search bar above.</p>
@@ -181,7 +181,7 @@ function SearchResultsInner() {
       )}
 
       {!loading && !error && data && data.total === 0 && (
-        <div className="text-center text-stone-500 py-12">
+        <div className="text-center text-stone-600 py-12">
           <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
           <p className="font-serif text-lg text-ink">No matches for &ldquo;{q}&rdquo;.</p>
           <p className="text-sm mt-2">Try a shorter or different word.</p>

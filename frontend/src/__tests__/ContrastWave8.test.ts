@@ -19,76 +19,89 @@ const profilePage = src("app/profile/page.tsx");
 describe("Contrast wave 8 (closes #1369)", () => {
   // ─── Text contrast (WCAG 1.4.3) ────────────────────────────────────────
 
-  it("upload page Tips heading uses text-stone-500 not text-stone-400", () => {
+  it("upload page Tips heading uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(uploadPage).not.toContain('text-stone-400">Tips');
-    expect(uploadPage).toContain('text-stone-500">Tips');
+    expect(uploadPage).not.toContain('text-stone-500">Tips');
+    expect(uploadPage).toContain('text-stone-600">Tips');
   });
 
-  it("chapters page detected count uses text-stone-500 not text-stone-400", () => {
+  it("chapters page detected count uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(chaptersPage).not.toContain("text-sm font-normal text-stone-400");
-    expect(chaptersPage).toContain("text-sm font-normal text-stone-500");
+    expect(chaptersPage).not.toContain("text-sm font-normal text-stone-500");
+    expect(chaptersPage).toContain("text-sm font-normal text-stone-600");
   });
 
-  it("chapters page Preview heading uses text-stone-500 not text-stone-400", () => {
+  it("chapters page Preview heading uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(chaptersPage).not.toContain("text-stone-400 mb-3");
-    expect(chaptersPage).toContain("text-stone-500 mb-3");
+    expect(chaptersPage).not.toContain("text-stone-500 mb-3");
+    expect(chaptersPage).toContain("text-stone-600 mb-3");
   });
 
-  it("chapters page ellipsis uses text-stone-500 not text-stone-400", () => {
+  it("chapters page ellipsis uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(chaptersPage).not.toContain('"text-stone-400">…');
-    expect(chaptersPage).toContain('"text-stone-500">…');
+    expect(chaptersPage).not.toContain('"text-stone-500">…');
+    expect(chaptersPage).toContain('"text-stone-600">…');
   });
 
-  it("chapters page empty state uses text-stone-500 not text-stone-400", () => {
+  it("chapters page empty state uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(chaptersPage).not.toContain("text-sm text-stone-400 text-center mt-8");
-    expect(chaptersPage).toContain("text-sm text-stone-500 text-center mt-8");
+    expect(chaptersPage).not.toContain("text-sm text-stone-500 text-center mt-8");
+    expect(chaptersPage).toContain("text-sm text-stone-600 text-center mt-8");
   });
 
-  it("import page footer note uses text-stone-500 not text-stone-400", () => {
+  it("import page footer note uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(importPage).not.toContain("text-xs text-stone-400 mt-4");
-    expect(importPage).toContain("text-xs text-stone-500 mt-4");
+    expect(importPage).not.toContain("text-xs text-stone-500 mt-4");
+    expect(importPage).toContain("text-xs text-stone-600 mt-4");
   });
 
-  it("login page footer note uses text-stone-500 not text-stone-400", () => {
+  it("login page footer note uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(loginPage).not.toContain("text-xs text-stone-400 mt-6");
-    expect(loginPage).toContain("text-xs text-stone-500 mt-6");
+    expect(loginPage).not.toContain("text-xs text-stone-500 mt-6");
+    expect(loginPage).toContain("text-xs text-stone-600 mt-6");
   });
 
-  it("SentenceReader not-loaded word uses text-stone-500 not text-stone-400", () => {
+  it("SentenceReader not-loaded word uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(sentenceReader).not.toContain(': "text-stone-400";');
-    expect(sentenceReader).toContain(': "text-stone-500";');
+    expect(sentenceReader).not.toContain(': "text-stone-500";');
+    expect(sentenceReader).toContain(': "text-stone-600"');
   });
 
   // ─── Icon button contrast (WCAG 1.4.11) ────────────────────────────────
 
-  it("AnnotationToolbar close button uses text-stone-500 not text-stone-400 (WCAG 1.4.11)", () => {
+  it("AnnotationToolbar close button uses text-stone-600 not text-stone-400 (WCAG 1.4.11)", () => {
     expect(annotationToolbar).not.toContain("text-stone-400 hover:text-stone-600 hover:bg-amber-50");
-    expect(annotationToolbar).toContain("text-stone-500 hover:text-stone-700 hover:bg-amber-50");
+    expect(annotationToolbar).not.toContain("text-stone-500 hover:text-stone-700 hover:bg-amber-50");
+    expect(annotationToolbar).toContain("text-stone-600 hover:text-stone-700 hover:bg-amber-50");
   });
 
-  it("AnnotationsSidebar close button uses text-stone-500 not text-stone-400 (WCAG 1.4.11)", () => {
+  it("AnnotationsSidebar close button uses text-stone-600 not text-stone-400 (WCAG 1.4.11)", () => {
     expect(annotationsSidebar).not.toContain('"text-stone-400 hover:text-stone-600 min-h-[44px]');
-    expect(annotationsSidebar).toContain('"text-stone-500 hover:text-stone-700 min-h-[44px]');
+    expect(annotationsSidebar).not.toContain('"text-stone-500 hover:text-stone-700 min-h-[44px]');
+    expect(annotationsSidebar).toContain('"text-stone-600 hover:text-stone-700 min-h-[44px]');
   });
 
-  it("BookDetailModal close button uses text-stone-500 not text-stone-400 (WCAG 1.4.11)", () => {
+  it("BookDetailModal close button uses text-stone-600 not text-stone-400 (WCAG 1.4.11)", () => {
     expect(bookDetailModal).not.toContain("text-stone-400 hover:bg-stone-100 hover:text-stone-600");
-    expect(bookDetailModal).toContain("text-stone-500 hover:bg-stone-100 hover:text-stone-700");
+    expect(bookDetailModal).not.toContain("text-stone-500 hover:bg-stone-100 hover:text-stone-700");
+    expect(bookDetailModal).toContain("text-stone-600 hover:bg-stone-100 hover:text-stone-700");
   });
 
-  it("notes edit button uses text-stone-500 not text-stone-400 (WCAG 1.4.11)", () => {
+  it("notes edit button uses text-stone-600 not text-stone-400 (WCAG 1.4.11)", () => {
     expect(notesBookPage).not.toContain("text-stone-400 hover:text-stone-600 transition-colors p-1");
-    expect(notesBookPage).toContain("text-stone-500 hover:text-stone-700 transition-colors p-1");
+    expect(notesBookPage).not.toContain("text-stone-500 hover:text-stone-700 transition-colors p-1");
+    expect(notesBookPage).toContain("text-stone-600 hover:text-stone-700 transition-colors p-1");
   });
 
-  it("deck member trash button uses text-stone-500 not text-stone-400 (WCAG 1.4.11)", () => {
+  it("deck member trash button uses text-stone-600 not text-stone-400 (WCAG 1.4.11)", () => {
     expect(deckIdPage).not.toContain("rounded-lg text-stone-400 hover:text-red-600");
-    expect(deckIdPage).toContain("rounded-lg text-stone-500 hover:text-red-600");
+    expect(deckIdPage).not.toContain("rounded-lg text-stone-500 hover:text-red-600");
+    expect(deckIdPage).toContain("rounded-lg text-stone-600 hover:text-red-600");
   });
 
   // ─── Decorative icon: aria-hidden ──────────────────────────────────────
 
   it("profile ChevronRight in deck button has aria-hidden (decorative, exempt from 1.4.11)", () => {
-    expect(profilePage).toContain('text-stone-400 shrink-0" aria-hidden="true"');
+    expect(profilePage).toMatch(/text-stone-\d+ shrink-0" aria-hidden="true"/);
   });
 });

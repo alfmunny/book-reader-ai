@@ -20,14 +20,16 @@ describe("Reader page contrast (closes #1356)", () => {
     expect(readerSrc).toContain("text-stone-600 hover:text-stone-800");
   });
 
-  it("keyboard shortcuts heading uses text-stone-500 not text-stone-400", () => {
+  it("keyboard shortcuts heading uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(readerSrc).not.toContain("tracking-widest text-stone-400");
-    expect(readerSrc).toContain("tracking-widest text-stone-500");
+    expect(readerSrc).not.toContain("tracking-widest text-stone-500");
+    expect(readerSrc).toContain("tracking-widest text-stone-600");
   });
 
-  it("cache status spans use text-stone-500 not text-stone-400", () => {
+  it("cache status spans use text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
     expect(readerSrc).not.toContain('"text-stone-400">Loaded from cache');
-    expect(readerSrc).toContain('"text-stone-500">Loaded from cache');
+    expect(readerSrc).not.toContain('"text-stone-500">Loaded from cache');
+    expect(readerSrc).toContain('"text-stone-600">Loaded from cache');
   });
 
   it("separator pipe spans all have aria-hidden=true", () => {

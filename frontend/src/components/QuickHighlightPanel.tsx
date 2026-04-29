@@ -128,7 +128,7 @@ export default function QuickHighlightPanel({
           onClick={onOpenNote}
           disabled={busy}
           aria-label="Add note"
-          className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-stone-700 disabled:opacity-50 transition-colors"
+          className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 disabled:opacity-50 transition-colors"
         >
           <span className="w-7 h-7 rounded-full bg-stone-100 border border-stone-300 flex items-center justify-center hover:bg-stone-200 transition-colors">
             <NoteIcon className="w-3.5 h-3.5" />

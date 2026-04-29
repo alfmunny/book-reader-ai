@@ -669,12 +669,12 @@ export default function SentenceReader({
           if (active) return "bg-amber-300 text-amber-950";
           if (disabled) {
             return loaded
-              ? "text-stone-500"
-              : "text-stone-500";
+              ? "text-stone-600"
+              : "text-stone-600";
           }
           return loaded
             ? "hover:bg-amber-50"
-            : "text-stone-500";
+            : "text-stone-600";
         };
 
         // Long press (500ms) → open word action drawer or annotation panel.

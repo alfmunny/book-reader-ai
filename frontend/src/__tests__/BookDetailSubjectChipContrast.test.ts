@@ -11,12 +11,11 @@ const src = fs.readFileSync(
 );
 
 describe("BookDetailModal subject chip contrast (closes #1667)", () => {
-  it("no className combines base bg-stone-100 with base text-stone-500", () => {
+  it("no className combines base bg-stone-100 with base text-stone-500 (4.23:1, fails AA)", () => {
     // Walk every className=\"…\" string and check whether it has both
-    // bg-stone-100 AND text-stone-500 as space-separated *base* tokens
-    // (not hover:bg-stone-100 / hover:text-stone-500). The pre-fix chip
-    // matched; the close button on line 97 uses hover:bg-stone-100 only,
-    // so it does not match.
+    // bg-stone-100 AND text-stone-500 as space-separated *base* tokens.
+    // text-stone-500 on bg-stone-100 is ~4.23:1 — fails WCAG AA.
+    // The correct token is text-stone-600 (6.72:1 on stone-100).
     const re = /className="([^"]*)"/g;
     for (const m of src.matchAll(re)) {
       const tokens = m[1].split(/\s+/);

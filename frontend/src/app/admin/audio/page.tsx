@@ -61,7 +61,7 @@ export default function AudioPage() {
       <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
         <AlertCircleIcon className="w-10 h-10 text-red-300" aria-hidden="true" />
         <p className="font-serif text-lg text-ink">Failed to load audio.</p>
-        <p className="text-sm text-stone-500">{error}</p>
+        <p className="text-sm text-stone-600">{error}</p>
         <button
           type="button"
           onClick={load}
@@ -96,7 +96,7 @@ export default function AudioPage() {
             <div className="text-sm text-ink">
               Book {a.book_id}, Ch. {a.chapter_index + 1}
             </div>
-            <div className="text-xs text-stone-500">
+            <div className="text-xs text-stone-600">
               {a.provider}/{a.voice} · {a.chunks} chunks · {a.size_mb} MB
             </div>
           </div>

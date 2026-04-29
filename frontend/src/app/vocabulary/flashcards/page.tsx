@@ -183,7 +183,7 @@ export default function FlashcardsPage() {
             <h1 className="font-serif text-xl text-ink font-semibold">Flashcards</h1>
           </div>
           {stats && (
-            <span className="ml-auto text-sm text-stone-500">
+            <span className="ml-auto text-sm text-stone-600">
               {stats.reviewed_today} / {total} today
             </span>
           )}
@@ -238,7 +238,7 @@ export default function FlashcardsPage() {
           <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
             <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto" aria-hidden="true" />
             <p className="font-serif text-lg text-ink">Failed to load flashcards.</p>
-            <p className="text-sm text-stone-500">Check your connection and try again.</p>
+            <p className="text-sm text-stone-600">Check your connection and try again.</p>
             <button
               type="button"
               onClick={loadData}
@@ -255,7 +255,7 @@ export default function FlashcardsPage() {
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <CheckIcon className="w-12 h-12 text-green-500" />
             <h2 className="font-serif text-2xl text-ink">All done for today!</h2>
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-stone-600">
               {selectedDeckId
                 ? `No more cards due in "${decks.find((d) => d.id === selectedDeckId)?.name ?? "this deck"}".`
                 : `You reviewed ${stats?.reviewed_today ?? 0} card${(stats?.reviewed_today ?? 0) !== 1 ? "s" : ""}. Come back tomorrow for more.`}
@@ -279,7 +279,7 @@ export default function FlashcardsPage() {
               className="cursor-pointer rounded-2xl border border-amber-200 bg-white p-8 min-h-[200px] flex flex-col items-center justify-center gap-3 hover:-translate-y-0.5 transition-all duration-200 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               style={{ boxShadow: "var(--shadow-card)" }}
             >
-              <span className="text-xs text-stone-500 uppercase tracking-wide">
+              <span className="text-xs text-stone-600 uppercase tracking-wide">
                 {flipped ? "Context" : "Word"}
               </span>
               {!flipped ? (
@@ -293,15 +293,15 @@ export default function FlashcardsPage() {
                       {currentCard.context}
                     </p>
                   ) : (
-                    <p className="text-sm text-stone-500 italic">No context saved</p>
+                    <p className="text-sm text-stone-600 italic">No context saved</p>
                   )}
-                  <p className="text-xs text-stone-500 mt-2">
+                  <p className="text-xs text-stone-600 mt-2">
                     How well did you remember <span className="font-medium text-ink">{currentCard.word}</span>?
                   </p>
                 </div>
               )}
               {!flipped && (
-                <span className="text-xs text-stone-500 mt-2">tap to reveal</span>
+                <span className="text-xs text-stone-600 mt-2">tap to reveal</span>
               )}
             </div>
 
@@ -338,7 +338,7 @@ export default function FlashcardsPage() {
             )}
 
             {/* Card counter — role=status so screen readers announce position after grading */}
-            <p role="status" aria-live="polite" aria-atomic="true" className="text-center text-xs text-stone-500">
+            <p role="status" aria-live="polite" aria-atomic="true" className="text-center text-xs text-stone-600">
               {currentIndex + 1} of {cards.length} remaining
               {currentCard ? `: ${currentCard.word}` : ""}
             </p>

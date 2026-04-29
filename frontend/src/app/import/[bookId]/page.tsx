@@ -277,7 +277,7 @@ export default function BookImportPage() {
                         </div>
                       )}
                     {s.message && s.status === "active" && (
-                      <p className="ml-7 mt-1 text-xs text-stone-500 truncate">
+                      <p className="ml-7 mt-1 text-xs text-stone-600 truncate">
                         {s.message}
                       </p>
                     )}
@@ -335,7 +335,7 @@ export default function BookImportPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-stone-500 mt-4">
+        <p className="text-center text-xs text-stone-600 mt-4">
           Translations are cached — other readers of the same book share the
           result.
         </p>

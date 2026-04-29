@@ -82,7 +82,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-amber-100">
         <span id="vocab-tooltip-title" className="font-semibold text-ink text-sm">{word}</span>
-        <button onClick={onClose} aria-label="Close word definition" className="text-stone-500 hover:text-stone-700 p-0.5 rounded transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"><CloseIcon className="w-3.5 h-3.5" /></button>
+        <button onClick={onClose} aria-label="Close word definition" className="text-stone-600 hover:text-stone-700 p-0.5 rounded transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"><CloseIcon className="w-3.5 h-3.5" /></button>
       </div>
 
       {/* Body */}
@@ -94,12 +94,12 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
           </div>
         )}
         {!loading && (!def || def.definitions.length === 0) && (
-          <p className="text-xs text-stone-500 italic">No definition found.</p>
+          <p className="text-xs text-stone-600 italic">No definition found.</p>
         )}
         {!loading && def && def.definitions.length > 0 && (
           <div className="space-y-2">
             {def.lemma && def.lemma !== word && (
-              <p className="text-[11px] text-stone-500">
+              <p className="text-[11px] text-stone-600">
                 Base form: <span className="font-medium text-stone-600">{def.lemma}</span>
               </p>
             )}

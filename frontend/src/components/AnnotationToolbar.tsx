@@ -125,7 +125,7 @@ export default function AnnotationToolbar({
           <button
             onClick={onClose}
             aria-label="Close note editor"
-            className="rounded-lg p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-stone-700 hover:bg-amber-50 transition-colors"
+            className="rounded-lg p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 hover:bg-amber-50 transition-colors"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -139,7 +139,7 @@ export default function AnnotationToolbar({
 
           {/* Color picker */}
           <div>
-            <p className="text-xs text-stone-500 mb-2" aria-hidden="true">Highlight colour</p>
+            <p className="text-xs text-stone-600 mb-2" aria-hidden="true">Highlight colour</p>
             <div role="radiogroup" aria-label="Highlight colour" className="flex items-center gap-0.5">
               {COLORS.map((c) => (
                 <button
@@ -166,7 +166,7 @@ export default function AnnotationToolbar({
 
           {/* Note textarea */}
           <div>
-            <label htmlFor="annotation-note" className="block text-xs text-stone-500 mb-1.5">Note <span className="text-stone-500">(optional)</span></label>
+            <label htmlFor="annotation-note" className="block text-xs text-stone-600 mb-1.5">Note <span className="text-stone-600">(optional)</span></label>
             <textarea
               ref={textareaRef}
               id="annotation-note"

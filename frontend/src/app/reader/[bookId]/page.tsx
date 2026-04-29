@@ -939,7 +939,7 @@ export default function ReaderPage() {
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               onClick={() => setFocusMode(false)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-600 hover:text-red-600 transition-colors min-h-[44px] md:min-h-0"
               aria-label="Exit focus mode"
               title="Exit focus mode (F)"
             ><CloseIcon className="w-3 h-3" aria-hidden="true" /> Focus</button>
@@ -1258,7 +1258,7 @@ export default function ReaderPage() {
             </button>
             {showShortcuts && (
               <div id="shortcuts-panel" role="region" aria-label="Keyboard shortcuts" className="absolute right-0 top-full mt-2 w-56 bg-white border border-amber-200 rounded-xl shadow-lg z-50 p-3 animate-fade-in">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">Keyboard Shortcuts</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-600 mb-2">Keyboard Shortcuts</p>
                 <div className="space-y-1.5">
                   {[
                     { keys: ["Space"], label: "Play / Pause TTS" },
@@ -1268,7 +1268,7 @@ export default function ReaderPage() {
                     { keys: ["Esc"], label: "Close panels" },
                   ].map(({ keys, label }) => (
                     <div key={label} className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-stone-500">{label}</span>
+                      <span className="text-xs text-stone-600">{label}</span>
                       <div className="flex items-center gap-1 shrink-0">
                         {keys.map((k) => (
                           <kbd key={k} className="inline-flex items-center justify-center min-w-[22px] h-5 px-1 rounded border border-stone-200 bg-stone-50 text-[10px] font-mono text-stone-600">{k}</kbd>
@@ -1404,7 +1404,7 @@ export default function ReaderPage() {
               <div role="alert" className="max-w-prose mx-auto text-center py-16 px-4">
                 <BookOpenIcon className="w-10 h-10 text-amber-300 mx-auto mb-4" aria-hidden="true" />
                 <h2 className="font-serif text-lg text-ink mb-2">Failed to load chapter</h2>
-                <p className="text-sm text-stone-500 mb-6">{error}</p>
+                <p className="text-sm text-stone-600 mb-6">{error}</p>
                 <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={retryChapterLoad}
@@ -1852,9 +1852,9 @@ export default function ReaderPage() {
                         <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
                       </div>
                     ) : filteredNotes.length === 0 ? (
-                      <div className="text-center text-stone-500 mt-10 text-sm">
+                      <div className="text-center text-stone-600 mt-10 text-sm">
                         <NoteIcon className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                        <p className="font-serif text-lg text-stone-500 mt-1">{notesView === "chapter" ? "No annotations in this chapter" : "No annotations yet"}</p>
+                        <p className="font-serif text-lg text-stone-600 mt-1">{notesView === "chapter" ? "No annotations in this chapter" : "No annotations yet"}</p>
                         <p className="mt-1 text-xs">Long-press a sentence to add one.</p>
                       </div>
                     ) : notesView === "chapter" ? (
@@ -1870,7 +1870,7 @@ export default function ReaderPage() {
                           return (
                             <div key={ch}>
                               <button
-                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-500 uppercase tracking-wide min-h-[44px] md:min-h-0"
+                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-600 uppercase tracking-wide min-h-[44px] md:min-h-0"
                                 aria-expanded={!isCollapsed}
                                 onClick={() => setCollapsedNoteChapters((prev) => {
                                   const next = new Set(prev);
@@ -1901,7 +1901,7 @@ export default function ReaderPage() {
                       </a>
                       <a
                         href="/notes"
-                        className="text-xs text-stone-500 hover:text-stone-700 transition-colors"
+                        className="text-xs text-stone-600 hover:text-stone-700 transition-colors"
                       >
                         All books
                       </a>
@@ -1933,7 +1933,7 @@ export default function ReaderPage() {
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-stone-500" aria-live="polite" aria-atomic="true">
+                      <span className="text-xs text-stone-600" aria-live="polite" aria-atomic="true">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
                       <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] md:min-h-0 flex items-center gap-1">
@@ -1941,9 +1941,9 @@ export default function ReaderPage() {
                       </button>
                     </div>
                     {filteredVocab.length === 0 ? (
-                      <div className="text-center text-stone-500 mt-10 text-sm">
+                      <div className="text-center text-stone-600 mt-10 text-sm">
                         <EmptyVocabIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
-                        <p className="font-serif text-lg text-stone-500 mt-1">{vocabView === "chapter" ? "No vocabulary in this chapter" : "No vocabulary saved yet"}</p>
+                        <p className="font-serif text-lg text-stone-600 mt-1">{vocabView === "chapter" ? "No vocabulary in this chapter" : "No vocabulary saved yet"}</p>
                         <p className="mt-1 text-xs">Select text to save words to vocabulary.</p>
                       </div>
                     ) : (
@@ -1984,9 +1984,9 @@ export default function ReaderPage() {
                                   className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 flex items-center"
                                 >
                                   {vocabView === "book" && (
-                                    <span className="text-[10px] text-stone-500 mr-1">Ch.{occ.chapter_index + 1}</span>
+                                    <span className="text-[10px] text-stone-600 mr-1">Ch.{occ.chapter_index + 1}</span>
                                   )}
-                                  <span className="text-xs text-stone-500 italic line-clamp-2">&ldquo;{occ.sentence_text}&rdquo;</span>
+                                  <span className="text-xs text-stone-600 italic line-clamp-2">&ldquo;{occ.sentence_text}&rdquo;</span>
                                 </button>
                               ))}
                             </div>
@@ -2093,9 +2093,9 @@ export default function ReaderPage() {
                         )}
                         {!translationLoading && (
                           translationUsedProvider === "cache" ? (
-                            <span className="text-stone-500">Loaded from cache</span>
+                            <span className="text-stone-600">Loaded from cache</span>
                           ) : translationUsedProvider.startsWith("cache · ") ? (
-                            <span className="text-stone-500">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
+                            <span className="text-stone-600">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
                           ) : translationUsedProvider === "translated" ? (
                             <span className="text-green-700">Translated</span>
                           ) : translationUsedProvider.startsWith("translated · ") ? (
@@ -2136,7 +2136,7 @@ export default function ReaderPage() {
                                 {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
                               </button>
                               {hasGeminiKey === true && !enqueueingBook && (
-                                <p className="mt-1 text-xs text-stone-500 text-center" aria-label="Rough cost estimate for queuing remaining chapters">
+                                <p className="mt-1 text-xs text-stone-600 text-center" aria-label="Rough cost estimate for queuing remaining chapters">
                                   Rough estimate: {queueTotalCostLabel(current?.text, notStarted)}
                                 </p>
                               )}
@@ -2270,7 +2270,7 @@ export default function ReaderPage() {
           {session?.backendToken && notesExpanded && (
             <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
               {annotations.length === 0 ? (
-                <div className="text-center text-stone-500 py-4 text-sm">
+                <div className="text-center text-stone-600 py-4 text-sm">
                   <NoteIcon className="w-6 h-6 mx-auto mb-1 opacity-40" />
                   <p>No annotations yet.</p>
                   <p className="text-xs mt-1">Long-press text to add one.</p>
@@ -2294,7 +2294,7 @@ export default function ReaderPage() {
                     >
                       <div className="text-ink line-clamp-2">{ann.sentence_text}</div>
                       {ann.note_text && (
-                        <div className="text-stone-500 mt-0.5 line-clamp-1 italic">{ann.note_text}</div>
+                        <div className="text-stone-600 mt-0.5 line-clamp-1 italic">{ann.note_text}</div>
                       )}
                     </button>
                     </li>

@@ -13,7 +13,7 @@ export default function ErrorPage({ error, reset }: Props) {
       <div role="alert" className="text-center max-w-sm">
         <AlertCircleIcon className="w-14 h-14 mx-auto mb-4 text-red-400" aria-hidden="true" />
         <h1 className="font-serif text-2xl font-bold text-ink mb-2">Something went wrong</h1>
-        <p className="text-sm text-stone-500 mb-6">
+        <p className="text-sm text-stone-600 mb-6">
           {error.message || "An unexpected error occurred. Try again, or head back to the library."}
         </p>
         <div className="flex items-center justify-center gap-3">

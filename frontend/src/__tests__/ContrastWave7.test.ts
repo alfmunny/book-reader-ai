@@ -10,27 +10,31 @@ const adminBooks    = readApp("admin/books/page.tsx");
 const searchPage    = readApp("search/page.tsx");
 
 describe("Contrast wave 7 (closes #1364)", () => {
-  it("decks/new label hints use text-stone-500 not text-stone-400", () => {
+  it("decks/new label hints use text-stone-600 not text-stone-400", () => {
     expect(decksNew).not.toContain('"text-stone-400 font-normal"');
-    expect(decksNew).toContain('"text-stone-500 font-normal"');
+    expect(decksNew).not.toContain('"text-stone-500 font-normal"');
+    expect(decksNew).toContain('"text-stone-600 font-normal"');
   });
 
-  it("admin/uploads date cell uses text-stone-500 not text-stone-400", () => {
+  it("admin/uploads date cell uses text-stone-600 not text-stone-400", () => {
     expect(adminUploads).not.toContain("text-stone-400 whitespace-nowrap");
-    expect(adminUploads).toContain("text-stone-500 whitespace-nowrap");
+    expect(adminUploads).not.toContain("text-stone-500 whitespace-nowrap");
+    expect(adminUploads).toContain("text-stone-600 whitespace-nowrap");
   });
 
-  it("admin/books expand toggle uses text-stone-500 not text-stone-400 (WCAG 1.4.11)", () => {
+  it("admin/books expand toggle uses text-stone-600 not text-stone-400 (WCAG AA)", () => {
     expect(adminBooks).not.toContain("text-stone-400 hover:text-amber-700");
-    expect(adminBooks).toContain("text-stone-500 hover:text-amber-700");
+    expect(adminBooks).not.toContain("text-stone-500 hover:text-amber-700");
+    expect(adminBooks).toContain("text-stone-600 hover:text-amber-700");
   });
 
-  it("admin/books translation size label uses text-stone-500 not text-stone-400", () => {
+  it("admin/books translation size label uses text-stone-600 not text-stone-400", () => {
     expect(adminBooks).not.toContain('"text-stone-400 flex-1"');
-    expect(adminBooks).toContain('"text-stone-500 flex-1"');
+    expect(adminBooks).not.toContain('"text-stone-500 flex-1"');
+    expect(adminBooks).toContain('"text-stone-600 flex-1"');
   });
 
   it("search page empty-state SearchIcon has aria-hidden (decorative, exempt from 1.4.11)", () => {
-    expect(searchPage).toContain('text-stone-400" aria-hidden="true"');
+    expect(searchPage).toMatch(/text-stone-\d+" aria-hidden="true"/);
   });
 });

@@ -202,7 +202,7 @@ export default function TypographyPanel({
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <span className="text-xs text-stone-500 font-medium">{label}</span>
+      <span className="text-xs text-stone-600 font-medium">{label}</span>
       {children}
     </div>
   );

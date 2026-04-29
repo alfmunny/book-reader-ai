@@ -96,7 +96,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <h2 id="annotations-heading" className="font-serif font-semibold text-ink text-sm">Annotations</h2>
             <button
               onClick={() => setOpen(false)}
-              className="text-stone-500 hover:text-stone-700 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg transition-colors"
+              className="text-stone-600 hover:text-stone-700 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg transition-colors"
               aria-label="Close annotations sidebar"
             >
               <CloseIcon className="w-4 h-4" />
@@ -110,9 +110,9 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                 <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
               </div>
             ) : annotations.length === 0 ? (
-              <div className="text-center text-stone-500 mt-10 text-sm">
+              <div className="text-center text-stone-600 mt-10 text-sm">
                 <EmptyNotesIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
-                <p className="font-serif text-lg text-stone-500 mt-1">No annotations yet</p>
+                <p className="font-serif text-lg text-stone-600 mt-1">No annotations yet</p>
                 <p className="mt-1 text-xs">Click a sentence and choose Note to add one.</p>
               </div>
             ) : (
@@ -125,7 +125,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                 )}
               {chapters.map((ch) => (
                 <div key={ch}>
-                  <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">
+                  <h3 className="text-xs font-semibold text-stone-600 uppercase tracking-wide mb-2">
                     Chapter {ch + 1}
                   </h3>
                   <div className="space-y-2">
@@ -191,7 +191,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <a
               href="/notes"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center text-xs text-stone-500 hover:text-stone-600 transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center text-xs text-stone-600 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0"
             >
               All books
             </a>

@@ -348,7 +348,7 @@ export default function BooksPage() {
           aria-label="Filter books"
         />
         {searchQuery && (
-          <span role="status" aria-live="polite" aria-atomic="true" className="text-xs text-stone-500">
+          <span role="status" aria-live="polite" aria-atomic="true" className="text-xs text-stone-600">
             {books.filter((b) =>
               fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
             ).length}{" "}
@@ -374,7 +374,7 @@ export default function BooksPage() {
                     setExpandedBookId(isExpanded ? null : b.id);
                     setExpandedLang(null);
                   }}
-                  className="text-stone-500 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
+                  className="text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
                   title={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-label={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-expanded={isExpanded}
@@ -395,7 +395,7 @@ export default function BooksPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-stone-500">
+                  <div className="text-xs text-stone-600">
                     ID: {b.id} · {b.languages?.join(", ")}
                     {" · "}
                     {((b.text_length || 0) / 1000).toFixed(0)}K chars
@@ -406,7 +406,7 @@ export default function BooksPage() {
 
                 <div className="flex flex-wrap gap-1 items-center">
                   {allLangs.length === 0 ? (
-                    <span className="text-xs text-stone-500">no translations</span>
+                    <span className="text-xs text-stone-600">no translations</span>
                   ) : (
                     allLangs.map((lang) => {
                       const count = b.translations?.[lang] || 0;
@@ -518,7 +518,7 @@ export default function BooksPage() {
               {isExpanded && (
                 <div className="px-4 pb-4 pt-1 bg-amber-50/40 border-t border-amber-100">
                   {translatedLangs.length === 0 ? (
-                    <p className="text-xs text-stone-500 italic">
+                    <p className="text-xs text-stone-600 italic">
                       No translations cached yet. Use the + Translate button above to queue a language.
                     </p>
                   ) : (
@@ -536,14 +536,14 @@ export default function BooksPage() {
                             <div className="px-3 py-2 flex items-center gap-2">
                               <button
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
-                                className="text-xs text-stone-500 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
+                                className="text-xs text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
                                 aria-label={isLangExpanded ? `Collapse ${lang} translations` : `Expand ${lang} translations`}
                                 aria-expanded={isLangExpanded}
                               >
                                 {isLangExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                               </button>
                               <span className="text-sm font-medium text-ink">{lang}</span>
-                              <span className="text-xs text-stone-500">
+                              <span className="text-xs text-stone-600">
                                 · {count} chapter{count === 1 ? "" : "s"} cached
                               </span>
 
@@ -596,7 +596,7 @@ export default function BooksPage() {
                             {isLangExpanded && (
                               <div className="border-t border-amber-100 divide-y divide-amber-50 max-h-80 overflow-y-auto">
                                 {chapterRows.length === 0 ? (
-                                  <p className="text-xs text-stone-500 px-3 py-2">
+                                  <p className="text-xs text-stone-600 px-3 py-2">
                                     (Chapter-level details load from the translations list — reload if empty.)
                                   </p>
                                 ) : (
@@ -609,8 +609,8 @@ export default function BooksPage() {
                                           key={rowKey}
                                           className="px-3 py-1.5 flex items-center gap-2 text-xs"
                                         >
-                                          <span className="text-stone-500 w-16">Ch. {t.chapter_index + 1}</span>
-                                          <span className="text-stone-500 flex-1">
+                                          <span className="text-stone-600 w-16">Ch. {t.chapter_index + 1}</span>
+                                          <span className="text-stone-600 flex-1">
                                             {(t.size_chars / 1000).toFixed(1)}K chars
                                           </span>
                                           <input

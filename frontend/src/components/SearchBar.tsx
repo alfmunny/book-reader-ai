@@ -96,7 +96,7 @@ export function SearchBar() {
           setQuery("");
           setOpen(false);
         }}
-        className="text-xs text-stone-500 hover:text-ink min-h-[44px] md:min-h-0 flex items-center"
+        className="text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 flex items-center"
       >
         Esc
       </button>

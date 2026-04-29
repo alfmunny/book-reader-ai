@@ -204,7 +204,7 @@ export default function Home() {
               >
                 {session?.backendUser?.picture ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={session.backendUser.picture} alt="" className="w-full h-full object-cover" />
+                  <img src={session.backendUser.picture} alt="" loading="lazy" className="w-full h-full object-cover" />
                 ) : (
                   <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
                     {session?.backendUser?.name?.[0] ?? "?"}
@@ -330,7 +330,7 @@ export default function Home() {
                 >
                   {recentBooks[0].cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={recentBooks[0].cover} alt="" className="w-12 h-16 object-cover rounded-lg shrink-0" />
+                    <img src={recentBooks[0].cover} alt="" loading="lazy" className="w-12 h-16 object-cover rounded-lg shrink-0" />
                   ) : (
                     <div className="w-12 h-16 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-100 flex items-center justify-center shrink-0">
                       <BookCoverPlaceholderIcon className="w-6 h-8 text-amber-500" />
@@ -778,7 +778,7 @@ export default function Home() {
                             </span>
                             {book.cover ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={book.cover} alt="" className="w-9 h-14 object-cover rounded shrink-0" />
+                              <img src={book.cover} alt="" loading="lazy" className="w-9 h-14 object-cover rounded shrink-0" />
                             ) : (
                               <div className="w-9 h-14 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-100 rounded shrink-0 flex items-center justify-center">
                                 <BookCoverPlaceholderIcon className="w-5 h-7 text-amber-500" />

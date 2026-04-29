@@ -38,7 +38,7 @@ export default function PendingApprovalPage() {
         <p className="text-xs text-stone-600 mb-4">Checking automatically every 30 seconds…</p>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="text-sm text-red-600 hover:text-red-800 min-h-[44px] md:min-h-0 flex items-center justify-center mx-auto"
+          className="text-sm text-red-600 hover:text-red-800 min-h-[44px] md:min-h-0 flex items-center justify-center mx-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
         >
           Sign out
         </button>

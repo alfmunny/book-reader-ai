@@ -25,7 +25,7 @@ export default function ErrorPage({ error, reset }: Props) {
           <button
             type="button"
             onClick={() => reset()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
             <RetryIcon className="w-4 h-4" aria-hidden="true" /> Try again
           </button>

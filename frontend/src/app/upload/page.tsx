@@ -77,7 +77,7 @@ export default function UploadPage() {
           </p>
           <button
             onClick={() => router.push("/login")}
-            className="rounded-lg bg-amber-700 px-6 min-h-[44px] md:min-h-0 flex items-center text-white font-medium hover:bg-amber-800 transition-colors"
+            className="rounded-lg bg-amber-700 px-6 min-h-[44px] md:min-h-0 flex items-center text-white font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
             Sign in
           </button>
@@ -105,7 +105,7 @@ export default function UploadPage() {
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
             onClick={() => router.push("/")}
-            className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center"
+            className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
           </button>

@@ -196,13 +196,13 @@ export default function BookImportPage() {
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={startImport}
-                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800 flex items-center justify-center"
+                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                 >
                   Start import
                 </button>
                 <button
                   onClick={() => router.push(nextUrl)}
-                  className="rounded-lg border border-amber-300 text-amber-700 px-4 min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-50 flex items-center"
+                  className="rounded-lg border border-amber-300 text-amber-700 px-4 min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-50 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Skip
                 </button>
@@ -320,14 +320,14 @@ export default function BookImportPage() {
               {canStartReading && (
                 <button
                   onClick={skipToReading}
-                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800 flex items-center justify-center"
+                  className="flex-1 rounded-lg bg-amber-700 text-white min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                 >
                   Start reading now
                 </button>
               )}
               <button
                 onClick={cancel}
-                className="rounded-lg border border-stone-300 text-stone-600 px-4 min-h-[44px] md:min-h-0 text-sm hover:bg-stone-50 flex items-center"
+                className="rounded-lg border border-stone-300 text-stone-600 px-4 min-h-[44px] md:min-h-0 text-sm hover:bg-stone-50 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 Cancel
               </button>

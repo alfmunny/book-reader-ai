@@ -16,8 +16,9 @@ const iconsSrc = fs.readFileSync(
 );
 
 describe("Homepage profile button a11y (#585)", () => {
-  it("profile button has aria-label", () => {
-    expect(pageSrc).toMatch(/aria-label=\{session\?\.backendUser\?\.name/);
+  it("profile button has aria-label referencing user name", () => {
+    // Template literal includes name and action context (closes #2142)
+    expect(pageSrc).toMatch(/aria-label=\{`\$\{session\?\.backendUser\?\.name/);
   });
 
   it("profile button is at least 44px on mobile (w-11)", () => {

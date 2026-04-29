@@ -14,3 +14,4 @@ Step-by-step walkthroughs for the most common workflows. Tutorials are written a
 - **[Read without distractions (Focus mode)](focus-mode.md)** — hide the UI chrome and read with keyboard navigation and paragraph focus.
 - **[Highlight and annotate while reading](annotations.md)** — color-code sentences, attach notes, and review everything on the Notes page.
 - **[Track your reading progress](reading-stats.md)** — reading streak, activity heatmap, and cumulative stats on the home page.
+- **[Ask questions with AI Insights](ai-insights.md)** — chat sidebar that knows your chapter, with context attachment and multi-language support.

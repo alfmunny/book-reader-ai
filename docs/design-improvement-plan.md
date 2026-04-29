@@ -236,7 +236,13 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.38 | ChapterCard search snippet missing lang attribute — backend book_language + span lang wrapper in ChapterCard — WCAG 3.1.2 fix — closes #2269 (PR #2270) | ✅ Done |
 | 2026-04-29 | 11.39 | Reader sidebar Notes tab annotation sentence_text missing lang attribute — added lang={bookLanguage} to annotation <p> tag — WCAG 3.1.2 fix — closes #2271 (PR #2272) | ✅ Done |
 | 2026-04-29 | 11.40 | Flashcard status counter word in template literal missing lang — converted to JSX span with lang attribute — WCAG 3.1.2 fix — closes #2273 (PR #2274) | ✅ Done |
-| 2026-04-29 | 11.41 | AnnotationsSidebar sentence_text and reader notes-expand panel missing lang — added bookLanguage prop to AnnotationsSidebar + lang on both elements — WCAG 3.1.2 fix — closes #2275 (PR #2276) | 🔄 In progress |
+| 2026-04-29 | 11.41 | AnnotationsSidebar sentence_text and reader notes-expand panel missing lang — added bookLanguage prop to AnnotationsSidebar + lang on both elements — WCAG 3.1.2 fix — closes #2275 (PR #2276) | ✅ Done |
+| 2026-04-29 | 11.42 | WordLookup selected word missing lang — added bookLanguage prop to WordLookup + lang on word heading — WCAG 3.1.2 fix — closes #2279 (PR #2280) | ✅ Done |
+| 2026-04-29 | 11.43 | VocabularyToast word text missing lang — added lang={language} to word span in VocabularyToast — WCAG 3.1.2 fix — closes #2281 (PR #2282) | 🔄 In progress |
+| 2026-04-29 | 11.44 | AnnotationToolbar quoted sentence missing lang — added bookLanguage prop to AnnotationToolbar + lang on quoted paragraph — WCAG 3.1.2 fix — closes #2283 (PR #2284) | ✅ Done |
+| 2026-04-29 | 11.45 | Gutenberg search empty state missing CTA — added Clear search button that resets query + searchedQuery + results — closes #2285 (PR #2286) | ✅ Done |
+| 2026-04-29 | 11.46 | InsightChat ContextChip and MsgContextBlock quoted text missing lang — added bookLanguage prop to both sub-components + lang on quoted spans — WCAG 3.1.2 fix — closes #2287 (PR #2288) | 🔄 In progress |
+| 2026-04-29 | 11.47 | Flashcard feedback question word span missing lang — added lang={currentCard.language} to word span in grade prompt — WCAG 3.1.2 fix — closes #2289 | 🔄 In progress |
 
 ---
 

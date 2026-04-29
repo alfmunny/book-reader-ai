@@ -11,3 +11,4 @@ Step-by-step walkthroughs for the most common workflows. Tutorials are written a
 - **[Add your own EPUB](epub-upload.md)** — upload a .epub or .txt file, review chapter splits, and start reading.
 - **[Review vocabulary with flashcards](flashcards.md)** — save words while reading, then review them with spaced repetition.
 - **[Read without distractions (Focus mode)](focus-mode.md)** — hide the UI chrome and read with keyboard navigation and paragraph focus.
+- **[Highlight and annotate while reading](annotations.md)** — color-code sentences, attach notes, and review everything on the Notes page.

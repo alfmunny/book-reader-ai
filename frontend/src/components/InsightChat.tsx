@@ -57,9 +57,11 @@ interface Props {
 // ── Context chip (expandable quote) ─────────────────────────────────────────
 function ContextChip({
   text,
+  bookLanguage,
   onRemove,
 }: {
   text: string;
+  bookLanguage?: string;
   onRemove?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -70,7 +72,7 @@ function ContextChip({
       <div className="flex items-start gap-1.5">
         <PaperclipIcon className="w-3.5 h-3.5 shrink-0 mt-px text-amber-400" />
         <div className="flex-1 min-w-0">
-          <span className="italic leading-relaxed">
+          <span lang={bookLanguage ?? undefined} className="italic leading-relaxed">
             &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
           </span>
           {needsToggle && (
@@ -479,6 +481,7 @@ export default function InsightChat({
                   <div className="max-w-[88%] w-full">
                     <MsgContextBlock
                       text={msg.context}
+                      bookLanguage={bookLanguage}
                       expanded={expandedMsgCtx.has(absIdx)}
                       onToggle={() =>
                         setExpandedMsgCtx((prev) => {
@@ -576,7 +579,7 @@ export default function InsightChat({
         {/* Context chip */}
         {contextText && (
           <div className="mb-2">
-            <ContextChip text={contextText} onRemove={() => setContextText("")} />
+            <ContextChip text={contextText} bookLanguage={bookLanguage} onRemove={() => setContextText("")} />
           </div>
         )}
 
@@ -622,10 +625,12 @@ export default function InsightChat({
 // ── Message-level context block ───────────────────────────────────────────────
 function MsgContextBlock({
   text,
+  bookLanguage,
   expanded,
   onToggle,
 }: {
   text: string;
+  bookLanguage?: string;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -634,7 +639,7 @@ function MsgContextBlock({
   return (
     <div className="flex items-start gap-1.5 rounded-lg bg-amber-50/80 border border-amber-100 px-2.5 py-1.5">
       <PaperclipIcon aria-hidden="true" className="w-3 h-3 text-amber-400 shrink-0 mt-px" />
-      <p className="text-xs text-amber-700 italic leading-relaxed flex-1">
+      <p lang={bookLanguage ?? undefined} className="text-xs text-amber-700 italic leading-relaxed flex-1">
         &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
         {needsToggle && (
           <button

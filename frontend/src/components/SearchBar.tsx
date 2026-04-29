@@ -75,7 +75,7 @@ export function SearchBar() {
         e.preventDefault();
         submit();
       }}
-      className="inline-flex items-center gap-2 min-h-[44px] md:min-h-0 px-2 border border-amber-200 rounded-md bg-parchment animate-fade-in focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400"
+      className="flex flex-1 items-center gap-2 min-h-[44px] md:min-h-0 px-2 border border-amber-200 rounded-md bg-parchment animate-fade-in focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400"
     >
       <SearchIcon className="w-4 h-4 text-ink" />
       <input
@@ -87,7 +87,7 @@ export function SearchBar() {
         placeholder="Search notes, vocabulary, chapters…"
         aria-label="Search your content"
         maxLength={200}
-        className="bg-transparent outline-none min-w-[14rem] py-1 text-sm text-ink placeholder:text-stone-600"
+        className="bg-transparent outline-none flex-1 min-w-0 py-1 text-sm text-ink placeholder:text-stone-600"
       />
       <button
         type="button"

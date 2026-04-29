@@ -327,7 +327,7 @@ export default function ProfilePage() {
                 onChange={(e) => setKeyInput(e.target.value)}
                 aria-invalid={keyMessage ? !keyMessage.ok : undefined}
                 aria-describedby="gemini-key-message"
-                className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
+                className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 placeholder:text-stone-600 ${keyMessage?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
               />
               <button
                 onClick={handleSaveKey}

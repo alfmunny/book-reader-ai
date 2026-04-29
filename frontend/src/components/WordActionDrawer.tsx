@@ -148,7 +148,7 @@ export default function WordActionDrawer({
         <div className="px-5 pb-5 space-y-3">
           {/* Word + phonetic */}
           <div className="flex items-baseline gap-2">
-            <span className="font-serif font-bold text-ink text-xl">{action.word}</span>
+            <span className="font-serif font-bold text-ink text-xl" lang={language ?? undefined}>{action.word}</span>
             {result?.phonetic && (
               <span className="text-sm text-amber-700">{result.phonetic}</span>
             )}

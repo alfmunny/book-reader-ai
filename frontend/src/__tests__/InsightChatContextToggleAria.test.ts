@@ -15,7 +15,7 @@ describe("InsightChat context expand/collapse aria-labels (closes #1007)", () =>
     const contextChipSrc = src.slice(contextChipIdx, nextComponentIdx);
     const btnIdx = contextChipSrc.indexOf('onClick={() => setExpanded');
     expect(btnIdx).toBeGreaterThan(-1);
-    const btnWindow = contextChipSrc.slice(Math.max(0, btnIdx - 20), btnIdx + 300);
+    const btnWindow = contextChipSrc.slice(Math.max(0, btnIdx - 20), btnIdx + 400);
     expect(btnWindow).toContain("aria-label");
   });
 

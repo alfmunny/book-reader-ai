@@ -139,6 +139,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                         role="button"
                         tabIndex={0}
                         aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
+                        title={ann.note_text ? `${ann.sentence_text} — ${ann.note_text}` : ann.sentence_text}
                         className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${COLOR_BADGE[ann.color] ?? COLOR_BADGE.yellow}`}
                         onClick={() => { onJump(ann); setOpen(false); }}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump(ann); setOpen(false); } }}

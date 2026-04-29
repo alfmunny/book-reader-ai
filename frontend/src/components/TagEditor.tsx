@@ -126,7 +126,7 @@ export default function TagEditor({
             onClick={() => handleRemove(tag)}
             disabled={busy === tag}
             aria-label={`Remove tag ${tag}`}
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full hover:bg-amber-100 disabled:opacity-50 transition-colors"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full hover:bg-amber-100 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-3 h-3" />
           </button>
@@ -154,7 +154,7 @@ export default function TagEditor({
           type="button"
           onClick={() => setAdding(true)}
           aria-label="Add tag"
-          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-amber-300 px-2 py-0.5 min-h-[44px] md:min-h-0 text-xs text-amber-700 hover:bg-amber-50 transition-colors"
+          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-amber-300 px-2 py-0.5 min-h-[44px] md:min-h-0 text-xs text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           data-testid={`add-tag-${vocabularyId}`}
         >
           <span aria-hidden="true">+</span>

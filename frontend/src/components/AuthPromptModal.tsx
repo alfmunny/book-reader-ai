@@ -46,7 +46,7 @@ export default function AuthPromptModal({ open, feature, onClose }: Props) {
         </a>
         <button
           onClick={onClose}
-          className="flex items-center justify-center w-full min-h-[44px] md:min-h-0 text-sm text-stone-600 mt-2 hover:text-stone-700 transition-colors"
+          className="flex items-center justify-center w-full min-h-[44px] md:min-h-0 text-sm text-stone-600 mt-2 hover:text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           Maybe later
         </button>

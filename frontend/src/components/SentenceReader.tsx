@@ -800,7 +800,7 @@ export default function SentenceReader({
               {noteAnnotation?.note_text && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}
-                  className="inline-flex items-center justify-center ml-0.5 align-middle cursor-pointer min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 -m-[19px] p-[19px]"
+                  className="inline-flex items-center justify-center ml-0.5 align-middle cursor-pointer min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 -m-[19px] p-[19px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   aria-label={`Toggle note for: ${seg.text.slice(0, 60)}`}
                   aria-expanded={expandedNoteFlatIdx === seg.flatIdx}
                 >

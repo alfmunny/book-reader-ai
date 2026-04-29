@@ -17,7 +17,7 @@ describe("AuthPromptModal touch targets (closes #835)", () => {
   it("Maybe later button has min-h-[44px]", () => {
     const idx = src.indexOf("Maybe later");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 200), idx + 20);
+    const window = src.slice(Math.max(0, idx - 300), idx + 20);
     expect(window).toContain("min-h-[44px]");
   });
 });

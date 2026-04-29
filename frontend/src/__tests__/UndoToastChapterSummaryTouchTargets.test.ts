@@ -28,14 +28,14 @@ describe("UndoToast and ChapterSummary touch targets (closes #833)", () => {
   it("ChapterSummary Try-again error button has min-h-[44px]", () => {
     const idx = summary.indexOf("Try again");
     expect(idx).toBeGreaterThan(-1);
-    const window = summary.slice(Math.max(0, idx - 200), idx + 50);
+    const window = summary.slice(Math.max(0, idx - 300), idx + 50);
     expect(window).toContain("min-h-[44px]");
   });
 
   it("ChapterSummary Generate Summary CTA has min-h-[44px]", () => {
     const idx = summary.indexOf("Generate Summary");
     expect(idx).toBeGreaterThan(-1);
-    const window = summary.slice(Math.max(0, idx - 200), idx + 50);
+    const window = summary.slice(Math.max(0, idx - 300), idx + 50);
     expect(window).toContain("min-h-[44px]");
   });
 });

@@ -75,7 +75,7 @@ export function SearchBar() {
         e.preventDefault();
         submit();
       }}
-      className="inline-flex items-center gap-2 min-h-[44px] md:min-h-0 px-2 border border-amber-200 rounded-md bg-parchment animate-fade-in"
+      className="inline-flex items-center gap-2 min-h-[44px] md:min-h-0 px-2 border border-amber-200 rounded-md bg-parchment animate-fade-in focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400"
     >
       <SearchIcon className="w-4 h-4 text-ink" />
       <input

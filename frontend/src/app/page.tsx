@@ -191,7 +191,7 @@ export default function Home() {
             {status === "unauthenticated" ? (
               <button
                 onClick={() => router.push("/login")}
-                className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px]"
+                className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0"
               >
                 Sign in
               </button>
@@ -200,7 +200,7 @@ export default function Home() {
                 onClick={() => router.push("/profile")}
                 title={session?.backendUser?.name ?? "Profile & Settings"}
                 aria-label={session?.backendUser?.name ?? "Profile & Settings"}
-                className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
+                className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors"
               >
                 {session?.backendUser?.picture ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -621,7 +621,7 @@ export default function Home() {
                 {FEATURED.map((f) => (
                   <button
                     key={f.query}
-                    className="text-xs rounded-full border border-amber-300 px-3 py-1 min-h-[44px] text-amber-800 hover:bg-amber-100 transition-colors"
+                    className="text-xs rounded-full border border-amber-300 px-3 py-1 min-h-[44px] md:min-h-0 text-amber-800 hover:bg-amber-100 transition-colors"
                     onClick={() => { setQuery(f.query); setLang(f.lang); handleSearch(f.query, f.lang); }}
                     disabled={searching}
                   >
@@ -691,7 +691,7 @@ export default function Home() {
                         key={l.code}
                         onClick={() => handlePopularLangChange(l.code)}
                         aria-pressed={popularLang === l.code}
-                        className={`text-xs rounded-full px-3 py-1 min-h-[44px] border transition-colors ${
+                        className={`text-xs rounded-full px-3 py-1 min-h-[44px] md:min-h-0 border transition-colors ${
                           popularLang === l.code
                             ? "bg-amber-700 text-white border-amber-700"
                             : "border-amber-300 text-amber-700 hover:bg-amber-50"

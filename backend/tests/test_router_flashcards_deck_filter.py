@@ -121,3 +121,15 @@ async def test_stats_with_empty_deck_returns_zeros(client, test_user):
     assert body["total"] == 0
     assert body["due_today"] == 0
     assert body["reviewed_today"] == 0
+
+
+async def test_due_flashcard_includes_language_field(client, test_user):
+    """Flashcard due endpoint must return language field for WCAG 3.1.2 lang attribute (#2258)."""
+    await _book()
+    await _save("apfel", test_user["id"])
+
+    resp = await client.get("/api/vocabulary/flashcards/due")
+    assert resp.status_code == 200
+    cards = resp.json()
+    assert len(cards) > 0
+    assert "language" in cards[0]

@@ -283,13 +283,13 @@ export default function FlashcardsPage() {
                 {flipped ? "Context" : "Word"}
               </span>
               {!flipped ? (
-                <span className="font-serif text-3xl text-ink font-bold text-center">
+                <span className="font-serif text-3xl text-ink font-bold text-center" lang={currentCard.language ?? undefined}>
                   {currentCard.word}
                 </span>
               ) : (
                 <div className="text-center space-y-2" aria-live="polite">
                   {currentCard.context ? (
-                    <p className="font-serif text-base text-ink leading-relaxed">
+                    <p lang={currentCard.language ?? undefined} className="font-serif text-base text-ink leading-relaxed">
                       {currentCard.context}
                     </p>
                   ) : (

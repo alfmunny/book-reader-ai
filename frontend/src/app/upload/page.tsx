@@ -147,6 +147,7 @@ export default function UploadPage() {
         <div
           role="button"
           aria-label="Upload a book file"
+          aria-disabled={quotaFull || uploading}
           tabIndex={0}
           onClick={() => !uploading && !quotaFull && fileInputRef.current?.click()}
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && !uploading && !quotaFull && fileInputRef.current?.click()}

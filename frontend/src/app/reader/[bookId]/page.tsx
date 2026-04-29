@@ -1667,7 +1667,7 @@ export default function ReaderPage() {
                     rel="noopener noreferrer"
                     className="text-amber-700 underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                   >
-                    {obsidianToast}
+                    {obsidianToast}<span className="sr-only"> (opens in new tab)</span>
                   </a>
                 </>
               ) : (

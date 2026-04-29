@@ -171,7 +171,7 @@ describe("VocabularyPage — export message link branch", () => {
     await userEvent.click(screen.getByTestId("export-all-btn"));
 
     await waitFor(() => {
-      const link = screen.getByRole("link", { name: "https://example.com/note.md" });
+      const link = screen.getByRole("link", { name: /https:\/\/example\.com\/note\.md/ });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "https://example.com/note.md");
     });

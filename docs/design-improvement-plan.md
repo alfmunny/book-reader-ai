@@ -210,6 +210,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.12 | Add hover title tooltip to truncated book title/author in BookCard, Continue Reading banner, Popular Classics list — closes #2212 (PR #2213) | ✅ Done |
 | 2026-04-29 | 11.13 | Add loading="lazy" to 7 remote img elements (book covers, user avatars) across 5 files — closes #2214 (PR #2215) | ✅ Done |
 | 2026-04-29 | 11.14 | AnnotationToolbar missing useScrollLock — body scroll locked while note editor open — closes #2216 (PR #2217) | ✅ Done |
+| 2026-04-29 | 11.15 | focus-visible ring to not-found and error page CTA links — closes #2218 (PR #2219) | ✅ Done |
+| 2026-04-29 | 11.16 | focus-visible ring to &lt;summary&gt; disclosures in QueueTab and SeedPopularButton — closes #2220 | 🔄 In progress |
 
 ---
 

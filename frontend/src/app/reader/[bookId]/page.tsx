@@ -894,7 +894,7 @@ export default function ReaderPage() {
               aria-label="Previous chapter"
               onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
               disabled={chapterIndex === 0}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px] md:min-h-0"
             ><ArrowLeftIcon className="w-3 h-3" aria-hidden="true" /> Prev</button>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <span
@@ -908,14 +908,14 @@ export default function ReaderPage() {
               aria-label="Next chapter"
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
               disabled={chapterIndex === chapters.length - 1}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px]"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px] md:min-h-0"
             >Next <ArrowRightIcon className="w-3 h-3" aria-hidden="true" /></button>
             {paragraphFocus && (
               <>
                 <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
                 <button
                   onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px]"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0"
                   aria-label={ttsIsPlaying ? "Playing paragraph" : "Read focused paragraph"}
                   title={ttsIsPlaying ? "Playing…" : "Read focused paragraph"}
                 >
@@ -933,13 +933,13 @@ export default function ReaderPage() {
               aria-label="Typography settings"
               aria-expanded={showTypographyPanel}
               aria-controls="typography-panel"
-              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px]"
+              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px] md:min-h-0"
               title="Typography"
             >Aa</button>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               onClick={() => setFocusMode(false)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px]"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-500 hover:text-red-600 transition-colors min-h-[44px] md:min-h-0"
               aria-label="Exit focus mode"
               title="Exit focus mode (F)"
             ><CloseIcon className="w-3 h-3" aria-hidden="true" /> Focus</button>
@@ -1301,7 +1301,7 @@ export default function ReaderPage() {
           ) : (
             <a
               href="/api/auth/signin"
-              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] flex items-center"
+              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 flex items-center"
             >
               Sign in
             </a>
@@ -1408,13 +1408,13 @@ export default function ReaderPage() {
                 <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={retryChapterLoad}
-                    className="px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors"
+                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors"
                   >
                     Retry
                   </button>
                   <button
                     onClick={() => router.push("/")}
-                    className="px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
                   >
                     Back to library
                   </button>
@@ -1477,7 +1477,7 @@ export default function ReaderPage() {
                     data-testid="bottom-prev-chapter"
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}
-                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px]"
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0"
                   ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous chapter</button>
                   <span className="text-xs text-amber-700 self-center">
                     {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
@@ -1486,7 +1486,7 @@ export default function ReaderPage() {
                     data-testid="bottom-next-chapter"
                     onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                     disabled={chapterIndex === chapters.length - 1}
-                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px]"
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0"
                   >Next chapter <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
               </>
@@ -1815,7 +1815,7 @@ export default function ReaderPage() {
                             chapterIndex: ann.chapter_index,
                           });
                         }}
-                        className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60 hover:opacity-100"
+                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center opacity-60 hover:opacity-100"
                         aria-label={`Edit annotation for: ${ann.sentence_text.slice(0, 60)}`}
                       >
                         <EditIcon className="w-3.5 h-3.5" />
@@ -1838,7 +1838,7 @@ export default function ReaderPage() {
                           key={v}
                           onClick={() => setNotesView(v)}
                           aria-pressed={notesView === v}
-                          className={`flex-1 text-xs py-1 min-h-[44px] rounded-md font-medium transition-colors ${
+                          className={`flex-1 text-xs py-1 min-h-[44px] md:min-h-0 rounded-md font-medium transition-colors ${
                             notesView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-600 hover:text-stone-800"
                           }`}
                         >
@@ -1870,7 +1870,7 @@ export default function ReaderPage() {
                           return (
                             <div key={ch}>
                               <button
-                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-500 uppercase tracking-wide min-h-[44px]"
+                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-500 uppercase tracking-wide min-h-[44px] md:min-h-0"
                                 aria-expanded={!isCollapsed}
                                 onClick={() => setCollapsedNoteChapters((prev) => {
                                   const next = new Set(prev);
@@ -1924,7 +1924,7 @@ export default function ReaderPage() {
                           key={v}
                           onClick={() => setVocabView(v)}
                           aria-pressed={vocabView === v}
-                          className={`flex-1 text-xs py-1 min-h-[44px] rounded-md font-medium transition-colors ${
+                          className={`flex-1 text-xs py-1 min-h-[44px] md:min-h-0 rounded-md font-medium transition-colors ${
                             vocabView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-600 hover:text-stone-800"
                           }`}
                         >
@@ -1936,7 +1936,7 @@ export default function ReaderPage() {
                       <span className="text-xs text-stone-500" aria-live="polite" aria-atomic="true">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
-                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] flex items-center gap-1">
+                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] md:min-h-0 flex items-center gap-1">
                         View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </button>
                     </div>
@@ -1960,7 +1960,7 @@ export default function ReaderPage() {
                               {/* Lemma header */}
                               <button
                                 onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] hover:bg-amber-100 transition-colors text-left"
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] md:min-h-0 hover:bg-amber-100 transition-colors text-left"
                               >
                                 <span className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (
@@ -1981,7 +1981,7 @@ export default function ReaderPage() {
                                     }
                                     setSidebarOpen(false);
                                   }}
-                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] flex items-center"
+                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 flex items-center"
                                 >
                                   {vocabView === "book" && (
                                     <span className="text-[10px] text-stone-500 mr-1">Ch.{occ.chapter_index + 1}</span>
@@ -2042,14 +2042,14 @@ export default function ReaderPage() {
                         <button
                           onClick={() => setDisplayMode("inline")}
                           aria-pressed={displayMode === "inline"}
-                          className={`flex-1 px-3 py-2 min-h-[44px] text-sm transition-colors ${
+                          className={`flex-1 px-3 py-2 min-h-[44px] md:min-h-0 text-sm transition-colors ${
                             displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                           }`}
                         >Inline</button>
                         <button
                           onClick={() => setDisplayMode("parallel")}
                           aria-pressed={displayMode === "parallel"}
-                          className={`flex-1 px-3 py-2 min-h-[44px] text-sm border-l border-amber-300 transition-colors ${
+                          className={`flex-1 px-3 py-2 min-h-[44px] md:min-h-0 text-sm border-l border-amber-300 transition-colors ${
                             displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                           }`}
                         >Side by side</button>
@@ -2063,7 +2063,7 @@ export default function ReaderPage() {
                           <>
                             <button
                               onClick={handleTranslateThisChapter}
-                              className="w-full px-3 py-2 min-h-[44px] rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors"
+                              className="w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors"
                             >
                               Translate this chapter
                             </button>
@@ -2131,7 +2131,7 @@ export default function ReaderPage() {
                               <button
                                 onClick={handleTranslateWholeBook}
                                 disabled={enqueueingBook}
-                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px]"
+                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0"
                               >
                                 {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
                               </button>
@@ -2150,7 +2150,7 @@ export default function ReaderPage() {
                     {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                       <button
                         onClick={handleRetranslate}
-                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50"
+                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50"
                       >
                         Retranslate chapter
                       </button>
@@ -2160,7 +2160,7 @@ export default function ReaderPage() {
                     {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
                       <button
                         onClick={handleRetryFailed}
-                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
                       >
                         Retry failed translation
                       </button>
@@ -2202,7 +2202,7 @@ export default function ReaderPage() {
               <span className="font-serif font-semibold text-ink text-sm">Chat</span>
               <button
                 onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-700"
+                className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-center text-amber-700"
                 aria-label="Close chat"
               ><CloseIcon className="w-4 h-4" aria-hidden="true" /></button>
             </div>
@@ -2239,7 +2239,7 @@ export default function ReaderPage() {
             <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 flex items-center gap-2 animate-slide-up">
               <select
                 aria-label="Translation language"
-                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px]"
+                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px] md:min-h-0"
                 value={translationLang}
                 onChange={(e) => setTranslationLang(e.target.value)}
               >
@@ -2251,14 +2251,14 @@ export default function ReaderPage() {
                 <button
                   onClick={() => setDisplayMode("inline")}
                   aria-pressed={displayMode === "inline"}
-                  className={`px-3 py-2 min-h-[44px] transition-colors ${
+                  className={`px-3 py-2 min-h-[44px] md:min-h-0 transition-colors ${
                     displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >Inline</button>
                 <button
                   onClick={() => setDisplayMode("parallel")}
                   aria-pressed={displayMode === "parallel"}
-                  className={`px-3 py-2 min-h-[44px] border-l border-amber-300 transition-colors ${
+                  className={`px-3 py-2 min-h-[44px] md:min-h-0 border-l border-amber-300 transition-colors ${
                     displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >Side by side</button>
@@ -2290,7 +2290,7 @@ export default function ReaderPage() {
                         }
                         setNotesExpanded(false);
                       }}
-                      className="w-full text-left px-3 py-2 min-h-[44px] flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs"
+                      className="w-full text-left px-3 py-2 min-h-[44px] md:min-h-0 flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs"
                     >
                       <div className="text-ink line-clamp-2">{ann.sentence_text}</div>
                       {ann.note_text && (

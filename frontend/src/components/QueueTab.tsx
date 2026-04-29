@@ -1033,7 +1033,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       <div className="text-[11px] text-stone-600 mt-1 leading-snug">
                         {p.description}
                       </div>
-                      <div className="text-xs font-mono text-stone-600 mt-1 truncate">
+                      <div className="text-xs font-mono text-stone-600 mt-1 truncate" title={p.chain.join(" → ")}>
                         {p.chain.join(" → ")}
                       </div>
                     </button>
@@ -1292,7 +1292,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           : "border-amber-100"
                       }`}
                     >
-                      <div className="text-[11px] text-stone-600 font-mono truncate">
+                      <div className="text-[11px] text-stone-600 font-mono truncate" title={row.model}>
                         {row.model}
                       </div>
                       <div className="text-sm font-semibold text-ink">

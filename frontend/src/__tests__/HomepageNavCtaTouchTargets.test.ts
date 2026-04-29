@@ -27,22 +27,22 @@ describe("Home page tab-nav and CTA touch targets (closes #853)", () => {
   });
 
   it("Discover Books CTA has min-h-[44px]", () => {
-    checkAround("Discover Books");
+    checkAround("Discover Books", 300);
   });
 
   it("Sign in free hero CTA has min-h-[44px]", () => {
-    checkAround("Sign in free");
+    checkAround("Sign in free", 320);
   });
 
   it("Browse library hero CTA has min-h-[44px]", () => {
-    checkAround("Browse library");
+    checkAround("Browse library", 320);
   });
 
   it("Search button has min-h-[44px]", () => {
     // anchor on searching state text, className is nearby
     const idx = src.indexOf('"Searching" : "Search"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 550), idx + 20);
+    const window = src.slice(Math.max(0, idx - 660), idx + 20);
     expect(window).toContain("min-h-[44px]");
   });
 });

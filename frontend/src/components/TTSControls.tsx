@@ -535,7 +535,7 @@ export default function TTSControls({
               aria-hidden="true"
             />
           </div>
-          <p className="text-xs text-stone-600 mt-1 italic truncate">
+          <p className="text-xs text-stone-600 mt-1 italic truncate" title={loadingState.preview}>
             &ldquo;{loadingState.preview}…&rdquo;
           </p>
         </div>

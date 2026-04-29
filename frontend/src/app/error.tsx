@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import Link from "next/link";
 import { AlertCircleIcon, ArrowLeftIcon, RetryIcon } from "@/components/Icons";
 
@@ -8,6 +9,10 @@ interface Props {
 }
 
 export default function ErrorPage({ error, reset }: Props) {
+  useEffect(() => {
+    document.title = "Error — Book Reader AI";
+    return () => { document.title = "My Library — Book Reader AI"; };
+  }, []);
   return (
     <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
       <div role="alert" className="text-center max-w-sm">

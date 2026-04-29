@@ -2,7 +2,7 @@
  * Tests for app/pending/page.tsx
  */
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 jest.mock("next-auth/react", () => ({
   signOut: jest.fn(),
@@ -13,8 +13,9 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+const mockGetMe = jest.fn().mockResolvedValue({ approved: false });
 jest.mock("@/lib/api", () => ({
-  getMe: jest.fn().mockResolvedValue({ approved: false }),
+  get getMe() { return mockGetMe; },
 }));
 
 import { signOut } from "next-auth/react";
@@ -25,6 +26,7 @@ const mockSignOut = signOut as jest.MockedFunction<typeof signOut>;
 beforeEach(() => {
   jest.clearAllMocks();
   mockPush.mockReset();
+  mockGetMe.mockResolvedValue({ approved: false });
 });
 
 test("renders heading and description text", () => {
@@ -42,4 +44,12 @@ test("sign out button calls signOut with callbackUrl='/login'", () => {
   render(<PendingApprovalPage />);
   fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
   expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: "/login" });
+});
+
+test("redirects to '/' when getMe returns approved=true", async () => {
+  mockGetMe.mockResolvedValue({ approved: true });
+  await act(async () => {
+    render(<PendingApprovalPage />);
+  });
+  expect(mockPush).toHaveBeenCalledWith("/");
 });

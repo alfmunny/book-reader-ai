@@ -113,7 +113,7 @@ export default function NotesOverviewPage() {
         <div className="max-w-3xl mx-auto flex items-center gap-4">
           <button
             onClick={() => router.push("/")}
-            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center"
+            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
           </button>
@@ -166,7 +166,7 @@ export default function NotesOverviewPage() {
             <button
               type="button"
               onClick={loadNotes}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Try again
@@ -182,7 +182,7 @@ export default function NotesOverviewPage() {
                 <button
                   type="button"
                   onClick={() => router.push("/")}
-                  className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+                  className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                 >
                   Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -194,7 +194,7 @@ export default function NotesOverviewPage() {
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Clear search
                 </button>
@@ -207,7 +207,7 @@ export default function NotesOverviewPage() {
               <li key={book.bookId}>
               <button
                 onClick={() => router.push(`/notes/${book.bookId}`)}
-                className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 hover:shadow-sm transition-all group"
+                className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 hover:shadow-sm transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">

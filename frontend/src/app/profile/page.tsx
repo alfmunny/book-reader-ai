@@ -256,7 +256,7 @@ export default function ProfilePage() {
         ) : dueDecks.length > 0 ? (
           <section className="bg-white rounded-2xl border border-amber-100 p-6">
             <h2 className="font-serif text-lg font-semibold text-ink mb-4">Study decks</h2>
-            <ul className="space-y-2">
+            <ul role="list" aria-label="Study decks" className="space-y-2 list-none p-0 m-0">
               {dueDecks.map((d) => (
                 <li key={d.id}>
                   <button

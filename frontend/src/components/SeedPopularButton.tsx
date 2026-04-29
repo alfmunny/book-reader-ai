@@ -257,7 +257,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
               <summary className="text-xs text-amber-700 cursor-pointer">
                 Recent events ({state.log.length})
               </summary>
-              <ul className="mt-1 text-xs space-y-0.5 max-h-40 overflow-y-auto">
+              <ul role="list" className="mt-1 text-xs space-y-0.5 max-h-40 overflow-y-auto list-none p-0 m-0">
                 {state.log.slice().reverse().map((entry, i) => (
                   <li
                     key={i}

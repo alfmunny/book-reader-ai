@@ -1781,6 +1781,7 @@ export default function ReaderPage() {
                     role="button"
                     tabIndex={0}
                     aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
+                    title={ann.note_text ? `${ann.sentence_text} — ${ann.note_text}` : ann.sentence_text}
                     className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${colorBadge[ann.color] ?? colorBadge.yellow}`}
                     onClick={() => {
                       if (ann.chapter_index !== chapterIndex) {
@@ -2293,6 +2294,7 @@ export default function ReaderPage() {
                         }
                         setNotesExpanded(false);
                       }}
+                      title={ann.note_text ? `${ann.sentence_text} — ${ann.note_text}` : ann.sentence_text}
                       className="w-full text-left px-3 py-2 min-h-[44px] md:min-h-0 flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                     >
                       <div lang={bookLanguage} className="text-ink line-clamp-2">{ann.sentence_text}</div>

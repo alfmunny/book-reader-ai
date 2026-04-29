@@ -1651,6 +1651,7 @@ export default function ReaderPage() {
             <VocabularyToast
               word={vocabToastWord}
               onDone={() => setVocabToastWord(null)}
+              language={bookLanguage}
             />
           )}
 

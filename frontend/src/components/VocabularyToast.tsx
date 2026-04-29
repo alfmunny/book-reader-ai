@@ -5,9 +5,10 @@ import { CheckCircleIcon } from "@/components/Icons";
 interface Props {
   word: string;
   onDone: () => void;
+  language?: string;
 }
 
-export default function VocabularyToast({ word, onDone }: Props) {
+export default function VocabularyToast({ word, onDone, language }: Props) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export default function VocabularyToast({ word, onDone }: Props) {
       }`}
     >
       <CheckCircleIcon className="w-4 h-4 text-emerald-600 shrink-0" />
-      <span><strong>{word}</strong> saved to vocabulary</span>
+      <span><strong lang={language ?? undefined}>{word}</strong> saved to vocabulary</span>
     </div>
   );
 }

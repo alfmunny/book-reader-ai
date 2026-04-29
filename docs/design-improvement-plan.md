@@ -383,6 +383,34 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 |------|--------|---------|----|
 | 2026-04-29 | Added `useFocusTrap` hook; applied to all 9 modal dialogs so Tab/Shift+Tab cycles within the dialog instead of escaping to background content | useFocusTrap.ts, AuthPromptModal.tsx, WordActionDrawer.tsx, BookDetailModal.tsx, VocabWordTooltip.tsx, AnnotationToolbar.tsx, AnnotationsSidebar.tsx, vocabulary/page.tsx, decks/[deckId]/page.tsx, reader/[bookId]/page.tsx | #2084 |
 
+## Wave 15 — WCAG 3.1.2 Language of Parts (2026-04-29)
+
+### Foreign-text elements must carry `lang` attribute (WCAG 3.1.2)
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-29 | Added `lang={bookLanguage}` to InsightCard blockquote context | InsightCard.tsx | #2268 |
+| 2026-04-29 | Added `lang` to ChapterCard search snippet | ChapterCard.tsx | #2270 |
+| 2026-04-29 | Added `lang` to Reader sidebar annotation sentence | reader/[bookId]/page.tsx | #2272 |
+| 2026-04-29 | Added `lang` to FlashcardsPage SRS counter word | flashcards/page.tsx | #2274 |
+| 2026-04-29 | Added `lang` to AnnotationsSidebar sentence_text and notes expand | AnnotationsSidebar.tsx | #2276 |
+| 2026-04-29 | Added `lang` to WordLookup word heading | WordLookup.tsx | #2280 |
+| 2026-04-29 | Added `lang` to VocabularyToast word span | VocabularyToast.tsx | #2282 |
+| 2026-04-29 | Added `lang` to AnnotationToolbar quoted sentence | AnnotationToolbar.tsx | #2284 |
+| 2026-04-29 | Added `lang` to InsightChat ContextChip and MsgContextBlock | InsightChat.tsx | #2288 |
+| 2026-04-29 | Added `lang` to FlashcardsPage feedback word span | flashcards/page.tsx | #2292 |
+| 2026-04-29 | Added `lang` to Notes VocabRow word anchor | notes/[bookId]/page.tsx | #2294 |
+
+## Wave 16 — Interaction Quality: Error Feedback + UX Dead-ends (2026-04-29)
+
+### Error state visual feedback on form inputs
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-29 | WordActionDrawer: added retry button on dictionary API error (dead-end fix) | WordActionDrawer.tsx | #2297 |
+| 2026-04-29 | Profile Gemini key input: conditional `border-red-400` when save fails | profile/page.tsx | #2298 |
+| 2026-04-29 | Profile Obsidian settings inputs: conditional `border-red-400` when save fails | profile/page.tsx | #2301 |
+| 2026-04-29 | TagEditor new-tag input: conditional `border-red-400` when tag is invalid | TagEditor.tsx | #2303 |
+| 2026-04-29 | decks/new deck name input: conditional `border-red-400` on validation error | decks/new/page.tsx | #2304 |
+
 ---
 
 

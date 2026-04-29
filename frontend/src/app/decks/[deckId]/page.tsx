@@ -244,8 +244,9 @@ export default function DeckDetailPage() {
               </div>
             ) : (
               <ul
+                role="list"
                 aria-label="Deck words"
-                className="space-y-2"
+                className="space-y-2 list-none p-0 m-0"
                 data-testid="deck-detail-members"
               >
                 {memberWords.map((w) => (
@@ -395,7 +396,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
               No matches.
             </p>
           ) : (
-            <ul className="space-y-1.5" aria-label="Available words">
+            <ul role="list" aria-label="Available words" className="space-y-1.5 list-none p-0 m-0">
               {filtered.map((w) => (
                 <li key={w.id}>
                   <button

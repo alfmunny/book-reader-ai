@@ -683,7 +683,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <summary className="text-xs text-amber-700 cursor-pointer">
               Activity log ({s.log.length})
             </summary>
-            <ul className="mt-1 text-xs space-y-1 max-h-60 overflow-y-auto">
+            <ul role="list" className="mt-1 text-xs space-y-1 max-h-60 overflow-y-auto list-none p-0 m-0">
               {s.log
                 .slice()
                 .reverse()
@@ -1357,7 +1357,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <span>{loadingItems ? "Loading items…" : "No items in this view."}</span>
           </div>
         ) : (
-          <ul className="divide-y divide-amber-50 max-h-96 overflow-y-auto">
+          <ul role="list" aria-label="Queue items" className="divide-y divide-amber-50 max-h-96 overflow-y-auto list-none p-0 m-0">
             {items.map((it) => (
               <li key={it.id} className="px-4 py-2 flex items-center gap-2 text-xs">
                 <span

@@ -555,7 +555,7 @@ export default function BookNotesPage() {
               onToggle={() => toggleCollapse("vocab")}
             />
             {!collapsed.has("vocab") && (
-              <ul className="my-2 ml-4 space-y-1 list-none">
+              <ul role="list" className="my-2 ml-4 space-y-1 list-none">
                 {bookVocab.map((v) =>
                   v.occurrences
                     .filter((o) => o.book_id === bookId)
@@ -616,7 +616,7 @@ export default function BookNotesPage() {
                     </ul>
                   )}
                   {chVoc.length > 0 && (
-                    <ul className="mt-2 ml-4 space-y-1 list-none">
+                    <ul role="list" className="mt-2 ml-4 space-y-1 list-none">
                       {chVoc.map((v) => {
                         const occ = v.occurrences.find((o) => o.book_id === bookId && o.chapter_index === ch);
                         return occ ? (

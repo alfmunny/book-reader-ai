@@ -319,6 +319,13 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 |------|--------|---------|----|
 | 2026-04-28 | Browser-default placeholder → `placeholder:text-stone-600` on 7 remaining inputs in QueueTab and admin pages | QueueTab.tsx, admin/uploads/page.tsx, admin/books/page.tsx | #1828 |
 
+## Wave 14 — Keyboard Focus Trap (2026-04-29)
+
+### ARIA APG Dialog Pattern — focus must stay within open modal
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-29 | Added `useFocusTrap` hook; applied to all 9 modal dialogs so Tab/Shift+Tab cycles within the dialog instead of escaping to background content | useFocusTrap.ts, AuthPromptModal.tsx, WordActionDrawer.tsx, BookDetailModal.tsx, VocabWordTooltip.tsx, AnnotationToolbar.tsx, AnnotationsSidebar.tsx, vocabulary/page.tsx, decks/[deckId]/page.tsx, reader/[bookId]/page.tsx | #2084 |
+
 ---
 
 

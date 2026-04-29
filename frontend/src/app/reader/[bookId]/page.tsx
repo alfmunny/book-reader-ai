@@ -1927,7 +1927,7 @@ export default function ReaderPage() {
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-stone-500">
+                      <span className="text-xs text-stone-500" aria-live="polite" aria-atomic="true">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
                       <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] flex items-center gap-1">

@@ -174,7 +174,7 @@ export default function FlashcardsPage() {
           <button
             onClick={() => router.push("/vocabulary")}
             aria-label="Back to vocabulary"
-            className="p-2 rounded-lg hover:bg-amber-100 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-2 rounded-lg hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"
           >
             <ArrowLeftIcon className="w-5 h-5 text-ink" />
           </button>
@@ -206,7 +206,7 @@ export default function FlashcardsPage() {
                 setSelectedDeckId(next);
                 persistLastDeckId(next);
               }}
-              className="flex-1 min-h-[44px] rounded-lg border border-amber-200 bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-amber-300"
+              className="flex-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-amber-300"
             >
               <option value="">All decks</option>
               {decks.map((d) => (
@@ -242,7 +242,7 @@ export default function FlashcardsPage() {
             <button
               type="button"
               onClick={loadData}
-              className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Retry
@@ -262,7 +262,7 @@ export default function FlashcardsPage() {
             </p>
             <button
               onClick={() => router.push("/vocabulary")}
-              className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px]"
+              className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0"
             >
               Back to Vocabulary
             </button>
@@ -314,7 +314,7 @@ export default function FlashcardsPage() {
                     onClick={() => handleGrade(value)}
                     disabled={submitting}
                     aria-label={`${label} (key ${i + 1})`}
-                    className={`py-3 rounded-xl border font-medium text-sm transition-colors min-h-[44px] disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 ${className}`}
+                    className={`py-3 rounded-xl border font-medium text-sm transition-colors min-h-[44px] md:min-h-0 disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 ${className}`}
                   >
                     <span>{label}</span>
                     <span className="text-[10px] opacity-60 font-normal">{i + 1}</span>
@@ -329,7 +329,7 @@ export default function FlashcardsPage() {
                 <button
                   onClick={() => setFlipped(true)}
                   aria-label="Show answer (Space or Enter)"
-                  className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px] flex flex-col items-center gap-0.5"
+                  className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 flex flex-col items-center gap-0.5"
                 >
                   <span>Show answer</span>
                   <span className="text-[10px] opacity-60 font-normal">Space / Enter</span>

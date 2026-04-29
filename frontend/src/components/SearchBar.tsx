@@ -61,7 +61,7 @@ export function SearchBar() {
           setOpen(true);
           focusInput();
         }}
-        className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md text-ink hover:bg-amber-100 transition-colors"
+        className="inline-flex items-center justify-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 rounded-md text-ink hover:bg-amber-100 transition-colors"
       >
         <SearchIcon className="w-5 h-5" />
       </button>
@@ -75,7 +75,7 @@ export function SearchBar() {
         e.preventDefault();
         submit();
       }}
-      className="inline-flex items-center gap-2 min-h-[44px] px-2 border border-amber-200 rounded-md bg-parchment animate-fade-in"
+      className="inline-flex items-center gap-2 min-h-[44px] md:min-h-0 px-2 border border-amber-200 rounded-md bg-parchment animate-fade-in"
     >
       <SearchIcon className="w-4 h-4 text-ink" />
       <input
@@ -96,7 +96,7 @@ export function SearchBar() {
           setQuery("");
           setOpen(false);
         }}
-        className="text-xs text-stone-500 hover:text-ink min-h-[44px] flex items-center"
+        className="text-xs text-stone-500 hover:text-ink min-h-[44px] md:min-h-0 flex items-center"
       >
         Esc
       </button>

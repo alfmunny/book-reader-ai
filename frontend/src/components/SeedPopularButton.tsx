@@ -130,7 +130,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
           <button
             onClick={() => setPendingStart(true)}
             disabled={running}
-            className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2 min-h-[44px] text-sm hover:bg-amber-50 disabled:opacity-50"
+            className="rounded-lg border border-amber-300 text-amber-700 px-4 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-50 disabled:opacity-50"
           >
             {running ? "Seeding…" : "Seed all popular books"}
           </button>
@@ -140,7 +140,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
             onClick={() => setExpanded(true)}
             aria-expanded={false}
             aria-controls="seed-progress-panel"
-            className="text-xs text-amber-700 hover:text-amber-900 min-h-[44px] flex items-center"
+            className="text-xs text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 flex items-center"
           >
             Show progress
           </button>
@@ -150,7 +150,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
             onClick={() => setExpanded(false)}
             aria-expanded={true}
             aria-controls="seed-progress-panel"
-            className="text-xs text-stone-500 hover:text-stone-700 min-h-[44px] flex items-center"
+            className="text-xs text-stone-500 hover:text-stone-700 min-h-[44px] md:min-h-0 flex items-center"
           >
             Hide
           </button>
@@ -175,7 +175,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
                 <button
                   type="button"
                   onClick={() => setPendingStop(true)}
-                  className="text-xs text-red-600 hover:text-red-800 min-h-[44px] flex items-center"
+                  className="text-xs text-red-600 hover:text-red-800 min-h-[44px] md:min-h-0 flex items-center"
                 >
                   Stop
                 </button>

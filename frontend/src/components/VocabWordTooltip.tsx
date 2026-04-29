@@ -82,7 +82,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-amber-100">
         <span id="vocab-tooltip-title" className="font-semibold text-ink text-sm">{word}</span>
-        <button onClick={onClose} aria-label="Close word definition" className="text-stone-500 hover:text-stone-700 p-0.5 rounded transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"><CloseIcon className="w-3.5 h-3.5" /></button>
+        <button onClick={onClose} aria-label="Close word definition" className="text-stone-500 hover:text-stone-700 p-0.5 rounded transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"><CloseIcon className="w-3.5 h-3.5" /></button>
       </div>
 
       {/* Body */}
@@ -130,7 +130,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
         <button
           onClick={handleSave}
           disabled={saved}
-          className={`text-xs font-medium px-3 py-1 min-h-[44px] rounded-lg transition-colors flex items-center justify-center ${
+          className={`text-xs font-medium px-3 py-1 min-h-[44px] md:min-h-0 rounded-lg transition-colors flex items-center justify-center ${
             saved
               ? "bg-stone-100 text-stone-600 cursor-default"
               : "bg-amber-700 text-white hover:bg-amber-800"

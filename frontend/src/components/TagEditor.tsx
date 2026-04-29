@@ -146,7 +146,7 @@ export default function TagEditor({
           aria-label="New tag"
           aria-invalid={!!error}
           aria-describedby={error ? `tag-editor-error-${vocabularyId}` : undefined}
-          className="rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-amber-400 w-24 placeholder:text-stone-600"
+          className={`rounded-full border bg-white px-2 py-0.5 text-xs text-ink focus:outline-none focus:ring-2 w-24 placeholder:text-stone-600 ${error ? "border-red-400 focus:ring-red-400" : "border-amber-300 focus:ring-amber-400"}`}
           data-testid={`tag-input-${vocabularyId}`}
         />
       ) : (

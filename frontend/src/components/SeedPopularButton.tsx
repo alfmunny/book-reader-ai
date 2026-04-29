@@ -138,6 +138,8 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
         {state && state.status !== "idle" && !expanded && !pendingStart && (
           <button
             onClick={() => setExpanded(true)}
+            aria-expanded={false}
+            aria-controls="seed-progress-panel"
             className="text-xs text-amber-700 hover:text-amber-900 min-h-[44px] flex items-center"
           >
             Show progress
@@ -146,6 +148,8 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
         {state && state.status !== "idle" && expanded && !running && !pendingStart && (
           <button
             onClick={() => setExpanded(false)}
+            aria-expanded={true}
+            aria-controls="seed-progress-panel"
             className="text-xs text-stone-500 hover:text-stone-700 min-h-[44px] flex items-center"
           >
             Hide
@@ -154,7 +158,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
       </div>
 
       {expanded && state && state.status !== "idle" && (
-        <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 text-sm space-y-2">
+        <div id="seed-progress-panel" className="bg-amber-50/60 border border-amber-200 rounded-xl p-4 text-sm space-y-2">
           <div className="flex items-baseline justify-between">
             <span className="font-medium text-ink">Seed popular books</span>
             <div className="flex items-center gap-2">

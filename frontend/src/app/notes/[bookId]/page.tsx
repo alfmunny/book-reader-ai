@@ -236,6 +236,7 @@ function VocabRow({
     <li className="flex gap-2 text-sm leading-relaxed before:content-['·'] before:text-amber-400 before:font-bold before:shrink-0">
       <span>
         <a
+          lang={bookLanguage ?? undefined}
           href={`/vocabulary?word=${encodeURIComponent(word)}`}
           className="font-semibold text-amber-700 hover:text-amber-900 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
         >

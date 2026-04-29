@@ -603,7 +603,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <button
               onClick={stopWorker}
               disabled={togglingWorker !== null}
-              className="text-xs px-3 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-1.5 min-h-[44px]"
+              className="text-xs px-3 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center gap-1.5 min-h-[44px] md:min-h-0"
             >
               {togglingWorker === "stop" && (
                 <span
@@ -618,7 +618,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <button
               onClick={startWorker}
               disabled={togglingWorker !== null}
-              className="text-xs px-3 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 inline-flex items-center gap-1.5 min-h-[44px]"
+              className="text-xs px-3 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 inline-flex items-center gap-1.5 min-h-[44px] md:min-h-0"
             >
               {togglingWorker === "start" && (
                 <span
@@ -772,14 +772,14 @@ export default function QueueTab({ adminFetch }: Props) {
           <button
             onClick={runPlan}
             disabled={planning || dryRunning}
-            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 min-h-[44px]"
+            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 min-h-[44px] md:min-h-0"
           >
             {planning ? "Planning…" : "Show plan"}
           </button>
           <button
             onClick={runDryRun}
             disabled={dryRunning || planning}
-            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 min-h-[44px]"
+            className="text-sm px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 min-h-[44px] md:min-h-0"
           >
             {dryRunning ? "Translating…" : "Dry run (preview quality)"}
           </button>
@@ -893,7 +893,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   })
                 }
                 disabled={saving}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50 min-h-[44px]"
+                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50 min-h-[44px] md:min-h-0"
               >
                 Save
               </button>
@@ -920,7 +920,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   setApiKey("");
                 }}
                 disabled={saving || !apiKey}
-                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50 min-h-[44px]"
+                className="text-xs px-3 py-1 rounded bg-amber-700 text-white disabled:opacity-50 min-h-[44px] md:min-h-0"
               >
                 Save
               </button>
@@ -933,7 +933,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     })
                   }
                   aria-label="Clear Gemini API key"
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0"
                 >
                   Clear
                 </button>
@@ -971,7 +971,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     );
                   }}
                   disabled={saving || chain.length === 0}
-                  className="text-xs px-3 min-h-[44px] rounded bg-amber-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
+                  className="text-xs px-3 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
                   {saving && (
                     <span
@@ -1015,7 +1015,7 @@ export default function QueueTab({ adminFetch }: Props) {
                       key={p.id}
                       onClick={() => setChain([...p.chain])}
                       aria-pressed={active}
-                      className={`text-left p-2 min-h-[44px] rounded-lg border transition-colors ${
+                      className={`text-left p-2 min-h-[44px] md:min-h-0 rounded-lg border transition-colors ${
                         active
                           ? "border-amber-500 bg-amber-100/60"
                           : "border-amber-200 bg-white hover:bg-amber-50"
@@ -1096,7 +1096,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           setChain(copy);
                         }}
                         disabled={idx === 0}
-                        className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
                         title={`Move ${labelForModel(m)} up`}
                         aria-label={`Move ${labelForModel(m)} up`}
                       >
@@ -1110,7 +1110,7 @@ export default function QueueTab({ adminFetch }: Props) {
                           setChain(copy);
                         }}
                         disabled={idx === chain.length - 1}
-                        className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
+                        className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-500 hover:text-amber-700 disabled:opacity-30"
                         title={`Move ${labelForModel(m)} down`}
                         aria-label={`Move ${labelForModel(m)} down`}
                       >
@@ -1119,7 +1119,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     </div>
                     <button
                       onClick={() => setChain(chain.filter((_, i) => i !== idx))}
-                      className="text-xs min-h-[44px] min-w-[44px] flex items-center justify-center rounded border border-red-200 text-red-600 shrink-0"
+                      className="text-xs min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded border border-red-200 text-red-600 shrink-0"
                       title={`Remove ${labelForModel(m)} from chain`}
                       aria-label={`Remove ${labelForModel(m)} from chain`}
                     >
@@ -1145,7 +1145,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     <button
                       key={opt.value || "default"}
                       onClick={() => setChain([...chain, opt.value])}
-                      className={`text-xs px-2 py-1 rounded border font-mono min-h-[44px] ${
+                      className={`text-xs px-2 py-1 rounded border font-mono min-h-[44px] md:min-h-0 ${
                         opt.recommended
                           ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
                           : "border-stone-200 text-stone-500 hover:bg-stone-50"
@@ -1176,7 +1176,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     setCustomModel("");
                   }}
                   disabled={!customModel.trim()}
-                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 disabled:opacity-40 min-h-[44px]"
+                  className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 disabled:opacity-40 min-h-[44px] md:min-h-0"
                 >
                   + Add custom
                 </button>
@@ -1188,7 +1188,7 @@ export default function QueueTab({ adminFetch }: Props) {
         <div className="flex gap-2 pt-2 border-t border-amber-100">
           <button
             onClick={enqueueAll}
-            className="text-xs px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 min-h-[44px]"
+            className="text-xs px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 min-h-[44px] md:min-h-0"
           >
             Queue every book for all configured languages
           </button>
@@ -1334,7 +1334,7 @@ export default function QueueTab({ adminFetch }: Props) {
               key={f}
               onClick={() => setItemFilter(f)}
               aria-pressed={itemFilter === f}
-              className={`text-xs px-2 py-0.5 min-h-[44px] flex items-center rounded ${
+              className={`text-xs px-2 py-0.5 min-h-[44px] md:min-h-0 flex items-center rounded ${
                 itemFilter === f ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
               }`}
             >
@@ -1345,7 +1345,7 @@ export default function QueueTab({ adminFetch }: Props) {
           <button
             onClick={clearAll}
             disabled={items.length === 0}
-            className="text-xs px-2 py-0.5 min-h-[44px] flex items-center rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
+            className="text-xs px-2 py-0.5 min-h-[44px] md:min-h-0 flex items-center rounded border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-40"
             title={itemFilter === "all" ? "Clear entire queue" : `Clear all ${itemFilter}`}
           >
             {itemFilter === "all" ? "Clear queue" : `Clear ${itemFilter}`}
@@ -1410,7 +1410,7 @@ export default function QueueTab({ adminFetch }: Props) {
                     <button
                       onClick={() => retry(it)}
                       aria-label={`Retry ${it.book_title || `book ${it.book_id}`} ch${it.chapter_index + 1} → ${it.target_language}`}
-                      className="px-1.5 py-0.5 rounded border border-amber-300 text-amber-700 min-h-[44px] flex items-center"
+                      className="px-1.5 py-0.5 rounded border border-amber-300 text-amber-700 min-h-[44px] md:min-h-0 flex items-center"
                     >
                       Retry
                     </button>
@@ -1418,7 +1418,7 @@ export default function QueueTab({ adminFetch }: Props) {
                   <button
                     onClick={() => remove(it)}
                     aria-label={`Remove ${it.book_title || `book ${it.book_id}`} ch${it.chapter_index + 1} → ${it.target_language} from queue`}
-                    className="px-1.5 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px] flex items-center"
+                    className="px-1.5 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0 flex items-center"
                   >
                     Del
                   </button>

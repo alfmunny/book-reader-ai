@@ -277,7 +277,7 @@ export default function BookImportPage() {
                         </div>
                       )}
                     {s.message && s.status === "active" && (
-                      <p className="ml-7 mt-1 text-xs text-stone-600 truncate">
+                      <p className="ml-7 mt-1 text-xs text-stone-600 truncate" title={s.message}>
                         {s.message}
                       </p>
                     )}

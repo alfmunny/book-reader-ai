@@ -191,7 +191,7 @@ describe("HomePage — signed-in state", () => {
   it("navigates to /profile when profile button is clicked", async () => {
     const user = userEvent.setup();
     await renderHome();
-    const profileBtn = screen.getByTitle("Alice");
+    const profileBtn = screen.getByTitle("Alice — Profile & Settings");
     await user.click(profileBtn);
     expect(mockPush).toHaveBeenCalledWith("/profile");
   });

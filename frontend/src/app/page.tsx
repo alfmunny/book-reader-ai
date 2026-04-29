@@ -57,6 +57,10 @@ export default function Home() {
   const [removedBookToast, setRemovedBookToast] = useState<RecentBook | null>(null);
 
   useEffect(() => {
+    document.title = "My Library — Book Reader AI";
+  }, []);
+
+  useEffect(() => {
     const books = getRecentBooks();
     setRecentBooks(books);
     if (books.length === 0) setTab("discover");

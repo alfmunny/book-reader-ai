@@ -137,7 +137,7 @@ export default function WordActionDrawer({
           <button
             onClick={onClose}
             aria-label="Close word lookup"
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors -mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -195,7 +195,7 @@ export default function WordActionDrawer({
                   onReadSentence(action.sentenceText, action.segmentStartTime);
                   onClose();
                 }}
-                className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <SpeakerIcon className="w-4 h-4 shrink-0" /> Read
               </button>
@@ -209,7 +209,7 @@ export default function WordActionDrawer({
                   }
                 }}
                 disabled={saved}
-                className={`flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl border text-sm font-medium transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                   saved
                     ? "bg-green-50 border-green-200 text-green-700"
                     : "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100"
@@ -224,7 +224,7 @@ export default function WordActionDrawer({
                   onAnnotate(action.sentenceText, action.chapterIndex);
                   onClose();
                 }}
-                className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 min-h-[48px] rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <NoteIcon className="w-4 h-4 shrink-0" /> Note
               </button>

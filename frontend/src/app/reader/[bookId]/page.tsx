@@ -878,7 +878,7 @@ export default function ReaderPage() {
           </span>
           <button
             onClick={() => setGeminiReminderVisible(false)}
-            className="shrink-0 text-amber-700 hover:text-amber-900 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
+            className="shrink-0 text-amber-700 hover:text-amber-900 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             aria-label="Dismiss"
           >
             <CloseIcon aria-hidden="true" className="w-4 h-4" />
@@ -894,7 +894,7 @@ export default function ReaderPage() {
               aria-label="Previous chapter"
               onClick={() => chapterIndex > 0 && goToChapter(chapterIndex - 1)}
               disabled={chapterIndex === 0}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             ><ArrowLeftIcon className="w-3 h-3" aria-hidden="true" /> Prev</button>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <span
@@ -908,14 +908,14 @@ export default function ReaderPage() {
               aria-label="Next chapter"
               onClick={() => chapterIndex < chapters.length - 1 && goToChapter(chapterIndex + 1)}
               disabled={chapterIndex === chapters.length - 1}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 disabled:opacity-30 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >Next <ArrowRightIcon className="w-3 h-3" aria-hidden="true" /></button>
             {paragraphFocus && (
               <>
                 <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
                 <button
                   onClick={ttsIsPlaying ? undefined : readFocusedParagraph}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   aria-label={ttsIsPlaying ? "Playing paragraph" : "Read focused paragraph"}
                   title={ttsIsPlaying ? "Playing…" : "Read focused paragraph"}
                 >
@@ -933,13 +933,13 @@ export default function ReaderPage() {
               aria-label="Typography settings"
               aria-expanded={showTypographyPanel}
               aria-controls="typography-panel"
-              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px] md:min-h-0"
+              className="px-2 py-1 rounded-full hover:bg-amber-50 transition-colors font-bold min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               title="Typography"
             >Aa</button>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               onClick={() => setFocusMode(false)}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-600 hover:text-red-600 transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-600 hover:text-red-600 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
               aria-label="Exit focus mode"
               title="Exit focus mode (F)"
             ><CloseIcon className="w-3 h-3" aria-hidden="true" /> Focus</button>
@@ -956,7 +956,7 @@ export default function ReaderPage() {
           <button
             onClick={() => router.push("/")}
             aria-label="Library"
-            className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] md:min-h-0 flex items-center"
+            className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-4 h-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline ml-1">Library</span>
           </button>
@@ -1061,7 +1061,7 @@ export default function ReaderPage() {
               aria-label="Typography settings"
               aria-expanded={showTypographyPanel}
               aria-controls="typography-panel"
-              className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-bold transition-colors ${
+              className={`flex shrink-0 items-center gap-1 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showTypographyPanel || paragraphFocus
                   ? "bg-amber-100 border-amber-400 text-amber-800"
                   : "border-amber-300 hover:bg-amber-100 text-amber-700"
@@ -1230,7 +1230,7 @@ export default function ReaderPage() {
             title="Focus mode (F)"
             aria-label="Focus mode"
             aria-pressed={focusMode}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
               focusMode
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"

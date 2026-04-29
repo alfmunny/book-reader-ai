@@ -51,14 +51,14 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
     >
       <button
         onClick={() => { onRead(); onClose(); }}
-        className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[44px] md:min-h-0"
+        className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-stone-800"
       >
         <SpeakerIcon className="w-3.5 h-3.5 shrink-0" /> Read
       </button>
       {onNote && (
         <button
           onClick={() => { onNote(); onClose(); }}
-          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[44px] md:min-h-0"
+          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-stone-800"
         >
           <NoteIcon className="w-3.5 h-3.5 shrink-0" /> Note
         </button>
@@ -66,7 +66,7 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
       {onChat && (
         <button
           onClick={() => { onChat(); onClose(); }}
-          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[44px] md:min-h-0"
+          className="flex items-center gap-1 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-stone-700 active:bg-stone-600 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-stone-800"
         >
           <ChatIcon className="w-3.5 h-3.5 shrink-0" /> Chat
         </button>

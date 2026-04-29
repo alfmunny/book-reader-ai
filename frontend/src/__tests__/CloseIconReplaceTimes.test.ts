@@ -22,7 +22,7 @@ const adminAudio = read("../app/admin/audio/page.tsx");
  */
 function dismissButtonBodies(src: string): string[] {
   const results: string[] = [];
-  const re = /aria-label="Dismiss[^"]*"[\s\S]{0,300}?<\/button>/g;
+  const re = /aria-label="Dismiss[^"]*"[\s\S]{0,450}?<\/button>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(src)) !== null) {
     results.push(m[0]);

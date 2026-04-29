@@ -137,7 +137,7 @@ export default function WordActionDrawer({
           <button
             onClick={onClose}
             aria-label="Close word lookup"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>

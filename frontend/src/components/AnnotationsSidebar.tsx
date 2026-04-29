@@ -96,7 +96,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <h2 id="annotations-heading" className="font-serif font-semibold text-ink text-sm">Annotations</h2>
             <button
               onClick={() => setOpen(false)}
-              className="text-stone-500 hover:text-stone-700 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors"
+              className="text-stone-500 hover:text-stone-700 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg transition-colors"
               aria-label="Close annotations sidebar"
             >
               <CloseIcon className="w-4 h-4" />
@@ -157,7 +157,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); onEdit(ann); setOpen(false); }}
-                              className="opacity-60 hover:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                              className="opacity-60 hover:opacity-100 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"
                               title="Edit annotation"
                               aria-label={`Edit annotation: ${ann.sentence_text.slice(0, 60)}`}
                             >

@@ -96,7 +96,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
           <button
             onClick={onClose}
             aria-label="Close book details"
-            className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+            className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition-colors"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -135,7 +135,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
         {/* Primary CTA */}
         <button
           onClick={onRead}
-          className="w-full rounded-xl bg-amber-700 text-white py-3 min-h-[44px] text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="w-full rounded-xl bg-amber-700 text-white py-3 min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-800 transition-colors"
         >
           {recentBook
             ? `Continue Reading — Ch. ${recentBook.lastChapter + 1}`

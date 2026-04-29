@@ -20,13 +20,13 @@ export default function ErrorPage({ error, reset }: Props) {
           <button
             type="button"
             onClick={() => reset()}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
           >
             <RetryIcon className="w-4 h-4" aria-hidden="true" /> Try again
           </button>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
           >
             <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Library
           </Link>

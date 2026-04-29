@@ -98,7 +98,7 @@ export default function ChapterEditorPage() {
             <button
               type="button"
               onClick={loadChapters}
-              className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Retry
@@ -106,7 +106,7 @@ export default function ChapterEditorPage() {
             <button
               type="button"
               onClick={() => router.push("/upload")}
-              className="px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+              className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
             >
               Try another file
             </button>
@@ -126,7 +126,7 @@ export default function ChapterEditorPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/upload")}
-              className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] flex items-center"
+              className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center"
             >
               <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
             </button>
@@ -138,7 +138,7 @@ export default function ChapterEditorPage() {
           <button
             onClick={handleConfirm}
             disabled={confirming || chapters.length === 0}
-            className="rounded-lg bg-amber-700 px-5 min-h-[44px] text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center gap-2"
+            className="rounded-lg bg-amber-700 px-5 min-h-[44px] md:min-h-0 text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {confirming && (
               <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true" />
@@ -202,7 +202,7 @@ export default function ChapterEditorPage() {
                   <button
                     aria-label={`Remove chapter ${i + 1}`}
                     onClick={(e) => { e.stopPropagation(); handleRemove(i); }}
-                    className="shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded text-stone-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded text-stone-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <TrashIcon className="w-3.5 h-3.5" />
                   </button>

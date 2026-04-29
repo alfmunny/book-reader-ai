@@ -248,7 +248,7 @@ export default function Home() {
               aria-controls={`tabpanel-${key}`}
               tabIndex={tab === key ? 0 : -1}
               onClick={() => setTab(key)}
-              className={`px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors ${
+              className={`px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 transition-colors ${
                 tab === key
                   ? "border-amber-700 text-amber-900"
                   : "border-transparent text-amber-700 hover:text-amber-900"
@@ -264,7 +264,7 @@ export default function Home() {
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/upload")}
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
+              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
             >
               Upload
             </button>
@@ -272,7 +272,7 @@ export default function Home() {
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/notes")}
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
+              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
             >
               Your Notes
             </button>
@@ -280,7 +280,7 @@ export default function Home() {
           {status === "authenticated" && (
             <button
               onClick={() => router.push("/vocabulary")}
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
+              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors"
             >
               Your Word List
             </button>
@@ -290,7 +290,7 @@ export default function Home() {
             <button
               onClick={() => router.push("/admin")}
               data-testid="admin-tab"
-              className="px-5 py-3 min-h-[44px] text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 flex items-center gap-1.5"
+              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 flex items-center gap-1.5"
             >
               <SettingsIcon className="w-3.5 h-3.5" />
               Admin
@@ -359,7 +359,7 @@ export default function Home() {
                     onClick={() => setStatsExpanded((v) => !v)}
                     aria-expanded={statsExpanded}
                     aria-controls="stats-activity-panel"
-                    className="text-xs text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
+                    className="text-xs text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 px-2 flex items-center"
                   >
                     {statsExpanded ? "Hide activity" : "Show activity"}
                   </button>
@@ -452,7 +452,7 @@ export default function Home() {
                 </p>
                 <button
                   onClick={() => setTab("discover")}
-                  className="rounded-lg bg-amber-700 px-6 py-2.5 min-h-[44px] text-white font-medium hover:bg-amber-800 transition-colors shadow-sm"
+                  className="rounded-lg bg-amber-700 px-6 py-2.5 min-h-[44px] md:min-h-0 text-white font-medium hover:bg-amber-800 transition-colors shadow-sm"
                 >
                   Discover Books
                 </button>
@@ -479,13 +479,13 @@ export default function Home() {
                   <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                     <button
                       onClick={() => router.push("/login")}
-                      className="rounded-lg bg-amber-700 px-7 py-3 min-h-[44px] text-white font-semibold text-base hover:bg-amber-800 transition-colors shadow-sm min-w-[160px]"
+                      className="rounded-lg bg-amber-700 px-7 py-3 min-h-[44px] md:min-h-0 text-white font-semibold text-base hover:bg-amber-800 transition-colors shadow-sm min-w-[160px]"
                     >
                       Sign in free
                     </button>
                     <button
                       onClick={() => document.getElementById("discover-search")?.scrollIntoView({ behavior: "smooth" })}
-                      className="rounded-lg border border-amber-300 px-7 py-3 min-h-[44px] text-amber-800 font-medium text-base hover:bg-amber-50 transition-colors min-w-[160px] flex items-center justify-center gap-2"
+                      className="rounded-lg border border-amber-300 px-7 py-3 min-h-[44px] md:min-h-0 text-amber-800 font-medium text-base hover:bg-amber-50 transition-colors min-w-[160px] flex items-center justify-center gap-2"
                     >
                       Browse library <ArrowRightIcon className="w-4 h-4" />
                     </button>
@@ -604,7 +604,7 @@ export default function Home() {
                     <option value="es">Spanish</option>
                   </select>
                   <button
-                    className="rounded-lg bg-amber-700 px-5 py-2.5 min-h-[44px] text-white font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none"
+                    className="rounded-lg bg-amber-700 px-5 py-2.5 min-h-[44px] md:min-h-0 text-white font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none"
                     onClick={() => handleSearch()}
                     disabled={searching}
                   >
@@ -708,7 +708,7 @@ export default function Home() {
                     title="Grid view"
                     aria-label="Grid view"
                     aria-pressed={popularView === "grid"}
-                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
+                    className={`p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded transition-colors ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
                   >
                     <GridViewIcon className="w-4 h-4" />
                   </button>
@@ -717,7 +717,7 @@ export default function Home() {
                     title="List view"
                     aria-label="List view"
                     aria-pressed={popularView === "list"}
-                    className={`p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
+                    className={`p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded transition-colors ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
                   >
                     <ListViewIcon className="w-4 h-4" />
                   </button>
@@ -840,7 +840,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={loadPopularBooks}
-                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
                   >
                     <RetryIcon className="w-4 h-4" aria-hidden="true" />
                     Try again
@@ -863,7 +863,7 @@ export default function Home() {
                       el?.focus();
                       el?.scrollIntoView({ behavior: "smooth", block: "center" });
                     }}
-                    className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
+                    className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors"
                   >
                     Search for a book
                   </button>

@@ -1548,6 +1548,7 @@ export default function ReaderPage() {
               sentenceText={annotationPanel.sentenceText}
               chapterIndex={annotationPanel.chapterIndex}
               bookId={Number(bookId)}
+              bookLanguage={bookLanguage}
               existingAnnotation={annotations.find(
                 (a) =>
                   a.sentence_text === annotationPanel.sentenceText &&

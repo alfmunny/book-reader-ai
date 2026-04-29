@@ -18,6 +18,7 @@ interface Props {
   sentenceText: string;
   chapterIndex: number;
   bookId: number;
+  bookLanguage?: string;
   existingAnnotation?: { id: number; note_text: string; color: string };
   onClose: () => void;
   onSaved: (annotation: Annotation) => void;
@@ -28,6 +29,7 @@ export default function AnnotationToolbar({
   sentenceText,
   chapterIndex,
   bookId,
+  bookLanguage,
   existingAnnotation,
   onClose,
   onSaved,
@@ -135,7 +137,7 @@ export default function AnnotationToolbar({
 
         <div className="px-5 pt-3 pb-5 space-y-4">
           {/* Quoted sentence */}
-          <p className="text-xs text-amber-700 font-serif italic line-clamp-2 leading-relaxed border-l-2 border-amber-300 pl-3">
+          <p lang={bookLanguage ?? undefined} className="text-xs text-amber-700 font-serif italic line-clamp-2 leading-relaxed border-l-2 border-amber-300 pl-3">
             {sentenceText}
           </p>
 

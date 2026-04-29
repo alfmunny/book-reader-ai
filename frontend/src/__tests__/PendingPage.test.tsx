@@ -8,6 +8,15 @@ jest.mock("next-auth/react", () => ({
   signOut: jest.fn(),
 }));
 
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+jest.mock("@/lib/api", () => ({
+  getMe: jest.fn().mockResolvedValue({ approved: false }),
+}));
+
 import { signOut } from "next-auth/react";
 import PendingApprovalPage from "@/app/pending/page";
 
@@ -15,6 +24,7 @@ const mockSignOut = signOut as jest.MockedFunction<typeof signOut>;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPush.mockReset();
 });
 
 test("renders heading and description text", () => {

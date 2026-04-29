@@ -73,7 +73,8 @@ async def search_content(
                 """
                 SELECT a.id, a.book_id, b.title AS book_title, a.chapter_index,
                        a.note_text,
-                       snippet(annotations_fts, 0, '<b>', '</b>', '…', 20) AS snippet
+                       snippet(annotations_fts, 0, '<b>', '</b>', '…', 20) AS snippet,
+                       json_extract(b.languages, '$[0]') AS book_language
                 FROM annotations_fts
                 JOIN annotations a ON annotations_fts.rowid = a.id
                 LEFT JOIN books b ON a.book_id = b.id
@@ -92,6 +93,7 @@ async def search_content(
                         "chapter_index": row["chapter_index"],
                         "snippet": row["snippet"],
                         "note_text": row["note_text"],
+                        "book_language": row["book_language"],
                     })
 
         if "vocabulary" in scope:

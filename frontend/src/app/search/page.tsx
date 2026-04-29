@@ -32,7 +32,7 @@ function AnnotationCard({ r }: { r: Extract<InAppSearchResult, { type: "annotati
         <div className="font-serif text-base text-ink">{r.book_title || `Book #${r.book_id}`}</div>
         <div className="text-xs text-stone-600">Annotation · Ch.&nbsp;{r.chapter_index + 1}</div>
       </div>
-      <SnippetHtml snippet={r.snippet} />
+      <span lang={r.book_language ?? undefined}><SnippetHtml snippet={r.snippet} /></span>
       {r.note_text ? (
         <div className="mt-2 text-xs text-stone-600 italic">{r.note_text}</div>
       ) : null}
@@ -52,7 +52,7 @@ function VocabularyCard({ r }: { r: Extract<InAppSearchResult, { type: "vocabula
         <div className="font-serif text-base text-ink" lang={r.language ?? undefined}>{r.word}</div>
         <div className="text-xs text-stone-600">Vocabulary · Ch.&nbsp;{r.chapter_index + 1}</div>
       </div>
-      <SnippetHtml snippet={r.snippet} />
+      <span lang={r.language ?? undefined}><SnippetHtml snippet={r.snippet} /></span>
       <div className="mt-2 text-xs text-stone-600">in {r.book_title || `Book #${r.book_id}`}</div>
     </Link>
   );

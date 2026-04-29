@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 interface Props {
   open: boolean;
@@ -11,6 +12,7 @@ interface Props {
 export default function AuthPromptModal({ open, feature, onClose }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
+  useScrollLock(open);
 
   useEffect(() => {
     if (!open) return;

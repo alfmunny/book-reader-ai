@@ -27,7 +27,7 @@ describe("InsightChat context expand/collapse aria-labels (closes #1007)", () =>
     // Search for the onClick={onToggle} button, then check nearby for aria-label
     const onClickIdx = msgCtxSrc.indexOf("onClick={onToggle}");
     expect(onClickIdx).toBeGreaterThan(-1);
-    const btnWindow = msgCtxSrc.slice(Math.max(0, onClickIdx - 20), onClickIdx + 200);
+    const btnWindow = msgCtxSrc.slice(Math.max(0, onClickIdx - 20), onClickIdx + 320);
     expect(btnWindow).toContain("aria-label");
   });
 

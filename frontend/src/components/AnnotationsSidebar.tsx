@@ -70,7 +70,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
         aria-expanded={open}
         aria-label="Toggle notes panel"
         title="Annotations"
-        className="relative shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0"
+        className="relative shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         data-testid="annotations-toggle"
       >
         <NoteIcon className="w-3.5 h-3.5" /> Notes
@@ -96,7 +96,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <h2 id="annotations-heading" className="font-serif font-semibold text-ink text-sm">Annotations</h2>
             <button
               onClick={() => setOpen(false)}
-              className="text-stone-600 hover:text-stone-700 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg transition-colors"
+              className="text-stone-600 hover:text-stone-700 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               aria-label="Close annotations sidebar"
             >
               <CloseIcon className="w-4 h-4" />
@@ -157,7 +157,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); onEdit(ann); setOpen(false); }}
-                              className="opacity-60 hover:opacity-100 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"
+                              className="opacity-60 hover:opacity-100 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                               title="Edit annotation"
                               aria-label={`Edit annotation: ${ann.sentence_text.slice(0, 60)}`}
                             >

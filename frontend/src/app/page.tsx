@@ -680,11 +680,12 @@ export default function Home() {
               <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
                 <div className="flex items-center gap-2">
                   <h2 className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
-                  <div className="flex gap-1.5">
+                  <div role="group" aria-label="Filter by language" className="flex gap-1.5">
                     {POPULAR_LANGS.map((l) => (
                       <button
                         key={l.code}
                         onClick={() => handlePopularLangChange(l.code)}
+                        aria-pressed={popularLang === l.code}
                         className={`text-xs rounded-full px-3 py-1 min-h-[44px] border transition-colors ${
                           popularLang === l.code
                             ? "bg-amber-700 text-white border-amber-700"

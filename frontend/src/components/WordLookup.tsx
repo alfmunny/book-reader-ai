@@ -24,13 +24,13 @@ export default function WordLookup({ word, position, language, onClose }: Props)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const lang = language?.split(/[-_]/)[0] ?? "en";
 
   useEffect(() => {
     setLoading(true);
     setError("");
     setResult(null);
 
-    const lang = language?.split(/[-_]/)[0] ?? "en";
     fetch(`https://api.dictionaryapi.dev/api/v2/entries/${lang}/${encodeURIComponent(word.toLowerCase())}`)
       .then((r) => {
         if (!r.ok) throw new Error("Not found");
@@ -87,18 +87,18 @@ export default function WordLookup({ word, position, language, onClose }: Props)
       {loading && (
         <div className="flex items-center gap-2 text-amber-700" role="status">
           <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
-          Looking up &ldquo;{word}&rdquo;...
+          Looking up &ldquo;<span lang={lang}>{word}</span>&rdquo;...
         </div>
       )}
 
       {error && (
-        <p role="alert" className="text-amber-700 italic">{error} for &ldquo;{word}&rdquo;</p>
+        <p role="alert" className="text-amber-700 italic">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
       )}
 
       {result && (
         <>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="font-serif font-bold text-ink text-base">{result.word}</span>
+            <span lang={lang} className="font-serif font-bold text-ink text-base">{result.word}</span>
             {result.phonetic && (
               <span className="text-xs text-amber-700">{result.phonetic}</span>
             )}

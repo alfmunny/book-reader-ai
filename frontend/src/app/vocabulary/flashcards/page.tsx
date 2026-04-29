@@ -328,9 +328,11 @@ export default function FlashcardsPage() {
               <div className="flex justify-center">
                 <button
                   onClick={() => setFlipped(true)}
-                  className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px]"
+                  aria-label="Show answer (Space or Enter)"
+                  className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px] flex flex-col items-center gap-0.5"
                 >
-                  Show answer
+                  <span>Show answer</span>
+                  <span className="text-[10px] opacity-60 font-normal">Space / Enter</span>
                 </button>
               </div>
             )}

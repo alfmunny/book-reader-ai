@@ -200,7 +200,7 @@ export default function Home() {
               >
                 {session?.backendUser?.picture ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={session.backendUser.picture} alt="profile" className="w-full h-full object-cover" />
+                  <img src={session.backendUser.picture} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
                     {session?.backendUser?.name?.[0] ?? "?"}

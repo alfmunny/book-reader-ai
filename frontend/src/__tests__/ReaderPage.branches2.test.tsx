@@ -1512,7 +1512,7 @@ describe("ReaderPage.branches2 — profile avatar variants", () => {
     await flushPromises();
 
     await waitFor(() => {
-      expect(document.querySelector("img[alt='profile']")).toBeInTheDocument();
+      expect(document.querySelector("img[alt='']")).toBeInTheDocument();
     });
   });
 

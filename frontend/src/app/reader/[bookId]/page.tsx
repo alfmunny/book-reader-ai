@@ -2293,7 +2293,7 @@ export default function ReaderPage() {
                       }}
                       className="w-full text-left px-3 py-2 min-h-[44px] md:min-h-0 flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                     >
-                      <div className="text-ink line-clamp-2">{ann.sentence_text}</div>
+                      <div lang={bookLanguage} className="text-ink line-clamp-2">{ann.sentence_text}</div>
                       {ann.note_text && (
                         <div className="text-stone-600 mt-0.5 line-clamp-1 italic">{ann.note_text}</div>
                       )}

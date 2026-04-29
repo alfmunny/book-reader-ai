@@ -129,7 +129,8 @@ async def search_content(
                 """
                 SELECT uc.id, uc.book_id, b.title AS book_title, uc.chapter_index,
                        uc.title AS chapter_title,
-                       snippet(user_chapters_fts, 1, '<b>', '</b>', '…', 30) AS snippet
+                       snippet(user_chapters_fts, 1, '<b>', '</b>', '…', 30) AS snippet,
+                       json_extract(b.languages, '$[0]') AS book_language
                 FROM user_chapters_fts
                 JOIN user_book_chapters uc ON user_chapters_fts.rowid = uc.id
                 JOIN books b ON uc.book_id = b.id
@@ -151,6 +152,7 @@ async def search_content(
                         "chapter_index": row["chapter_index"],
                         "chapter_title": row["chapter_title"],
                         "snippet": row["snippet"],
+                        "book_language": row["book_language"],
                     })
 
     return {"query": q, "results": results, "total": len(results)}

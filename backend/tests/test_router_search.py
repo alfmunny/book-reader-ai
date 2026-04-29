@@ -460,3 +460,32 @@ async def test_search_annotation_result_includes_book_language(client, test_user
     assert hit["type"] == "annotation"
     assert "book_language" in hit
     assert hit["book_language"] == "de"
+
+
+@pytest.mark.asyncio
+async def test_search_chapter_result_includes_book_language(client, test_user):
+    """Chapter search results must include book_language field for WCAG 3.1.2 (#2269)."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        book_id = 9111
+        await db.execute(
+            """INSERT OR REPLACE INTO books
+               (id, title, authors, languages, subjects, download_count,
+                cover, text, images, source, owner_user_id)
+               VALUES (?, 'Faust', '[]', '["de"]', '[]', 0, '', '', '[]', 'upload', ?)""",
+            (book_id, test_user["id"]),
+        )
+        await db.execute(
+            "INSERT OR REPLACE INTO user_book_chapters "
+            "(book_id, chapter_index, title, text, is_draft) VALUES (?, 0, 'Prolog', 'Habe nun Philosophie studiert', 0)",
+            (book_id,),
+        )
+        await db.commit()
+
+    res = await client.get("/api/search?q=Philosophie")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 1
+    hit = data["results"][0]
+    assert hit["type"] == "chapter"
+    assert "book_language" in hit
+    assert hit["book_language"] == "de"

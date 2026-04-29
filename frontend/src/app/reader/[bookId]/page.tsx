@@ -1726,6 +1726,9 @@ export default function ReaderPage() {
 
         {/* Insight/Vocab/Translate sidebar — desktop only */}
         <div
+          role="complementary"
+          aria-label={`${({ chat: "Insight", translate: "Translation", summary: "Summary", notes: "Notes", vocab: "Vocabulary" } as const)[sidebarTab]} panel`}
+          aria-hidden={!sidebarOpen}
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
           className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200 transition-[width] duration-200"
         >

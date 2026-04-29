@@ -309,11 +309,10 @@ export default function BookImportPage() {
             </div>
           )}
 
-          {isDone && (
-            <p role="status" className="text-sm text-emerald-700 mb-4">
-              Done — opening your book…
-            </p>
-          )}
+          {/* always-present so AT announces the done message (WCAG 4.1.3) */}
+          <p role="status" aria-live="polite" aria-atomic="true" className="text-sm text-emerald-700 mb-4">
+            {isDone ? "Done — opening your book…" : ""}
+          </p>
 
           {started && !isDone && (
             <div className="flex gap-2">

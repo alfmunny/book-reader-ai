@@ -70,6 +70,7 @@ function AnnotationCard({
   ann,
   chapters,
   bookId,
+  bookLanguage,
   isEditing,
   editNote,
   onEdit,
@@ -82,6 +83,7 @@ function AnnotationCard({
   ann: Annotation;
   chapters: BookChapter[];
   bookId: number;
+  bookLanguage: string;
   isEditing: boolean;
   editNote: string;
   onEdit: () => void;
@@ -96,7 +98,7 @@ function AnnotationCard({
       id={`annotation-${ann.id}`}
       className="border-l-4 border-amber-300 pl-4 my-3 scroll-mt-24"
     >
-      <p className="italic text-stone-600 leading-relaxed text-sm">
+      <p lang={bookLanguage} className="italic text-stone-600 leading-relaxed text-sm">
         &ldquo;{ann.sentence_text}&rdquo;
       </p>
 
@@ -219,12 +221,15 @@ function VocabRow({
   word,
   occurrence,
   chapters,
+  bookLanguage,
 }: {
   word: string;
   occurrence: { book_id: number; chapter_index: number; sentence_text: string };
   chapters: BookChapter[];
+  bookLanguage: string;
 }) {
-  const readerHref = `/reader/${occurrence.book_id}?chapter=${occurrence.chapter_index}&sentence=${encodeURIComponent(occurrence.sentence_text)}&word=${encodeURIComponent(word)}`;
+  const { book_id, chapter_index, sentence_text } = occurrence;
+  const readerHref = `/reader/${book_id}?chapter=${chapter_index}&sentence=${encodeURIComponent(sentence_text)}&word=${encodeURIComponent(word)}`;
   return (
     <li className="flex gap-2 text-sm leading-relaxed before:content-['·'] before:text-amber-400 before:font-bold before:shrink-0">
       <span>
@@ -234,13 +239,13 @@ function VocabRow({
         >
           {word}
         </a>{" "}
-        <span className="text-stone-600 text-xs">({chapterLabel(chapters, occurrence.chapter_index)})</span>
+        <span className="text-stone-600 text-xs">({chapterLabel(chapters, chapter_index)})</span>
         {" — "}
         <a
           href={readerHref}
           className="italic text-stone-600 hover:text-amber-700 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
         >
-          &ldquo;{truncate(occurrence.sentence_text, 90)}&rdquo;
+          <span lang={bookLanguage}>&ldquo;{truncate(occurrence.sentence_text, 90)}&rdquo;</span>
         </a>
       </span>
     </li>
@@ -328,6 +333,7 @@ export default function BookNotesPage() {
     return () => { document.title = "My Library — Book Reader AI"; };
   }, [meta]);
 
+  const bookLanguage = meta?.languages?.[0] ?? "en";
   const bookVocab = vocab.filter((v) => v.occurrences.some((o) => o.book_id === bookId));
 
   function toggleCollapse(key: string) {
@@ -422,6 +428,7 @@ export default function BookNotesPage() {
           ann={ann}
           chapters={chapters}
           bookId={bookId}
+          bookLanguage={bookLanguage}
           isEditing={editingId === ann.id}
           editNote={editNote}
           onEdit={() => startEdit(ann)}
@@ -567,6 +574,7 @@ export default function BookNotesPage() {
                         word={v.word}
                         occurrence={occ}
                         chapters={chapters}
+                        bookLanguage={bookLanguage}
                       />
                     ))
                 )}
@@ -622,7 +630,7 @@ export default function BookNotesPage() {
                       {chVoc.map((v) => {
                         const occ = v.occurrences.find((o) => o.book_id === bookId && o.chapter_index === ch);
                         return occ ? (
-                          <VocabRow key={v.word} word={v.word} occurrence={occ} chapters={chapters} />
+                          <VocabRow key={v.word} word={v.word} occurrence={occ} chapters={chapters} bookLanguage={bookLanguage} />
                         ) : null;
                       })}
                     </ul>

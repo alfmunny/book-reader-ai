@@ -39,6 +39,10 @@ describe("Search tutorial (closes #2119)", () => {
     expect(tutorial).toMatch(/no.{0,10}result|no.{0,10}match/i);
   });
 
+  it("documents the / keyboard shortcut", () => {
+    expect(tutorial).toMatch(/keyboard shortcut|press.*\//i);
+  });
+
   it("is linked from the tutorial index", () => {
     expect(index).toContain("search.md");
   });

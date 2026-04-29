@@ -6,6 +6,8 @@ The search feature lets you find anything you've saved or read — annotations y
 
 Click the **search bar** in the top navigation (the magnifying-glass icon on mobile). You can also navigate directly to `/search`.
 
+**Keyboard shortcut:** Press `/` from any page (when you're not already typing) to jump directly to the search bar. Press **Escape** to close it without searching.
+
 The search bar appears on all pages — type your query and press **Enter** to go to the results page.
 
 ## What gets searched

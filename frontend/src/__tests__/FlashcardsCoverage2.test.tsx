@@ -65,7 +65,7 @@ beforeEach(() => {
 
 test("Back button calls router.push('/vocabulary') (line 149, #2003)", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   await userEvent.click(screen.getByRole("button", { name: /back to vocabulary/i }));
   expect(mockPush).toHaveBeenCalledWith("/vocabulary");
@@ -75,7 +75,7 @@ test("Back button calls router.push('/vocabulary') (line 149, #2003)", async () 
 
 test("clicking the card div directly toggles flipped state via onClick (line 251, #2003)", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   // Click the card div itself (not the "Show answer" button) to flip it via onClick
   const card = screen.getByRole("button", { name: /press to reveal definition/i });
@@ -89,7 +89,7 @@ test("clicking the card div directly toggles flipped state via onClick (line 251
 
 test("Enter keydown on card div invokes onKeyDown handler and flips card (line 251, #2003)", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   // Flip to the definition side first via "Show answer" button so the card is in flipped=true state
   await userEvent.click(screen.getByText("Show answer"));
@@ -106,7 +106,7 @@ test("Enter keydown on card div invokes onKeyDown handler and flips card (line 2
 
 test("Space keydown on card div invokes onKeyDown handler and flips card (line 251, #2003)", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   await userEvent.click(screen.getByText("Show answer"));
   await waitFor(() => screen.getByRole("button", { name: /Good/i }));
@@ -119,7 +119,7 @@ test("Space keydown on card div invokes onKeyDown handler and flips card (line 2
 
 test("non-activating key on card does not flip it (line 251 branch, #2003)", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   const card = screen.getByRole("button", { name: /press to reveal definition/i });
   fireEvent.keyDown(card, { key: "Tab" });
@@ -138,7 +138,7 @@ test("readLastDeckId returns undefined when localStorage.getItem throws (line 30
   });
 
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   // getDueFlashcards should be called with undefined (no deck restored due to error)
   expect(mockGetDue).toHaveBeenCalledWith(undefined);

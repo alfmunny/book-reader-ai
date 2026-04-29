@@ -75,7 +75,7 @@ test("Retry button re-fetches and shows cards on success", async () => {
   await user.click(retryBtn);
 
   await waitFor(() => {
-    expect(screen.getByText("Schadenfreude")).toBeInTheDocument();
+    expect(screen.getAllByText("Schadenfreude")[0]).toBeInTheDocument();
   });
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });

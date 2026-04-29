@@ -68,8 +68,8 @@ test("renders card word on front face", async () => {
   mockGetDue.mockResolvedValue([SAMPLE_CARD]);
   mockStats.mockResolvedValue(ONE_DUE_STATS);
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
-  expect(screen.getByText("ephemeral")).toBeInTheDocument();
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
+  expect(screen.getAllByText("ephemeral")[0]).toBeInTheDocument();
   expect(screen.getByText("Show answer")).toBeInTheDocument();
 });
 
@@ -77,7 +77,7 @@ test("flipping card reveals grade buttons", async () => {
   mockGetDue.mockResolvedValue([SAMPLE_CARD]);
   mockStats.mockResolvedValue(ONE_DUE_STATS);
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   await userEvent.click(screen.getByText("Show answer"));
   expect(screen.getByText("Again")).toBeInTheDocument();
@@ -99,7 +99,7 @@ test("grading a card calls reviewFlashcard and advances", async () => {
   mockStats.mockResolvedValueOnce(ONE_DUE_STATS).mockResolvedValue({ total: 1, due_today: 0, reviewed_today: 1 });
 
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   await userEvent.click(screen.getByText("Show answer"));
   await userEvent.click(screen.getByText("Good"));
@@ -122,7 +122,7 @@ test("shows progress bar", async () => {
   mockGetDue.mockResolvedValue([SAMPLE_CARD]);
   mockStats.mockResolvedValue({ total: 1, due_today: 1, reviewed_today: 0 });
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   expect(screen.getByText("0 / 1 today")).toBeInTheDocument();
 });

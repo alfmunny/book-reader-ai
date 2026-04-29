@@ -340,7 +340,7 @@ export default function FlashcardsPage() {
             {/* Card counter — role=status so screen readers announce position after grading */}
             <p role="status" aria-live="polite" aria-atomic="true" className="text-center text-xs text-stone-600">
               {currentIndex + 1} of {cards.length} remaining
-              {currentCard ? `: ${currentCard.word}` : ""}
+              {currentCard ? <>: <span lang={currentCard.language ?? undefined}>{currentCard.word}</span></> : ""}
             </p>
           </div>
         ) : null}

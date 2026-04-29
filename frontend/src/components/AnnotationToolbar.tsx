@@ -125,7 +125,7 @@ export default function AnnotationToolbar({
           <button
             onClick={onClose}
             aria-label="Close note editor"
-            className="rounded-lg p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 hover:bg-amber-50 transition-colors"
+            className="rounded-lg p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -150,7 +150,7 @@ export default function AnnotationToolbar({
                   onClick={() => setColor(c.key)}
                   aria-label={c.label}
                   aria-checked={color === c.key}
-                  className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"
+                  className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   <span
                     className={`w-8 h-8 rounded-full ${c.bg} border-2 transition-all duration-150 hover:scale-110 inline-block ${
@@ -188,7 +188,7 @@ export default function AnnotationToolbar({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 rounded-xl bg-amber-700 text-white text-sm font-medium py-2.5 min-h-[44px] md:min-h-0 hover:bg-amber-800 disabled:opacity-50 transition-colors"
+              className="flex-1 rounded-xl bg-amber-700 text-white text-sm font-medium py-2.5 min-h-[44px] md:min-h-0 hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               {saving ? "Saving…" : existingAnnotation ? "Update" : "Save note"}
             </button>
@@ -197,7 +197,7 @@ export default function AnnotationToolbar({
                 onClick={handleDelete}
                 disabled={deleting}
                 aria-label="Delete note"
-                className="rounded-xl border border-red-200 text-red-500 px-3 py-2.5 min-h-[44px] md:min-h-0 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center justify-center"
+                className="rounded-xl border border-red-200 text-red-500 px-3 py-2.5 min-h-[44px] md:min-h-0 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
               >
                 <TrashIcon className="w-4 h-4" />
               </button>

@@ -295,7 +295,7 @@ export default function ProfilePage() {
               rel="noopener noreferrer"
               className="text-amber-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             >
-              Google AI Studio
+              Google AI Studio<span className="sr-only"> (opens in new tab)</span>
             </a>{" "}
             for higher-quality translations, insights, chat, and TTS.
             Without a key, translations use Google Translate and TTS uses

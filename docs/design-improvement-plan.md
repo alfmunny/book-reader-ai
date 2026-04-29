@@ -221,6 +221,7 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.23 | title tooltips for truncated deck name (DeckCard h2, deck-detail h1) and book title (notes list) — closes #2235 (PR #2236) | ✅ Done |
 | 2026-04-29 | 11.24 | title tooltips for reader header truncated book title h1 and authors p — closes #2237 (PR #2238) | ✅ Done |
 | 2026-04-29 | 11.25 | title tooltips for profile deck names, SeedPopularButton current title, QueueTab retry/error — closes #2239 (PR #2240) | ✅ Done |
+| 2026-04-29 | 11.26 | target=_blank links missing sr-only "(opens in new tab)" announcement for screen readers — closes #2241 | 🔄 In progress |
 
 ---
 

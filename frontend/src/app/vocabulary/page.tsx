@@ -528,7 +528,7 @@ function VocabularyPageContent() {
                   onClick={() => setSortMode(value)}
                   aria-pressed={sortMode === value}
                   data-testid={`sort-${value}`}
-                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 ${
+                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
                     sortMode === value
                       ? "bg-amber-700 text-white"
                       : "bg-white text-amber-700 hover:bg-amber-50"
@@ -553,7 +553,7 @@ function VocabularyPageContent() {
               onClick={() => setSelectedTag(null)}
               aria-pressed={selectedTag === null}
               data-testid="tag-filter-all"
-              className={`shrink-0 min-h-[44px] md:min-h-0 px-3 rounded-full text-xs font-medium border transition-colors ${
+              className={`shrink-0 min-h-[44px] md:min-h-0 px-3 rounded-full text-xs font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 selectedTag === null
                   ? "bg-amber-700 text-white border-amber-700"
                   : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
@@ -570,7 +570,7 @@ function VocabularyPageContent() {
                   onClick={() => setSelectedTag(active ? null : tag)}
                   aria-pressed={active}
                   data-testid={`tag-filter-${tag}`}
-                  className={`shrink-0 min-h-[44px] md:min-h-0 px-3 rounded-full text-xs font-medium border transition-colors ${
+                  className={`shrink-0 min-h-[44px] md:min-h-0 px-3 rounded-full text-xs font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                     active
                       ? "bg-amber-700 text-white border-amber-700"
                       : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"

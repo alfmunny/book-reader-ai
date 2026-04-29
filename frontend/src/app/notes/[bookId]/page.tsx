@@ -204,7 +204,7 @@ function InsightCard({
           onClick={onDelete}
           disabled={isDeleting}
           aria-busy={isDeleting}
-          className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"
+          className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           title="Delete insight"
           aria-label={isDeleting ? "Deleting insight…" : `Delete insight: ${ins.question.slice(0, 60)}`}
         >

@@ -96,7 +96,7 @@ export default function UsersPage() {
         {users.map((u) => (
           <li key={u.id} className="px-4 py-3 flex items-center gap-3">
             {u.picture ? (
-              <img src={u.picture} alt="" className="w-8 h-8 rounded-full" />
+              <img src={u.picture} alt="" loading="lazy" className="w-8 h-8 rounded-full" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-sm font-bold">
                 {u.name?.[0]}

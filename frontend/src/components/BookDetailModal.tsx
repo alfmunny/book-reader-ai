@@ -76,7 +76,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
           <div className="w-16 h-24 shrink-0 rounded-lg border border-amber-100 overflow-hidden flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100">
             {book.cover
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
+              ? <img src={book.cover} alt={book.title} loading="lazy" className="w-full h-full object-cover" />
               : <BookCoverPlaceholderIcon className="w-8 h-12 text-amber-600" />}
           </div>
           <div className="flex-1 min-w-0">

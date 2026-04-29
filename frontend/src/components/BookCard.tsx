@@ -43,6 +43,7 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
           <img
             src={book.cover}
             alt=""
+            loading="lazy"
             className="w-full h-40 object-cover rounded-lg mb-2"
           />
         ) : (

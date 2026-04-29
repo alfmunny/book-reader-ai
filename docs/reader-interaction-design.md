@@ -136,6 +136,8 @@ When multiple interactions are triggered simultaneously, resolve in this order:
 
 ## 6. Keyboard Shortcuts (Desktop)
 
+### Reader (`/reader/[bookId]`)
+
 | Key | Action |
 |-----|--------|
 | `←` `→` | Prev / next chapter |
@@ -143,6 +145,24 @@ When multiple interactions are triggered simultaneously, resolve in this order:
 | `Space` | Play / pause TTS |
 | `Escape` | Close open panel (AnnotationToolbar / QuickHighlightPanel / TypographyPanel) |
 | `?` | Toggle shortcuts help |
+
+### Flashcards (`/vocabulary/flashcards`)
+
+| Key | Action |
+|-----|--------|
+| `Space` / `Enter` | Flip card (show answer) |
+| `1` | Grade: Again (repeat immediately) |
+| `2` | Grade: Hard |
+| `3` | Grade: Good |
+| `4` | Grade: Easy |
+
+Keys are guarded — they do not fire when focus is inside an INPUT, SELECT, or TEXTAREA.
+
+### Global
+
+| Key | Action |
+|-----|--------|
+| `/` | Open header search bar (from any page, when not typing) |
 
 ---
 

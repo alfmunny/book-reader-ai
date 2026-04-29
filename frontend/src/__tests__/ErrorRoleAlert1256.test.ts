@@ -18,7 +18,8 @@ describe("role=alert on dynamic error containers (closes #1256)", () => {
     const src = read("../components/QueueTab.tsx");
     const idx = src.indexOf("Last error:");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 100), idx + 50);
+    // look back 150 chars: title= attribute before closing > can extend the line
+    const window = src.slice(Math.max(0, idx - 150), idx + 50);
     expect(window).toMatch(/role="alert"/);
   });
 

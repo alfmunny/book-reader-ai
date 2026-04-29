@@ -263,6 +263,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => gotoFlashcardsForDeck(d.id)}
                     aria-label={`Review ${d.due_today} due card${d.due_today !== 1 ? "s" : ""} in ${d.name}`}
+                    title={d.name}
                     className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-white px-4 py-2 hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     <DeckIcon className="w-4 h-4 text-amber-700 shrink-0" />

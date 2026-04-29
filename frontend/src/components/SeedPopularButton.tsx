@@ -242,7 +242,7 @@ export default function SeedPopularButton({ adminFetch, onComplete }: Props) {
           )}
 
           {running && state.current_book_title && (
-            <p className="text-xs text-amber-700 truncate flex items-center gap-1">
+            <p className="text-xs text-amber-700 truncate flex items-center gap-1" title={state.current_book_title}>
               <ChevronDownIcon className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{state.current_book_title}</span>
             </p>

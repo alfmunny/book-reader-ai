@@ -227,6 +227,7 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.29 | reader vocab sidebar missing lang attribute on foreign words — WCAG 3.1.2 fix: add lang to lemma/form/sentence spans — closes #2247 (PR #2248) | ✅ Done |
 | 2026-04-29 | 11.30 | reader scroll container missing lang attribute for non-English books — WCAG 3.1.2 fix: add lang={bookLanguage} to reader-scroll div — closes #2249 (PR #2250) | ✅ Done |
 | 2026-04-29 | 11.31 | notes page missing lang attribute on annotation and vocab occurrence sentences — WCAG 3.1.2 fix — closes #2251 (PR #2252) | ✅ Done |
+| 2026-04-29 | 11.32 | decks word list and picker missing lang attribute on foreign vocabulary words — WCAG 3.1.2 fix — closes #2255 (PR #2256) | ✅ Done |
 
 ---
 

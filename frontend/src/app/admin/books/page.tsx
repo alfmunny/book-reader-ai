@@ -389,9 +389,9 @@ export default function BooksPage() {
                       <span
                         className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse"
                         role="status"
-                        aria-label={`Translating to ${b.active_language}`}
+                        aria-label={b.active_language ? `Translating to ${b.active_language}` : "Translating"}
                       >
-                        translating → {b.active_language}
+                        translating{b.active_language ? ` → ${b.active_language}` : ""}
                       </span>
                     )}
                   </div>

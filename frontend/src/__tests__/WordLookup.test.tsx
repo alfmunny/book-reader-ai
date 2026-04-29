@@ -62,7 +62,9 @@ describe("WordLookup rendering", () => {
         onClose={jest.fn()}
       />
     );
-    expect(screen.getByText(/Looking up.*serendipity/i)).toBeInTheDocument();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/Looking up/i);
+    expect(status).toHaveTextContent(/serendipity/i);
   });
 
   it("shows the word being looked up in loading message", () => {

@@ -72,7 +72,7 @@ function ChapterCard({ r }: { r: Extract<InAppSearchResult, { type: "chapter" }>
         </div>
         <div className="text-xs text-stone-600">Chapter</div>
       </div>
-      <SnippetHtml snippet={r.snippet} />
+      <span lang={r.book_language ?? undefined}><SnippetHtml snippet={r.snippet} /></span>
     </Link>
   );
 }

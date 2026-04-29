@@ -108,6 +108,7 @@ export type InAppSearchResult =
       chapter_index: number;
       chapter_title: string;
       snippet: string;
+      book_language?: string;
     };
 
 export interface InAppSearchResponse {

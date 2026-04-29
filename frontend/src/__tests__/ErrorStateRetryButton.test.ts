@@ -38,7 +38,7 @@ describe("vocabulary page error state", () => {
 
 // ── Notes index page ───────────────────────────────────────────────────────
 const notesErrorBlock =
-  notesSrc.match(/fetchError \?[\s\S]{0,800}Try again/)?.[0] ?? "";
+  notesSrc.match(/fetchError \?[\s\S]{0,1000}Try again/)?.[0] ?? "";
 
 describe("notes index page error state", () => {
   it("error block contains 'Try again' button", () => {

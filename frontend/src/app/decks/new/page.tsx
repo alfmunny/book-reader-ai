@@ -76,7 +76,7 @@ export default function DecksNewPage() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <button
           onClick={() => router.push("/decks")}
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Decks
         </button>
@@ -279,7 +279,7 @@ export default function DecksNewPage() {
               type="submit"
               disabled={submitting}
               data-testid="deck-submit-btn"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               <DeckIcon className="w-4 h-4" />
               {submitting ? "Creating…" : "Create deck"}
@@ -287,7 +287,7 @@ export default function DecksNewPage() {
             <button
               type="button"
               onClick={() => router.push("/decks")}
-              className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 px-3"
+              className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 px-3 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Cancel
             </button>

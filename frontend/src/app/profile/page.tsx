@@ -197,7 +197,7 @@ export default function ProfilePage() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-6 py-4 flex items-center gap-4">
         <button
           onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
         </button>
@@ -225,14 +225,14 @@ export default function ProfilePage() {
           <div className="mt-6 flex items-center gap-4">
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-sm text-red-600 hover:text-red-800 min-h-[44px] md:min-h-0 flex items-center"
+              className="text-sm text-red-600 hover:text-red-800 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
             >
               Sign out
             </button>
             {isAdmin && (
               <button
                 onClick={() => router.push("/admin")}
-                className="text-sm text-amber-700 hover:text-amber-900 underline min-h-[44px] md:min-h-0 flex items-center"
+                className="text-sm text-amber-700 hover:text-amber-900 underline min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 Admin Panel
               </button>
@@ -263,7 +263,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => gotoFlashcardsForDeck(d.id)}
                     aria-label={`Review ${d.due_today} due card${d.due_today !== 1 ? "s" : ""} in ${d.name}`}
-                    className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-white px-4 py-2 hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0"
+                    className="w-full flex items-center gap-3 rounded-xl border border-amber-200 bg-white px-4 py-2 hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     <DeckIcon className="w-4 h-4 text-amber-700 shrink-0" />
                     <span className="font-serif text-ink truncate flex-1 min-w-0 text-left">
@@ -311,7 +311,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleRemoveKey}
                 disabled={removingKey}
-                className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 min-h-[44px] md:min-h-0 flex items-center"
+                className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
               >
                 {removingKey ? "Removing…" : "Remove key"}
               </button>
@@ -331,7 +331,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveKey}
                 disabled={savingKey || !keyInput.trim()}
-                className="rounded-lg bg-amber-700 text-white px-5 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-amber-700 text-white px-5 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
               >
                 {savingKey ? "Saving…" : "Save key"}
               </button>
@@ -349,7 +349,7 @@ export default function ProfilePage() {
           <h2 className="m-0">
             <button
               onClick={() => setObsidianOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-amber-50/50 transition-colors"
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-amber-50/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
               aria-expanded={obsidianOpen}
               aria-controls="obsidian-export-panel"
             >
@@ -385,7 +385,7 @@ export default function ProfilePage() {
                       <button
                         onClick={handleRemoveObsidianToken}
                         disabled={obsidianSaving}
-                        className="text-xs text-red-600 hover:text-red-700 underline disabled:opacity-50 min-h-[44px] md:min-h-0 inline-flex items-center"
+                        className="text-xs text-red-600 hover:text-red-700 underline disabled:opacity-50 min-h-[44px] md:min-h-0 inline-flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                       >
                         Remove
                       </button>
@@ -436,7 +436,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleSaveObsidian}
                 disabled={obsidianSaving}
-                className="rounded-lg bg-amber-700 text-white px-5 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors"
+                className="rounded-lg bg-amber-700 text-white px-5 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
               >
                 {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
               </button>
@@ -574,11 +574,11 @@ export default function ProfilePage() {
           </div>
           <button
             onClick={savePreferences}
-            className={`w-full rounded-lg py-2.5 min-h-[44px] md:min-h-0 text-sm font-medium transition-colors ${
+            className={`w-full rounded-lg py-2.5 text-sm font-medium transition-colors ${
               prefsSaved
                 ? "bg-green-600 text-white"
                 : "bg-amber-700 text-white hover:bg-amber-800"
-            }`}
+            } min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset`}
           >
             {prefsSaved ? "Saved!" : "Save preferences"}
           </button>

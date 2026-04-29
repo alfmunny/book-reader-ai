@@ -146,12 +146,10 @@ export default function NotesOverviewPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {/* Visually-hidden live region: announces filter result counts to screen readers */}
-        {search.trim() && !loading && (
-          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-            {`${filtered.length} book${filtered.length === 1 ? "" : "s"} found.`}
-          </div>
-        )}
+        {/* Visually-hidden live region: always-present so AT announces updates (WCAG 4.1.3) */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {search.trim() && !loading ? `${filtered.length} book${filtered.length === 1 ? "" : "s"} found.` : ""}
+        </div>
 
         {loading ? (
           <div role="status" aria-label="Loading notes" className="flex justify-center py-20">

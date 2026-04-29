@@ -29,9 +29,11 @@ interface Props {
   loading?: boolean;
   /** When provided, "View all notes" links to /notes/{bookId} instead of /notes */
   bookId?: number;
+  /** BCP 47 language tag for the book — used to mark sentence_text lang (WCAG 3.1.2) */
+  bookLanguage?: string;
 }
 
-export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading, bookId }: Props) {
+export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading, bookId, bookLanguage }: Props) {
   const [open, setOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   useFocusTrap(drawerRef, open);
@@ -142,7 +144,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onJump(ann); setOpen(false); } }}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
+                          <p lang={bookLanguage ?? undefined} className="text-xs italic leading-relaxed line-clamp-3 flex-1">
                             &ldquo;{ann.sentence_text}&rdquo;
                           </p>
                           <div className="flex items-center gap-1 shrink-0 mt-0.5">

@@ -173,9 +173,9 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
         </div>
         <div className="px-5 pb-6 space-y-3 pt-3">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="font-serif font-bold text-ink text-xl">{word}</span>
+            <span className="font-serif font-bold text-ink text-xl" lang={lang ?? undefined}>{word}</span>
             {def && def.lemma !== word && (
-              <span className="text-sm text-amber-700" aria-label={`base form: ${def.lemma}`}>← {def.lemma}</span>
+              <span lang={lang ?? undefined} className="text-sm text-amber-700" aria-label={`base form: ${def.lemma}`}>← {def.lemma}</span>
             )}
           </div>
 

@@ -97,7 +97,7 @@ async def search_content(
         if "vocabulary" in scope:
             async with db.execute(
                 """
-                SELECT v.word, wo.id AS occurrence_id, wo.book_id,
+                SELECT v.word, v.language, wo.id AS occurrence_id, wo.book_id,
                        b.title AS book_title, wo.chapter_index,
                        snippet(word_occurrences_fts, 0, '<b>', '</b>', '…', 20) AS snippet
                 FROM word_occurrences_fts
@@ -114,6 +114,7 @@ async def search_content(
                     results.append({
                         "type": "vocabulary",
                         "word": row["word"],
+                        "language": row["language"],
                         "occurrence_id": row["occurrence_id"],
                         "book_id": row["book_id"],
                         "book_title": row["book_title"] or "",

@@ -92,6 +92,7 @@ export type InAppSearchResult =
   | {
       type: "vocabulary";
       word: string;
+      language?: string;
       occurrence_id: number;
       book_id: number;
       book_title: string;

@@ -418,3 +418,19 @@ async def test_search_content_limit_above_max_clamped(tmp_db, test_user):
     from services.search import MAX_LIMIT
     result = await search_content(test_user["id"], "anythingxyz", limit=MAX_LIMIT + 100)
     assert result["total"] == 0  # no data; confirmed no crash on oversized limit
+
+
+async def test_search_vocabulary_result_includes_language(client, test_user):
+    """Vocabulary search results must include language field for WCAG 3.1.2 (#2263)."""
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await _seed_vocab_occurrence(db, test_user["id"], "Heimweh", 7777, 0,
+                                     "filled with Heimweh")
+        await db.commit()
+
+    res = await client.get("/api/search?q=Heimweh")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 1
+    hit = data["results"][0]
+    assert hit["type"] == "vocabulary"
+    assert "language" in hit

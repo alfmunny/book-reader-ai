@@ -410,7 +410,7 @@ export default function TTSControls({
         {status === "loading" ? (
           <button
             onClick={cancelLoad}
-            className="rounded-lg bg-amber-300 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm flex items-center gap-2 hover:bg-amber-400 min-h-[44px] md:min-h-0"
+            className="rounded-lg bg-amber-300 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm flex items-center gap-2 hover:bg-amber-400 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             aria-label="Cancel audio loading"
           >
             <span className="w-3 h-3 border-2 border-amber-700/40 border-t-amber-800 rounded-full animate-spin" aria-hidden="true" />
@@ -421,7 +421,7 @@ export default function TTSControls({
           <button
             data-tts-play
             onClick={pause}
-            className="rounded-lg bg-amber-200 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-300 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
+            className="rounded-lg bg-amber-200 text-amber-900 px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-300 min-h-[44px] md:min-h-0 flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <PauseIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Pause
@@ -430,7 +430,7 @@ export default function TTSControls({
           <button
             data-tts-play
             onClick={play}
-            className="rounded-lg bg-amber-700 text-white px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-800 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
+            className="rounded-lg bg-amber-700 text-white px-4 py-2.5 md:py-1.5 text-sm hover:bg-amber-800 min-h-[44px] md:min-h-0 flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
             <PlayIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Read
@@ -438,7 +438,7 @@ export default function TTSControls({
         ) : status === "error" ? (
           <button
             onClick={play}
-            className="rounded-lg bg-red-100 text-red-800 border border-red-300 px-3 py-2.5 md:py-1.5 text-sm hover:bg-red-200 min-h-[44px] md:min-h-0 flex items-center gap-1.5"
+            className="rounded-lg bg-red-100 text-red-800 border border-red-300 px-3 py-2.5 md:py-1.5 text-sm hover:bg-red-200 min-h-[44px] md:min-h-0 flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
             title={errorMsg || "Audio failed"}
           >
             <RetryIcon className="w-3.5 h-3.5" aria-hidden="true" />
@@ -460,7 +460,7 @@ export default function TTSControls({
         onClick={toggleGender}
         title={`Voice: ${gender}. Click to switch.`}
         aria-label={`Voice: ${gender === "female" ? "Female" : "Male"}. Click to switch.`}
-        className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 font-medium"
+        className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         disabled={status === "loading"}
       >
         {gender === "female" ? "F" : "M"}

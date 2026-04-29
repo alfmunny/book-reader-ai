@@ -4,6 +4,7 @@ import { BookMeta, getBookTranslationStatus, TranslationStatus } from "@/lib/api
 import { RecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
 import { BookCoverPlaceholderIcon, CloseIcon, CheckIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 const LANG_NAMES: Record<string, string> = {
   en: "English", de: "German", fr: "French", es: "Spanish",
@@ -23,6 +24,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
   const [translationStatus, setTranslationStatus] = useState<TranslationStatus | null>(null);
   const translationLang = getSettings().translationLang;
   const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     getBookTranslationStatus(book.id, translationLang)

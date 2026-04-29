@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon } from "@/components/Icons";
 import TagEditor from "@/components/TagEditor";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 type SortMode = "alpha" | "language" | "book" | "recent";
 
@@ -112,6 +113,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
   const [def, setDef] = useState<WordDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref);
 
   useEffect(() => {
     getWordDefinition(word, lang ?? undefined)

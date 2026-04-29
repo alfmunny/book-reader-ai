@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getWordDefinition, WordDefinition } from "@/lib/api";
 import { CloseIcon, CheckCircleIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Props {
   word: string;
@@ -16,6 +17,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref);
 
   useEffect(() => {
     setLoading(true);

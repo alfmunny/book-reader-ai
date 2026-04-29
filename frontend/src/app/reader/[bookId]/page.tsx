@@ -19,6 +19,7 @@ import VocabWordTooltip from "@/components/VocabWordTooltip";
 import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // Gemini Flash pricing constants — used for total queue cost estimate in the translation sidebar.
 const FLASH_COST_PER_M = 2.5; // USD per 1M output tokens
@@ -177,6 +178,7 @@ export default function ReaderPage() {
 
   // Chat sheet (mobile bottom dialog) ref — needed for focus management
   const chatSheetRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(chatSheetRef, sidebarOpen || !!chatSheetText);
 
   // Move focus into the chat sheet when it opens; restore on close (WCAG 2.4.3)
   useEffect(() => {

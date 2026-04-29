@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon, CloseIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Definition {
   partOfSpeech: string;
@@ -43,6 +44,7 @@ export default function WordActionDrawer({
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(drawerRef, !!action);
 
   const word = action?.word ?? "";
 

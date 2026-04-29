@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Annotation } from "@/lib/api";
 import { ArrowRightIcon, NoteIcon, EditIcon, CloseIcon, EmptyNotesIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 const COLOR_BADGE: Record<string, string> = {
   yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
@@ -32,6 +33,7 @@ interface Props {
 export default function AnnotationsSidebar({ annotations, totalCount, onJump, onEdit, loading, bookId }: Props) {
   const [open, setOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(drawerRef, open);
 
   // Group by chapter
   const byChapter = annotations.reduce<Record<number, Annotation[]>>((acc, a) => {

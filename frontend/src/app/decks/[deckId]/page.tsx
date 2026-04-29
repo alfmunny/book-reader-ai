@@ -20,6 +20,7 @@ import {
   TrashIcon,
 } from "@/components/Icons";
 import UndoToast from "@/components/UndoToast";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 export default function DeckDetailPage() {
   const { data: session } = useSession();
@@ -320,6 +321,8 @@ interface AddWordPickerProps {
 function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
   const [query, setQuery] = useState("");
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef);
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -346,6 +349,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-word-picker-title"

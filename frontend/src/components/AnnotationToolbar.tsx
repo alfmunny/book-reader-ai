@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createAnnotation, updateAnnotation, deleteAnnotation, Annotation } from "@/lib/api";
 import { CloseIcon, NoteIcon, TrashIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 const COLORS = [
   { key: "yellow", label: "Yellow", bg: "bg-yellow-400", border: "border-yellow-500", ring: "ring-yellow-400" },
@@ -40,6 +41,7 @@ export default function AnnotationToolbar({
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useFocusTrap(panelRef);
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;

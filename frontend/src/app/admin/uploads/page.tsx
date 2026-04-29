@@ -113,7 +113,7 @@ export default function UploadsPage() {
         />
         <button
           onClick={handleFilter}
-          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] text-sm hover:bg-amber-800"
+          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800"
           aria-label="Filter uploads"
         >
           Filter
@@ -121,7 +121,7 @@ export default function UploadsPage() {
         {activeFilter && (
           <button
             onClick={clearFilter}
-            className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] flex items-center"
+            className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 flex items-center"
           >
             <CloseIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Clear filter (user {activeFilter})
           </button>
@@ -171,7 +171,7 @@ export default function UploadsPage() {
                       <button
                         onClick={() => router.push(`/reader/${u.book_id}`)}
                         aria-label={`Open ${u.title}`}
-                        className="text-xs text-amber-700 hover:text-amber-800 min-h-[44px] flex items-center"
+                        className="text-xs text-amber-700 hover:text-amber-800 min-h-[44px] md:min-h-0 flex items-center"
                       >
                         Open
                       </button>

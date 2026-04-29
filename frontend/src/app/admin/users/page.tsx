@@ -67,7 +67,7 @@ export default function UsersPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
         >
           <RetryIcon className="w-4 h-4" aria-hidden="true" />
           Retry

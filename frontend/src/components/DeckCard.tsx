@@ -15,7 +15,7 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
     <>
       <div className="flex items-center gap-2 flex-wrap">
         <DeckIcon className="w-4 h-4 text-amber-600 shrink-0" />
-        <h2 className="font-serif font-semibold text-ink text-base truncate">
+        <h2 className="font-serif font-semibold text-ink text-base truncate" title={deck.name}>
           {deck.name}
         </h2>
         <span

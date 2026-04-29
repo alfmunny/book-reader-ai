@@ -136,7 +136,7 @@ export default function DeckDetailPage() {
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Decks
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-serif font-bold text-ink truncate">
+          <h1 className="font-serif font-bold text-ink truncate" title={deck?.name}>
             {deck?.name ?? "Deck"}
           </h1>
           {deck && (

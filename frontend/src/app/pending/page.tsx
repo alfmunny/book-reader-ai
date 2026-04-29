@@ -35,7 +35,7 @@ export default function PendingApprovalPage() {
           Your account is waiting for admin approval. You&apos;ll be able to use the
           app once an administrator approves your account.
         </p>
-        <p className="text-xs text-stone-400 mb-4">Checking automatically every 30 seconds…</p>
+        <p className="text-xs text-stone-600 mb-4">Checking automatically every 30 seconds…</p>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="text-sm text-red-600 hover:text-red-800 min-h-[44px] flex items-center justify-center mx-auto"

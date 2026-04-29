@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { CloseIcon } from "@/components/Icons";
 
 interface Definition {
   partOfSpeech: string;
@@ -83,21 +84,35 @@ export default function WordLookup({ word, position, language, onClose }: Props)
       };
 
   return (
-    <div ref={ref} style={style} className="sm:w-72 max-h-64 overflow-y-auto rounded-xl border border-amber-300 bg-white shadow-lg p-3 text-sm">
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label={`Word definition: ${word}`}
+      style={style}
+      className="relative sm:w-72 max-h-64 overflow-y-auto rounded-xl border border-amber-300 bg-white shadow-lg p-3 text-sm"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close definition"
+        className="absolute top-1.5 right-1.5 rounded-full p-0.5 hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+      >
+        <CloseIcon className="w-3.5 h-3.5" aria-hidden="true" />
+      </button>
       {loading && (
-        <div className="flex items-center gap-2 text-amber-700" role="status">
+        <div className="flex items-center gap-2 text-amber-700 pr-6" role="status">
           <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           Looking up &ldquo;<span lang={lang}>{word}</span>&rdquo;...
         </div>
       )}
 
       {error && (
-        <p role="alert" className="text-amber-700 italic">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
+        <p role="alert" className="text-amber-700 italic pr-6">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
       )}
 
       {result && (
         <>
-          <div className="flex items-baseline gap-2 mb-2">
+          <div className="flex items-baseline gap-2 mb-2 pr-5">
             <span lang={lang} className="font-serif font-bold text-ink text-base">{result.word}</span>
             {result.phonetic && (
               <span className="text-xs text-amber-700">{result.phonetic}</span>

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon, CloseIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 interface Definition {
   partOfSpeech: string;
@@ -45,6 +46,7 @@ export default function WordActionDrawer({
   const [saved, setSaved] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   useFocusTrap(drawerRef, !!action);
+  useScrollLock(!!action);
 
   const word = action?.word ?? "";
 

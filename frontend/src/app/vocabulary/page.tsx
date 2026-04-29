@@ -495,7 +495,7 @@ function VocabularyPageContent() {
         {exportMsg && (
           <div className="border border-amber-300 bg-amber-50 rounded-xl px-4 py-3 text-sm text-ink">
             {exportMsg.startsWith("http") ? (
-              <>Exported! <a href={exportMsg} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline break-all">{exportMsg}</a></>
+              <>Exported! <a href={exportMsg} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">{exportMsg}</a></>
             ) : (
               <span className="text-red-600">{exportMsg}</span>
             )}

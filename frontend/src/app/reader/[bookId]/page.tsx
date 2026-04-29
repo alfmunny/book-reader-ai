@@ -1301,7 +1301,7 @@ export default function ReaderPage() {
           ) : (
             <a
               href="/api/auth/signin"
-              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 flex items-center"
+              className="shrink-0 ml-auto md:ml-0 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Sign in
             </a>
@@ -1337,7 +1337,7 @@ export default function ReaderPage() {
         <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
           <span>
             Translation requires an account.{" "}
-            <a href="/api/auth/signin" className="underline font-medium hover:text-amber-900">
+            <a href="/api/auth/signin" className="underline font-medium hover:text-amber-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">
               Sign in
             </a>{" "}
             to translate this chapter.
@@ -2070,7 +2070,7 @@ export default function ReaderPage() {
                           </>
                         ) : (
                           <p className="text-xs text-amber-700">
-                            <a href="/api/auth/signin" className="underline font-medium">Sign in</a> to translate this chapter.
+                            <a href="/api/auth/signin" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Sign in</a> to translate this chapter.
                           </p>
                         )}
                       </div>

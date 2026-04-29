@@ -229,6 +229,7 @@ function VocabularyPageContent() {
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [activeWord, setActiveWord] = useState<{ word: string; lang: string | null } | null>(null);
@@ -322,12 +323,13 @@ function VocabularyPageContent() {
   }, [targetWord, loading]);
 
   async function handleDelete(word: string) {
+    setDeleteError(null);
     setDeleting(word);
     try {
       await deleteVocabularyWord(word);
       setWords((prev) => prev.filter((w) => w.word !== word));
     } catch {
-      // ignore
+      setDeleteError("Failed to delete. Please try again.");
     } finally {
       setDeleting(null);
     }
@@ -480,6 +482,14 @@ function VocabularyPageContent() {
           {exporting ? "Exporting…" : (<><ArrowUpRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span className="hidden sm:inline">Export all to Obsidian</span><span className="sm:hidden">Export</span></>)}
         </button>
       </header>
+
+      {deleteError && (
+        <div role="alert" aria-atomic="true" className="mx-6 mt-4">
+          <div className="border border-red-300 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700">
+            {deleteError}
+          </div>
+        </div>
+      )}
 
       <div role="status" aria-live="polite" aria-atomic="true" className="mx-6 mt-4">
         {exportMsg && (

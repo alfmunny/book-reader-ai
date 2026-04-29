@@ -171,12 +171,14 @@ function InsightCard({
   bookId,
   onDelete,
   isDeleting,
+  bookLanguage,
 }: {
   ins: BookInsight;
   chapters: BookChapter[];
   bookId: number;
   onDelete: () => void;
   isDeleting: boolean;
+  bookLanguage?: string;
 }) {
   const readerHref = ins.chapter_index !== null
     ? `/reader/${bookId}?chapter=${ins.chapter_index}${ins.context_text ? `&sentence=${encodeURIComponent(ins.context_text)}` : ""}`
@@ -185,7 +187,7 @@ function InsightCard({
   return (
     <div className="my-3 space-y-1.5">
       {ins.context_text && (
-        <blockquote className="border-l-4 border-amber-200 pl-4 italic text-stone-600 text-sm leading-relaxed">
+        <blockquote lang={bookLanguage ?? undefined} className="border-l-4 border-amber-200 pl-4 italic text-stone-600 text-sm leading-relaxed">
           &ldquo;{truncate(ins.context_text, 200)}&rdquo;
         </blockquote>
       )}
@@ -451,6 +453,7 @@ export default function BookNotesPage() {
           bookId={bookId}
           onDelete={() => handleDeleteInsight(ins.id)}
           isDeleting={deletingIns.has(ins.id)}
+          bookLanguage={bookLanguage}
         />
       </li>
     );

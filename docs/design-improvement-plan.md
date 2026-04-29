@@ -414,6 +414,16 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 ---
 
 
+## Wave 17 — Dialog ARIA, Title Tooltips, and Truncation UX (2026-04-29)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-29 | WordLookup popup: added role="dialog", aria-label, close button with CloseIcon (closes #2306) | WordLookup.tsx | #2307 |
+| 2026-04-29 | DeckCard description: added title={deck.description} for truncated text tooltip (closes #2308) | DeckCard.tsx | #2309 |
+| 2026-04-29 | Reader annotation cards: added title tooltip on desktop sidebar role=button and mobile bottom-sheet button for truncated sentence/note text (closes #2310) | reader/[bookId]/page.tsx | #2310 |
+
+---
+
 ## #364 — Mobile sub-sentence selection (design note, 2026-04-27)
 
 **Status:** Shipped. Design note merged in #1671; implementation drops the touch `preventDefault` per Approach B.

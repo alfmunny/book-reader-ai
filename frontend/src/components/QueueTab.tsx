@@ -666,14 +666,14 @@ export default function QueueTab({ adminFetch }: Props) {
                 : ""}
             </div>
             {s.retry_reason && (
-              <div className="truncate">{s.retry_reason}</div>
+              <div className="truncate" title={s.retry_reason}>{s.retry_reason}</div>
             )}
           </div>
         ) : null}
 
         {/* Hard error — only shown once retries are exhausted. */}
         {s?.last_error && !(s.retry_attempt && s.retry_attempt > 0) && (
-          <div role="alert" className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 truncate">
+          <div role="alert" className="text-xs text-red-600 bg-red-50 rounded px-2 py-1 truncate" title={s.last_error}>
             Last error: {s.last_error}
           </div>
         )}

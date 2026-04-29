@@ -17,6 +17,18 @@ const readerSrc = fs.readFileSync(
   path.join(__dirname, "../app/reader/[bookId]/page.tsx"),
   "utf8"
 );
+const profileSrc = fs.readFileSync(
+  path.join(__dirname, "../app/profile/page.tsx"),
+  "utf8"
+);
+const seedSrc = fs.readFileSync(
+  path.join(__dirname, "../components/SeedPopularButton.tsx"),
+  "utf8"
+);
+const queueTabSrc = fs.readFileSync(
+  path.join(__dirname, "../components/QueueTab.tsx"),
+  "utf8"
+);
 
 describe("Truncated title tooltip coverage (closes #2212)", () => {
   it("Popular Classics list-view book title has title attribute", () => {
@@ -53,6 +65,32 @@ describe("Truncated title tooltip coverage — reader header (closes #2237)", ()
 
   it("reader header authors paragraph has title attribute", () => {
     const idx = readerSrc.indexOf('text-amber-700 truncate" title={meta.authors.join(", ")}');
+    expect(idx).toBeGreaterThan(-1);
+  });
+});
+
+describe("Truncated title tooltip coverage — profile/SeedPopularButton/QueueTab (closes #2239)", () => {
+  it("profile Study Today deck button has title attribute for deck name", () => {
+    const idx = profileSrc.indexOf("title={d.name}");
+    expect(idx).toBeGreaterThan(-1);
+    const window = profileSrc.slice(Math.max(0, idx - 200), idx + 60);
+    expect(window).toContain("gotoFlashcardsForDeck");
+  });
+
+  it("SeedPopularButton current book title paragraph has title attribute", () => {
+    const idx = seedSrc.indexOf("title={state.current_book_title}");
+    expect(idx).toBeGreaterThan(-1);
+    const window = seedSrc.slice(Math.max(0, idx - 150), idx + 50);
+    expect(window).toContain("truncate");
+  });
+
+  it("QueueTab retry reason div has title attribute", () => {
+    const idx = queueTabSrc.indexOf('title={s.retry_reason}');
+    expect(idx).toBeGreaterThan(-1);
+  });
+
+  it("QueueTab last error div has title attribute", () => {
+    const idx = queueTabSrc.indexOf('title={s.last_error}');
     expect(idx).toBeGreaterThan(-1);
   });
 });

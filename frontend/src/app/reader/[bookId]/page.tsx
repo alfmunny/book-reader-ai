@@ -1805,7 +1805,7 @@ export default function ReaderPage() {
                     }}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs italic leading-relaxed line-clamp-3 flex-1">
+                      <p lang={bookLanguage} className="text-xs italic leading-relaxed line-clamp-3 flex-1">
                         &ldquo;{ann.sentence_text}&rdquo;
                       </p>
                       <button

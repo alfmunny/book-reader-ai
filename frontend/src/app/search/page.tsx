@@ -157,7 +157,7 @@ function SearchResultsInner() {
           <p className="text-sm mt-2">Start typing in the search bar above.</p>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
             Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
           </Link>
@@ -187,7 +187,7 @@ function SearchResultsInner() {
           <p className="text-sm mt-2">Try a shorter or different word.</p>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
             Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
           </Link>

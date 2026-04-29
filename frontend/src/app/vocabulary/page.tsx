@@ -13,7 +13,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon } from "@/components/Icons";
 import TagEditor from "@/components/TagEditor";
 
 type SortMode = "alpha" | "language" | "book" | "recent";
@@ -159,10 +159,17 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
         aria-label="Word definition"
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto animate-slide-up focus:outline-none"
       >
-        <div className="flex justify-center py-2">
-          <div className="w-10 h-1 bg-amber-200 rounded-full" />
+        <div className="flex items-center justify-between px-4 py-2 border-b border-amber-100">
+          <div className="w-10 h-1 bg-amber-200 rounded-full mx-auto" />
+          <button
+            onClick={onClose}
+            aria-label="Close definition"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+          >
+            <CloseIcon className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
-        <div className="px-5 pb-6 space-y-3">
+        <div className="px-5 pb-6 space-y-3 pt-3">
           <div className="flex items-baseline justify-between gap-2">
             <span className="font-serif font-bold text-ink text-xl">{word}</span>
             {def && def.lemma !== word && (

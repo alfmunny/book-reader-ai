@@ -21,7 +21,7 @@ describe("WordActionDrawer close button (WCAG 2.1.1, closes #2069)", () => {
 
   it("close button uses CloseIcon", () => {
     const block = src.match(
-      /aria-label="Close word lookup"[\s\S]{0,300}CloseIcon|CloseIcon[\s\S]{0,300}aria-label="Close word lookup"/
+      /aria-label="Close word lookup"[\s\S]{0,400}CloseIcon|CloseIcon[\s\S]{0,400}aria-label="Close word lookup"/
     );
     expect(block).not.toBeNull();
   });

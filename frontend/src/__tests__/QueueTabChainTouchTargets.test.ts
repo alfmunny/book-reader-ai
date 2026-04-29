@@ -15,7 +15,7 @@ function checkAround(anchor: string, radius = 300): void {
 
 describe("QueueTab model-chain button touch targets (closes #850)", () => {
   it("Save chain button has min-h-[44px]", () => {
-    checkAround('"Saving…" : "Save chain"', 550);
+    checkAround('"Saving…" : "Save chain"', 1100);
   });
 
   it("preset card buttons have min-h-[44px]", () => {

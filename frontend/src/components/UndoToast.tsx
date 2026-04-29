@@ -38,7 +38,7 @@ export default function UndoToast({ message, onUndo, onDone }: Props) {
       <span>{message}</span>
       <button
         onClick={handleUndo}
-        className="font-semibold text-amber-300 hover:text-amber-200 transition-colors shrink-0 min-h-[44px] md:min-h-0 flex items-center px-1"
+        className="font-semibold text-amber-300 hover:text-amber-200 transition-colors shrink-0 min-h-[44px] md:min-h-0 flex items-center px-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-stone-800"
       >
         Undo
       </button>

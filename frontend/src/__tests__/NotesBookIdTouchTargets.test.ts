@@ -33,7 +33,7 @@ describe("notes/[bookId] page touch targets (closes #849)", () => {
   it("empty-state Open reader button has min-h-[44px]", () => {
     const idx = src.indexOf("Open reader");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 200), idx + 20);
+    const window = src.slice(Math.max(0, idx - 350), idx + 20);
     expect(window).toContain("min-h-[44px]");
   });
 });

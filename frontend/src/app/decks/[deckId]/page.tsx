@@ -131,7 +131,7 @@ export default function DeckDetailPage() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <button
           onClick={() => router.push("/decks")}
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Decks
         </button>
@@ -152,7 +152,7 @@ export default function DeckDetailPage() {
             onClick={() => setPickerOpen(true)}
             aria-label="Add word to deck"
             disabled={candidateWords.length === 0}
-            className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0"
+            className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <PlusIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Add word</span>
@@ -186,7 +186,7 @@ export default function DeckDetailPage() {
               <button
                 type="button"
                 onClick={loadDeck}
-                className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+                className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
               >
                 <RetryIcon className="w-4 h-4" aria-hidden="true" />
                 Retry
@@ -194,7 +194,7 @@ export default function DeckDetailPage() {
               <button
                 type="button"
                 onClick={() => router.push("/decks")}
-                className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+                className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 Back to decks
               </button>
@@ -227,7 +227,7 @@ export default function DeckDetailPage() {
                     type="button"
                     onClick={() => setPickerOpen(true)}
                     disabled={candidateWords.length === 0}
-                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                   >
                     <PlusIcon className="w-4 h-4" />
                     Add word
@@ -236,7 +236,7 @@ export default function DeckDetailPage() {
                   <button
                     type="button"
                     onClick={() => router.push("/decks")}
-                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     <ArrowLeftIcon className="w-4 h-4" />
                     Back to decks
@@ -268,7 +268,7 @@ export default function DeckDetailPage() {
                         type="button"
                         onClick={() => handleRemove(w.id)}
                         aria-label={`Remove ${w.word} from deck`}
-                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -368,7 +368,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
             type="button"
             onClick={onClose}
             aria-label="Close add-word picker"
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-100 transition-colors"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" />
           </button>
@@ -409,7 +409,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
                       onAdd(w.id);
                     }}
                     aria-label={`Add ${w.word} to deck`}
-                    className="w-full flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-left hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0"
+                    className="w-full flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-left hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     <span className="font-serif text-ink truncate flex-1 min-w-0">
                       {w.word}

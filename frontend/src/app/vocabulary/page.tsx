@@ -166,7 +166,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           <button
             onClick={onClose}
             aria-label="Close definition"
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors -mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -379,7 +379,7 @@ function VocabularyPageContent() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveWord({ word: group.lemma, lang: group.language })}
-              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left min-h-[44px] md:min-h-0 flex items-center"
+              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               {group.lemma}
             </button>
@@ -404,7 +404,7 @@ function VocabularyPageContent() {
                 onClick={() => handleDelete(f.word)}
                 disabled={deleting === f.word}
                 aria-label={`Delete ${f.word}`}
-                className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors min-h-[44px] md:min-h-0 flex items-center px-2"
+                className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors min-h-[44px] md:min-h-0 flex items-center px-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                 data-testid={`delete-${f.word}`}
               >
                 {deleting === f.word ? "…" : "Delete"}
@@ -452,7 +452,7 @@ function VocabularyPageContent() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <button
           onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
         </button>
@@ -467,7 +467,7 @@ function VocabularyPageContent() {
         <button
           onClick={() => router.push("/vocabulary/flashcards")}
           aria-label="Flashcards"
-          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           data-testid="flashcards-btn"
         >
           <FlashcardIcon className="w-4 h-4" />
@@ -476,7 +476,7 @@ function VocabularyPageContent() {
         <button
           onClick={() => handleExport()}
           disabled={exporting || words.length === 0}
-          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors disabled:opacity-50 min-h-[44px] md:min-h-0 shrink-0"
+          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors disabled:opacity-50 min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           data-testid="export-all-btn"
         >
           {exporting ? "Exporting…" : (<><ArrowUpRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span className="hidden sm:inline">Export all to Obsidian</span><span className="sm:hidden">Export</span></>)}
@@ -601,7 +601,7 @@ function VocabularyPageContent() {
             <button
               type="button"
               onClick={loadVocab}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Try again
@@ -615,7 +615,7 @@ function VocabularyPageContent() {
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -630,7 +630,7 @@ function VocabularyPageContent() {
                 <button
                   type="button"
                   onClick={() => setSelectedTag(null)}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Clear tag filter
                 </button>
@@ -642,7 +642,7 @@ function VocabularyPageContent() {
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Clear search
                 </button>

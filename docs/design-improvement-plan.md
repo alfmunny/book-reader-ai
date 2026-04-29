@@ -206,6 +206,10 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.8 | WCAG 2.4.7: AuthPromptModal sign-in link + notes InsightCard chapter reader link — closes #2204 (PR #2205) | ✅ Done |
 | 2026-04-29 | 11.9 | useFocusTrap branch coverage 76.5% → 94.1%: empty-dialog, container-focus, inert filtering, shift-middle — closes #2206 (PR #2207) | ✅ Done |
 | 2026-04-29 | 11.10 | SearchBar mobile overflow fix: replace inline-flex + min-w-[14rem] with flex flex-1 + flex-1 min-w-0 — closes #2208 (PR #2209) | ✅ Done |
+| 2026-04-29 | 11.11 | Body scroll lock hook (useScrollLock) applied to BookDetailModal, AnnotationsSidebar, WordActionDrawer, AuthPromptModal — closes #2210 (PR #2211) | ✅ Done |
+| 2026-04-29 | 11.12 | Add hover title tooltip to truncated book title/author in BookCard, Continue Reading banner, Popular Classics list — closes #2212 (PR #2213) | ✅ Done |
+| 2026-04-29 | 11.13 | Add loading="lazy" to 7 remote img elements (book covers, user avatars) across 5 files — closes #2214 (PR #2215) | ✅ Done |
+| 2026-04-29 | 11.14 | AnnotationToolbar missing useScrollLock — body scroll locked while note editor open — closes #2216 (PR #2217) | ✅ Done |
 
 ---
 

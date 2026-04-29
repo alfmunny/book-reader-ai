@@ -965,7 +965,7 @@ export default function ReaderPage() {
             {meta ? (
               <>
                 <div className="flex items-baseline gap-1.5 min-w-0">
-                  <h1 className="font-serif font-bold text-ink truncate text-sm">{meta.title}</h1>
+                  <h1 className="font-serif font-bold text-ink truncate text-sm" title={meta.title}>{meta.title}</h1>
                   {chapterSource === "upload" && (
                     <span
                       className="shrink-0 text-[10px] font-medium text-amber-700 bg-amber-100 border border-amber-200 rounded px-1 py-0.5 leading-none"
@@ -1001,7 +1001,7 @@ export default function ReaderPage() {
                     ><ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" /></a>
                   )}
                 </div>
-                <p className="text-xs text-amber-700 truncate">{meta.authors.join(", ")}</p>
+                <p className="text-xs text-amber-700 truncate" title={meta.authors.join(", ")}>{meta.authors.join(", ")}</p>
               </>
             ) : (
               <div className="h-4 w-48 bg-amber-200 animate-pulse rounded" aria-hidden="true" />

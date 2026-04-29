@@ -255,7 +255,7 @@ export default function DeckDetailPage() {
                     key={w.id}
                     className="rounded-xl border border-amber-200 bg-white px-4 py-3 flex items-center justify-between gap-3"
                   >
-                    <span className="font-serif text-ink truncate flex-1 min-w-0" lang={w.language ?? undefined}>
+                    <span className="font-serif text-ink truncate flex-1 min-w-0" lang={w.language ?? undefined} title={w.word}>
                       {w.word}
                     </span>
                     {w.language && (
@@ -409,6 +409,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
                       onAdd(w.id);
                     }}
                     aria-label={`Add ${w.word} to deck`}
+                    title={w.word}
                     className="w-full flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2 text-left hover:border-amber-400 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     <span className="font-serif text-ink truncate flex-1 min-w-0" lang={w.language ?? undefined}>

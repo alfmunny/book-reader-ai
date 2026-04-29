@@ -82,7 +82,7 @@ test("clicking the card div directly toggles flipped state via onClick (line 251
   await userEvent.click(card);
 
   // After click, grade buttons appear (flipped=true)
-  await waitFor(() => screen.getByRole("button", { name: "Good" }));
+  await waitFor(() => screen.getByRole("button", { name: /Good/i }));
 });
 
 // ── line 252: card onKeyDown — Enter / Space flip card back ──────────────────
@@ -93,7 +93,7 @@ test("Enter keydown on card div invokes onKeyDown handler and flips card (line 2
 
   // Flip to the definition side first via "Show answer" button so the card is in flipped=true state
   await userEvent.click(screen.getByText("Show answer"));
-  await waitFor(() => screen.getByRole("button", { name: "Good" }));
+  await waitFor(() => screen.getByRole("button", { name: /Good/i }));
 
   // Now the card is flipped — pressing Enter should flip it back via onKeyDown
   const card = screen.getByRole("button", { name: /press to flip back/i });
@@ -101,7 +101,7 @@ test("Enter keydown on card div invokes onKeyDown handler and flips card (line 2
 
   // Card flipped back — grade buttons gone, "Show answer" visible again
   await waitFor(() => screen.getByText("Show answer"));
-  expect(screen.queryByRole("button", { name: "Good" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Good/i })).not.toBeInTheDocument();
 });
 
 test("Space keydown on card div invokes onKeyDown handler and flips card (line 251, #2003)", async () => {
@@ -109,7 +109,7 @@ test("Space keydown on card div invokes onKeyDown handler and flips card (line 2
   await waitFor(() => screen.getByText("ephemeral"));
 
   await userEvent.click(screen.getByText("Show answer"));
-  await waitFor(() => screen.getByRole("button", { name: "Good" }));
+  await waitFor(() => screen.getByRole("button", { name: /Good/i }));
 
   const card = screen.getByRole("button", { name: /press to flip back/i });
   fireEvent.keyDown(card, { key: " " });
@@ -125,7 +125,7 @@ test("non-activating key on card does not flip it (line 251 branch, #2003)", asy
   fireEvent.keyDown(card, { key: "Tab" });
 
   // Grade buttons should NOT appear — card stays unflipped
-  expect(screen.queryByRole("button", { name: "Good" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Good/i })).not.toBeInTheDocument();
   expect(screen.getByText("Show answer")).toBeInTheDocument();
 });
 

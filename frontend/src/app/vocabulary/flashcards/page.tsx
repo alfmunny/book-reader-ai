@@ -131,6 +131,28 @@ export default function FlashcardsPage() {
     }
   }, [currentCard, currentIndex, cards.length, submitting]);
 
+  // Keyboard shortcuts: Space/Enter → flip; 1/2/3/4 → grade (Again/Hard/Good/Easy)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLElement && ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+      if (e.key === " " || e.key === "Enter") {
+        if (!flipped && currentCard && !done) {
+          e.preventDefault();
+          setFlipped(true);
+        }
+      } else if (flipped && !submitting && currentCard) {
+        const gradeMap: Record<string, number> = { "1": 0, "2": 2, "3": 3, "4": 5 };
+        const grade = gradeMap[e.key];
+        if (grade !== undefined) {
+          e.preventDefault();
+          handleGrade(grade);
+        }
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [flipped, currentCard, done, submitting, handleGrade]);
+
   if (status === "loading" || loading) {
     return (
       <div role="status" aria-label="Loading flashcards" className="min-h-screen bg-parchment flex items-center justify-center">
@@ -286,14 +308,16 @@ export default function FlashcardsPage() {
             {/* Grade buttons — shown after flip */}
             {flipped && (
               <div className="grid grid-cols-4 gap-2 animate-fade-in">
-                {GRADES.map(({ label, value, className }) => (
+                {GRADES.map(({ label, value, className }, i) => (
                   <button
                     key={value}
                     onClick={() => handleGrade(value)}
                     disabled={submitting}
-                    className={`py-3 rounded-xl border font-medium text-sm transition-colors min-h-[44px] disabled:opacity-50 ${className}`}
+                    aria-label={`${label} (key ${i + 1})`}
+                    className={`py-3 rounded-xl border font-medium text-sm transition-colors min-h-[44px] disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 ${className}`}
                   >
-                    {label}
+                    <span>{label}</span>
+                    <span className="text-[10px] opacity-60 font-normal">{i + 1}</span>
                   </button>
                 ))}
               </div>

@@ -135,7 +135,7 @@ function AnnotationCard({
         <div className="flex items-center gap-3 mt-2">
           <a
             href={`/reader/${bookId}?chapter=${ann.chapter_index}&sentence=${encodeURIComponent(ann.sentence_text)}`}
-            className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-800 hover:underline transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-800 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
           >
             <ArrowRightIcon className="w-3 h-3 shrink-0" /> {chapterLabel(chapters, ann.chapter_index)}
           </a>

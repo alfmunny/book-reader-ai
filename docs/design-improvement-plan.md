@@ -196,6 +196,12 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 10.8 | Docs: decks tutorial added covering manual/smart modes and flashcard filtering (PR #2118, closes #2117) | ✅ Done |
 | 2026-04-29 | 10.9 | Docs: in-app search tutorial added covering annotations, vocabulary, and chapter search (PR #2120, closes #2119) | ✅ Done |
 | 2026-04-29 | 10.10 | Login page: `document.title` set to "Sign In — Book Reader AI", WCAG 2.4.2 (PR #2122, closes #2121) | ✅ Done |
+| 2026-04-29 | 11.1 | WCAG 2.4.7 focus-visible ring sweep: reader toolbar + page components (PRs #2186, #2184, #2182) | ✅ Done |
+| 2026-04-29 | 11.2 | WCAG 2.4.7: vocab, notes, flashcard page buttons (PR #2192, closes #2191) | ✅ Done |
+| 2026-04-29 | 11.3 | WCAG 2.4.7: all 20 homepage buttons (PR #2194, closes #2193) | ✅ Done |
+| 2026-04-29 | 11.4 | WCAG 2.4.7: AnnotationsSidebar + InsightChat buttons (PR #2197, closes #2196) | ✅ Done |
+| 2026-04-29 | 11.5 | WCAG 2.4.7: BookCard remove + VocabWordTooltip save + upload chapter remove (PR #2199, closes #2198) | ✅ Done |
+| 2026-04-29 | 11.6 | WCAG 2.4.7: 6 inline anchor links (reader sign-in × 3, vocab export URL, InsightChat Gemini links × 2) — closes #2200 | ✅ Done |
 
 ---
 

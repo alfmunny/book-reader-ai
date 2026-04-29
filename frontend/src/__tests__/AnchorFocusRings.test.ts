@@ -58,18 +58,19 @@ describe("Vocabulary page anchor focus ring (closes #2200)", () => {
 
 describe("InsightChat Gemini API key anchor focus rings (closes #2200)", () => {
   it("Gemini key notice anchor (first) has focus ring", () => {
-    // First occurrence ends with Gemini API key</a>{" "}
-    const idx = chatSrc.indexOf('Gemini API key</a>{" "}');
+    // First occurrence: ends with sr-only new-tab span then </a>{" "}
+    const idx = chatSrc.indexOf('href="/profile" target="_blank"');
     expect(idx).toBeGreaterThan(-1);
-    const window = chatSrc.slice(Math.max(0, idx - 150), idx + 10);
+    const window = chatSrc.slice(Math.max(0, idx - 10), idx + 300);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
   it("Gemini key chat-panel anchor (second) has focus ring", () => {
-    // Second occurrence ends with Gemini API key</a>.
-    const idx = chatSrc.indexOf("Gemini API key</a>.");
+    // Second occurrence: same href pattern, further in file
+    const first = chatSrc.indexOf('href="/profile" target="_blank"');
+    const idx = chatSrc.indexOf('href="/profile" target="_blank"', first + 1);
     expect(idx).toBeGreaterThan(-1);
-    const window = chatSrc.slice(Math.max(0, idx - 150), idx + 10);
+    const window = chatSrc.slice(Math.max(0, idx - 10), idx + 300);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 });

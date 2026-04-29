@@ -416,7 +416,7 @@ export default function InsightChat({
       {!hasGeminiKey && (
         <div className="px-3 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-800">
           Insights require a{" "}
-          <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Gemini API key</a>{" "}
+          <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Gemini API key<span className="sr-only"> (opens in new tab)</span></a>{" "}
           — free from Google AI Studio.
         </div>
       )}
@@ -583,7 +583,7 @@ export default function InsightChat({
         {!hasGeminiKey && (
           <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-2 text-xs text-amber-800">
             Chat requires a{" "}
-            <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Gemini API key</a>.
+            <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Gemini API key<span className="sr-only"> (opens in new tab)</span></a>.
           </div>
         )}
 

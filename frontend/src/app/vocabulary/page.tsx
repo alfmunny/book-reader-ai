@@ -208,7 +208,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
               rel="noopener noreferrer"
               className="inline-block text-xs text-amber-700 hover:text-amber-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             >
-              View on Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
+              View on Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
             </a>
           )}
         </div>

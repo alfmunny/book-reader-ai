@@ -156,7 +156,7 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
             rel="noopener noreferrer"
             className="text-xs text-amber-700 hover:text-amber-800 hover:underline ml-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
           >
-            View on Project Gutenberg <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
+            View on Project Gutenberg <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
           </a>
         </div>
       </div>

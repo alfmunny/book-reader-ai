@@ -67,7 +67,7 @@ export default function UsersPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
         >
           <RetryIcon className="w-4 h-4" aria-hidden="true" />
           Retry
@@ -85,7 +85,7 @@ export default function UsersPage() {
             type="button"
             onClick={() => setActError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -126,7 +126,7 @@ export default function UsersPage() {
                     )
                   }
                   aria-label={u.approved ? `Revoke ${u.name}` : `Approve ${u.name}`}
-                  className={`text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center ${
+                  className={`text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                     u.approved ? "border-orange-200 text-orange-700" : "border-emerald-200 text-emerald-600"
                   }`}
                 >
@@ -143,7 +143,7 @@ export default function UsersPage() {
                         act(() => adminFetch(`/admin/users/${u.id}`, { method: "DELETE" }));
                       }}
                       aria-label={`Confirm delete ${u.name}`}
-                      className="text-xs px-2 py-1 md:py-0.5 rounded border border-red-400 bg-red-50 text-red-700 min-h-[44px] md:min-h-0 flex items-center"
+                      className="text-xs px-2 py-1 md:py-0.5 rounded border border-red-400 bg-red-50 text-red-700 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                     >
                       Yes
                     </button>
@@ -151,7 +151,7 @@ export default function UsersPage() {
                       type="button"
                       onClick={() => setPendingDelete(null)}
                       aria-label="Cancel delete"
-                      className="text-xs px-2 py-1 md:py-0.5 rounded border border-stone-200 text-stone-600 min-h-[44px] md:min-h-0 flex items-center"
+                      className="text-xs px-2 py-1 md:py-0.5 rounded border border-stone-200 text-stone-600 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                     >
                       No
                     </button>
@@ -161,7 +161,7 @@ export default function UsersPage() {
                     type="button"
                     onClick={() => setPendingDelete(u.id)}
                     aria-label={`Delete ${u.name}`}
-                    className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center border-red-200 text-red-600"
+                    className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border min-h-[44px] md:min-h-0 flex items-center border-red-200 text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                   >
                     Delete
                   </button>

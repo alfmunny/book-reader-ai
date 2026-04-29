@@ -347,14 +347,11 @@ export default function BooksPage() {
           className="flex-1 rounded-lg border border-amber-300 px-3 py-2 text-sm placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-amber-400"
           aria-label="Filter books"
         />
-        {searchQuery && (
-          <span role="status" aria-live="polite" aria-atomic="true" className="text-xs text-stone-600">
-            {books.filter((b) =>
-              fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
-            ).length}{" "}
-            / {books.length}
-          </span>
-        )}
+        <span aria-live="polite" aria-atomic="true" className="text-xs text-stone-600">
+          {searchQuery ? `${books.filter((b) =>
+            fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
+          ).length} / ${books.length}` : ""}
+        </span>
       </div>
 
       <ul role="list" aria-label="Books" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">

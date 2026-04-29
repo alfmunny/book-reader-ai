@@ -637,14 +637,14 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Visually-hidden live region: announces search result count to screen readers */}
-              {!searching && searchedQuery && !searchError && (
-                <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-                  {searchResults.length > 0
+              {/* Visually-hidden live region: always-present so AT announces updates (WCAG 4.1.3) */}
+              <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+                {!searching && searchedQuery && !searchError
+                  ? searchResults.length > 0
                     ? `Found ${searchResults.length} book${searchResults.length === 1 ? "" : "s"} for ${searchedQuery}.`
-                    : `Search complete. No results for ${searchedQuery}.`}
-                </div>
-              )}
+                    : `Search complete. No results for ${searchedQuery}.`
+                  : ""}
+              </div>
 
               {searching && (
                 <div role="status" aria-label="Loading search results">

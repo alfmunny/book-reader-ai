@@ -11,6 +11,7 @@ Step-by-step walkthroughs for the most common workflows. Tutorials are written a
 - **[Add your own EPUB](epub-upload.md)** — upload a .epub or .txt file, review chapter splits, and start reading.
 - **[Save vocabulary words while reading](vocabulary.md)** — double-click or long-press a word to save it, then review on the Vocabulary page.
 - **[Review vocabulary with flashcards](flashcards.md)** — save words while reading, then review them with spaced repetition.
+- **[Organize vocabulary with decks](decks.md)** — group saved words into named or rule-based decks and filter flashcard sessions by deck.
 - **[Read without distractions (Focus mode)](focus-mode.md)** — hide the UI chrome and read with keyboard navigation and paragraph focus.
 - **[Highlight and annotate while reading](annotations.md)** — color-code sentences, attach notes, and review everything on the Notes page.
 - **[Track your reading progress](reading-stats.md)** — reading streak, activity heatmap, and cumulative stats on the home page.

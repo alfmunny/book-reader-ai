@@ -1018,7 +1018,7 @@ export default function ReaderPage() {
                   onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                   disabled={chapterIndex === 0}
                   aria-label="Previous chapter"
-                  className="w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                  className="w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   <ArrowLeftIcon className="w-3.5 h-3.5" />
                 </button>
@@ -1041,7 +1041,7 @@ export default function ReaderPage() {
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
                   aria-label="Next chapter"
-                  className="w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors"
+                  className="w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center rounded-lg border border-amber-300 disabled:opacity-30 hover:bg-amber-100 text-amber-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   <ArrowRightIcon className="w-3.5 h-3.5" />
                 </button>
@@ -1076,7 +1076,7 @@ export default function ReaderPage() {
             onClick={cycleTheme}
             title={`Theme: ${theme} — click to cycle`}
             aria-label={`Theme: ${theme} — click to cycle`}
-            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors"
+            className="hidden md:flex shrink-0 items-center gap-1.5 px-2 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 hover:bg-amber-100 text-xs text-amber-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             {theme === "light" ? <SunIcon className="w-3.5 h-3.5" /> : theme === "sepia" ? <SepiaIcon className="w-3.5 h-3.5" /> : <MoonIcon className="w-3.5 h-3.5" />}
             <span className="hidden lg:inline capitalize text-[9px] font-sans">{theme}</span>
@@ -1090,7 +1090,7 @@ export default function ReaderPage() {
             title="Toggle insight chat"
             aria-label="Insight sidebar"
             aria-pressed={sidebarOpen && sidebarTab === "chat"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
               sidebarOpen && (sidebarTab === "chat")
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1106,7 +1106,7 @@ export default function ReaderPage() {
             title="Translation"
             aria-label="Translate"
             aria-pressed={sidebarOpen && sidebarTab === "translate"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
               sidebarOpen && sidebarTab === "translate"
                 ? "bg-amber-700 text-white border-amber-700"
                 : translationEnabled
@@ -1124,7 +1124,7 @@ export default function ReaderPage() {
             title="Chapter summary"
             aria-label="Chapter summary"
             aria-pressed={sidebarOpen && sidebarTab === "summary"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
               sidebarOpen && sidebarTab === "summary"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1143,7 +1143,7 @@ export default function ReaderPage() {
             title="Annotations & notes"
             aria-label={annotations.length > 0 ? `Annotations & notes (${annotations.length})` : "Annotations & notes"}
             aria-pressed={sidebarOpen && sidebarTab === "notes"}
-            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
               sidebarOpen && sidebarTab === "notes"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1170,7 +1170,7 @@ export default function ReaderPage() {
               }}
               aria-pressed={showAnnotations}
               title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
-              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+              className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showAnnotations
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-900"
@@ -1190,7 +1190,7 @@ export default function ReaderPage() {
             title="Vocabulary"
             aria-label={vocabWords.length > 0 ? `Vocabulary (${vocabWords.length} words)` : "Vocabulary"}
             aria-pressed={sidebarOpen && sidebarTab === "vocab"}
-            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors ${
+            className={`relative hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
               sidebarOpen && sidebarTab === "vocab"
                 ? "bg-amber-700 text-white border-amber-700"
                 : "border-amber-300 text-amber-700 hover:bg-amber-50"
@@ -1211,7 +1211,7 @@ export default function ReaderPage() {
               onClick={handleObsidianExport}
               title="Export vocabulary to Obsidian"
               aria-label="Export vocabulary to Obsidian"
-              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors"
+              className="hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               <ExportIcon className="w-3.5 h-3.5 shrink-0" />
               Obsidian
@@ -1248,7 +1248,7 @@ export default function ReaderPage() {
               aria-label="Keyboard shortcuts"
               aria-expanded={showShortcuts}
               aria-controls="shortcuts-panel"
-              className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 rounded-lg border text-xs font-medium transition-colors ${
+              className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showShortcuts
                   ? "bg-amber-100 border-amber-400 text-amber-800"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-900"
@@ -1287,7 +1287,7 @@ export default function ReaderPage() {
               onClick={() => router.push("/profile")}
               title={session.backendUser?.name ?? "Profile"}
               aria-label={session.backendUser?.name ?? "Profile"}
-              className="shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0"
+              className="shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               {session.backendUser?.picture ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -1352,7 +1352,7 @@ export default function ReaderPage() {
             Translation requires a Gemini API key.{" "}
             <button
               onClick={() => router.push("/profile")}
-              className="underline font-medium hover:text-amber-900"
+              className="underline font-medium hover:text-amber-900 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-600"
             >
               Add your Gemini API key in Settings
             </button>{" "}
@@ -1408,13 +1408,13 @@ export default function ReaderPage() {
                 <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={retryChapterLoad}
-                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors"
+                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                   >
                     Retry
                   </button>
                   <button
                     onClick={() => router.push("/")}
-                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors"
+                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     Back to library
                   </button>
@@ -1477,7 +1477,7 @@ export default function ReaderPage() {
                     data-testid="bottom-prev-chapter"
                     onClick={() => goToChapter(Math.max(0, chapterIndex - 1))}
                     disabled={chapterIndex === 0}
-                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0"
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous chapter</button>
                   <span className="text-xs text-amber-700 self-center">
                     {chapterIndex + 1} / {chapters.length} · {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
@@ -1486,7 +1486,7 @@ export default function ReaderPage() {
                     data-testid="bottom-next-chapter"
                     onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                     disabled={chapterIndex === chapters.length - 1}
-                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0"
+                    className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >Next chapter <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
               </>
@@ -1815,7 +1815,7 @@ export default function ReaderPage() {
                             chapterIndex: ann.chapter_index,
                           });
                         }}
-                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center opacity-60 hover:opacity-100"
+                        className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center opacity-60 hover:opacity-100 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                         aria-label={`Edit annotation for: ${ann.sentence_text.slice(0, 60)}`}
                       >
                         <EditIcon className="w-3.5 h-3.5" />
@@ -1838,7 +1838,7 @@ export default function ReaderPage() {
                           key={v}
                           onClick={() => setNotesView(v)}
                           aria-pressed={notesView === v}
-                          className={`flex-1 text-xs py-1 min-h-[44px] md:min-h-0 rounded-md font-medium transition-colors ${
+                          className={`flex-1 text-xs py-1 min-h-[44px] md:min-h-0 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                             notesView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-600 hover:text-stone-800"
                           }`}
                         >
@@ -1870,7 +1870,7 @@ export default function ReaderPage() {
                           return (
                             <div key={ch}>
                               <button
-                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-600 uppercase tracking-wide min-h-[44px] md:min-h-0"
+                                className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-600 uppercase tracking-wide min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                                 aria-expanded={!isCollapsed}
                                 onClick={() => setCollapsedNoteChapters((prev) => {
                                   const next = new Set(prev);
@@ -1924,7 +1924,7 @@ export default function ReaderPage() {
                           key={v}
                           onClick={() => setVocabView(v)}
                           aria-pressed={vocabView === v}
-                          className={`flex-1 text-xs py-1 min-h-[44px] md:min-h-0 rounded-md font-medium transition-colors ${
+                          className={`flex-1 text-xs py-1 min-h-[44px] md:min-h-0 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                             vocabView === v ? "bg-white text-amber-700 shadow-sm" : "text-stone-600 hover:text-stone-800"
                           }`}
                         >
@@ -1936,7 +1936,7 @@ export default function ReaderPage() {
                       <span className="text-xs text-stone-600" aria-live="polite" aria-atomic="true">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
-                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] md:min-h-0 flex items-center gap-1">
+                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
                         View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </button>
                     </div>
@@ -1960,7 +1960,7 @@ export default function ReaderPage() {
                               {/* Lemma header */}
                               <button
                                 onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
-                                className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] md:min-h-0 hover:bg-amber-100 transition-colors text-left"
+                                className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] md:min-h-0 hover:bg-amber-100 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
                               >
                                 <span className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (
@@ -1981,7 +1981,7 @@ export default function ReaderPage() {
                                     }
                                     setSidebarOpen(false);
                                   }}
-                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 flex items-center"
+                                  className="w-full text-left border-t border-amber-200 px-3 py-1.5 hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
                                 >
                                   {vocabView === "book" && (
                                     <span className="text-[10px] text-stone-600 mr-1">Ch.{occ.chapter_index + 1}</span>
@@ -2042,14 +2042,14 @@ export default function ReaderPage() {
                         <button
                           onClick={() => setDisplayMode("inline")}
                           aria-pressed={displayMode === "inline"}
-                          className={`flex-1 px-3 py-2 min-h-[44px] md:min-h-0 text-sm transition-colors ${
+                          className={`flex-1 px-3 py-2 min-h-[44px] md:min-h-0 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
                             displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                           }`}
                         >Inline</button>
                         <button
                           onClick={() => setDisplayMode("parallel")}
                           aria-pressed={displayMode === "parallel"}
-                          className={`flex-1 px-3 py-2 min-h-[44px] md:min-h-0 text-sm border-l border-amber-300 transition-colors ${
+                          className={`flex-1 px-3 py-2 min-h-[44px] md:min-h-0 text-sm border-l border-amber-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
                             displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                           }`}
                         >Side by side</button>
@@ -2063,7 +2063,7 @@ export default function ReaderPage() {
                           <>
                             <button
                               onClick={handleTranslateThisChapter}
-                              className="w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors"
+                              className="w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                             >
                               Translate this chapter
                             </button>
@@ -2131,7 +2131,7 @@ export default function ReaderPage() {
                               <button
                                 onClick={handleTranslateWholeBook}
                                 disabled={enqueueingBook}
-                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0"
+                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                               >
                                 {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
                               </button>
@@ -2150,7 +2150,7 @@ export default function ReaderPage() {
                     {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
                       <button
                         onClick={handleRetranslate}
-                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50"
+                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                       >
                         Retranslate chapter
                       </button>
@@ -2160,7 +2160,7 @@ export default function ReaderPage() {
                     {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
                       <button
                         onClick={handleRetryFailed}
-                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-red-300 text-red-600 hover:bg-red-50"
+                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                       >
                         Retry failed translation
                       </button>
@@ -2202,7 +2202,7 @@ export default function ReaderPage() {
               <span className="font-serif font-semibold text-ink text-sm">Chat</span>
               <button
                 onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
-                className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-center text-amber-700"
+                className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-center text-amber-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 aria-label="Close chat"
               ><CloseIcon className="w-4 h-4" aria-hidden="true" /></button>
             </div>
@@ -2251,14 +2251,14 @@ export default function ReaderPage() {
                 <button
                   onClick={() => setDisplayMode("inline")}
                   aria-pressed={displayMode === "inline"}
-                  className={`px-3 py-2 min-h-[44px] md:min-h-0 transition-colors ${
+                  className={`px-3 py-2 min-h-[44px] md:min-h-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
                     displayMode === "inline" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >Inline</button>
                 <button
                   onClick={() => setDisplayMode("parallel")}
                   aria-pressed={displayMode === "parallel"}
-                  className={`px-3 py-2 min-h-[44px] md:min-h-0 border-l border-amber-300 transition-colors ${
+                  className={`px-3 py-2 min-h-[44px] md:min-h-0 border-l border-amber-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
                     displayMode === "parallel" ? "bg-amber-700 text-white" : "text-amber-700 hover:bg-amber-50"
                   }`}
                 >Side by side</button>
@@ -2290,7 +2290,7 @@ export default function ReaderPage() {
                         }
                         setNotesExpanded(false);
                       }}
-                      className="w-full text-left px-3 py-2 min-h-[44px] md:min-h-0 flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs"
+                      className="w-full text-left px-3 py-2 min-h-[44px] md:min-h-0 flex flex-col justify-center rounded-lg border border-amber-200 bg-amber-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                     >
                       <div className="text-ink line-clamp-2">{ann.sentence_text}</div>
                       {ann.note_text && (
@@ -2316,7 +2316,7 @@ export default function ReaderPage() {
                   setTranslateExpanded(false);
                 }
               }}
-              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 translationEnabled
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -2330,7 +2330,7 @@ export default function ReaderPage() {
                 const ttsEl = document.querySelector<HTMLButtonElement>("[data-tts-play]");
                 if (ttsEl) ttsEl.click();
               }}
-              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 ttsIsPlaying
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -2359,7 +2359,7 @@ export default function ReaderPage() {
                 if (!session?.backendToken) { setAuthPrompt("save annotations and notes"); return; }
                 setNotesExpanded((v) => !v);
               }}
-              className={`relative h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`relative h-11 w-11 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 notesExpanded
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"
@@ -2377,7 +2377,7 @@ export default function ReaderPage() {
 
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 sidebarOpen
                   ? "bg-amber-700 text-white border-amber-700"
                   : "text-amber-700 bg-amber-50 border-amber-200"

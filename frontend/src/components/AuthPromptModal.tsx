@@ -40,7 +40,7 @@ export default function AuthPromptModal({ open, feature, onClose }: Props) {
         </p>
         <a
           href="/api/auth/signin"
-          className="flex items-center justify-center w-full min-h-[44px] md:min-h-0 bg-amber-700 hover:bg-amber-800 text-white text-center rounded-xl font-medium transition-colors"
+          className="flex items-center justify-center w-full min-h-[44px] md:min-h-0 bg-amber-700 hover:bg-amber-800 text-white text-center rounded-xl font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
         >
           Sign in
         </a>

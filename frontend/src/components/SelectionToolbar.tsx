@@ -124,7 +124,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     setSelection(null);
   }
 
-  const btnClass = "flex items-center gap-1.5 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors min-h-[44px] md:min-h-0";
+  const btnClass = "flex items-center gap-1.5 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-stone-800";
 
   return (
     <div

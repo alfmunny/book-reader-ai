@@ -49,7 +49,7 @@ function VocabularyCard({ r }: { r: Extract<InAppSearchResult, { type: "vocabula
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-1">
-        <div className="font-serif text-base text-ink">{r.word}</div>
+        <div className="font-serif text-base text-ink" lang={r.language ?? undefined}>{r.word}</div>
         <div className="text-xs text-stone-600">Vocabulary · Ch.&nbsp;{r.chapter_index + 1}</div>
       </div>
       <SnippetHtml snippet={r.snippet} />

@@ -202,6 +202,10 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.4 | WCAG 2.4.7: AnnotationsSidebar + InsightChat buttons (PR #2197, closes #2196) | ✅ Done |
 | 2026-04-29 | 11.5 | WCAG 2.4.7: BookCard remove + VocabWordTooltip save + upload chapter remove (PR #2199, closes #2198) | ✅ Done |
 | 2026-04-29 | 11.6 | WCAG 2.4.7: 6 inline anchor links (reader sign-in × 3, vocab export URL, InsightChat Gemini links × 2) — closes #2200 | ✅ Done |
+| 2026-04-29 | 11.7 | WCAG 2.4.7: 16 remaining anchor links across reader, notes, profile, import, vocabulary, VocabWordTooltip, AnnotationsSidebar, BookDetailModal — closes #2202 (PR #2203) | ✅ Done |
+| 2026-04-29 | 11.8 | WCAG 2.4.7: AuthPromptModal sign-in link + notes InsightCard chapter reader link — closes #2204 (PR #2205) | ✅ Done |
+| 2026-04-29 | 11.9 | useFocusTrap branch coverage 76.5% → 94.1%: empty-dialog, container-focus, inert filtering, shift-middle — closes #2206 (PR #2207) | ✅ Done |
+| 2026-04-29 | 11.10 | SearchBar mobile overflow fix: replace inline-flex + min-w-[14rem] with flex flex-1 + flex-1 min-w-0 — closes #2208 (PR #2209) | ✅ Done |
 
 ---
 

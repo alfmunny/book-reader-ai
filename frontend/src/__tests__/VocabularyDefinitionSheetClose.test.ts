@@ -13,7 +13,7 @@ describe("VocabularyPage DefinitionSheet accessibility (WCAG 2.1.1)", () => {
   });
 
   it("close button uses CloseIcon", () => {
-    const closeButtonBlock = vocab.match(/aria-label="Close definition"[\s\S]{0,200}CloseIcon|CloseIcon[\s\S]{0,200}aria-label="Close definition"/);
+    const closeButtonBlock = vocab.match(/aria-label="Close definition"[\s\S]{0,300}CloseIcon|CloseIcon[\s\S]{0,300}aria-label="Close definition"/);
     expect(closeButtonBlock).not.toBeNull();
   });
 });

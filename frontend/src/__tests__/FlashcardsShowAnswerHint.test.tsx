@@ -47,7 +47,7 @@ beforeEach(() => {
 
 test("Show answer button displays a Space keyboard shortcut hint", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   const btn = screen.getByRole("button", { name: /show answer/i });
   expect(btn.textContent).toMatch(/space|enter|⎵/i);
@@ -55,7 +55,7 @@ test("Show answer button displays a Space keyboard shortcut hint", async () => {
 
 test("Show answer button aria-label includes keyboard shortcut context", async () => {
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   const btn = screen.getByRole("button", { name: /show answer/i });
   // Either visible text or aria-label should mention Space/Enter

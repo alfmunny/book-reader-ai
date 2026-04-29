@@ -81,14 +81,14 @@ test("grading first card of two advances to second card instead of showing done"
   mockStats.mockResolvedValue(STATS);
 
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   // Flip and grade first card
   await userEvent.click(screen.getByText("Show answer"));
   await userEvent.click(screen.getByRole("button", { name: /Good/i }));
 
   // Should advance to second card, not show "All done"
-  await waitFor(() => screen.getByText("stoic"));
+  await waitFor(() => screen.getAllByText("stoic")[0]);
   expect(screen.queryByText(/all done for today/i)).not.toBeInTheDocument();
   // Now on card index 1 → "2 of 2 remaining"
   expect(screen.getByText(/2 of 2 remaining/i)).toBeInTheDocument();
@@ -99,7 +99,7 @@ test("card counter shows correct position after advancing", async () => {
   mockStats.mockResolvedValue(STATS);
 
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   // Initially shows card 1 of 2
   expect(screen.getByRole("status", { name: "" })).toBeInTheDocument();
@@ -110,7 +110,7 @@ test("card counter shows correct position after advancing", async () => {
   await userEvent.click(screen.getByRole("button", { name: /Again/i }));
 
   // Now showing card 2 of 2
-  await waitFor(() => screen.getByText("stoic"));
+  await waitFor(() => screen.getAllByText("stoic")[0]);
   expect(screen.getByText(/2 of 2 remaining/)).toBeInTheDocument();
 });
 
@@ -211,7 +211,7 @@ test("pressing Enter on card flips it to reveal answer side", async () => {
   mockStats.mockResolvedValue(STATS);
 
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   const card = screen.getByRole("button", { name: /press to reveal definition/i });
   card.focus();
@@ -227,7 +227,7 @@ test("pressing Space on card flips it to reveal answer side", async () => {
   mockStats.mockResolvedValue(STATS);
 
   render(<FlashcardsPage />);
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   const card = screen.getByRole("button", { name: /press to reveal definition/i });
   card.focus();
@@ -255,14 +255,14 @@ test("done state shows deck-specific message when a deck is selected", async () 
 
   render(<FlashcardsPage />);
   await flushPromises();
-  await screen.findByText("ephemeral");
+  await screen.findAllByText("ephemeral").then(els => els[0]);
 
   // Select a specific deck
   const select = await screen.findByRole("combobox", { name: /deck/i });
   await userEvent.selectOptions(select, "1");
 
   // Drain the reload
-  await waitFor(() => screen.getByText("ephemeral"));
+  await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
   // Grade the card
   await userEvent.click(screen.getByText("Show answer"));

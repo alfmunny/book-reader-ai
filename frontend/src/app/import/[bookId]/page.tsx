@@ -143,6 +143,13 @@ export default function BookImportPage() {
     }
   }
 
+  // Update tab title once book name is known (WCAG 2.4.2)
+  useEffect(() => {
+    if (!bookTitle) return;
+    document.title = `Importing ${bookTitle} — Book Reader AI`;
+    return () => { document.title = "Import — Book Reader AI"; };
+  }, [bookTitle]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => abortRef.current?.abort();

@@ -322,6 +322,7 @@ export default function ProfilePage() {
               <input
                 aria-label="Gemini API key"
                 type="password"
+                autoComplete="off"
                 placeholder="AIza…"
                 value={keyInput}
                 onChange={(e) => setKeyInput(e.target.value)}
@@ -396,6 +397,7 @@ export default function ProfilePage() {
                 <input
                   id="obsidian-token"
                   type="password"
+                  autoComplete="off"
                   placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
                   value={obsidianToken}
                   onChange={(e) => setObsidianToken(e.target.value)}

@@ -907,10 +907,11 @@ export default function QueueTab({ adminFetch }: Props) {
             <div className="flex gap-2">
               <input
                 type="password"
+                autoComplete="off"
                 aria-label="Gemini API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm placeholder:text-stone-600"
+                className="flex-1 rounded border border-amber-300 px-2 py-1 text-sm placeholder:text-stone-600 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 placeholder={settings?.has_api_key ? "•••• (leave empty to keep)" : "Paste key"}
               />
               <button

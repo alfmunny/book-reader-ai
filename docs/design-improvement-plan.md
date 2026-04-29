@@ -223,7 +223,9 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.25 | title tooltips for profile deck names, SeedPopularButton current title, QueueTab retry/error — closes #2239 (PR #2240) | ✅ Done |
 | 2026-04-29 | 11.26 | target=_blank links missing sr-only "(opens in new tab)" announcement for screen readers — closes #2241 (PR #2242) | ✅ Done |
 | 2026-04-29 | 11.27 | vocabulary filter sr-only live region conditionally rendered — WCAG 4.1.3 fix: always render container — closes #2243 (PR #2244) | ✅ Done |
-| 2026-04-29 | 11.28 | vocabulary word list missing lang attribute on foreign words — WCAG 3.1.2 fix: add lang to lemma button and sentence spans — closes #2245 | 🔄 In progress |
+| 2026-04-29 | 11.28 | vocabulary word list missing lang attribute on foreign words — WCAG 3.1.2 fix: add lang to lemma button and sentence spans — closes #2245 (PR #2246) | ✅ Done |
+| 2026-04-29 | 11.29 | reader vocab sidebar missing lang attribute on foreign words — WCAG 3.1.2 fix: add lang to lemma/form/sentence spans — closes #2247 (PR #2248) | ✅ Done |
+| 2026-04-29 | 11.30 | reader scroll container missing lang attribute for non-English books — WCAG 3.1.2 fix: add lang={bookLanguage} to reader-scroll div — closes #2249 | 🔄 In progress |
 
 ---
 

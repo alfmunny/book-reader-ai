@@ -1387,6 +1387,7 @@ export default function ReaderPage() {
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <div
             id="reader-scroll"
+            lang={bookLanguage}
             className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
             onClick={handleReaderTap}
             onTouchStart={handleTouchStart}
@@ -1962,9 +1963,9 @@ export default function ReaderPage() {
                                 onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
                                 className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] md:min-h-0 hover:bg-amber-100 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
                               >
-                                <span className="text-sm font-semibold text-ink">{lemma}</span>
+                                <span lang={w.language ?? undefined} className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (
-                                  <span className="text-[10px] text-amber-700 shrink-0 italic">{w.word}</span>
+                                  <span lang={w.language ?? undefined} className="text-[10px] text-amber-700 shrink-0 italic">{w.word}</span>
                                 )}
                               </button>
                               {/* Context occurrences */}
@@ -1986,7 +1987,7 @@ export default function ReaderPage() {
                                   {vocabView === "book" && (
                                     <span className="text-[10px] text-stone-600 mr-1">Ch.{occ.chapter_index + 1}</span>
                                   )}
-                                  <span className="text-xs text-stone-600 italic line-clamp-2">&ldquo;{occ.sentence_text}&rdquo;</span>
+                                  <span lang={w.language ?? undefined} className="text-xs text-stone-600 italic line-clamp-2">&ldquo;{occ.sentence_text}&rdquo;</span>
                                 </button>
                               ))}
                             </div>

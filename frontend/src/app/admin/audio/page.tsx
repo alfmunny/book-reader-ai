@@ -65,7 +65,7 @@ export default function AudioPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
         >
           <RetryIcon className="w-4 h-4" aria-hidden="true" />
           Retry
@@ -105,7 +105,7 @@ export default function AudioPage() {
               act(() => adminFetch(`/admin/audio/${a.book_id}/${a.chapter_index}`, { method: "DELETE" }))
             }
             aria-label={`Delete audio for Book ${a.book_id}, Chapter ${a.chapter_index + 1}`}
-            className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px]"
+            className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0"
           >
             Delete
           </button>

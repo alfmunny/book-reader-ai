@@ -92,7 +92,7 @@ export default function UploadsPage() {
           <button
             type="button"
             onClick={() => load()}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 text-xs font-medium transition-colors min-h-[36px]"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 text-xs font-medium transition-colors min-h-[36px] focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             <RetryIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Retry
@@ -113,15 +113,15 @@ export default function UploadsPage() {
         />
         <button
           onClick={handleFilter}
-          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800"
           aria-label="Filter uploads"
+          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
         >
           Filter
         </button>
         {activeFilter && (
           <button
             onClick={clearFilter}
-            className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 flex items-center"
+            className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Clear filter (user {activeFilter})
           </button>
@@ -171,7 +171,7 @@ export default function UploadsPage() {
                       <button
                         onClick={() => router.push(`/reader/${u.book_id}`)}
                         aria-label={`Open ${u.title}`}
-                        className="text-xs text-amber-700 hover:text-amber-800 min-h-[44px] md:min-h-0 flex items-center"
+                        className="text-xs text-amber-700 hover:text-amber-800 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                       >
                         Open
                       </button>

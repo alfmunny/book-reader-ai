@@ -65,7 +65,7 @@ export default function AudioPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
         >
           <RetryIcon className="w-4 h-4" aria-hidden="true" />
           Retry
@@ -83,7 +83,7 @@ export default function AudioPage() {
             type="button"
             onClick={() => setActError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -105,7 +105,7 @@ export default function AudioPage() {
               act(() => adminFetch(`/admin/audio/${a.book_id}/${a.chapter_index}`, { method: "DELETE" }))
             }
             aria-label={`Delete audio for Book ${a.book_id}, Chapter ${a.chapter_index + 1}`}
-            className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0"
+            className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             Delete
           </button>

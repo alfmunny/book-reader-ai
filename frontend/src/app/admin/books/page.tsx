@@ -254,7 +254,7 @@ export default function BooksPage() {
           <button
             type="button"
             onClick={() => load()}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 text-xs font-medium transition-colors min-h-[36px]"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 text-xs font-medium transition-colors min-h-[36px] focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             <RetryIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Retry
@@ -274,7 +274,7 @@ export default function BooksPage() {
                 await fn();
               }}
               aria-label="Confirm action"
-              className="px-3 py-1.5 rounded border border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium"
+              className="px-3 py-1.5 rounded border border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Confirm
             </button>
@@ -282,7 +282,7 @@ export default function BooksPage() {
               type="button"
               onClick={() => setPendingConfirm(null)}
               aria-label="Cancel action"
-              className="px-3 py-1.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs"
+              className="px-3 py-1.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Cancel
             </button>
@@ -297,7 +297,7 @@ export default function BooksPage() {
             type="button"
             onClick={() => setActError(null)}
             aria-label="Dismiss error"
-            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -311,7 +311,7 @@ export default function BooksPage() {
             type="button"
             onClick={() => setToast(null)}
             aria-label="Dismiss message"
-            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-emerald-500 hover:text-emerald-700"
+            className="shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center text-emerald-500 hover:text-emerald-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -330,7 +330,7 @@ export default function BooksPage() {
         <button
           onClick={handleImport}
           disabled={importing || !importId.trim()}
-          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 disabled:opacity-50"
+          className="rounded-lg bg-amber-700 text-white px-4 py-2 min-h-[44px] md:min-h-0 text-sm hover:bg-amber-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
         >
           {importing ? "Importing…" : "Import Book"}
         </button>
@@ -374,7 +374,7 @@ export default function BooksPage() {
                     setExpandedBookId(isExpanded ? null : b.id);
                     setExpandedLang(null);
                   }}
-                  className="text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
+                  className="text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   title={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-label={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-expanded={isExpanded}
@@ -460,7 +460,7 @@ export default function BooksPage() {
                               disabled={retryingFailed === retryKey}
                               title={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
                               aria-label={`Retry ${failed} failed ${lang} chapter${failed === 1 ? "" : "s"}`}
-                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
+                              className="text-xs px-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50 inline-flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                             >
                               <RetryIcon className={`w-3 h-3 ${retryingFailed === retryKey ? "animate-spin" : ""}`} />
                             </button>
@@ -474,7 +474,7 @@ export default function BooksPage() {
                 <button
                   onClick={() => router.push(`/reader/${b.id}`)}
                   aria-label={`Open reader for ${b.title}`}
-                  className="text-xs text-amber-700 hover:text-amber-800 shrink-0 min-h-[44px] md:min-h-0 flex items-center"
+                  className="text-xs text-amber-700 hover:text-amber-800 shrink-0 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Open
                 </button>
@@ -496,7 +496,7 @@ export default function BooksPage() {
                   onClick={() => queueLanguageForBook(b, newLangInput[b.id] ?? "zh")}
                   disabled={queueingLangFor?.startsWith(`${b.id}:`)}
                   aria-label={`Translate ${b.title} into ${QUEUE_LANG_OPTIONS.find((o) => o.code === (newLangInput[b.id] ?? "zh"))?.label ?? (newLangInput[b.id] ?? "zh")}`}
-                  className="text-xs px-2 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0 disabled:opacity-50 min-h-[44px] md:min-h-0"
+                  className="text-xs px-2 py-1 rounded border border-emerald-300 text-emerald-700 hover:bg-emerald-50 shrink-0 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   {queueingLangFor?.startsWith(`${b.id}:`) ? "Queueing…" : "+ Translate"}
                 </button>
@@ -509,7 +509,7 @@ export default function BooksPage() {
                     })
                   }
                   aria-label={`Delete ${b.title}`}
-                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 shrink-0 min-h-[44px] md:min-h-0"
+                  className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 shrink-0 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                 >
                   Delete
                 </button>
@@ -536,7 +536,7 @@ export default function BooksPage() {
                             <div className="px-3 py-2 flex items-center gap-2">
                               <button
                                 onClick={() => setExpandedLang(isLangExpanded ? null : bulkKey)}
-                                className="text-xs text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center"
+                                className="text-xs text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                                 aria-label={isLangExpanded ? `Collapse ${lang} translations` : `Expand ${lang} translations`}
                                 aria-expanded={isLangExpanded}
                               >
@@ -570,7 +570,7 @@ export default function BooksPage() {
                                   })
                                 }
                                 aria-label={`Retranslate all ${lang} chapters of ${b.title}`}
-                                className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0"
+                                className="ml-auto text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                               >
                                 {bulkRetranslating === bulkKey ? "Retranslating…" : "Retranslate all"}
                               </button>
@@ -587,7 +587,7 @@ export default function BooksPage() {
                                   })
                                 }
                                 aria-label={`Delete all ${lang} translations for ${b.title}`}
-                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0"
+                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                               >
                                 Delete all
                               </button>
@@ -632,7 +632,7 @@ export default function BooksPage() {
                                             onClick={() => handleMove(t, moveInput[rowKey] ?? "")}
                                             disabled={moving === rowKey || !(moveInput[rowKey] ?? "").trim()}
                                             aria-label={`Move Ch. ${t.chapter_index + 1} ${t.target_language} translation`}
-                                            className="px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50 min-h-[44px] md:min-h-0"
+                                            className="px-2 py-0.5 rounded border border-sky-300 text-sky-700 hover:bg-sky-50 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                                           >
                                             {moving === rowKey ? "…" : "Move"}
                                           </button>
@@ -640,7 +640,7 @@ export default function BooksPage() {
                                             onClick={() => handleRetranslate(t)}
                                             disabled={retranslating === rowKey}
                                             aria-label={`Retranslate Ch. ${t.chapter_index + 1} ${t.target_language}`}
-                                            className="px-2 py-0.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0"
+                                            className="px-2 py-0.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                                           >
                                             {retranslating === rowKey ? "…" : "Retranslate"}
                                           </button>
@@ -654,7 +654,7 @@ export default function BooksPage() {
                                               )
                                             }
                                             aria-label={`Delete Ch. ${t.chapter_index + 1} ${t.target_language} translation`}
-                                            className="px-2 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0"
+                                            className="px-2 py-0.5 rounded border border-red-200 text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                                           >
                                             Delete
                                           </button>

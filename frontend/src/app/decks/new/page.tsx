@@ -103,7 +103,7 @@ export default function DecksNewPage() {
               data-testid="deck-name-input"
               aria-invalid={!!error}
               aria-describedby={error ? "deck-form-error" : undefined}
-              className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
+              className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 placeholder:text-stone-600 ${error ? "border-red-400 focus:ring-red-400" : "border-amber-200 focus:ring-amber-400"}`}
               placeholder="e.g. German verbs"
             />
           </div>

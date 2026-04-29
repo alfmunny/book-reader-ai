@@ -100,14 +100,14 @@ export default function WordLookup({ word, position, language, onClose }: Props)
         <CloseIcon className="w-3.5 h-3.5" aria-hidden="true" />
       </button>
       {loading && (
-        <div className="flex items-center gap-2 text-amber-700" role="status">
+        <div className="flex items-center gap-2 text-amber-700 pr-6" role="status">
           <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
           Looking up &ldquo;<span lang={lang}>{word}</span>&rdquo;...
         </div>
       )}
 
       {error && (
-        <p role="alert" className="text-amber-700 italic">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
+        <p role="alert" className="text-amber-700 italic pr-6">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
       )}
 
       {result && (

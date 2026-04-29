@@ -214,7 +214,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.16 | focus-visible ring to &lt;summary&gt; disclosures in QueueTab and SeedPopularButton — closes #2220 (PR #2221) | ✅ Done |
 | 2026-04-29 | 11.17 | dark-mode WCAG AA contrast for text-stone-600/700/500 — closes #2223 (PR #2224) | ✅ Done |
 | 2026-04-29 | 11.18 | focus-visible ring on search empty-state CTA Links (both no-query and no-results states) — closes #2225 (PR #2226) | ✅ Done |
-| 2026-04-29 | 11.19 | fix admin Retry button touch target: min-h-[36px] → min-h-[44px] md:min-h-0 in uploads and books admin pages — closes #2227 | 🔄 In progress |
+| 2026-04-29 | 11.19 | fix admin Retry button touch target: min-h-[36px] → min-h-[44px] md:min-h-0 in uploads and books admin pages — closes #2227 (PR #2228) | ✅ Done |
+| 2026-04-29 | 11.20 | focus-visible ring on reader Gemini reminder banner "Add your free Gemini API key" button — closes #2229 | 🔄 In progress |
 
 ---
 

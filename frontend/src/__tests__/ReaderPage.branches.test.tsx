@@ -815,7 +815,7 @@ describe("ReaderPage.branches — profile picture display", () => {
     await flushPromises();
 
     await waitFor(() => {
-      const img = document.querySelector("img[alt='profile']");
+      const img = document.querySelector("img[alt='']");
       expect(img).toBeInTheDocument();
     });
   });

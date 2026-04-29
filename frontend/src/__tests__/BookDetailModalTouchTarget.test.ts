@@ -8,25 +8,25 @@ const src = fs.readFileSync(
 
 describe("BookDetailModal touch targets (closes #811)", () => {
   it("Close button has aria-label", () => {
-    expect(src).toContain('aria-label="Close"');
+    expect(src).toContain('aria-label="Close book details"');
   });
 
   it("Close button has min-h-[44px]", () => {
-    const idx = src.indexOf('aria-label="Close"');
+    const idx = src.indexOf('aria-label="Close book details"');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 200), idx + 100);
     expect(window).toContain("min-h-[44px]");
   });
 
   it("Close button has min-w-[44px]", () => {
-    const idx = src.indexOf('aria-label="Close"');
+    const idx = src.indexOf('aria-label="Close book details"');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 200), idx + 100);
     expect(window).toContain("min-w-[44px]");
   });
 
   it("Close button does not use hard-coded w-8 h-8", () => {
-    const idx = src.indexOf('aria-label="Close"');
+    const idx = src.indexOf('aria-label="Close book details"');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 200), idx + 100);
     expect(window).not.toMatch(/\bw-8\b/);

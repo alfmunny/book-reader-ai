@@ -27,7 +27,7 @@ const BASE = {
 test("close button has min-h-[44px] and min-w-[44px]", () => {
   render(<VocabWordTooltip {...BASE} />);
 
-  const closeBtn = document.querySelector("button[aria-label='Close']") as HTMLButtonElement | null;
+  const closeBtn = document.querySelector("button[aria-label='Close word definition']") as HTMLButtonElement | null;
   expect(closeBtn).not.toBeNull();
   expect(closeBtn!.className).toContain("min-h-[44px]");
   expect(closeBtn!.className).toContain("min-w-[44px]");

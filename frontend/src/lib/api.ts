@@ -88,6 +88,7 @@ export type InAppSearchResult =
       chapter_index: number;
       snippet: string;
       note_text: string;
+      book_language?: string;
     }
   | {
       type: "vocabulary";

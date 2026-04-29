@@ -591,7 +591,7 @@ export default function Home() {
                 <div className="flex gap-2">
                   <select
                     aria-label="Filter by language"
-                    className="rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm text-ink flex-1 sm:flex-none"
+                    className="rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm text-ink flex-1 sm:flex-none focus:outline-none focus:ring-2 focus:ring-amber-400"
                     value={lang}
                     onChange={(e) => setLang(e.target.value)}
                   >

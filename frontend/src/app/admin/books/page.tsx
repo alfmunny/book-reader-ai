@@ -483,7 +483,7 @@ export default function BooksPage() {
                   aria-label="Translation language"
                   value={newLangInput[b.id] ?? "zh"}
                   onChange={(e) => setNewLangInput({ ...newLangInput, [b.id]: e.target.value })}
-                  className="text-xs rounded border border-amber-300 px-1.5 py-0.5 shrink-0 bg-white"
+                  className="text-xs rounded border border-amber-300 px-1.5 py-0.5 shrink-0 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                   title="Pick a language to queue for translation"
                 >
                   {QUEUE_LANG_OPTIONS.map((o) => (

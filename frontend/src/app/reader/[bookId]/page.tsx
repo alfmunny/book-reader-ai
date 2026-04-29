@@ -2022,7 +2022,7 @@ export default function ReaderPage() {
                       <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
                       <select
                         id="reader-trans-lang"
-                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white"
+                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
                         value={translationLang}
                         onChange={(e) => {
                           setTranslationLang(e.target.value);
@@ -2239,7 +2239,7 @@ export default function ReaderPage() {
             <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 flex items-center gap-2 animate-slide-up">
               <select
                 aria-label="Translation language"
-                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px] md:min-h-0"
+                className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px] md:min-h-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 value={translationLang}
                 onChange={(e) => setTranslationLang(e.target.value)}
               >

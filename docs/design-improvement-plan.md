@@ -216,7 +216,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.18 | focus-visible ring on search empty-state CTA Links (both no-query and no-results states) — closes #2225 (PR #2226) | ✅ Done |
 | 2026-04-29 | 11.19 | fix admin Retry button touch target: min-h-[36px] → min-h-[44px] md:min-h-0 in uploads and books admin pages — closes #2227 (PR #2228) | ✅ Done |
 | 2026-04-29 | 11.20 | focus-visible ring on reader Gemini reminder banner "Add your free Gemini API key" button — closes #2229 (PR #2230) | ✅ Done |
-| 2026-04-29 | 11.21 | upload dropzone role=button missing aria-disabled when quota full or uploading — closes #2231 | 🔄 In progress |
+| 2026-04-29 | 11.21 | upload dropzone role=button missing aria-disabled when quota full or uploading — closes #2231 (PR #2232) | ✅ Done |
+| 2026-04-29 | 11.22 | select elements missing amber focus ring across admin/books, home, reader, QueueTab — closes #2233 | 🔄 In progress |
 
 ---
 

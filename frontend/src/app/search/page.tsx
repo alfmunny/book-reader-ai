@@ -157,7 +157,7 @@ function SearchResultsInner() {
           <p className="text-sm mt-2">Start typing in the search bar above.</p>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
           >
             Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
           </Link>
@@ -187,7 +187,7 @@ function SearchResultsInner() {
           <p className="text-sm mt-2">Try a shorter or different word.</p>
           <Link
             href="/"
-            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
           >
             Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
           </Link>
@@ -211,7 +211,7 @@ export default function SearchPage() {
       <div className="flex items-center gap-4 mb-6">
         <Link
           href="/"
-          className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center"
         >
           <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
         </Link>

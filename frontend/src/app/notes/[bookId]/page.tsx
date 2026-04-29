@@ -45,7 +45,7 @@ function CollapseHeading({
       <button
         onClick={onToggle}
         aria-expanded={!isCollapsed}
-        className={`w-full flex items-center gap-2 text-left group min-h-[44px] ${
+        className={`w-full flex items-center gap-2 text-left group min-h-[44px] md:min-h-0 ${
           level === 2 ? "pb-1.5 border-b border-amber-200" : ""
         }`}
       >
@@ -113,13 +113,13 @@ function AnnotationCard({
           <div className="flex gap-2">
             <button
               onClick={onSave}
-              className="px-3 py-1 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors min-h-[44px]"
+              className="px-3 py-1 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0"
             >
               Save
             </button>
             <button
               onClick={onCancel}
-              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition-colors min-h-[44px]"
+              className="px-3 py-1 text-xs text-stone-500 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0"
             >
               Cancel
             </button>
@@ -141,7 +141,7 @@ function AnnotationCard({
           </a>
           <button
             onClick={onEdit}
-            className="text-stone-500 hover:text-stone-700 transition-colors p-1 min-h-[44px] flex items-center justify-center"
+            className="text-stone-500 hover:text-stone-700 transition-colors p-1 min-h-[44px] md:min-h-0 flex items-center justify-center"
             title="Edit note"
             aria-label={`Edit annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
@@ -151,7 +151,7 @@ function AnnotationCard({
             onClick={onDelete}
             disabled={isDeleting}
             aria-busy={isDeleting}
-            className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] flex items-center justify-center"
+            className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] md:min-h-0 flex items-center justify-center"
             title="Delete annotation"
             aria-label={isDeleting ? "Deleting annotation…" : `Delete annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
@@ -204,7 +204,7 @@ function InsightCard({
           onClick={onDelete}
           disabled={isDeleting}
           aria-busy={isDeleting}
-          className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center"
           title="Delete insight"
           aria-label={isDeleting ? "Deleting insight…" : `Delete insight: ${ins.question.slice(0, 60)}`}
         >
@@ -659,7 +659,7 @@ export default function BookNotesPage() {
         <div className="max-w-3xl mx-auto flex items-center gap-3 flex-wrap">
           <button
             onClick={() => router.push("/notes")}
-            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] flex items-center"
+            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Notes
           </button>
@@ -675,7 +675,7 @@ export default function BookNotesPage() {
             <button
               onClick={toggleCollapseAll}
               aria-expanded={!isAllCollapsed}
-              className="text-xs text-stone-500 hover:text-stone-600 shrink-0 transition-colors min-h-[44px]"
+              className="text-xs text-stone-500 hover:text-stone-600 shrink-0 transition-colors min-h-[44px] md:min-h-0"
             >
               {isAllCollapsed ? "Expand all" : "Collapse all"}
             </button>
@@ -688,7 +688,7 @@ export default function BookNotesPage() {
                 key={m}
                 onClick={() => setViewMode(m)}
                 aria-pressed={viewMode === m}
-                className={`px-3 py-1.5 min-h-[44px] transition-colors ${
+                className={`px-3 py-1.5 min-h-[44px] md:min-h-0 transition-colors ${
                   viewMode === m
                     ? "bg-amber-700 text-white"
                     : "text-amber-700 hover:bg-amber-50"
@@ -703,7 +703,7 @@ export default function BookNotesPage() {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors"
           >
             {exporting ? "Exporting…" : <><ArrowUpRightIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Export</>}
           </button>
@@ -736,7 +736,7 @@ export default function BookNotesPage() {
             <button
               type="button"
               onClick={loadData}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Try again
@@ -749,7 +749,7 @@ export default function BookNotesPage() {
             <p className="text-sm">Annotate sentences, save AI insights, or add words to vocabulary while reading.</p>
             <button
               onClick={() => router.push(`/reader/${bookId}`)}
-              className="mt-4 px-5 py-2 min-h-[44px] rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 inline-flex items-center gap-1"
+              className="mt-4 px-5 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 inline-flex items-center gap-1"
             >
               Open reader <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
             </button>

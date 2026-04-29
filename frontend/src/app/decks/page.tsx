@@ -62,7 +62,7 @@ export default function DecksPage() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <button
           onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
         </button>
@@ -106,7 +106,7 @@ export default function DecksPage() {
             <button
               type="button"
               onClick={loadDecks}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Try again
@@ -127,7 +127,7 @@ export default function DecksPage() {
               type="button"
               onClick={() => router.push("/decks/new")}
               data-testid="decks-empty-new-btn"
-              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+              className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
             >
               <DeckIcon className="w-4 h-4" />
               New deck

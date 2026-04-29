@@ -166,7 +166,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           <button
             onClick={onClose}
             aria-label="Close definition"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>
@@ -379,7 +379,7 @@ function VocabularyPageContent() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveWord({ word: group.lemma, lang: group.language })}
-              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left min-h-[44px] flex items-center"
+              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left min-h-[44px] md:min-h-0 flex items-center"
             >
               {group.lemma}
             </button>
@@ -452,7 +452,7 @@ function VocabularyPageContent() {
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <button
           onClick={() => router.push("/")}
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] flex items-center"
+          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
         </button>
@@ -528,7 +528,7 @@ function VocabularyPageContent() {
                   onClick={() => setSortMode(value)}
                   aria-pressed={sortMode === value}
                   data-testid={`sort-${value}`}
-                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[44px] ${
+                  className={`flex-1 px-2 py-2 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 ${
                     sortMode === value
                       ? "bg-amber-700 text-white"
                       : "bg-white text-amber-700 hover:bg-amber-50"
@@ -553,7 +553,7 @@ function VocabularyPageContent() {
               onClick={() => setSelectedTag(null)}
               aria-pressed={selectedTag === null}
               data-testid="tag-filter-all"
-              className={`shrink-0 min-h-[44px] px-3 rounded-full text-xs font-medium border transition-colors ${
+              className={`shrink-0 min-h-[44px] md:min-h-0 px-3 rounded-full text-xs font-medium border transition-colors ${
                 selectedTag === null
                   ? "bg-amber-700 text-white border-amber-700"
                   : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
@@ -570,7 +570,7 @@ function VocabularyPageContent() {
                   onClick={() => setSelectedTag(active ? null : tag)}
                   aria-pressed={active}
                   data-testid={`tag-filter-${tag}`}
-                  className={`shrink-0 min-h-[44px] px-3 rounded-full text-xs font-medium border transition-colors ${
+                  className={`shrink-0 min-h-[44px] md:min-h-0 px-3 rounded-full text-xs font-medium border transition-colors ${
                     active
                       ? "bg-amber-700 text-white border-amber-700"
                       : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
@@ -601,7 +601,7 @@ function VocabularyPageContent() {
             <button
               type="button"
               onClick={loadVocab}
-              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+              className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Try again
@@ -615,7 +615,7 @@ function VocabularyPageContent() {
             <button
               type="button"
               onClick={() => router.push("/")}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
             >
               Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -630,7 +630,7 @@ function VocabularyPageContent() {
                 <button
                   type="button"
                   onClick={() => setSelectedTag(null)}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
                 >
                   Clear tag filter
                 </button>
@@ -642,7 +642,7 @@ function VocabularyPageContent() {
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px]"
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0"
                 >
                   Clear search
                 </button>

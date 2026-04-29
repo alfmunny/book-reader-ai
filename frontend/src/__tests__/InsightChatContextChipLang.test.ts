@@ -35,4 +35,19 @@ describe("InsightChat ContextChip WCAG 3.1.2 lang attribute", () => {
     const block = src.slice(anchor, anchor + 200);
     expect(block).toMatch(/bookLanguage=/);
   });
+
+  it("MsgContextBlock props include bookLanguage optional string", () => {
+    const anchor = src.indexOf("function MsgContextBlock(");
+    expect(anchor).toBeGreaterThan(-1);
+    const block = src.slice(anchor, anchor + 300);
+    expect(block).toMatch(/bookLanguage\?\s*:\s*string/);
+  });
+
+  it("MsgContextBlock quoted paragraph carries lang attribute", () => {
+    const anchor = src.indexOf("function MsgContextBlock(");
+    expect(anchor).toBeGreaterThan(-1);
+    // Find the paragraph within MsgContextBlock (body is ~600 chars to the <p>)
+    const body = src.slice(anchor, anchor + 700);
+    expect(body).toMatch(/lang=\{bookLanguage/);
+  });
 });

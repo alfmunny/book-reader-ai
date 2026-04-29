@@ -18,3 +18,4 @@ Step-by-step walkthroughs for the most common workflows. Tutorials are written a
 - **[Ask questions with AI Insights](ai-insights.md)** — chat sidebar that knows your chapter, with context attachment and multi-language support.
 - **[Listen with text-to-speech](tts.md)** — play any chapter aloud, control voice, speed, and seek position, and read individual sentences or paragraphs.
 - **[Customize the reading layout](typography.md)** — font size, font family, line spacing, column width, and paragraph focus — all saved automatically.
+- **[Search your notes, vocabulary, and chapters](search.md)** — find anything you've saved or read from one search bar.

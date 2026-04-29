@@ -354,6 +354,7 @@ export default function Home() {
                   <button
                     onClick={() => setStatsExpanded((v) => !v)}
                     aria-expanded={statsExpanded}
+                    aria-controls="stats-activity-panel"
                     className="text-xs text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] px-2 flex items-center"
                   >
                     {statsExpanded ? "Hide activity" : "Show activity"}
@@ -395,7 +396,7 @@ export default function Home() {
 
                 {/* Collapsible full activity view */}
                 {statsExpanded && (
-                  <div className="mt-4">
+                  <div id="stats-activity-panel" className="mt-4">
                     <ReadingStats active heatmapOnly />
                   </div>
                 )}

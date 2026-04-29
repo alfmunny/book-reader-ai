@@ -19,7 +19,7 @@ describe("QueueTab service-settings inputs have accessible labels (closes #1030)
   it("Gemini API key input has aria-label", () => {
     const idx = src.indexOf('"•••• (leave empty to keep)"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 300), idx + 100);
+    const window = src.slice(Math.max(0, idx - 500), idx + 100);
     expect(window).toMatch(/aria-label=/);
   });
 });

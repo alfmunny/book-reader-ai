@@ -436,10 +436,21 @@ export default function BooksPage() {
                           >
                             {lang} · {count}
                             {pending + running + failed > 0 && (
-                              <span className="ml-1 opacity-70">
-                                {running > 0 && `▸${running}`}
-                                {pending > 0 && `·${pending}`}
-                                {failed > 0 && `×${failed}`}
+                              <span
+                                className="ml-1 opacity-70"
+                                aria-label={[
+                                  running > 0 && `${running} running`,
+                                  pending > 0 && `${pending} pending`,
+                                  failed > 0 && `${failed} failed`,
+                                ]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              >
+                                <span aria-hidden="true">
+                                  {running > 0 && `▸${running}`}
+                                  {pending > 0 && `·${pending}`}
+                                  {failed > 0 && `×${failed}`}
+                                </span>
                               </span>
                             )}
                           </span>

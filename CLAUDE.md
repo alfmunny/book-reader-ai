@@ -506,7 +506,7 @@ Branch naming: `feat/`, `fix/`, `chore/`, `test/`, `design/`
 **Exact sequence every time — use the `/submit-pr` skill:**
 
 1. `git -C <repo> fetch origin main && git -C <repo> rebase origin/main`
-2. `git -C <repo> checkout -b <prefix>/description`
+2. `git -C <repo> checkout -b <prefix>/description` **off `origin/main`. Never branch from another open PR's branch.** If you need a change that depends on an unmerged PR, wait for that PR to merge — then rebase your new branch onto post-merge `origin/main`. Branching from another PR's branch causes squash-merge bundling: the second PR's commit message lands the first PR's content under a misleading title, breaking git-log archaeology and forcing the first PR to be closed-as-duplicate after the second merges. Verify before pushing: `git diff origin/main...HEAD` should show only the changes your PR description claims.
 3. Make commits; run the full test suite before submitting.
 4. **Check the in-flight PR limit.** If you already have 3 or more open PRs authored by you, stop here. Hold the branch locally until one of your PRs merges, then resume. See "Per-cycle priority (all code roles)".
 5. **Invoke the `/submit-pr` skill.** It handles push, PR creation (with `Closes #N` + appropriate label), auto-merge, and launches a background watcher that rebases on BEHIND and surfaces check failures until MERGED.

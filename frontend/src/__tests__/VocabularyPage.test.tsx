@@ -159,7 +159,7 @@ test("export shows URL link when export succeeds", async () => {
   await userEvent.click(exportBtn);
 
   await waitFor(() => {
-    const link = screen.getByRole("link", { name: "https://github.com/example/pr/1" });
+    const link = screen.getByRole("link", { name: /https:\/\/github\.com\/example\/pr\/1/ });
     expect(link).toHaveAttribute("href", "https://github.com/example/pr/1");
   });
 });

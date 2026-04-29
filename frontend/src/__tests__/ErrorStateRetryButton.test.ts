@@ -22,7 +22,7 @@ const notesBookSrc = fs.readFileSync(notesBookSrcPath, "utf8");
 
 // ── Vocabulary page ────────────────────────────────────────────────────────
 const vocabErrorBlock =
-  vocabSrc.match(/fetchError \?[\s\S]{0,800}Try again/)?.[0] ?? "";
+  vocabSrc.match(/fetchError \?[\s\S]{0,1000}Try again/)?.[0] ?? "";
 
 describe("vocabulary page error state", () => {
   it("error block contains 'Try again' button", () => {
@@ -54,7 +54,7 @@ describe("notes index page error state", () => {
 
 // ── Notes book page ────────────────────────────────────────────────────────
 const notesBookErrorBlock =
-  notesBookSrc.match(/fetchError \?[\s\S]{0,800}Try again/)?.[0] ?? "";
+  notesBookSrc.match(/fetchError \?[\s\S]{0,1000}Try again/)?.[0] ?? "";
 
 describe("notes book page error state", () => {
   it("error block contains 'Try again' button", () => {

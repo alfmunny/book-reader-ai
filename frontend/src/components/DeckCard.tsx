@@ -60,7 +60,7 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
             onClick={onClick}
             aria-label={`Open deck ${deck.name}`}
             data-testid={`deck-card-link-${deck.id}`}
-            className="min-w-0 flex-1 text-left hover:opacity-80 transition-opacity"
+            className="min-w-0 flex-1 text-left hover:opacity-80 transition-opacity rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             {cardContent}
           </button>
@@ -73,7 +73,7 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
             onClick={() => onDelete(deck.id)}
             aria-label={`Delete deck ${deck.name}`}
             data-testid={`deck-delete-${deck.id}`}
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-red-600 transition-colors shrink-0"
+            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-red-600 transition-colors shrink-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
           >
             <TrashIcon className="w-4 h-4" />
           </button>

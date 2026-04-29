@@ -148,7 +148,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                               <a
                                 href={`/notes/${bookId}#annotation-${ann.id}`}
                                 onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-                                className="opacity-60 hover:opacity-100 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center"
+                                className="opacity-60 hover:opacity-100 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                                 title="View in notes page"
                                 aria-label="View in notes page"
                               >
@@ -184,14 +184,14 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
             <a
               href={bookId ? `/notes/${bookId}` : "/notes"}
               onClick={() => setOpen(false)}
-              className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             >
               {bookId ? "Book notes" : "All notes"} <ArrowRightIcon className="w-3 h-3 shrink-0" />
             </a>
             <a
               href="/notes"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center text-xs text-stone-600 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0"
+              className="inline-flex items-center text-xs text-stone-600 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             >
               All books
             </a>

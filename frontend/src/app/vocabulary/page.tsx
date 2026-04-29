@@ -206,7 +206,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
               href={def.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-xs text-amber-700 hover:text-amber-800 hover:underline"
+              className="inline-block text-xs text-amber-700 hover:text-amber-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             >
               View on Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" />
             </a>
@@ -422,7 +422,7 @@ function VocabularyPageContent() {
                 {occ.book_title ? (
                   <a
                     href={`/reader/${occ.book_id}?chapter=${occ.chapter_index}`}
-                    className="text-amber-700 font-medium hover:underline"
+                    className="text-amber-700 font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                   >
                     {occ.book_title}
                   </a>

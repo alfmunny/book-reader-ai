@@ -195,7 +195,7 @@ function InsightCard({
         {readerHref && (
           <a
             href={readerHref}
-            className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-800 hover:underline transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-amber-700 hover:text-amber-800 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
           >
             <ArrowRightIcon className="w-3 h-3 shrink-0" /> {chapterLabel(chapters, ins.chapter_index as number)}
           </a>
@@ -230,7 +230,7 @@ function VocabRow({
       <span>
         <a
           href={`/vocabulary?word=${encodeURIComponent(word)}`}
-          className="font-semibold text-amber-700 hover:text-amber-900 hover:underline"
+          className="font-semibold text-amber-700 hover:text-amber-900 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
         >
           {word}
         </a>{" "}
@@ -238,7 +238,7 @@ function VocabRow({
         {" — "}
         <a
           href={readerHref}
-          className="italic text-stone-600 hover:text-amber-700 hover:underline transition-colors"
+          className="italic text-stone-600 hover:text-amber-700 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
         >
           &ldquo;{truncate(occurrence.sentence_text, 90)}&rdquo;
         </a>

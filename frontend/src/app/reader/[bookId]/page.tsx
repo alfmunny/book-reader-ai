@@ -1387,6 +1387,7 @@ export default function ReaderPage() {
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <div
             id="reader-scroll"
+            lang={bookLanguage}
             className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
             onClick={handleReaderTap}
             onTouchStart={handleTouchStart}

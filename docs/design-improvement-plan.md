@@ -421,6 +421,9 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-29 | WordLookup popup: added role="dialog", aria-label, close button with CloseIcon (closes #2306) | WordLookup.tsx | #2307 |
 | 2026-04-29 | DeckCard description: added title={deck.description} for truncated text tooltip (closes #2308) | DeckCard.tsx | #2309 |
 | 2026-04-29 | Reader annotation cards: added title tooltip on desktop sidebar role=button and mobile bottom-sheet button for truncated sentence/note text (closes #2310) | reader/[bookId]/page.tsx | #2310 |
+| 2026-04-29 | AnnotationsSidebar annotation card: added title tooltip on role=button for truncated sentence/note text (closes #2312) | AnnotationsSidebar.tsx | #2313 |
+| 2026-04-29 | AnnotationToolbar sentence preview: added title={sentenceText} on line-clamp-2 paragraph (closes #2314) | AnnotationToolbar.tsx | #2315 |
+| 2026-04-29 | Vocabulary sidebar occurrence buttons: added title={occ.sentence_text} on buttons wrapping line-clamp-2 sentence context (closes #2316) | reader/[bookId]/page.tsx | #2317 |
 
 ---
 

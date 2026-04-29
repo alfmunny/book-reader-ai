@@ -150,11 +150,12 @@ function AnnotationCard({
           <button
             onClick={onDelete}
             disabled={isDeleting}
+            aria-busy={isDeleting}
             className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors p-1 min-h-[44px] flex items-center justify-center"
             title="Delete annotation"
-            aria-label={`Delete annotation: ${ann.sentence_text.slice(0, 60)}`}
+            aria-label={isDeleting ? "Deleting annotation…" : `Delete annotation: ${ann.sentence_text.slice(0, 60)}`}
           >
-            {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" /> : <TrashIcon className="w-3.5 h-3.5" />}
+            {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <TrashIcon className="w-3.5 h-3.5" aria-hidden="true" />}
           </button>
         </div>
       )}
@@ -202,11 +203,12 @@ function InsightCard({
         <button
           onClick={onDelete}
           disabled={isDeleting}
+          aria-busy={isDeleting}
           className="text-red-500 hover:text-red-600 disabled:opacity-40 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="Delete insight"
-          aria-label={`Delete insight: ${ins.question.slice(0, 60)}`}
+          aria-label={isDeleting ? "Deleting insight…" : `Delete insight: ${ins.question.slice(0, 60)}`}
         >
-          {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" /> : <TrashIcon className="w-3.5 h-3.5" />}
+          {isDeleting ? <RetryIcon className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <TrashIcon className="w-3.5 h-3.5" aria-hidden="true" />}
         </button>
       </div>
     </div>

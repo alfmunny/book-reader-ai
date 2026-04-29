@@ -870,7 +870,7 @@ export default function ReaderPage() {
             AI features require your own Gemini API key.{" "}
             <button
               onClick={() => { window.open("/profile", "_blank"); }}
-              className="underline font-medium hover:text-amber-900"
+              className="underline font-medium hover:text-amber-900 min-h-[44px] md:min-h-0 inline-flex items-center"
             >
               Add your free Gemini API key
             </button>{" "}

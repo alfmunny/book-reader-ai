@@ -242,7 +242,7 @@ export default function FlashcardsPage() {
             <button
               type="button"
               onClick={loadData}
-              className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+              className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Retry

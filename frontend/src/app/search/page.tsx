@@ -153,8 +153,14 @@ function SearchResultsInner() {
       {!q.trim() && (
         <div className="text-center text-stone-500 py-16">
           <SearchIcon className="w-10 h-10 mx-auto mb-2 text-stone-400" aria-hidden="true" />
-          <p className="font-serif text-lg text-ink">Search your notes, vocabulary, and uploads</p>
-          <p className="text-sm mt-2">Start typing in the search bar.</p>
+          <h2 className="font-serif text-lg text-ink">Search your notes, vocabulary, and uploads</h2>
+          <p className="text-sm mt-2">Start typing in the search bar above.</p>
+          <Link
+            href="/"
+            className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px]"
+          >
+            Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
+          </Link>
         </div>
       )}
 

@@ -1,6 +1,6 @@
 # Reader Page — Interaction Design Model
 
-_Last updated: 2026-04-22_
+_Last updated: 2026-04-29_
 
 ## Overview
 
@@ -18,7 +18,7 @@ The reader page combines three overlapping input systems: **TTS playback**, **te
 | Drag to select text | Open SelectionToolbar | Not supported (touch pointer blocked) |
 | Long-press 400 ms | Open AnnotationToolbar (legacy) | Open AnnotationToolbar |
 | Swipe left / right | — | Navigate chapters |
-| Spacebar | (currently unbound) | — |
+| Spacebar | Play / Pause TTS | — |
 
 ---
 
@@ -140,7 +140,7 @@ When multiple interactions are triggered simultaneously, resolve in this order:
 |-----|--------|
 | `←` `→` | Prev / next chapter |
 | `F` | Toggle focus mode |
-| `Space` | Play / pause TTS (**not yet implemented — Issue #UX-006**) |
+| `Space` | Play / pause TTS |
 | `Escape` | Close open panel (AnnotationToolbar / QuickHighlightPanel / TypographyPanel) |
 | `?` | Toggle shortcuts help |
 
@@ -151,12 +151,12 @@ When multiple interactions are triggered simultaneously, resolve in this order:
 | ID | Title | Severity | Status |
 |----|-------|----------|--------|
 | #UX-001 | Mobile: no text selection path for sub-sentence highlight | Medium | Resolved (#364) |
-| #UX-002 | Empty / error state when chapters fail to load | High |
-| #UX-003 | SelectionToolbar "Read" plays simultaneously with chapter TTS | High |
-| #UX-004 | Pause chapter TTS when selection "Read" fires | High |
-| #UX-005 | Annotation delete has no undo or confirmation | Medium |
-| #UX-006 | Spacebar shortcut for TTS play/pause missing | Medium |
-| #UX-007 | Mobile bottom bar hidden when chapters fail to load | Medium |
+| #UX-002 | Empty / error state when chapters fail to load | High | Resolved |
+| #UX-003 | SelectionToolbar "Read" plays simultaneously with chapter TTS | High | Resolved |
+| #UX-004 | Pause chapter TTS when selection "Read" fires | High | Resolved |
+| #UX-005 | Annotation delete has no undo or confirmation | Medium | Resolved (UndoToast) |
+| #UX-006 | Spacebar shortcut for TTS play/pause missing | Medium | Resolved |
+| #UX-007 | Mobile bottom bar hidden when chapters fail to load | Medium | Resolved |
 
 ---
 

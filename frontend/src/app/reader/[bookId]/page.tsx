@@ -1975,6 +1975,7 @@ export default function ReaderPage() {
                               {relevantOccs.map((occ, i) => (
                                 <button
                                   key={i}
+                                  title={occ.sentence_text}
                                   onClick={() => {
                                     if (occ.chapter_index !== chapterIndex) {
                                       goToChapter(occ.chapter_index);

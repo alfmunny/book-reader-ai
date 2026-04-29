@@ -503,12 +503,10 @@ function VocabularyPageContent() {
         )}
       </div>
 
-      {/* Visually-hidden live region: announces filter result counts to screen readers */}
-      {(search || selectedTag) && (
-        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {`${filtered.length} word${filtered.length === 1 ? "" : "s"} found.`}
-        </div>
-      )}
+      {/* Visually-hidden live region: always in DOM so aria-live fires on first filter keystroke */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {(search || selectedTag) ? `${filtered.length} word${filtered.length === 1 ? "" : "s"} found.` : ""}
+      </div>
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {words.length > 5 && (

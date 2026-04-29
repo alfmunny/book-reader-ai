@@ -218,9 +218,9 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.20 | focus-visible ring on reader Gemini reminder banner "Add your free Gemini API key" button — closes #2229 (PR #2230) | ✅ Done |
 | 2026-04-29 | 11.21 | upload dropzone role=button missing aria-disabled when quota full or uploading — closes #2231 (PR #2232) | ✅ Done |
 | 2026-04-29 | 11.22 | select elements missing amber focus ring across admin/books, home, reader, QueueTab — closes #2233 (PR #2234) | ✅ Done |
-| 2026-04-29 | 11.23 | title tooltips for truncated deck name (DeckCard h2, deck-detail h1) and book title (notes list) — closes #2235 (PR #2236) | 🔄 In progress |
+| 2026-04-29 | 11.23 | title tooltips for truncated deck name (DeckCard h2, deck-detail h1) and book title (notes list) — closes #2235 (PR #2236) | ✅ Done |
 | 2026-04-29 | 11.24 | title tooltips for reader header truncated book title h1 and authors p — closes #2237 (PR #2238) | ✅ Done |
-| 2026-04-29 | 11.25 | title tooltips for profile deck names, SeedPopularButton current title, QueueTab retry/error — closes #2239 (PR #2240) | 🔄 In progress |
+| 2026-04-29 | 11.25 | title tooltips for profile deck names, SeedPopularButton current title, QueueTab retry/error — closes #2239 (PR #2240) | ✅ Done |
 
 ---
 

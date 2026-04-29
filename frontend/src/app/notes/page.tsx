@@ -211,7 +211,7 @@ export default function NotesOverviewPage() {
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="font-serif font-semibold text-ink text-base leading-snug group-hover:text-amber-900 transition-colors truncate">
+                    <p className="font-serif font-semibold text-ink text-base leading-snug group-hover:text-amber-900 transition-colors truncate" title={book.title}>
                       {book.title}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1.5">

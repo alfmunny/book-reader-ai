@@ -676,6 +676,13 @@ export default function Home() {
                   <SearchIcon className="w-10 h-10 mx-auto mb-2 text-amber-400" aria-hidden="true" />
                   <p className="text-lg font-serif mb-1">No books found for &ldquo;{searchedQuery}&rdquo;</p>
                   <p className="text-sm text-amber-700">Try a different title, author, or language filter.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setQuery(""); setSearchedQuery(""); setSearchResults([]); }}
+                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                  >
+                    Clear search
+                  </button>
                 </div>
               )}
             </section>

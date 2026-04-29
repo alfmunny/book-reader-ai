@@ -1,6 +1,6 @@
 /**
- * Static assertions: empty states in vocabulary and notes overview pages have CTA buttons.
- * Closes #1090
+ * Static assertions: empty states in vocabulary, notes overview, and home search
+ * pages have CTA buttons. Closes #1090, #2285
  */
 import fs from "fs";
 import path from "path";
@@ -12,6 +12,11 @@ const vocabPage = fs.readFileSync(
 
 const notesOverviewPage = fs.readFileSync(
   path.join(process.cwd(), "src/app/notes/page.tsx"),
+  "utf8",
+);
+
+const homePage = fs.readFileSync(
+  path.join(process.cwd(), "src/app/page.tsx"),
   "utf8",
 );
 
@@ -40,5 +45,20 @@ describe("EmptyStateCta", () => {
     expect(idx).toBeGreaterThan(0);
     const after = notesOverviewPage.slice(idx, idx + 1500);
     expect(after).toMatch(/router\.push\("\/"\)/);
+  });
+
+  it("search empty state has a Clear search CTA button", () => {
+    const idx = homePage.indexOf('No books found for');
+    expect(idx).toBeGreaterThan(-1);
+    const block = homePage.slice(idx, idx + 900);
+    expect(block).toMatch(/Clear search|clear search/);
+  });
+
+  it("search empty state CTA resets query state", () => {
+    const idx = homePage.indexOf('No books found for');
+    expect(idx).toBeGreaterThan(-1);
+    const block = homePage.slice(idx, idx + 900);
+    // The CTA should reset both the input query and the searched query
+    expect(block).toMatch(/setQuery\(""\)|setQuery\(''\)/);
   });
 });

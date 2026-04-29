@@ -126,7 +126,7 @@ test("deck selector renders when listDecks returns decks", async () => {
   await screen.findByText(/all done for today/i);
 
   // Deck selector appears with "All decks" default + deck options
-  const select = screen.getByRole("combobox", { name: /deck/i });
+  const select = await screen.findByRole("combobox", { name: /deck/i });
   expect(select).toBeInTheDocument();
   expect(screen.getByRole("option", { name: /german/i })).toBeInTheDocument();
   expect(screen.getByRole("option", { name: /french/i })).toBeInTheDocument();
@@ -142,7 +142,7 @@ test("changing deck selector triggers re-fetch with new deck id", async () => {
   await flushPromises();
   await screen.findByText(/all done for today/i);
 
-  const select = screen.getByRole("combobox", { name: /deck/i });
+  const select = await screen.findByRole("combobox", { name: /deck/i });
   await userEvent.selectOptions(select, "1");
 
   // getDueFlashcards should be called again with deck id 1
@@ -158,7 +158,7 @@ test("selecting 'All decks' calls getDueFlashcards with undefined", async () => 
   await flushPromises();
   await screen.findByText(/all done for today/i);
 
-  const select = screen.getByRole("combobox", { name: /deck/i });
+  const select = await screen.findByRole("combobox", { name: /deck/i });
 
   // First select a deck
   await userEvent.selectOptions(select, "1");
@@ -185,7 +185,7 @@ test("restores saved deck id from localStorage when deck exists in loaded list",
   await waitFor(() => expect(mockGetDue).toHaveBeenCalledWith(1));
 
   // The select should show deck 1 as selected
-  const select = screen.getByRole("combobox", { name: /deck/i }) as HTMLSelectElement;
+  const select = await screen.findByRole("combobox", { name: /deck/i }) as HTMLSelectElement;
   expect(select.value).toBe("1");
 });
 
@@ -200,7 +200,7 @@ test("ignores localStorage deck id when it does not match any loaded deck", asyn
   await screen.findByText(/all done for today/i);
 
   // Should fall back to "All decks" (undefined)
-  const select = screen.getByRole("combobox", { name: /deck/i }) as HTMLSelectElement;
+  const select = await screen.findByRole("combobox", { name: /deck/i }) as HTMLSelectElement;
   expect(select.value).toBe("");
 });
 
@@ -258,7 +258,7 @@ test("done state shows deck-specific message when a deck is selected", async () 
   await screen.findByText("ephemeral");
 
   // Select a specific deck
-  const select = screen.getByRole("combobox", { name: /deck/i });
+  const select = await screen.findByRole("combobox", { name: /deck/i });
   await userEvent.selectOptions(select, "1");
 
   // Drain the reload

@@ -57,7 +57,7 @@ test("renders authenticated layout with tabs when user is admin", async () => {
   render(<AdminLayout><div>child content</div></AdminLayout>);
   await waitFor(() => screen.getByText("child content"));
   expect(screen.getByRole("button", { name: /Library/i })).toBeInTheDocument();
-  expect(screen.getByText("Users")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
 });
 
 test("clicking Library button navigates to /", async () => {

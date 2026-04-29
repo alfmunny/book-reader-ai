@@ -1,11 +1,15 @@
 "use client";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 function LoginForm() {
   const params = useSearchParams();
   const callbackUrl = params.get("callbackUrl") || "/";
+
+  useEffect(() => {
+    document.title = "Sign In — Book Reader AI";
+  }, []);
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">

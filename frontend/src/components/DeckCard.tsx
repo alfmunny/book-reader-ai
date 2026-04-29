@@ -26,7 +26,7 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
         </span>
       </div>
       {deck.description && (
-        <p className="text-sm text-stone-600 mt-1.5 line-clamp-2">{deck.description}</p>
+        <p className="text-sm text-stone-600 mt-1.5 line-clamp-2" title={deck.description}>{deck.description}</p>
       )}
       <div className="mt-3 flex items-center gap-3 text-xs text-stone-600">
         <span>

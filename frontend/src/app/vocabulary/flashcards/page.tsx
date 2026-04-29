@@ -296,7 +296,7 @@ export default function FlashcardsPage() {
                     <p className="text-sm text-stone-600 italic">No context saved</p>
                   )}
                   <p className="text-xs text-stone-600 mt-2">
-                    How well did you remember <span className="font-medium text-ink">{currentCard.word}</span>?
+                    How well did you remember <span lang={currentCard.language ?? undefined} className="font-medium text-ink">{currentCard.word}</span>?
                   </p>
                 </div>
               )}

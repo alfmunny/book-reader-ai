@@ -186,6 +186,11 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 9.6 | Homepage tablist: roving tabIndex + ArrowLeft/Right keyboard nav (PR #2050) | ✅ Done |
 | 2026-04-29 | 9.7 | Notes/[bookId]: `<ul role="list">` on annotation and insight lists — all 6 map sites (PR #2052) | ✅ Done |
 | 2026-04-29 | 9.8 | Reader sidebar: `<ul role="list">` on annotation panels + vocab panel + bottom notes expand (PR #2054) | ✅ Done |
+| 2026-04-29 | 10.1 | Admin books: aria-label on queue-status symbol span + aria-hidden on inner symbol (PR #2094, closes #2093) | ✅ Done |
+| 2026-04-29 | 10.2 | Search page: `<p>` → `<h2>` + Browse books CTA in initial empty state (PR #2096, closes #2095) | ✅ Done |
+| 2026-04-29 | 10.3 | Docs: vocabulary word-saving tutorial added (PR #2098, closes #2097) | ✅ Done |
+| 2026-04-29 | 10.4 | Pending approval page: 30s polling via getMe() + auto-redirect on approved=true (PR #2100, closes #2099) | ✅ Done |
+| 2026-04-29 | 10.5 | Home/library page: added `document.title` in useEffect for WCAG 2.4.2 compliance (PR #2104, closes #2103) | ✅ Done |
 
 ---
 

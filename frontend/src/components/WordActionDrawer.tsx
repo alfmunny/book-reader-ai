@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon } from "@/components/Icons";
+import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon, CloseIcon } from "@/components/Icons";
 
 interface Definition {
   partOfSpeech: string;
@@ -129,9 +129,16 @@ export default function WordActionDrawer({
         aria-label={`Word lookup: ${word}`}
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto safe-bottom animate-slide-up focus:outline-none"
       >
-        {/* Drag handle */}
-        <div className="flex justify-center py-2">
-          <div className="w-10 h-1 bg-amber-200 rounded-full" />
+        {/* Drag handle + close button */}
+        <div className="flex items-center justify-between px-4 py-2">
+          <div className="w-10 h-1 bg-amber-200 rounded-full mx-auto" />
+          <button
+            onClick={onClose}
+            aria-label="Close word lookup"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-stone-500 hover:text-ink hover:bg-amber-50 transition-colors -mr-1"
+          >
+            <CloseIcon className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
 
         <div className="px-5 pb-5 space-y-3">

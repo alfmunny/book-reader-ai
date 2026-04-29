@@ -303,7 +303,7 @@ export default function Home() {
 
         {/* ════════════ Home Tab ════════════ */}
         {tab === "library" && (
-          <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" tabIndex={0} className="space-y-8 focus:outline-none">
+          <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" tabIndex={0} className="space-y-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 rounded-sm">
 
             {/* Greeting */}
             {status === "authenticated" && session?.backendUser?.name && (
@@ -463,7 +463,7 @@ export default function Home() {
 
         {/* ════════════ Discover Tab ════════════ */}
         {tab === "discover" && (
-          <div id="tabpanel-discover" role="tabpanel" aria-labelledby="tab-discover" tabIndex={0} className="space-y-10 focus:outline-none">
+          <div id="tabpanel-discover" role="tabpanel" aria-labelledby="tab-discover" tabIndex={0} className="space-y-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 rounded-sm">
 
             {/* ── Landing hero (unauthenticated visitors only) ── */}
             {status === "unauthenticated" && (

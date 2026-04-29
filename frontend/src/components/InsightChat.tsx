@@ -57,9 +57,11 @@ interface Props {
 // ── Context chip (expandable quote) ─────────────────────────────────────────
 function ContextChip({
   text,
+  bookLanguage,
   onRemove,
 }: {
   text: string;
+  bookLanguage?: string;
   onRemove?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -70,7 +72,7 @@ function ContextChip({
       <div className="flex items-start gap-1.5">
         <PaperclipIcon className="w-3.5 h-3.5 shrink-0 mt-px text-amber-400" />
         <div className="flex-1 min-w-0">
-          <span className="italic leading-relaxed">
+          <span lang={bookLanguage ?? undefined} className="italic leading-relaxed">
             &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
           </span>
           {needsToggle && (
@@ -576,7 +578,7 @@ export default function InsightChat({
         {/* Context chip */}
         {contextText && (
           <div className="mb-2">
-            <ContextChip text={contextText} onRemove={() => setContextText("")} />
+            <ContextChip text={contextText} bookLanguage={bookLanguage} onRemove={() => setContextText("")} />
           </div>
         )}
 

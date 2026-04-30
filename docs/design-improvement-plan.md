@@ -461,6 +461,7 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Flashcards page: listDecks() failure now shows "Couldn't load decks" + Retry instead of silently removing the deck selector (closes #2439) | app/vocabulary/flashcards/page.tsx | #2440 |
 | 2026-04-30 | Admin users page: getMe() failure no longer silently exposes own Revoke/Delete buttons — hides all action buttons and shows "Couldn't verify identity" + Retry (closes #2441) | app/admin/users/page.tsx | #2442 |
 | 2026-04-30 | Reader page: notifyAIUsed now uses strict `=== false` check so Gemini key reminder doesn't fire on transient getMe() failure when hasGeminiKey is null (closes #2443) | app/reader/[bookId]/page.tsx | #2444 |
+| 2026-04-30 | Reader page: added role="status" to translation queue and login-required banners so screen readers announce them (WCAG 4.1.3, closes #2445) | app/reader/[bookId]/page.tsx | #2446 |
 
 ---
 

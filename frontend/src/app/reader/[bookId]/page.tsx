@@ -1381,7 +1381,7 @@ export default function ReaderPage() {
         translationLoading &&
         translationUsedProvider &&
         translationUsedProvider.startsWith("queue") && (
-          <div className="bg-sky-50 border-b border-sky-200 px-4 py-2 text-xs text-sky-800 flex items-center gap-2">
+          <div role="status" className="bg-sky-50 border-b border-sky-200 px-4 py-2 text-xs text-sky-800 flex items-center gap-2">
             <span className="inline-block w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" aria-hidden="true" />
             <span>
               <strong>Translation queued</strong> — {translationUsedProvider}.
@@ -1393,7 +1393,7 @@ export default function ReaderPage() {
 
       {/* Login required notice — shown when translation is not cached and user is not logged in */}
       {translationEnabled && translationUsedProvider === "login required" && (
-        <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
+        <div role="status" className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
           <span>
             Translation requires an account.{" "}
             <a href="/api/auth/signin" className="underline font-medium hover:text-amber-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">

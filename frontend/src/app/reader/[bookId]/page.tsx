@@ -1811,7 +1811,7 @@ export default function ReaderPage() {
             aria-valuemin={240}
             aria-valuemax={700}
             tabIndex={0}
-            className="hidden md:block w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 focus:bg-amber-400 focus:outline-none transition-colors relative group"
+            className="hidden md:block w-1.5 shrink-0 cursor-col-resize bg-amber-100 hover:bg-amber-400 active:bg-amber-500 focus-visible:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset transition-colors relative group"
             title="Drag to resize"
           >
             {/* Three-dot grip indicator */}

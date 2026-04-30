@@ -4,9 +4,21 @@ The annotation system lets you mark up sentences while you read — add color-co
 
 ## Create a highlight
 
+There are two ways to open the action toolbar while reading:
+
+### Click a sentence (whole-sentence highlight)
+
 **On desktop:** click any sentence in the reader. A small toolbar appears beneath the selected sentence with color swatches (yellow, green, blue, pink, purple). Click a color to save a highlight.
 
 **On mobile:** long-press a sentence to open the same toolbar.
+
+### Select a phrase (partial text selection)
+
+Drag to select any span of text — a word, phrase, or passage — and a floating toolbar appears with actions: **Read**, **Highlight**, **Note**, **Chat**, and **Look up word**.
+
+**Keyboard:** use `Shift+Arrow` keys to extend the selection. The toolbar appears automatically, and focus moves to its first button. Navigate between buttons with `Arrow Left` / `Arrow Right`; press `Escape` to dismiss and return focus to where you were.
+
+---
 
 The highlight is saved automatically and synced to your account. Highlighted sentences appear color-coded the next time you open the chapter.
 

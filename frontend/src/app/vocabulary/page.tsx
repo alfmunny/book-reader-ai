@@ -611,7 +611,19 @@ function VocabularyPageContent() {
         ) : filtered.length === 0 ? (
           <div className="text-center text-stone-600 mt-16 flex flex-col items-center gap-2">
             <EmptyVocabIcon className="w-14 h-14 text-amber-300" aria-hidden="true" />
-            {selectedTag ? (
+            {selectedTag && search ? (
+              <>
+                <p className="font-serif text-lg text-stone-600 mt-1">No words match &ldquo;{search}&rdquo; in tag &ldquo;{selectedTag}&rdquo;</p>
+                <p className="text-sm">Try clearing the search or the tag filter.</p>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedTag(null); setSearch(""); }}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                >
+                  Clear all filters
+                </button>
+              </>
+            ) : selectedTag ? (
               <>
                 <p className="font-serif text-lg text-stone-600 mt-1">No words tagged &ldquo;{selectedTag}&rdquo;</p>
                 <p className="text-sm">This tag has no vocabulary words yet.</p>

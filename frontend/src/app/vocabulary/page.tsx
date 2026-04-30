@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon } from "@/components/Icons";
 import TagEditor from "@/components/TagEditor";
+import UndoToast from "@/components/UndoToast";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useScrollLock } from "@/lib/useScrollLock";
 
@@ -230,8 +231,7 @@ function VocabularyPageContent() {
   const [fetchError, setFetchError] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletedWordToast, setDeletedWordToast] = useState<VocabularyWord | null>(null);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [activeWord, setActiveWord] = useState<{ word: string; lang: string | null } | null>(null);
@@ -324,17 +324,13 @@ function VocabularyPageContent() {
     return () => clearTimeout(t);
   }, [targetWord, loading]);
 
-  async function handleDelete(word: string) {
-    setDeleteError(null);
-    setDeleting(word);
-    try {
-      await deleteVocabularyWord(word);
-      setWords((prev) => prev.filter((w) => w.word !== word));
-    } catch {
-      setDeleteError("Failed to delete. Please try again.");
-    } finally {
-      setDeleting(null);
+  function handleDelete(form: VocabularyWord) {
+    if (deletedWordToast) {
+      deleteVocabularyWord(deletedWordToast.word).catch(() => {});
+      setDeletedWordToast(null);
     }
+    setWords((prev) => prev.filter((w) => w.word !== form.word));
+    setDeletedWordToast(form);
   }
 
   async function handleExport(bookId?: number) {
@@ -404,13 +400,12 @@ function VocabularyPageContent() {
             {group.forms.map((f) => (
               <button
                 key={f.word}
-                onClick={() => handleDelete(f.word)}
-                disabled={deleting === f.word}
+                onClick={() => handleDelete(f)}
                 aria-label={`Delete ${f.word}`}
-                className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors min-h-[44px] md:min-h-0 flex items-center px-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+                className="text-xs text-red-600 hover:text-red-800 transition-colors min-h-[44px] md:min-h-0 flex items-center px-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                 data-testid={`delete-${f.word}`}
               >
-                {deleting === f.word ? "…" : "Delete"}
+                Delete
               </button>
             ))}
           </div>
@@ -485,14 +480,6 @@ function VocabularyPageContent() {
           {exporting ? "Exporting…" : (<><ArrowUpRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span className="hidden sm:inline">Export all to Obsidian</span><span className="sm:hidden">Export</span></>)}
         </button>
       </header>
-
-      {deleteError && (
-        <div role="alert" aria-atomic="true" className="mx-6 mt-4">
-          <div className="border border-red-300 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700">
-            {deleteError}
-          </div>
-        </div>
-      )}
 
       <div role="status" aria-live="polite" aria-atomic="true" className="mx-6 mt-4">
         {exportMsg && (
@@ -675,6 +662,20 @@ function VocabularyPageContent() {
           word={activeWord.word}
           lang={activeWord.lang}
           onClose={closeSheet}
+        />
+      )}
+
+      {deletedWordToast && (
+        <UndoToast
+          message={`"${deletedWordToast.word}" removed`}
+          onUndo={() => {
+            setWords((prev) => [...prev, deletedWordToast]);
+            setDeletedWordToast(null);
+          }}
+          onDone={() => {
+            deleteVocabularyWord(deletedWordToast.word).catch(() => {});
+            setDeletedWordToast(null);
+          }}
         />
       )}
     </main>

@@ -409,7 +409,7 @@ function VocabularyPageContent() {
             <button
               lang={group.language ?? undefined}
               onClick={() => setActiveWord({ word: group.lemma, lang: group.language })}
-              className="font-serif font-semibold text-ink text-base hover:text-amber-700 transition-colors text-left min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              className="font-serif font-semibold text-amber-700 hover:text-amber-900 text-base transition-colors text-left min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               {group.lemma}
             </button>

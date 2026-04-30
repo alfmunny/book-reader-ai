@@ -19,7 +19,7 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@/lib/api", () => ({
   getVocabulary: jest.fn(),
-  deleteVocabularyWord: jest.fn(),
+  deleteVocabularyWord: jest.fn().mockResolvedValue(undefined),
   exportVocabularyToObsidian: jest.fn(),
   getWordDefinition: jest.fn(),
   listVocabularyTags: jest.fn().mockResolvedValue([]),

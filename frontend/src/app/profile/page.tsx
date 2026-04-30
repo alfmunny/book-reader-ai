@@ -222,8 +222,8 @@ export default function ProfilePage() {
 
       <div className="max-w-lg mx-auto px-6 py-10 space-y-8">
         {/* ── Account ─────────────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-amber-100 p-6">
-          <h2 className="font-serif text-lg font-semibold text-ink mb-4">Account</h2>
+        <section aria-labelledby="profile-account-heading" className="bg-white rounded-2xl border border-amber-100 p-6">
+          <h2 id="profile-account-heading" className="font-serif text-lg font-semibold text-ink mb-4">Account</h2>
           <div className="flex items-center gap-4">
             {user?.picture && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -258,7 +258,7 @@ export default function ProfilePage() {
 
         {/* ── Study decks (due today) ──────────────────────────────────── */}
         {decksFetchError ? (
-          <section className="bg-white rounded-2xl border border-amber-100 p-6">
+          <section aria-label="Study decks" className="bg-white rounded-2xl border border-amber-100 p-6">
             <div role="alert" className="flex items-center justify-between">
               <p className="text-sm text-stone-500">Couldn&apos;t load study decks.</p>
               <button
@@ -282,8 +282,8 @@ export default function ProfilePage() {
             </div>
           </section>
         ) : dueDecks.length > 0 ? (
-          <section className="bg-white rounded-2xl border border-amber-100 p-6">
-            <h2 className="font-serif text-lg font-semibold text-ink mb-4">Study decks</h2>
+          <section aria-labelledby="profile-decks-heading" className="bg-white rounded-2xl border border-amber-100 p-6">
+            <h2 id="profile-decks-heading" className="font-serif text-lg font-semibold text-ink mb-4">Study decks</h2>
             <ul role="list" aria-label="Study decks" className="space-y-2 list-none p-0 m-0">
               {dueDecks.map((d) => (
                 <li key={d.id}>
@@ -313,8 +313,8 @@ export default function ProfilePage() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 px-1">AI &amp; Integrations</h2>
 
         {/* ── Gemini API key ──────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-amber-100 p-6">
-          <h2 className="font-serif text-lg font-semibold text-ink mb-1">Gemini API Key</h2>
+        <section aria-labelledby="profile-gemini-heading" className="bg-white rounded-2xl border border-amber-100 p-6">
+          <h2 id="profile-gemini-heading" className="font-serif text-lg font-semibold text-ink mb-1">Gemini API Key</h2>
           <p className="text-sm text-stone-600 mb-5">
             Add your own key from{" "}
             <a
@@ -507,9 +507,9 @@ export default function ProfilePage() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 px-1">Reader Preferences</h2>
 
         {/* ── Preferences ─────────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-amber-100 p-6 space-y-6">
+        <section aria-labelledby="profile-preferences-heading" className="bg-white rounded-2xl border border-amber-100 p-6 space-y-6">
           <div>
-            <h2 className="font-serif text-lg font-semibold text-ink">Preferences</h2>
+            <h2 id="profile-preferences-heading" className="font-serif text-lg font-semibold text-ink">Preferences</h2>
             <p className="text-sm text-stone-600 mt-1">
               Defaults applied across the reader. You can still override most of these per-session.
             </p>

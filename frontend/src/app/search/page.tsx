@@ -86,7 +86,7 @@ function ResultCard({ r }: { r: InAppSearchResult }) {
 function ResultsSection({ title, items }: { title: string; items: InAppSearchResult[] }) {
   if (!items.length) return null;
   return (
-    <section className="space-y-3">
+    <section aria-label={title} className="space-y-3">
       <h2 className="text-sm uppercase tracking-wide text-stone-600">
         {title} · {items.length}
       </h2>

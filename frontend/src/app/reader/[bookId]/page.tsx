@@ -71,6 +71,8 @@ export default function ReaderPage() {
   // Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  const [annotationsError, setAnnotationsError] = useState(false);
+  const [annotationsRetryTick, setAnnotationsRetryTick] = useState(0);
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [annotationPanel, setAnnotationPanel] = useState<{
     sentenceText: string;
@@ -416,11 +418,12 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!bookId || !session?.backendToken) return;
     setAnnotationsLoading(true);
+    setAnnotationsError(false);
     getAnnotations(Number(bookId))
       .then(setAnnotations)
-      .catch(() => {})
+      .catch(() => setAnnotationsError(true))
       .finally(() => setAnnotationsLoading(false));
-  }, [bookId, session?.backendToken]);
+  }, [bookId, session?.backendToken, annotationsRetryTick]);
 
   // Fetch vocabulary words for this book
   useEffect(() => {
@@ -1932,6 +1935,16 @@ export default function ReaderPage() {
                       <div className="flex justify-center mt-10" role="status" aria-label="Loading annotations">
                         <span className="sr-only">Loading annotations...</span>
                         <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
+                      </div>
+                    ) : annotationsError ? (
+                      <div role="status" className="flex flex-col items-center gap-3 mt-10 text-center">
+                        <p className="text-sm text-stone-500">Couldn&apos;t load annotations.</p>
+                        <button
+                          onClick={() => setAnnotationsRetryTick((t) => t + 1)}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        >
+                          Retry
+                        </button>
                       </div>
                     ) : filteredNotes.length === 0 ? (
                       <div className="text-center text-stone-600 mt-10 text-sm">

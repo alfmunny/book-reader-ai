@@ -451,7 +451,9 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | ReadingStats: replaced silent null return on fetch failure with error state — shows "Couldn't load reading stats" message and Retry button (closes #2412) | components/ReadingStats.tsx | #2413 |
 | 2026-04-30 | Reader vocab sidebar: replaced silent .catch() on getVocabulary failure with error state — shows "Couldn't load vocabulary" + Retry button instead of misleading "No vocabulary saved yet" (closes #2421) | app/reader/[bookId]/page.tsx | #2422 |
 | 2026-04-30 | Upload page: replaced silent getUploadQuota() failure with "Couldn't load quota" error state + Retry button — prevents misleading active upload zone when user may be at limit (closes #2423) | app/upload/page.tsx | #2425 |
-| 2026-04-30 | Profile Obsidian settings: replaced silent .catch() on getObsidianSettings failure with error state — shows "Couldn't load Obsidian settings" + Retry button inside accordion so user knows load failed (closes #2424) | app/profile/page.tsx | — |
+| 2026-04-30 | Profile Obsidian settings: replaced silent .catch() on getObsidianSettings failure with error state — shows "Couldn't load Obsidian settings" + Retry button inside accordion so user knows load failed (closes #2424) | app/profile/page.tsx | #2428 |
+| 2026-04-30 | TagEditor: replaced silent .catch() on initial tag fetch with loadFailed state — shows Retry button instead of misleading empty tag list (closes #2426) | components/TagEditor.tsx | #2427 |
+| 2026-04-30 | Home page stats panel: replaced silent getUserStats() failure with inline "Couldn't load stats" error + Retry — panel no longer disappears invisibly on network error (closes #2429) | app/page.tsx | — |
 
 ---
 

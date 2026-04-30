@@ -21,6 +21,7 @@ export default function TagEditor({
 }: TagEditorProps) {
   const [tags, setTags] = useState<string[]>(initialTags ?? []);
   const [loaded, setLoaded] = useState(initialTags !== undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -31,13 +32,16 @@ export default function TagEditor({
   useEffect(() => {
     if (loaded) return;
     let alive = true;
+    setLoadFailed(false);
     getVocabularyWordTags(vocabularyId)
       .then((list) => {
         if (!alive) return;
         setTags(list);
         onTagsChange?.(list);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (alive) setLoadFailed(true);
+      })
       .finally(() => {
         if (alive) setLoaded(true);
       });
@@ -133,7 +137,16 @@ export default function TagEditor({
         </span>
       ))}
 
-      {adding ? (
+      {loadFailed ? (
+        <button
+          type="button"
+          onClick={() => setLoaded(false)}
+          aria-label="Retry loading tags"
+          className="inline-flex items-center gap-0.5 rounded-full border border-dashed border-red-300 px-2 py-0.5 min-h-[44px] md:min-h-0 text-xs text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+        >
+          Retry
+        </button>
+      ) : adding ? (
         <input
           ref={inputRef}
           type="text"

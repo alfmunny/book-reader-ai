@@ -2022,6 +2022,7 @@ export default function ReaderPage() {
                       <input
                         type="checkbox"
                         className="sr-only"
+                        aria-label="Enable translation"
                         checked={translationEnabled}
                         onChange={(e) => { setTranslationEnabled(e.target.checked); saveSettings({ translationEnabled: e.target.checked }); }}
                       />

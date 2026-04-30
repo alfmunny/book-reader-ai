@@ -104,10 +104,10 @@ export default function AnnotationToolbar({
   return (
     <div
       className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget && !saving && !deleting) onClose(); }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" aria-hidden="true" data-testid="annotation-backdrop" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" aria-hidden="true" data-testid="annotation-backdrop" onClick={() => { if (!saving && !deleting) onClose(); }} />
 
       {/* Panel */}
       <div
@@ -128,8 +128,9 @@ export default function AnnotationToolbar({
           </div>
           <button
             onClick={onClose}
+            disabled={saving || deleting}
             aria-label="Close note editor"
-            className="rounded-lg p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            className="rounded-lg p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" />
           </button>

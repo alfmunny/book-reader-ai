@@ -17,7 +17,7 @@ export default function DeckCard({ deck, href, onClick, onDelete }: DeckCardProp
     <>
       <div className="flex items-center gap-2 flex-wrap">
         <DeckIcon className="w-4 h-4 text-amber-600 shrink-0" />
-        <h2 className="font-serif font-semibold text-ink text-base truncate" title={deck.name}>
+        <h2 id={`deck-name-${deck.id}`} className="font-serif font-semibold text-ink text-base truncate" title={deck.name}>
           {deck.name}
         </h2>
         <span
@@ -53,6 +53,7 @@ export default function DeckCard({ deck, href, onClick, onDelete }: DeckCardProp
   return (
     <article
       data-testid={`deck-card-${deck.id}`}
+      aria-labelledby={`deck-name-${deck.id}`}
       className="rounded-xl border border-amber-100 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-3">

@@ -384,7 +384,7 @@ export default function ProfilePage() {
         </section>
 
         {/* ── Obsidian Export Settings ────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
+        <section aria-label="Obsidian Export" className="bg-white rounded-2xl border border-amber-100 overflow-hidden">
           {/* Accordion header — WAI-ARIA: heading wraps button */}
           <h2 className="m-0">
             <button

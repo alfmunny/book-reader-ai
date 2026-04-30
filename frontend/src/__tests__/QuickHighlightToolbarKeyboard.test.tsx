@@ -1,6 +1,6 @@
 /**
- * Regression test for #2461: QuickHighlightPanel role="toolbar" must implement
- * roving tabindex and arrow-key navigation per ARIA APG toolbar pattern.
+ * Regression tests for #2461 (roving tabindex + arrow-key nav) and
+ * #2463 (focus moves to first button on open).
  */
 import React from "react";
 import { render, screen } from "@testing-library/react";
@@ -27,6 +27,13 @@ const BASE_PROPS = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+describe("QuickHighlightPanel focus-on-open (closes #2463)", () => {
+  it("Yellow button receives focus immediately when panel mounts", () => {
+    render(<QuickHighlightPanel {...BASE_PROPS} />);
+    expect(screen.getByRole("button", { name: "Yellow" })).toHaveFocus();
+  });
 });
 
 describe("QuickHighlightPanel toolbar — roving tabindex (closes #2461)", () => {

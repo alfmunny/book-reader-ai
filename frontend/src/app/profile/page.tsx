@@ -62,6 +62,8 @@ export default function ProfilePage() {
   // ── Study decks (decks with due cards today) ───────────────────────────────
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [decksLoading, setDecksLoading] = useState(true);
+  const [decksFetchError, setDecksFetchError] = useState(false);
+  const [decksRetryTick, setDecksRetryTick] = useState(0);
 
   useEffect(() => {
     document.title = "Profile — Book Reader AI";
@@ -69,12 +71,13 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let alive = true;
+    setDecksFetchError(false);
     listDecks()
       .then((d) => {
         if (alive) setDecks(d);
       })
       .catch(() => {
-        // Swallow — section just hides
+        if (alive) setDecksFetchError(true);
       })
       .finally(() => {
         if (alive) setDecksLoading(false);
@@ -82,7 +85,7 @@ export default function ProfilePage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [decksRetryTick]);
 
   function gotoFlashcardsForDeck(deckId: number) {
     try {
@@ -250,7 +253,19 @@ export default function ProfilePage() {
         </section>
 
         {/* ── Study decks (due today) ──────────────────────────────────── */}
-        {decksLoading ? (
+        {decksFetchError ? (
+          <section className="bg-white rounded-2xl border border-amber-100 p-6">
+            <div role="status" className="flex items-center justify-between">
+              <p className="text-sm text-stone-500">Couldn&apos;t load study decks.</p>
+              <button
+                onClick={() => { setDecksLoading(true); setDecksRetryTick((t) => t + 1); }}
+                className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Retry
+              </button>
+            </div>
+          </section>
+        ) : decksLoading ? (
           <section
             role="status"
             aria-label="Loading study decks"

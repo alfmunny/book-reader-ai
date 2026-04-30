@@ -265,7 +265,7 @@ export default function FlashcardsPage() {
 
         {/* Done state */}
         {!fetchError && done ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <div role="status" className="flex flex-col items-center gap-4 py-16 text-center">
             <CheckIcon className="w-12 h-12 text-green-500" />
             <h2 className="font-serif text-2xl text-ink">All done for today!</h2>
             <p className="text-sm text-stone-600">

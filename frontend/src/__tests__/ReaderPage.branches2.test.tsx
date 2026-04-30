@@ -497,12 +497,11 @@ describe("ReaderPage.branches2 — Gemini key reminder banner via notifyAIUsed",
 
     await screen.findByText(/AI features require your own Gemini API key/);
 
-    const openMock = jest.spyOn(window, "open").mockImplementation(() => null);
-    const addKeyBtn = screen.getByText("Add your free Gemini API key");
-    await userEvent.click(addKeyBtn);
-
-    expect(openMock).toHaveBeenCalledWith("/profile", "_blank");
-    openMock.mockRestore();
+    const addKeyLink = screen.getByText(/Add your free Gemini API key/i);
+    const anchor = addKeyLink.closest("a") ?? addKeyLink;
+    expect(anchor.tagName.toLowerCase()).toBe("a");
+    expect(anchor).toHaveAttribute("href", "/profile");
+    expect(anchor).toHaveAttribute("target", "_blank");
   });
 });
 

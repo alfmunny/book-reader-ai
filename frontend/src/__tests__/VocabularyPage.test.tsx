@@ -117,9 +117,7 @@ test("groups words alphabetically under correct letter heading", async () => {
   expect(screen.getByText("E")).toBeInTheDocument();
 });
 
-test("delete button calls deleteVocabularyWord and removes word", async () => {
-  mockDeleteVocabularyWord.mockResolvedValue({ ok: true });
-
+test("delete button optimistically removes word and shows UndoToast", async () => {
   render(<VocabularyPage />);
   await flushPromises();
   await screen.findByText("ephemeral");
@@ -127,10 +125,26 @@ test("delete button calls deleteVocabularyWord and removes word", async () => {
   const deleteBtn = screen.getByTestId("delete-ephemeral");
   await userEvent.click(deleteBtn);
 
-  await waitFor(() => {
-    expect(mockDeleteVocabularyWord).toHaveBeenCalledWith("ephemeral");
-    expect(screen.queryByText("ephemeral")).not.toBeInTheDocument();
-  });
+  // Word disappears immediately (optimistic)
+  expect(screen.queryByText("ephemeral")).not.toBeInTheDocument();
+  // UndoToast appears; deleteVocabularyWord not yet called
+  expect(screen.getByText(/ephemeral.*removed|removed.*ephemeral/i)).toBeInTheDocument();
+  expect(mockDeleteVocabularyWord).not.toHaveBeenCalled();
+});
+
+test("clicking Undo in UndoToast restores the word without calling delete API", async () => {
+  render(<VocabularyPage />);
+  await flushPromises();
+  await screen.findByText("ephemeral");
+
+  await userEvent.click(screen.getByTestId("delete-ephemeral"));
+  expect(screen.queryByText("ephemeral")).not.toBeInTheDocument();
+
+  const undoBtn = screen.getByRole("button", { name: /undo/i });
+  await userEvent.click(undoBtn);
+
+  expect(await screen.findByText("ephemeral")).toBeInTheDocument();
+  expect(mockDeleteVocabularyWord).not.toHaveBeenCalled();
 });
 
 test("export button calls exportVocabularyToObsidian with no book_id", async () => {

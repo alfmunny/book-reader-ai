@@ -1,7 +1,10 @@
 /**
- * Regression test for #2134 — silent error in vocabulary delete.
- * When deleteVocabularyWord throws, the user must see an error message
- * with role="alert" (not a silent catch-and-ignore).
+ * Regression tests for vocabulary word deletion UX.
+ *
+ * Issue #2374: vocabulary delete now uses optimistic UndoToast (matching home,
+ * notes, and decks pages) instead of a synchronous API call + error banner.
+ *
+ * Tests verify the source-level invariants that enforce this pattern.
  */
 import * as fs from "fs";
 import * as path from "path";
@@ -11,35 +14,36 @@ const src = fs.readFileSync(
   "utf8",
 );
 
-test("handleDelete catch block sets an error state instead of silently ignoring", () => {
-  // The catch block must not be a no-op comment — it should call a setter
-  const catchIdx = src.indexOf("async function handleDelete");
-  expect(catchIdx).toBeGreaterThan(-1);
-  const fnSrc = src.slice(catchIdx, catchIdx + 400);
-  // Must NOT contain bare "// ignore" with nothing else in the catch block
-  expect(fnSrc).not.toMatch(/catch\s*\{[\s\n]*\/\/ ignore[\s\n]*\}/);
-  // Must contain a setState call in the catch block
-  expect(fnSrc).toMatch(/catch[\s\S]{0,60}set[A-Z][a-zA-Z]+\(/);
+test("vocabulary page imports UndoToast", () => {
+  expect(src).toMatch(/import UndoToast from "@\/components\/UndoToast"/);
 });
 
-test("vocabulary page has a role=alert element for delete errors", () => {
-  expect(src).toMatch(/role="alert"/);
-  // The alert must be connected to a delete-related error state (not just fetchError)
-  const alertIdx = src.search(/role="alert"[^>]*>[^<]*deleteError/);
-  // Also accept the JSX pattern where deleteError is rendered inside the alert div
-  const hasDeleteErrorAlert =
-    alertIdx > -1 ||
-    (() => {
-      // Find all role="alert" occurrences and check if deleteError is nearby
-      let i = 0;
-      while (i < src.length) {
-        const found = src.indexOf('role="alert"', i);
-        if (found === -1) break;
-        const region = src.slice(found, found + 200);
-        if (region.includes("deleteError")) return true;
-        i = found + 1;
-      }
-      return false;
-    })();
-  expect(hasDeleteErrorAlert).toBe(true);
+test("handleDelete is synchronous (no async/await — delete is deferred to onDone)", () => {
+  const idx = src.indexOf("function handleDelete(");
+  expect(idx).toBeGreaterThan(-1);
+  // Must NOT be declared as async
+  const prefix = src.slice(Math.max(0, idx - 10), idx + 30);
+  expect(prefix).not.toMatch(/async\s+function handleDelete/);
+});
+
+test("handleDelete stores deleted form in deletedWordToast state", () => {
+  const idx = src.indexOf("function handleDelete(");
+  expect(idx).toBeGreaterThan(-1);
+  const fnSrc = src.slice(idx, idx + 400);
+  expect(fnSrc).toMatch(/setDeletedWordToast\(/);
+  // Must optimistically remove the word from list
+  expect(fnSrc).toMatch(/setWords\(/);
+});
+
+test("vocabulary page renders UndoToast when deletedWordToast is set", () => {
+  expect(src).toMatch(/deletedWordToast\s*&&/);
+  expect(src).toMatch(/<UndoToast/);
+});
+
+test("UndoToast onDone calls deleteVocabularyWord", () => {
+  const undoIdx = src.indexOf("<UndoToast");
+  expect(undoIdx).toBeGreaterThan(-1);
+  const block = src.slice(undoIdx, undoIdx + 500);
+  expect(block).toMatch(/onDone/);
+  expect(block).toMatch(/deleteVocabularyWord/);
 });

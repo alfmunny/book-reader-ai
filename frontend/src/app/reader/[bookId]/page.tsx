@@ -89,8 +89,8 @@ export default function ReaderPage() {
   // Vocabulary toast
   const [vocabToastWord, setVocabToastWord] = useState<string | null>(null);
 
-  // Obsidian export toast
-  const [obsidianToast, setObsidianToast] = useState<string | null>(null);
+  // Obsidian export toast — { msg: string; ok: boolean } distinguishes success from error
+  const [obsidianToast, setObsidianToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   // Annotation delete undo toast
   const [deletedAnnotationToast, setDeletedAnnotationToast] = useState<Annotation | null>(null);
@@ -831,10 +831,10 @@ export default function ReaderPage() {
   async function handleObsidianExport() {
     try {
       const { urls } = await exportVocabularyToObsidian(Number(bookId));
-      setObsidianToast(urls[0] || "Exported successfully");
+      setObsidianToast({ msg: urls[0] || "Exported successfully", ok: true });
       setTimeout(() => setObsidianToast(null), 6000);
     } catch (e) {
-      setObsidianToast(e instanceof Error ? e.message : "Export failed");
+      setObsidianToast({ msg: e instanceof Error ? e.message : "Export failed", ok: false });
       setTimeout(() => setObsidianToast(null), 4000);
     }
   }
@@ -1657,25 +1657,27 @@ export default function ReaderPage() {
 
           {/* aria-live-obsidian-toast-mirror: always-present so AT announces (WCAG 4.1.3) */}
           <span aria-live="polite" aria-atomic="true" className="sr-only">
-            {obsidianToast ? (obsidianToast.startsWith("http") ? `Exported to ${obsidianToast}` : obsidianToast) : ""}
+            {obsidianToast ? (obsidianToast.msg.startsWith("http") ? `Exported to ${obsidianToast.msg}` : obsidianToast.msg) : ""}
           </span>
           {/* Obsidian export toast — visual only, conditionally mounted */}
           {obsidianToast && (
             <div className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm text-ink max-w-xs">
-              {obsidianToast.startsWith("http") ? (
+              {obsidianToast.msg.startsWith("http") ? (
                 <>
                   Exported!{" "}
                   <a
-                    href={obsidianToast}
+                    href={obsidianToast.msg}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-amber-700 underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                   >
-                    {obsidianToast}<span className="sr-only"> (opens in new tab)</span>
+                    {obsidianToast.msg}<span className="sr-only"> (opens in new tab)</span>
                   </a>
                 </>
+              ) : obsidianToast.ok ? (
+                <span className="text-emerald-700">{obsidianToast.msg}</span>
               ) : (
-                <span className="text-red-600">{obsidianToast}</span>
+                <span className="text-red-600">{obsidianToast.msg}</span>
               )}
             </div>
           )}
@@ -1761,8 +1763,8 @@ export default function ReaderPage() {
                   chapterIndex={chapterIndex}
                   onSaveInsight={session?.backendToken ? (question, answer, context) => {
                     saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context })
-                      .then(() => setObsidianToast("Insight saved to book notes"))
-                      .catch(() => setObsidianToast("Failed to save insight"))
+                      .then(() => setObsidianToast({ msg: "Insight saved to book notes", ok: true }))
+                      .catch(() => setObsidianToast({ msg: "Failed to save insight", ok: false }))
                       .finally(() => setTimeout(() => setObsidianToast(null), 3000));
                   } : undefined}
                 />
@@ -2230,8 +2232,8 @@ export default function ReaderPage() {
               chapterIndex={chapterIndex}
               onSaveInsight={session?.backendToken ? (question, answer, context) => {
                 saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context })
-                  .then(() => setObsidianToast("Insight saved to book notes"))
-                  .catch(() => setObsidianToast("Failed to save insight"))
+                  .then(() => setObsidianToast({ msg: "Insight saved to book notes", ok: true }))
+                  .catch(() => setObsidianToast({ msg: "Failed to save insight", ok: false }))
                   .finally(() => setTimeout(() => setObsidianToast(null), 3000));
               } : undefined}
             />

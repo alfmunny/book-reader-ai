@@ -1467,7 +1467,8 @@ export default function ReaderPage() {
           <div
             id="reader-scroll"
             lang={bookLanguage}
-            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8"
+            tabIndex={0}
+            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400"
             onClick={handleReaderTap}
             onTouchStart={handleTouchStart}
             onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}

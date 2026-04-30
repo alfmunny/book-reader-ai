@@ -565,3 +565,4 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-04-30 | Notes book page sections: added aria-label to 5 sections (Annotations, AI Insights, Vocabulary, per-chapter, Book-level Insights) — landmark navigation for screen readers (P3) | app/notes/[bookId]/page.tsx | #2537 |
 | 2026-04-30 | Search results sections: added aria-label={title} to ResultsSection <section> — exposes Annotations, Vocabulary, Chapters result groups as role="region" landmarks (P3) | app/search/page.tsx | #2539 |
 | 2026-04-30 | Profile Obsidian Export section: added aria-label="Obsidian Export" — missed in #2533 sweep, section was role="generic" and invisible to landmark navigation (P3) | app/profile/page.tsx | #2541 |
+| 2026-05-01 | CollapseHeading disclosure buttons: added aria-controls prop referencing controlled region id — WAI-ARIA disclosure pattern for AT programmatic navigation (P3) | app/notes/[bookId]/page.tsx | #2543 |

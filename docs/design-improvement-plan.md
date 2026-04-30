@@ -522,3 +522,13 @@ If post-ship telemetry or user feedback shows the loupe-flash is intrusive, we c
 3. Update `docs/reader-interaction-design.md` mobile section: replace the "no sub-sentence path" note with the new gesture model, mark #UX-001 resolved.
 4. Regression test: assert the `e.pointerType === "touch"` guard is no longer paired with `preventDefault()` in `SentenceReader.tsx`. (Negative regex on the file source is sufficient — the runtime semantics belong to manual + E2E coverage.)
 5. Optional follow-up: extend an existing E2E in `frontend/e2e/` to simulate a `pointermove >10px` drag and assert the SelectionToolbar mounts.
+
+## Wave 10 — Interaction Quality (2026-04-30)
+
+Dead-end error states given actionable fallback paths so users are never stranded.
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-30 | Search page: added Retry button to error state + `.finally()` for loading cleanup | app/search/page.tsx | #2480 |
+| 2026-04-30 | Vocabulary DefinitionSheet: Wiktionary fallback link when definition empty/null | app/vocabulary/page.tsx | #2478 |
+| 2026-04-30 | WordLookup: Wiktionary fallback link in error state when dictionary API finds nothing | components/WordLookup.tsx | #2483 |

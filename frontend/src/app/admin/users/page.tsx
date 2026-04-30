@@ -17,14 +17,12 @@ interface User {
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [myId, setMyId] = useState<number | null>(null);
+  const [myIdFetchFailed, setMyIdFetchFailed] = useState(false);
+  const [myIdRetryTick, setMyIdRetryTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actError, setActError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<number | null>(null);
-
-  useEffect(() => {
-    document.title = "Admin: Users — Book Reader AI";
-  }, []);
 
   useEffect(() => {
     document.title = "Admin: Users — Book Reader AI";
@@ -43,9 +41,12 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
-    getMe().then((me) => setMyId(me.id)).catch(() => {});
+    setMyIdFetchFailed(false);
+    getMe()
+      .then((me) => setMyId(me.id))
+      .catch(() => setMyIdFetchFailed(true));
     load();
-  }, [load]);
+  }, [load, myIdRetryTick]);
 
   async function act(fn: () => Promise<unknown>) {
     try {
@@ -92,6 +93,18 @@ export default function UsersPage() {
         </div>
       )}
 
+      {myIdFetchFailed && (
+        <div role="status" className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2 mb-2">
+          <p className="text-xs text-stone-500">Couldn&apos;t verify your identity — action buttons hidden.</p>
+          <button
+            type="button"
+            onClick={() => setMyIdRetryTick((t) => t + 1)}
+            className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       <ul role="list" aria-label="Users" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">
         {users.map((u) => (
           <li key={u.id} className="px-4 py-3 flex items-center gap-3">
@@ -114,7 +127,7 @@ export default function UsersPage() {
               </div>
               <p className="text-xs text-stone-600 truncate" title={u.email}>{u.email}</p>
             </div>
-            {u.id !== myId && (
+            {!myIdFetchFailed && u.id !== myId && (
               <div className="flex gap-1 items-center">
                 <button
                   onClick={() =>
@@ -168,7 +181,7 @@ export default function UsersPage() {
                 )}
               </div>
             )}
-            {u.id === myId && <span className="text-xs text-stone-600">You</span>}
+            {!myIdFetchFailed && u.id === myId && <span className="text-xs text-stone-600">You</span>}
           </li>
         ))}
       </ul>

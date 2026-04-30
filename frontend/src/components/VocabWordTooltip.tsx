@@ -97,7 +97,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
           </div>
         )}
         {!loading && fetchError && (
-          <div role="status" className="flex flex-col items-center gap-1.5 py-1 text-center">
+          <div role="alert" className="flex flex-col items-center gap-1.5 py-1 text-center">
             <p className="text-xs text-stone-500">Couldn&apos;t load definition.</p>
             <button
               onClick={() => setRetryTick((t) => t + 1)}

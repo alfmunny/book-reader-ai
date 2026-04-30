@@ -116,7 +116,7 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
 
   if (error) {
     return (
-      <div role="status" className="flex flex-col items-center gap-3 py-8 text-center">
+      <div role="alert" className="flex flex-col items-center gap-3 py-8 text-center">
         <p className="text-sm text-stone-500">Couldn&apos;t load reading stats.</p>
         <button
           onClick={() => setRetryTick((t) => t + 1)}

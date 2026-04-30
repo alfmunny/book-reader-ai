@@ -370,7 +370,7 @@ export default function Home() {
                 </div>
 
                 {userStatsFetchError ? (
-                  <div role="status" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
+                  <div role="alert" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
                     <p className="text-sm text-stone-500">Couldn&apos;t load stats.</p>
                     <button
                       onClick={() => setUserStatsRetryTick((t) => t + 1)}

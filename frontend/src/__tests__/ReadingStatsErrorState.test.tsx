@@ -28,10 +28,10 @@ describe("ReadingStats — fetch failure (issue #2412)", () => {
     render(<ReadingStats active={true} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toBeInTheDocument();
-      const status = screen.getByRole("status");
-      // Should NOT be the loading skeleton (which also has role="status" but has animate-pulse)
-      expect(status.className).not.toContain("animate-pulse");
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      const alert = screen.getByRole("alert");
+      // Should NOT be the loading skeleton (which has animate-pulse, not the error alert)
+      expect(alert.className).not.toContain("animate-pulse");
     });
 
     // Should show an error message

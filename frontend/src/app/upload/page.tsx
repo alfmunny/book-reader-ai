@@ -121,7 +121,7 @@ export default function UploadPage() {
 
         {/* Quota error */}
         {quotaFetchError && (
-          <div role="status" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white p-4">
+          <div role="alert" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white p-4">
             <p className="text-sm text-stone-500">Couldn&apos;t load quota.</p>
             <button
               onClick={() => setQuotaRetryTick((t) => t + 1)}

@@ -259,7 +259,7 @@ export default function ProfilePage() {
         {/* ── Study decks (due today) ──────────────────────────────────── */}
         {decksFetchError ? (
           <section className="bg-white rounded-2xl border border-amber-100 p-6">
-            <div role="status" className="flex items-center justify-between">
+            <div role="alert" className="flex items-center justify-between">
               <p className="text-sm text-stone-500">Couldn&apos;t load study decks.</p>
               <button
                 onClick={() => { setDecksLoading(true); setDecksRetryTick((t) => t + 1); }}
@@ -332,7 +332,7 @@ export default function ProfilePage() {
           </p>
 
           {geminiKeyFetchError ? (
-            <div role="status" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
+            <div role="alert" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
               <p className="text-sm text-stone-500">Couldn&apos;t load key status.</p>
               <button
                 onClick={() => setGeminiKeyRetryTick((t) => t + 1)}
@@ -412,7 +412,7 @@ export default function ProfilePage() {
           {obsidianOpen && (
             <div id="obsidian-export-panel" role="region" aria-label="Obsidian export settings" className="px-6 pb-6 space-y-4 border-t border-amber-100">
               {obsidianFetchError && (
-                <div role="status" className="flex items-center justify-between pt-4">
+                <div role="alert" className="flex items-center justify-between pt-4">
                   <p className="text-sm text-stone-500">Couldn&apos;t load Obsidian settings.</p>
                   <button
                     onClick={() => setObsidianRetryTick((t) => t + 1)}

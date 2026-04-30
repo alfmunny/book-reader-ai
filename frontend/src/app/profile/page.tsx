@@ -407,9 +407,8 @@ export default function ProfilePage() {
                   placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
                   value={obsidianToken}
                   onChange={(e) => setObsidianToken(e.target.value)}
-                  aria-invalid={obsidianMsg?.ok === false || undefined}
                   aria-describedby="obsidian-msg"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 placeholder:text-stone-600 ${obsidianMsg?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                 />
                 <p className="text-xs text-stone-600 mt-1">
                   Requires <code>contents:write</code> permission on your vault repo.
@@ -426,9 +425,8 @@ export default function ProfilePage() {
                   placeholder="username/obsidian-notes"
                   value={obsidianRepo}
                   onChange={(e) => setObsidianRepo(e.target.value)}
-                  aria-invalid={obsidianMsg?.ok === false || undefined}
                   aria-describedby="obsidian-msg"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder:text-stone-600 ${obsidianMsg?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                 />
               </div>
 
@@ -442,9 +440,8 @@ export default function ProfilePage() {
                   placeholder="All Notes/002 Literature Notes/000 Books"
                   value={obsidianPath}
                   onChange={(e) => setObsidianPath(e.target.value)}
-                  aria-invalid={obsidianMsg?.ok === false || undefined}
                   aria-describedby="obsidian-msg"
-                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder:text-stone-600 ${obsidianMsg?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
                 />
               </div>
 

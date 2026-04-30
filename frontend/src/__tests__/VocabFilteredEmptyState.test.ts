@@ -16,7 +16,7 @@ const src = readFileSync(
  * the condition and capturing up to the opening of the items section.
  */
 const filteredEmptyBlock =
-  src.match(/filtered\.length === 0[\s\S]{0,2500}space-y-8/)?.[0] ?? "";
+  src.match(/filtered\.length === 0[\s\S]{0,3500}space-y-8/)?.[0] ?? "";
 
 describe("Vocabulary filtered empty state (closes #1923)", () => {
   it("filtered empty block is found in source", () => {

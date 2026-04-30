@@ -750,10 +750,16 @@ export default function ReaderPage() {
   // Keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Skip if focus is on an interactive element — let the element handle its own keys.
-      // Without BUTTON/A here, Space would suppress native button activation (WCAG 2.1.1).
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON" || tag === "A") return;
+      // Skip if focus is on an editable element or anchor — let the element handle its own keys.
+      const el = e.target as HTMLElement;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "A") return;
+      // For buttons: allow ArrowLeft/ArrowRight chapter navigation UNLESS focus is inside a
+      // toolbar (toolbar components handle their own roving-tabindex arrow navigation).
+      if (tag === "BUTTON") {
+        const insideToolbar = !!el?.closest?.('[role="toolbar"]');
+        if (insideToolbar || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+      }
 
       if (e.key === "ArrowLeft" && chapterIndex > 0) {
         e.preventDefault();

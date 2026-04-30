@@ -120,6 +120,8 @@ export default function ReaderPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate" | "summary">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
+  const [vocabFetchError, setVocabFetchError] = useState(false);
+  const [vocabRetryTick, setVocabRetryTick] = useState(0);
   const vocabWordsSet = useMemo(
     () => new Set(vocabWords.map((v) => v.word.toLowerCase())),
     [vocabWords],
@@ -429,10 +431,11 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!session?.backendToken) return;
     setVocabWords([]);
+    setVocabFetchError(false);
     getVocabulary().then((words) => {
       setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
-    }).catch(() => {});
-  }, [bookId, session?.backendToken]);
+    }).catch(() => setVocabFetchError(true));
+  }, [bookId, session?.backendToken, vocabRetryTick]);
 
   // On initial chapter load, scroll to sentence specified in ?sentence= URL param
   useEffect(() => {
@@ -2035,7 +2038,17 @@ export default function ReaderPage() {
                         View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
                       </button>
                     </div>
-                    {filteredVocab.length === 0 ? (
+                    {vocabFetchError ? (
+                      <div role="status" className="flex flex-col items-center gap-2 mt-10 text-center">
+                        <p className="text-sm text-stone-500">Couldn&apos;t load vocabulary.</p>
+                        <button
+                          onClick={() => setVocabRetryTick((t) => t + 1)}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : filteredVocab.length === 0 ? (
                       <div className="text-center text-stone-600 mt-10 text-sm">
                         <EmptyVocabIcon className="w-10 h-10 text-stone-300 mx-auto mb-2" />
                         <p className="font-serif text-lg text-stone-600 mt-1">{vocabView === "chapter" ? "No vocabulary in this chapter" : "No vocabulary saved yet"}</p>

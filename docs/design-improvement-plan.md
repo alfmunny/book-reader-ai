@@ -457,7 +457,7 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Vocabulary page tag filter: replaced silent listVocabularyTags() failure with inline "Couldn't load tags" error + Retry — filter strip no longer silently disappears (closes #2431) | app/vocabulary/page.tsx | #2432 |
 | 2026-04-30 | Notes/[bookId]: annotation edit save failure now shows inline "Couldn't save — try again." error below Save/Cancel buttons instead of silently keeping edit open (closes #2433) | app/notes/[bookId]/page.tsx | #2434 |
 | 2026-04-30 | Profile page: getMe() failure no longer silently shows key-input form to users who already have a Gemini key — shows "Couldn't load key status" + Retry instead (closes #2435) | app/profile/page.tsx | #2436 |
-| 2026-04-30 | Profile page: listDecks() failure now shows "Couldn't load study decks" + Retry in the decks section instead of silently hiding it (closes #2437) | app/profile/page.tsx | — |
+| 2026-04-30 | Profile page: listDecks() failure now shows "Couldn't load study decks" + Retry in the decks section instead of silently hiding it (closes #2437) | app/profile/page.tsx | #2438 |
 
 ---
 

@@ -95,6 +95,9 @@ export default function ReaderPage() {
   // Annotation delete undo toast
   const [deletedAnnotationToast, setDeletedAnnotationToast] = useState<Annotation | null>(null);
 
+  // Screen-reader announcement for annotation/highlight save success (WCAG 4.1.3)
+  const [savedAnnotationMsg, setSavedAnnotationMsg] = useState("");
+
   // TTS Read-button playback state — fed by TTSControls via callback props.
   const [ttsCurrentTime, setTtsCurrentTime] = useState(0);
   const [ttsDuration, setTtsDuration] = useState(0);
@@ -1626,6 +1629,8 @@ export default function ReaderPage() {
                   }
                   return [...prev, annotation];
                 });
+                setSavedAnnotationMsg(annotation.note_text ? "Note saved" : "Highlight saved");
+                setTimeout(() => setSavedAnnotationMsg(""), 2000);
               }}
               onDeleted={(id) => {
                 const ann = annotations.find((a) => a.id === id);
@@ -1654,6 +1659,8 @@ export default function ReaderPage() {
                   }
                   return [...prev, annotation];
                 });
+                setSavedAnnotationMsg("Highlight applied");
+                setTimeout(() => setSavedAnnotationMsg(""), 2000);
               }}
               onDeleted={(id) => {
                 const ann = annotations.find((a) => a.id === id);
@@ -1719,6 +1726,10 @@ export default function ReaderPage() {
           {/* aria-live-obsidian-toast-mirror: always-present so AT announces (WCAG 4.1.3) */}
           <span aria-live="polite" aria-atomic="true" className="sr-only">
             {obsidianToast ? (obsidianToast.msg.startsWith("http") ? `Exported to ${obsidianToast.msg}` : obsidianToast.msg) : ""}
+          </span>
+          {/* Annotation/highlight save confirmation for screen readers (WCAG 4.1.3) */}
+          <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+            {savedAnnotationMsg}
           </span>
           {/* Obsidian export toast — visual only, conditionally mounted */}
           {obsidianToast && (

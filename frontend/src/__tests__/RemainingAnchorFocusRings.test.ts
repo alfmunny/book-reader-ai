@@ -47,9 +47,9 @@ describe("Reader page remaining anchor focus rings (closes #2202)", () => {
   });
 
   it("Obsidian export URL link has focus ring", () => {
-    const idx = readerSrc.indexOf("href={obsidianToast}");
+    const idx = readerSrc.indexOf("href={obsidianToast.msg}");
     expect(idx).toBeGreaterThan(-1);
-    const window = readerSrc.slice(idx, idx + 240);
+    const window = readerSrc.slice(idx, idx + 280);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 

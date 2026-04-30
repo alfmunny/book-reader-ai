@@ -2,7 +2,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";

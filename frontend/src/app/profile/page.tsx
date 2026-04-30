@@ -516,8 +516,8 @@ export default function ProfilePage() {
           </div>
 
           {/* TTS voice gender */}
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">
+          <div role="radiogroup" aria-labelledby="tts-gender-label">
+            <label id="tts-gender-label" className="block text-sm font-medium text-ink mb-1.5">
               Text-to-speech voice
             </label>
             <p className="text-xs text-stone-600 mb-2">
@@ -548,8 +548,8 @@ export default function ProfilePage() {
           </div>
 
           {/* Translation provider */}
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">
+          <div role="radiogroup" aria-labelledby="translation-provider-label">
+            <label id="translation-provider-label" className="block text-sm font-medium text-ink mb-1.5">
               Translation provider
             </label>
             <div className="space-y-2">

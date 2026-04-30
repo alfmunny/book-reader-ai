@@ -114,16 +114,21 @@ interface DefinitionSheetProps {
 function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
   const [def, setDef] = useState<WordDefinition | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref);
   useScrollLock(true);
 
   useEffect(() => {
+    setFetchError(false);
+    setLoading(true);
+    setDef(null);
     getWordDefinition(word, lang ?? undefined)
       .then(setDef)
-      .catch(() => {})
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
-  }, [word, lang]);
+  }, [word, lang, retryTick]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -189,7 +194,19 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
             </div>
           )}
 
-          {!loading && (!def || def.definitions.length === 0) && (
+          {!loading && fetchError && (
+            <div role="status" className="flex flex-col items-center gap-2 py-2 text-center">
+              <p className="text-sm text-stone-500">Couldn&apos;t load definition.</p>
+              <button
+                onClick={() => setRetryTick((t) => t + 1)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {!loading && !fetchError && (!def || def.definitions.length === 0) && (
             <p className="text-sm text-stone-600 italic">No definition found.</p>
           )}
 

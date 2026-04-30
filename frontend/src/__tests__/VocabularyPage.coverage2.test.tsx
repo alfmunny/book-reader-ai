@@ -155,7 +155,7 @@ describe("VocabularyPage — DefinitionSheet mousedown outside (lines 59-62)", (
 // ── Line 46: getWordDefinition catch callback ────────────────────────────────
 
 describe("VocabularyPage — DefinitionSheet getWordDefinition error (line 46)", () => {
-  it("silently catches getWordDefinition rejection and stops loading", async () => {
+  it("shows error state with Retry on getWordDefinition rejection", async () => {
     mockGetWordDefinition.mockRejectedValue(new Error("Network error"));
 
     render(<VocabularyPage />);
@@ -164,10 +164,12 @@ describe("VocabularyPage — DefinitionSheet getWordDefinition error (line 46)",
 
     await userEvent.click(screen.getByRole("button", { name: "ephemeral" }));
 
-    // After rejection, loading stops and "No definition found" shows
+    // After rejection, error state renders instead of misleading "No definition found"
     await waitFor(() =>
-      expect(screen.getByText(/No definition found/i)).toBeInTheDocument()
+      expect(screen.getByText(/Couldn't load definition/i)).toBeInTheDocument()
     );
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByText(/No definition found/i)).not.toBeInTheDocument();
   });
 
   it("opens DefinitionSheet with lang=null (lang ?? undefined becomes undefined)", async () => {

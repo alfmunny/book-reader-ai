@@ -56,7 +56,10 @@ export default function QuickHighlightPanel({
   }
 
   useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
     toolbarRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    return () => { prev?.focus?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

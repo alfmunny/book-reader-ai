@@ -24,7 +24,7 @@ describe("Disclosure button aria-controls (closes #2081)", () => {
     it("aria-controls and id appear near aria-expanded statsExpanded usage", () => {
       const idx = homeSrc.indexOf('aria-expanded={statsExpanded}');
       expect(idx).toBeGreaterThan(-1);
-      const window = homeSrc.slice(idx, idx + 3000);
+      const window = homeSrc.slice(idx, idx + 4000);
       expect(window).toContain('aria-controls="stats-activity-panel"');
       expect(window).toContain('id="stats-activity-panel"');
     });

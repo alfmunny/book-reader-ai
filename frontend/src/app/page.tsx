@@ -53,6 +53,8 @@ export default function Home() {
   // ── Library / Home state ──
   const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [userStatsFetchError, setUserStatsFetchError] = useState(false);
+  const [userStatsRetryTick, setUserStatsRetryTick] = useState(0);
   const [statsExpanded, setStatsExpanded] = useState(false);
   const [removedBookToast, setRemovedBookToast] = useState<RecentBook | null>(null);
 
@@ -77,7 +79,8 @@ export default function Home() {
     getMe().then((me) => {
       setIsAdmin(me.role === "admin");
     }).catch(() => {});
-    getUserStats().then(setUserStats).catch(() => {});
+    setUserStatsFetchError(false);
+    getUserStats().then(setUserStats).catch(() => setUserStatsFetchError(true));
     getReadingProgress().then((entries) => {
       const local = getRecentBooks();
       let changed = false;
@@ -96,7 +99,7 @@ export default function Home() {
         setRecentBooks(merged);
       }
     }).catch(() => {});
-  }, [status]);
+  }, [status, userStatsRetryTick]);
 
   // ── Discover state ──
   const [query, setQuery] = useState("");
@@ -349,7 +352,7 @@ export default function Home() {
             )}
 
             {/* Stats strip */}
-            {status === "authenticated" && userStats && (
+            {status === "authenticated" && (userStats || userStatsFetchError) && (
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 flex-1">
@@ -365,44 +368,58 @@ export default function Home() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {userStats.streak > 0 && (
-                    <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                      <FireIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                      <div>
-                        <p className="text-lg font-bold text-amber-900 leading-none">{userStats.streak}</p>
-                        <p className="text-[10px] text-stone-600 mt-0.5">day streak</p>
+                {userStatsFetchError ? (
+                  <div role="status" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
+                    <p className="text-sm text-stone-500">Couldn&apos;t load stats.</p>
+                    <button
+                      onClick={() => setUserStatsRetryTick((t) => t + 1)}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {userStats!.streak > 0 && (
+                        <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                          <FireIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                          <div>
+                            <p className="text-lg font-bold text-amber-900 leading-none">{userStats!.streak}</p>
+                            <p className="text-[10px] text-stone-600 mt-0.5">day streak</p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                        <BookOpenIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-stone-800 leading-none">{userStats!.totals.books_started}</p>
+                          <p className="text-[10px] text-stone-600 mt-0.5">books started</p>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                        <VocabIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-stone-800 leading-none">{userStats!.totals.vocabulary_words}</p>
+                          <p className="text-[10px] text-stone-600 mt-0.5">words saved</p>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
+                        <NoteIcon className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-stone-800 leading-none">{userStats!.totals.annotations}</p>
+                          <p className="text-[10px] text-stone-600 mt-0.5">annotations</p>
+                        </div>
                       </div>
                     </div>
-                  )}
-                  <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                    <BookOpenIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                    <div>
-                      <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.books_started}</p>
-                      <p className="text-[10px] text-stone-600 mt-0.5">books started</p>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                    <VocabIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                    <div>
-                      <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.vocabulary_words}</p>
-                      <p className="text-[10px] text-stone-600 mt-0.5">words saved</p>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                    <NoteIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                    <div>
-                      <p className="text-lg font-bold text-stone-800 leading-none">{userStats.totals.annotations}</p>
-                      <p className="text-[10px] text-stone-600 mt-0.5">annotations</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Collapsible full activity view */}
-                {statsExpanded && (
-                  <div id="stats-activity-panel" className="mt-4">
-                    <ReadingStats active heatmapOnly />
-                  </div>
+                    {/* Collapsible full activity view */}
+                    {statsExpanded && (
+                      <div id="stats-activity-panel" className="mt-4">
+                        <ReadingStats active heatmapOnly />
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             )}

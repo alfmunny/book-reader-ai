@@ -216,11 +216,17 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
           ))}
         </div>
 
-        {/* Legend */}
+        {/* Legend — each swatch has a title + aria-label so colorblind users can hover/AT for count range (WCAG 1.4.1) */}
         <div className="flex items-center gap-1 mt-2 justify-end">
           <span className="text-[9px] text-stone-600 mr-1">Less</span>
-          {["bg-stone-100", "bg-amber-200", "bg-amber-400", "bg-amber-600", "bg-amber-800"].map((c) => (
-            <div key={c} className={`w-3 h-3 rounded-[2px] ${c}`} />
+          {[
+            { bg: "bg-stone-100", label: "0 events" },
+            { bg: "bg-amber-200", label: "1–2 events" },
+            { bg: "bg-amber-400", label: "3–5 events" },
+            { bg: "bg-amber-600", label: "6–10 events" },
+            { bg: "bg-amber-800", label: "11+ events" },
+          ].map(({ bg, label }) => (
+            <div key={bg} title={label} aria-label={label} className={`w-3 h-3 rounded-[2px] ${bg}`} />
           ))}
           <span className="text-[9px] text-stone-600 ml-1">More</span>
         </div>

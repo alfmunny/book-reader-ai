@@ -318,8 +318,8 @@ export default function Home() {
 
             {/* Continue Reading */}
             {recentBooks.length > 0 && (
-              <section>
-                <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
+              <section aria-labelledby="home-continue-reading-heading">
+                <h2 id="home-continue-reading-heading" className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
                   Continue Reading
                 </h2>
                 <Link
@@ -354,9 +354,9 @@ export default function Home() {
 
             {/* Stats strip */}
             {status === "authenticated" && (userStats || userStatsFetchError) && (
-              <section>
+              <section aria-labelledby="home-progress-heading">
                 <div className="flex items-center gap-2 mb-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 flex-1">
+                  <h2 id="home-progress-heading" className="text-xs font-semibold uppercase tracking-widest text-stone-600 flex-1">
                     Your Progress
                   </h2>
                   <button
@@ -427,7 +427,7 @@ export default function Home() {
 
             {/* Book grid */}
             {recentBooks.length > 0 ? (
-              <section>
+              <section aria-label="Your Library">
                 {recentBooks.length > 1 && (
                   <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-3">
                     Your Library
@@ -485,10 +485,10 @@ export default function Home() {
 
             {/* ── Landing hero (unauthenticated visitors only) ── */}
             {status === "unauthenticated" && (
-              <section className="pt-4 pb-2">
+              <section aria-labelledby="home-hero-heading" className="pt-4 pb-2">
                 {/* Headline */}
                 <div className="text-center mb-8">
-                  <h2 className="font-serif text-3xl md:text-4xl font-bold text-ink leading-tight mb-3">
+                  <h2 id="home-hero-heading" className="font-serif text-3xl md:text-4xl font-bold text-ink leading-tight mb-3">
                     Read the world&rsquo;s greatest books<br className="hidden sm:block" /> in your language
                   </h2>
                   <p className="text-amber-800 text-base md:text-lg max-w-xl mx-auto mb-6">
@@ -591,8 +591,8 @@ export default function Home() {
             )}
 
             {/* Search section */}
-            <section id="discover-search">
-              <h2 className="font-serif font-semibold text-ink text-lg mb-1">Search</h2>
+            <section id="discover-search" aria-labelledby="home-search-heading">
+              <h2 id="home-search-heading" className="font-serif font-semibold text-ink text-lg mb-1">Search</h2>
               <p className="text-sm text-amber-700 mb-3">
                 70,000+ free public domain classics from Project Gutenberg
               </p>
@@ -706,10 +706,10 @@ export default function Home() {
             </section>
 
             {/* Popular Classics section */}
-            <section>
+            <section aria-labelledby="home-popular-heading">
               <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <h2 className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
+                  <h2 id="home-popular-heading" className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
                   <div role="group" aria-label="Filter by language" className="flex gap-1.5">
                     {POPULAR_LANGS.map((l) => (
                       <button

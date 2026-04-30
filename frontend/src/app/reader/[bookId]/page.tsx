@@ -271,11 +271,13 @@ export default function ReaderPage() {
     getMe().then((me) => {
       setHasGeminiKey(me.hasGeminiKey);
       setIsAdmin(me.role === "admin");
-    }).catch(() => {});
+    }).catch(() => {
+      // Leave hasGeminiKey as null on failure — notifyAIUsed checks === false
+    });
   }, [session?.backendToken]);
 
   function notifyAIUsed() {
-    if (!hasGeminiKey && !geminiReminderShown.current) {
+    if (hasGeminiKey === false && !geminiReminderShown.current) {
       geminiReminderShown.current = true;
       setGeminiReminderVisible(true);
     }

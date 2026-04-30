@@ -94,7 +94,7 @@ export default function UsersPage() {
       )}
 
       {myIdFetchFailed && (
-        <div role="status" className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2 mb-2">
+        <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2 mb-2">
           <p className="text-xs text-stone-500">Couldn&apos;t verify your identity — action buttons hidden.</p>
           <button
             type="button"

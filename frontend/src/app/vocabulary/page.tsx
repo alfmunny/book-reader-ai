@@ -196,7 +196,7 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           )}
 
           {!loading && fetchError && (
-            <div role="status" className="flex flex-col items-center gap-2 py-2 text-center">
+            <div role="alert" className="flex flex-col items-center gap-2 py-2 text-center">
               <p className="text-sm text-stone-500">Couldn&apos;t load definition.</p>
               <button
                 onClick={() => setRetryTick((t) => t + 1)}
@@ -564,7 +564,7 @@ function VocabularyPageContent() {
         )}
 
         {!loading && words.length > 0 && tagsFetchError && (
-          <div role="status" className="mb-6 flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
+          <div role="alert" className="mb-6 flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
             <p className="text-sm text-stone-500">Couldn&apos;t load tags.</p>
             <button
               onClick={() => setTagsRetryTick((t) => t + 1)}

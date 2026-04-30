@@ -210,7 +210,7 @@ export default function FlashcardsPage() {
 
         {/* Deck selector */}
         {decksFetchError && (
-          <div role="status" className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2">
+          <div role="alert" className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2">
             <p className="text-xs text-stone-500">Couldn&apos;t load decks.</p>
             <button
               onClick={() => setDecksRetryTick((t) => t + 1)}

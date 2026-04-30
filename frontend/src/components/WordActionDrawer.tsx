@@ -171,7 +171,7 @@ export default function WordActionDrawer({
                 type="button"
                 onClick={lookup}
                 aria-label="Retry dictionary lookup"
-                className="p-1 rounded hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                className="p-1 rounded hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <RetryIcon className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
               </button>

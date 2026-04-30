@@ -44,6 +44,22 @@ export default function AnnotationToolbar({
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const colorBtnRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function handleColorKeyDown(e: React.KeyboardEvent, idx: number) {
+    let next = idx;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      next = (idx + 1) % COLORS.length;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      next = (idx - 1 + COLORS.length) % COLORS.length;
+    } else {
+      return;
+    }
+    setColor(COLORS[next].key);
+    colorBtnRefs.current[next]?.focus();
+  }
   useFocusTrap(panelRef);
   useScrollLock(true);
 
@@ -146,13 +162,16 @@ export default function AnnotationToolbar({
           <div>
             <p className="text-xs text-stone-600 mb-2" aria-hidden="true">Highlight colour</p>
             <div role="radiogroup" aria-label="Highlight colour" className="flex items-center gap-0.5">
-              {COLORS.map((c) => (
+              {COLORS.map((c, idx) => (
                 <button
                   key={c.key}
+                  ref={(el) => { colorBtnRefs.current[idx] = el; }}
                   type="button"
                   role="radio"
                   title={c.label}
                   onClick={() => setColor(c.key)}
+                  onKeyDown={(e) => handleColorKeyDown(e, idx)}
+                  tabIndex={color === c.key ? 0 : -1}
                   aria-label={c.label}
                   aria-checked={color === c.key}
                   className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"

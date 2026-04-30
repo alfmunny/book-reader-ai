@@ -297,9 +297,9 @@ describe("QueueTab.branches2 — clearAll with filter='all' (lines 325, 350)", (
         expect.objectContaining({ method: "DELETE" }),
       ),
     );
-    // Success shown as inline toast (role="status") instead of alert()
+    // Success shown as inline toast (aria-live mirror announces, visual div shows)
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(/5/),
+      expect(screen.getAllByText(/5/)[0]).toBeInTheDocument(),
     );
   });
 });

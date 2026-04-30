@@ -1655,9 +1655,13 @@ export default function ReaderPage() {
             />
           )}
 
-          {/* Obsidian export toast */}
+          {/* aria-live-obsidian-toast-mirror: always-present so AT announces (WCAG 4.1.3) */}
+          <span aria-live="polite" aria-atomic="true" className="sr-only">
+            {obsidianToast ? (obsidianToast.startsWith("http") ? `Exported to ${obsidianToast}` : obsidianToast) : ""}
+          </span>
+          {/* Obsidian export toast — visual only, conditionally mounted */}
           {obsidianToast && (
-            <div role="status" className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm text-ink max-w-xs">
+            <div className="fixed bottom-6 right-6 z-50 bg-white border border-amber-300 shadow-lg rounded-xl px-5 py-3 text-sm text-ink max-w-xs">
               {obsidianToast.startsWith("http") ? (
                 <>
                   Exported!{" "}

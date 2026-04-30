@@ -40,11 +40,14 @@ describe("Profile page feedback messages have always-present live-region roles (
   });
 });
 
-describe("Reader obsidian toast has live-region role (closes #1255)", () => {
-  it("obsidianToast container has role=status", () => {
-    const idx = reader.indexOf("obsidianToast &&");
+describe("Reader obsidian toast has live-region role (closes #1255, updated #2344)", () => {
+  it("obsidianToast uses always-present aria-live mirror (split pattern, WCAG 4.1.3)", () => {
+    // #2344: visual toast is conditionally mounted for dismiss-button UX;
+    // announcement comes from the always-present sr-only mirror span
+    const idx = reader.indexOf("aria-live-obsidian-toast-mirror");
     expect(idx).toBeGreaterThan(-1);
     const region = reader.slice(idx, idx + 300);
-    expect(region).toContain('role="status"');
+    expect(region).toContain('aria-live="polite"');
+    expect(region).toContain('sr-only');
   });
 });

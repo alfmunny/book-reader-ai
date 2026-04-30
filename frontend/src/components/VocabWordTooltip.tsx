@@ -89,7 +89,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
       </div>
 
       {/* Body */}
-      <div className="px-3 py-2.5 max-h-40 overflow-y-auto">
+      <div tabIndex={0} className="px-3 py-2.5 max-h-40 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset rounded">
         {loading && (
           <div className="flex items-center gap-2 text-amber-700 text-xs py-1" role="status">
             <span className="w-3 h-3 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin shrink-0" aria-hidden="true" />

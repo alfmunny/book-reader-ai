@@ -685,7 +685,7 @@ export default function QueueTab({ adminFetch }: Props) {
             <summary className="text-xs text-amber-700 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
               Activity log ({s.log.length})
             </summary>
-            <ul role="list" className="mt-1 text-xs space-y-1 max-h-60 overflow-y-auto list-none p-0 m-0">
+            <ul role="list" tabIndex={0} className="mt-1 text-xs space-y-1 max-h-60 overflow-y-auto list-none p-0 m-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">
               {s.log
                 .slice()
                 .reverse()

@@ -532,3 +532,12 @@ Dead-end error states given actionable fallback paths so users are never strande
 | 2026-04-30 | Search page: added Retry button to error state + `.finally()` for loading cleanup | app/search/page.tsx | #2480 |
 | 2026-04-30 | Vocabulary DefinitionSheet: Wiktionary fallback link when definition empty/null | app/vocabulary/page.tsx | #2478 |
 | 2026-04-30 | WordLookup: Wiktionary fallback link in error state when dictionary API finds nothing | components/WordLookup.tsx | #2483 |
+
+## Wave 11 — Keyboard Accessibility (2026-04-30)
+
+WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and AT users.
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-04-30 | SelectionToolbar: auto-focus first button on keyboard-driven text selection (Shift+Arrow); restore prior focus on close | components/SelectionToolbar.tsx | #2492 |
+| 2026-04-30 | TTS gender toggle: aria-label omits "Click to switch" when button is disabled (WCAG 4.1.2) | components/TTSControls.tsx | #2494 |

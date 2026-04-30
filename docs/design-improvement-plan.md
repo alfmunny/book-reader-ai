@@ -441,6 +441,8 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Deck add-word picker: aria-live status region announces each word addition to screen readers — WCAG 4.1.3 (closes #2398) | decks/[deckId]/page.tsx | #2398 |
 | 2026-04-30 | TTS sliders: add aria-valuetext to playback position slider (formatted time, e.g. "2:32") and speed slider ("1.0×"); add aria-label to speed slider — WCAG 4.1.2 (closes #2400) | components/TTSControls.tsx | #2401 |
 | 2026-04-30 | Reader annotation/highlight save: sr-only role=status live region announces "Note saved" / "Highlight applied" after AnnotationToolbar or QuickHighlightPanel saves — WCAG 4.1.3 (closes #2402) | reader/[bookId]/page.tsx | #2403 |
+| 2026-04-30 | SelectionToolbar: always renders sr-only aria-live="polite" live region; announces available actions when text selection activates — prevents silent WCAG 4.1.3 violation for keyboard selection (closes #2404) | components/SelectionToolbar.tsx | #2405 |
+| 2026-04-30 | AnnotationToolbar: close button disabled (opacity-40, cursor-not-allowed) and backdrop click no-op while save/delete in flight — prevents silent data loss risk (closes #2406) | components/AnnotationToolbar.tsx | #2407 |
 
 ---
 

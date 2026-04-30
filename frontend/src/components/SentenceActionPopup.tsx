@@ -15,6 +15,10 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+  }, []);
+
+  useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }

@@ -375,6 +375,7 @@ export default function BooksPage() {
                   title={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-label={isExpanded ? `Collapse ${b.title}` : `Expand ${b.title}`}
                   aria-expanded={isExpanded}
+                  aria-controls={`book-detail-${b.id}`}
                 >
                   {isExpanded ? <ChevronDownIcon className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />}
                 </button>
@@ -513,7 +514,7 @@ export default function BooksPage() {
               </div>
 
               {isExpanded && (
-                <div className="px-4 pb-4 pt-1 bg-amber-50/40 border-t border-amber-100">
+                <div id={`book-detail-${b.id}`} className="px-4 pb-4 pt-1 bg-amber-50/40 border-t border-amber-100">
                   {translatedLangs.length === 0 ? (
                     <p className="text-xs text-stone-600 italic">
                       No translations cached yet. Use the + Translate button above to queue a language.
@@ -536,6 +537,7 @@ export default function BooksPage() {
                                 className="text-xs text-stone-600 hover:text-amber-700 flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                                 aria-label={isLangExpanded ? `Collapse ${lang} translations` : `Expand ${lang} translations`}
                                 aria-expanded={isLangExpanded}
+                                aria-controls={`lang-detail-${b.id}-${lang}`}
                               >
                                 {isLangExpanded ? <ChevronDownIcon className="w-3 h-3" /> : <ChevronRightIcon className="w-3 h-3" />}
                               </button>
@@ -591,7 +593,7 @@ export default function BooksPage() {
                             </div>
 
                             {isLangExpanded && (
-                              <div className="border-t border-amber-100 divide-y divide-amber-50 max-h-80 overflow-y-auto">
+                              <div id={`lang-detail-${b.id}-${lang}`} className="border-t border-amber-100 divide-y divide-amber-50 max-h-80 overflow-y-auto">
                                 {chapterRows.length === 0 ? (
                                   <p className="text-xs text-stone-600 px-3 py-2">
                                     (Chapter-level details load from the translations list — reload if empty.)

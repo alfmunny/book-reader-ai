@@ -20,7 +20,7 @@ describe("reader/[bookId]/page.tsx sidebar list semantics (WCAG 1.3.1)", () => {
 
   it("annotations.filter(...).map(renderCard) is wrapped in <ul role=\"list\">", () => {
     // Find all <ul role="list"> blocks that contain map(renderCard) — multiline
-    const ulBlocks = src.match(/<ul role="list"[\s\S]*?<\/ul>/g) || [];
+    const ulBlocks = src.match(/<ul[^>]+role="list"[\s\S]*?<\/ul>/g) || [];
     const containsFilterMap = ulBlocks.some(
       (block) => block.includes(".filter(") && block.includes(".map(renderCard)")
     );

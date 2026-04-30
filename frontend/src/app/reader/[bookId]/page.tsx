@@ -1982,6 +1982,7 @@ export default function ReaderPage() {
                               <button
                                 className="flex items-center gap-1 w-full text-left text-xs font-semibold text-stone-600 uppercase tracking-wide min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                                 aria-expanded={!isCollapsed}
+                                aria-controls={`sidebar-notes-ch-${ch}`}
                                 onClick={() => setCollapsedNoteChapters((prev) => {
                                   const next = new Set(prev);
                                   if (next.has(ch)) next.delete(ch); else next.add(ch);
@@ -1992,7 +1993,7 @@ export default function ReaderPage() {
                                 <span>Chapter {ch + 1}</span>
                               </button>
                               {!isCollapsed && (
-                                <ul role="list" aria-label="Annotations" className="space-y-2 list-none p-0 m-0">
+                                <ul id={`sidebar-notes-ch-${ch}`} role="list" aria-label="Annotations" className="space-y-2 list-none p-0 m-0">
                                   {annotations.filter((a) => a.chapter_index === ch).map(renderCard)}
                                 </ul>
                               )}

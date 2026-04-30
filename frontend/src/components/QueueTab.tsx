@@ -527,7 +527,7 @@ export default function QueueTab({ adminFetch }: Props) {
                 await fn();
               }}
               aria-label="Confirm action"
-              className="px-3 py-1.5 rounded border border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              className="px-3 py-1.5 min-h-[44px] md:min-h-0 rounded border border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Confirm
             </button>
@@ -535,7 +535,7 @@ export default function QueueTab({ adminFetch }: Props) {
               type="button"
               onClick={() => setPendingConfirm(null)}
               aria-label="Cancel action"
-              className="px-3 py-1.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              className="px-3 py-1.5 min-h-[44px] md:min-h-0 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Cancel
             </button>

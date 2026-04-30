@@ -253,6 +253,8 @@ function VocabularyPageContent() {
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [activeWord, setActiveWord] = useState<{ word: string; lang: string | null } | null>(null);
   const [allTags, setAllTags] = useState<VocabTagSummary[]>([]);
+  const [tagsFetchError, setTagsFetchError] = useState(false);
+  const [tagsRetryTick, setTagsRetryTick] = useState(0);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [tagsByVocabId, setTagsByVocabId] = useState<Record<number, string[]>>({});
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -276,10 +278,11 @@ function VocabularyPageContent() {
   }, [session?.backendToken]);
 
   useEffect(() => {
+    setTagsFetchError(false);
     listVocabularyTags()
       .then(setAllTags)
-      .catch(() => {});
-  }, [session?.backendToken]);
+      .catch(() => setTagsFetchError(true));
+  }, [session?.backendToken, tagsRetryTick]);
 
   useEffect(() => {
     if (!selectedTag || words.length === 0) return;
@@ -546,7 +549,19 @@ function VocabularyPageContent() {
           </div>
         )}
 
-        {!loading && words.length > 0 && allTags.length > 0 && (
+        {!loading && words.length > 0 && tagsFetchError && (
+          <div role="status" className="mb-6 flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
+            <p className="text-sm text-stone-500">Couldn&apos;t load tags.</p>
+            <button
+              onClick={() => setTagsRetryTick((t) => t + 1)}
+              className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && words.length > 0 && !tagsFetchError && allTags.length > 0 && (
           <div
             data-testid="tag-filter-bar"
             role="group"

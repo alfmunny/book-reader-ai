@@ -15,14 +15,17 @@ export default function UploadPage() {
   }, []);
 
   const [quota, setQuota] = useState<UploadQuota | null>(null);
+  const [quotaFetchError, setQuotaFetchError] = useState(false);
+  const [quotaRetryTick, setQuotaRetryTick] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    getUploadQuota().then(setQuota).catch(() => {});
-  }, [status]);
+    setQuotaFetchError(false);
+    getUploadQuota().then(setQuota).catch(() => setQuotaFetchError(true));
+  }, [status, quotaRetryTick]);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -114,6 +117,19 @@ export default function UploadPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
+
+        {/* Quota error */}
+        {quotaFetchError && (
+          <div role="status" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white p-4">
+            <p className="text-sm text-stone-500">Couldn&apos;t load quota.</p>
+            <button
+              onClick={() => setQuotaRetryTick((t) => t + 1)}
+              className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Quota bar */}
         {quota !== null && (

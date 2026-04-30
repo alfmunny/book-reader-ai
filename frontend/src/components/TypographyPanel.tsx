@@ -92,6 +92,12 @@ export default function TypographyPanel({
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    return () => { prev?.focus?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         onClose();

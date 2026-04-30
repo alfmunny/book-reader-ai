@@ -413,7 +413,10 @@ function VocabularyPageContent() {
                 {group.language}
               </span>
             )}
-            <span className="text-xs text-stone-600 bg-stone-100 rounded-full px-2 py-0.5">
+            <span
+              aria-label={`${occurrenceCount} occurrence${occurrenceCount !== 1 ? "s" : ""}`}
+              className="text-xs text-stone-600 bg-stone-100 rounded-full px-2 py-0.5"
+            >
               {occurrenceCount}×
             </span>
           </div>

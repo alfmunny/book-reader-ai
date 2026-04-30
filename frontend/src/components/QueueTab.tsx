@@ -811,7 +811,7 @@ export default function QueueTab({ adminFetch }: Props) {
               {" · "}~<strong>{planResult.estimated_days_at_rpd} days</strong> at RPD
             </p>
             {planResult.books.length > 0 && (
-              <div className="max-h-40 overflow-y-auto border border-amber-100 rounded text-xs">
+              <div tabIndex={0} className="max-h-40 overflow-y-auto border border-amber-100 rounded text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
                 <table className="w-full" aria-label="Books to translate">
                   <thead className="bg-amber-50">
                     <tr>
@@ -839,7 +839,7 @@ export default function QueueTab({ adminFetch }: Props) {
               Preview: <strong>{dryRunResult.preview_book_title || "book"}</strong>
               {" · "}{dryRunResult.total_chapters} chapters total across {dryRunResult.total_books} book(s)
             </p>
-            <div className="space-y-3 max-h-64 overflow-y-auto bg-amber-50/50 rounded-lg p-3">
+            <div tabIndex={0} className="space-y-3 max-h-64 overflow-y-auto bg-amber-50/50 rounded-lg p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
               {Object.entries(dryRunResult.preview).map(([idx, paragraphs]) => (
                 <div key={idx} className="text-sm font-serif">
                   <div className="text-xs text-amber-700 mb-1">Chapter {Number(idx) + 1}</div>

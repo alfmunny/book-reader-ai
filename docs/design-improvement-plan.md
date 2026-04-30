@@ -549,3 +549,4 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-04-30 | Reading stats heatmap legend: added title + aria-label to each swatch (0, 1–2, 3–5, 6–10, 11+) so colorblind users can identify intensity levels (WCAG 1.4.1) | components/ReadingStats.tsx | #2505 |
 | 2026-04-30 | Flashcard card-to-card transition: flipButtonRef + useEffect focus-move on currentIndex change; prevents focus loss when grade buttons unmount between cards (WCAG 2.4.3) | app/vocabulary/flashcards/page.tsx | #2507 |
 | 2026-04-30 | UndoToast: increased auto-dismiss from 3 s → 5 s; timer now pauses on mouseenter/focusin and resumes on mouseleave/focusout — WCAG 2.2.1 Timing Adjustable (Level A) | components/UndoToast.tsx | #2509 |
+| 2026-04-30 | QueueTab display-only scroll containers: added tabIndex={0} + focus ring to books-to-translate table wrapper and dry-run preview wrapper — WCAG 2.1.1 Keyboard (Level A) | components/QueueTab.tsx | #2511 |

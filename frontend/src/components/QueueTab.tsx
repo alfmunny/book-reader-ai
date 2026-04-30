@@ -1332,7 +1332,7 @@ export default function QueueTab({ adminFetch }: Props) {
               doesn't reflow and shift the filter pills. */}
           <span className="font-medium flex items-center gap-1.5">
             Items
-            <span className="inline-block w-3 h-3 align-middle" role="status" aria-label={loadingItems ? "Loading items" : ""}>
+            <span className="inline-block w-3 h-3 align-middle" role="status" aria-label={loadingItems ? "Loading items" : undefined}>
               {loadingItems && <Spinner />}
             </span>
           </span>

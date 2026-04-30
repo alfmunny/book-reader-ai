@@ -401,6 +401,8 @@ export default function ProfilePage() {
                   placeholder={hasObsidianToken ? "Enter new token to replace existing" : "ghp_… (never shown back)"}
                   value={obsidianToken}
                   onChange={(e) => setObsidianToken(e.target.value)}
+                  aria-invalid={obsidianMsg?.ok === false || undefined}
+                  aria-describedby="obsidian-msg"
                   className={`w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 placeholder:text-stone-600 ${obsidianMsg?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
                 />
                 <p className="text-xs text-stone-600 mt-1">
@@ -418,6 +420,8 @@ export default function ProfilePage() {
                   placeholder="username/obsidian-notes"
                   value={obsidianRepo}
                   onChange={(e) => setObsidianRepo(e.target.value)}
+                  aria-invalid={obsidianMsg?.ok === false || undefined}
+                  aria-describedby="obsidian-msg"
                   className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder:text-stone-600 ${obsidianMsg?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
                 />
               </div>
@@ -432,6 +436,8 @@ export default function ProfilePage() {
                   placeholder="All Notes/002 Literature Notes/000 Books"
                   value={obsidianPath}
                   onChange={(e) => setObsidianPath(e.target.value)}
+                  aria-invalid={obsidianMsg?.ok === false || undefined}
+                  aria-describedby="obsidian-msg"
                   className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 placeholder:text-stone-600 ${obsidianMsg?.ok === false ? "border-red-400 focus:ring-red-400" : "border-stone-300 focus:ring-amber-400"}`}
                 />
               </div>
@@ -444,7 +450,7 @@ export default function ProfilePage() {
                 {obsidianSaving ? "Saving…" : "Save Obsidian settings"}
               </button>
 
-              <p role="status" aria-live="polite" aria-atomic="true" className={`text-sm ${obsidianMsg ? (obsidianMsg.ok ? "text-emerald-700" : "text-red-600") : ""}`}>
+              <p id="obsidian-msg" role="status" aria-live="polite" aria-atomic="true" className={`text-sm ${obsidianMsg ? (obsidianMsg.ok ? "text-emerald-700" : "text-red-600") : ""}`}>
                 {obsidianMsg?.text ?? ""}
               </p>
             </div>

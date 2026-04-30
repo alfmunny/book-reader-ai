@@ -445,6 +445,7 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | AnnotationToolbar: close button disabled (opacity-40, cursor-not-allowed) and backdrop click no-op while save/delete in flight — prevents silent data loss risk (closes #2406) | components/AnnotationToolbar.tsx | #2407 |
 | 2026-04-30 | InsightChat: API error responses now render as a distinct red alert bubble (role="alert", AlertCircleIcon) instead of appearing as normal AI assistant messages (closes #2408) | components/InsightChat.tsx | #2409 |
 | 2026-04-30 | QuickHighlightPanel: added error state — save/delete failures now show inline role="alert" message ("Save failed — tap a colour to retry") instead of silently resetting the panel (closes #2410) | components/QuickHighlightPanel.tsx | #2411 |
+| 2026-04-30 | Reader annotations sidebar: replaced silent empty state on getAnnotations failure with "Couldn't load annotations" error state + Retry button — prevents misleading "No annotations yet" (closes #2414) | app/reader/[bookId]/page.tsx | #2415 |
 
 ---
 

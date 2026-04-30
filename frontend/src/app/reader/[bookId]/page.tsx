@@ -2390,7 +2390,7 @@ export default function ReaderPage() {
 
           {/* Notes expand panel */}
           {session?.backendToken && notesExpanded && (
-            <div className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
+            <div id="reader-mobile-notes-panel" className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
               {annotations.length === 0 ? (
                 <div className="text-center text-stone-600 py-4 text-sm">
                   <NoteIcon className="w-6 h-6 mx-auto mb-1 opacity-40" />
@@ -2489,6 +2489,7 @@ export default function ReaderPage() {
               }`}
               aria-label={annotations.length > 0 ? `Notes (${annotations.length})` : "Notes"}
               aria-expanded={notesExpanded}
+              aria-controls="reader-mobile-notes-panel"
             >
               <NoteIcon className="w-5 h-5" />
               {annotations.length > 0 && (

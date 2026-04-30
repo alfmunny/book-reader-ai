@@ -164,12 +164,12 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
         aria-label="Word definition"
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto animate-slide-up focus:outline-none"
       >
-        <div className="flex items-center justify-between px-4 py-2 border-b border-amber-100">
-          <div className="w-10 h-1 bg-amber-200 rounded-full mx-auto" />
+        <div className="relative flex items-center justify-center px-4 py-2 border-b border-amber-100">
+          <div className="w-10 h-1 bg-amber-200 rounded-full" />
           <button
             onClick={onClose}
             aria-label="Close definition"
-            className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors -mr-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            className="absolute right-2 top-1/2 -translate-y-1/2 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded-lg text-stone-600 hover:text-ink hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <CloseIcon className="w-4 h-4" aria-hidden="true" />
           </button>

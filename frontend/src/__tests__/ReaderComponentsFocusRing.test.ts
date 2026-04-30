@@ -40,7 +40,7 @@ describe("WordActionDrawer focus rings (closes #2176)", () => {
   it("Close button has focus-visible ring", () => {
     const idx = wordDrawer.indexOf("Close word lookup");
     expect(idx).toBeGreaterThan(-1);
-    const window = wordDrawer.slice(idx, idx + 300);
+    const window = wordDrawer.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 

@@ -24,10 +24,10 @@ test("vocab sidebar chapter filter: default shows only chapter-0 word", async ({
   const vocabBtn = page.getByTitle("Vocabulary", { exact: true });
   await vocabBtn.click();
 
-  // Word card header buttons start with the lemma — "universal universally" for chapter-0 word
-  await expect(page.getByRole("button", { name: "universal universally" })).toBeVisible();
+  // Word card header links start with the lemma — "universal universally" for chapter-0 word
+  await expect(page.getByRole("link", { name: "universal universally" })).toBeVisible();
   // "acknowledged" word card (chapter 1) should be absent — its header is "acknowledge acknowledged"
-  await expect(page.getByRole("button", { name: "acknowledge acknowledged" })).not.toBeVisible();
+  await expect(page.getByRole("link", { name: "acknowledge acknowledged" })).not.toBeVisible();
 });
 
 test("vocab sidebar 'All chapters' toggle shows words from every chapter", async ({ page }) => {
@@ -40,8 +40,8 @@ test("vocab sidebar 'All chapters' toggle shows words from every chapter", async
   await page.getByRole("button", { name: "All chapters" }).click();
 
   // Both word cards should now be visible
-  await expect(page.getByRole("button", { name: "universal universally" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "acknowledge acknowledged" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "universal universally" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "acknowledge acknowledged" })).toBeVisible();
 });
 
 test("vocab sidebar: clicking an occurrence closes the sidebar", async ({ page }) => {

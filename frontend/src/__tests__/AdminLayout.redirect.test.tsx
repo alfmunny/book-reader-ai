@@ -56,15 +56,14 @@ test("renders authenticated layout with tabs when user is admin", async () => {
   mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
   render(<AdminLayout><div>child content</div></AdminLayout>);
   await waitFor(() => screen.getByText("child content"));
-  expect(screen.getByRole("button", { name: /Library/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Library/i })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
 });
 
-test("clicking Library button navigates to /", async () => {
+test("Library back link has href /", async () => {
   mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
   render(<AdminLayout><div>child</div></AdminLayout>);
-  await waitFor(() => screen.getByRole("button", { name: /Library/i }));
-  fireEvent.click(screen.getByRole("button", { name: /Library/i }));
-  expect(mockPush).toHaveBeenCalledWith("/");
+  await waitFor(() => screen.getByRole("link", { name: /Library/i }));
+  expect(screen.getByRole("link", { name: /Library/i })).toHaveAttribute("href", "/");
 });
 

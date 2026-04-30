@@ -724,15 +724,13 @@ describe("ReaderPage — unauthenticated session", () => {
 });
 
 describe("ReaderPage — navigation from library button", () => {
-  it("back to library button calls router.push('/')", async () => {
+  it("Library header link has href /", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    const libraryBtn = await screen.findByText("Library", { exact: false });
-    expect(libraryBtn.closest("button")).toBeTruthy();
-    await userEvent.click(libraryBtn.closest("button")!);
-    expect(mockPush).toHaveBeenCalledWith("/");
+    const libraryLink = await screen.findByRole("link", { name: /Library/i });
+    expect(libraryLink).toHaveAttribute("href", "/");
   });
 });
 
@@ -1142,7 +1140,7 @@ describe("ReaderPage — vocab sidebar content", () => {
     expect(await screen.findByText(/View all/)).toBeInTheDocument();
   });
 
-  it("'View all' navigates to /vocabulary", async () => {
+  it("'View all' links to /vocabulary", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
@@ -1150,10 +1148,8 @@ describe("ReaderPage — vocab sidebar content", () => {
     const vocabBtn = await screen.findByTitle("Vocabulary");
     await userEvent.click(vocabBtn);
 
-    const viewAllBtn = await screen.findByText(/View all/);
-    await userEvent.click(viewAllBtn);
-
-    expect(mockPush).toHaveBeenCalledWith("/vocabulary");
+    const viewAllLink = await screen.findByRole("link", { name: /View all/i });
+    expect(viewAllLink).toHaveAttribute("href", "/vocabulary");
   });
 
   it("shows vocab count badge on Vocab button when words exist", async () => {

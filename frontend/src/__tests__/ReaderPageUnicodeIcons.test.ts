@@ -41,7 +41,7 @@ describe("Reader page Unicode icon replacements", () => {
   });
 
   it("Library back button uses ArrowLeftIcon", () => {
-    expect(src).toMatch(/router\.push\("\/"\)[\s\S]{0,350}<ArrowLeftIcon/);
+    expect(src).toMatch(/aria-label="Library"[\s\S]{0,350}<ArrowLeftIcon/);
   });
 
   it("chapter navigation uses ArrowLeftIcon", () => {

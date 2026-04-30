@@ -75,9 +75,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <button onClick={() => router.push("/")} className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
+        <Link href="/" className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
           <ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Library
-        </button>
+        </Link>
         <h1 className="font-serif font-bold text-ink text-lg md:text-xl">Admin Panel</h1>
         <button onClick={loadStats} className="ml-auto text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
           <RetryIcon className="w-4 h-4" aria-hidden="true" /> Refresh

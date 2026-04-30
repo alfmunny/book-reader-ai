@@ -33,6 +33,6 @@ describe("reader miscellaneous small button touch targets (closes #882)", () => 
   });
 
   it("Vocab sidebar View all button has min-h-[44px]", () => {
-    checkForward('router.push("/vocabulary")');
+    checkForward('href="/vocabulary"');
   });
 });

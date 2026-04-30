@@ -1,6 +1,6 @@
 "use client";
 import { useSession, signOut } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings, listDecks, DeckSummary } from "@/lib/api";
 import { ArrowLeftIcon, CheckIcon, ChevronRightIcon, DeckIcon } from "@/components/Icons";
@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const keyMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Obsidian settings state ────────────────────────────────────────────────
   const [obsidianOpen, setObsidianOpen] = useState(false);
@@ -37,6 +38,7 @@ export default function ProfilePage() {
   const [obsidianPath, setObsidianPath] = useState("All Notes/002 Literature Notes/000 Books");
   const [obsidianSaving, setObsidianSaving] = useState(false);
   const [obsidianMsg, setObsidianMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const obsidianMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Preferences state ──────────────────────────────────────────────────────
   const [settings, setSettings] = useState<AppSettings>({
@@ -127,12 +129,14 @@ export default function ProfilePage() {
   async function handleSaveKey() {
     if (!keyInput.trim()) return;
     setSavingKey(true);
+    if (keyMsgTimerRef.current) clearTimeout(keyMsgTimerRef.current);
     setKeyMessage(null);
     try {
       await saveGeminiKey(keyInput.trim());
       setKeyInput("");
       setHasKey(true);
       setKeyMessage({ text: "Gemini API key saved. AI features now use your key.", ok: true });
+      keyMsgTimerRef.current = setTimeout(() => setKeyMessage(null), 3000);
     } catch (e: unknown) {
       setKeyMessage({ text: e instanceof Error ? e.message : "Failed to save key", ok: false });
     } finally {
@@ -142,6 +146,7 @@ export default function ProfilePage() {
 
   async function handleSaveObsidian() {
     setObsidianSaving(true);
+    if (obsidianMsgTimerRef.current) clearTimeout(obsidianMsgTimerRef.current);
     setObsidianMsg(null);
     try {
       await saveObsidianSettings({
@@ -152,6 +157,7 @@ export default function ProfilePage() {
       if (obsidianToken.trim()) setHasObsidianToken(true);
       setObsidianToken("");
       setObsidianMsg({ text: "Obsidian settings saved.", ok: true });
+      obsidianMsgTimerRef.current = setTimeout(() => setObsidianMsg(null), 3000);
     } catch (e: unknown) {
       setObsidianMsg({ text: e instanceof Error ? e.message : "Failed to save", ok: false });
     } finally {

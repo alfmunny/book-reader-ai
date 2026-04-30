@@ -25,6 +25,8 @@ export default function ProfilePage() {
   const [keyInput, setKeyInput] = useState("");
   const [hasKey, setHasKey] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [geminiKeyFetchError, setGeminiKeyFetchError] = useState(false);
+  const [geminiKeyRetryTick, setGeminiKeyRetryTick] = useState(0);
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
@@ -100,11 +102,12 @@ export default function ProfilePage() {
 
   // Fetch live key status from backend (session JWT can be stale after key changes)
   useEffect(() => {
+    setGeminiKeyFetchError(false);
     getMe().then((me) => {
       setHasKey(me.hasGeminiKey);
       setIsAdmin(me.role === "admin");
-    }).catch(() => {});
-  }, [session?.backendToken]);
+    }).catch(() => setGeminiKeyFetchError(true));
+  }, [session?.backendToken, geminiKeyRetryTick]);
 
   // Load Obsidian settings
   useEffect(() => {
@@ -327,7 +330,17 @@ export default function ProfilePage() {
             generous (1M tokens/day).
           </p>
 
-          {hasKey ? (
+          {geminiKeyFetchError ? (
+            <div role="status" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
+              <p className="text-sm text-stone-500">Couldn&apos;t load key status.</p>
+              <button
+                onClick={() => setGeminiKeyRetryTick((t) => t + 1)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Retry
+              </button>
+            </div>
+          ) : hasKey ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
                 <CheckIcon aria-hidden="true" className="w-4 h-4 shrink-0" />

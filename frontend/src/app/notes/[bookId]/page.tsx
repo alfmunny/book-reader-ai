@@ -73,6 +73,7 @@ function AnnotationCard({
   bookLanguage,
   isEditing,
   editNote,
+  saveError,
   onEdit,
   onEditChange,
   onSave,
@@ -86,6 +87,7 @@ function AnnotationCard({
   bookLanguage: string;
   isEditing: boolean;
   editNote: string;
+  saveError: boolean;
   onEdit: () => void;
   onEditChange: (v: string) => void;
   onSave: () => void;
@@ -126,6 +128,11 @@ function AnnotationCard({
               Cancel
             </button>
           </div>
+          {saveError && (
+            <p role="alert" className="text-xs text-red-600">
+              Couldn&apos;t save — try again.
+            </p>
+          )}
         </div>
       ) : (
         ann.note_text && (
@@ -278,6 +285,7 @@ export default function BookNotesPage() {
   // Inline edit
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editNote, setEditNote] = useState("");
+  const [editSaveError, setEditSaveError] = useState(false);
 
   // Delete loading sets (still used for notes opened mid-delete)
   const [deletingAnns, setDeletingAnns] = useState<Set<number>>(new Set());
@@ -370,17 +378,21 @@ export default function BookNotesPage() {
 
   // Edit handlers
   function startEdit(ann: Annotation) {
+    setEditSaveError(false);
     setEditingId(ann.id);
     setEditNote(ann.note_text);
   }
 
   async function saveEdit() {
     if (editingId === null) return;
+    setEditSaveError(false);
     try {
       const updated = await updateAnnotation(editingId, { note_text: editNote });
       setAnnotations((prev) => prev.map((a) => (a.id === editingId ? { ...a, note_text: updated.note_text } : a)));
       setEditingId(null);
-    } catch { /* keep edit open on failure */ }
+    } catch {
+      setEditSaveError(true);
+    }
   }
 
   function handleDeleteAnnotation(id: number) {
@@ -438,10 +450,11 @@ export default function BookNotesPage() {
           bookLanguage={bookLanguage}
           isEditing={editingId === ann.id}
           editNote={editNote}
+          saveError={editSaveError}
           onEdit={() => startEdit(ann)}
           onEditChange={setEditNote}
           onSave={saveEdit}
-          onCancel={() => setEditingId(null)}
+          onCancel={() => { setEditSaveError(false); setEditingId(null); }}
           onDelete={() => handleDeleteAnnotation(ann.id)}
           isDeleting={deletingAnns.has(ann.id)}
         />

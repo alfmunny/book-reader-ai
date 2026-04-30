@@ -459,7 +459,7 @@ export default function TTSControls({
       <button
         onClick={toggleGender}
         title={`Voice: ${gender}. Click to switch.`}
-        aria-label={`Voice: ${gender === "female" ? "Female" : "Male"}. Click to switch.`}
+        aria-label={`Voice: ${gender === "female" ? "Female" : "Male"}${status !== "loading" ? ". Click to switch" : ""}`}
         className="text-xs px-3 py-2 md:px-2 md:py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         disabled={status === "loading"}
       >

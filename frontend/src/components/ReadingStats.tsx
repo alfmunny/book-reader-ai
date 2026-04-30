@@ -85,14 +85,18 @@ interface Props {
 export default function ReadingStats({ active, heatmapOnly = false }: Props) {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     if (!active) return;
+    setError(false);
+    setLoading(true);
     getUserStats()
       .then(setStats)
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [active]);
+  }, [active, retryTick]);
 
   if (!active || (loading && !stats)) {
     return (
@@ -106,6 +110,20 @@ export default function ReadingStats({ active, heatmapOnly = false }: Props) {
           </div>
         )}
         <div className="h-28 bg-amber-50 rounded-xl border border-amber-100" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div role="status" className="flex flex-col items-center gap-3 py-8 text-center">
+        <p className="text-sm text-stone-500">Couldn&apos;t load reading stats.</p>
+        <button
+          onClick={() => setRetryTick((t) => t + 1)}
+          className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          Retry
+        </button>
       </div>
     );
   }

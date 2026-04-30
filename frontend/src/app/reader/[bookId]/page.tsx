@@ -951,11 +951,44 @@ export default function ReaderPage() {
             >Aa</button>
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
+              onClick={() => setShowShortcuts((v) => !v)}
+              aria-label="Keyboard shortcuts" aria-expanded={showShortcuts} aria-controls="focus-hotkeys-panel" title="Keyboard shortcuts (?)"
+              className={`flex items-center justify-center w-7 h-7 rounded-full min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
+                showShortcuts ? "bg-amber-100 text-amber-800" : "hover:bg-amber-50 text-stone-600"
+              }`}
+            ><KeyboardIcon className="w-3.5 h-3.5" aria-hidden="true" /></button>
+            <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
+            <button
               onClick={() => setFocusMode(false)}
               className="inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-red-50 text-stone-600 hover:text-red-600 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
               aria-label="Exit focus mode"
               title="Exit focus mode (F)"
             ><CloseIcon className="w-3 h-3" aria-hidden="true" /> Focus</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Shortcuts panel for focus mode (fixed, outside hidden header) ── */}
+      {focusMode && showShortcuts && (
+        <div id="focus-hotkeys-panel" role="region" aria-label="Keyboard shortcuts" className="fixed right-4 top-16 z-50 w-56 bg-white border border-amber-200 rounded-xl shadow-lg p-3 animate-fade-in">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-600 mb-2">Keyboard Shortcuts</p>
+          <div className="space-y-1.5">
+            {[
+              { keys: ["Space"], label: "Play / Pause TTS" },
+              { keys: ["←", "→"], label: "Previous / Next chapter" },
+              { keys: ["F"], label: "Toggle focus mode" },
+              { keys: ["?"], label: "Show this panel" },
+              { keys: ["Esc"], label: "Close panels" },
+            ].map(({ keys, label }) => (
+              <div key={label} className="flex items-center justify-between gap-2">
+                <span className="text-xs text-stone-600">{label}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {keys.map((k) => (
+                    <kbd key={k} className="inline-flex items-center justify-center min-w-[22px] h-5 px-1 rounded border border-stone-200 bg-stone-50 text-[10px] font-mono text-stone-600">{k}</kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -263,7 +263,7 @@ export default function ProfilePage() {
               <p className="text-sm text-stone-500">Couldn&apos;t load study decks.</p>
               <button
                 onClick={() => { setDecksLoading(true); setDecksRetryTick((t) => t + 1); }}
-                className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 Retry
               </button>
@@ -336,7 +336,7 @@ export default function ProfilePage() {
               <p className="text-sm text-stone-500">Couldn&apos;t load key status.</p>
               <button
                 onClick={() => setGeminiKeyRetryTick((t) => t + 1)}
-                className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 Retry
               </button>
@@ -416,7 +416,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-stone-500">Couldn&apos;t load Obsidian settings.</p>
                   <button
                     onClick={() => setObsidianRetryTick((t) => t + 1)}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   >
                     Retry
                   </button>

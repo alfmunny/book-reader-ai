@@ -175,7 +175,7 @@ function SearchResultsInner() {
           <span className="flex-1">Error: {error}</span>
           <button
             onClick={() => setRetryTick((t) => t + 1)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0"
+            className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0"
           >
             Retry
           </button>

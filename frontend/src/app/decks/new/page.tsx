@@ -111,7 +111,7 @@ export default function DecksNewPage() {
             <p
               id="deck-name-counter"
               aria-live="polite"
-              className={`text-xs mt-1 text-right ${name.length >= 70 ? "text-red-500" : "text-stone-400"}`}
+              className={`text-xs mt-1 text-right ${name.length >= 70 ? "text-red-500" : "text-stone-600"}`}
             >
               {name.length}/80
             </p>
@@ -138,7 +138,7 @@ export default function DecksNewPage() {
             <p
               id="deck-description-counter"
               aria-live="polite"
-              className={`text-xs mt-1 text-right ${description.length >= 490 ? "text-red-500" : "text-stone-400"}`}
+              className={`text-xs mt-1 text-right ${description.length >= 490 ? "text-red-500" : "text-stone-600"}`}
             >
               {description.length}/500
             </p>

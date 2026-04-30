@@ -208,7 +208,17 @@ function DefinitionSheet({ word, lang, onClose }: DefinitionSheetProps) {
           )}
 
           {!loading && !fetchError && (!def || def.definitions.length === 0) && (
-            <p className="text-sm text-stone-600 italic">No definition found.</p>
+            <div className="space-y-2">
+              <p className="text-sm text-stone-600 italic">No definition found.</p>
+              <a
+                href={def?.url ?? `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs text-amber-700 hover:text-amber-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+              >
+                Search Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
+              </a>
+            </div>
           )}
 
           {def && def.definitions.length > 0 && (

@@ -189,12 +189,13 @@ export default function ChapterEditorPage() {
                     />
                     <div className="flex items-center gap-2 mt-1">
                       <span
-                        className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                        className={`text-xs px-1.5 py-0.5 rounded font-mono inline-flex items-center gap-1 ${
                           wordWarn
                             ? "bg-amber-100 text-amber-700"
                             : "bg-stone-100 text-stone-600"
                         }`}
                       >
+                        {wordWarn && <AlertCircleIcon className="w-3 h-3 shrink-0" aria-hidden="true" />}
                         {ch.word_count.toLocaleString()} words
                       </span>
                     </div>

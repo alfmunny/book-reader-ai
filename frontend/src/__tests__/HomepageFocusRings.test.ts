@@ -36,8 +36,8 @@ describe("Homepage tab bar focus rings (closes #2193)", () => {
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
-  it("Upload tab button has focus ring", () => {
-    const idx = src.indexOf("router.push(\"/upload\")");
+  it("Upload nav link has focus ring", () => {
+    const idx = src.indexOf("href=\"/upload\"");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(idx, idx + 300);
     expect(window).toContain("focus-visible:ring-amber-400");

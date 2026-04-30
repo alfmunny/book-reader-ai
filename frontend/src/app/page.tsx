@@ -9,6 +9,7 @@ import ReadingStats from "@/components/ReadingStats";
 import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon, SearchIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 import { SearchBar } from "@/components/SearchBar";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 const FEATURED = [
@@ -265,39 +266,39 @@ export default function Home() {
           ))}
           </div>
           {status === "authenticated" && (
-            <button
-              onClick={() => router.push("/upload")}
+            <Link
+              href="/upload"
               className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Upload
-            </button>
+            </Link>
           )}
           {status === "authenticated" && (
-            <button
-              onClick={() => router.push("/notes")}
+            <Link
+              href="/notes"
               className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Your Notes
-            </button>
+            </Link>
           )}
           {status === "authenticated" && (
-            <button
-              onClick={() => router.push("/vocabulary")}
+            <Link
+              href="/vocabulary"
               className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Your Word List
-            </button>
+            </Link>
           )}
-          {/* Admin tab — only visible to admin users */}
+          {/* Admin link — only visible to admin users */}
           {isAdmin && (
-            <button
-              onClick={() => router.push("/admin")}
+            <Link
+              href="/admin"
               data-testid="admin-tab"
               className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
-              <SettingsIcon className="w-3.5 h-3.5" />
+              <SettingsIcon className="w-3.5 h-3.5" aria-hidden="true" />
               Admin
-            </button>
+            </Link>
           )}
         </div>
       </div>

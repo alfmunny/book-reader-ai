@@ -337,21 +337,18 @@ describe("HomePage — getPopularBooks error (line 116)", () => {
 // ── Line 216: "Your Notes" tab navigates to /notes ───────────────────────────
 
 describe("HomePage — Your Notes tab (line 216)", () => {
-  it("navigates to /notes when Your Notes tab is clicked", async () => {
+  it("Your Notes link has href /notes", async () => {
     mockUseSession.mockReturnValue({
       data: { backendToken: "tok", backendUser: { id: 1, name: "User", picture: "" } },
       status: "authenticated",
     });
     mockGetReadingProgress.mockResolvedValue([]);
 
-    const user = userEvent.setup();
     render(<Home />);
     await act(flushPromises);
 
-    const notesTab = screen.getByRole("button", { name: "Your Notes" });
-    await user.click(notesTab);
-
-    expect(mockPush).toHaveBeenCalledWith("/notes");
+    const notesLink = screen.getByRole("link", { name: "Your Notes" });
+    expect(notesLink).toHaveAttribute("href", "/notes");
   });
 });
 

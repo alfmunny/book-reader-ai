@@ -314,6 +314,7 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!showShortcuts) return;
     function handleClick(e: MouseEvent) {
+      if ((e.target as HTMLElement).closest("[data-shortcuts-trigger]")) return;
       if (shortcutsRef.current && !shortcutsRef.current.contains(e.target as Node)) {
         setShowShortcuts(false);
       }
@@ -952,7 +953,7 @@ export default function ReaderPage() {
             <span className="text-stone-400 mx-0.5" aria-hidden="true">|</span>
             <button
               onClick={() => setShowShortcuts((v) => !v)}
-              aria-label="Keyboard shortcuts" aria-expanded={showShortcuts} aria-controls="focus-hotkeys-panel" title="Keyboard shortcuts (?)"
+              aria-label="Keyboard shortcuts" aria-expanded={showShortcuts} aria-controls="focus-hotkeys-panel" title="Keyboard shortcuts (?)" data-shortcuts-trigger="true"
               className={`flex items-center justify-center w-7 h-7 rounded-full min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showShortcuts ? "bg-amber-100 text-amber-800" : "hover:bg-amber-50 text-stone-600"
               }`}
@@ -1294,6 +1295,7 @@ export default function ReaderPage() {
               aria-label="Keyboard shortcuts"
               aria-expanded={showShortcuts}
               aria-controls="shortcuts-panel"
+              data-shortcuts-trigger="true"
               className={`flex shrink-0 items-center justify-center w-7 h-7 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showShortcuts
                   ? "bg-amber-100 border-amber-400 text-amber-800"

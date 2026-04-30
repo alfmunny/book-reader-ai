@@ -11,13 +11,14 @@ Focus mode hides the reader's toolbars and sidebars so the only thing on screen 
 ## What changes in Focus mode
 
 - All toolbars, sidebars, and the header collapse and disappear.
-- A minimal HUD appears at the top center of the screen with: Previous chapter, current chapter title, Next chapter, Paragraph focus toggle, Typography settings, and an Exit focus mode button.
+- A minimal HUD appears at the top center of the screen with: Previous chapter, current chapter title, Next chapter, Paragraph focus toggle, Typography settings, Keyboard shortcuts, and an Exit focus mode button.
 - The text fills the full width of the reading area (respecting your content-width setting).
 
 ## Navigate in Focus mode
 
 - **Previous / Next chapter:** click the Prev and Next buttons in the HUD, or press **← →** arrow keys.
 - **Typography:** click **Aa** in the HUD to open the typography panel without exiting Focus mode.
+- **Keyboard shortcuts:** click the **⌨** (keyboard) button in the HUD, or press **?**, to open the shortcuts reference panel as a floating card. Click the button again or press **Esc** to close it.
 - **Exit:** press **F**, **Escape**, or click the **Focus** label button in the HUD.
 
 ## Paragraph focus

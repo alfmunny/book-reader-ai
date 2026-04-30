@@ -33,12 +33,14 @@ function CollapseHeading({
   isCollapsed,
   onToggle,
   level = 2,
+  controlsId,
 }: {
   label: string;
   count?: number;
   isCollapsed: boolean;
   onToggle: () => void;
   level?: 2 | 3;
+  controlsId?: string;
 }) {
   const Tag = `h${level}` as "h2" | "h3";
   return (
@@ -46,6 +48,7 @@ function CollapseHeading({
       <button
         onClick={onToggle}
         aria-expanded={!isCollapsed}
+        aria-controls={controlsId}
         className={`w-full flex items-center gap-2 text-left group min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
           level === 2 ? "pb-1.5 border-b border-amber-200" : ""
         }`}
@@ -504,9 +507,10 @@ export default function BookNotesPage() {
               count={annCount}
               isCollapsed={collapsed.has("ann")}
               onToggle={() => toggleCollapse("ann")}
+              controlsId="collapse-ann"
             />
             {!collapsed.has("ann") && (
-              <div>
+              <div id="collapse-ann">
                 {annChapters.map((ch) => (
                   <div key={ch}>
                     <CollapseHeading
@@ -515,9 +519,10 @@ export default function BookNotesPage() {
                       isCollapsed={collapsed.has(`ann-ch-${ch}`)}
                       onToggle={() => toggleCollapse(`ann-ch-${ch}`)}
                       level={3}
+                      controlsId={`collapse-ann-ch-${ch}`}
                     />
                     {!collapsed.has(`ann-ch-${ch}`) && (
-                      <ul role="list" aria-label="Annotations" className="pl-2 list-none p-0 m-0">
+                      <ul role="list" id={`collapse-ann-ch-${ch}`} aria-label="Annotations" className="pl-2 list-none p-0 m-0">
                         {byChapterAnn.get(ch)!.map(renderAnnotation)}
                       </ul>
                     )}
@@ -536,9 +541,10 @@ export default function BookNotesPage() {
               count={insCount}
               isCollapsed={collapsed.has("insights")}
               onToggle={() => toggleCollapse("insights")}
+              controlsId="collapse-insights"
             />
             {!collapsed.has("insights") && (
-              <div>
+              <div id="collapse-insights">
                 {bookLevelIns.length > 0 && (
                   <div>
                     <CollapseHeading
@@ -547,9 +553,10 @@ export default function BookNotesPage() {
                       isCollapsed={collapsed.has("ins-book")}
                       onToggle={() => toggleCollapse("ins-book")}
                       level={3}
+                      controlsId="collapse-ins-book"
                     />
                     {!collapsed.has("ins-book") && (
-                      <ul role="list" aria-label="Insights" className="pl-2 list-none p-0 m-0">
+                      <ul role="list" id="collapse-ins-book" aria-label="Insights" className="pl-2 list-none p-0 m-0">
                         {bookLevelIns.map(renderInsight)}
                       </ul>
                     )}
@@ -563,9 +570,10 @@ export default function BookNotesPage() {
                       isCollapsed={collapsed.has(`ins-ch-${ch}`)}
                       onToggle={() => toggleCollapse(`ins-ch-${ch}`)}
                       level={3}
+                      controlsId={`collapse-ins-ch-${ch}`}
                     />
                     {!collapsed.has(`ins-ch-${ch}`) && (
-                      <ul role="list" aria-label="Insights" className="pl-2 list-none p-0 m-0">
+                      <ul role="list" id={`collapse-ins-ch-${ch}`} aria-label="Insights" className="pl-2 list-none p-0 m-0">
                         {byChapterIns.get(ch)!.map(renderInsight)}
                       </ul>
                     )}
@@ -584,9 +592,10 @@ export default function BookNotesPage() {
               count={vocCount}
               isCollapsed={collapsed.has("vocab")}
               onToggle={() => toggleCollapse("vocab")}
+              controlsId="collapse-vocab"
             />
             {!collapsed.has("vocab") && (
-              <ul role="list" className="my-2 ml-4 space-y-1 list-none">
+              <ul role="list" id="collapse-vocab" className="my-2 ml-4 space-y-1 list-none">
                 {bookVocab.map((v) =>
                   v.occurrences
                     .filter((o) => o.book_id === bookId)
@@ -634,9 +643,10 @@ export default function BookNotesPage() {
                 count={total}
                 isCollapsed={collapsed.has(key)}
                 onToggle={() => toggleCollapse(key)}
+                controlsId={`collapse-${key}`}
               />
               {!collapsed.has(key) && (
-                <div className="pl-2 space-y-1">
+                <div id={`collapse-${key}`} className="pl-2 space-y-1">
                   {chAnns.length > 0 && (
                     <ul role="list" aria-label="Annotations" className="list-none p-0 m-0">
                       {chAnns.map(renderAnnotation)}
@@ -670,9 +680,10 @@ export default function BookNotesPage() {
               count={bookLevelIns.length}
               isCollapsed={collapsed.has("ch-book")}
               onToggle={() => toggleCollapse("ch-book")}
+              controlsId="collapse-ch-book"
             />
             {!collapsed.has("ch-book") && (
-              <ul role="list" aria-label="Insights" className="pl-2 list-none p-0 m-0">
+              <ul role="list" id="collapse-ch-book" aria-label="Insights" className="pl-2 list-none p-0 m-0">
                 {bookLevelIns.map(renderInsight)}
               </ul>
             )}

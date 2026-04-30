@@ -447,6 +447,7 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | QuickHighlightPanel: added error state — save/delete failures now show inline role="alert" message ("Save failed — tap a colour to retry") instead of silently resetting the panel (closes #2410) | components/QuickHighlightPanel.tsx | #2411 |
 | 2026-04-30 | Reader annotations sidebar: replaced silent empty state on getAnnotations failure with "Couldn't load annotations" error state + Retry button — prevents misleading "No annotations yet" (closes #2414) | app/reader/[bookId]/page.tsx | #2415 |
 | 2026-04-30 | Vocabulary DefinitionSheet: replaced silent .catch() on getWordDefinition failure with error state — shows "Couldn't load definition" + Retry button instead of misleading "No definition found." (closes #2417) | app/vocabulary/page.tsx | #2418 |
+| 2026-04-30 | VocabWordTooltip (reader): replaced silent .catch() on getWordDefinition failure with error state — shows "Couldn't load definition" + Retry button instead of misleading "No definition found." in core reading flow (closes #2419) | components/VocabWordTooltip.tsx | #2420 |
 
 ---
 

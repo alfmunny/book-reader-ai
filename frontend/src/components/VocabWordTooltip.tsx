@@ -15,19 +15,22 @@ interface Props {
 export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: Props) {
   const [def, setDef] = useState<WordDefinition | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const [saved, setSaved] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref);
 
   useEffect(() => {
     setLoading(true);
+    setFetchError(false);
     setDef(null);
     setSaved(false);
     getWordDefinition(word, lang)
       .then(setDef)
-      .catch(() => {})
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
-  }, [word, lang]);
+  }, [word, lang, retryTick]);
 
   // Close on outside click
   useEffect(() => {
@@ -93,7 +96,18 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
             Looking up definition…
           </div>
         )}
-        {!loading && (!def || def.definitions.length === 0) && (
+        {!loading && fetchError && (
+          <div role="status" className="flex flex-col items-center gap-1.5 py-1 text-center">
+            <p className="text-xs text-stone-500">Couldn&apos;t load definition.</p>
+            <button
+              onClick={() => setRetryTick((t) => t + 1)}
+              className="text-xs px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!loading && !fetchError && (!def || def.definitions.length === 0) && (
           <p className="text-xs text-stone-600 italic">No definition found.</p>
         )}
         {!loading && def && def.definitions.length > 0 && (

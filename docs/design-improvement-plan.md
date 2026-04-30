@@ -436,6 +436,7 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Profile TTS gender + translation provider radio groups: role="radiogroup" + aria-labelledby — WCAG 1.3.1 (closes #2385) | profile/page.tsx | #2386 |
 | 2026-04-30 | Vocabulary empty-state: added "Clear all filters" CTA when both tag filter and search are active simultaneously — prevents dead-end with zero results (closes #2389) | vocabulary/page.tsx | #2390 |
 | 2026-04-30 | Deck form: live character counters (X/80, X/500) with aria-live="polite" on name and description inputs — WCAG 3.3.1 spirit (closes #2391) | decks/new/page.tsx | #2392 |
+| 2026-04-30 | Deck detail page: distinguish zero-vocab state from all-in-deck state — show "Start reading" CTA with guidance when user has no vocabulary, instead of a silent disabled "Add word" button (closes #2394) | decks/[deckId]/page.tsx | #2394 |
 
 ---
 

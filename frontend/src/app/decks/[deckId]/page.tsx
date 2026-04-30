@@ -150,13 +150,14 @@ export default function DeckDetailPage() {
         {deck && isManual && (
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
-            aria-label="Add word to deck"
-            disabled={candidateWords.length === 0}
+            onClick={() => vocab.length === 0 ? router.push("/") : setPickerOpen(true)}
+            aria-label={vocab.length === 0 ? "No vocabulary saved yet — go to library" : "Add word to deck"}
+            title={vocab.length === 0 ? "No vocabulary saved yet — save words while reading" : candidateWords.length === 0 ? "All vocabulary words are already in this deck" : undefined}
+            disabled={vocab.length > 0 && candidateWords.length === 0}
             className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <PlusIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">Add word</span>
+            <span className="hidden sm:inline">{vocab.length === 0 ? "Start reading" : "Add word"}</span>
           </button>
         )}
       </header>
@@ -220,19 +221,32 @@ export default function DeckDetailPage() {
                 </p>
                 <p className="text-sm text-stone-600 max-w-xs">
                   {isManual
-                    ? "Add words from your vocabulary to study them as a focused set."
+                    ? vocab.length === 0
+                      ? "No vocabulary saved yet. Save words while reading to add them here."
+                      : "Add words from your vocabulary to study them as a focused set."
                     : "This smart deck has no matching words yet — saved vocabulary that matches the rules will appear here."}
                 </p>
                 {isManual ? (
-                  <button
-                    type="button"
-                    onClick={() => setPickerOpen(true)}
-                    disabled={candidateWords.length === 0}
-                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-                  >
-                    <PlusIcon className="w-4 h-4" />
-                    Add word
-                  </button>
+                  vocab.length === 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => router.push("/")}
+                        className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                      >
+                        Start reading
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPickerOpen(true)}
+                      className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      Add word
+                    </button>
+                  )
                 ) : (
                   <button
                     type="button"

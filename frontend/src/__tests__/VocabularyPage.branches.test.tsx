@@ -66,17 +66,17 @@ beforeEach(() => {
   mockPush.mockReset();
 });
 
-// ── Line 72: router.push("/") ─────────────────────────────────────────────────
+// ── Library back link ─────────────────────────────────────────────────────────
 
 describe("VocabularyPage — Library back button (line 72)", () => {
-  it("navigates to '/' when ← Library button is clicked", async () => {
+  it("← Library link has href='/'", async () => {
     mockGetVocabulary.mockResolvedValue(MANY_WORDS);
     render(<VocabularyPage />);
     await flushPromises();
 
     await screen.findByText("apple");
-    await userEvent.click(screen.getByText("Library"));
-    expect(mockPush).toHaveBeenCalledWith("/");
+    const link = screen.getByRole("link", { name: /Library/i });
+    expect(link).toHaveAttribute("href", "/");
   });
 });
 

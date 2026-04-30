@@ -84,12 +84,11 @@ test("clicking Clear filter resets filter and reloads without user_id", async ()
   );
 });
 
-// ── Open button ───────────────────────────────────────────────────────────────
+// ── Open link ─────────────────────────────────────────────────────────────────
 
-test("clicking Open navigates to /reader/:book_id", async () => {
+test("Open link navigates to /reader/:book_id", async () => {
   await renderPage();
 
-  await userEvent.click(screen.getByRole("button", { name: /Open Dune/i }));
-
-  expect(mockPush).toHaveBeenCalledWith("/reader/42");
+  const link = screen.getByRole("link", { name: /Open Dune/i });
+  expect(link).toHaveAttribute("href", "/reader/42");
 });

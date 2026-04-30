@@ -21,11 +21,11 @@ describe("admin/uploads page touch targets (closes #861)", () => {
     expect(window).toContain("min-h-[44px]");
   });
 
-  it("Open (row) button has min-h-[44px]", () => {
-    // anchor on the reader push inside onClick
-    const idx = src.indexOf("router.push(`/reader/");
+  it("Open (row) link has min-h-[44px]", () => {
+    // Open is now a <Link href={`/reader/${u.book_id}`}> — anchor on aria-label
+    const idx = src.indexOf("aria-label={`Open ");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
+    const window = src.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");
   });
 });

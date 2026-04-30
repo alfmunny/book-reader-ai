@@ -193,15 +193,15 @@ export default function Home() {
           <div className="flex items-center gap-2">
             {status === "authenticated" ? <SearchBar /> : null}
             {status === "unauthenticated" ? (
-              <button
-                onClick={() => router.push("/login")}
-                className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              <Link
+                href="/login"
+                className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 flex items-center"
               >
                 Sign in
-              </button>
+              </Link>
             ) : (
-              <button
-                onClick={() => router.push("/profile")}
+              <Link
+                href="/profile"
                 title={`${session?.backendUser?.name ?? "Profile"} — Profile & Settings`}
                 aria-label={`${session?.backendUser?.name ?? "Profile"} — Profile & Settings`}
                 className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
@@ -214,7 +214,7 @@ export default function Home() {
                     {session?.backendUser?.name?.[0] ?? "?"}
                   </span>
                 )}
-              </button>
+              </Link>
             )}
           </div>
         </div>
@@ -322,15 +322,15 @@ export default function Home() {
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
                   Continue Reading
                 </h2>
-                <button
+                <Link
+                  href={`/reader/${recentBooks[0].id}`}
                   aria-label="Continue reading"
-                  onClick={() => router.push(`/reader/${recentBooks[0].id}`)}
                   className="w-full text-left rounded-xl border border-amber-200 bg-white p-3 flex items-center gap-3 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 transition-all duration-200"
                   style={{ boxShadow: "var(--shadow-card)" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
-                  onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
-                  onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
+                  onFocus={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                  onBlur={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
                 >
                   {recentBooks[0].cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -348,7 +348,7 @@ export default function Home() {
                     </p>
                   </div>
                   <ArrowRightIcon className="w-4 h-4 text-amber-700 shrink-0" />
-                </button>
+                </Link>
               </section>
             )}
 
@@ -495,12 +495,12 @@ export default function Home() {
                     70,000+ free classics from Project Gutenberg — with AI translation, vocabulary building, and reading insights.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                    <button
-                      onClick={() => router.push("/login")}
-                      className="rounded-lg bg-amber-700 px-7 py-3 min-h-[44px] md:min-h-0 text-white font-semibold text-base hover:bg-amber-800 transition-colors shadow-sm min-w-[160px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                    <Link
+                      href="/login"
+                      className="rounded-lg bg-amber-700 px-7 py-3 min-h-[44px] md:min-h-0 text-white font-semibold text-base hover:bg-amber-800 transition-colors shadow-sm min-w-[160px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700 flex items-center justify-center"
                     >
                       Sign in free
-                    </button>
+                    </Link>
                     <button
                       onClick={() => document.getElementById("discover-search")?.scrollIntoView({ behavior: "smooth" })}
                       className="rounded-lg border border-amber-300 px-7 py-3 min-h-[44px] md:min-h-0 text-amber-800 font-medium text-base hover:bg-amber-50 transition-colors min-w-[160px] flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"

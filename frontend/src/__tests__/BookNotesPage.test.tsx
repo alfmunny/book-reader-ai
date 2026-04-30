@@ -296,10 +296,10 @@ test("insight with context_text has reader link", async () => {
 
 // ── Navigation ─────────────────────────────────────────────────────────────────
 
-test("← Notes button navigates to /notes", async () => {
+test("← Notes link navigates to /notes", async () => {
   mockGetAnnotations.mockResolvedValue([]);
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/No notes yet/i));
-  fireEvent.click(screen.getByRole("button", { name: /Notes/i }));
-  expect(mockPush).toHaveBeenCalledWith("/notes");
+  const link = screen.getByRole("link", { name: /Notes/i });
+  expect(link).toHaveAttribute("href", "/notes");
 });

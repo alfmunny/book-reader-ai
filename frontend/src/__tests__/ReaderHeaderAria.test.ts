@@ -38,11 +38,11 @@ describe("Reader header buttons aria-label (closes #1015)", () => {
     expect(window).toContain("aria-label");
   });
 
-  it("Profile avatar button has aria-label", () => {
-    // Find the profile button (router.push("/profile") in header)
-    const idx = src.indexOf('router.push("/profile")');
+  it("Profile avatar link has aria-label", () => {
+    // Profile avatar is now a <Link href="/profile"> — anchor on href="/profile"
+    const idx = src.indexOf('href="/profile"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 50), idx + 200);
+    const window = src.slice(idx, idx + 300);
     expect(window).toContain("aria-label");
   });
 });

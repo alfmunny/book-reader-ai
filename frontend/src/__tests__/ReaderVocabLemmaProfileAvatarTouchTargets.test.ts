@@ -21,33 +21,34 @@ describe("reader vocab lemma header button touch target (closes #944)", () => {
   });
 });
 
-describe("reader profile avatar button touch target (closes #944)", () => {
-  it("reader header profile avatar button has min-w-[44px]", () => {
-    const idx = readerSrc.indexOf('router.push("/profile")');
+describe("reader profile avatar link touch target (closes #944)", () => {
+  it("reader header profile avatar link has min-w-[44px]", () => {
+    // Profile avatar is now a <Link href="/profile"> — anchor on href="/profile"
+    const idx = readerSrc.indexOf('href="/profile"');
     expect(idx).toBeGreaterThan(-1);
     const window = readerSrc.slice(idx, idx + 300);
     expect(window).toContain("min-w-[44px]");
   });
 
-  it("reader header profile avatar button has min-h-[44px]", () => {
-    const idx = readerSrc.indexOf('router.push("/profile")');
+  it("reader header profile avatar link has min-h-[44px]", () => {
+    const idx = readerSrc.indexOf('href="/profile"');
     expect(idx).toBeGreaterThan(-1);
     const window = readerSrc.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");
   });
 });
 
-describe("homepage profile avatar button touch target (closes #944)", () => {
-  it("homepage header profile avatar button has min-w-[44px]", () => {
-    // Find the profile button that navigates to /profile
-    const idx = homeSrc.indexOf('router.push("/profile")');
+describe("homepage profile avatar link touch target (closes #944)", () => {
+  it("homepage header profile avatar link has min-w-[44px]", () => {
+    // Profile avatar is now a <Link href="/profile"> — anchor on href="/profile"
+    const idx = homeSrc.indexOf('href="/profile"');
     expect(idx).toBeGreaterThan(-1);
     const window = homeSrc.slice(idx, idx + 300);
     expect(window).toContain("min-w-[44px]");
   });
 
-  it("homepage header profile avatar button has min-h-[44px]", () => {
-    const idx = homeSrc.indexOf('router.push("/profile")');
+  it("homepage header profile avatar link has min-h-[44px]", () => {
+    const idx = homeSrc.indexOf('href="/profile"');
     expect(idx).toBeGreaterThan(-1);
     const window = homeSrc.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");

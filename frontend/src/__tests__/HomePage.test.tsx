@@ -137,20 +137,19 @@ describe("HomePage — initial render", () => {
     expect(screen.getByText(/Public domain classics with AI assistance/i)).toBeInTheDocument();
   });
 
-  it("shows Sign in button when unauthenticated", async () => {
+  it("shows Sign in link when unauthenticated", async () => {
     await renderHome();
-    // Both the header "Sign in" and the hero "Sign in free" buttons are present
-    // for unauthenticated visitors; check at least one navigates to /login.
-    const signInBtns = screen.getAllByRole("button", { name: /Sign in/i });
-    expect(signInBtns.length).toBeGreaterThanOrEqual(1);
+    // Both the header "Sign in" and the hero "Sign in free" links are present
+    // for unauthenticated visitors; check at least one points to /login.
+    const signInLinks = screen.getAllByRole("link", { name: /Sign in/i });
+    expect(signInLinks.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("navigates to /login when Sign in is clicked", async () => {
-    const user = userEvent.setup();
+  it("Sign in link navigates to /login", async () => {
     await renderHome();
-    // Click the header's "Sign in" button (exact text, not the hero's "Sign in free")
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(mockPush).toHaveBeenCalledWith("/login");
+    // Header "Sign in" link (exact text, not the hero's "Sign in free")
+    const signInLink = screen.getByRole("link", { name: "Sign in" });
+    expect(signInLink).toHaveAttribute("href", "/login");
   });
 
   it("shows Discover tab by default when library is empty", async () => {
@@ -177,9 +176,9 @@ describe("HomePage — signed-in state", () => {
     mockGetReadingProgress.mockResolvedValue([]);
   });
 
-  it("shows profile button instead of Sign in", async () => {
+  it("shows profile link instead of Sign in", async () => {
     await renderHome();
-    expect(screen.queryByRole("button", { name: /Sign in/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sign in" })).not.toBeInTheDocument();
   });
 
   it("shows profile initial when no picture", async () => {
@@ -188,12 +187,10 @@ describe("HomePage — signed-in state", () => {
     expect(screen.getByText("A")).toBeInTheDocument();
   });
 
-  it("navigates to /profile when profile button is clicked", async () => {
-    const user = userEvent.setup();
+  it("profile link navigates to /profile", async () => {
     await renderHome();
-    const profileBtn = screen.getByTitle("Alice — Profile & Settings");
-    await user.click(profileBtn);
-    expect(mockPush).toHaveBeenCalledWith("/profile");
+    const profileLink = screen.getByTitle("Alice — Profile & Settings");
+    expect(profileLink).toHaveAttribute("href", "/profile");
   });
 
   it("shows 'Your Notes' tab when authenticated", async () => {
@@ -551,13 +548,11 @@ describe("HomePage — Home dashboard (UX-008)", () => {
     expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(1);
   });
 
-  it("clicking Continue Reading card navigates directly to reader", async () => {
-    const user = userEvent.setup();
+  it("Continue Reading card is a link to the reader", async () => {
     await renderHome();
-    // The Continue Reading button is the first interactive element with the book title
-    const continueBtn = screen.getByRole("button", { name: /Continue Reading/i });
-    await user.click(continueBtn);
-    expect(mockPush).toHaveBeenCalledWith("/reader/1");
+    // The Continue Reading card is now a <Link href="/reader/1">
+    const continueLink = screen.getByRole("link", { name: /Continue reading/i });
+    expect(continueLink).toHaveAttribute("href", "/reader/1");
   });
 
   it("shows stats strip with user progress when stats loaded", async () => {

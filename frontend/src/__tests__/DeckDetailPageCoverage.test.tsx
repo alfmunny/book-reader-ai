@@ -99,11 +99,11 @@ test("invalid deckId (NaN) renders error state without calling getDeck", async (
 
 // ── Back navigation ───────────────────────────────────────────────────────────
 
-test("Decks back button navigates to /decks", async () => {
+test("Decks back link navigates to /decks", async () => {
   render(<DeckDetailPage />);
   await waitFor(() => screen.getByText("laufen"));
-  await userEvent.click(screen.getByRole("button", { name: /decks/i }));
-  expect(mockPush).toHaveBeenCalledWith("/decks");
+  const link = screen.getByRole("link", { name: /decks/i });
+  expect(link).toHaveAttribute("href", "/decks");
 });
 
 // ── handleAdd error rollback ──────────────────────────────────────────────────
@@ -266,15 +266,15 @@ test("smart deck does not show Remove buttons", async () => {
   expect(screen.queryByRole("button", { name: /Remove/i })).not.toBeInTheDocument();
 });
 
-// ── Smart deck empty state — Back to decks button ─────────────────────────────
+// ── Smart deck empty state — Back to decks link ───────────────────────────────
 
-test("smart deck empty state Back to decks button navigates to /decks", async () => {
+test("smart deck empty state Back to decks link navigates to /decks", async () => {
   mockGetDeck.mockResolvedValue({ ...DECK, mode: "smart", members: [] });
   render(<DeckDetailPage />);
   await waitFor(() => screen.getByTestId("deck-detail-empty-state"));
 
-  await userEvent.click(screen.getByRole("button", { name: /back to decks/i }));
-  expect(mockPush).toHaveBeenCalledWith("/decks");
+  const link = screen.getByRole("link", { name: /back to decks/i });
+  expect(link).toHaveAttribute("href", "/decks");
 });
 
 // ── Error state retry ─────────────────────────────────────────────────────────
@@ -291,11 +291,11 @@ test("Retry button in error state re-fetches the deck", async () => {
 
 // ── Error state back to decks ─────────────────────────────────────────────────
 
-test("Back to decks button in error state navigates to /decks", async () => {
+test("Back to decks link in error state navigates to /decks", async () => {
   mockGetDeck.mockRejectedValueOnce(new Error("Network error"));
   render(<DeckDetailPage />);
   await waitFor(() => screen.getByText(/Could not load deck/i));
 
-  await userEvent.click(screen.getByRole("button", { name: /back to decks/i }));
-  expect(mockPush).toHaveBeenCalledWith("/decks");
+  const link = screen.getByRole("link", { name: /back to decks/i });
+  expect(link).toHaveAttribute("href", "/decks");
 });

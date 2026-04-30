@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
@@ -1343,8 +1343,8 @@ export default function ReaderPage() {
 
           {/* Profile / Sign-in — always rightmost */}
           {session?.backendToken ? (
-            <button
-              onClick={() => router.push("/profile")}
+            <Link
+              href="/profile"
               title={session.backendUser?.name ?? "Profile"}
               aria-label={session.backendUser?.name ?? "Profile"}
               className="shrink-0 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 w-10 h-10 md:w-8 md:h-8 rounded-full overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors ml-auto md:ml-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
@@ -1357,7 +1357,7 @@ export default function ReaderPage() {
                   {session.backendUser?.name?.[0] ?? "?"}
                 </span>
               )}
-            </button>
+            </Link>
           ) : (
             <a
               href="/api/auth/signin"
@@ -1410,12 +1410,12 @@ export default function ReaderPage() {
         <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
           <span>
             Translation requires a Gemini API key.{" "}
-            <button
-              onClick={() => router.push("/profile")}
+            <Link
+              href="/profile"
               className="underline font-medium hover:text-amber-900 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-600"
             >
               Add your Gemini API key in Settings
-            </button>{" "}
+            </Link>{" "}
             to start translating.
           </span>
         </div>

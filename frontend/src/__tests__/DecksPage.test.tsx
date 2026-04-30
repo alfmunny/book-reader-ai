@@ -60,10 +60,7 @@ test("renders an empty state with a New-deck CTA when the user has no decks", as
   expect(await screen.findByTestId("decks-empty-state")).toBeInTheDocument();
   const cta = screen.getByTestId("decks-empty-new-btn");
   expect(cta).toBeInTheDocument();
-
-  const user = userEvent.setup();
-  await user.click(cta);
-  expect(mockPush).toHaveBeenCalledWith("/decks/new");
+  expect(cta).toHaveAttribute("href", "/decks/new");
 });
 
 test("renders one DeckCard per deck returned from the API", async () => {
@@ -75,13 +72,12 @@ test("renders one DeckCard per deck returned from the API", async () => {
   expect(screen.getByTestId("deck-member-count-2")).toHaveTextContent("40");
 });
 
-test("'New deck' header button navigates to /decks/new", async () => {
+test("'New deck' header link navigates to /decks/new", async () => {
   mockListDecks.mockResolvedValue(SAMPLE_DECKS);
   render(<DecksPage />);
   await screen.findByText("German verbs");
-  const user = userEvent.setup();
-  await user.click(screen.getByTestId("decks-new-btn"));
-  expect(mockPush).toHaveBeenCalledWith("/decks/new");
+  const link = screen.getByTestId("decks-new-btn");
+  expect(link).toHaveAttribute("href", "/decks/new");
 });
 
 test("deleting a deck removes it from the list optimistically and shows UndoToast", async () => {

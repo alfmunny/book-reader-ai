@@ -209,19 +209,19 @@ describe("ProfilePage — preferences", () => {
 });
 
 describe("ProfilePage — admin visibility", () => {
-  it("does not show Admin Panel button for regular users", async () => {
+  it("does not show Admin Panel link for regular users", async () => {
     render(<ProfilePage />);
     await waitFor(() => screen.getByText(/Profile/i));
-    expect(screen.queryByRole("button", { name: /admin panel/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /admin panel/i })).not.toBeInTheDocument();
   });
 
-  it("shows Admin Panel button when user is admin", async () => {
+  it("shows Admin Panel link when user is admin", async () => {
     const { getMe } = require("@/lib/api");
     getMe.mockResolvedValueOnce({ hasGeminiKey: false, role: "admin" });
 
     render(<ProfilePage />);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /admin panel/i })).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /admin panel/i })).toBeInTheDocument()
     );
   });
 });

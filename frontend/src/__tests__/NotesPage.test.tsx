@@ -95,12 +95,12 @@ test("shows insight count badge on book card when insights exist", async () => {
   expect(countPill).toBeTruthy();
 });
 
-test("clicking a book card navigates to /notes/[bookId]", async () => {
+test("book card is a link to /notes/[bookId]", async () => {
   mockGetAllAnnotations.mockResolvedValue([makeAnnotation({ book_id: 42, book_title: "Test Book" })]);
   render(<NotesPage />);
   await waitFor(() => expect(screen.getByText("Test Book")).toBeInTheDocument());
-  await userEvent.click(screen.getByText("Test Book"));
-  expect(mockPush).toHaveBeenCalledWith("/notes/42");
+  const link = screen.getByRole("link", { name: /Test Book/i });
+  expect(link).toHaveAttribute("href", "/notes/42");
 });
 
 test("search filters book cards by title", async () => {

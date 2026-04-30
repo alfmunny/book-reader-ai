@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
 import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, ArrowRightIcon, WordIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
@@ -111,12 +112,12 @@ export default function NotesOverviewPage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <button
-            onClick={() => router.push("/")}
+          <Link
+            href="/"
             className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
-          </button>
+          </Link>
           <div className="flex-1">
             <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>
           </div>
@@ -177,13 +178,12 @@ export default function NotesOverviewPage() {
               <>
                 <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
                 <p className="text-sm">Annotate sentences or save AI insights while reading.</p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/")}
+                <Link
+                  href="/"
                   className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                 >
                   Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
-                </button>
+                </Link>
               </>
             ) : (
               <>
@@ -203,13 +203,13 @@ export default function NotesOverviewPage() {
           <ul role="list" aria-label="Books with notes" className="space-y-3 list-none p-0 m-0">
             {filtered.map((book) => (
               <li key={book.bookId}>
-              <button
-                onClick={() => router.push(`/notes/${book.bookId}`)}
+              <Link
+                href={`/notes/${book.bookId}`}
                 style={{ boxShadow: "var(--shadow-card)" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
-                onFocus={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card-hover)"; }}
-                onBlur={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "var(--shadow-card)"; }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
+                onFocus={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
+                onBlur={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
                 className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <div className="flex items-start gap-3">
@@ -243,7 +243,7 @@ export default function NotesOverviewPage() {
                     <p className="text-amber-600 group-hover:text-amber-800 mt-0.5"><ArrowRightIcon className="w-5 h-5" aria-hidden="true" /></p>
                   </div>
                 </div>
-              </button>
+              </Link>
               </li>
             ))}
           </ul>

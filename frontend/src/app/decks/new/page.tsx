@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ApiError, createDeck, DeckMode } from "@/lib/api";
 import { ArrowLeftIcon, DeckIcon } from "@/components/Icons";
 
@@ -74,12 +75,12 @@ export default function DecksNewPage() {
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <button
-          onClick={() => router.push("/decks")}
+        <Link
+          href="/decks"
           className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Decks
-        </button>
+        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">New deck</h1>
         </div>
@@ -300,13 +301,12 @@ export default function DecksNewPage() {
               <DeckIcon className="w-4 h-4" />
               {submitting ? "Creating…" : "Create deck"}
             </button>
-            <button
-              type="button"
-              onClick={() => router.push("/decks")}
-              className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 px-3 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            <Link
+              href="/decks"
+              className="text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 px-3 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 flex items-center"
             >
               Cancel
-            </button>
+            </Link>
           </div>
         </form>
       </div>

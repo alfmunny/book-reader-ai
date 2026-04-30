@@ -333,10 +333,10 @@ describe("AdminBooksPage — expanded book with no translations cached", () => {
   });
 });
 
-// ── Additional: "Open" button navigates to reader ─────────────────────────────
+// ── Additional: "Open" link navigates to reader ──────────────────────────────
 
-describe("AdminBooksPage — Open button navigates to reader", () => {
-  it("navigates to /reader/:id when Open is clicked", async () => {
+describe("AdminBooksPage — Open link navigates to reader", () => {
+  it("Open reader link has href /reader/:id", async () => {
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
@@ -344,9 +344,7 @@ describe("AdminBooksPage — Open button navigates to reader", () => {
     render(<BooksPage />);
     await flushPromises();
 
-    const openBtn = await screen.findByRole("button", { name: /^Open reader for/i });
-    await userEvent.click(openBtn);
-
-    expect(mockPush).toHaveBeenCalledWith("/reader/1");
+    const openLink = await screen.findByRole("link", { name: /^Open reader for/i });
+    expect(openLink).toHaveAttribute("href", "/reader/1");
   });
 });

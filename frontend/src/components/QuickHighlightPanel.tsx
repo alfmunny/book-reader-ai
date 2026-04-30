@@ -56,6 +56,10 @@ export default function QuickHighlightPanel({
   }
 
   useEffect(() => {
+    toolbarRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+  }, []);
+
+  useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         onClose();

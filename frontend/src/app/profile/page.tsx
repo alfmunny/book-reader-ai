@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const [obsidianSaving, setObsidianSaving] = useState(false);
   const [obsidianMsg, setObsidianMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const obsidianMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [obsidianFetchError, setObsidianFetchError] = useState(false);
+  const [obsidianRetryTick, setObsidianRetryTick] = useState(0);
 
   // ── Preferences state ──────────────────────────────────────────────────────
   const [settings, setSettings] = useState<AppSettings>({
@@ -104,12 +106,13 @@ export default function ProfilePage() {
   // Load Obsidian settings
   useEffect(() => {
     if (!session?.backendToken) return;
+    setObsidianFetchError(false);
     getObsidianSettings().then((s) => {
       setObsidianRepo(s.obsidian_repo ?? "");
       setObsidianPath(s.obsidian_path ?? "All Notes/002 Literature Notes/000 Books");
       setHasObsidianToken(s.has_github_token ?? false);
-    }).catch(() => {});
-  }, [session?.backendToken]);
+    }).catch(() => setObsidianFetchError(true));
+  }, [session?.backendToken, obsidianRetryTick]);
 
   useEffect(() => {
     setSettings(getSettings());
@@ -379,6 +382,17 @@ export default function ProfilePage() {
           {/* Collapsible body */}
           {obsidianOpen && (
             <div id="obsidian-export-panel" role="region" aria-label="Obsidian export settings" className="px-6 pb-6 space-y-4 border-t border-amber-100">
+              {obsidianFetchError && (
+                <div role="status" className="flex items-center justify-between pt-4">
+                  <p className="text-sm text-stone-500">Couldn&apos;t load Obsidian settings.</p>
+                  <button
+                    onClick={() => setObsidianRetryTick((t) => t + 1)}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
               <div className="pt-4">
                 <div className="flex items-center justify-between mb-1">
                   <label htmlFor="obsidian-token" className="block text-sm font-medium text-ink">

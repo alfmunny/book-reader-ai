@@ -86,10 +86,12 @@ describe("VocabWordTooltip — rendering", () => {
     await waitFor(() => expect(screen.getByText(/No definition found/i)).toBeInTheDocument());
   });
 
-  it("shows 'No definition found' when API rejects", async () => {
+  it("shows error state with Retry when API rejects", async () => {
     mockGetWordDefinition.mockRejectedValue(new Error("network error"));
     render(<VocabWordTooltip {...BASE} />);
-    await waitFor(() => expect(screen.getByText(/No definition found/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Couldn't load definition/i)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByText(/No definition found/i)).not.toBeInTheDocument();
   });
 
   it("shows Wiktionary link after load", async () => {

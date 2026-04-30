@@ -33,8 +33,8 @@ describe("pending/page.tsx button focus rings (closes #2185)", () => {
 
 describe("upload/page.tsx button focus rings (closes #2185)", () => {
   it("Sign in button (amber-700 bg) has focus ring with offset", () => {
-    // Skip the isAuthenticated check branch, find the sign-in button
-    const idx = uploadPage.indexOf('router.push("/login")');
+    // Sign-in is now a Link — find it by href
+    const idx = uploadPage.indexOf('href="/login"');
     expect(idx).toBeGreaterThan(-1);
     const window = uploadPage.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
@@ -42,7 +42,8 @@ describe("upload/page.tsx button focus rings (closes #2185)", () => {
   });
 
   it("Back button has focus ring", () => {
-    const idx = uploadPage.indexOf('router.push("/")');
+    // Back is now a Link — find it by href
+    const idx = uploadPage.indexOf('href="/"');
     expect(idx).toBeGreaterThan(-1);
     const window = uploadPage.slice(idx, idx + 300);
     expect(window).toContain("focus-visible:ring-amber-400");

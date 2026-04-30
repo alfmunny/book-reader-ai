@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { uploadBook, getUploadQuota, UploadQuota, ApiError } from "@/lib/api";
@@ -78,12 +79,12 @@ export default function UploadPage() {
           <p className="text-sm text-amber-700 mb-6">
             Create an account to upload your own .txt or .epub files and read them with AI assistance.
           </p>
-          <button
-            onClick={() => router.push("/login")}
-            className="rounded-lg bg-amber-700 px-6 min-h-[44px] md:min-h-0 flex items-center text-white font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+          <Link
+            href="/login"
+            className="rounded-lg bg-amber-700 px-6 min-h-[44px] md:min-h-0 inline-flex items-center text-white font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
             Sign in
-          </button>
+          </Link>
         </div>
       </main>
     );
@@ -106,12 +107,12 @@ export default function UploadPage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <button
-            onClick={() => router.push("/")}
+          <Link
+            href="/"
             className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
-          </button>
+          </Link>
           <h1 className="font-serif text-lg font-semibold text-ink">Upload a Book</h1>
         </div>
       </header>

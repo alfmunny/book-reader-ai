@@ -53,8 +53,8 @@ test("error state shows AlertCircleIcon, headline, sub-text, Retry and Try-anoth
   // Primary Retry button
   expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
 
-  // Secondary navigation button
-  expect(screen.getByRole("button", { name: /try another file/i })).toBeInTheDocument();
+  // Secondary navigation link
+  expect(screen.getByRole("link", { name: /try another file/i })).toBeInTheDocument();
 });
 
 test("Retry button re-fetches chapters successfully without navigation", async () => {

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   getDueFlashcards,
@@ -44,7 +44,6 @@ function persistLastDeckId(id: number | undefined): void {
 }
 
 export default function FlashcardsPage() {
-  const router = useRouter();
   const { status } = useSession();
 
   const [cards, setCards] = useState<Flashcard[]>([]);
@@ -174,13 +173,13 @@ export default function FlashcardsPage() {
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push("/vocabulary")}
+          <Link
+            href="/vocabulary"
             aria-label="Back to vocabulary"
             className="p-2 rounded-lg hover:bg-amber-100 transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-5 h-5 text-ink" />
-          </button>
+          </Link>
           <div className="flex items-center gap-2">
             <FlashcardIcon className="w-5 h-5 text-amber-600" />
             <h1 className="font-serif text-xl text-ink font-semibold">Flashcards</h1>
@@ -274,12 +273,12 @@ export default function FlashcardsPage() {
                 ? `No more cards due in "${decks.find((d) => d.id === selectedDeckId)?.name ?? "this deck"}".`
                 : `You reviewed ${stats?.reviewed_today ?? 0} card${(stats?.reviewed_today ?? 0) !== 1 ? "s" : ""}. Come back tomorrow for more.`}
             </p>
-            <button
-              onClick={() => router.push("/vocabulary")}
-              className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+            <Link
+              href="/vocabulary"
+              className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 inline-flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               Back to Vocabulary
-            </button>
+            </Link>
           </div>
         ) : !fetchError && currentCard ? (
           <div className="space-y-4">

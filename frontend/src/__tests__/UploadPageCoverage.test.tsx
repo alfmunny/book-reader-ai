@@ -47,22 +47,22 @@ beforeEach(() => {
 
 // ── Sign-in button navigation ─────────────────────────────────────────────────
 
-test("sign-in button navigates to /login when clicked (unauthenticated state)", async () => {
+test("sign-in link points to /login (unauthenticated state)", async () => {
   mockUseSession.mockReturnValue({ status: "unauthenticated", data: null });
 
   render(<UploadPage />);
-  await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
-  expect(mockPush).toHaveBeenCalledWith("/login");
+  const signInLink = screen.getByRole("link", { name: /sign in/i });
+  expect(signInLink).toHaveAttribute("href", "/login");
 });
 
 // ── Back button navigation ────────────────────────────────────────────────────
 
-test("back button navigates to / when clicked", async () => {
+test("back link points to /", async () => {
   render(<UploadPage />);
   await flushPromises();
 
-  await userEvent.click(screen.getByRole("button", { name: /back/i }));
-  expect(mockPush).toHaveBeenCalledWith("/");
+  const backLink = screen.getByRole("link", { name: /back/i });
+  expect(backLink).toHaveAttribute("href", "/");
 });
 
 // ── Generic (non-ApiError) upload error ──────────────────────────────────────

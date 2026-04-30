@@ -44,7 +44,7 @@ describe("UploadPage", () => {
     mockUseSession.mockReturnValue({ status: "unauthenticated", data: null });
     render(<UploadPage />);
     expect(screen.getByText(/sign in to upload books/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /sign in/i })).toBeInTheDocument();
   });
 
   it("shows loading spinner while session loads", () => {

@@ -56,24 +56,24 @@ beforeEach(() => {
 
 // ── Back button navigation ────────────────────────────────────────────────────
 
-test("back button navigates to /upload", async () => {
+test("back link points to /upload", async () => {
   render(<ChapterEditorPage />);
   await waitFor(() => screen.getByText("Chapter 1"));
 
-  await userEvent.click(screen.getByRole("button", { name: /back/i }));
-  expect(mockPush).toHaveBeenCalledWith("/upload");
+  const backLink = screen.getByRole("link", { name: /back/i });
+  expect(backLink).toHaveAttribute("href", "/upload");
 });
 
 // ── Try another file navigation (error state) ─────────────────────────────────
 
-test("'Try another file' button navigates to /upload from error state", async () => {
+test("'Try another file' link points to /upload from error state", async () => {
   mockGetDraftChapters.mockRejectedValue(new Error("network failure"));
   render(<ChapterEditorPage />);
   await flushPromises();
 
   await screen.findByRole("alert");
-  await userEvent.click(screen.getByRole("button", { name: /try another file/i }));
-  expect(mockPush).toHaveBeenCalledWith("/upload");
+  const tryAnotherLink = screen.getByRole("link", { name: /try another file/i });
+  expect(tryAnotherLink).toHaveAttribute("href", "/upload");
 });
 
 // ── handleTitleChange ─────────────────────────────────────────────────────────

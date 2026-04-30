@@ -63,12 +63,12 @@ beforeEach(() => {
 
 // ── line 149: Back button → router.push("/vocabulary") ───────────────────────
 
-test("Back button calls router.push('/vocabulary') (line 149, #2003)", async () => {
+test("Back link points to /vocabulary (header back arrow, #2003)", async () => {
   render(<FlashcardsPage />);
   await waitFor(() => screen.getAllByText("ephemeral")[0]);
 
-  await userEvent.click(screen.getByRole("button", { name: /back to vocabulary/i }));
-  expect(mockPush).toHaveBeenCalledWith("/vocabulary");
+  const backLink = screen.getByRole("link", { name: /back to vocabulary/i });
+  expect(backLink).toHaveAttribute("href", "/vocabulary");
 });
 
 // ── line 251: card onClick — clicking the card div flips it ─────────────────

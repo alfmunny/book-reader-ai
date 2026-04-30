@@ -20,15 +20,16 @@ describe("notes/page and upload/page touch targets (closes #860)", () => {
   });
 
   it("upload Sign in button has min-h-[44px]", () => {
-    const idx = uploadSrc.indexOf('router.push("/login")');
+    // Sign-in is now a Link — anchor by href
+    const idx = uploadSrc.indexOf('href="/login"');
     expect(idx).toBeGreaterThan(-1);
     const window = uploadSrc.slice(idx, idx + 200);
     expect(window).toContain("min-h-[44px]");
   });
 
   it("upload Back button has min-h-[44px]", () => {
-    // the Back button in the upload form header uses router.push("/")
-    const idx = uploadSrc.indexOf('router.push("/")');
+    // Back is now a Link — anchor by href
+    const idx = uploadSrc.indexOf('href="/"');
     expect(idx).toBeGreaterThan(-1);
     const window = uploadSrc.slice(idx, idx + 200);
     expect(window).toContain("min-h-[44px]");

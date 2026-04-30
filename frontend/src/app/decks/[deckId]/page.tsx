@@ -21,6 +21,7 @@ import {
 } from "@/components/Icons";
 import UndoToast from "@/components/UndoToast";
 import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useScrollLock } from "@/lib/useScrollLock";
 
 export default function DeckDetailPage() {
   const { data: session } = useSession();
@@ -323,6 +324,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
+  useScrollLock(true);
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;

@@ -10,15 +10,15 @@ const src = fs.readFileSync(
 );
 
 describe("Homepage header buttons focus rings (closes #2193)", () => {
-  it("Sign in button (unauthenticated header) has focus ring", () => {
-    // Use router.push('/login') in header context
-    const idx = src.indexOf("router.push(\"/login\")");
+  it("Sign in link (unauthenticated header) has focus ring", () => {
+    // Sign in is now a <Link href="/login"> — anchor on href="/login"
+    const idx = src.indexOf('href="/login"');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(idx, idx + 300);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
-  it("Profile avatar button (overflow-hidden) has ring-inset", () => {
+  it("Profile avatar link (overflow-hidden) has ring-inset", () => {
     // className comes after aria-label — look forward from first "Profile & Settings"
     const idx = src.indexOf("Profile & Settings");
     expect(idx).toBeGreaterThan(-1);

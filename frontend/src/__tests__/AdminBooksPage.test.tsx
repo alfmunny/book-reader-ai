@@ -129,16 +129,15 @@ describe("AdminBooksPage — loading and basic render", () => {
 });
 
 describe("AdminBooksPage — book actions", () => {
-  it("shows Open button that navigates to reader", async () => {
+  it("shows Open link that navigates to reader", async () => {
     mockAdminFetch
       .mockResolvedValueOnce(SAMPLE_BOOKS)
       .mockResolvedValueOnce(SAMPLE_TRANSLATIONS);
     render(<BooksPage />);
     await flushPromises();
 
-    const openBtns = await screen.findAllByRole("button", { name: /open/i });
-    await userEvent.click(openBtns[0]);
-    expect(mockPush).toHaveBeenCalledWith("/reader/1");
+    const openLinks = await screen.findAllByRole("link", { name: /open/i });
+    expect(openLinks[0]).toHaveAttribute("href", "/reader/1");
   });
 
   it("shows translation language pills for books with translations", async () => {

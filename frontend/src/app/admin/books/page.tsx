@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
 import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
@@ -42,8 +42,6 @@ const QUEUE_LANG_OPTIONS = [
 ] as const;
 
 export default function BooksPage() {
-  const router = useRouter();
-
   useEffect(() => {
     document.title = "Admin: Books — Book Reader AI";
   }, []);
@@ -470,13 +468,13 @@ export default function BooksPage() {
                   )}
                 </div>
 
-                <button
-                  onClick={() => router.push(`/reader/${b.id}`)}
+                <Link
+                  href={`/reader/${b.id}`}
                   aria-label={`Open reader for ${b.title}`}
                   className="text-xs text-amber-700 hover:text-amber-800 shrink-0 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Open
-                </button>
+                </Link>
 
                 <select
                   aria-label="Translation language"

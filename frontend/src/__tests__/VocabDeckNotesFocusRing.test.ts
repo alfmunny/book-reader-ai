@@ -24,7 +24,8 @@ const undoToast = fs.readFileSync(
 
 describe("vocabulary page button focus rings (closes #2174)", () => {
   it("Library back button has focus-visible:ring-2", () => {
-    expect(vocabPage).toMatch(/router\.push\("\/"\)[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?router\.push\("\/"\)/);
+    // Library back button is now a <Link href="/"> — match on href near focus-visible:ring-2
+    expect(vocabPage).toMatch(/href="\/"\s*[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?href="\//);
   });
 
   it("Flashcards button has focus-visible:ring-2", () => {
@@ -43,7 +44,8 @@ describe("vocabulary page button focus rings (closes #2174)", () => {
 
 describe("decks/[deckId] page button focus rings (closes #2174)", () => {
   it("Decks back button has focus-visible:ring-2", () => {
-    expect(deckDetailPage).toMatch(/router\.push\("\/decks"\)[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?router\.push\("\/decks"\)/);
+    // Decks back button is now a <Link href="/decks"> — match on href near focus-visible:ring-2
+    expect(deckDetailPage).toMatch(/href="\/decks"[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?href="\/decks"/);
   });
 
   it("deck detail page has at least 4 focus-visible:ring-2 instances", () => {

@@ -39,17 +39,15 @@ beforeEach(() => {
   mockGetVocabulary.mockResolvedValue([]);
 });
 
-// ── "Browse books" button onClick (FN:184) ────────────────────────────────────
+// ── "Browse books" link (FN:184) ─────────────────────────────────────────────
 
-test("clicking 'Browse books' in empty state navigates to / via router.push", async () => {
+test("'Browse books' in empty state is a link to /", async () => {
   // All APIs return empty arrays → books.length === 0 → empty state shown
   render(<NotesPage />);
   await waitFor(() => flushPromises());
 
-  const browseBtn = await screen.findByRole("button", { name: /browse books/i });
-  await userEvent.click(browseBtn);
-
-  expect(mockPush).toHaveBeenCalledWith("/");
+  const browseLink = await screen.findByRole("link", { name: /browse books/i });
+  expect(browseLink).toHaveAttribute("href", "/");
 });
 
 // ── "Clear search" button onClick (FN:196) ────────────────────────────────────

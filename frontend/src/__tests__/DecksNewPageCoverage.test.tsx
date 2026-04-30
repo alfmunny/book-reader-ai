@@ -57,13 +57,14 @@ beforeEach(() => {
   mockPush.mockReset();
 });
 
-// ── header back button ─────────────────────────────────────────────────────────
+// ── header back link ───────────────────────────────────────────────────────────
 
-test("header back button navigates to /decks", async () => {
+test("header back link navigates to /decks", async () => {
   render(<DecksNewPage />);
-  const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: /decks/i }));
-  expect(mockPush).toHaveBeenCalledWith("/decks");
+  // There are two links to /decks: header back and Cancel. Both are fine.
+  const links = screen.getAllByRole("link", { name: /decks/i });
+  expect(links.length).toBeGreaterThanOrEqual(1);
+  expect(links[0]).toHaveAttribute("href", "/decks");
 });
 
 // ── smart → manual mode toggle ─────────────────────────────────────────────────

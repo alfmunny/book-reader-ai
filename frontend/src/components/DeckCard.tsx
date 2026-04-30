@@ -1,14 +1,16 @@
 "use client";
+import Link from "next/link";
 import type { DeckSummary } from "@/lib/api";
 import { DeckIcon, TrashIcon } from "@/components/Icons";
 
 interface DeckCardProps {
   deck: DeckSummary;
+  href?: string;
   onClick?: () => void;
   onDelete?: (id: number) => void | Promise<void>;
 }
 
-export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
+export default function DeckCard({ deck, href, onClick, onDelete }: DeckCardProps) {
   const modeLabel = deck.mode === "smart" ? "Smart" : "Manual";
 
   const cardContent = (
@@ -54,7 +56,16 @@ export default function DeckCard({ deck, onClick, onDelete }: DeckCardProps) {
       className="rounded-xl border border-amber-100 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5"
     >
       <div className="flex items-start justify-between gap-3">
-        {onClick ? (
+        {href ? (
+          <Link
+            href={href}
+            aria-label={`Open deck ${deck.name}`}
+            data-testid={`deck-card-link-${deck.id}`}
+            className="min-w-0 flex-1 text-left hover:opacity-80 transition-opacity rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+          >
+            {cardContent}
+          </Link>
+        ) : onClick ? (
           <button
             type="button"
             onClick={onClick}

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { adminFetch } from "@/lib/adminFetch";
 import { AlertCircleIcon, CloseIcon, EmptyUploadIcon, RetryIcon } from "@/components/Icons";
 
@@ -29,7 +29,6 @@ function fmt_date(iso: string): string {
 }
 
 export default function UploadsPage() {
-  const router = useRouter();
   const [uploads, setUploads] = useState<UploadEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -168,13 +167,13 @@ export default function UploadsPage() {
                     </td>
                     <td className="px-4 py-2.5 text-stone-600 whitespace-nowrap">{fmt_date(u.uploaded_at)}</td>
                     <td className="px-4 py-2.5">
-                      <button
-                        onClick={() => router.push(`/reader/${u.book_id}`)}
+                      <Link
+                        href={`/reader/${u.book_id}`}
                         aria-label={`Open ${u.title}`}
                         className="text-xs text-amber-700 hover:text-amber-800 min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                       >
                         Open
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}

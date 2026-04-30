@@ -281,13 +281,13 @@ test("section view with book-level insight shows Book-level sub-heading", async 
   expect(screen.getByRole("button", { name: /Book-level/i })).toBeInTheDocument();
 });
 
-// ── "Open reader" button ───────────────────────────────────────────────────────
+// ── "Open reader" link ────────────────────────────────────────────────────────
 
-test("'Open reader' button on empty state navigates to reader", async () => {
+test("'Open reader' link on empty state navigates to reader", async () => {
   render(<BookNotesPage />);
   await waitFor(() => screen.getByText(/No notes yet/i));
-  fireEvent.click(screen.getByRole("button", { name: /Open reader/i }));
-  expect(mockPush).toHaveBeenCalledWith("/reader/10");
+  const link = screen.getByRole("link", { name: /Open reader/i });
+  expect(link).toHaveAttribute("href", "/reader/10");
 });
 
 // ── Nested collapse ────────────────────────────────────────────────────────────

@@ -846,15 +846,14 @@ describe("ReaderPage — reading progress bar", () => {
   });
 });
 
-describe("ReaderPage — profile button", () => {
-  it("navigates to /profile when profile button is clicked", async () => {
+describe("ReaderPage — profile link", () => {
+  it("profile link navigates to /profile", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    const profileBtn = await screen.findByTitle("TestUser");
-    await userEvent.click(profileBtn);
-    expect(mockPush).toHaveBeenCalledWith("/profile");
+    const profileLink = await screen.findByTitle("TestUser");
+    expect(profileLink).toHaveAttribute("href", "/profile");
   });
 });
 

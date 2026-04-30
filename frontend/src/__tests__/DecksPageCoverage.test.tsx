@@ -21,15 +21,15 @@ jest.mock("@/lib/api", () => ({
   deleteDeck: jest.fn(),
 }));
 
-// DeckCard stub: renders deck name as a button (click → onClick) and a delete button
+// DeckCard stub: renders deck name as a link (href prop) and a delete button
 jest.mock("@/components/DeckCard", () => {
-  const DC = ({ deck, onClick, onDelete }: {
+  const DC = ({ deck, href, onDelete }: {
     deck: { id: number; name: string };
-    onClick: () => void;
+    href: string;
     onDelete: (id: number) => void;
   }) => (
     <div>
-      <button onClick={onClick}>{deck.name}</button>
+      <a href={href}>{deck.name}</a>
       <button data-testid={`deck-delete-${deck.id}`} onClick={() => onDelete(deck.id)}>
         Delete
       </button>
@@ -85,26 +85,26 @@ beforeEach(() => {
   mockDeleteDeck.mockResolvedValue(undefined);
 });
 
-// ── Back / Library button ─────────────────────────────────────────────────────
+// ── Back / Library link ───────────────────────────────────────────────────────
 
-test("back button navigates to /", async () => {
+test("back link navigates to /", async () => {
   mockListDecks.mockResolvedValue([DECK_A]);
   render(<DecksPage />);
   await waitFor(() => screen.getByText("German verbs"));
 
-  await userEvent.click(screen.getByRole("button", { name: /library/i }));
-  expect(mockPush).toHaveBeenCalledWith("/");
+  const link = screen.getByRole("link", { name: /library/i });
+  expect(link).toHaveAttribute("href", "/");
 });
 
-// ── DeckCard click → navigate to deck ────────────────────────────────────────
+// ── DeckCard link → navigate to deck ─────────────────────────────────────────
 
-test("clicking a deck card navigates to its detail page", async () => {
+test("deck card link navigates to its detail page", async () => {
   mockListDecks.mockResolvedValue([DECK_A]);
   render(<DecksPage />);
   await waitFor(() => screen.getByText("German verbs"));
 
-  await userEvent.click(screen.getByRole("button", { name: "German verbs" }));
-  expect(mockPush).toHaveBeenCalledWith("/decks/1");
+  const link = screen.getByRole("link", { name: "German verbs" });
+  expect(link).toHaveAttribute("href", "/decks/1");
 });
 
 // ── UndoToast onUndo — deck restored ─────────────────────────────────────────

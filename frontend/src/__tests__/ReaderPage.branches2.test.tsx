@@ -1717,11 +1717,10 @@ describe("ReaderPage.branches2 — gemini key required banner navigation button"
       if (banner) expect(banner).toBeInTheDocument();
     }, { timeout: 2000 });
 
-    // Click the navigation button in the gemini key required banner
-    const addKeyBtn = screen.queryByText("Add your Gemini API key in Settings");
-    if (addKeyBtn) {
-      await userEvent.click(addKeyBtn);
-      expect(mockPush).toHaveBeenCalledWith("/profile");
+    // The "Add your Gemini API key in Settings" is now a Link to /profile
+    const addKeyLink = screen.queryByText("Add your Gemini API key in Settings");
+    if (addKeyLink) {
+      expect(addKeyLink.closest("a")).toHaveAttribute("href", "/profile");
     }
   });
 });

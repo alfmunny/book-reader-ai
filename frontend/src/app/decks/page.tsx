@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { DeckSummary, deleteDeck, listDecks } from "@/lib/api";
 import DeckCard from "@/components/DeckCard";
@@ -9,7 +9,6 @@ import { ArrowLeftIcon, DeckIcon, AlertCircleIcon, RetryIcon } from "@/component
 
 export default function DecksPage() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -60,12 +59,12 @@ export default function DecksPage() {
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <button
-          onClick={() => router.push("/")}
+        <Link
+          href="/"
           className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
-        </button>
+        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Decks</h1>
           {!loading && !fetchError && (
@@ -75,16 +74,15 @@ export default function DecksPage() {
           )}
         </div>
         {showNewDeckBtn && (
-          <button
-            type="button"
-            onClick={() => router.push("/decks/new")}
+          <Link
+            href="/decks/new"
             data-testid="decks-new-btn"
             aria-label="New deck"
             className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <DeckIcon className="w-4 h-4" />
             <span className="hidden sm:inline">New deck</span>
-          </button>
+          </Link>
         )}
       </header>
 
@@ -123,15 +121,14 @@ export default function DecksPage() {
               Build focused review lists from your saved vocabulary. Start with a manual
               deck — pick a few words and study just them.
             </p>
-            <button
-              type="button"
-              onClick={() => router.push("/decks/new")}
+            <Link
+              href="/decks/new"
               data-testid="decks-empty-new-btn"
               className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               <DeckIcon className="w-4 h-4" />
               New deck
-            </button>
+            </Link>
           </div>
         ) : (
           <ul role="list" aria-label="Your decks" className="space-y-4 list-none p-0 m-0">
@@ -139,7 +136,7 @@ export default function DecksPage() {
               <li key={d.id}>
                 <DeckCard
                   deck={d}
-                  onClick={() => router.push(`/decks/${d.id}`)}
+                  href={`/decks/${d.id}`}
                   onDelete={handleDelete}
                 />
               </li>

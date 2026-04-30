@@ -31,10 +31,11 @@ describe("admin/books page touch targets (closes #867)", () => {
     expect(window).toContain("min-h-[44px]");
   });
 
-  it("Open reader button has min-h-[44px]", () => {
-    const idx = src.indexOf('router.push(`/reader/${b.id}`)');
+  it("Open reader link has min-h-[44px]", () => {
+    // Open reader is now a <Link href={`/reader/${b.id}`}> — anchor on aria-label
+    const idx = src.indexOf('aria-label={`Open reader for');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
+    const window = src.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");
   });
 

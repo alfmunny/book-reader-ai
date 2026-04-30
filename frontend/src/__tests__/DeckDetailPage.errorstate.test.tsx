@@ -52,7 +52,7 @@ beforeEach(() => {
   jest.resetAllMocks();
 });
 
-test("error state shows alert with Retry and Back-to-decks buttons", async () => {
+test("error state shows alert with Retry button and Back-to-decks link", async () => {
   mockGetDeck.mockRejectedValue(new Error("network error"));
   mockGetVocabulary.mockResolvedValue([]);
   render(<DeckDetailPage />);
@@ -60,7 +60,7 @@ test("error state shows alert with Retry and Back-to-decks buttons", async () =>
 
   expect(await screen.findByRole("alert")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /back to decks/i })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /back to decks/i })).toBeInTheDocument();
 });
 
 test("Retry button re-fetches and shows deck on success", async () => {
@@ -82,15 +82,13 @@ test("Retry button re-fetches and shows deck on success", async () => {
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
-test("Back-to-decks navigates away", async () => {
+test("Back-to-decks link has correct href", async () => {
   mockGetDeck.mockRejectedValue(new Error("fail"));
   mockGetVocabulary.mockResolvedValue([]);
   render(<DeckDetailPage />);
   await flushPromises();
 
   await screen.findByRole("alert");
-  const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: /back to decks/i }));
-
-  expect(mockPush).toHaveBeenCalledWith("/decks");
+  const link = screen.getByRole("link", { name: /back to decks/i });
+  expect(link).toHaveAttribute("href", "/decks");
 });

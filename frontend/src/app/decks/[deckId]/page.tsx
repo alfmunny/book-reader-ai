@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   DeckDetail,
@@ -130,12 +131,12 @@ export default function DeckDetailPage() {
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <button
-          onClick={() => router.push("/decks")}
+        <Link
+          href="/decks"
           className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Decks
-        </button>
+        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate" title={deck?.name}>
             {deck?.name ?? "Deck"}
@@ -193,13 +194,12 @@ export default function DeckDetailPage() {
                 <RetryIcon className="w-4 h-4" aria-hidden="true" />
                 Retry
               </button>
-              <button
-                type="button"
-                onClick={() => router.push("/decks")}
-                className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              <Link
+                href="/decks"
+                className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 inline-flex items-center"
               >
                 Back to decks
-              </button>
+              </Link>
             </div>
           </div>
         ) : (
@@ -229,13 +229,12 @@ export default function DeckDetailPage() {
                 {isManual ? (
                   vocab.length === 0 ? (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => router.push("/")}
+                      <Link
+                        href="/"
                         className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                       >
                         Start reading
-                      </button>
+                      </Link>
                     </>
                   ) : (
                     <button
@@ -248,14 +247,13 @@ export default function DeckDetailPage() {
                     </button>
                   )
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => router.push("/decks")}
+                  <Link
+                    href="/decks"
                     className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     <ArrowLeftIcon className="w-4 h-4" />
                     Back to decks
-                  </button>
+                  </Link>
                 )}
               </div>
             ) : (

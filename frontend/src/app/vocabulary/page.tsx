@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   getVocabulary,
@@ -468,12 +469,12 @@ function VocabularyPageContent() {
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <button
-          onClick={() => router.push("/")}
+        <Link
+          href="/"
           className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
-        </button>
+        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (
@@ -482,15 +483,15 @@ function VocabularyPageContent() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => router.push("/vocabulary/flashcards")}
+        <Link
+          href="/vocabulary/flashcards"
           aria-label="Flashcards"
           className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           data-testid="flashcards-btn"
         >
           <FlashcardIcon className="w-4 h-4" />
           <span className="hidden sm:inline">Flashcards</span>
-        </button>
+        </Link>
         <button
           onClick={() => handleExport()}
           disabled={exporting || words.length === 0}
@@ -632,13 +633,12 @@ function VocabularyPageContent() {
             <EmptyVocabIcon className="w-14 h-14 text-amber-300" />
             <p className="font-serif text-lg text-stone-600 mt-1">No saved words yet.</p>
             <p className="text-sm">Double-click any word while reading to save it here.</p>
-            <button
-              type="button"
-              onClick={() => router.push("/")}
+            <Link
+              href="/"
               className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               Browse books <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
-            </button>
+            </Link>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-stone-600 mt-16 flex flex-col items-center gap-2">

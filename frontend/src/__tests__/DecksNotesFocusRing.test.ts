@@ -50,7 +50,8 @@ describe("decks/new page button focus rings (closes #2172)", () => {
 
 describe("notes page button focus rings (closes #2172)", () => {
   it("Library back button has focus-visible:ring-2 for WCAG 2.4.7", () => {
-    expect(notesPage).toMatch(/router\.push\("\/"\)[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?router\.push\("\/"\)/);
+    // Library back button is now a <Link href="/"> — match on href near focus-visible:ring-2
+    expect(notesPage).toMatch(/href="\/"\s*[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?href="\//);
   });
 
   it("notes page has at least 3 focus-visible:ring-2 instances", () => {

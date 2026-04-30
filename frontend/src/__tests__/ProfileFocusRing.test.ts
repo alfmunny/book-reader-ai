@@ -8,7 +8,8 @@ const src = fs.readFileSync(
 
 describe("profile page button focus rings (closes #2170)", () => {
   it("back-to-Library button has focus-visible:ring-2 for WCAG 2.4.7", () => {
-    expect(src).toMatch(/router\.push\("\/"\)[\s\S]{0,200}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,200}?router\.push\("\/"\)/);
+    // Library back button is now a <Link href="/"> — match on href="/" near focus-visible:ring-2
+    expect(src).toMatch(/href="\/"\s*[\s\S]{0,200}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,200}?href="\//);
   });
 
   it("Sign out button has focus-visible:ring-2 for WCAG 2.4.7", () => {

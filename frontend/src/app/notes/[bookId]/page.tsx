@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   getAnnotations,
@@ -686,12 +687,12 @@ export default function BookNotesPage() {
       {/* Sticky header */}
       <header className="sticky top-0 z-10 border-b border-amber-200 bg-white/80 backdrop-blur px-4 md:px-6 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => router.push("/notes")}
+          <Link
+            href="/notes"
             className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Notes
-          </button>
+          </Link>
 
           <div className="flex-1 min-w-0">
             <p className="text-xs text-stone-600 truncate" title={`${annCount} annotations · ${insCount} insights · ${vocCount} words`}>
@@ -789,12 +790,12 @@ export default function BookNotesPage() {
             <EmptyNotesIcon className="w-16 h-16 mx-auto mb-3 text-amber-300" aria-hidden="true" />
             <p className="font-serif text-lg text-ink mb-1">No notes yet</p>
             <p className="text-sm">Annotate sentences, save AI insights, or add words to vocabulary while reading.</p>
-            <button
-              onClick={() => router.push(`/reader/${bookId}`)}
+            <Link
+              href={`/reader/${bookId}`}
               className="mt-4 px-5 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               Open reader <ArrowRightIcon className="w-4 h-4" aria-hidden="true" />
-            </button>
+            </Link>
           </div>
         ) : (
           <div data-testid="notes-content">

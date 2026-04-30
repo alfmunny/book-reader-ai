@@ -95,23 +95,23 @@ describe("NotesPage overview — book card sources", () => {
     await waitFor(() => expect(screen.getByText("Vocab Only Book")).toBeInTheDocument());
   });
 
-  it("navigates to /notes/[bookId] when book card is clicked", async () => {
+  it("book card is a link to /notes/[bookId]", async () => {
     mockGetAllAnnotations.mockResolvedValue([
       { id: 1, book_id: 55, chapter_index: 0, sentence_text: "s", note_text: "", color: "yellow",
         book_title: "Click Me", created_at: "2026-01-01T00:00:00" } as AnnotationWithBook,
     ]);
     render(<NotesPage />);
     await waitFor(() => screen.getByText("Click Me"));
-    await userEvent.click(screen.getByText("Click Me"));
-    expect(mockRouterPush).toHaveBeenCalledWith("/notes/55");
+    const link = screen.getByRole("link", { name: /Click Me/i });
+    expect(link).toHaveAttribute("href", "/notes/55");
   });
 
-  it("navigates to / when ← Library button is clicked", async () => {
+  it("← Library link navigates to /", async () => {
     mockUseSession.mockReturnValue({ data: { backendToken: "tok" }, status: "authenticated" });
     render(<NotesPage />);
     await flushPromises();
-    fireEvent.click(screen.getByRole("button", { name: /Library/i }));
-    expect(mockRouterPush).toHaveBeenCalledWith("/");
+    const link = screen.getByRole("link", { name: /Library/i });
+    expect(link).toHaveAttribute("href", "/");
   });
 });
 

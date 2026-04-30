@@ -53,14 +53,14 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ── Line 136: "← Library" back button ────────────────────────────────────────
+// ── Line 136: "← Library" back link ─────────────────────────────────────────
 
-test("clicking ← Library navigates to /", async () => {
+test("← Library link navigates to /", async () => {
   render(<ProfilePage />);
   await act(async () => await flushPromises());
 
-  fireEvent.click(screen.getByRole("button", { name: /Library/i }));
-  expect(mockPush).toHaveBeenCalledWith("/");
+  const link = screen.getByRole("link", { name: /Library/i });
+  expect(link).toHaveAttribute("href", "/");
 });
 
 // ── Line 164: "Sign out" button ───────────────────────────────────────────────
@@ -73,19 +73,19 @@ test("clicking Sign out calls signOut with /login callback", async () => {
   expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: "/login" });
 });
 
-// ── Line 171: "Admin Panel" button ────────────────────────────────────────────
+// ── Line 171: "Admin Panel" link ─────────────────────────────────────────────
 
-test("clicking Admin Panel navigates to /admin", async () => {
+test("Admin Panel link navigates to /admin", async () => {
   const { getMe } = require("@/lib/api");
   getMe.mockResolvedValueOnce({ hasGeminiKey: false, role: "admin" });
 
   render(<ProfilePage />);
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: /admin panel/i })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /admin panel/i })).toBeInTheDocument()
   );
 
-  fireEvent.click(screen.getByRole("button", { name: /admin panel/i }));
-  expect(mockPush).toHaveBeenCalledWith("/admin");
+  const link = screen.getByRole("link", { name: /admin panel/i });
+  expect(link).toHaveAttribute("href", "/admin");
 });
 
 // ── Line 272: obsidianRepo onChange ──────────────────────────────────────────

@@ -1950,7 +1950,7 @@ export default function ReaderPage() {
                         <span className="w-5 h-5 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" aria-hidden="true" />
                       </div>
                     ) : annotationsError ? (
-                      <div role="status" className="flex flex-col items-center gap-3 mt-10 text-center">
+                      <div role="alert" className="flex flex-col items-center gap-3 mt-10 text-center">
                         <p className="text-sm text-stone-500">Couldn&apos;t load annotations.</p>
                         <button
                           onClick={() => setAnnotationsRetryTick((t) => t + 1)}
@@ -2049,7 +2049,7 @@ export default function ReaderPage() {
                       </Link>
                     </div>
                     {vocabFetchError ? (
-                      <div role="status" className="flex flex-col items-center gap-2 mt-10 text-center">
+                      <div role="alert" className="flex flex-col items-center gap-2 mt-10 text-center">
                         <p className="text-sm text-stone-500">Couldn&apos;t load vocabulary.</p>
                         <button
                           onClick={() => setVocabRetryTick((t) => t + 1)}

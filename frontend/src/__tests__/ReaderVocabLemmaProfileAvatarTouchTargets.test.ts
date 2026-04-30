@@ -11,11 +11,11 @@ const homeSrc = fs.readFileSync(
 );
 
 describe("reader vocab lemma header button touch target (closes #944)", () => {
-  it("vocab lemma header button has min-h-[44px]", () => {
-    // Find the lemma header button that navigates to /vocabulary
-    const idx = readerSrc.indexOf('router.push(`/vocabulary?word=');
+  it("vocab lemma header link has min-h-[44px]", () => {
+    // Find the lemma header Link that navigates to /vocabulary?word=
+    const idx = readerSrc.indexOf('/vocabulary?word=');
     expect(idx).toBeGreaterThan(-1);
-    // className comes after onClick in the JSX
+    // className is nearby
     const window = readerSrc.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");
   });

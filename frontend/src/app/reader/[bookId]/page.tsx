@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
@@ -1011,13 +1012,13 @@ export default function ReaderPage() {
       } ${focusMode ? "" : "md:!max-h-none md:!opacity-100 md:!overflow-visible md:!border-b"}`}>
         {/* Row 1: nav + title + controls */}
         <div className="flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3">
-          <button
-            onClick={() => router.push("/")}
+          <Link
+            href="/"
             aria-label="Library"
             className="text-amber-700 hover:text-amber-900 text-sm shrink-0 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
           >
             <ArrowLeftIcon className="w-4 h-4 shrink-0" aria-hidden="true" /><span className="hidden sm:inline ml-1">Library</span>
-          </button>
+          </Link>
 
           <div className="min-w-0 flex-1">
             {meta ? (
@@ -2036,9 +2037,9 @@ export default function ReaderPage() {
                       <span className="text-xs text-stone-600" aria-live="polite" aria-atomic="true">
                         {filteredVocab.length} word{filteredVocab.length !== 1 ? "s" : ""}
                       </span>
-                      <button onClick={() => router.push("/vocabulary")} className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
+                      <Link href="/vocabulary" className="text-xs text-amber-700 hover:text-amber-800 font-medium min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
                         View all <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
-                      </button>
+                      </Link>
                     </div>
                     {vocabFetchError ? (
                       <div role="status" className="flex flex-col items-center gap-2 mt-10 text-center">
@@ -2068,15 +2069,15 @@ export default function ReaderPage() {
                             <li key={w.id}>
                             <div className="rounded-lg bg-amber-50 border border-amber-200 overflow-hidden">
                               {/* Lemma header */}
-                              <button
-                                onClick={() => router.push(`/vocabulary?word=${encodeURIComponent(w.word)}`)}
+                              <Link
+                                href={`/vocabulary?word=${encodeURIComponent(w.word)}`}
                                 className="w-full flex items-center justify-between gap-2 px-3 py-2 min-h-[44px] md:min-h-0 hover:bg-amber-100 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
                               >
                                 <span lang={w.language ?? undefined} className="text-sm font-semibold text-ink">{lemma}</span>
                                 {isForm && (
                                   <span lang={w.language ?? undefined} className="text-[10px] text-amber-700 shrink-0 italic">{w.word}</span>
                                 )}
-                              </button>
+                              </Link>
                               {/* Context occurrences */}
                               {relevantOccs.map((occ, i) => (
                                 <button

@@ -863,12 +863,11 @@ describe("ReaderPage.branches3 — vocab word heading click (line 1404)", () => 
     // Wait for the vocab word lemma heading to appear
     await waitFor(() => screen.getByText("ishmael2"));
 
-    // Find and click the vocab word heading button (line 1404)
-    const headingBtn = Array.from(document.querySelectorAll("button"))
-      .find((b) => b.textContent?.trim() === "ishmael2") as HTMLElement;
-    expect(headingBtn).toBeTruthy();
-    await userEvent.click(headingBtn);
-    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("vocabulary"));
+    // Find the vocab word heading link (now a Link element, rendered as <a>)
+    const headingLink = Array.from(document.querySelectorAll("a"))
+      .find((a) => a.textContent?.trim() === "ishmael2") as HTMLAnchorElement;
+    expect(headingLink).toBeTruthy();
+    expect(headingLink.getAttribute("href")).toContain("vocabulary");
   });
 });
 

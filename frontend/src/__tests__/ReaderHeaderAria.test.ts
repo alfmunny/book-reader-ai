@@ -8,17 +8,17 @@ const src = fs.readFileSync(
 
 describe("Reader header buttons aria-label (closes #1015)", () => {
   it("Library back button has aria-label", () => {
-    // Find the back-to-library button
-    const idx = src.indexOf('router.push("/")');
+    // Find the back-to-library Link (href="/")
+    const idx = src.indexOf('aria-label="Library"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 200), idx + 50);
+    const window = src.slice(Math.max(0, idx - 50), idx + 200);
     expect(window).toContain("aria-label");
   });
 
   it("Library back button aria-label references Library", () => {
-    const idx = src.indexOf('router.push("/")');
+    const idx = src.indexOf('aria-label="Library"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 200), idx + 50);
+    const window = src.slice(Math.max(0, idx - 50), idx + 200);
     expect(window).toMatch(/aria-label=.*[Ll]ibrary/);
   });
 

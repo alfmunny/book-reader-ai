@@ -107,6 +107,7 @@ function SearchResultsInner() {
   const [data, setData] = useState<InAppSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     document.title = q.trim()
@@ -123,15 +124,10 @@ function SearchResultsInner() {
     setLoading(true);
     setError(null);
     searchInAppContent(q)
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(e?.message ?? "Search failed");
-        setLoading(false);
-      });
-  }, [q]);
+      .then((d) => { setData(d); })
+      .catch((e) => { setError(e?.message ?? "Search failed"); })
+      .finally(() => { setLoading(false); });
+  }, [q, retryTick]);
 
   const annotations = data?.results.filter((r): r is Extract<InAppSearchResult, { type: "annotation" }> => r.type === "annotation") ?? [];
   const vocabulary = data?.results.filter((r): r is Extract<InAppSearchResult, { type: "vocabulary" }> => r.type === "vocabulary") ?? [];
@@ -176,7 +172,13 @@ function SearchResultsInner() {
       {!loading && error && (
         <div role="alert" className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-2">
           <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>Error: {error}</span>
+          <span className="flex-1">Error: {error}</span>
+          <button
+            onClick={() => setRetryTick((t) => t + 1)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-700 hover:bg-red-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 shrink-0"
+          >
+            Retry
+          </button>
         </div>
       )}
 

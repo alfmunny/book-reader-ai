@@ -430,6 +430,9 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Notes page stats/export + SeedPopularButton log entries: title tooltips for truncated count summary, export message, and log list items (closes #2325) | notes/[bookId]/page.tsx, SeedPopularButton.tsx | #2326 |
 | 2026-04-30 | QueueTab admin: title tooltips for truncated preset chain div and cost comparison model name (closes #2323) | QueueTab.tsx | #2327 |
 | 2026-04-30 | Design system: replace hardcoded shadow-sm on card containers (import, login, notes) with --shadow-card CSS variable and hover handlers (closes #2328) | import/[bookId]/page.tsx, login/page.tsx, notes/page.tsx | #2328 |
+| 2026-04-30 | Deck name input: aria-required="true" for screen reader required-field announcement without native validation side-effects (closes #2360) | decks/new/page.tsx | #2361 |
+| 2026-04-30 | QueueTab section-header spinners: role="status" wrappers on loadingCost and loadingItems inline Spinner components for WCAG 4.1.3 (closes #2362) | QueueTab.tsx | #2363 |
+| 2026-04-30 | Profile Obsidian inputs: aria-invalid + aria-describedby + id="obsidian-msg" on status paragraph matching Gemini key pattern (closes #2364) | profile/page.tsx | #2365 |
 
 ---
 

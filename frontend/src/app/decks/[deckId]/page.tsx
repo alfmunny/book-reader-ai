@@ -335,6 +335,7 @@ interface AddWordPickerProps {
 
 function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
   const [query, setQuery] = useState("");
+  const [lastAdded, setLastAdded] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef);
@@ -423,6 +424,7 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
                     type="button"
                     onClick={() => {
                       onAdd(w.id);
+                      setLastAdded(w.word);
                     }}
                     aria-label={`Add ${w.word} to deck`}
                     title={w.word}
@@ -443,6 +445,10 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
             </ul>
           )}
         </div>
+        {/* Screen-reader status region: announces each word addition (WCAG 4.1.3) */}
+        <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {lastAdded ? `"${lastAdded}" added to deck` : ""}
+        </span>
       </div>
     </div>
   );

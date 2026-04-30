@@ -2159,8 +2159,8 @@ export default function ReaderPage() {
 
                     {/* Display mode */}
                     <div className="mb-4">
-                      <label className="block text-xs text-amber-700 mb-1">Display</label>
-                      <div className="flex rounded-lg border border-amber-300 overflow-hidden">
+                      <p id="reader-trans-display-label" className="block text-xs text-amber-700 mb-1">Display</p>
+                      <div role="group" aria-labelledby="reader-trans-display-label" className="flex rounded-lg border border-amber-300 overflow-hidden">
                         <button
                           onClick={() => setDisplayMode("inline")}
                           aria-pressed={displayMode === "inline"}

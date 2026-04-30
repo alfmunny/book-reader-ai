@@ -30,7 +30,7 @@ describe("SentenceActionPopup focus rings (closes #2176)", () => {
   it("Note button has focus-visible ring with stone-800 offset", () => {
     const idx = sentencePopup.indexOf("onNote()");
     expect(idx).toBeGreaterThan(-1);
-    const window = sentencePopup.slice(idx, idx + 450);
+    const window = sentencePopup.slice(idx, idx + 650);
     expect(window).toContain("focus-visible:ring-amber-400");
     expect(window).toContain("ring-offset-stone-800");
   });

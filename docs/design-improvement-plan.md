@@ -463,6 +463,14 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Reader page: notifyAIUsed now uses strict `=== false` check so Gemini key reminder doesn't fire on transient getMe() failure when hasGeminiKey is null (closes #2443) | app/reader/[bookId]/page.tsx | #2444 |
 | 2026-04-30 | Reader page: added role="status" to translation queue and login-required banners so screen readers announce them (WCAG 4.1.3, closes #2445) | app/reader/[bookId]/page.tsx | #2446 |
 | 2026-04-30 | Home page nav bar: replaced router.push buttons with Link elements for Upload/Notes/Vocabulary/Admin so Ctrl+Click opens new tab and screen readers announce them as links (closes #2447) | app/page.tsx | #2448 |
+| 2026-04-30 | Replace `<button onClick={router.push}>` with `<Link href>` across upload, reader, flashcards, notes, import, deck pages (8 locations) — WCAG 4.1.2 (closes #2453) | multiple | #2454 |
+| 2026-04-30 | Deck zero-vocab 'Start reading' CTA: split into `<Link href="/">` vs `<button>` conditional (closes #2455) | decks/[deckId]/page.tsx | #2456 |
+| 2026-04-30 | Import page 'Skip' button: `<button onClick={() => router.push(nextUrl)}>` → `<Link href={nextUrl}>` (closes #2457) | import/[bookId]/page.tsx | #2458 |
+| 2026-04-30 | AnnotationToolbar color picker: roving tabindex + ArrowRight/Left/Up/Down keyboard nav — WCAG 2.1.1 (closes #2459) | AnnotationToolbar.tsx | #2460 |
+| 2026-04-30 | QuickHighlightPanel + SentenceActionPopup: focus restored to trigger element on close — WCAG 2.4.3 (closes #2473) | QuickHighlightPanel.tsx, SentenceActionPopup.tsx | #2474 |
+| 2026-04-30 | TypographyPanel: focus restored to trigger on close; reader handleKeyDown guard updated to allow ArrowLeft/Right chapter nav from non-toolbar buttons — WCAG 2.4.3 (closes #2475) | TypographyPanel.tsx, reader/[bookId]/page.tsx | #2476 |
+| 2026-04-30 | Vocabulary DefinitionSheet: Wiktionary fallback link in "No definition found" state — eliminates dead-end UX (closes #2477) | app/vocabulary/page.tsx | #2478 |
+| 2026-04-30 | Search page: Retry button in error banner + `.finally()` cleanup — user can retry same query on network failure (closes #2479) | app/search/page.tsx | #2480 |
 
 ---
 

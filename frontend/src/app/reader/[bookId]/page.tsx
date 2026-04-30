@@ -1381,6 +1381,19 @@ export default function ReaderPage() {
         </div>
       )}
 
+      {/* Screen-reader announcement for chapter navigation (WCAG 4.1.3) */}
+      <span
+        id="chapter-announce"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {chapters[chapterIndex]
+          ? `Chapter ${chapterIndex + 1}${chapters[chapterIndex].title ? `: ${chapters[chapterIndex].title}` : ""}`
+          : ""}
+      </span>
+
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
         {/* Reader */}

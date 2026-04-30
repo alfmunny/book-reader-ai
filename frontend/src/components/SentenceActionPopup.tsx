@@ -31,7 +31,10 @@ export default function SentenceActionPopup({ sentenceText: _sentenceText, posit
   }
 
   useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
     ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    return () => { prev?.focus?.(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

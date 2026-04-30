@@ -155,7 +155,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
                                 onClick={(e) => { e.stopPropagation(); setOpen(false); }}
                                 className="opacity-60 hover:opacity-100 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
                                 title="View in notes page"
-                                aria-label="View in notes page"
+                                aria-label={`View in notes page: ${ann.sentence_text.slice(0, 50)}`}
                               >
                                 <ArrowRightIcon className="w-3.5 h-3.5" />
                               </a>

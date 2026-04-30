@@ -55,6 +55,8 @@ export default function FlashcardsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [decks, setDecks] = useState<DeckSummary[]>([]);
+  const [decksFetchError, setDecksFetchError] = useState(false);
+  const [decksRetryTick, setDecksRetryTick] = useState(0);
   // Initialize from localStorage synchronously so loadData fires once with the saved deck,
   // avoiding a second setLoading(true) cycle that would briefly hide the deck selector.
   const [selectedDeckId, setSelectedDeckId] = useState<number | undefined>(() => readLastDeckId());
@@ -87,6 +89,7 @@ export default function FlashcardsPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
     let alive = true;
+    setDecksFetchError(false);
     listDecks()
       .then((d) => {
         if (!alive) return;
@@ -98,11 +101,11 @@ export default function FlashcardsPage() {
           setSelectedDeckId(undefined);
         }
       })
-      .catch(() => {});
+      .catch(() => { if (alive) setDecksFetchError(true); });
     return () => {
       alive = false;
     };
-  }, [status]);
+  }, [status, decksRetryTick]);
 
   // Update page title (WCAG 2.4.2)
   useEffect(() => {
@@ -190,7 +193,18 @@ export default function FlashcardsPage() {
         </div>
 
         {/* Deck selector */}
-        {decks.length > 0 && (
+        {decksFetchError && (
+          <div role="status" className="flex items-center justify-between rounded-lg border border-amber-100 bg-white px-3 py-2">
+            <p className="text-xs text-stone-500">Couldn&apos;t load decks.</p>
+            <button
+              onClick={() => setDecksRetryTick((t) => t + 1)}
+              className="text-xs px-2 py-1 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!decksFetchError && decks.length > 0 && (
           <div className="flex items-center gap-2">
             <label
               htmlFor="flashcards-deck-select"

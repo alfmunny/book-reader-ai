@@ -96,7 +96,7 @@ export default function ChapterSummary({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div tabIndex={0} className="flex-1 overflow-y-auto p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset">
         {loading && (
           <div role="status" aria-label="Loading summary">
             <span className="sr-only">Loading summary...</span>

@@ -429,7 +429,8 @@ export default function InsightChat({
         role="log"
         aria-live="polite"
         aria-label="Conversation"
-        className="flex-1 overflow-y-auto px-3 py-3 space-y-3"
+        tabIndex={0}
+        className="flex-1 overflow-y-auto px-3 py-3 space-y-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
         style={{ fontSize }}
       >
         {hasEarlier && (

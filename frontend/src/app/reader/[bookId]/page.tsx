@@ -900,12 +900,14 @@ export default function ReaderPage() {
         <div className="shrink-0 bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-4 text-sm text-amber-800">
           <span>
             AI features require your own Gemini API key.{" "}
-            <button
-              onClick={() => { window.open("/profile", "_blank"); }}
+            <a
+              href="/profile"
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline font-medium hover:text-amber-900 min-h-[44px] md:min-h-0 inline-flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
-              Add your free Gemini API key
-            </button>{" "}
+              Add your free Gemini API key<span className="sr-only"> (opens in new tab)</span>
+            </a>{" "}
             to enable them.
           </span>
           <button

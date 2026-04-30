@@ -23,15 +23,15 @@ describe("reader vocab lemma header button touch target (closes #944)", () => {
 
 describe("reader profile avatar link touch target (closes #944)", () => {
   it("reader header profile avatar link has min-w-[44px]", () => {
-    // Profile avatar is now a <Link href="/profile"> — anchor on href="/profile"
-    const idx = readerSrc.indexOf('href="/profile"');
+    // Profile avatar Link is identified by its dynamic title prop (unique — the Gemini banner lacks it)
+    const idx = readerSrc.indexOf('title={session.backendUser');
     expect(idx).toBeGreaterThan(-1);
     const window = readerSrc.slice(idx, idx + 300);
     expect(window).toContain("min-w-[44px]");
   });
 
   it("reader header profile avatar link has min-h-[44px]", () => {
-    const idx = readerSrc.indexOf('href="/profile"');
+    const idx = readerSrc.indexOf('title={session.backendUser');
     expect(idx).toBeGreaterThan(-1);
     const window = readerSrc.slice(idx, idx + 300);
     expect(window).toContain("min-h-[44px]");

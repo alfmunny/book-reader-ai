@@ -39,8 +39,8 @@ describe("Reader header buttons aria-label (closes #1015)", () => {
   });
 
   it("Profile avatar link has aria-label", () => {
-    // Profile avatar is now a <Link href="/profile"> — anchor on href="/profile"
-    const idx = src.indexOf('href="/profile"');
+    // Profile avatar Link is identified by its dynamic title prop (unique — the Gemini banner lacks it)
+    const idx = src.indexOf('title={session.backendUser');
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(idx, idx + 300);
     expect(window).toContain("aria-label");

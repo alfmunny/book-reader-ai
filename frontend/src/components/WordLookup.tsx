@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CloseIcon } from "@/components/Icons";
+import { CloseIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Definition {
@@ -121,7 +121,17 @@ export default function WordLookup({ word, position, language, onClose }: Props)
       )}
 
       {error && (
-        <p role="alert" className="text-amber-700 italic pr-6">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
+        <div className="space-y-1.5 pr-6">
+          <p role="alert" className="text-amber-700 italic">{error} for &ldquo;<span lang={lang}>{word}</span>&rdquo;</p>
+          <a
+            href={`https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-xs text-amber-700 hover:text-amber-800 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+          >
+            Search Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
+          </a>
+        </div>
       )}
 
       {result && (

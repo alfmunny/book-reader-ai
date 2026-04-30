@@ -9,7 +9,7 @@ import {
   postChatMessage,
 } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
-import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon } from "@/components/Icons";
+import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, AlertCircleIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -499,6 +499,15 @@ export default function InsightChat({
 
           // ── Assistant message ──────────────────────────────────────
           const prevUserMsg = displayedMessages.slice(0, i).reverse().find((m) => m.role === "user");
+          const isError = msg.content.startsWith("Error:");
+          if (isError) {
+            return (
+              <div key={i} role="alert" className="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <AlertCircleIcon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
+                <span>{msg.content.replace(/^Error:\s*/, "")}</span>
+              </div>
+            );
+          }
           return (
             <div key={i} className="flex gap-2 max-w-full">
               {/* AI icon */}

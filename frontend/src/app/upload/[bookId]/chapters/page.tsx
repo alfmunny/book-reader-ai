@@ -215,7 +215,7 @@ export default function ChapterEditorPage() {
         </ul>
 
         {/* Right: preview */}
-        <div className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto">
+        <div tabIndex={0} className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset">
           {selectedChapter ? (
             <>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-3">Preview</h2>

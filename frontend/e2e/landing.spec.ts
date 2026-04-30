@@ -38,7 +38,7 @@ test("unauthenticated visitor sees landing hero on discover tab", async ({ page 
   ).toBeVisible({ timeout: 5000 });
 
   // Sign-in CTA should be present
-  await expect(page.getByRole("button", { name: /Sign in free/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Sign in free/i })).toBeVisible();
 });
 
 test("authenticated user does not see landing hero", async ({ page }) => {

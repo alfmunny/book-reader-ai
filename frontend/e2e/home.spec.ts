@@ -64,8 +64,8 @@ test("clicking a library book navigates to reader page", async ({ page }) => {
 
   // Explicitly open the Home tab in case the session effect flipped to Discover
   await page.getByRole("tab", { name: "Home" }).click();
-  // The Continue Reading button at the top navigates directly to the reader
-  await page.getByRole("button", { name: "Continue reading" }).click();
+  // The Continue Reading link at the top navigates directly to the reader
+  await page.getByRole("link", { name: "Continue reading" }).click();
   await page.waitForURL(/\/reader\/1342/);
   expect(page.url()).toContain("/reader/1342");
 });

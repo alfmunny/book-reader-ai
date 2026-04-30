@@ -40,7 +40,7 @@ test("notes page: empty state when there are no notes", async ({ page }) => {
   await page.goto("/notes/1342");
 
   await expect(page.getByText("No notes yet")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Open reader/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Open reader/ })).toBeVisible();
 });
 
 test("notes page: renders book title and annotation sentence", async ({ page }) => {

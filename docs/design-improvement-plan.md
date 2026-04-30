@@ -439,6 +439,8 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Deck detail page: distinguish zero-vocab state from all-in-deck state — show "Start reading" CTA with guidance when user has no vocabulary, instead of a silent disabled "Add word" button (closes #2394) | decks/[deckId]/page.tsx | #2394 |
 | 2026-04-30 | Profile Obsidian form: remove aria-invalid from all three fields on generic save error — WCAG 1.3.1 violation fixed; role="status" region (obsidian-msg) is the correct channel for form-level errors; aria-describedby links fields to it (closes #2396) | profile/page.tsx | #2396 |
 | 2026-04-30 | Deck add-word picker: aria-live status region announces each word addition to screen readers — WCAG 4.1.3 (closes #2398) | decks/[deckId]/page.tsx | #2398 |
+| 2026-04-30 | TTS sliders: add aria-valuetext to playback position slider (formatted time, e.g. "2:32") and speed slider ("1.0×"); add aria-label to speed slider — WCAG 4.1.2 (closes #2400) | components/TTSControls.tsx | #2401 |
+| 2026-04-30 | Reader annotation/highlight save: sr-only role=status live region announces "Note saved" / "Highlight applied" after AnnotationToolbar or QuickHighlightPanel saves — WCAG 4.1.3 (closes #2402) | reader/[bookId]/page.tsx | #2403 |
 
 ---
 

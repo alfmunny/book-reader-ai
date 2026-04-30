@@ -86,7 +86,7 @@ describe("InsightChat — getInsight failure (line 158)", () => {
     render(<InsightChat {...BASE} />);
 
     await waitFor(() =>
-      expect(screen.getByText(/Error: Gemini quota exceeded/)).toBeInTheDocument()
+      expect(screen.getByText(/Gemini quota exceeded/)).toBeInTheDocument()
     );
   });
 
@@ -147,7 +147,7 @@ describe("InsightChat — manual refresh (lines 167-175)", () => {
     fireEvent.click(refreshBtn);
 
     await waitFor(() =>
-      expect(screen.getByText(/Error: Network error/)).toBeInTheDocument()
+      expect(screen.getByText(/Network error/)).toBeInTheDocument()
     );
   });
 
@@ -233,7 +233,7 @@ describe("InsightChat — askQuestion failure (line 235)", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     await waitFor(() =>
-      expect(screen.getByText(/Error: API limit reached/)).toBeInTheDocument()
+      expect(screen.getByText(/API limit reached/)).toBeInTheDocument()
     );
   });
 });

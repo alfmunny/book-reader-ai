@@ -58,12 +58,12 @@ describe("SelectionToolbar", () => {
     jest.restoreAllMocks();
   });
 
-  it("renders nothing when there is no selection", () => {
-    const { container } = render(
+  it("renders no toolbar buttons when there is no selection", () => {
+    render(
       <SelectionToolbar onRead={jest.fn()} onHighlight={jest.fn()} />
     );
-    // Toolbar div not in document
-    expect(container.firstChild).toBeNull();
+    // No action buttons should be visible — only the sr-only live region remains
+    expect(document.querySelector('[role="toolbar"]')).not.toBeInTheDocument();
   });
 
   it("shows toolbar when text >= 2 chars is selected inside reader", () => {

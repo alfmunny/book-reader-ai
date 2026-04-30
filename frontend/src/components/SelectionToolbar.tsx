@@ -97,7 +97,22 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     };
   }, [selection]);
 
-  if (!selection) return null;
+  // Build action list for the screen-reader announcement
+  const actionLabels = [
+    onRead && "Read",
+    onHighlight && "Highlight",
+    onNote && "Note",
+    onChat && "Chat",
+    onVocab && "Look up word",
+  ].filter(Boolean).join(", ");
+
+  // Always render a live region so AT can announce when selection activates.
+  // When there is no selection, render just the sr-only live region (no visual toolbar).
+  if (!selection) {
+    return (
+      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only" />
+    );
+  }
 
   const scrollEl = document.getElementById("reader-scroll");
   const scrollRect = scrollEl?.getBoundingClientRect();
@@ -127,6 +142,11 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
   const btnClass = "flex items-center gap-1.5 px-3 py-2 text-white text-xs font-medium rounded-lg hover:bg-white/10 active:bg-white/20 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 focus-visible:ring-offset-stone-800";
 
   return (
+    <>
+      {/* Always-present live region: announces toolbar actions when selection activates (WCAG 4.1.3) */}
+      <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {`Text selected. Press Tab for actions: ${actionLabels}`}
+      </span>
     <div
       ref={toolbarRef}
       role="toolbar"
@@ -165,5 +185,6 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
         </button>
       )}
     </div>
+    </>
   );
 }

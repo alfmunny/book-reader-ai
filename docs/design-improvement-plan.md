@@ -563,3 +563,4 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-04-30 | Profile page sections: added aria-labelledby to 4 sections and aria-label to 1 error-state section — exposes them as role="region" landmarks for screen reader landmark navigation (P3) | app/profile/page.tsx | #2533 |
 | 2026-04-30 | Home page sections: added aria-labelledby to 5 sections and aria-label to 1 conditional-heading section (Your Library) — exposes them as role="region" landmarks (P3) | app/page.tsx | #2535 |
 | 2026-04-30 | Notes book page sections: added aria-label to 5 sections (Annotations, AI Insights, Vocabulary, per-chapter, Book-level Insights) — landmark navigation for screen readers (P3) | app/notes/[bookId]/page.tsx | #2537 |
+| 2026-04-30 | Search results sections: added aria-label={title} to ResultsSection <section> — exposes Annotations, Vocabulary, Chapters result groups as role="region" landmarks (P3) | app/search/page.tsx | #2539 |

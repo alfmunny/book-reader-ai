@@ -21,10 +21,11 @@ describe("export URL links announce new-tab to screen readers (closes #2334)", (
 
   it("reader page Obsidian export toast link has sr-only new-tab announcement", () => {
     const src = read("../app/reader/[bookId]/page.tsx");
-    // The obsidian toast export link renders the URL as visible text inside <a target="_blank">
-    const idx = src.indexOf("obsidianToast.startsWith");
+    // The obsidian visual toast export link renders the URL inside <a target="_blank">
+    // Anchor on the visual toast comment (after the always-present mirror)
+    const idx = src.indexOf("Obsidian export toast — visual only");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 700);
+    const window = src.slice(idx, idx + 1100);
     expect(window).toMatch(/opens in new tab/);
   });
 });

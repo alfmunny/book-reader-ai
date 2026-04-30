@@ -704,7 +704,7 @@ describe("ReaderPage.branches2 — Obsidian export toast variants", () => {
     await userEvent.click(exportBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Vault not found")).toBeInTheDocument();
+      expect(screen.getAllByText("Vault not found")[0]).toBeInTheDocument();
     });
   });
 
@@ -718,7 +718,7 @@ describe("ReaderPage.branches2 — Obsidian export toast variants", () => {
     await userEvent.click(exportBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Export failed")).toBeInTheDocument();
+      expect(screen.getAllByText("Export failed")[0]).toBeInTheDocument();
     });
   });
 
@@ -1079,7 +1079,7 @@ describe("ReaderPage.branches2 — onSaveInsight callback in InsightChat", () =>
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Insight saved to book notes")).toBeInTheDocument();
+      expect(screen.getAllByText("Insight saved to book notes")[0]).toBeInTheDocument();
     });
   });
 
@@ -1098,7 +1098,7 @@ describe("ReaderPage.branches2 — onSaveInsight callback in InsightChat", () =>
     await waitFor(() => expect(mockSaveInsight).toHaveBeenCalled());
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to save insight")).toBeInTheDocument();
+      expect(screen.getAllByText("Failed to save insight")[0]).toBeInTheDocument();
     });
   });
 
@@ -2219,7 +2219,7 @@ describe("ReaderPage.branches2 — mobile chat onSaveInsight success", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Insight saved to book notes")).toBeInTheDocument();
+      expect(screen.getAllByText("Insight saved to book notes")[0]).toBeInTheDocument();
     });
   });
 });
@@ -2348,7 +2348,7 @@ describe("ReaderPage.branches2 — mobile onSaveInsight failure toast", () => {
     await userEvent.click(saveBtns[saveBtns.length - 1]);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to save insight")).toBeInTheDocument();
+      expect(screen.getAllByText("Failed to save insight")[0]).toBeInTheDocument();
     }, { timeout: 3000 });
   });
 });

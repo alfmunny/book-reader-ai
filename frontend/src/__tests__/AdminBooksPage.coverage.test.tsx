@@ -157,7 +157,7 @@ describe("AdminBooksPage — import already_cached branch (line 111)", () => {
     await userEvent.click(screen.getByRole("button", { name: /import book/i }));
 
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(/already cached/i),
+      expect(screen.getAllByText(/already cached/i)[0]).toBeInTheDocument(),
     );
   });
 
@@ -248,7 +248,7 @@ describe("AdminBooksPage — handleRetranslate (lines 118-136)", () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(/paragraphs/i),
+      expect(screen.getAllByText(/paragraphs/i)[0]).toBeInTheDocument(),
     );
   });
 
@@ -450,7 +450,7 @@ describe("AdminBooksPage — retryFailedForLang (line 350)", () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(/Re-queued/i),
+      expect(screen.getAllByText(/Re-queued/i)[0]).toBeInTheDocument(),
     );
   });
 
@@ -570,7 +570,7 @@ describe("AdminBooksPage — bulk retranslate (lines 423-460)", () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(/chapters/i),
+      expect(screen.getAllByText(/chapters/i)[0]).toBeInTheDocument(),
     );
   });
 

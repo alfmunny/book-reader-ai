@@ -557,8 +557,10 @@ export default function QueueTab({ adminFetch }: Props) {
         </div>
       )}
 
+      {/* aria-live-toast-mirror: always-present so AT announces toast (WCAG 4.1.3) */}
+      <span aria-live="polite" aria-atomic="true" className="sr-only">{toast ?? ""}</span>
       {toast && (
-        <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-center justify-between gap-3">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-center justify-between gap-3">
           <span>{toast}</span>
           <button
             type="button"

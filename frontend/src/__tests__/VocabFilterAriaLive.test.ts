@@ -16,10 +16,12 @@ describe("Vocabulary filter word count aria-live (closes #2073)", () => {
   });
 
   it("aria-live and aria-atomic are near the word count", () => {
-    const idx = src.indexOf('aria-live="polite"');
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 100), idx + 200);
-    expect(window).toContain("filteredVocab.length");
+    // Anchor on filteredVocab.length to find the right live region
+    // (reader page may have multiple aria-live spans)
+    const vocabIdx = src.indexOf("filteredVocab.length");
+    expect(vocabIdx).toBeGreaterThan(-1);
+    const window = src.slice(Math.max(0, vocabIdx - 200), vocabIdx + 200);
+    expect(window).toContain('aria-live="polite"');
     expect(window).toContain('aria-atomic="true"');
   });
 });

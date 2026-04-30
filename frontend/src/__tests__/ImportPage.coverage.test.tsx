@@ -255,17 +255,13 @@ describe("ImportPage — isDone auto-redirect", () => {
 // Line 263: "Skip" button before import starts — navigates to nextUrl
 // ─────────────────────────────────────────────────────────────────────────────
 describe("ImportPage — skip before import", () => {
-  it("Skip button navigates to reader URL without starting import", async () => {
-    const { useRouter } = require("next/navigation");
-    const push = jest.fn();
-    useRouter.mockReturnValue({ push });
-
+  it("Skip link points to reader URL without starting import", async () => {
     importBookStream.mockReturnValue(makeStream([]));
     render(<BookImportPage />);
 
-    // "Skip" is visible before import starts
-    fireEvent.click(screen.getByRole("button", { name: /^Skip$/i }));
-    expect(push).toHaveBeenCalledWith("/reader/42");
+    // "Skip" is a semantic Link rendered as <a> before import starts
+    const skipLink = screen.getByRole("link", { name: /^Skip$/i });
+    expect(skipLink).toHaveAttribute("href", "/reader/42");
     expect(importBookStream).not.toHaveBeenCalled();
   });
 });

@@ -309,15 +309,12 @@ describe("ImportPage — skipToReading (lines 213-216)", () => {
     expect(push).toHaveBeenCalledWith("/reader/42");
   });
 
-  it("Skip button before import start navigates to reader", async () => {
-    const { useRouter } = require("next/navigation");
-    const push = jest.fn();
-    useRouter.mockReturnValue({ push });
-
+  it("Skip link before import start points to reader URL", async () => {
     render(<BookImportPage />);
 
-    await clickAndFlush(/^Skip$/i);
-    expect(push).toHaveBeenCalledWith("/reader/42");
+    // "Skip" is now a semantic Link — check href rather than router.push
+    const skipLink = screen.getByRole("link", { name: /^Skip$/i });
+    expect(skipLink).toHaveAttribute("href", "/reader/42");
   });
 });
 

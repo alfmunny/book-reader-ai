@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   importBookStream,
@@ -200,12 +201,12 @@ export default function BookImportPage() {
                 >
                   Start import
                 </button>
-                <button
-                  onClick={() => router.push(nextUrl)}
+                <Link
+                  href={nextUrl}
                   className="rounded-lg border border-amber-300 text-amber-700 px-4 min-h-[44px] md:min-h-0 text-sm font-medium hover:bg-amber-50 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                 >
                   Skip
-                </button>
+                </Link>
               </div>
             </div>
           )}

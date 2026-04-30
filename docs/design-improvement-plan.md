@@ -543,3 +543,5 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-04-30 | TTS gender toggle: aria-label omits "Click to switch" when button is disabled (WCAG 4.1.2) | components/TTSControls.tsx | #2494 |
 | 2026-04-30 | QueueTab inline spinner: aria-label changed from empty string to undefined when not loading (WCAG 4.1.2) | components/QueueTab.tsx | #2496 |
 | 2026-04-30 | Deck form counters: text-stone-400 → text-stone-600 on parchment background; contrast 2.3:1 → 6.7:1 (WCAG 1.4.3) | app/decks/new/page.tsx | #2497 |
+| 2026-04-30 | Annotations tutorial: added "Select a phrase (partial text selection)" section with Shift+Arrow, Arrow Left/Right, Escape keyboard flow documentation | docs/tutorials/annotations.md | #2500 |
+| 2026-04-30 | Flashcard done-state: tabIndex=-1 + useEffect focus-move on done=true; prevents focus loss when grade buttons unmount (WCAG 2.4.3) | app/vocabulary/flashcards/page.tsx | #2501 |

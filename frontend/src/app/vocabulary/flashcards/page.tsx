@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -53,6 +53,7 @@ export default function FlashcardsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const doneContainerRef = useRef<HTMLDivElement>(null);
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [decksFetchError, setDecksFetchError] = useState(false);
   const [decksRetryTick, setDecksRetryTick] = useState(0);
@@ -111,6 +112,12 @@ export default function FlashcardsPage() {
     document.title = "Flashcards — Book Reader AI";
     return () => { document.title = "Vocabulary — Book Reader AI"; };
   }, []);
+
+  // Move focus to done-state container so keyboard/screen-reader users don't lose
+  // their position when grade buttons unmount (WCAG 2.4.3 Focus Order, closes #2501)
+  useEffect(() => {
+    if (done) doneContainerRef.current?.focus();
+  }, [done]);
 
   const currentCard = cards[currentIndex] ?? null;
 
@@ -265,7 +272,7 @@ export default function FlashcardsPage() {
 
         {/* Done state */}
         {!fetchError && done ? (
-          <div role="status" className="flex flex-col items-center gap-4 py-16 text-center">
+          <div ref={doneContainerRef} role="status" tabIndex={-1} className="flex flex-col items-center gap-4 py-16 text-center focus:outline-none">
             <CheckIcon className="w-12 h-12 text-green-500" />
             <h2 className="font-serif text-2xl text-ink">All done for today!</h2>
             <p className="text-sm text-stone-600">

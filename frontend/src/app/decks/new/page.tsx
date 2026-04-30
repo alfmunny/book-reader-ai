@@ -103,10 +103,17 @@ export default function DecksNewPage() {
               maxLength={80}
               data-testid="deck-name-input"
               aria-invalid={!!error}
-              aria-describedby={error ? "deck-form-error" : undefined}
+              aria-describedby={error ? "deck-form-error" : "deck-name-counter"}
               className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 placeholder:text-stone-600 ${error ? "border-red-400 focus:ring-red-400" : "border-amber-200 focus:ring-amber-400"}`}
               placeholder="e.g. German verbs"
             />
+            <p
+              id="deck-name-counter"
+              aria-live="polite"
+              className={`text-xs mt-1 text-right ${name.length >= 70 ? "text-red-500" : "text-stone-400"}`}
+            >
+              {name.length}/80
+            </p>
           </div>
 
           <div>
@@ -123,9 +130,17 @@ export default function DecksNewPage() {
               maxLength={500}
               rows={3}
               data-testid="deck-description-input"
+              aria-describedby="deck-description-counter"
               className="w-full rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
               placeholder="What kind of words will go here?"
             />
+            <p
+              id="deck-description-counter"
+              aria-live="polite"
+              className={`text-xs mt-1 text-right ${description.length >= 490 ? "text-red-500" : "text-stone-400"}`}
+            >
+              {description.length}/500
+            </p>
           </div>
 
           <fieldset>

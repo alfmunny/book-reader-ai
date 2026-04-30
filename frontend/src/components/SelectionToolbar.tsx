@@ -29,7 +29,22 @@ function extractContext(node: Node | null): string {
 
 export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, onVocab }: Props) {
   const [selection, setSelection] = useState<SelectionAction | null>(null);
+  const [focusedToolbarIdx, setFocusedToolbarIdx] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
+
+  function handleToolbarKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const btns = Array.from(toolbarRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    if (btns.length === 0) return;
+    const cur = btns.indexOf(document.activeElement as HTMLButtonElement);
+    const base = cur >= 0 ? cur : focusedToolbarIdx;
+    const next = e.key === "ArrowRight"
+      ? (base + 1) % btns.length
+      : (base - 1 + btns.length) % btns.length;
+    setFocusedToolbarIdx(next);
+    btns[next].focus();
+  }
 
   useEffect(() => {
     function handleSelection() {
@@ -145,45 +160,88 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     <>
       {/* Always-present live region: announces toolbar actions when selection activates (WCAG 4.1.3) */}
       <span role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {`Text selected. Press Tab for actions: ${actionLabels}`}
+        {`Text selected. Use arrow keys for actions: ${actionLabels}`}
       </span>
     <div
       ref={toolbarRef}
       role="toolbar"
       aria-label="Text selection actions"
+      onKeyDown={handleToolbarKeyDown}
       className="fixed z-50 flex items-center gap-0.5 bg-stone-800/95 backdrop-blur rounded-xl shadow-xl border border-white/10 px-1 py-1 animate-fade-in"
       style={{ left, top }}
     >
-      {onRead && (
-        <button aria-label="Read aloud" onClick={() => handleAction(onRead)} className={btnClass}>
-          <SpeakerIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          Read
-        </button>
-      )}
-      {onHighlight && (
-        <button aria-label="Highlight" onClick={() => { if (!onHighlight || !selection) return; onHighlight(selection.text); window.getSelection()?.removeAllRanges(); setSelection(null); }} className={btnClass}>
-          <HighlightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          Highlight
-        </button>
-      )}
-      {onNote && (
-        <button aria-label="Add note" onClick={() => handleAction(onNote)} className={btnClass}>
-          <NoteIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          Note
-        </button>
-      )}
-      {onChat && (
-        <button aria-label="Ask AI" onClick={() => handleAction(onChat)} className={btnClass}>
-          <ChatIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          Chat
-        </button>
-      )}
-      {onVocab && (
-        <button aria-label="Look up word" onClick={handleVocabAction} className={btnClass}>
-          <WordIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-          Word
-        </button>
-      )}
+      {(() => {
+        let _i = 0;
+        const readIdx      = onRead      ? _i++ : -1;
+        const highlightIdx = onHighlight ? _i++ : -1;
+        const noteIdx      = onNote      ? _i++ : -1;
+        const chatIdx      = onChat      ? _i++ : -1;
+        const vocabIdx     = onVocab     ? _i++ : -1;
+        return (
+          <>
+            {onRead && (
+              <button
+                aria-label="Read aloud"
+                tabIndex={focusedToolbarIdx === readIdx ? 0 : -1}
+                onFocus={() => setFocusedToolbarIdx(readIdx)}
+                onClick={() => handleAction(onRead)}
+                className={btnClass}
+              >
+                <SpeakerIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                Read
+              </button>
+            )}
+            {onHighlight && (
+              <button
+                aria-label="Highlight"
+                tabIndex={focusedToolbarIdx === highlightIdx ? 0 : -1}
+                onFocus={() => setFocusedToolbarIdx(highlightIdx)}
+                onClick={() => { if (!onHighlight || !selection) return; onHighlight(selection.text); window.getSelection()?.removeAllRanges(); setSelection(null); }}
+                className={btnClass}
+              >
+                <HighlightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                Highlight
+              </button>
+            )}
+            {onNote && (
+              <button
+                aria-label="Add note"
+                tabIndex={focusedToolbarIdx === noteIdx ? 0 : -1}
+                onFocus={() => setFocusedToolbarIdx(noteIdx)}
+                onClick={() => handleAction(onNote)}
+                className={btnClass}
+              >
+                <NoteIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                Note
+              </button>
+            )}
+            {onChat && (
+              <button
+                aria-label="Ask AI"
+                tabIndex={focusedToolbarIdx === chatIdx ? 0 : -1}
+                onFocus={() => setFocusedToolbarIdx(chatIdx)}
+                onClick={() => handleAction(onChat)}
+                className={btnClass}
+              >
+                <ChatIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                Chat
+              </button>
+            )}
+            {onVocab && (
+              <button
+                aria-label="Look up word"
+                tabIndex={focusedToolbarIdx === vocabIdx ? 0 : -1}
+                onFocus={() => setFocusedToolbarIdx(vocabIdx)}
+                onClick={handleVocabAction}
+                className={btnClass}
+              >
+                <WordIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                Word
+              </button>
+            )}
+          </>
+        );
+      })()}
     </div>
     </>
   );

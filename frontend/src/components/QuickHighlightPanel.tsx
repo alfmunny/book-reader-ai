@@ -37,7 +37,23 @@ export default function QuickHighlightPanel({
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focusedToolbarIdx, setFocusedToolbarIdx] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  function handleToolbarKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const btns = Array.from(toolbarRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    if (btns.length === 0) return;
+    const cur = btns.indexOf(document.activeElement as HTMLButtonElement);
+    const base = cur >= 0 ? cur : focusedToolbarIdx;
+    const next = e.key === "ArrowRight"
+      ? (base + 1) % btns.length
+      : (base - 1 + btns.length) % btns.length;
+    setFocusedToolbarIdx(next);
+    btns[next].focus();
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -110,15 +126,19 @@ export default function QuickHighlightPanel({
       data-testid="quick-highlight-panel"
     >
     <div
+      ref={toolbarRef}
       role="toolbar"
       aria-label="Highlight options"
+      onKeyDown={handleToolbarKeyDown}
       className="flex items-center gap-2 bg-white border border-amber-200 rounded-xl shadow-xl px-3 py-2.5"
     >
-      {COLORS.map((c) => (
+      {COLORS.map((c, idx) => (
         <button
           key={c.key}
           title={c.label}
-          onClick={() => handleColor(c.key)}
+          onClick={() => { setFocusedToolbarIdx(idx); handleColor(c.key); }}
+          onFocus={() => setFocusedToolbarIdx(idx)}
+          tabIndex={focusedToolbarIdx === idx ? 0 : -1}
           disabled={busy}
           aria-label={c.label}
           aria-pressed={existingAnnotation?.color === c.key}
@@ -135,6 +155,8 @@ export default function QuickHighlightPanel({
         <button
           title="Add note"
           onClick={onOpenNote}
+          onFocus={() => setFocusedToolbarIdx(COLORS.length)}
+          tabIndex={focusedToolbarIdx === COLORS.length ? 0 : -1}
           disabled={busy}
           aria-label="Add note"
           className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
@@ -148,6 +170,8 @@ export default function QuickHighlightPanel({
         <button
           title="Delete highlight"
           onClick={handleDelete}
+          onFocus={() => setFocusedToolbarIdx(COLORS.length + (onOpenNote ? 1 : 0))}
+          tabIndex={focusedToolbarIdx === COLORS.length + (onOpenNote ? 1 : 0) ? 0 : -1}
           disabled={busy}
           aria-label="Delete highlight"
           className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-red-500 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"

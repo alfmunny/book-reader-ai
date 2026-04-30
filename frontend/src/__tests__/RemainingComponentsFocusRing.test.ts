@@ -20,7 +20,7 @@ const seedPopularButton = fs.readFileSync(
 
 describe("QuickHighlightPanel button focus rings (closes #2183)", () => {
   it("color picker button has focus ring", () => {
-    const idx = quickHighlightPanel.indexOf("onClick={() => handleColor");
+    const idx = quickHighlightPanel.indexOf("aria-pressed");
     expect(idx).toBeGreaterThan(-1);
     const window = quickHighlightPanel.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
@@ -29,14 +29,14 @@ describe("QuickHighlightPanel button focus rings (closes #2183)", () => {
   it("add note button has focus ring", () => {
     const idx = quickHighlightPanel.indexOf('"Add note"');
     expect(idx).toBeGreaterThan(-1);
-    const window = quickHighlightPanel.slice(idx, idx + 400);
+    const window = quickHighlightPanel.slice(idx, idx + 600);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
   it("delete highlight button has red focus ring", () => {
     const idx = quickHighlightPanel.indexOf('"Delete highlight"');
     expect(idx).toBeGreaterThan(-1);
-    const window = quickHighlightPanel.slice(idx, idx + 400);
+    const window = quickHighlightPanel.slice(idx, idx + 600);
     expect(window).toContain("focus-visible:ring-red-400");
   });
 });

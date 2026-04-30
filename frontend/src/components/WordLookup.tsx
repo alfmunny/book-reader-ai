@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/components/Icons";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 interface Definition {
   partOfSpeech: string;
@@ -26,6 +27,7 @@ export default function WordLookup({ word, position, language, onClose }: Props)
   const [error, setError] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const lang = language?.split(/[-_]/)[0] ?? "en";
+  useFocusTrap(ref);
 
   useEffect(() => {
     setLoading(true);
@@ -72,6 +74,16 @@ export default function WordLookup({ word, position, language, onClose }: Props)
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  // Move focus into dialog on open; restore to trigger on close
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    ref.current?.focus();
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Position the popup near the word, but keep it within viewport
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
   const style: React.CSSProperties = isMobile
@@ -86,10 +98,12 @@ export default function WordLookup({ word, position, language, onClose }: Props)
   return (
     <div
       ref={ref}
+      tabIndex={-1}
       role="dialog"
+      aria-modal="true"
       aria-label={`Word definition: ${word}`}
       style={style}
-      className="relative sm:w-72 max-h-64 overflow-y-auto rounded-xl border border-amber-300 bg-white shadow-lg p-3 text-sm"
+      className="relative sm:w-72 max-h-64 overflow-y-auto rounded-xl border border-amber-300 bg-white shadow-lg p-3 text-sm focus:outline-none"
     >
       <button
         type="button"

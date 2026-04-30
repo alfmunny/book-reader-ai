@@ -309,6 +309,19 @@ export default function ReaderPage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<string | null>(null);
 
+  // Shortcuts panel container ref — used to close panel on click-outside
+  const shortcutsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showShortcuts) return;
+    function handleClick(e: MouseEvent) {
+      if (shortcutsRef.current && !shortcutsRef.current.contains(e.target as Node)) {
+        setShowShortcuts(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showShortcuts]);
+
   // Read settings on mount (translationLang uses lazy useState above)
   useEffect(() => {
     const s = getSettings();
@@ -1241,7 +1254,7 @@ export default function ReaderPage() {
           </button>
 
           {/* Keyboard shortcuts help — desktop only */}
-          <div className="relative hidden md:block">
+          <div ref={shortcutsRef} className="relative hidden md:block">
             <button
               onClick={() => setShowShortcuts((v) => !v)}
               title="Keyboard shortcuts (?)"

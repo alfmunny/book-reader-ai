@@ -113,6 +113,7 @@ export default function QuickHighlightPanel({
           onClick={() => handleColor(c.key)}
           disabled={busy}
           aria-label={c.label}
+          aria-pressed={existingAnnotation?.color === c.key}
           className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <span

@@ -22,7 +22,7 @@ describe("QuickHighlightPanel button focus rings (closes #2183)", () => {
   it("color picker button has focus ring", () => {
     const idx = quickHighlightPanel.indexOf("onClick={() => handleColor");
     expect(idx).toBeGreaterThan(-1);
-    const window = quickHighlightPanel.slice(idx, idx + 300);
+    const window = quickHighlightPanel.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 

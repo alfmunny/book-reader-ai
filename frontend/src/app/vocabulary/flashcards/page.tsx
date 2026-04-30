@@ -54,6 +54,7 @@ export default function FlashcardsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const doneContainerRef = useRef<HTMLDivElement>(null);
+  const flipButtonRef = useRef<HTMLButtonElement>(null);
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [decksFetchError, setDecksFetchError] = useState(false);
   const [decksRetryTick, setDecksRetryTick] = useState(0);
@@ -118,6 +119,15 @@ export default function FlashcardsPage() {
   useEffect(() => {
     if (done) doneContainerRef.current?.focus();
   }, [done]);
+
+  // Move focus to the "Show answer" button when the card advances to the next card
+  // so keyboard users don't lose their position (WCAG 2.4.3 Focus Order, closes #2507)
+  useEffect(() => {
+    if (!done && cards.length > 0) flipButtonRef.current?.focus();
+  // currentIndex changing means a new card was loaded; cards.length guards against
+  // the initial render where no card exists yet.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
 
   const currentCard = cards[currentIndex] ?? null;
 
@@ -347,6 +357,7 @@ export default function FlashcardsPage() {
             {!flipped && (
               <div className="flex justify-center">
                 <button
+                  ref={flipButtonRef}
                   onClick={() => setFlipped(true)}
                   aria-label="Show answer (Space or Enter)"
                   className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 flex flex-col items-center gap-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"

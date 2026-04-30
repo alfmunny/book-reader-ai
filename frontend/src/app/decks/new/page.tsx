@@ -97,6 +97,7 @@ export default function DecksNewPage() {
             <input
               id="deck-name"
               type="text"
+              aria-required="true"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={80}

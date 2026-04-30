@@ -26,13 +26,13 @@ describe("UndoToast", () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1), { timeout: 500 });
   });
 
-  it("auto-dismisses after 3 seconds by calling onDone", async () => {
+  it("auto-dismisses after 5 seconds by calling onDone", async () => {
     jest.useFakeTimers();
     const onDone = jest.fn();
     render(<UndoToast message="Highlight deleted" onUndo={jest.fn()} onDone={onDone} />);
 
     await act(async () => {
-      jest.advanceTimersByTime(3300);
+      jest.advanceTimersByTime(5300);
     });
 
     expect(onDone).toHaveBeenCalledTimes(1);
@@ -45,7 +45,7 @@ describe("UndoToast", () => {
     render(<UndoToast message="Highlight deleted" onUndo={onUndo} onDone={onDone} />);
 
     await act(async () => {
-      jest.advanceTimersByTime(3300);
+      jest.advanceTimersByTime(5300);
     });
 
     expect(onUndo).not.toHaveBeenCalled();

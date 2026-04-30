@@ -27,9 +27,9 @@ test("calls onDone after the timer fires", () => {
   // onDone not called before timers fire
   expect(onDone).not.toHaveBeenCalled();
 
-  // Advance past the 2000ms visibility timer
+  // Advance past the 4000ms visibility timer (#2515: was 2000ms)
   act(() => {
-    jest.advanceTimersByTime(2000);
+    jest.advanceTimersByTime(4000);
   });
 
   // Still not called — there is a 300ms fade-out delay after the first timer

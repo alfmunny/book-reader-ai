@@ -567,3 +567,4 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-04-30 | Profile Obsidian Export section: added aria-label="Obsidian Export" — missed in #2533 sweep, section was role="generic" and invisible to landmark navigation (P3) | app/profile/page.tsx | #2541 |
 | 2026-05-01 | CollapseHeading disclosure buttons: added aria-controls prop referencing controlled region id — WAI-ARIA disclosure pattern for AT programmatic navigation (P3) | app/notes/[bookId]/page.tsx | #2543 |
 | 2026-05-01 | DeckCard article: added aria-labelledby={`deck-name-${deck.id}`} and id on <h2> — multiple unnamed article landmarks on decks page made distinguishable for screen reader navigation (P3) | components/DeckCard.tsx | #2545 |
+| 2026-05-01 | Reader translation Display mode: replaced orphan <label> with <p id> + role="group" aria-labelledby — WCAG 1.3.1 group label association for Inline/Side-by-side toggle (P3) | app/reader/[bookId]/page.tsx | #2547 |

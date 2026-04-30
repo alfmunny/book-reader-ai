@@ -114,8 +114,8 @@ test("back button navigates to vocabulary page", async () => {
   render(<FlashcardsPage />);
   await waitFor(() => screen.getByText("All done for today!"));
 
-  await userEvent.click(screen.getByText("Back to Vocabulary"));
-  expect(mockPush).toHaveBeenCalledWith("/vocabulary");
+  const backLink = screen.getByRole("link", { name: "Back to Vocabulary" });
+  expect(backLink).toHaveAttribute("href", "/vocabulary");
 });
 
 test("shows progress bar", async () => {

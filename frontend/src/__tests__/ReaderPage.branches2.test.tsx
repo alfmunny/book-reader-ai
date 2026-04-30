@@ -1485,14 +1485,13 @@ describe("ReaderPage.branches2 — chapter without title", () => {
 // ─── Error state: 'Back to library' fires router.push('/') ───────────────────
 
 describe("ReaderPage.branches2 — error state navigation", () => {
-  it("'Back to library' button calls router.push('/') in error state", async () => {
+  it("'Back to library' link points to / in error state", async () => {
     mockGetBookChapters.mockRejectedValue(new Error("Book not found"));
     render(<ReaderPage />);
     await flushPromises();
 
     const link = await screen.findByText("Back to library");
-    await userEvent.click(link);
-    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(link).toHaveAttribute("href", "/");
   });
 });
 

@@ -1486,12 +1486,12 @@ export default function ReaderPage() {
                   >
                     Retry
                   </button>
-                  <button
-                    onClick={() => router.push("/")}
-                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                  <Link
+                    href="/"
+                    className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >
                     Back to library
-                  </button>
+                  </Link>
                 </div>
               </div>
             ) : (

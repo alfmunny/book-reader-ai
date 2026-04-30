@@ -100,7 +100,8 @@ describe("QueueTab focus rings (closes #2176)", () => {
 
 describe("Reader page focus rings (closes #2176)", () => {
   it("Library back button has focus-visible ring", () => {
-    const idx = readerPage.indexOf('router.push("/")');
+    // Back to library is now a Link — anchor by href="/"
+    const idx = readerPage.indexOf('href="/"');
     expect(idx).toBeGreaterThan(-1);
     const window = readerPage.slice(idx, idx + 300);
     expect(window).toContain("focus-visible:ring-amber-400");

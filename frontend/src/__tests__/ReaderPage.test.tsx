@@ -336,8 +336,7 @@ describe("ReaderPage — error state", () => {
     render(<ReaderPage />);
     await flushPromises();
     const link = await screen.findByText("Back to library");
-    await userEvent.click(link);
-    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(link).toHaveAttribute("href", "/");
   });
 
   it("shows Retry button in error state", async () => {

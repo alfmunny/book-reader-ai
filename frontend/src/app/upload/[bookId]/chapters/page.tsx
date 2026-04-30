@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { getDraftChapters, confirmChapters, DraftChapter, ApiError } from "@/lib/api";
 import { TrashIcon, ArrowLeftIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
@@ -103,13 +104,12 @@ export default function ChapterEditorPage() {
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
               Retry
             </button>
-            <button
-              type="button"
-              onClick={() => router.push("/upload")}
-              className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            <Link
+              href="/upload"
+              className="px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm hover:bg-amber-50 transition-colors inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               Try another file
-            </button>
+            </Link>
           </div>
         </div>
       </main>
@@ -124,12 +124,12 @@ export default function ChapterEditorPage() {
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 shrink-0">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push("/upload")}
+            <Link
+              href="/upload"
               className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
               <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
-            </button>
+            </Link>
             <h1 className="font-serif text-lg font-semibold text-ink">
               Review Chapters
               <span className="ml-2 text-sm font-normal text-stone-600">({chapters.length} detected)</span>

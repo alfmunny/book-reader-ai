@@ -18,12 +18,12 @@ describe("Home page tab-nav and CTA touch targets (closes #853)", () => {
     checkAround("setTab(key)");
   });
 
-  it("Upload tab button has min-h-[44px]", () => {
-    checkAround('router.push("/upload")');
+  it("Upload nav link has min-h-[44px]", () => {
+    checkAround('href="/upload"');
   });
 
-  it("Notes tab button has min-h-[44px]", () => {
-    checkAround('router.push("/notes")');
+  it("Notes nav link has min-h-[44px]", () => {
+    checkAround('href="/notes"');
   });
 
   it("Discover Books CTA has min-h-[44px]", () => {

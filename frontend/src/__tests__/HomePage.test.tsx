@@ -198,19 +198,18 @@ describe("HomePage — signed-in state", () => {
 
   it("shows 'Your Notes' tab when authenticated", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: "Your Notes" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Your Notes" })).toBeInTheDocument();
   });
 
   it("shows 'Your Word List' tab when authenticated", async () => {
     await renderHome();
-    expect(screen.getByRole("button", { name: "Your Word List" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Your Word List" })).toBeInTheDocument();
   });
 
   it("navigates to /vocabulary when 'Your Word List' is clicked", async () => {
-    const user = userEvent.setup();
     await renderHome();
-    await user.click(screen.getByRole("button", { name: "Your Word List" }));
-    expect(mockPush).toHaveBeenCalledWith("/vocabulary");
+    const link = screen.getByRole("link", { name: "Your Word List" });
+    expect(link).toHaveAttribute("href", "/vocabulary");
   });
 
   it("calls getMe and getReadingProgress on mount", async () => {
@@ -234,15 +233,13 @@ describe("HomePage — signed-in state", () => {
     expect(screen.queryByTestId("admin-tab")).not.toBeInTheDocument();
   });
 
-  it("clicking Admin tab navigates to /admin", async () => {
+  it("Admin tab has href /admin", async () => {
     mockGetMe.mockResolvedValue({ hasGeminiKey: true, role: "admin", approved: true });
-    const user = userEvent.setup();
     await renderHome();
     await waitFor(() => {
       expect(screen.queryByTestId("admin-tab")).toBeInTheDocument();
     });
-    await user.click(screen.getByTestId("admin-tab"));
-    expect(mockPush).toHaveBeenCalledWith("/admin");
+    expect(screen.getByTestId("admin-tab")).toHaveAttribute("href", "/admin");
   });
 });
 

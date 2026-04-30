@@ -31,6 +31,10 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
   const [selection, setSelection] = useState<SelectionAction | null>(null);
   const [focusedToolbarIdx, setFocusedToolbarIdx] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
+  // Track the timestamp of the last pointer event to distinguish mouse vs keyboard selections.
+  const lastPointerDownAt = useRef<number>(0);
+  // Save the element that had focus before we moved it to the toolbar.
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   function handleToolbarKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -76,6 +80,38 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     document.addEventListener("selectionchange", handleSelection);
     return () => document.removeEventListener("selectionchange", handleSelection);
   }, []);
+
+  // Record the time of the last pointer event (capture phase so it fires before selectionchange).
+  useEffect(() => {
+    function handlePointerDown() {
+      lastPointerDownAt.current = Date.now();
+    }
+    document.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    return () => document.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+  }, []);
+
+  // Auto-focus the first toolbar button when a keyboard-driven selection appears.
+  // Keyboard selection heuristic: selectionchange fires >300ms after the last pointerdown.
+  // Restore focus to the previously focused element when the toolbar is dismissed.
+  // Guard: if the toolbar already contains the focused element (user navigated into it),
+  // don't steal focus back — JSDOM can re-fire selectionchange on focus changes, which
+  // would re-trigger this effect with a new object reference and reset focus to button[0].
+  useEffect(() => {
+    if (selection) {
+      const isKeyboardSelection = Date.now() - lastPointerDownAt.current > 300;
+      const toolbarAlreadyFocused = toolbarRef.current?.contains(document.activeElement as Node) ?? false;
+      if (isKeyboardSelection && !toolbarAlreadyFocused) {
+        prevFocusRef.current = document.activeElement as HTMLElement | null;
+        const firstBtn = toolbarRef.current?.querySelector<HTMLButtonElement>("button");
+        firstBtn?.focus();
+      }
+    } else {
+      if (prevFocusRef.current) {
+        prevFocusRef.current.focus();
+        prevFocusRef.current = null;
+      }
+    }
+  }, [selection]);
 
   // Dismiss on Escape key
   useEffect(() => {

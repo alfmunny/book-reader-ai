@@ -1221,7 +1221,11 @@ export default function QueueTab({ adminFetch }: Props) {
             <div className="flex items-baseline justify-between flex-wrap gap-2">
               <h3 className="font-medium text-ink flex items-center gap-2">
                 Cost estimate (to drain queue)
-                {loadingCost && <Spinner />}
+                {loadingCost && (
+                  <span role="status" aria-label="Refreshing cost estimate">
+                    <Spinner />
+                  </span>
+                )}
               </h3>
               <span className="text-[11px] text-stone-600">
                 {cost.pending_items} pending across {cost.pending_books} book
@@ -1328,7 +1332,7 @@ export default function QueueTab({ adminFetch }: Props) {
               doesn't reflow and shift the filter pills. */}
           <span className="font-medium flex items-center gap-1.5">
             Items
-            <span className="inline-block w-3 h-3 align-middle">
+            <span className="inline-block w-3 h-3 align-middle" role="status" aria-label={loadingItems ? "Loading items" : ""}>
               {loadingItems && <Spinner />}
             </span>
           </span>

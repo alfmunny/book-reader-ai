@@ -481,6 +481,7 @@ export default function TTSControls({
             onChange={(e) => seekTo(Number(e.target.value))}
             className="flex-1 accent-amber-700"
             aria-label="Playback position"
+            aria-valuetext={formatTime(globalCurrentTime)}
           />
           <span className="text-xs text-amber-700 tabular-nums w-10">
             {formatTime(globalDuration)}
@@ -498,6 +499,8 @@ export default function TTSControls({
           value={rate}
           onChange={(e) => changeRate(Number(e.target.value))}
           className="w-24 md:w-20 accent-amber-700"
+          aria-label="Playback speed"
+          aria-valuetext={`${rate.toFixed(1)}×`}
         />
         <span>{rate.toFixed(1)}×</span>
       </label>

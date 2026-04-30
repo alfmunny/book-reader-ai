@@ -36,6 +36,7 @@ export default function QuickHighlightPanel({
   onOpenNote,
 }: Props) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ export default function QuickHighlightPanel({
   async function handleColor(colorKey: ColorKey) {
     if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       let saved: Annotation;
       if (existingAnnotation) {
@@ -82,29 +84,35 @@ export default function QuickHighlightPanel({
       onClose();
     } catch {
       setBusy(false);
+      setError("Save failed — tap a colour to retry.");
     }
   }
 
   async function handleDelete() {
     if (!existingAnnotation || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await deleteAnnotation(existingAnnotation.id);
       onDeleted(existingAnnotation.id);
       onClose();
     } catch {
       setBusy(false);
+      setError("Delete failed — tap to retry.");
     }
   }
 
   return (
     <div
       ref={panelRef}
+      style={{ position: "fixed", top, left, zIndex: 1000 }}
+      className="flex flex-col gap-1 animate-fade-in"
+      data-testid="quick-highlight-panel"
+    >
+    <div
       role="toolbar"
       aria-label="Highlight options"
-      style={{ position: "fixed", top, left, zIndex: 1000 }}
-      className="flex items-center gap-2 bg-white border border-amber-200 rounded-xl shadow-xl px-3 py-2.5 animate-fade-in"
-      data-testid="quick-highlight-panel"
+      className="flex items-center gap-2 bg-white border border-amber-200 rounded-xl shadow-xl px-3 py-2.5"
     >
       {COLORS.map((c) => (
         <button
@@ -149,6 +157,12 @@ export default function QuickHighlightPanel({
           </span>
         </button>
       )}
+    </div>
+    {error && (
+      <p role="alert" className="text-xs text-red-600 bg-white border border-red-200 rounded-lg px-2.5 py-1.5 shadow-sm">
+        {error}
+      </p>
+    )}
     </div>
   );
 }

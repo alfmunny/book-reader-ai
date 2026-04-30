@@ -443,6 +443,8 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Reader annotation/highlight save: sr-only role=status live region announces "Note saved" / "Highlight applied" after AnnotationToolbar or QuickHighlightPanel saves — WCAG 4.1.3 (closes #2402) | reader/[bookId]/page.tsx | #2403 |
 | 2026-04-30 | SelectionToolbar: always renders sr-only aria-live="polite" live region; announces available actions when text selection activates — prevents silent WCAG 4.1.3 violation for keyboard selection (closes #2404) | components/SelectionToolbar.tsx | #2405 |
 | 2026-04-30 | AnnotationToolbar: close button disabled (opacity-40, cursor-not-allowed) and backdrop click no-op while save/delete in flight — prevents silent data loss risk (closes #2406) | components/AnnotationToolbar.tsx | #2407 |
+| 2026-04-30 | InsightChat: API error responses now render as a distinct red alert bubble (role="alert", AlertCircleIcon) instead of appearing as normal AI assistant messages (closes #2408) | components/InsightChat.tsx | #2409 |
+| 2026-04-30 | QuickHighlightPanel: added error state — save/delete failures now show inline role="alert" message ("Save failed — tap a colour to retry") instead of silently resetting the panel (closes #2410) | components/QuickHighlightPanel.tsx | #2411 |
 
 ---
 

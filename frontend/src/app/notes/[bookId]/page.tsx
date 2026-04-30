@@ -498,7 +498,7 @@ export default function BookNotesPage() {
       <div>
         {/* Annotations */}
         {annCount > 0 && (
-          <section>
+          <section aria-label="Annotations">
             <CollapseHeading
               label="Annotations"
               count={annCount}
@@ -530,7 +530,7 @@ export default function BookNotesPage() {
 
         {/* Insights */}
         {insCount > 0 && (
-          <section>
+          <section aria-label="AI Insights">
             <CollapseHeading
               label="AI Insights"
               count={insCount}
@@ -578,7 +578,7 @@ export default function BookNotesPage() {
 
         {/* Vocabulary */}
         {vocCount > 0 && (
-          <section>
+          <section aria-label="Vocabulary">
             <CollapseHeading
               label="Vocabulary"
               count={vocCount}
@@ -628,7 +628,7 @@ export default function BookNotesPage() {
           const total = chAnns.length + chIns.length + chVoc.length;
           const key = `ch-${ch}`;
           return (
-            <section key={ch}>
+            <section key={ch} aria-label={chapterLabel(chapters, ch)}>
               <CollapseHeading
                 label={chapterLabel(chapters, ch)}
                 count={total}
@@ -664,7 +664,7 @@ export default function BookNotesPage() {
         })}
 
         {bookLevelIns.length > 0 && (
-          <section>
+          <section aria-label="Book-level Insights">
             <CollapseHeading
               label="Book-level Insights"
               count={bookLevelIns.length}

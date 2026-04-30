@@ -449,6 +449,8 @@ Systematic WCAG 2.1 AA pass covering loading states, dialog semantics, focus man
 | 2026-04-30 | Vocabulary DefinitionSheet: replaced silent .catch() on getWordDefinition failure with error state — shows "Couldn't load definition" + Retry button instead of misleading "No definition found." (closes #2417) | app/vocabulary/page.tsx | #2418 |
 | 2026-04-30 | VocabWordTooltip (reader): replaced silent .catch() on getWordDefinition failure with error state — shows "Couldn't load definition" + Retry button instead of misleading "No definition found." in core reading flow (closes #2419) | components/VocabWordTooltip.tsx | #2420 |
 | 2026-04-30 | ReadingStats: replaced silent null return on fetch failure with error state — shows "Couldn't load reading stats" message and Retry button (closes #2412) | components/ReadingStats.tsx | #2413 |
+| 2026-04-30 | Reader vocab sidebar: replaced silent .catch() on getVocabulary failure with error state — shows "Couldn't load vocabulary" + Retry button instead of misleading "No vocabulary saved yet" (closes #2421) | app/reader/[bookId]/page.tsx | #2422 |
+| 2026-04-30 | Upload page: replaced silent getUploadQuota() failure with "Couldn't load quota" error state + Retry button — prevents misleading active upload zone when user may be at limit (closes #2423) | app/upload/page.tsx | #2424 |
 
 ---
 

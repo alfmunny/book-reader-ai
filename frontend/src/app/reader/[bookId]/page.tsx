@@ -2524,6 +2524,43 @@ export default function ReaderPage() {
               )}
             </button>
 
+            <div className="relative">
+              <button
+                onClick={() => setShowShortcuts((v) => !v)}
+                aria-label="Keyboard shortcuts"
+                aria-expanded={showShortcuts}
+                aria-controls="shortcuts-panel-mobile"
+                className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
+                  showShortcuts
+                    ? "bg-amber-700 text-white border-amber-700"
+                    : "text-amber-700 bg-amber-50 border-amber-200"
+                }`}
+              ><KeyboardIcon className="w-5 h-5" /></button>
+              {showShortcuts && (
+                <div id="shortcuts-panel-mobile" role="region" aria-label="Keyboard shortcuts" className="absolute bottom-full right-0 mb-2 w-56 bg-white border border-amber-200 rounded-xl shadow-lg z-50 p-3 animate-slide-up">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-600 mb-2">Keyboard Shortcuts</p>
+                  <div className="space-y-1.5">
+                    {[
+                      { keys: ["Space"], label: "Play / Pause TTS" },
+                      { keys: ["←", "→"], label: "Previous / Next chapter" },
+                      { keys: ["F"], label: "Toggle focus mode" },
+                      { keys: ["?"], label: "Show this panel" },
+                      { keys: ["Esc"], label: "Close panels" },
+                    ].map(({ keys, label }) => (
+                      <div key={label} className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-stone-600">{label}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {keys.map((k) => (
+                            <kbd key={k} className="inline-flex items-center justify-center min-w-[22px] h-5 px-1 rounded border border-stone-200 bg-stone-50 text-[10px] font-mono text-stone-600">{k}</kbd>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className={`h-11 w-11 flex items-center justify-center rounded-lg border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${

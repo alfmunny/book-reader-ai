@@ -37,7 +37,7 @@ Click a highlighted sentence to re-open the toolbar. The same color swatches app
 
 ## View all annotations in the sidebar
 
-Open the **Notes** tab in the reader sidebar (click the **Notes** button in the right toolbar, or press **N**). All highlights and notes for the current chapter appear here, in reading order.
+Open the **Notes** tab in the reader sidebar by clicking the **Notes** button in the right toolbar (desktop) or the notepad icon in the mobile bottom bar. All highlights and notes for the current chapter appear here, in reading order.
 
 Switch chapters to see annotations from other parts of the book.
 
@@ -49,8 +49,16 @@ Go to [Notes](/notes) in the main navigation. This page lists every book you hav
 
 From the Notes page, click **Export** to download your annotations as a JSON file. You can also configure Obsidian export in your profile to push annotations directly to your Obsidian vault — see [Export vocabulary to Obsidian](obsidian-export.md) for setup instructions.
 
+## Keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| `N` | Enter sentence-selection mode — navigate sentences with `J`/`K` or `↑`/`↓`, then press `Enter` to open the annotation toolbar for that sentence |
+| `W` | Switch to word-selection mode while in sentence-selection mode — navigate words with `H`/`L` or `←`/`→`, press `Enter` to look up a word |
+| `Escape` | Exit sentence or word selection mode |
+
 ## Tips
 
 - **Color coding:** use different colors to tag annotations by type (e.g. yellow for vocabulary, blue for plot, green for favorite passages).
 - **Inline reading:** the small dot next to an annotated sentence lets you read your note without leaving the text flow — hover (desktop) or tap (mobile) to expand it.
-- **Keyboard shortcut:** press **N** in the reader to toggle the Notes sidebar.
+- **Keyboard users:** press `N` to enter sentence-selection mode. Navigate to a sentence with `J`/`K`, then press `Enter` to annotate it without using the mouse.

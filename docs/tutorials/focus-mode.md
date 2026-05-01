@@ -44,6 +44,8 @@ When paragraph focus is on and you hover a paragraph, the HUD shows a **Read par
 | `→` | Next chapter |
 | `Space` | Play / pause TTS |
 | `?` | Show all keyboard shortcuts |
+| `N` | Enter sentence-selection mode — navigate sentences with `J`/`K`, press `Enter` to annotate |
+| `W` | Switch to word-selection mode within sentence-selection — navigate words with `H`/`L`, press `Enter` to look up |
 
 ## Tips
 

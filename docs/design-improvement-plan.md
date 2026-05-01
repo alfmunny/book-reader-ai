@@ -245,7 +245,10 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.47 | Flashcard feedback question word span missing lang — added lang={currentCard.language} to word span in grade prompt — WCAG 3.1.2 fix — closes #2289 | ✅ Done |
 | 2026-05-01 | 12.1 | SentenceReader note-dot button aria-controls + note card id; InsightChat ContextChip/MsgContextBlock useId + aria-controls; AnnotationsSidebar toggle aria-haspopup="dialog" — WAI-ARIA disclosure/dialog pattern — closes #2563 (PR #2564) | ✅ Done |
 | 2026-05-01 | 12.2 | VocabWordTooltip, WordLookup, WordActionDrawer, decks add-word picker, reader chat sheet dialogs: added aria-describedby — WAI-ARIA dialog description for screen-reader context on focus — closes #2565 (PR #2566) | ✅ Done |
-| 2026-05-01 | 12.3 | Vocabulary page rapid-delete silently swallowed backend errors — added deleteErrorMsg state + visible red error banner with 5 s auto-dismiss; both handleDelete commit-path and onDone toast-expiry path now surface errors — closes #2603 | 🔄 In progress |
+| 2026-05-01 | 12.3 | Vocabulary page rapid-delete silently swallowed backend errors — added deleteErrorMsg state + visible red error banner with 5 s auto-dismiss; both handleDelete commit-path and onDone toast-expiry path now surface errors — closes #2603 (PR #2604) | ✅ Done |
+| 2026-05-01 | 12.4 | Decks page (deleteDeck), deck detail page (removeDeckMember), notes page (deleteAnnotation + deleteInsight) — all 8 UndoToast commit paths had bare .catch(() => {}) silent errors — added error banner state to each — closes #2605 (PR #2606) | ✅ Done |
+| 2026-05-01 | 12.5 | Upload chapter review dead-end — user removing all chapters saw disabled confirm button with no explanation; added empty-state <li> with "at least one chapter needed" message and escape link — closes #2607 (PR #2608) | ✅ Done |
+| 2026-05-01 | 12.6 | TTSControls idle Read button had no accessible name — WCAG 4.1.2 violation; screen readers announced "Read, dimmed" with no context; added aria-label="Read aloud — loading chapter text" — closes #2609 (PR #2610) | 🔄 In progress |
 
 ---
 

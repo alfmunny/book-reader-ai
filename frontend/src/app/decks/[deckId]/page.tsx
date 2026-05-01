@@ -35,6 +35,7 @@ export default function DeckDetailPage() {
   const [error, setError] = useState(false);
   const [removedToast, setRemovedToast] = useState<VocabularyWord | null>(null);
   const [removeMemberErrorMsg, setRemoveMemberErrorMsg] = useState<string | null>(null);
+  const [addMemberErrorMsg, setAddMemberErrorMsg] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
@@ -127,6 +128,8 @@ export default function DeckDetailPage() {
             ? { ...prev, members: prev.members.filter((id) => id !== vocabularyId) }
             : prev,
         );
+        setAddMemberErrorMsg("Could not add word to deck — please try again");
+        setTimeout(() => setAddMemberErrorMsg(null), 5000);
       });
     },
     [deckId],
@@ -323,6 +326,12 @@ export default function DeckDetailPage() {
       {removeMemberErrorMsg && (
         <div role="alert" aria-live="assertive" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
           {removeMemberErrorMsg}
+        </div>
+      )}
+
+      {addMemberErrorMsg && (
+        <div role="alert" aria-live="assertive" className="fixed bottom-32 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
+          {addMemberErrorMsg}
         </div>
       )}
 

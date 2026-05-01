@@ -355,7 +355,7 @@ export default function FlashcardsPage() {
                     className={`py-3 rounded-xl border font-medium text-sm transition-colors min-h-[44px] md:min-h-0 disabled:opacity-50 flex flex-col items-center justify-center gap-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${className}`}
                   >
                     <span>{label}</span>
-                    <span className="text-[10px] opacity-60 font-normal" aria-hidden="true">{i + 1}</span>
+                    <span className="text-[10px] text-stone-500 font-normal" aria-hidden="true">{i + 1}</span>
                   </button>
                 ))}
               </div>
@@ -371,7 +371,7 @@ export default function FlashcardsPage() {
                   className="px-6 py-3 bg-amber-700 text-white rounded-xl font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 flex flex-col items-center gap-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                 >
                   <span>Show answer</span>
-                  <span className="text-[10px] opacity-60 font-normal" aria-hidden="true">Space / Enter</span>
+                  <span className="text-[10px] text-white font-normal" aria-hidden="true">Space / Enter</span>
                 </button>
               </div>
             )}

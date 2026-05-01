@@ -447,6 +447,7 @@ export default function TTSControls({
         ) : (
           <button
             disabled
+            aria-label="Read aloud — loading chapter text"
             className="rounded-lg bg-amber-100 text-amber-400 px-4 py-2.5 md:py-1.5 text-sm cursor-not-allowed min-h-[44px] md:min-h-0 flex items-center gap-1.5"
           >
             <PlayIcon className="w-3.5 h-3.5" aria-hidden="true" />

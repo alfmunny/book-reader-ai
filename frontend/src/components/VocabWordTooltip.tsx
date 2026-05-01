@@ -78,10 +78,12 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
       role="dialog"
       aria-modal="true"
       aria-labelledby="vocab-tooltip-title"
+      aria-describedby="vocab-tooltip-desc"
       tabIndex={-1}
       className="fixed z-50 w-72 rounded-xl border border-amber-200 bg-white shadow-xl overflow-hidden focus:outline-none"
       style={{ left, top }}
     >
+      <span id="vocab-tooltip-desc" className="sr-only">Word definition and vocabulary actions</span>
       {/* Header */}
       <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-amber-100">
         <span id="vocab-tooltip-title" lang={lang ?? undefined} className="font-semibold text-ink text-sm">{word}</span>

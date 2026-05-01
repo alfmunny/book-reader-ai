@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { SpeakerIcon, SaveIcon, NoteIcon, CheckCircleIcon, CloseIcon, RetryIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useScrollLock } from "@/lib/useScrollLock";
@@ -40,6 +40,7 @@ export default function WordActionDrawer({
   onSaveWord,
   onAnnotate,
 }: Props) {
+  const descId = useId();
   const [result, setResult] = useState<LookupResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -133,8 +134,10 @@ export default function WordActionDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={`Word lookup: ${word}`}
+        aria-describedby={descId}
         className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl border-t border-amber-200 max-h-[60vh] overflow-y-auto safe-bottom animate-slide-up focus:outline-none"
       >
+        <span id={descId} className="sr-only">Word actions and definition lookup</span>
         {/* Drag handle + close button */}
         <div className="relative flex items-center justify-center px-4 py-2">
           <div className="w-10 h-1 bg-amber-200 rounded-full" />

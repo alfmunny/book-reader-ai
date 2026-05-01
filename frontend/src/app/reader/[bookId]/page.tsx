@@ -87,6 +87,9 @@ export default function ReaderPage() {
   } | null>(null);
   const [typographyAnchorPos, setTypographyAnchorPos] = useState<{ x: number; y: number } | null>(null);
   const [scrollTargetSentence, setScrollTargetSentence] = useState<string | undefined>();
+  // Keyboard sentence-selection mode (#2584)
+  const [sentenceSelectMode, setSentenceSelectMode] = useState(false);
+  const [selectedSentenceFlatIdx, setSelectedSentenceFlatIdx] = useState<number | null>(null);
   const didUrlScrollRef = useRef(false);
 
   // Vocabulary toast
@@ -761,7 +764,65 @@ export default function ReaderPage() {
         if (insideToolbar || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
       }
 
-      if (e.key === "ArrowLeft" && chapterIndex > 0) {
+      // In sentence-selection mode, ↑/↓/J/K navigate; Enter annotates; Esc exits.
+      if (sentenceSelectMode) {
+        if (e.key === "ArrowUp" || e.key === "k" || e.key === "K") {
+          e.preventDefault();
+          const segs = Array.from(document.querySelectorAll<HTMLElement>("[data-seg]"))
+            .map((el) => Number(el.getAttribute("data-seg")))
+            .sort((a, b) => a - b);
+          const cur = segs.indexOf(selectedSentenceFlatIdx ?? segs[0]);
+          const next = segs[Math.max(0, cur - 1)];
+          setSelectedSentenceFlatIdx(next);
+          document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          return;
+        }
+        if (e.key === "ArrowDown" || e.key === "j" || e.key === "J") {
+          e.preventDefault();
+          const segs = Array.from(document.querySelectorAll<HTMLElement>("[data-seg]"))
+            .map((el) => Number(el.getAttribute("data-seg")))
+            .sort((a, b) => a - b);
+          const cur = segs.indexOf(selectedSentenceFlatIdx ?? -1);
+          const next = segs[Math.min(segs.length - 1, cur + 1)];
+          setSelectedSentenceFlatIdx(next);
+          document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (selectedSentenceFlatIdx !== null) {
+            const el = document.querySelector<HTMLElement>(`[data-seg="${selectedSentenceFlatIdx}"]`);
+            const sentenceText = el?.textContent?.trim() ?? "";
+            if (sentenceText && session?.backendToken) {
+              setAnnotationPanel({ sentenceText, chapterIndex });
+            }
+          }
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setSentenceSelectMode(false);
+          setSelectedSentenceFlatIdx(null);
+          return;
+        }
+      }
+
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        if (sentenceSelectMode) {
+          setSentenceSelectMode(false);
+          setSelectedSentenceFlatIdx(null);
+        } else {
+          const segs = Array.from(document.querySelectorAll<HTMLElement>("[data-seg]"))
+            .map((el) => Number(el.getAttribute("data-seg")))
+            .sort((a, b) => a - b);
+          if (segs.length > 0) {
+            setSentenceSelectMode(true);
+            setSelectedSentenceFlatIdx(segs[0]);
+            document.querySelector(`[data-seg="${segs[0]}"]`)?.scrollIntoView({ block: "nearest" });
+          }
+        }
+      } else if (e.key === "ArrowLeft" && chapterIndex > 0) {
         e.preventDefault();
         goToChapter(chapterIndex - 1);
       } else if (e.key === "ArrowRight" && chapterIndex < chapters.length - 1) {
@@ -792,7 +853,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [chapterIndex, chapters, focusMode]);
+  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, session]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);
@@ -999,6 +1060,7 @@ export default function ReaderPage() {
               { keys: ["←", "→"], label: "Previous / Next chapter" },
               { keys: ["F"], label: "Toggle focus mode" },
               { keys: ["?"], label: "Show this panel" },
+              { keys: ["N"], label: "Sentence selection mode" },
               { keys: ["Esc"], label: "Close panels" },
             ].map(({ keys, label }) => (
               <div key={label} className="flex items-center justify-between gap-2">
@@ -1333,7 +1395,8 @@ export default function ReaderPage() {
                     { keys: ["←", "→"], label: "Previous / Next chapter" },
                     { keys: ["F"], label: "Toggle focus mode" },
                     { keys: ["?"], label: "Show this panel" },
-                    { keys: ["Esc"], label: "Close panels" },
+                    { keys: ["N"], label: "Sentence selection mode" },
+              { keys: ["Esc"], label: "Close panels" },
                   ].map(({ keys, label }) => (
                     <div key={label} className="flex items-center justify-between gap-2">
                       <span className="text-xs text-stone-600">{label}</span>
@@ -1464,6 +1527,12 @@ export default function ReaderPage() {
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Sentence-selection mode status (WCAG 4.1.3 — live region so screen readers announce mode) */}
+        {sentenceSelectMode && (
+          <div role="status" aria-live="polite" className="sr-only">
+            Sentence selection mode active. Use J/K or arrow keys to navigate, Enter to annotate, N or Escape to exit.
+          </div>
+        )}
         {/* Reader */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <div
@@ -1549,6 +1618,7 @@ export default function ReaderPage() {
                   onAnnotate={session?.backendToken ? (text, ci) => {
                     setAnnotationPanel({ sentenceText: text, chapterIndex: ci });
                   } : undefined}
+                  selectedSentenceFlatIdx={selectedSentenceFlatIdx}
                   focusParagraphIdx={paragraphFocus ? focusParagraphIdx : undefined}
                   paragraphFocusEnabled={paragraphFocus}
                   onParagraphVisible={handleParagraphVisible}

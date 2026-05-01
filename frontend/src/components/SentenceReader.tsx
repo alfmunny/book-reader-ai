@@ -328,6 +328,8 @@ interface Props {
   showAnnotations?: boolean;
   /** Word to highlight (amber pulse) inside the flash-target sentence. */
   scrollTargetWord?: string;
+  /** Flat index of the sentence currently selected in keyboard sentence-select mode. */
+  selectedSentenceFlatIdx?: number | null;
   /** Vocabulary words to show with a subtle dotted underline in all segments. */
   vocabWords?: Set<string>;
   /** When set, dims all paragraphs except this index. */
@@ -457,6 +459,7 @@ export default function SentenceReader({
   onAnnotate,
   showAnnotations = true,
   scrollTargetWord,
+  selectedSentenceFlatIdx = null,
   vocabWords,
   focusParagraphIdx,
   paragraphFocusEnabled = false,
@@ -758,6 +761,7 @@ export default function SentenceReader({
           // with a note" — multi-note rendering is a separate follow-up.
           const noteAnnotation = segAnns.find((a) => a.note_text);
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
+          const selectedClass = selectedSentenceFlatIdx === seg.flatIdx ? "ring-2 ring-blue-500 bg-blue-50 rounded" : "";
           // Keyboard accessibility for annotated segments (WCAG 2.1.1 / #2553):
           // A span with an existing annotation is an interactive control — keyboard
           // users must be able to focus it and activate it to edit or delete it.
@@ -810,7 +814,7 @@ export default function SentenceReader({
               onPointerUp={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
               onPointerCancel={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
               onPointerMove={(onWordTap || onAnnotate) ? handlePointerMove : undefined}
-              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${extraClass}`}
+              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${selectedClass} ${extraClass}`}
             >
               {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatches)}
               {noteAnnotation?.note_text && (

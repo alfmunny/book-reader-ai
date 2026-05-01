@@ -1124,6 +1124,7 @@ export default function ReaderPage() {
               { keys: ["F"], label: "Toggle focus mode" },
               { keys: ["?"], label: "Show this panel" },
               { keys: ["N"], label: "Sentence selection mode" },
+              { keys: ["W"], label: "Word mode (in N mode)" },
               { keys: ["Esc"], label: "Close panels" },
             ].map(({ keys, label }) => (
               <div key={label} className="flex items-center justify-between gap-2">
@@ -1459,7 +1460,8 @@ export default function ReaderPage() {
                     { keys: ["F"], label: "Toggle focus mode" },
                     { keys: ["?"], label: "Show this panel" },
                     { keys: ["N"], label: "Sentence selection mode" },
-              { keys: ["Esc"], label: "Close panels" },
+                    { keys: ["W"], label: "Word mode (in N mode)" },
+                    { keys: ["Esc"], label: "Close panels" },
                   ].map(({ keys, label }) => (
                     <div key={label} className="flex items-center justify-between gap-2">
                       <span className="text-xs text-stone-600">{label}</span>
@@ -2716,6 +2718,8 @@ export default function ReaderPage() {
                       { keys: ["←", "→"], label: "Previous / Next chapter" },
                       { keys: ["F"], label: "Toggle focus mode" },
                       { keys: ["?"], label: "Show this panel" },
+                      { keys: ["N"], label: "Sentence selection mode" },
+                      { keys: ["W"], label: "Word mode (in N mode)" },
                       { keys: ["Esc"], label: "Close panels" },
                     ].map(({ keys, label }) => (
                       <div key={label} className="flex items-center justify-between gap-2">

@@ -1415,7 +1415,7 @@ export default function ReaderPage() {
 
       {/* Gemini key required notice — shown when logged in but no API key configured */}
       {translationEnabled && translationUsedProvider === "gemini key required" && (
-        <div className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
+        <div role="status" className="bg-amber-50 border-b border-amber-300 px-4 py-2 text-xs text-amber-800 flex items-center gap-2">
           <span>
             Translation requires a Gemini API key.{" "}
             <Link

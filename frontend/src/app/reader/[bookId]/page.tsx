@@ -103,6 +103,7 @@ export default function ReaderPage() {
 
   // Annotation delete undo toast
   const [deletedAnnotationToast, setDeletedAnnotationToast] = useState<Annotation | null>(null);
+  const [annotationUndoError, setAnnotationUndoError] = useState<string | null>(null);
 
   // Screen-reader announcement for annotation/highlight save success (WCAG 4.1.3)
   const [savedAnnotationMsg, setSavedAnnotationMsg] = useState("");
@@ -1882,6 +1883,13 @@ export default function ReaderPage() {
             />
           )}
 
+          {/* Annotation undo error */}
+          {annotationUndoError && (
+            <div role="alert" aria-live="assertive" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
+              {annotationUndoError}
+            </div>
+          )}
+
           {/* Annotation delete undo toast */}
           {deletedAnnotationToast && (
             <UndoToast
@@ -1898,7 +1906,10 @@ export default function ReaderPage() {
                     color: ann.color,
                   }).then((restored) => {
                     setAnnotations((prev) => [...prev, restored]);
-                  }).catch(() => {});
+                  }).catch(() => {
+                    setAnnotationUndoError("Could not restore annotation — please try again");
+                    setTimeout(() => setAnnotationUndoError(null), 5000);
+                  });
                 }
               }}
               onDone={() => setDeletedAnnotationToast(null)}

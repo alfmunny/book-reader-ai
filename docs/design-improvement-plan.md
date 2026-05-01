@@ -251,7 +251,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-05-01 | 12.6 | TTSControls idle Read button had no accessible name — WCAG 4.1.2 violation; screen readers announced "Read, dimmed" with no context; added aria-label="Read aloud — loading chapter text" — closes #2609 (PR #2610) | ✅ Done |
 | 2026-05-01 | 12.7 | Reader annotation undo-restore silently swallowed createAnnotation errors — user clicked Undo and believed annotation was restored but it was permanently lost on failure; added annotationUndoError state + role="alert" banner — closes #2611 (PR #2612) | ✅ Done |
 | 2026-05-01 | 12.8 | Deck detail add-word silently rolled back on API failure with no user feedback — user saw word appear then disappear with no explanation; added addMemberErrorMsg state + role="alert" banner — closes #2614 (PR #2615) | ✅ Done |
-| 2026-05-01 | 12.9 | Reader enqueue-all (Translate remaining) used blocking browser alert() for all feedback — replaced with inline enqueueToast state (role="status" for success, role="alert" for errors) with 5s auto-dismiss — closes #2617 | ✅ Done |
+| 2026-05-01 | 12.9 | Reader enqueue-all (Translate remaining) used blocking browser alert() for all feedback — replaced with inline enqueueToast state (role="status" for success, role="alert" for errors) with 5s auto-dismiss — closes #2617 (PR #2618) | ✅ Done |
+| 2026-05-01 | 12.10 | Reader retry-failed used blocking browser alert() on error — replaced with inline retryToast state (role="alert") with 5s auto-dismiss — closes #2619 | ✅ Done |
 
 ---
 

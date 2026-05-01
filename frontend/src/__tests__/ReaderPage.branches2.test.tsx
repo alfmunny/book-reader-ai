@@ -751,7 +751,6 @@ describe("ReaderPage.branches2 — handleRetryFailed error", () => {
     mockRetryChapterTranslation.mockRejectedValue(new Error("Retry server error"));
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -768,14 +767,12 @@ describe("ReaderPage.branches2 — handleRetryFailed error", () => {
       await userEvent.click(retryBtn);
       await waitFor(() => {
         expect(mockRetryChapterTranslation).toHaveBeenCalled();
-        expect(alertMock).toHaveBeenCalledWith("Retry server error");
+        expect(screen.getByText("Retry server error")).toBeInTheDocument();
       });
     }
-
-    alertMock.mockRestore();
   });
 
-  it("shows 'Retry failed' alert when retryChapterTranslation throws non-Error", async () => {
+  it("shows 'Retry failed' toast when retryChapterTranslation throws non-Error", async () => {
     mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
     mockGetChapterTranslation.mockRejectedValue({ status: 404 });
     mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
@@ -783,7 +780,6 @@ describe("ReaderPage.branches2 — handleRetryFailed error", () => {
     mockRetryChapterTranslation.mockRejectedValue("non-error string");
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -799,11 +795,9 @@ describe("ReaderPage.branches2 — handleRetryFailed error", () => {
     if (retryBtn) {
       await userEvent.click(retryBtn);
       await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith("Retry failed");
+        expect(screen.getByText("Retry failed")).toBeInTheDocument();
       });
     }
-
-    alertMock.mockRestore();
   });
 });
 

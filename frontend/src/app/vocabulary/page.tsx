@@ -260,6 +260,7 @@ function VocabularyPageContent() {
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [deletedWordToast, setDeletedWordToast] = useState<VocabularyWord | null>(null);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [activeWord, setActiveWord] = useState<{ word: string; lang: string | null } | null>(null);
@@ -357,7 +358,11 @@ function VocabularyPageContent() {
 
   function handleDelete(form: VocabularyWord) {
     if (deletedWordToast) {
-      deleteVocabularyWord(deletedWordToast.word).catch(() => {});
+      const wordBeingCommitted = deletedWordToast.word;
+      deleteVocabularyWord(wordBeingCommitted).catch(() => {
+        setDeleteErrorMsg(`Could not remove "${wordBeingCommitted}" — please try again`);
+        setTimeout(() => setDeleteErrorMsg(null), 5000);
+      });
       setDeletedWordToast(null);
     }
     setWords((prev) => prev.filter((w) => w.word !== form.word));
@@ -523,6 +528,11 @@ function VocabularyPageContent() {
             ) : (
               <span className="text-red-600">{exportMsg}</span>
             )}
+          </div>
+        )}
+        {deleteErrorMsg && (
+          <div className="border border-red-200 bg-red-50 rounded-xl px-4 py-3 text-sm text-red-700 mt-2">
+            {deleteErrorMsg}
           </div>
         )}
       </div>
@@ -730,7 +740,11 @@ function VocabularyPageContent() {
             setDeletedWordToast(null);
           }}
           onDone={() => {
-            deleteVocabularyWord(deletedWordToast.word).catch(() => {});
+            const word = deletedWordToast.word;
+            deleteVocabularyWord(word).catch(() => {
+              setDeleteErrorMsg(`Could not remove "${word}" — please try again`);
+              setTimeout(() => setDeleteErrorMsg(null), 5000);
+            });
             setDeletedWordToast(null);
           }}
         />

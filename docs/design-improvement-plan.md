@@ -245,6 +245,7 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.47 | Flashcard feedback question word span missing lang — added lang={currentCard.language} to word span in grade prompt — WCAG 3.1.2 fix — closes #2289 | ✅ Done |
 | 2026-05-01 | 12.1 | SentenceReader note-dot button aria-controls + note card id; InsightChat ContextChip/MsgContextBlock useId + aria-controls; AnnotationsSidebar toggle aria-haspopup="dialog" — WAI-ARIA disclosure/dialog pattern — closes #2563 (PR #2564) | ✅ Done |
 | 2026-05-01 | 12.2 | VocabWordTooltip, WordLookup, WordActionDrawer, decks add-word picker, reader chat sheet dialogs: added aria-describedby — WAI-ARIA dialog description for screen-reader context on focus — closes #2565 (PR #2566) | ✅ Done |
+| 2026-05-01 | 12.3 | Vocabulary page rapid-delete silently swallowed backend errors — added deleteErrorMsg state + visible red error banner with 5 s auto-dismiss; both handleDelete commit-path and onDone toast-expiry path now surface errors — closes #2603 | 🔄 In progress |
 
 ---
 

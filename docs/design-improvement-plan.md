@@ -250,7 +250,7 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-05-01 | 12.5 | Upload chapter review dead-end — user removing all chapters saw disabled confirm button with no explanation; added empty-state <li> with "at least one chapter needed" message and escape link — closes #2607 (PR #2608) | ✅ Done |
 | 2026-05-01 | 12.6 | TTSControls idle Read button had no accessible name — WCAG 4.1.2 violation; screen readers announced "Read, dimmed" with no context; added aria-label="Read aloud — loading chapter text" — closes #2609 (PR #2610) | ✅ Done |
 | 2026-05-01 | 12.7 | Reader annotation undo-restore silently swallowed createAnnotation errors — user clicked Undo and believed annotation was restored but it was permanently lost on failure; added annotationUndoError state + role="alert" banner — closes #2611 (PR #2612) | ✅ Done |
-| 2026-05-01 | 12.8 | Deck detail add-word silently rolled back on API failure with no user feedback — user saw word appear then disappear with no explanation; added addMemberErrorMsg state + role="alert" banner — closes #2614 | 🔄 In progress |
+| 2026-05-01 | 12.8 | Deck detail add-word silently rolled back on API failure with no user feedback — user saw word appear then disappear with no explanation; added addMemberErrorMsg state + role="alert" banner — closes #2614 (PR #2615) | ✅ Done |
 
 ---
 

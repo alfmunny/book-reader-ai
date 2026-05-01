@@ -758,12 +758,28 @@ export default function SentenceReader({
           // with a note" — multi-note rendering is a separate follow-up.
           const noteAnnotation = segAnns.find((a) => a.note_text);
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
+          // Keyboard accessibility for annotated segments (WCAG 2.1.1 / #2553):
+          // A span with an existing annotation is an interactive control — keyboard
+          // users must be able to focus it and activate it to edit or delete it.
+          const isAnnotationInteractive = !!(showAnnotations && fullSegmentAnnotation && onAnnotationClick);
           return (
             <span
               key={seg.flatIdx}
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
+              role={isAnnotationInteractive ? "button" : undefined}
+              tabIndex={isAnnotationInteractive ? 0 : undefined}
+              aria-label={isAnnotationInteractive ? `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.` : undefined}
+              onKeyDown={isAnnotationInteractive ? (e: React.KeyboardEvent<HTMLSpanElement>) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
+                onAnnotationClick!(fullSegmentAnnotation, {
+                  x: rect.left + rect.width / 2,
+                  y: rect.bottom,
+                });
+              } : undefined}
               onClick={(e) => {
                 if (disabled || !isSegmentLoaded(seg)) return;
                 // Ignore clicks that are the tail of a text-selection drag

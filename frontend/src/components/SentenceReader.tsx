@@ -330,6 +330,10 @@ interface Props {
   scrollTargetWord?: string;
   /** Flat index of the sentence currently selected in keyboard sentence-select mode. */
   selectedSentenceFlatIdx?: number | null;
+  /** When true, words within the selected sentence are rendered as individual spans for keyboard navigation. */
+  wordSelectMode?: boolean;
+  /** Index of the word currently highlighted within the selected sentence in keyboard word-select mode. */
+  selectedWordIdx?: number | null;
   /** Vocabulary words to show with a subtle dotted underline in all segments. */
   vocabWords?: Set<string>;
   /** When set, dims all paragraphs except this index. */
@@ -439,6 +443,31 @@ function buildSegContent(
   return <>{nodes}</>;
 }
 
+/** Render sentence text as per-word spans for keyboard word-select mode. */
+function buildWordSelectContent(text: string, selectedWordIdx: number | null): React.ReactNode {
+  // Split into alternating [word, whitespace, word, ...] tokens to preserve spacing
+  const tokens = text.split(/(\s+)/);
+  let wordIdx = 0;
+  return (
+    <>
+      {tokens.map((token, i) => {
+        if (/^\s+$/.test(token)) return <React.Fragment key={i}>{token}</React.Fragment>;
+        const currentWordIdx = wordIdx++;
+        const isSelected = currentWordIdx === selectedWordIdx;
+        return (
+          <span
+            key={i}
+            data-word-idx={currentWordIdx}
+            className={isSelected ? "ring-2 ring-purple-500 bg-purple-50 rounded px-0.5" : ""}
+          >
+            {token}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 export default function SentenceReader({
   text,
   duration,
@@ -460,6 +489,8 @@ export default function SentenceReader({
   showAnnotations = true,
   scrollTargetWord,
   selectedSentenceFlatIdx = null,
+  wordSelectMode = false,
+  selectedWordIdx = null,
   vocabWords,
   focusParagraphIdx,
   paragraphFocusEnabled = false,
@@ -816,7 +847,9 @@ export default function SentenceReader({
               onPointerMove={(onWordTap || onAnnotate) ? handlePointerMove : undefined}
               className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${selectedClass} ${extraClass}`}
             >
-              {buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatches)}
+              {wordSelectMode && seg.flatIdx === selectedSentenceFlatIdx
+                ? buildWordSelectContent(seg.text, selectedWordIdx)
+                : buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatches)}
               {noteAnnotation?.note_text && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}

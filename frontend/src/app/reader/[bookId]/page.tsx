@@ -90,6 +90,9 @@ export default function ReaderPage() {
   // Keyboard sentence-selection mode (#2584)
   const [sentenceSelectMode, setSentenceSelectMode] = useState(false);
   const [selectedSentenceFlatIdx, setSelectedSentenceFlatIdx] = useState<number | null>(null);
+  // Keyboard word-lookup mode (#2589) — active within sentence-select mode
+  const [wordSelectMode, setWordSelectMode] = useState(false);
+  const [selectedWordIdx, setSelectedWordIdx] = useState<number | null>(null);
   const didUrlScrollRef = useRef(false);
 
   // Vocabulary toast
@@ -764,7 +767,49 @@ export default function ReaderPage() {
         if (insideToolbar || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
       }
 
-      // In sentence-selection mode, ↑/↓/J/K navigate; Enter annotates; Esc exits.
+      // In word-select mode: ←/→/H/L navigate words; Enter opens vocab tooltip; Esc returns to sentence mode.
+      if (wordSelectMode) {
+        if (e.key === "ArrowLeft" || e.key === "h" || e.key === "H") {
+          e.preventDefault();
+          setSelectedWordIdx((prev) => Math.max(0, (prev ?? 0) - 1));
+          return;
+        }
+        if (e.key === "ArrowRight" || e.key === "l" || e.key === "L") {
+          e.preventDefault();
+          if (selectedSentenceFlatIdx !== null) {
+            const segEl = document.querySelector<HTMLElement>(`[data-seg="${selectedSentenceFlatIdx}"]`);
+            const wordCount = (segEl?.textContent?.trim() ?? "").split(/\s+/).filter(Boolean).length;
+            setSelectedWordIdx((prev) => Math.min(wordCount - 1, (prev ?? 0) + 1));
+          }
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (selectedSentenceFlatIdx !== null && selectedWordIdx !== null && session?.backendToken) {
+            const segEl = document.querySelector<HTMLElement>(`[data-seg="${selectedSentenceFlatIdx}"]`);
+            const sentenceText = segEl?.textContent?.trim() ?? "";
+            const words = sentenceText.split(/\s+/).filter(Boolean);
+            const rawWord = words[selectedWordIdx] ?? "";
+            const word = rawWord
+              .replace(/^[^a-zA-ZÀ-ɏЀ-ӿ]+/, "")
+              .replace(/[^a-zA-ZÀ-ɏЀ-ӿ]+$/, "");
+            if (word.length >= 2) {
+              const wordEl = document.querySelector<HTMLElement>(`[data-word-idx="${selectedWordIdx}"]`);
+              const rect = wordEl?.getBoundingClientRect() ?? new DOMRect();
+              setVocabTooltip({ word, context: sentenceText, rect });
+            }
+          }
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          setWordSelectMode(false);
+          setSelectedWordIdx(null);
+          return;
+        }
+      }
+
+      // In sentence-selection mode, ↑/↓/J/K navigate; W enters word mode; Enter annotates; Esc exits.
       if (sentenceSelectMode) {
         if (e.key === "ArrowUp" || e.key === "k" || e.key === "K") {
           e.preventDefault();
@@ -788,6 +833,18 @@ export default function ReaderPage() {
           document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
           return;
         }
+        if (e.key === "w" || e.key === "W") {
+          e.preventDefault();
+          if (selectedSentenceFlatIdx !== null) {
+            const segEl = document.querySelector<HTMLElement>(`[data-seg="${selectedSentenceFlatIdx}"]`);
+            const wordCount = (segEl?.textContent?.trim() ?? "").split(/\s+/).filter(Boolean).length;
+            if (wordCount > 0) {
+              setWordSelectMode(true);
+              setSelectedWordIdx(0);
+            }
+          }
+          return;
+        }
         if (e.key === "Enter") {
           e.preventDefault();
           if (selectedSentenceFlatIdx !== null) {
@@ -803,6 +860,8 @@ export default function ReaderPage() {
           e.preventDefault();
           setSentenceSelectMode(false);
           setSelectedSentenceFlatIdx(null);
+          setWordSelectMode(false);
+          setSelectedWordIdx(null);
           document.getElementById("reader-scroll")?.focus();
           return;
         }
@@ -813,6 +872,8 @@ export default function ReaderPage() {
         if (sentenceSelectMode) {
           setSentenceSelectMode(false);
           setSelectedSentenceFlatIdx(null);
+          setWordSelectMode(false);
+          setSelectedWordIdx(null);
           document.getElementById("reader-scroll")?.focus();
         } else {
           const segs = Array.from(document.querySelectorAll<HTMLElement>("[data-seg]"))
@@ -855,7 +916,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, session]);
+  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);
@@ -1531,10 +1592,10 @@ export default function ReaderPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sentence-selection mode status — sr-only live region for screen readers (WCAG 4.1.3)
             + visible strip for sighted keyboard users (closes #2588) */}
-        {sentenceSelectMode && (
+        {sentenceSelectMode && !wordSelectMode && (
           <>
             <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-              Sentence selection mode active. Use J/K or arrow keys to navigate, Enter to annotate, N or Escape to exit.
+              Sentence selection mode active. Use J/K or arrow keys to navigate, Enter to annotate, W for word mode, N or Escape to exit.
             </div>
             <div
               data-testid="sentence-select-status"
@@ -1545,6 +1606,27 @@ export default function ReaderPage() {
               <span><kbd className="font-mono">J</kbd>/<kbd className="font-mono">K</kbd> navigate</span>
               <span className="text-stone-400" aria-hidden="true">·</span>
               <span><kbd className="font-mono">Enter</kbd> annotate</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">W</kbd> word mode</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">Esc</kbd> exit</span>
+            </div>
+          </>
+        )}
+        {wordSelectMode && (
+          <>
+            <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+              Word selection mode active. Use H/L or arrow keys to navigate words, Enter to look up, Escape to return to sentence mode.
+            </div>
+            <div
+              data-testid="word-select-status"
+              className="word-select-indicator fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-2 bg-stone-800/90 text-white text-xs rounded-full shadow-lg backdrop-blur animate-fade-in pointer-events-none select-none"
+            >
+              <span className="font-medium text-purple-300">Word selection</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">H</kbd>/<kbd className="font-mono">L</kbd> navigate</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">Enter</kbd> look up</span>
               <span className="text-stone-400" aria-hidden="true">·</span>
               <span><kbd className="font-mono">Esc</kbd> exit</span>
             </div>
@@ -1636,6 +1718,8 @@ export default function ReaderPage() {
                     setAnnotationPanel({ sentenceText: text, chapterIndex: ci });
                   } : undefined}
                   selectedSentenceFlatIdx={selectedSentenceFlatIdx}
+                  wordSelectMode={wordSelectMode}
+                  selectedWordIdx={selectedWordIdx}
                   focusParagraphIdx={paragraphFocus ? focusParagraphIdx : undefined}
                   paragraphFocusEnabled={paragraphFocus}
                   onParagraphVisible={handleParagraphVisible}

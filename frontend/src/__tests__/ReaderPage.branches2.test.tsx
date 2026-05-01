@@ -839,7 +839,6 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=0 fresh=null",
     mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -855,12 +854,8 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=0 fresh=null",
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringMatching(/already translated or already queued/i),
-      );
+      expect(screen.getByText(/already translated or already queued/i)).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 
@@ -884,7 +879,6 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=0 failed>0", (
     mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -899,12 +893,8 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=0 failed>0", (
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringMatching(/previously failed/i),
-      );
+      expect(screen.getByText(/previously failed/i)).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 
@@ -927,7 +917,6 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=1 singular", (
     mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 1 });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -941,12 +930,8 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=1 singular", (
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringMatching(/Queued 1 chapter for translation/),
-      );
+      expect(screen.getByText(/Queued 1 chapter for translation/)).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 
@@ -987,7 +972,6 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=0 queued=1 sin
     mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -1003,12 +987,8 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=0 queued=1 sin
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringMatching(/1 chapter is already in the queue/i),
-      );
+      expect(screen.getByText(/1 chapter is already in the queue/i)).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 
@@ -1031,7 +1011,6 @@ describe("ReaderPage.branches2 — translate whole book: non-Error thrown", () =
     mockEnqueueBookTranslation.mockRejectedValue("raw error string");
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -1045,10 +1024,8 @@ describe("ReaderPage.branches2 — translate whole book: non-Error thrown", () =
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith("Failed to queue book");
+      expect(screen.getByText("Failed to queue book")).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 
@@ -2037,7 +2014,6 @@ describe("ReaderPage.branches2 — translate whole book: all already translated"
     mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -2052,12 +2028,8 @@ describe("ReaderPage.branches2 — translate whole book: all already translated"
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringMatching(/All chapters are already translated\./),
-      );
+      expect(screen.getByText(/All chapters are already translated\./)).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 
@@ -2240,7 +2212,6 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=3 plural", () 
     mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 3 });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
     render(<ReaderPage />);
     await flushPromises();
 
@@ -2254,12 +2225,8 @@ describe("ReaderPage.branches2 — translate whole book: enqueued=3 plural", () 
     await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
 
     await waitFor(() => {
-      expect(alertMock).toHaveBeenCalledWith(
-        expect.stringMatching(/Queued 3 chapters for translation/),
-      );
+      expect(screen.getByText(/Queued 3 chapters for translation/)).toBeInTheDocument();
     });
-
-    alertMock.mockRestore();
   });
 });
 

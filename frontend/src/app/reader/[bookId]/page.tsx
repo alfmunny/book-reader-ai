@@ -108,6 +108,9 @@ export default function ReaderPage() {
   const [deletedAnnotationToast, setDeletedAnnotationToast] = useState<Annotation | null>(null);
   const [annotationUndoError, setAnnotationUndoError] = useState<string | null>(null);
 
+  // Retry-failed error toast — replaces blocking alert()
+  const [retryToast, setRetryToast] = useState<string | null>(null);
+
   // Screen-reader announcement for annotation/highlight save success (WCAG 4.1.3)
   const [savedAnnotationMsg, setSavedAnnotationMsg] = useState("");
 
@@ -745,7 +748,8 @@ export default function ReaderPage() {
     try {
       await retryChapterTranslation(bid, chapterIndex, translationLang);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Retry failed");
+      setRetryToast(e instanceof Error ? e.message : "Retry failed");
+      setTimeout(() => setRetryToast(null), 5000);
       return;
     }
     translationCache.current.delete(cacheKey);
@@ -1892,6 +1896,13 @@ export default function ReaderPage() {
           {annotationUndoError && (
             <div role="alert" aria-live="assertive" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
               {annotationUndoError}
+            </div>
+          )}
+
+          {/* Retry-failed error toast — replaces blocking alert() (#2619) */}
+          {retryToast && (
+            <div role="alert" aria-live="assertive" className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
+              {retryToast}
             </div>
           )}
 

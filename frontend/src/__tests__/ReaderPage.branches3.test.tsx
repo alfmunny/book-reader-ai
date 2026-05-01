@@ -784,8 +784,7 @@ describe("ReaderPage.branches3 — handleRetryFailed (lines 609-620)", () => {
 describe("ReaderPage.branches3 — handleRetryFailed catch (lines 614-615)", () => {
   afterEach(() => { jest.useRealTimers(); jest.restoreAllMocks(); });
 
-  it("shows alert when retryChapterTranslation throws (lines 614-615)", async () => {
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
+  it("shows toast when retryChapterTranslation throws (lines 614-615)", async () => {
     (mockGetSettings as jest.Mock).mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: false });
     mockGetChapterTranslation.mockRejectedValue({ status: 404 });
     mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
@@ -824,7 +823,7 @@ describe("ReaderPage.branches3 — handleRetryFailed catch (lines 614-615)", () 
       .find((b) => /retry failed translation/i.test(b.textContent ?? "")) as HTMLElement;
     if (retryBtn) {
       await act(async () => { fireEvent.click(retryBtn); });
-      await waitFor(() => expect(alertMock).toHaveBeenCalledWith("retry service unavailable"));
+      await waitFor(() => expect(screen.getByText("retry service unavailable")).toBeInTheDocument());
     } else {
       expect(mockRequestChapterTranslation).toHaveBeenCalled();
     }

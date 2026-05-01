@@ -290,12 +290,20 @@ export default function FlashcardsPage() {
                 ? `No more cards due in "${decks.find((d) => d.id === selectedDeckId)?.name ?? "this deck"}".`
                 : `You reviewed ${stats?.reviewed_today ?? 0} card${(stats?.reviewed_today ?? 0) !== 1 ? "s" : ""}. Come back tomorrow for more.`}
             </p>
-            <Link
-              href="/vocabulary"
-              className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 inline-flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-            >
-              Back to Vocabulary
-            </Link>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Link
+                href="/decks"
+                className="mt-2 px-5 py-2.5 bg-amber-700 text-white rounded-lg font-medium hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 inline-flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+              >
+                Go to Decks
+              </Link>
+              <Link
+                href="/vocabulary"
+                className="mt-2 px-5 py-2.5 rounded-lg border border-amber-300 text-amber-900 font-medium hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 inline-flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              >
+                Back to Vocabulary
+              </Link>
+            </div>
           </div>
         ) : !fetchError && currentCard ? (
           <div className="space-y-4">

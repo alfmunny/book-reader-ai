@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CloseIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function WordLookup({ word, position, language, onClose }: Props) {
+  const descId = useId();
   const [result, setResult] = useState<LookupResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,9 +103,11 @@ export default function WordLookup({ word, position, language, onClose }: Props)
       role="dialog"
       aria-modal="true"
       aria-label={`Word definition: ${word}`}
+      aria-describedby={descId}
       style={style}
       className="relative sm:w-72 max-h-64 overflow-y-auto rounded-xl border border-amber-300 bg-white shadow-lg p-3 text-sm focus:outline-none"
     >
+      <span id={descId} className="sr-only">Word definition lookup</span>
       <button
         type="button"
         onClick={onClose}

@@ -379,9 +379,11 @@ function AddWordPicker({ candidates, onClose, onAdd }: AddWordPickerProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-word-picker-title"
+        aria-describedby="add-word-picker-desc"
         onClick={(e) => e.stopPropagation()}
         className="w-full md:max-w-md bg-parchment rounded-t-2xl md:rounded-2xl shadow-xl flex flex-col max-h-[80vh] animate-slide-up"
       >
+        <p id="add-word-picker-desc" className="sr-only">Select words to add to this deck</p>
         <div className="flex items-center gap-3 border-b border-amber-200 px-4 py-3">
           <h2
             id="add-word-picker-title"

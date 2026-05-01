@@ -315,7 +315,7 @@ export default function BookImportPage() {
             {isDone ? "Done — opening your book…" : ""}
           </p>
 
-          {started && !isDone && (
+          {started && (
             <div className="flex gap-2">
               {canStartReading && (
                 <button
@@ -325,12 +325,14 @@ export default function BookImportPage() {
                   Start reading now
                 </button>
               )}
-              <button
-                onClick={cancel}
-                className="rounded-lg border border-stone-300 text-stone-600 px-4 min-h-[44px] md:min-h-0 text-sm hover:bg-stone-50 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-              >
-                Cancel
-              </button>
+              {!isDone && (
+                <button
+                  onClick={cancel}
+                  className="rounded-lg border border-stone-300 text-stone-600 px-4 min-h-[44px] md:min-h-0 text-sm hover:bg-stone-50 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -337,7 +337,7 @@ describe("ImportPage — canStartReading shows Start reading now button", () => 
     );
   });
 
-  it("hides 'Start reading now' after done event (redirect takes over)", async () => {
+  it("keeps 'Start reading now' visible after done event as manual escape hatch", async () => {
     jest.useFakeTimers();
     importBookStream.mockReturnValue(
       makeStream([
@@ -349,14 +349,14 @@ describe("ImportPage — canStartReading shows Start reading now button", () => 
     render(<BookImportPage />);
     await clickAndFlush(/start import/i);
 
-    // After done, redirect message shows and Start reading now is hidden
+    // After done, redirect message shows AND Start reading now remains visible
     await waitFor(() =>
       expect(screen.getByText(/Done — opening your book/i)).toBeInTheDocument()
     );
 
     expect(
       screen.queryByRole("button", { name: /Start reading now/i })
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
 
     jest.useRealTimers();
   });

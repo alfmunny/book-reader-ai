@@ -112,7 +112,11 @@ export default function AudioPage() {
         </li>
       ))}
       {audio.length === 0 && (
-        <li className="px-4 py-8 text-center text-amber-700 text-sm">No audio cached.</li>
+        <li className="px-4 py-8 text-center text-amber-700 text-sm">
+          No audio cached.{" "}
+          <a href="/admin/books" className="underline hover:text-amber-900">Go to Books</a>
+          {" "}to generate audio.
+        </li>
       )}
     </ul>
     </div>

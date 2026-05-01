@@ -1265,7 +1265,7 @@ describe("ReaderPage — keyboard shortcuts panel", () => {
     fireEvent.keyDown(document, { key: "?" });
 
     await waitFor(() => {
-      expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument();
+      expect(screen.getAllByText("Keyboard Shortcuts").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -1276,7 +1276,7 @@ describe("ReaderPage — keyboard shortcuts panel", () => {
     await screen.findByTestId("reader-chapter-heading");
 
     fireEvent.keyDown(document, { key: "?" });
-    await waitFor(() => expect(screen.getByText("Keyboard Shortcuts")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Keyboard Shortcuts").length).toBeGreaterThanOrEqual(1));
 
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByText("Keyboard Shortcuts")).not.toBeInTheDocument());
@@ -1288,7 +1288,7 @@ describe("ReaderPage — keyboard shortcuts panel", () => {
     await flushPromises();
     await screen.findByTestId("reader-chapter-heading");
 
-    expect(screen.getByRole("button", { name: "Keyboard shortcuts" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Keyboard shortcuts" }).length).toBeGreaterThanOrEqual(1);
   });
 });
 

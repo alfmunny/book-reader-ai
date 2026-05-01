@@ -72,6 +72,7 @@ export default function AnnotationsSidebar({ annotations, totalCount, onJump, on
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-haspopup="dialog"
         aria-label="Toggle notes panel"
         title="Annotations"
         className="relative shrink-0 flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-xs font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"

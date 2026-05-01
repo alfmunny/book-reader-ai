@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -65,6 +65,7 @@ function ContextChip({
   onRemove?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const ctxId = useId();
   const needsToggle = text.length > CTX_COLLAPSE_AT;
   const shown = !needsToggle || expanded ? text : text.slice(0, CTX_COLLAPSE_AT);
   return (
@@ -72,7 +73,7 @@ function ContextChip({
       <div className="flex items-start gap-1.5">
         <PaperclipIcon className="w-3.5 h-3.5 shrink-0 mt-px text-amber-400" />
         <div className="flex-1 min-w-0">
-          <span lang={bookLanguage ?? undefined} className="italic leading-relaxed">
+          <span id={ctxId} lang={bookLanguage ?? undefined} className="italic leading-relaxed">
             &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
           </span>
           {needsToggle && (
@@ -81,6 +82,7 @@ function ContextChip({
               className="ml-1.5 text-amber-700 hover:text-amber-900 font-medium not-italic min-h-[44px] md:min-h-0 inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               aria-label="Toggle context"
               aria-expanded={expanded}
+              aria-controls={ctxId}
             >
               {expanded ? "less" : "more"}
             </button>
@@ -644,12 +646,13 @@ function MsgContextBlock({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const msgCtxId = useId();
   const needsToggle = text.length > CTX_COLLAPSE_AT;
   const shown = !needsToggle || expanded ? text : text.slice(0, CTX_COLLAPSE_AT);
   return (
     <div className="flex items-start gap-1.5 rounded-lg bg-amber-50/80 border border-amber-100 px-2.5 py-1.5">
       <PaperclipIcon aria-hidden="true" className="w-3 h-3 text-amber-400 shrink-0 mt-px" />
-      <p lang={bookLanguage ?? undefined} className="text-xs text-amber-700 italic leading-relaxed flex-1">
+      <p id={msgCtxId} lang={bookLanguage ?? undefined} className="text-xs text-amber-700 italic leading-relaxed flex-1">
         &ldquo;{shown}{!expanded && needsToggle ? "…" : ""}&rdquo;
         {needsToggle && (
           <button
@@ -657,6 +660,7 @@ function MsgContextBlock({
             className="ml-1.5 text-amber-700 hover:text-amber-900 font-medium not-italic min-h-[44px] md:min-h-0 inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
             aria-label="Toggle context"
             aria-expanded={expanded}
+            aria-controls={msgCtxId}
           >
             {expanded ? "less" : "more"}
           </button>

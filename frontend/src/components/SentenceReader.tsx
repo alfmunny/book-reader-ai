@@ -803,6 +803,7 @@ export default function SentenceReader({
                   className="inline-flex items-center justify-center ml-0.5 align-middle cursor-pointer min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 -m-[19px] p-[19px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   aria-label={`Toggle note for: ${seg.text.slice(0, 60)}`}
                   aria-expanded={expandedNoteFlatIdx === seg.flatIdx}
+                  aria-controls={`note-panel-${seg.flatIdx}`}
                 >
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[noteAnnotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
                 </button>
@@ -844,7 +845,7 @@ export default function SentenceReader({
               .find((a) => a.note_text) ?? null)
           : null;
         const noteCard = expandedAnn?.note_text ? (
-          <div className={`mt-1.5 text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[expandedAnn.color] ?? NOTE_CARD_CLASS.yellow}`}>
+          <div id={`note-panel-${expandedNoteFlatIdx}`} className={`mt-1.5 text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[expandedAnn.color] ?? NOTE_CARD_CLASS.yellow}`}>
             <p className="italic leading-relaxed">{expandedAnn.note_text}</p>
           </div>
         ) : null;

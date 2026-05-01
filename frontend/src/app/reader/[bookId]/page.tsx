@@ -803,6 +803,7 @@ export default function ReaderPage() {
           e.preventDefault();
           setSentenceSelectMode(false);
           setSelectedSentenceFlatIdx(null);
+          document.getElementById("reader-scroll")?.focus();
           return;
         }
       }
@@ -812,6 +813,7 @@ export default function ReaderPage() {
         if (sentenceSelectMode) {
           setSentenceSelectMode(false);
           setSelectedSentenceFlatIdx(null);
+          document.getElementById("reader-scroll")?.focus();
         } else {
           const segs = Array.from(document.querySelectorAll<HTMLElement>("[data-seg]"))
             .map((el) => Number(el.getAttribute("data-seg")))

@@ -56,11 +56,24 @@ describe("Sentence-selection keyboard mode (closes #2584)", () => {
       expect(kbBlock).toMatch(/sentenceSelectMode/);
     });
 
-    it("Esc key exits sentence-selection mode", () => {
+    it("Esc key exits sentence-selection mode and restores focus to reader scroll (WCAG 2.4.3 / closes #2587)", () => {
       const kbIdx = readerSrc.indexOf("handleKeyDown");
       const kbBlock = readerSrc.slice(kbIdx, kbIdx + 8000);
       expect(kbBlock).toMatch(/Escape/);
       expect(kbBlock).toMatch(/sentenceSelectMode/);
+      // Must restore focus to reader-scroll on Esc so keyboard users don't lose their place
+      expect(kbBlock).toMatch(/reader-scroll.*focus\(\)|focus\(\).*reader-scroll/);
+    });
+
+    it("N-key toggle-off also restores focus to reader scroll (WCAG 2.4.3)", () => {
+      const kbIdx = readerSrc.indexOf("handleKeyDown");
+      const kbBlock = readerSrc.slice(kbIdx, kbIdx + 8000);
+      // The N-key toggle-off path must also call .focus() after clearing the mode
+      const nKeyIdx = kbBlock.indexOf('"n" || e.key === "N"');
+      expect(nKeyIdx).not.toBe(-1);
+      const nKeyBlock = kbBlock.slice(nKeyIdx, nKeyIdx + 500);
+      expect(nKeyBlock).toMatch(/setSentenceSelectMode\(false\)/);
+      expect(nKeyBlock).toMatch(/focus\(\)/);
     });
 
     it("passes selectedSentenceFlatIdx to SentenceReader", () => {

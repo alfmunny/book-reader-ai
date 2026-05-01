@@ -55,6 +55,7 @@ export default function FlashcardsPage() {
   const [done, setDone] = useState(false);
   const doneContainerRef = useRef<HTMLDivElement>(null);
   const flipButtonRef = useRef<HTMLButtonElement>(null);
+  const firstGradeRef = useRef<HTMLButtonElement>(null);
   const [decks, setDecks] = useState<DeckSummary[]>([]);
   const [decksFetchError, setDecksFetchError] = useState(false);
   const [decksRetryTick, setDecksRetryTick] = useState(0);
@@ -128,6 +129,12 @@ export default function FlashcardsPage() {
   // the initial render where no card exists yet.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
+
+  // Move focus to the first grade button when the card is flipped so keyboard
+  // users can immediately grade without re-tabbing (WCAG 2.4.3, closes #2591)
+  useEffect(() => {
+    if (flipped && !done) firstGradeRef.current?.focus();
+  }, [flipped, done]);
 
   const currentCard = cards[currentIndex] ?? null;
 
@@ -349,6 +356,7 @@ export default function FlashcardsPage() {
                 {GRADES.map(({ label, value, className }, i) => (
                   <button
                     key={value}
+                    ref={i === 0 ? firstGradeRef : undefined}
                     onClick={() => handleGrade(value)}
                     disabled={submitting}
                     aria-label={`${label} (key ${i + 1})`}

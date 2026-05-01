@@ -1529,11 +1529,26 @@ export default function ReaderPage() {
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sentence-selection mode status (WCAG 4.1.3 — live region so screen readers announce mode) */}
+        {/* Sentence-selection mode status — sr-only live region for screen readers (WCAG 4.1.3)
+            + visible strip for sighted keyboard users (closes #2588) */}
         {sentenceSelectMode && (
-          <div role="status" aria-live="polite" className="sr-only">
-            Sentence selection mode active. Use J/K or arrow keys to navigate, Enter to annotate, N or Escape to exit.
-          </div>
+          <>
+            <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+              Sentence selection mode active. Use J/K or arrow keys to navigate, Enter to annotate, N or Escape to exit.
+            </div>
+            <div
+              data-testid="sentence-select-status"
+              className="sentence-select-indicator fixed bottom-20 md:bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-4 py-2 bg-stone-800/90 text-white text-xs rounded-full shadow-lg backdrop-blur animate-fade-in pointer-events-none select-none"
+            >
+              <span className="font-medium text-amber-300">Sentence selection</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">J</kbd>/<kbd className="font-mono">K</kbd> navigate</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">Enter</kbd> annotate</span>
+              <span className="text-stone-400" aria-hidden="true">·</span>
+              <span><kbd className="font-mono">Esc</kbd> exit</span>
+            </div>
+          </>
         )}
         {/* Reader */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">

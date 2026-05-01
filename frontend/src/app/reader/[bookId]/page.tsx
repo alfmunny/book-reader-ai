@@ -101,6 +101,9 @@ export default function ReaderPage() {
   // Obsidian export toast — { msg: string; ok: boolean } distinguishes success from error
   const [obsidianToast, setObsidianToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
+  // Enqueue-all feedback toast — replaces blocking alert()
+  const [enqueueToast, setEnqueueToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
   // Annotation delete undo toast
   const [deletedAnnotationToast, setDeletedAnnotationToast] = useState<Annotation | null>(null);
   const [annotationUndoError, setAnnotationUndoError] = useState<string | null>(null);
@@ -722,9 +725,11 @@ export default function ReaderPage() {
       } else {
         msg = `All chapters are already translated or already queued.`;
       }
-      alert(msg);
+      setEnqueueToast({ msg, ok: true });
+      setTimeout(() => setEnqueueToast(null), 5000);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to queue book");
+      setEnqueueToast({ msg: e instanceof Error ? e.message : "Failed to queue book", ok: false });
+      setTimeout(() => setEnqueueToast(null), 5000);
     } finally {
       setEnqueueingBook(false);
     }
@@ -1953,6 +1958,18 @@ export default function ReaderPage() {
               ) : (
                 <span className="text-red-600">{obsidianToast.msg}</span>
               )}
+            </div>
+          )}
+
+          {/* Enqueue-all toast — replaces blocking alert() (#2617) */}
+          {enqueueToast?.ok && (
+            <div role="status" aria-live="polite" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-xl px-5 py-3 text-sm shadow-md max-w-sm text-center bg-emerald-50 border border-emerald-200 text-emerald-800">
+              {enqueueToast.msg}
+            </div>
+          )}
+          {enqueueToast && !enqueueToast.ok && (
+            <div role="alert" aria-live="assertive" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-xl px-5 py-3 text-sm shadow-md max-w-sm text-center bg-red-50 border border-red-200 text-red-700">
+              {enqueueToast.msg}
             </div>
           )}
 

@@ -243,6 +243,8 @@ Second pass covered: vocabulary page, notes page, profile page, import page, Ann
 | 2026-04-29 | 11.45 | Gutenberg search empty state missing CTA — added Clear search button that resets query + searchedQuery + results — closes #2285 (PR #2286) | ✅ Done |
 | 2026-04-29 | 11.46 | InsightChat ContextChip and MsgContextBlock quoted text missing lang — added bookLanguage prop to both sub-components + lang on quoted spans — WCAG 3.1.2 fix — closes #2287 (PR #2288) | 🔄 In progress |
 | 2026-04-29 | 11.47 | Flashcard feedback question word span missing lang — added lang={currentCard.language} to word span in grade prompt — WCAG 3.1.2 fix — closes #2289 | 🔄 In progress |
+| 2026-05-01 | 12.1 | SentenceReader note-dot button aria-controls + note card id; InsightChat ContextChip/MsgContextBlock useId + aria-controls; AnnotationsSidebar toggle aria-haspopup="dialog" — WAI-ARIA disclosure/dialog pattern — closes #2563 (PR #2564) | ✅ Done |
+| 2026-05-01 | 12.2 | VocabWordTooltip, WordLookup, WordActionDrawer, decks add-word picker, reader chat sheet dialogs: added aria-describedby — WAI-ARIA dialog description for screen-reader context on focus — closes #2565 (PR #2566) | ✅ Done |
 
 ---
 

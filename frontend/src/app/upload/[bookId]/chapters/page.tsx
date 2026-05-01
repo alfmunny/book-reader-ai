@@ -161,6 +161,15 @@ export default function ChapterEditorPage() {
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
         {/* Left: chapter list */}
         <ul role="list" aria-label="Chapters" className="overflow-y-auto space-y-2 pr-1 list-none p-0 m-0">
+          {chapters.length === 0 && (
+            <li className="flex flex-col items-center justify-center py-12 text-center gap-2">
+              <p className="text-sm font-medium text-ink">No chapters remaining</p>
+              <p className="text-xs text-stone-500">At least one chapter is needed to continue.</p>
+              <Link href="/upload" className="mt-2 text-sm text-amber-700 underline underline-offset-2 hover:text-amber-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded">
+                ← Upload a different file
+              </Link>
+            </li>
+          )}
           {chapters.map((ch, i) => {
             const wordWarn = ch.word_count > 8000 || ch.word_count < 100;
             return (

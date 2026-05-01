@@ -2393,6 +2393,29 @@ export default function ReaderPage() {
           {/* Notes expand panel */}
           {session?.backendToken && notesExpanded && (
             <div id="reader-mobile-notes-panel" className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
+              {/* Annotation visibility toggle */}
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-100">
+                <span className="text-xs text-stone-600">Highlight marks</span>
+                <button
+                  onClick={() => {
+                    setShowAnnotations((v) => {
+                      const next = !v;
+                      localStorage.setItem("reader-show-annotations", String(next));
+                      return next;
+                    });
+                  }}
+                  aria-pressed={showAnnotations}
+                  aria-label={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+                  className={`flex items-center gap-1 px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
+                    showAnnotations
+                      ? "bg-amber-100 text-amber-900 border-amber-400"
+                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                  }`}
+                >
+                  <BookmarkIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                  {showAnnotations ? "On" : "Off"}
+                </button>
+              </div>
               {annotations.length === 0 ? (
                 <div className="text-center text-stone-600 py-4 text-sm">
                   <NoteIcon className="w-6 h-6 mx-auto mb-1 opacity-40" />

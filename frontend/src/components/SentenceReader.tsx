@@ -375,6 +375,7 @@ function buildSegContent(
   targetWord: string | undefined,
   vocabWords: Set<string> | undefined,
   annotationMatches?: Array<{ start: number; end: number; className: string; annId: number }>,
+  onAnnotationKeyDown?: (annId: number, e: React.KeyboardEvent<HTMLSpanElement>) => void,
 ): React.ReactNode {
   if (!targetWord && !vocabWords?.size && (!annotationMatches || annotationMatches.length === 0)) return text;
 
@@ -426,7 +427,20 @@ function buildSegContent(
       );
     } else if (m.type === "annotation") {
       nodes.push(
-        <span key={m.start} className={m.className ?? ""} data-ann-id={m.annId}>
+        <span
+          key={m.start}
+          className={m.className ?? ""}
+          data-ann-id={m.annId}
+          role="button"
+          tabIndex={0}
+          aria-label={`Annotation on: ${word.slice(0, 60)}. Press Enter to edit.`}
+          onKeyDown={onAnnotationKeyDown ? (e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            e.preventDefault();
+            e.stopPropagation();
+            onAnnotationKeyDown(m.annId!, e);
+          } : undefined}
+        >
           {word}
         </span>,
       );
@@ -805,7 +819,7 @@ export default function SentenceReader({
               data-jump-target={isJumpTarget ? "true" : undefined}
               role={isAnnotationInteractive ? "button" : undefined}
               tabIndex={isAnnotationInteractive ? 0 : undefined}
-              aria-label={isAnnotationInteractive ? `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.` : undefined}
+              aria-label={isAnnotationInteractive ? (segAnns.length > 1 ? `${segAnns.length} annotations on: ${seg.text.slice(0, 80)}. Press Enter to edit first annotation.` : `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.`) : undefined}
               onKeyDown={isAnnotationInteractive ? (e: React.KeyboardEvent<HTMLSpanElement>) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 e.preventDefault();
@@ -849,7 +863,18 @@ export default function SentenceReader({
             >
               {wordSelectMode && seg.flatIdx === selectedSentenceFlatIdx
                 ? buildWordSelectContent(seg.text, selectedWordIdx)
-                : buildSegContent(seg.text, isJumpTarget ? scrollTargetWord : undefined, vocabWords, annotationMatches)}
+                : buildSegContent(
+                    seg.text,
+                    isJumpTarget ? scrollTargetWord : undefined,
+                    vocabWords,
+                    annotationMatches,
+                    (showAnnotations && onAnnotationClick && annotationMatches.length > 0) ? (annId, e) => {
+                      const ann = (annotations ?? []).find((a) => a.id === annId);
+                      if (!ann) return;
+                      const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
+                      onAnnotationClick(ann, { x: rect.left + rect.width / 2, y: rect.bottom });
+                    } : undefined,
+                  )}
               {noteAnnotation?.note_text && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}

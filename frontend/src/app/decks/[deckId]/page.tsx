@@ -34,6 +34,7 @@ export default function DeckDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [removedToast, setRemovedToast] = useState<VocabularyWord | null>(null);
+  const [removeMemberErrorMsg, setRemoveMemberErrorMsg] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
@@ -100,7 +101,11 @@ export default function DeckDetailPage() {
         if (removed) {
           setRemovedToast((current) => {
             if (current) {
-              removeDeckMember(deckId, current.id).catch(() => {});
+              const wordBeingCommitted = current.word;
+              removeDeckMember(deckId, current.id).catch(() => {
+                setRemoveMemberErrorMsg(`Could not remove "${wordBeingCommitted}" — please try again`);
+                setTimeout(() => setRemoveMemberErrorMsg(null), 5000);
+              });
             }
             return removed;
           });
@@ -315,6 +320,12 @@ export default function DeckDetailPage() {
         />
       )}
 
+      {removeMemberErrorMsg && (
+        <div role="alert" aria-live="assertive" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
+          {removeMemberErrorMsg}
+        </div>
+      )}
+
       {removedToast && (
         <UndoToast
           message={`"${removedToast.word}" removed`}
@@ -327,7 +338,11 @@ export default function DeckDetailPage() {
             setRemovedToast(null);
           }}
           onDone={() => {
-            removeDeckMember(deckId, removedToast.id).catch(() => {});
+            const word = removedToast.word;
+            removeDeckMember(deckId, removedToast.id).catch(() => {
+              setRemoveMemberErrorMsg(`Could not remove "${word}" — please try again`);
+              setTimeout(() => setRemoveMemberErrorMsg(null), 5000);
+            });
             setRemovedToast(null);
           }}
         />

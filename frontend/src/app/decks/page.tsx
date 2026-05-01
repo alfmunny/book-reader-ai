@@ -13,6 +13,7 @@ export default function DecksPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [removedDeckToast, setRemovedDeckToast] = useState<DeckSummary | null>(null);
+  const [deleteDeckErrorMsg, setDeleteDeckErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Decks — Book Reader AI";
@@ -45,7 +46,11 @@ export default function DecksPage() {
         // If a previous toast is still showing, commit that delete immediately
         setRemovedDeckToast((current) => {
           if (current) {
-            deleteDeck(current.id).catch(() => {});
+            const deckName = current.name;
+            deleteDeck(current.id).catch(() => {
+              setDeleteDeckErrorMsg(`Could not delete "${deckName}" — please try again`);
+              setTimeout(() => setDeleteDeckErrorMsg(null), 5000);
+            });
           }
           return removed;
         });
@@ -145,6 +150,12 @@ export default function DecksPage() {
         )}
       </div>
 
+      {deleteDeckErrorMsg && (
+        <div role="alert" aria-live="assertive" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
+          {deleteDeckErrorMsg}
+        </div>
+      )}
+
       {removedDeckToast && (
         <UndoToast
           message={`"${removedDeckToast.name}" deleted`}
@@ -153,7 +164,11 @@ export default function DecksPage() {
             setRemovedDeckToast(null);
           }}
           onDone={() => {
-            deleteDeck(removedDeckToast.id).catch(() => {});
+            const deckName = removedDeckToast.name;
+            deleteDeck(removedDeckToast.id).catch(() => {
+              setDeleteDeckErrorMsg(`Could not delete "${deckName}" — please try again`);
+              setTimeout(() => setDeleteDeckErrorMsg(null), 5000);
+            });
             setRemovedDeckToast(null);
           }}
         />

@@ -298,6 +298,7 @@ export default function BookNotesPage() {
   // Undo toast state
   const [deletedAnnToast, setDeletedAnnToast] = useState<Annotation | null>(null);
   const [deletedInsToast, setDeletedInsToast] = useState<BookInsight | null>(null);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
 
   // Export
   const [exportMsg, setExportMsg] = useState<string | null>(null);
@@ -402,7 +403,10 @@ export default function BookNotesPage() {
   function handleDeleteAnnotation(id: number) {
     // If a previous toast is pending, commit that delete immediately
     if (deletedAnnToast) {
-      deleteAnnotation(deletedAnnToast.id).catch(() => {});
+      deleteAnnotation(deletedAnnToast.id).catch(() => {
+        setDeleteErrorMsg("Could not delete annotation — please try again");
+        setTimeout(() => setDeleteErrorMsg(null), 5000);
+      });
       setDeletedAnnToast(null);
     }
     const ann = annotations.find((a) => a.id === id);
@@ -414,7 +418,10 @@ export default function BookNotesPage() {
   function handleDeleteInsight(id: number) {
     // If a previous toast is pending, commit that delete immediately
     if (deletedInsToast) {
-      deleteInsight(deletedInsToast.id).catch(() => {});
+      deleteInsight(deletedInsToast.id).catch(() => {
+        setDeleteErrorMsg("Could not delete insight — please try again");
+        setTimeout(() => setDeleteErrorMsg(null), 5000);
+      });
       setDeletedInsToast(null);
     }
     const ins = insights.find((i) => i.id === id);
@@ -823,6 +830,12 @@ export default function BookNotesPage() {
         )}
       </div>
 
+      {deleteErrorMsg && (
+        <div role="alert" aria-live="assertive" className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shadow-md">
+          {deleteErrorMsg}
+        </div>
+      )}
+
       {deletedAnnToast && (
         <UndoToast
           message="Annotation deleted"
@@ -831,7 +844,10 @@ export default function BookNotesPage() {
             setDeletedAnnToast(null);
           }}
           onDone={() => {
-            deleteAnnotation(deletedAnnToast.id).catch(() => {});
+            deleteAnnotation(deletedAnnToast.id).catch(() => {
+              setDeleteErrorMsg("Could not delete annotation — please try again");
+              setTimeout(() => setDeleteErrorMsg(null), 5000);
+            });
             setDeletedAnnToast(null);
           }}
         />
@@ -845,7 +861,10 @@ export default function BookNotesPage() {
             setDeletedInsToast(null);
           }}
           onDone={() => {
-            deleteInsight(deletedInsToast.id).catch(() => {});
+            deleteInsight(deletedInsToast.id).catch(() => {
+              setDeleteErrorMsg("Could not delete insight — please try again");
+              setTimeout(() => setDeleteErrorMsg(null), 5000);
+            });
             setDeletedInsToast(null);
           }}
         />

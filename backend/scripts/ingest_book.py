@@ -20,6 +20,11 @@ Example
     python -m scripts.ingest_book --book-id 2229
     python -m scripts.ingest_book --all
 
+Ingest is non-destructive by default (#2631): if the DB holds more
+translation rows for a language than the artifact carries, it aborts
+with the missing chapter indices instead of deleting them. Pass
+--allow-shrink to override deliberately.
+
 Note: a running server holds a process-local chapter cache; restart it
 (or wait for the next deploy) to serve freshly ingested content.
 """
@@ -69,9 +74,15 @@ def load_artifact(path: Path) -> dict:
     return artifact
 
 
-async def ingest(artifact: dict, db_path: str) -> dict:
+async def ingest(artifact: dict, db_path: str, *, allow_shrink: bool = False) -> dict:
     """Write one artifact into the DB in a single transaction.
-    Returns a summary dict."""
+    Returns a summary dict.
+
+    Shrink guard (#2631): if the DB holds more translation rows for a
+    language than the artifact carries, the per-language replace would
+    silently delete DB-only rows (exactly how 118 chapters sat unexported
+    for four months, #2626). Ingest aborts with the missing chapter
+    indices unless allow_shrink is passed."""
     book_id = artifact["book_id"]
     meta = artifact["meta"]
     split = artifact["split"]
@@ -132,6 +143,24 @@ async def ingest(artifact: dict, db_path: str) -> dict:
             # translation write path; then ingest becomes the only writer.
             n_translations = 0
             for lang, block in artifact["translations"].items():
+                if not allow_shrink:
+                    async with db.execute(
+                        "SELECT chapter_index FROM translations "
+                        "WHERE book_id=? AND target_language=?",
+                        (book_id, lang),
+                    ) as cur:
+                        db_indices = {r[0] for r in await cur.fetchall()}
+                    artifact_indices = {e["index"] for e in block["chapters"]}
+                    missing = sorted(db_indices - artifact_indices)
+                    if len(artifact_indices) < len(db_indices):
+                        raise ArtifactError(
+                            f"book {book_id} lang {lang!r}: DB has "
+                            f"{len(db_indices)} row(s) but the artifact carries "
+                            f"only {len(artifact_indices)} — refusing to delete "
+                            f"DB-only translations (missing chapter_index: "
+                            f"{missing}). Re-freeze so the artifact is complete, "
+                            f"or pass --allow-shrink to override."
+                        )
                 await db.execute(
                     "DELETE FROM translations WHERE book_id=? AND target_language=?",
                     (book_id, lang),
@@ -161,11 +190,11 @@ async def ingest(artifact: dict, db_path: str) -> dict:
     }
 
 
-async def run(paths: list[Path], db_path: str) -> list[dict]:
+async def run(paths: list[Path], db_path: str, *, allow_shrink: bool = False) -> list[dict]:
     summaries = []
     for path in paths:
         artifact = load_artifact(path)
-        summary = await ingest(artifact, db_path)
+        summary = await ingest(artifact, db_path, allow_shrink=allow_shrink)
         print(f"Ingested book {summary['book_id']} ({summary['title']!r}): "
               f"{summary['chapters']} chapters, "
               f"{summary['translated_chapters']} translated chapters "
@@ -180,6 +209,9 @@ def main(argv: list[str] | None = None) -> None:
     group.add_argument("--book-id", type=int)
     group.add_argument("--all", action="store_true",
                        help="Ingest every artifact under data/books/")
+    parser.add_argument("--allow-shrink", action="store_true",
+                        help="Permit an artifact to replace a language with "
+                             "fewer rows than the DB holds (#2631 guard)")
     args = parser.parse_args(argv)
 
     from services.db import DB_PATH
@@ -195,7 +227,7 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(1)
 
     try:
-        asyncio.run(run(paths, DB_PATH))
+        asyncio.run(run(paths, DB_PATH, allow_shrink=args.allow_shrink))
     except ArtifactError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         raise SystemExit(2)

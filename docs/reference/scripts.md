@@ -240,6 +240,11 @@ Example
     python -m scripts.ingest_book --book-id 2229
     python -m scripts.ingest_book --all
 
+Ingest is non-destructive by default (#2631): if the DB holds more
+translation rows for a language than the artifact carries, it aborts
+with the missing chapter indices instead of deleting them. Pass
+--allow-shrink to override deliberately.
+
 Note: a running server holds a process-local chapter cache; restart it
 (or wait for the next deploy) to serve freshly ingested content.
 
@@ -249,6 +254,7 @@ Note: a running server holds a process-local chapter cache; restart it
 |---|---|
 | `--book-id` | — |
 | `--all` | Ingest every artifact under data/books/ |
+| `--allow-shrink` | Permit an artifact to replace a language with fewer rows than the DB holds (#2631 guard) |
 
 ```bash
 python -m scripts.ingest_book

@@ -168,3 +168,44 @@ def test_load_artifact_rejects_missing_keys(tmp_path):
     path.write_text(json.dumps({"schema_version": 1, "book_id": 1}))
     with pytest.raises(ArtifactError, match="missing keys"):
         load_artifact(path)
+
+
+# ── Shrink guard (#2631) ──────────────────────────────────────────────────────
+
+async def test_ingest_aborts_when_artifact_shrinks_a_language(tmp_db):
+    """Regression #2631: DB holds N translations for a language, the artifact
+    carries fewer → ingest must abort with the missing indices, writing
+    nothing (the DB-only row survives)."""
+    await ingest(_artifact(), tmp_db)  # zh: chapter 0 from the artifact
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (2229, 1, 'zh', '[\"DB-only row\"]')"
+        )
+        await db.commit()
+
+    with pytest.raises(ArtifactError, match=r"zh.*2 row\(s\).*1.*chapter_index.*1"):
+        await ingest(_artifact(), tmp_db)
+
+    assert await _count(
+        tmp_db,
+        "SELECT COUNT(*) FROM translations WHERE book_id=2229 AND target_language='zh'",
+    ) == 2  # both rows intact — nothing was deleted
+
+
+async def test_ingest_allow_shrink_proceeds(tmp_db):
+    """--allow-shrink: the explicit override replaces the language with the
+    artifact's (smaller) set."""
+    await ingest(_artifact(), tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute(
+            "INSERT INTO translations (book_id, chapter_index, target_language, paragraphs) "
+            "VALUES (2229, 1, 'zh', '[\"DB-only row\"]')"
+        )
+        await db.commit()
+
+    await ingest(_artifact(), tmp_db, allow_shrink=True)
+    assert await _count(
+        tmp_db,
+        "SELECT COUNT(*) FROM translations WHERE book_id=2229 AND target_language='zh'",
+    ) == 1

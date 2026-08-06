@@ -129,23 +129,30 @@ jobs:
               --body "Still failing on \`$REF\` commit \`${COMMIT:0:7}\`. [Run]($RUN_URL)"
             echo "Added comment to existing issue #$EXISTING"
           else
+            # Built with printf rather than a multi-line string: literal
+            # newlines here would have to start at column 0 to keep the
+            # markdown unindented, and a column-0 line terminates this
+            # `run: |` block scalar — which made the whole workflow
+            # unparseable and failed it at startup on every push.
+            BODY=$(printf '%s\n' \
+              "## Backend smoke test failed" \
+              "" \
+              "**Branch:** \`$REF\`" \
+              "**Commit:** \`${COMMIT:0:7}\`" \
+              "**Run:** $RUN_URL" \
+              "" \
+              "The backend \`/api/health\` endpoint did not return 200 within 5 minutes after deploy." \
+              "" \
+              "### Immediate actions" \
+              "1. Check Railway deployment logs for startup errors" \
+              "2. Check migration output — a failing migration will prevent the app from starting" \
+              "3. Roll back the last merge to main if needed" \
+              "" \
+              "_Auto-filed by the smoke-test workflow. Close this issue once the backend is healthy._")
             gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "$SEARCH_TITLE ($REF)" \
               --label "bug" \
-              --body "## Backend smoke test failed
-
-**Branch:** \`$REF\`
-**Commit:** \`${COMMIT:0:7}\`
-**Run:** $RUN_URL
-
-The backend \`/api/health\` endpoint did not return 200 within 5 minutes after deploy.
-
-### Immediate actions
-1. Check Railway deployment logs for startup errors
-2. Check migration output — a failing migration will prevent the app from starting
-3. Roll back the last merge to main if needed
-
-_Auto-filed by the smoke-test workflow. Close this issue once the backend is healthy._"
+              --body "$BODY"
             echo "Filed new P0 issue"
           fi
 
@@ -218,22 +225,26 @@ _Auto-filed by the smoke-test workflow. Close this issue once the backend is hea
               --body "Still failing on \`$REF\` commit \`${COMMIT:0:7}\`. [Run]($RUN_URL)"
             echo "Added comment to existing issue #$EXISTING"
           else
+            # See the note in smoke-backend: literal newlines at column 0
+            # terminate this block scalar and break the workflow parse.
+            BODY=$(printf '%s\n' \
+              "## Frontend smoke test failed" \
+              "" \
+              "**Branch:** \`$REF\`" \
+              "**Commit:** \`${COMMIT:0:7}\`" \
+              "**Run:** $RUN_URL" \
+              "" \
+              "The frontend \`/login\` page did not return 200 within 5 minutes after deploy." \
+              "" \
+              "### Immediate actions" \
+              "1. Check Vercel deployment logs" \
+              "2. Verify the build did not fail silently" \
+              "3. Roll back the last merge to main if needed" \
+              "" \
+              "_Auto-filed by the smoke-test workflow. Close this issue once the frontend is healthy._")
             gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "$SEARCH_TITLE ($REF)" \
               --label "bug" \
-              --body "## Frontend smoke test failed
-
-**Branch:** \`$REF\`
-**Commit:** \`${COMMIT:0:7}\`
-**Run:** $RUN_URL
-
-The frontend \`/login\` page did not return 200 within 5 minutes after deploy.
-
-### Immediate actions
-1. Check Vercel deployment logs
-2. Verify the build did not fail silently
-3. Roll back the last merge to main if needed
-
-_Auto-filed by the smoke-test workflow. Close this issue once the frontend is healthy._"
+              --body "$BODY"
             echo "Filed new P0 issue"
           fi

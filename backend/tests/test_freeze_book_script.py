@@ -134,8 +134,7 @@ async def test_already_frozen_refused_without_force(frozen_env, tmp_path):
 
 
 async def test_translation_merge_prefers_convention_a(frozen_env, tmp_path):
-    """Convention A (DB export) wins on conflict; B fills gaps; out-of-range
-    indices are dropped."""
+    """Convention A (DB export) wins on conflict; B fills gaps."""
     (frozen_env / "legacy_b" / "2229_zh.json").write_text(json.dumps([
         {"book_id": 2229, "chapter_index": 0, "target_language": "zh",
          "paragraphs": ["from-B-0"], "provider": "anthropic"},
@@ -148,8 +147,6 @@ async def test_translation_merge_prefers_convention_a(frozen_env, tmp_path):
             {"book_id": 2229, "chapter_index": 0, "target_language": "zh",
              "paragraphs": ["from-A-0"], "provider": "claude-code",
              "model": "claude-opus-4-7", "title_translation": "献辞"},
-            {"book_id": 2229, "chapter_index": 99, "target_language": "zh",
-             "paragraphs": ["out-of-range"]},
         ],
     }))
 
@@ -157,13 +154,88 @@ async def test_translation_merge_prefers_convention_a(frozen_env, tmp_path):
         {"index": 0, "title": "Zueignung", "paragraphs": ["from-A-0"]},
         {"index": 1, "title": "Nacht", "paragraphs": ["from-B-1"]},
     ]
-    translations, warnings = build_translations(2229, 2, chapters)
+    translations, warnings, errors = build_translations(2229, 2, chapters)
 
     entries = translations["zh"]["chapters"]
     assert [e["paragraphs"] for e in entries] == [["from-A-0"], ["from-B-1"]]
     assert entries[0]["title_translation"] == "献辞"
     assert translations["zh"]["provider"] == "claude-code"
-    assert any("out of range" in w for w in warnings)
+    assert errors == []
+
+
+# ── Misaligned entries are fatal, never dropped, never mis-anchored (#2634) ───
+
+async def test_out_of_range_entry_is_an_error_not_a_drop(frozen_env):
+    """Regression #2634: an entry past the end of the split must become an
+    error (freeze aborts), not a silent drop."""
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [
+            {"book_id": 2229, "chapter_index": 99, "target_language": "zh",
+             "paragraphs": ["paid work"]},
+        ],
+    }))
+    chapters = [{"index": 0, "title": "Zueignung", "paragraphs": ["a"]}]
+    translations, _warnings, errors = build_translations(2229, 1, chapters)
+    assert translations == {}
+    assert len(errors) == 1 and "out of range" in errors[0]
+
+
+async def test_paragraph_mismatch_is_an_error_not_fossilized(frozen_env):
+    """Regression #2634: a paragraph-count mismatch must become an error,
+    not be written at its stale index."""
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [
+            {"book_id": 2229, "chapter_index": 0, "target_language": "zh",
+             "paragraphs": ["one", "two", "three"]},
+        ],
+    }))
+    chapters = [{"index": 0, "title": "Zueignung", "paragraphs": ["a", "b"]}]
+    translations, _warnings, errors = build_translations(2229, 1, chapters)
+    assert translations == {}
+    assert len(errors) == 1 and "paragraph count 3 != source 2" in errors[0]
+
+
+async def test_no_code_path_deletes_an_entry(frozen_env):
+    """#2634 acceptance: every input entry is either placed in the result or
+    named in an error — none vanish."""
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [
+            {"book_id": 2229, "chapter_index": 0, "target_language": "zh",
+             "paragraphs": ["ok"]},                       # aligned
+            {"book_id": 2229, "chapter_index": 1, "target_language": "zh",
+             "paragraphs": ["x", "y", "z"]},              # mismatched
+            {"book_id": 2229, "chapter_index": 42, "target_language": "zh",
+             "paragraphs": ["stray"]},                    # out of range
+        ],
+    }))
+    chapters = [
+        {"index": 0, "title": "A", "paragraphs": ["a"]},
+        {"index": 1, "title": "B", "paragraphs": ["b", "c"]},
+    ]
+    translations, _warnings, errors = build_translations(2229, 2, chapters)
+    placed = {e["index"] for e in translations.get("zh", {}).get("chapters", [])}
+    assert placed == {0}
+    assert any("ch1" in e for e in errors) and any("ch42" in e for e in errors)
+    assert len(placed) + len(errors) == 3  # all accounted for
+
+
+async def test_misaligned_translation_aborts_freeze_even_with_force(frozen_env, tmp_path):
+    """#2634: --force must NOT bypass the alignment abort — both dropping and
+    mis-anchoring are permanent data loss."""
+    await save_book(2229, _META, "irrelevant")
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [
+            {"book_id": 2229, "chapter_index": 99, "target_language": "zh",
+             "paragraphs": ["paid work"]},
+        ],
+    }))
+    with pytest.raises(SystemExit, match="realign_translations"):
+        await freeze(2229, "alfmunny", force=True, books_dir=tmp_path / "books")
+    assert not (tmp_path / "books").exists()
 
 
 async def test_dry_run_writes_nothing(frozen_env, tmp_path):

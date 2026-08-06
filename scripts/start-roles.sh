@@ -79,15 +79,20 @@ MEMORY_PATH="$HOME/.claude/projects/$(echo "$REPO" | tr '/' '-')/memory/MEMORY.m
 CLAUDE_BASE="claude${BYPASS:+ $BYPASS}"
 
 # ── Model assignments per role ─────────────────────────────────────────────────
-# PM:    Opus   — sustained multi-cycle review loop, design judgement, triage
-# Dev:   Sonnet — code generation and test writing
-# UX:    Sonnet — component implementation, SVG extraction, touch target fixes
-# Arch:  Opus   — deep reasoning for design docs and cross-cutting decisions
+# PM:    Fable 5 — the coordinating role; reviews every other role's output,
+#                  triages the queue, and holds the most cross-cutting context
+# Dev:   Opus 5
+# UX:    Opus 5
+# Arch:  Opus 5
+#
+# The earlier Opus/Sonnet split traded capability for cost on the two code
+# roles; both tiers here are current top-tier. The `[1m]` suffix selects the
+# 1M-token context variant — drop it to run the default window.
 
-MODEL_PM="claude-opus-4-7"
-MODEL_DEV="claude-sonnet-4-6"
-MODEL_UIUX="claude-sonnet-4-6"
-MODEL_ARCH="claude-opus-4-7"
+MODEL_PM="claude-fable-5[1m]"
+MODEL_DEV="claude-opus-5[1m]"
+MODEL_UIUX="claude-opus-5[1m]"
+MODEL_ARCH="claude-opus-5[1m]"
 
 # ── Polling cadences (fixed-interval cron via /loop Nm) ───────────────────────
 # All four roles use /loop so the harness re-fires the prompt on every cron
@@ -392,7 +397,7 @@ EOF
     echo "⚠  PM is still running at its original cadence. To pick up the new"
     echo "   ${PM_POLL_MINUTES}-min cron interval, restart PM:"
     echo "     tmux kill-window -t ${SESSION}:pm"
-    echo "     tmux new-window -t ${SESSION}: -n pm 'cd ${REPO} && ${CLAUDE_BASE} --model ${MODEL_PM} \"\$(cat /tmp/${SLUG}-pm.txt)\"'"
+    echo "     tmux new-window -t ${SESSION}: -n pm 'cd ${REPO} && ${CLAUDE_BASE} --model \"${MODEL_PM}\" \"\$(cat /tmp/${SLUG}-pm.txt)\"'"
     echo "   Or simpler: bash scripts/start-roles.sh restart"
     exit 0
     ;;

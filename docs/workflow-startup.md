@@ -10,10 +10,12 @@ loops — without waiting for you.
 
 | Role | Model | What it does when active | What it does when idle |
 |---|---|---|---|
-| **PM** | claude-sonnet-4-6 | Reviews PRs, triages issues, watches deploys | Runs the review loop continuously |
-| **Dev** | claude-sonnet-4-6 | Fixes bugs and implements features | Bug-hunts: scans routes for missing bounds/guards |
-| **UI/UX Dev** | claude-haiku-4-5-20251001 | Fixes UX/UI issues | UX-audits: scans components for design rule violations |
-| **Architect** | claude-opus-4-7 | Designs and implements complex features | Proposes new features; writes design docs |
+| **PM** | claude-fable-5[1m] | Reviews PRs, triages issues, watches deploys | Runs the review loop continuously |
+| **Dev** | claude-opus-5[1m] | Fixes bugs and implements features | Bug-hunts: scans routes for missing bounds/guards |
+| **UI/UX Dev** | claude-opus-5[1m] | Fixes UX/UI issues | UX-audits: scans components for design rule violations |
+| **Architect** | claude-opus-5[1m] | Designs and implements complex features | Proposes new features; writes design docs |
+
+`scripts/start-roles.sh` is the source of truth for these — change the `MODEL_*` variables there and restart.
 
 Full rules for each role are in `CLAUDE.md`.
 
@@ -100,25 +102,25 @@ Open four terminal windows/tabs. In each, run the command for that role:
 ### PM
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude --model claude-sonnet-4-6 "/loop Act as product manager for book-reader-ai. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait."
+claude --model 'claude-fable-5[1m]' "/loop Act as product manager for book-reader-ai. Every cycle: (1) check for new open PRs and recently merged PRs since the last review state saved in product/review-state.md, (2) check for new or updated files in docs/, (3) review anything new — read the diff/doc, comment on open PRs if there are concerns or questions, create GitHub issues for follow-ups after merges, update product/backlog.md with findings. Save the latest reviewed PR number and latest main commit SHA to product/review-state.md after each cycle so the next cycle knows where to pick up. If nothing is new, say so briefly and wait."
 ```
 
 ### Dev
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude --model claude-sonnet-4-6 "You are a Dev session for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion (regression test first, fix, full test suite, PR with auto-merge). After each PR merges, pick the next issue without waiting. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks and missing .exists() guards, file and fix one bug at a time."
+claude --model 'claude-opus-5[1m]' "You are a Dev session for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Dev role rules exactly. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed bug or feat issue (no in-progress label), claim it, and work it to completion (regression test first, fix, full test suite, PR with auto-merge). After each PR merges, pick the next issue without waiting. If no unclaimed issues exist, enter bug-hunt mode as defined in CLAUDE.md: scan backend/routers/ for missing bounds checks and missing .exists() guards, file and fix one bug at a time."
 ```
 
 ### UI/UX Dev
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude --model claude-haiku-4-5-20251001 "You are the UI/UX Dev for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion (test first, implement, PR). After each PR merges, pick the next issue without waiting. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file and fix one violation at a time."
+claude --model 'claude-opus-5[1m]' "You are the UI/UX Dev for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the UI/UX Dev role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed ux or ui issue (no in-progress label), claim it, and work it to completion (test first, implement, PR). After each PR merges, pick the next issue without waiting. If no unclaimed ux/ui issues exist, run a UX audit as defined in CLAUDE.md: scan frontend components for emoji icons, missing aria-labels, touch targets under 44px, hardcoded hex colors — file and fix one violation at a time."
 ```
 
 ### Architect
 ```bash
 cd /Users/alfmunny/Projects/AI/book-reader-ai
-claude --model claude-opus-4-7 "You are the Architect for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Architect role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B). After each task completes, pick the next without waiting. If no architecture issues exist, identify the highest-value unimplemented feature, file an architecture issue for it, claim it, and begin a design doc — but do not implement without PM sign-off."
+claude --model 'claude-opus-5[1m]' "You are the Architect for book-reader-ai. Read CLAUDE.md at /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md and follow the Architect role rules. Read all memory files listed in /Users/alfmunny/.claude/projects/-Users-alfmunny-Projects-AI/memory/MEMORY.md. Then start immediately: verify your worktree exists, pick the highest-priority unclaimed architecture issue (no in-progress label), claim it, and work it following the appropriate path (design doc PR first for Path B). After each task completes, pick the next without waiting. If no architecture issues exist, identify the highest-value unimplemented feature, file an architecture issue for it, claim it, and begin a design doc — but do not implement without PM sign-off."
 ```
 
 ---

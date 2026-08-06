@@ -193,6 +193,12 @@ chapter list against the source. A mechanical pre-filter flags obvious
 junk chapters (TOC fragments, ISBN notices, stray headings) and blocks
 the write unless --force is given.
 
+Translation entries that cannot be placed against the current split
+(out-of-range index or paragraph-count mismatch) abort the freeze — not
+overridable by --force (#2634). They are paid, audited work whose
+anchors went stale; realign them first with
+scripts/realign_translations.py, then re-run.
+
 When to use: the first time a book acquires something that must stay
 aligned (a translation or an annotation), or when resuming the
 big_translate pipeline on a book (freeze before translating).
@@ -359,6 +365,53 @@ Usage:
 
 ```bash
 python -m scripts.preseed_translations
+```
+
+## `realign_translations.py`
+
+Detect and apply uniform chapter-index shifts in translation export files.
+
+Companion to scripts/freeze_book.py for the fossilized-content
+architecture (#2624, #2634). When the splitter changes underneath a
+translated book — typically by adding or removing leading frontmatter
+chapters — every translation entry's chapter_index shifts by a constant
+(e.g. the #1055 NCX splitter added 2 leading chapters to Moby Dick,
+recorded in data/translations/_backup_book_2701_zh_pre_realign_*.json).
+The translations themselves are fine; only their anchors are stale.
+This tool finds that constant by maximising paragraph-count agreement
+between the entries and the current chapter split, reports residual
+per-chapter mismatches, and — when a single shift resolves everything —
+rewrites the export file with the corrected indices. Content,
+title_translation, provider, and model carry through untouched; the
+original file is backed up first.
+
+Where no single shift resolves the drift (chapters merged or split
+rather than prepended), the tool reports and stops: those books need
+the content-aware audit, per chapter. It never deletes an entry.
+
+When to use: freeze_book.py refuses to freeze a book because
+translation entries are out of range or paragraph counts mismatch.
+Run this to diagnose, review the proposed mapping, then --apply and
+re-run the freeze.
+
+Example
+-------
+    cd backend
+    python -m scripts.realign_translations --book-id 2701 --lang zh
+    python -m scripts.realign_translations --book-id 2701 --lang zh --apply
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--book-id` | — |
+| `--lang` | — |
+| `--file` | Export file to realign (default: data/translations/book_<id>_<lang>.json) |
+| `--max-shift` | — |
+| `--apply` | Rewrite the file with the detected mapping (backs up first) |
+
+```bash
+python -m scripts.realign_translations
 ```
 
 ## `save_translation.py`

@@ -17,6 +17,12 @@ chapter list against the source. A mechanical pre-filter flags obvious
 junk chapters (TOC fragments, ISBN notices, stray headings) and blocks
 the write unless --force is given.
 
+Translation entries that cannot be placed against the current split
+(out-of-range index or paragraph-count mismatch) abort the freeze — not
+overridable by --force (#2634). They are paid, audited work whose
+anchors went stale; realign them first with
+scripts/realign_translations.py, then re-run.
+
 When to use: the first time a book acquires something that must stay
 aligned (a translation or an annotation), or when resuming the
 big_translate pipeline on a book (freeze before translating).
@@ -135,27 +141,35 @@ def _load_legacy_entries(book_id: int) -> tuple[dict[str, dict[int, dict]], list
 
 def build_translations(
     book_id: int, num_chapters: int, chapters: list[dict],
-) -> tuple[dict, list[str]]:
+) -> tuple[dict, list[str], list[str]]:
     """Assemble the artifact's translations block from legacy exports.
-    Drops out-of-range chapter indices; reports paragraph-count mismatches
-    without excluding them (the alignment checker judges those)."""
+
+    Returns (translations, warnings, errors). Out-of-range and
+    paragraph-count-mismatched entries are ERRORS, never dropped and
+    never written (#2634): translations were paid for and audited — a
+    stale anchor means the splitter moved underneath them, and
+    fossilizing the wrong index is permanent. The fix is realignment
+    (scripts/realign_translations.py), not exclusion."""
     merged, warnings = _load_legacy_entries(book_id)
     result: dict[str, dict] = {}
+    errors: list[str] = []
     for lang, by_index in sorted(merged.items()):
         entries = []
         provider = model = None
         for idx in sorted(by_index):
             e = by_index[idx]
             if idx >= num_chapters:
-                warnings.append(
-                    f"{lang} ch{idx}: dropped — out of range (book has {num_chapters})"
+                errors.append(
+                    f"{lang} ch{idx}: out of range (book has {num_chapters} chapters)"
                 )
                 continue
             src_count = len(chapters[idx]["paragraphs"])
             if len(e["paragraphs"]) != src_count:
-                warnings.append(
-                    f"{lang} ch{idx}: paragraph count {len(e['paragraphs'])} != source {src_count}"
+                errors.append(
+                    f"{lang} ch{idx}: paragraph count {len(e['paragraphs'])} "
+                    f"!= source {src_count}"
                 )
+                continue
             provider = provider or e.get("provider")
             model = model or e.get("model")
             entries.append({
@@ -170,7 +184,7 @@ def build_translations(
                 "model": model,
                 "chapters": entries,
             }
-    return result, warnings
+    return result, warnings, errors
 
 
 async def freeze(book_id: int, audited_by: str, *, force: bool = False,
@@ -211,9 +225,22 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
             f"than not freezing. Review, fix the split, or pass --force."
         )
 
-    translations, warnings = build_translations(book_id, len(chapters), chapters)
+    translations, warnings, errors = build_translations(book_id, len(chapters), chapters)
     for w in warnings:
         print(f"WARN: {w}", file=sys.stderr)
+    if errors:
+        for e in errors:
+            print(f"ERROR: {e}", file=sys.stderr)
+        # Deliberately NOT overridable by --force: these entries are paid,
+        # audited work whose anchors went stale (#2634). Dropping them or
+        # freezing them at the wrong index is permanent data loss either way.
+        raise SystemExit(
+            f"{len(errors)} translation entry(ies) cannot be placed against the "
+            f"current split — nothing written. Run "
+            f"`python -m scripts.realign_translations --book-id {book_id} "
+            f"--lang <lang>` to detect and apply an index shift, then re-run "
+            f"the freeze."
+        )
 
     artifact = {
         "schema_version": SCHEMA_VERSION,

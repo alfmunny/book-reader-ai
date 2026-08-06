@@ -12,8 +12,8 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field, field_validator
 from services.auth import get_current_user, decrypt_api_key, encrypt_api_key
+from services import db as db_module
 from services.db import (
-    DB_PATH,
     list_users,
     get_user_by_id,
     set_user_approved,
@@ -131,7 +131,7 @@ async def get_books(_admin: dict = Depends(_require_admin)):
     """
     books = await list_cached_books()
 
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         # Translation stats grouped per (book, language)
         async with db.execute(
             """SELECT book_id, target_language,
@@ -228,7 +228,7 @@ async def delete_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_re
     """Delete a cached book and all its associated audio + translation cache."""
     if not await get_cached_book(book_id):
         raise HTTPException(status_code=404, detail="Book not found")
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         # Reject if any worker is running — deleting the queue row would cause
         # mark_queue_row_done() to no-op and the worker to discard its result. (#370)
         async with db.execute(
@@ -340,7 +340,7 @@ async def seed_popular_status(_admin: dict = Depends(_require_admin)):
 
 @router.get("/audio")
 async def get_audio_cache(_admin: dict = Depends(_require_admin)):
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT book_id, chapter_index, chunk_index, provider, voice, "
@@ -353,7 +353,7 @@ async def get_audio_cache(_admin: dict = Depends(_require_admin)):
 
 @router.delete("/audio/{book_id}")
 async def delete_book_audio(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         cur = await db.execute("DELETE FROM audio_cache WHERE book_id=?", (book_id,))
         deleted = cur.rowcount
         await db.commit()
@@ -362,7 +362,7 @@ async def delete_book_audio(book_id: int = Path(..., ge=1), _admin: dict = Depen
 
 @router.delete("/audio/{book_id}/{chapter_index}")
 async def delete_chapter_audio(book_id: int = Path(..., ge=1), chapter_index: int = Path(..., ge=0), _admin: dict = Depends(_require_admin)):
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         cur = await db.execute(
             "DELETE FROM audio_cache WHERE book_id=? AND chapter_index=?",
             (book_id, chapter_index),
@@ -379,7 +379,7 @@ async def delete_chapter_audio(book_id: int = Path(..., ge=1), chapter_index: in
 @router.get("/translations")
 async def get_translations(_admin: dict = Depends(_require_admin)):
     """List all cached translations."""
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         async with db.execute("""
             SELECT book_id, chapter_index, target_language,
                    LENGTH(paragraphs) as size_chars,
@@ -402,7 +402,7 @@ async def get_translations(_admin: dict = Depends(_require_admin)):
 @router.delete("/translations/{book_id}")
 async def delete_book_translations(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
     """Delete all translations for a book."""
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         # Reject if any worker is running — it would re-insert via INSERT OR REPLACE. (#338)
         async with db.execute(
             "SELECT chapter_index, target_language FROM translation_queue "
@@ -442,7 +442,7 @@ async def delete_language_translations(
     target_language = target_language.strip().lower().split("-")[0]
     if not target_language:
         raise HTTPException(status_code=422, detail="target_language cannot be blank")
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         async with db.execute(
             "SELECT chapter_index FROM translation_queue "
             "WHERE book_id=? AND target_language=? AND status='running' LIMIT 1",
@@ -483,7 +483,7 @@ async def delete_translation(
     target_language = target_language.strip().lower().split("-")[0]
     if not target_language:
         raise HTTPException(status_code=422, detail="target_language cannot be blank")
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         async with db.execute(
             "SELECT 1 FROM translation_queue "
             "WHERE book_id=? AND chapter_index=? AND target_language=? AND status='running'",
@@ -538,7 +538,7 @@ async def retranslate(
     # Reject if a queue worker is actively translating this chapter — the
     # worker's save_translation (INSERT OR REPLACE) would silently overwrite
     # whatever we write here. (#333)
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         async with db.execute(
             "SELECT 1 FROM translation_queue "
             "WHERE book_id=? AND chapter_index=? AND target_language=? AND status='running'",
@@ -754,7 +754,7 @@ async def retranslate_all(
     # Pre-check: reject before translating any chapter if any have a running
     # queue job. The worker would overwrite whatever we write. (#333)
     chapter_indices = list(range(len(chapters)))
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         placeholders = ",".join("?" * len(chapter_indices))
         async with db.execute(
             f"SELECT chapter_index FROM translation_queue "
@@ -854,7 +854,7 @@ async def move_translation(
             status_code=400, detail="new_chapter_index is the same as the source",
         )
 
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         # Source exists?
         async with db.execute(
             "SELECT 1 FROM translations "
@@ -931,7 +931,7 @@ async def stats(_admin: dict = Depends(_require_admin)):
     audio_chunks = 0
     audio_mb: float = 0.0
     try:
-        async with aiosqlite.connect(DB_PATH) as db:
+        async with aiosqlite.connect(db_module.DB_PATH) as db:
             try:
                 async with db.execute("SELECT COUNT(*) FROM translations") as cur:
                     translation_count = (await cur.fetchone())[0]
@@ -1263,7 +1263,7 @@ async def queue_delete_item(
 ):
     # Reject deletion of running items: the worker will still save its result,
     # so silently "succeeding" here gives the admin a false sense of cancellation (#296).
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT status FROM translation_queue WHERE id=?", (item_id,)
@@ -1325,7 +1325,7 @@ async def queue_retry_item(
     # Guard against retrying a running item: _mark_done() deletes rows by ID,
     # so resetting status='pending' while the worker holds the row as 'running'
     # would cause _mark_done() to silently delete the re-enqueued item (#294).
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT status FROM translation_queue WHERE id=?", (item_id,)
@@ -1386,7 +1386,7 @@ async def queue_retry_failed(
         clauses.append("target_language=?")
         params.append(req.target_language.lower().split("-")[0])
     where = " AND ".join(clauses)
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         cursor = await db.execute(
             f"""UPDATE translation_queue
                    SET status='pending', attempts=0, last_error=NULL,
@@ -1438,7 +1438,7 @@ async def get_uploads(
 
     Optionally filter by user_id.
     """
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         if user_id is not None:
             async with db.execute(

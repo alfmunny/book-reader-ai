@@ -20,7 +20,6 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import services.db as db_module
-import routers.admin as admin_module
 from services.db import (
     init_db, get_or_create_user, get_user_by_id, save_book,
     save_translation, set_user_approved, get_setting,
@@ -63,7 +62,6 @@ BOOK_TEXT = (
 async def admin_db(monkeypatch, tmp_path):
     path = str(tmp_path / "admin-ext-test.db")
     monkeypatch.setattr(db_module, "DB_PATH", path)
-    monkeypatch.setattr(admin_module, "DB_PATH", path)
 
     from unittest.mock import AsyncMock as _AsyncMock
     monkeypatch.setattr("services.db.get_book_epub_bytes", _AsyncMock(return_value=None))

@@ -8,6 +8,20 @@ Provides:
 """
 
 import json
+import os
+import tempfile
+
+# Issue #2625: point DB_PATH at a throwaway location BEFORE any `services`
+# import below. services/db.py reads the env var at import time, and several
+# modules (e.g. routers/admin.py historically) copy DB_PATH by value — so this
+# is the only override that reaches every copy. It also holds when the async
+# fixtures below silently don't run (pytest-asyncio strict-mode fallback when
+# pytest.ini isn't found), which is how test rows leaked into the real
+# books.db. The per-test `tmp_db` fixture still layers a fresh DB on top.
+os.environ["DB_PATH"] = os.path.join(
+    tempfile.mkdtemp(prefix="book_reader_test_"), "books.test.db"
+)
+
 import pytest
 import aiosqlite
 from unittest.mock import AsyncMock, patch

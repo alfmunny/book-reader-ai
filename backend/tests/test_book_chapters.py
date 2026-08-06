@@ -270,33 +270,89 @@ async def test_upload_source_is_cached_after_first_call():
 # ── get_chapter_source (lines 135-141) ───────────────────────────────────────
 
 async def test_get_chapter_source_returns_upload_for_upload_books():
-    """Regression #1700: line 137 — upload source returns 'upload'."""
+    """Regression #1700: upload source returns 'upload' (recorded when the
+    resolver serves from user_book_chapters)."""
     from services.book_chapters import get_chapter_source
-    with patch("services.db.get_book_source", new_callable=AsyncMock, return_value="upload"):
+    with (
+        patch("services.db.get_book_source", new_callable=AsyncMock, return_value="upload"),
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 99, "text": ""}),
+        patch("services.db.get_user_book_chapters", new_callable=AsyncMock,
+              return_value=[{"title": "Ch 1", "text": "body"}]),
+    ):
         result = await get_chapter_source(99)
     assert result == "upload"
 
 
-async def test_get_chapter_source_returns_epub_when_epub_stored():
-    """Regression #1700: line 139 — book with stored EPUB returns 'epub'."""
+async def test_get_chapter_source_returns_epub_when_epub_parses():
+    """Regression #1700: a stored EPUB that actually yields chapters
+    reports 'epub'."""
     from services.book_chapters import get_chapter_source
     with (
-        patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None),
-        patch("services.db.has_book_epub", new_callable=AsyncMock, return_value=True),
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 98, "text": "plain"}),
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=b"real epub"),
+        patch("services.book_chapters.build_chapters_from_epub",
+              return_value=_make_chapters("Ch 1", "Ch 2")),
     ):
         result = await get_chapter_source(98)
     assert result == "epub"
 
 
 async def test_get_chapter_source_returns_text_when_no_epub():
-    """Regression #1700: line 141 — book without EPUB returns 'text'."""
+    """Regression #1700: book without EPUB returns 'text'."""
     from services.book_chapters import get_chapter_source
     with (
-        patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None),
-        patch("services.db.has_book_epub", new_callable=AsyncMock, return_value=False),
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 97, "text": "plain text"}),
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=None),
+        patch("services.book_chapters._background_fetch_epub", new_callable=AsyncMock),
+        patch("services.book_chapters.build_chapters",
+              return_value=_make_chapters("Ch 1")),
     ):
         result = await get_chapter_source(97)
     assert result == "text"
+
+
+async def test_get_chapter_source_reports_text_for_stub_epub():
+    """Regression #2639: a book_epubs row holding an unparseable stub must
+    report 'text' — the source that actually produced the chapters — not
+    'epub' inferred from the row's existence."""
+    from services.book_chapters import get_chapter_source
+    with (
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 96, "text": "plain text"}),
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock,
+              return_value=b"fake epub b"),  # the 10-byte stub class
+        patch("services.book_chapters.build_chapters_from_epub", return_value=[]),
+        patch("services.book_chapters.build_chapters",
+              return_value=_make_chapters("Ch 1", "Ch 2")),
+    ):
+        result = await get_chapter_source(96)
+    assert result == "text"
+
+
+async def test_clear_cache_also_clears_recorded_source():
+    """After clear_cache, the next get_chapter_source re-resolves rather than
+    serving a stale recorded source."""
+    from services.book_chapters import get_chapter_source
+    with (
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 95, "text": "plain"}),
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=None),
+        patch("services.book_chapters._background_fetch_epub", new_callable=AsyncMock),
+        patch("services.book_chapters.build_chapters", return_value=_make_chapters("Ch 1")),
+    ):
+        assert await get_chapter_source(95) == "text"
+    clear_cache(95)
+    with (
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 95, "text": "plain"}),
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=b"real"),
+        patch("services.book_chapters.build_chapters_from_epub",
+              return_value=_make_chapters("Ch 1", "Ch 2")),
+    ):
+        assert await get_chapter_source(95) == "epub"
 
 
 # ── _background_fetch_epub ────────────────────────────────────────────────────

@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 _chapter_cache: dict[int, list[Chapter]] = {}
 _split_locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 
+# Which source actually produced the cached chapter list ("upload" | "epub" |
+# "text"). A book_epubs row can hold an unparseable stub (#2639) — 47 live
+# rows did — so source must be recorded at split time, never inferred from
+# row existence.
+_chapter_source_used: dict[int, str] = {}
+
 # Track books for which a background EPUB fetch has already been fired this
 # process lifetime so we don't hammer Gutenberg on every chapter request.
 _epub_fetch_attempted: set[int] = set()
@@ -97,6 +103,7 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
                 Chapter(title=r["title"], text=r["text"]) for r in rows
             ]
             _chapter_cache[book_id] = chapters
+            _chapter_source_used[book_id] = "upload"
             return chapters
 
         # ── 2. Stored EPUB (Gutenberg books) ──────────────────────────────────
@@ -107,6 +114,7 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
                 chapters = await asyncio.to_thread(build_chapters_from_epub, epub_bytes)
                 if len(chapters) >= 1:
                     _chapter_cache[book_id] = chapters
+                    _chapter_source_used[book_id] = "epub"
                     return chapters
             elif book_id not in _epub_fetch_attempted:
                 # Existing book with no EPUB yet — fetch silently in background.
@@ -119,6 +127,7 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
         # ── 3. Plain-text regex fallback ──────────────────────────────────────
         chapters = await asyncio.to_thread(build_chapters, text)
         _chapter_cache[book_id] = chapters
+        _chapter_source_used[book_id] = "text"
         return chapters
 
 
@@ -159,8 +168,10 @@ def clear_cache(book_id: int | None = None) -> None:
     """Invalidate cached chapter list."""
     if book_id is None:
         _chapter_cache.clear()
+        _chapter_source_used.clear()
     else:
         _chapter_cache.pop(book_id, None)
+        _chapter_source_used.pop(book_id, None)
 
 
 async def get_chapter_source(book_id: int) -> str:
@@ -171,19 +182,17 @@ async def get_chapter_source(book_id: int) -> str:
         "epub"   — Gutenberg book with a stored EPUB; spine/TOC used
         "text"   — Gutenberg book falling back to plain-text regex split
 
-    Mirrors the priority in split_with_html_preference so the badge shown
-    to the user matches exactly what produced the chapters they're reading.
+    Reports what actually produced the chapters, recorded at split time —
+    never inferred from a book_epubs row's existence, because a stored EPUB
+    can be an unparseable stub that silently falls back to text (#2639).
     Fossilized books (#2624) return the chapter_source recorded at freeze
-    time, so the badge keeps describing what actually produced the frozen
-    split.
+    time. For unfrozen books the resolver is invoked (cached) so the answer
+    always reflects a real resolution.
     """
-    from services.db import get_book_freeze, get_book_source, has_book_epub
+    from services.db import get_book_freeze
     freeze = await get_book_freeze(book_id)
     if freeze is not None:
         return freeze["chapter_source"]
-    source = await get_book_source(book_id)
-    if source == "upload":
-        return "upload"
-    if await has_book_epub(book_id):
-        return "epub"
-    return "text"
+    if book_id not in _chapter_source_used:
+        await get_chapters(book_id)
+    return _chapter_source_used.get(book_id, "text")

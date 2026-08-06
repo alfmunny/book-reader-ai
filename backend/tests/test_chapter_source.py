@@ -30,9 +30,22 @@ async def test_chapter_source_text_when_no_epub(tmp_db):
 
 
 async def test_chapter_source_epub_when_blob_stored(tmp_db):
+    from tests.test_splitter import _make_epub_with_chapters
+    epub_bytes = _make_epub_with_chapters("Sample", [
+        ("Chapter I", "ch1.xhtml", "<h1>Chapter I</h1><p>" + "Words here. " * 40 + "</p>"),
+        ("Chapter II", "ch2.xhtml", "<h1>Chapter II</h1><p>" + "More words. " * 40 + "</p>"),
+    ])
     await save_book(4002, _META, "Plain text. " * 10)
-    await save_book_epub(4002, b"fake epub bytes", "https://example.com/4002.epub")
+    await save_book_epub(4002, epub_bytes, "https://example.com/4002.epub")
     assert await get_chapter_source(4002) == "epub"
+
+
+async def test_chapter_source_text_when_stored_epub_is_a_stub(tmp_db):
+    """Regression #2639: an unparseable EPUB stub must report 'text' — what
+    actually renders — not 'epub'."""
+    await save_book(4004, _META, "Plain text only. " * 200)
+    await save_book_epub(4004, b"fake epub b", "https://example.com/4004.epub")
+    assert await get_chapter_source(4004) == "text"
 
 
 async def test_chapter_source_upload_for_uploaded_book(tmp_db, test_user):
@@ -57,17 +70,17 @@ async def test_chapters_endpoint_returns_chapter_source(client, test_user):
     assert body["chapter_source"] == "text"
 
 
-async def test_chapters_endpoint_marks_epub_when_blob_stored(client, test_user):
+async def test_chapters_endpoint_marks_text_when_epub_blob_unparseable(client, test_user):
+    """Regression #2639 (inverts the pre-2639 expectation): an EPUB blob the
+    splitter rejects means the chapters the user reads came from the
+    plain-text split — the badge must say "text", not advertise an EPUB that
+    produced nothing. 47 live rows held such stubs."""
     await save_book(4011, _META, "Some prose. " * 200)
-    # Provide an EPUB blob that the splitter will reject (too small) — the
-    # source classifier reports "epub" because a blob exists, regardless of
-    # whether the splitter actually uses it. That matches what the reader
-    # should tell the user: "we have an EPUB on file for this book".
     await save_book_epub(4011, b"not a real epub", "")
     clear_cache(4011)
     resp = await client.get("/api/books/4011/chapters")
     assert resp.status_code == 200
-    assert resp.json()["chapter_source"] == "epub"
+    assert resp.json()["chapter_source"] == "text"
 
 
 def test_html_body_text_preserves_div_chapter_wrapper_in_epub():

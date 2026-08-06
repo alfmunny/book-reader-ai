@@ -239,3 +239,45 @@ def test_format_json_structure():
     parsed = _json.loads(out)
     assert parsed["book_id"] == 2229
     assert parsed["issues"][0]["kind"] == "stanza_line_drift"
+
+
+# ---------------- chapters_from_db fallback (#2639) ---------------------------
+
+
+def _seed_content_db(tmp_path, *, text=None, epub_bytes=None):
+    """Minimal DB with just the columns chapters_from_db reads."""
+    import sqlite3
+    path = str(tmp_path / "cta.db")
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE books (id INTEGER PRIMARY KEY, text TEXT)")
+    conn.execute("CREATE TABLE book_epubs (book_id INTEGER PRIMARY KEY, epub_bytes BLOB)")
+    if text is not None:
+        conn.execute("INSERT INTO books (id, text) VALUES (1, ?)", (text,))
+    if epub_bytes is not None:
+        conn.execute("INSERT INTO book_epubs (book_id, epub_bytes) VALUES (1, ?)", (epub_bytes,))
+    conn.commit()
+    conn.close()
+    return path
+
+
+_PLAIN_TEXT = "CHAPTER I\n\n" + ("Plenty of words in this chapter body. " * 200) \
+    + "\n\nCHAPTER II\n\n" + ("Plenty more words in this one too. " * 200)
+
+
+def test_chapters_from_db_falls_back_to_text_for_stub_epub(tmp_path):
+    """Regression #2639: a stub EPUB must not yield zero chapters (which made
+    every alignment check pass vacuously) — the checker falls back to the
+    plain-text split, same as the reader."""
+    path = _seed_content_db(tmp_path, text=_PLAIN_TEXT, epub_bytes=b"fake epub b")
+    with patch.object(cta, "DB_PATH", path):
+        chapters = cta.chapters_from_db(1)
+    assert len(chapters) >= 1
+    assert any(chapters[0].text.strip() for _ in [0])
+
+
+def test_chapters_from_db_exits_when_nothing_usable(tmp_path):
+    """No parseable EPUB and no text: fail loudly, never return []."""
+    path = _seed_content_db(tmp_path, text=None, epub_bytes=b"fake epub b")
+    with patch.object(cta, "DB_PATH", path):
+        with pytest.raises(SystemExit, match="No usable EPUB or text"):
+            cta.chapters_from_db(1)

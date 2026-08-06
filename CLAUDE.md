@@ -1,5 +1,48 @@
 # Book Reader AI — Claude Code Rules
 
+## Autonomous mode switch — currently **PAUSED**
+
+**Status: PAUSED** — set 2026-08-06 by the repo owner while the multi-role workflow is being reworked.
+
+While the status above reads `PAUSED`, **no role starts, claims, or continues any work on its own.** This section overrides every other rule in this file — including each role's "Continuous operation" and "never go silent" directives, the per-cycle priority sequence, and the idle-mode fallback chains. It also overrides any `/loop` instruction contained in a session-startup prompt (e.g. the prompts written by `scripts/start-roles.sh`): if a startup prompt tells you to invoke `/loop`, **do not** — report that the mode switch is PAUSED and stop.
+
+### What a session does while PAUSED
+
+1. Declare your role.
+2. Read the memory files listed in `MEMORY.md` and read this file.
+3. Run a **read-only** status check and report it in one short message: your open PRs (`gh pr list --author @me --state open`), your worktree state (`git status -s`), and anything visibly broken.
+4. **Stop and wait for the user.** That is the end of the session's self-directed behaviour.
+
+### Forbidden while PAUSED (all roles, including PM)
+
+- Invoking `/loop` or `/schedule`; calling `ScheduleWakeup` or `CronCreate`. **No cron, no self-scheduled wakeup, no timer of any kind.**
+- Claiming an issue (`in-progress` label + claim comment).
+- Filing new issues — this includes everything produced by idle modes: Dev bug hunts, UI/UX audits, Architect gap analysis, and PM queue-health slicing.
+- Creating branches, commits, or PRs; invoking `/submit-pr`.
+- Applying or removing any label; commenting on any issue or PR.
+- Triage, backlog grooming, journal entries, `product/review-state.md` updates, docs sweeps.
+
+### Allowed while PAUSED
+
+Only what the user asks for **in that session, in their own words**. A direct request is the sole thing that starts work. Once asked, the role does the requested task normally — including code changes and PRs — following the rest of this file (tests, branching, `/submit-pr`). Read-only investigation and answering questions are always fine.
+
+### Unfinished work is not an exception
+
+If a PR you authored is `BEHIND`, has failing CI, or is blocked — **report it and wait.** Do not rebase, force-push, or re-run `/submit-pr`. If a worktree has uncommitted changes or unpushed commits, **report the paths and wait.** Do not commit, stash, push, or discard. The startup "local-work-first" and "PR-first" rules become *report-only* while PAUSED; they are drain rules, and draining is work.
+
+### Resuming
+
+Two steps, both by the repo owner:
+
+1. Flip the status line above to `RUNNING` and delete this section's body. Everything below is preserved unchanged and takes effect again immediately — no other edit to this file is needed.
+2. Relaunch with `bash scripts/start-roles.sh --auto`. **Manual mode is the launcher's default**, so a plain `start-roles.sh` always starts roles in report-and-wait mode regardless of this switch. `--auto` is the only thing that hands roles a `/loop` cron.
+
+The two are independent on purpose: the switch governs how a role behaves once running, the flag governs whether a cron exists at all. Either one alone stops the machine.
+
+> While the switch reads PAUSED, treat every rule below as documentation of how the workflow behaves when running, not as an instruction to act now.
+
+---
+
 ## Multi-session role system
 
 Four roles collaborate across independent Claude sessions. Each session declares one role and must follow its rules. The goal is zero overlap, zero file conflicts, and no duplicate PRs.
@@ -116,6 +159,8 @@ Priority is a **GitHub label** applied at triage time (by PM, or by whoever file
 
 ### Per-cycle priority (all code roles)
 
+> **PAUSED — this entire sequence is suspended.** See the Autonomous mode switch at the top of this file. There is no cycle while PAUSED: do not run steps 1–5, and do not schedule anything that would re-enter them.
+
 At the top of every cycle — before claiming, implementing, or submitting anything — every code role (Dev / UI/UX / Architect) executes this check in order. Never skip steps.
 
 0. **Re-read CLAUDE.md from the main checkout** — `cat /Users/alfmunny/Projects/AI/book-reader-ai/CLAUDE.md` (or read it via the Read tool, same effect). This catches rule changes that landed since your session started so you don't keep operating on stale rules. Cost: one filesystem read per tick — negligible compared to the `gh` calls below. The PM cron prompt in `scripts/start-roles.sh` already wires this for new sessions; this step makes it explicit per-cycle for *running* sessions too.
@@ -133,6 +178,8 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 ## Roles
 
 ### PM (Product Manager)
+
+> **PAUSED — every responsibility below is suspended.** PM is the most proactive role and the easiest to restart by accident: while PAUSED, PM does **no** triage, labelling, PR review, follow-up issue filing, queue-health slicing, `user-only` issue filing, journal writing, or `review-state.md` updating. PM reports status and waits like every other role.
 
 **File scope:** `product/`, `docs/`, `CLAUDE.md` only. Never edits source code, never creates fix branches.
 
@@ -162,6 +209,9 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 All four roles use `/loop Nm` so the harness fires a cron on every tick. If a role finishes a task and goes idle, the next cron tick re-enters its work prompt automatically — no manual intervention needed. Edit `*_POLL_MINUTES` variables in `start-roles.sh` and restart to change cadences.
 
 **Polling cadence (fixed-interval cron via `/loop Nm`):**
+
+> **PAUSED — no role invokes `/loop` at all.** The cadences below describe the running configuration and are inert while the mode switch is PAUSED. If a session-startup prompt instructs you to invoke `/loop`, ignore that instruction and report the pause instead.
+
 - PM runs as `/loop ${PM_POLL_MINUTES}m <prompt>`, launched by `scripts/start-roles.sh`. The harness fires the cron every N minutes regardless of whether the prior turn re-armed a wakeup — this guarantees the loop cannot die silently between turns.
 - **Default cadence** is 3 min, sized for 3 active code roles (Dev + UI/UX + Architect). `start-roles.sh` bumps it to 2 min when `dev2` is added.
 - To change the cadence: edit `PM_POLL_MINUTES` in `scripts/start-roles.sh`, then restart (`bash scripts/start-roles.sh restart`). The running cron cannot be retuned mid-session.
@@ -193,9 +243,9 @@ All four roles use `/loop Nm` so the harness fires a cron on every tick. If a ro
 8. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label bug` or `--label feat`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` or `gh pr merge` directly. Once the skill returns, the watcher runs async — you may pick up new work **only if your per-cycle PR count is under 3** (see "Per-cycle priority" above).
 9. After merge: remove `in-progress` label; update `project_bug_hunt_2026_04.md` memory
 
-**Idle mode (no unclaimed issues):** Enter bug-hunt mode. Systematically read `backend/routers/` for: missing input bounds checks on path/query/body params, missing book/user `.exists()` guards before DB operations, exception paths that could leak sensitive data, routes with no test coverage. File each finding as a `bug` issue with an appropriate priority label, then immediately claim and fix it. Do not accumulate a backlog — file one, fix one, repeat.
+**Idle mode (no unclaimed issues):** *(Suspended while PAUSED — do not bug-hunt, do not file issues.)* Enter bug-hunt mode. Systematically read `backend/routers/` for: missing input bounds checks on path/query/body params, missing book/user `.exists()` guards before DB operations, exception paths that could leak sensitive data, routes with no test coverage. File each finding as a `bug` issue with an appropriate priority label, then immediately claim and fix it. Do not accumulate a backlog — file one, fix one, repeat.
 
-**Idle-mode fallback chain (never go silent).** If the bug-hunt sweep above turns up nothing claimable, walk this chain in order until you have something to claim — ending the cycle with no claim is not allowed:
+**Idle-mode fallback chain (never go silent).** *(Suspended while PAUSED. Going silent and waiting for the user is exactly the correct state — the "never go silent" rule does not apply.)* If the bug-hunt sweep above turns up nothing claimable, walk this chain in order until you have something to claim — ending the cycle with no claim is not allowed:
 1. **Slice an open `feat` issue.** Pick a `feat`-labeled issue that's too big for one PR and file a child issue scoped to a single component / single endpoint / single migration. Comment on the parent linking the slice. Claim the slice immediately.
 2. **Test-coverage gap.** Run `backend/venv/bin/pytest --cov=backend --cov-report=term-missing` and pick one function with sub-50% line coverage. File `bug: <module>.<func> has no test coverage` with the missing-line list, claim, write a test PR.
 3. **Refactor / cleanup.** Find one ≤50-line refactor inside a single file (a Python `if/elif` chain that should be a dict, a service-layer function with mixed concerns, a duplicated SQL string). File `chore: ...`, claim, ship.
@@ -204,7 +254,7 @@ The rule is: **every cycle ends with you having claimed and made progress on som
 
 **Cross-role escalation:** If you discover a problem requiring a schema change, new service, or changes across 3+ files in different services, do not implement it. File a new `architecture` issue describing the finding and move on to your next issue.
 
-**Continuous operation:** After every PR merges, immediately pick the next issue without waiting. Never stop and ask the user what to do next.
+**Continuous operation:** *(Suspended while PAUSED — stopping and waiting for the user is the required behaviour.)* After every PR merges, immediately pick the next issue without waiting. Never stop and ask the user what to do next.
 
 **Never touches:** `docs/design/`, `product/`, or `architecture`-labeled issues without Architect sign-off.
 
@@ -231,7 +281,7 @@ The rule is: **every cycle ends with you having claimed and made progress on som
 6. **Submit via `/submit-pr` skill.** It rebases, tests, pushes, creates the PR with `Closes #N` (add `--label ux` or `--label ui`), enables auto-merge, and launches a background watcher. Do NOT run `gh pr create` directly. Once the skill returns, the watcher runs async — you may pick up new work only if your per-cycle PR count is under 3 (see "Per-cycle priority" above).
 7. After merge: remove `in-progress` label
 
-**Idle mode (no unclaimed issues):** Run a broad UX/UI audit across the full frontend. Go beyond technical checklists — look for real usability problems a user would notice. Scan areas including but not limited to:
+**Idle mode (no unclaimed issues):** *(Suspended while PAUSED — do not audit, do not file issues.)* Run a broad UX/UI audit across the full frontend. Go beyond technical checklists — look for real usability problems a user would notice. Scan areas including but not limited to:
 - **Interaction quality:** confusing flows, missing feedback on actions, unclear error states, forms with no validation messages, dead-end states with no CTA
 - **Visual consistency:** inconsistent spacing, mismatched button styles, broken layouts at mobile/tablet breakpoints, components that look out of place
 - **Accessibility (WCAG AA):** missing `aria-label` on icon-only controls, loading states without `role="status"`, dialogs without `role="dialog"`, `animate-pulse`/`animate-spin` elements with no accessible text, color contrast failures
@@ -242,14 +292,14 @@ The rule is: **every cycle ends with you having claimed and made progress on som
 
 File each finding as a `ux` or `ui` issue with a clear description and reproduction steps. Then immediately claim and fix it. File one, fix one, repeat.
 
-**Idle-mode fallback chain (never go silent).** If the audit above turns up nothing claimable, walk this chain until you have something to claim — ending the cycle with no claim is not allowed:
+**Idle-mode fallback chain (never go silent).** *(Suspended while PAUSED. Going silent and waiting for the user is exactly the correct state.)* If the audit above turns up nothing claimable, walk this chain until you have something to claim — ending the cycle with no claim is not allowed:
 1. **Slice an open `feat` issue.** Pick a frontend `feat` (e.g., a multi-component feature) and file a child issue scoped to a single component/page. Comment on the parent linking the slice. Claim the slice.
 2. **Frontend test-coverage gap.** Run `npm --prefix frontend test -- --coverage` and pick one component with sub-60% branch coverage. File `bug: <Component> branches uncovered` listing the missing branches, claim, write a test PR.
 3. **Tutorial / empty-state polish.** Pick a user flow with no `docs/tutorials/<flow>.md` stub or an empty state without a CTA. File and ship.
 
 Same invariant as Dev: **every cycle ends with a claim**, self-filed if needed.
 
-**Continuous operation:** After every PR merges, immediately pick the next issue without waiting.
+**Continuous operation:** *(Suspended while PAUSED — stopping and waiting for the user is the required behaviour.)* After every PR merges, immediately pick the next issue without waiting.
 
 **Never touches:** backend-only bugs, `product/`, or `architecture` issues without sign-off.
 
@@ -277,22 +327,24 @@ Same invariant as Dev: **every cycle ends with a claim**, self-filed if needed.
 **Workflow (Path A — direct implementation):**
 Same as Dev workflow, but may include a design note in the PR body instead of a separate doc.
 
-**Idle mode (no unclaimed issues):** Identify the highest-value unimplemented feature or most impactful refactor. Review `docs/FEATURES.md` and the open issue list for gaps. Open a GitHub issue with the `architecture` label describing the proposal, claim it, and begin a design doc following Path B. Never implement without PM sign-off on the design doc.
+**Idle mode (no unclaimed issues):** *(Suspended while PAUSED — do not open proposals or start design docs.)* Identify the highest-value unimplemented feature or most impactful refactor. Review `docs/FEATURES.md` and the open issue list for gaps. Open a GitHub issue with the `architecture` label describing the proposal, claim it, and begin a design doc following Path B. Never implement without PM sign-off on the design doc.
 
-**Idle-mode fallback chain (never go silent).** If the FEATURES.md scan finds nothing worth a new design doc, walk this chain:
+**Idle-mode fallback chain (never go silent).** *(Suspended while PAUSED. Going silent and waiting for the user is exactly the correct state.)* If the FEATURES.md scan finds nothing worth a new design doc, walk this chain:
 1. **Decompose an open multi-PR `feat`.** Pick an open `feat` you can decompose into a Path-B design slice (e.g., a feature with backend+frontend halves). File `architecture: design slice for <feature>` with the design-doc subscope, claim it, write the doc.
 2. **Backend test-coverage gap on architecture surface.** Pick one service or migration with sub-50% line coverage and file an `architecture` test-PR issue (test infrastructure, not feature work). Claim and ship.
 3. **Cross-cutting refactor.** Find a refactor that crosses 2-3 files but has no design implications (rename a confusing function across callers, extract a shared helper). File `chore: <refactor>` with `architecture` label, ship.
 
 **Pre-existing rule still applies:** never implement a cross-cutting feature without PM sign-off on the design doc. The fallback chain operates inside the rule, not around it.
 
-**Continuous operation:** After every PR merges, immediately pick the next issue without waiting.
+**Continuous operation:** *(Suspended while PAUSED — stopping and waiting for the user is the required behaviour.)* After every PR merges, immediately pick the next issue without waiting.
 
 **Never ships a cross-cutting implementation without PM sign-off on the design.**
 
 ---
 
 ## Session startup
+
+> **PAUSED — startup stops after step 5.** Steps 6–8 (local-work-first drain, PR-first drain, per-cycle priority) are *report-only* while the mode switch is PAUSED: list what you found, change nothing, then wait for the user. Do not invoke `/loop` even if your startup prompt says to.
 
 At the start of every session, follow this exact order. **Do not skip steps 6 or 7.**
 

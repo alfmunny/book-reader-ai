@@ -85,6 +85,7 @@ nav:
           - User book chapters (#357): design/user-book-chapters.md
           - Vocab tags & decks (#645): design/vocab-tags-decks.md
   - Development:
+      - Starting a session: development/starting-roles.md
       - Roles: development/roles.md
       - Path A vs B: development/paths.md
       - Testing: development/testing.md

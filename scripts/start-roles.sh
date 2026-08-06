@@ -33,6 +33,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REPO="$(dirname "$SCRIPT_DIR")"
 
+# If this copy of the script lives inside a linked worktree (e.g. book-reader-ai-dev),
+# resolve the repo to the main checkout instead. Without this, launching from a role
+# worktree would derive REPO=book-reader-ai-dev and then create nested worktrees
+# (book-reader-ai-dev-dev, -dev-uiux, ...) rather than reusing the real ones.
+# `git rev-parse --git-common-dir` returns a relative ".git" in the main checkout
+# and an absolute path to <main>/.git from any linked worktree.
+_common_dir="$(git -C "$DEFAULT_REPO" rev-parse --git-common-dir 2>/dev/null || true)"
+case "$_common_dir" in
+  /*) DEFAULT_REPO="$(dirname "$_common_dir")" ;;
+esac
+unset _common_dir
+
 # ── Parse args ────────────────────────────────────────────────────────────────
 
 BYPASS=""

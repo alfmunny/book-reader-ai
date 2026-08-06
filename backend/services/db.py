@@ -650,6 +650,33 @@ async def has_book_epub(book_id: int) -> bool:
             return (await cur.fetchone()) is not None
 
 
+# ── Fossilized content (issue #2624 / docs/design/local-first-content.md) ────
+
+async def get_book_freeze(book_id: int) -> dict | None:
+    """Return the freeze metadata row for a fossilized book, or None if the
+    book is not frozen. The row's existence is the frozen flag."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM book_freeze WHERE book_id = ?", (book_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    return dict(row) if row else None
+
+
+async def get_frozen_chapters(book_id: int) -> list[dict]:
+    """Return stored chapters for a fossilized book, ordered by chapter_index."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT chapter_index, title, text FROM book_chapters "
+            "WHERE book_id = ? ORDER BY chapter_index",
+            (book_id,),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
 # ── App settings (key/value config used by the always-on queue, etc.) ────────
 
 async def get_setting(key: str) -> str | None:

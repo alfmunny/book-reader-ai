@@ -1864,3 +1864,77 @@ async def test_migration_033_cascade_deletes_on_book_delete(tmp_db):
             "SELECT COUNT(*) FROM audio_cache WHERE book_id = 1300"
         ) as cur:
             assert (await cur.fetchone())[0] == 0
+
+
+# ── 040_book_freeze (issue #2624 / docs/design/local-first-content.md) ────────
+
+async def test_migration_040_book_freeze_tables_created(tmp_db):
+    """Fresh DB: book_freeze and book_chapters exist with usable columns."""
+    applied = await run_migrations(tmp_db)
+    assert "040_book_freeze" in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1400, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_freeze (book_id, splitter, chapter_source, "
+            "frozen_at, audited_by, content_sha256) "
+            "VALUES (1400, 'html_preference', 'epub', '2026-08-06', 'alfmunny', 'abc')"
+        )
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text) "
+            "VALUES (1400, 0, 'Zueignung', 'Ihr naht euch wieder')"
+        )
+        await db.commit()
+
+        async with db.execute(
+            "SELECT splitter, chapter_source FROM book_freeze WHERE book_id = 1400"
+        ) as cur:
+            assert await cur.fetchone() == ("html_preference", "epub")
+        async with db.execute(
+            "SELECT title, text FROM book_chapters WHERE book_id = 1400"
+        ) as cur:
+            assert await cur.fetchone() == ("Zueignung", "Ihr naht euch wieder")
+
+
+async def test_migration_040_primary_keys_enforced(tmp_db):
+    """One freeze row per book; one chapter row per (book, index)."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1401, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, text) VALUES (1401, 0, 'a')"
+        )
+        await db.commit()
+        with pytest.raises(aiosqlite.IntegrityError):
+            await db.execute(
+                "INSERT INTO book_chapters (book_id, chapter_index, text) VALUES (1401, 0, 'b')"
+            )
+            await db.commit()
+
+
+async def test_migration_040_cascade_deletes_on_book_delete(tmp_db):
+    """DELETE FROM books must cascade to book_freeze and book_chapters."""
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1402, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_freeze (book_id, splitter, chapter_source, "
+            "frozen_at, audited_by, content_sha256) "
+            "VALUES (1402, 'html_preference', 'text', '2026-08-06', 'alfmunny', 'abc')"
+        )
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, text) VALUES (1402, 0, 'a')"
+        )
+        await db.commit()
+
+        await db.execute("DELETE FROM books WHERE id = 1402")
+        await db.commit()
+
+        for table in ("book_freeze", "book_chapters"):
+            async with db.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE book_id = 1402"
+            ) as cur:
+                assert (await cur.fetchone())[0] == 0

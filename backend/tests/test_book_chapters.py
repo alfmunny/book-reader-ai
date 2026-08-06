@@ -26,7 +26,10 @@ def clear_chapter_cache():
     """
     clear_cache()
     book_chapters_module._epub_fetch_attempted.clear()
-    with patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None):
+    with (
+        patch("services.db.get_book_source", new_callable=AsyncMock, return_value=None),
+        patch("services.db.get_book_freeze", new_callable=AsyncMock, return_value=None),
+    ):
         yield
     clear_cache()
     book_chapters_module._epub_fetch_attempted.clear()
@@ -399,3 +402,87 @@ async def test_background_fetch_epub_no_cache_clear_when_epub_not_returned():
         "Chapter cache must not change when EPUB fetch returns None."
     )
     mock_del.assert_not_called()
+
+
+# ── get_chapters — fossilized-content resolver (#2624) ────────────────────────
+
+async def test_get_chapters_serves_frozen_book_from_storage():
+    """A frozen book is served from book_chapters; the splitter and the
+    background EPUB fetch (whose side-effect deletes translations, #1556)
+    are never touched."""
+    from services.book_chapters import get_chapters
+    freeze_row = {"book_id": 7, "chapter_source": "epub"}
+    rows = [
+        {"chapter_index": 0, "title": "Zueignung", "text": "Ihr naht euch"},
+        {"chapter_index": 1, "title": "Nacht", "text": "FAUST.\nHabe nun"},
+    ]
+    with (
+        patch("services.db.get_book_freeze", new_callable=AsyncMock, return_value=freeze_row),
+        patch("services.db.get_frozen_chapters", new_callable=AsyncMock, return_value=rows),
+        patch("services.book_chapters.build_chapters") as mock_text,
+        patch("services.book_chapters.build_chapters_from_epub") as mock_epub,
+        patch("services.book_chapters._background_fetch_epub", new_callable=AsyncMock) as mock_fetch,
+    ):
+        result = await get_chapters(7)
+    assert [c.title for c in result] == ["Zueignung", "Nacht"]
+    assert result[1].text == "FAUST.\nHabe nun"
+    mock_text.assert_not_called()
+    mock_epub.assert_not_called()
+    mock_fetch.assert_not_called()
+
+
+async def test_get_chapters_caches_frozen_result():
+    from services.book_chapters import get_chapters
+    freeze_row = {"book_id": 8, "chapter_source": "text"}
+    rows = [{"chapter_index": 0, "title": "One", "text": "body"}]
+    with (
+        patch("services.db.get_book_freeze", new_callable=AsyncMock, return_value=freeze_row),
+        patch("services.db.get_frozen_chapters", new_callable=AsyncMock, return_value=rows) as mock_rows,
+    ):
+        first = await get_chapters(8)
+        second = await get_chapters(8)
+    assert first is second
+    mock_rows.assert_awaited_once()
+
+
+async def test_get_chapters_falls_back_to_runtime_split_for_unfrozen_book():
+    """No book_freeze row → the pre-existing runtime path runs, with
+    books.text loaded internally."""
+    from services.book_chapters import get_chapters
+    text_chapters = _make_chapters("Chapter 1", "Chapter 2")
+    with (
+        patch("services.db.get_book_freeze", new_callable=AsyncMock, return_value=None),
+        patch("services.db.get_cached_book", new_callable=AsyncMock,
+              return_value={"id": 9, "text": "plain text body"}) as mock_book,
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=None),
+        patch("services.book_chapters._background_fetch_epub", new_callable=AsyncMock),
+        patch("services.book_chapters.build_chapters", return_value=text_chapters) as mock_split,
+    ):
+        result = await get_chapters(9)
+    assert result == text_chapters
+    mock_book.assert_awaited_once_with(9)
+    mock_split.assert_called_once_with("plain text body")
+
+
+async def test_get_chapters_unfrozen_missing_book_splits_empty_text():
+    from services.book_chapters import get_chapters
+    with (
+        patch("services.db.get_book_freeze", new_callable=AsyncMock, return_value=None),
+        patch("services.db.get_cached_book", new_callable=AsyncMock, return_value=None),
+        patch("services.db.get_book_epub_bytes", new_callable=AsyncMock, return_value=None),
+        patch("services.book_chapters._background_fetch_epub", new_callable=AsyncMock),
+        patch("services.book_chapters.build_chapters", return_value=[]) as mock_split,
+    ):
+        result = await get_chapters(10)
+    assert result == []
+    mock_split.assert_called_once_with("")
+
+
+async def test_get_chapter_source_returns_frozen_chapter_source():
+    """Frozen books report the chapter_source recorded at freeze time."""
+    from services.book_chapters import get_chapter_source
+    with patch(
+        "services.db.get_book_freeze", new_callable=AsyncMock,
+        return_value={"book_id": 11, "chapter_source": "epub"},
+    ):
+        assert await get_chapter_source(11) == "epub"

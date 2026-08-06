@@ -1,0 +1,170 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  background: #f9fafb;
+  color: #111827;
+  width: 300px;
+  min-height: 100px;
+}
+
+.container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+h1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rate-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4f46e5;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+input[type="url"],
+input[type="text"],
+select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #111827;
+  background: #fff;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+input[type="url"]:focus,
+select:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #4f46e5;
+  height: 4px;
+  cursor: pointer;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.toggle-group {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 7px 0;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle-btn:first-child {
+  border-right: 1px solid #d1d5db;
+}
+
+.toggle-btn.active {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: #f3f4f6;
+}
+
+.save-btn {
+  padding: 9px 0;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.save-btn:hover {
+  background: #4338ca;
+}
+
+.save-btn:active {
+  background: #3730a3;
+}
+
+.status {
+  font-size: 12px;
+  text-align: center;
+  padding: 6px 0;
+  border-radius: 4px;
+}
+
+.status.success {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.status.error {
+  color: #991b1b;
+  background: #fee2e2;
+}

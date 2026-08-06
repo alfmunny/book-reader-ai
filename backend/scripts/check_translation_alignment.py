@@ -120,14 +120,39 @@ def _conn() -> sqlite3.Connection:
 
 
 def chapters_from_db(book_id: int):
+    """Resolve chapters the same way the reader would: stored EPUB first,
+    plain-text split of books.text as fallback.
+
+    The fallback is load-bearing (#2639): 47 live book_epubs rows held
+    unparseable byte stubs, and the old EPUB-only version returned zero
+    chapters for them — every check then iterated over nothing and the book
+    passed as "clean" vacuously. An audit that cannot resolve chapters must
+    fail loudly, never pass silently."""
     conn = _conn()
     row = conn.execute(
         "SELECT epub_bytes FROM book_epubs WHERE book_id=?", (book_id,)
     ).fetchone()
+    if row:
+        try:
+            chapters = build_chapters_from_epub(row[0])
+        except Exception:
+            chapters = []
+        if chapters:
+            conn.close()
+            return chapters
+        print(
+            f"note: book {book_id}: stored EPUB yields no chapters "
+            f"({len(row[0])} bytes) — falling back to plain-text split",
+            file=sys.stderr,
+        )
+    text_row = conn.execute(
+        "SELECT text FROM books WHERE id=?", (book_id,)
+    ).fetchone()
     conn.close()
-    if not row:
-        raise SystemExit(f"No EPUB cached for book {book_id}")
-    return build_chapters_from_epub(row[0])
+    if text_row and text_row[0]:
+        from services.splitter import build_chapters
+        return build_chapters(text_row[0])
+    raise SystemExit(f"No usable EPUB or text for book {book_id}")
 
 
 def translations_for_book(

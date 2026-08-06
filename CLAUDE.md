@@ -201,10 +201,12 @@ At the top of every cycle — before claiming, implementing, or submitting anyth
 
 | Role | Model | Loop cadence |
 |---|---|---|
-| PM | `claude-opus-4-7` | 3 min (team-size-adjusted) |
-| Dev | `claude-sonnet-4-6` | 5 min |
-| UI/UX Dev | `claude-sonnet-4-6` | 5 min |
-| Architect | `claude-opus-4-7` | 10 min |
+| PM | `claude-fable-5[1m]` | 3 min (team-size-adjusted) |
+| Dev | `claude-opus-5[1m]` | 5 min |
+| UI/UX Dev | `claude-opus-5[1m]` | 5 min |
+| Architect | `claude-opus-5[1m]` | 10 min |
+
+The `[1m]` suffix selects the 1M-token context variant. Change these by editing the `MODEL_*` variables near the top of `scripts/start-roles.sh` and restarting.
 
 All four roles use `/loop Nm` so the harness fires a cron on every tick. If a role finishes a task and goes idle, the next cron tick re-enters its work prompt automatically — no manual intervention needed. Edit `*_POLL_MINUTES` variables in `start-roles.sh` and restart to change cadences.
 

@@ -4,7 +4,7 @@
 # Works with any git repo. Defaults to the repo containing this script.
 #
 # Usage:
-#   bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass]
+#   bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass] [--manual|--auto]
 #
 # Subcommands:
 #   (none)              Start all 4 roles in separate tmux windows
@@ -14,6 +14,15 @@
 #   restart [--bypass]  Stop then start fresh
 #   dev2    [--bypass]  Add a second Dev window to a running session
 #   --help | -h | help  Show this help
+#
+# Work modes:
+#   manual  Roles start, report a read-only status, and wait for your commands.
+#           No /loop, no claiming, no PRs until you ask.
+#   auto    Roles schedule a /loop cron and work the backlog continuously.
+#
+# The mode is read from the "Autonomous mode switch" section at the top of
+# CLAUDE.md, so the file and the launcher can never disagree. Flip that switch
+# to change modes; use --manual / --auto only to override for one launch.
 #
 # Requires: tmux, claude (Claude Code CLI), gh (GitHub CLI)
 
@@ -29,10 +38,13 @@ DEFAULT_REPO="$(dirname "$SCRIPT_DIR")"
 BYPASS=""
 SUBCOMMAND=""
 REPO="$DEFAULT_REPO"
+MODE_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --bypass)      BYPASS="--dangerously-skip-permissions"; shift ;;
+    --manual)      MODE_OVERRIDE="manual"; shift ;;
+    --auto)        MODE_OVERRIDE="auto"; shift ;;
     --help|-h|help) SUBCOMMAND="help"; shift ;;
     --repo)        REPO="$(cd "$2" && pwd)"; shift 2 ;;
     overview|restore|stop|restart|dev2) SUBCOMMAND="$1"; shift ;;
@@ -87,6 +99,29 @@ ARCH_POLL_MINUTES=10
 die()      { echo "ERROR: $*" >&2; exit 1; }
 running()  { tmux has-session -t "$SESSION" 2>/dev/null; }
 
+# Resolve the work mode. Manual is the default: roles start, report a read-only
+# status, and wait. Autonomous /loop cycles are opt-in via --auto, so nothing
+# starts working the backlog unless you explicitly ask for it.
+MANUAL_MODE="1"
+MODE_SOURCE="default"
+resolve_mode() {
+  case "$MODE_OVERRIDE" in
+    auto)   MANUAL_MODE="";  MODE_SOURCE="--auto flag" ;;
+    manual) MANUAL_MODE="1"; MODE_SOURCE="--manual flag" ;;
+    *)      MANUAL_MODE="1"; MODE_SOURCE="default (pass --auto for /loop cycles)" ;;
+  esac
+
+  # Safety net: --auto while CLAUDE.md still says PAUSED means the roles would
+  # be told to /loop by their prompt and told to stop by their rules.
+  if [ -z "$MANUAL_MODE" ] && [ -f "$REPO/CLAUDE.md" ] \
+     && grep -qi '^\*\*Status:[[:space:]]*PAUSED\*\*' "$REPO/CLAUDE.md"; then
+    echo "⚠  --auto given, but CLAUDE.md's autonomous mode switch still reads PAUSED."
+    echo "   Roles will be told to /loop by their prompt and to stop by their rules."
+    echo "   Flip the switch to RUNNING in $REPO/CLAUDE.md first."
+    echo ""
+  fi
+}
+
 # Create a worktree pointing to origin/main if the directory doesn't exist yet
 ensure_worktree() {
   local wt="$1"
@@ -104,8 +139,50 @@ check_deps() {
   gh auth status    >/dev/null 2>&1 || die "gh not authenticated — run: gh auth login"
 }
 
+# Manual-mode prompt: read-only startup, then wait for the user.
+# Usage: manual_prompt <role display name> <workdir>
+manual_prompt() {
+  local role="$1"
+  local wt="$2"
+  cat << PROMPT
+MANUAL MODE — do not start any work. Wait for my instructions.
+
+You are the ${role} session for ${SLUG}. CLAUDE.md is at ${REPO}/CLAUDE.md and is auto-loaded as the project file.
+
+Do exactly this once, then stop:
+1. Declare your role: ${role}.
+2. Read every memory file listed in ${MEMORY_PATH}.
+3. Read ${REPO}/CLAUDE.md.
+4. Run these read-only commands and report the results in ONE short message:
+   git -C ${wt} status -sb
+   git -C ${wt} log @{u}..HEAD --oneline 2>/dev/null || echo "(no upstream)"
+   gh pr list --author @me --state open --json number,title,mergeStateStatus,headRefName
+5. Stop and wait. Do not propose a next action unless I ask.
+
+FORBIDDEN until I explicitly ask for it:
+- /loop, /schedule, ScheduleWakeup, CronCreate — no cron, no self-scheduled wakeup, no timer of any kind.
+- Claiming issues (in-progress label or claim comment). Filing issues. Applying or removing labels. Commenting on issues or PRs.
+- Creating branches, commits, or PRs. /submit-pr.
+- Rebasing or force-pushing a BEHIND PR, or fixing failing CI. Report it and leave it.
+- Committing, stashing, pushing, or discarding uncommitted worktree changes. Report the paths and leave them exactly as they are.
+- All idle modes: no bug hunt, no UX audit, no architecture gap analysis, no PM triage, queue-health duty, journal entries, or review-state updates.
+
+The "never go silent" and "Continuous operation" rules in CLAUDE.md do NOT apply here. Going quiet and waiting is the correct behaviour.
+
+When I ask for something specific, do it normally following the rest of CLAUDE.md — regression test first, full test suite, /submit-pr. Until then: report and wait.
+PROMPT
+}
+
 # Write role prompts to /tmp (namespaced by SLUG so multiple repos can run at once)
 write_prompts() {
+  if [ -n "$MANUAL_MODE" ]; then
+    manual_prompt "PM"          "$REPO"      > "/tmp/${SLUG}-pm.txt"
+    manual_prompt "Dev"         "$REPO_DEV"  > "/tmp/${SLUG}-dev.txt"
+    manual_prompt "UI/UX Dev"   "$REPO_UIUX" > "/tmp/${SLUG}-uiux.txt"
+    manual_prompt "Architect"   "$REPO_ARCH" > "/tmp/${SLUG}-arch.txt"
+    return
+  fi
+
   cat > "/tmp/${SLUG}-pm.txt" << PROMPT
 SESSION STARTUP — before invoking /loop below, perform the full CLAUDE.md §Session startup sequence (all steps) for the PM role. CLAUDE.md is at ${REPO}/CLAUDE.md and is auto-loaded as the project file. Read every memory file listed in ${MEMORY_PATH}. Run: git -C ${REPO} fetch origin main --quiet. Run: git -C ${REPO} worktree list AND gh issue list --label in-progress — warn me if any in-progress issue has no corresponding worktree. Walk through every leftover PR you authored (gh pr list --author @me --state open). Resume from product/review-state.md. Do the stale-claim cleanup (in-progress issues with no linked open PR and a claim comment older than 1 hour: comment to confirm, or remove label if already asked once). Only after all of that is complete, schedule the recurring PM cycle by invoking:
 
@@ -217,7 +294,7 @@ cmd_restore() {
 case "$SUBCOMMAND" in
   help)
     cat <<EOF
-Usage: bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass]
+Usage: bash scripts/start-roles.sh [--repo <path>] [subcommand] [--bypass] [--auto]
 
 Subcommands:
   (none)              Start all 4 roles in separate tmux windows
@@ -231,6 +308,15 @@ Subcommands:
 Flags:
   --repo <path>  Repo root (default: parent of this script — $DEFAULT_REPO)
   --bypass       Pass --dangerously-skip-permissions to every claude invocation
+  --auto         Opt into autonomous /loop cycles (roles work the backlog)
+  --manual       Force manual mode (this is already the default)
+
+Work modes:
+  manual (DEFAULT)  Roles start, report a read-only status, then wait for your
+                    commands. No /loop, no claiming, no issue filing, no PRs,
+                    no rebasing — nothing happens until you ask for it.
+  auto  (--auto)    Roles schedule a /loop cron and work the backlog
+                    continuously, as described in CLAUDE.md.
 
 Repo:    $REPO
 Session: $SESSION
@@ -247,7 +333,7 @@ Models:
   UI/UX   $MODEL_UIUX
   Arch    $MODEL_ARCH
 
-Idle-recovery cadences (fixed cron via /loop — re-enters role if stalled):
+Idle-recovery cadences (--auto only; ignored in manual mode):
   PM      ${PM_POLL_MINUTES} min  (bumped to 2 min when dev2 added)
   Dev     ${DEV_POLL_MINUTES} min
   UI/UX   ${UIUX_POLL_MINUTES} min
@@ -284,6 +370,7 @@ EOF
     running || die "Session '$SESSION' not running — start it first."
     # Bump PM cadence: 4 code roles are active, PM should poll every 2 min.
     PM_POLL_MINUTES=2
+    resolve_mode
     write_prompts
     ensure_worktree "$REPO_DEV"
     start_window "dev2" "/tmp/${SLUG}-dev.txt" "$MODEL_DEV" "$REPO_DEV"
@@ -302,9 +389,11 @@ esac
 # ── Full startup ──────────────────────────────────────────────────────────────
 
 check_deps
+resolve_mode
 
 echo "Repo:    $REPO"
 echo "Session: $SESSION"
+echo "Mode:    $([ -n "$MANUAL_MODE" ] && echo "manual — roles wait for your commands" || echo "auto — roles run /loop cycles")  [$MODE_SOURCE]"
 echo ""
 echo "Checking worktrees..."
 git -C "$REPO" worktree list
@@ -344,6 +433,15 @@ echo "  Models:   pm=$MODEL_PM"
 echo "            dev=$MODEL_DEV"
 echo "            uiux=$MODEL_UIUX"
 echo "            arch=$MODEL_ARCH"
+echo ""
+if [ -n "$MANUAL_MODE" ]; then
+  echo "  MANUAL MODE — each role reports a read-only status, then waits."
+  echo "                Nothing is claimed, filed, or pushed until you ask."
+  echo "                Attach to a window and type what you want done."
+  echo "                Enable autonomous cycles with: --auto"
+else
+  echo "  AUTO MODE — roles are running /loop cycles and will work the backlog."
+fi
 echo ""
 echo "  Attach:          tmux attach -t $SESSION"
 echo "  Switch windows:  C-a p/n  (or C-a w for visual picker)"

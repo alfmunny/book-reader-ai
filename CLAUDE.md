@@ -32,7 +32,12 @@ If a PR you authored is `BEHIND`, has failing CI, or is blocked — **report it 
 
 ### Resuming
 
-The repo owner flips the status line to `RUNNING` and deletes this section's body. Everything below is preserved unchanged and takes effect again the moment the switch flips — no other edit to this file is needed.
+Two steps, both by the repo owner:
+
+1. Flip the status line above to `RUNNING` and delete this section's body. Everything below is preserved unchanged and takes effect again immediately — no other edit to this file is needed.
+2. Relaunch with `bash scripts/start-roles.sh --auto`. **Manual mode is the launcher's default**, so a plain `start-roles.sh` always starts roles in report-and-wait mode regardless of this switch. `--auto` is the only thing that hands roles a `/loop` cron.
+
+The two are independent on purpose: the switch governs how a role behaves once running, the flag governs whether a cron exists at all. Either one alone stops the machine.
 
 > While the switch reads PAUSED, treat every rule below as documentation of how the workflow behaves when running, not as an instruction to act now.
 

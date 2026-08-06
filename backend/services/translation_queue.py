@@ -249,14 +249,14 @@ async def enqueue_for_book(
     if not book:
         return 0
     # Uploaded books have books.text='' — chapters live in user_book_chapters.
-    # split_with_html_preference handles both cases, so no text guard here.
+    # get_chapters handles both cases, so no text guard here.
     source = (book.get("languages") or [None])[0]
     # Use the SAME splitter resolver the reader uses (HTML-preferring with
     # text fallback). Without this, the reader showed Faust chapter 7
     # with chapter 8's translation — different splitters produced
     # different chapter indexing.
-    from services.book_chapters import split_with_html_preference
-    chapters = await split_with_html_preference(book_id, book.get("text") or "")
+    from services.book_chapters import get_chapters
+    chapters = await get_chapters(book_id)
 
     inserted = 0
     for lang in target_languages:
@@ -902,10 +902,10 @@ class TranslationQueueWorker:
             return
         # Match the reader's splitter exactly so chapter_index alignment
         # stays consistent between the UI and the worker.
-        # Uploaded books have books.text='' — split_with_html_preference resolves
+        # Uploaded books have books.text='' — get_chapters resolves
         # their chapters from user_book_chapters automatically.
-        from services.book_chapters import split_with_html_preference
-        all_chapters = await split_with_html_preference(book_id, book.get("text") or "")
+        from services.book_chapters import get_chapters
+        all_chapters = await get_chapters(book_id)
 
         works: list[ChapterWork] = []
         title = book.get("title") or str(book_id)
@@ -1245,11 +1245,11 @@ async def plan_work_for_queue(
 ) -> list[dict]:
     """Return a per-book list of chapters that still need translation.
 
-    Uses split_with_html_preference — same splitter as the worker — so
+    Uses get_chapters — same resolver as the worker — so
     chapter counts here match what actually ends up in the queue.
     """
     from services.db import list_cached_books
-    from services.book_chapters import split_with_html_preference
+    from services.book_chapters import get_chapters
 
     target_language = target_language.strip().lower().split("-")[0]
     all_books = await list_cached_books()
@@ -1264,7 +1264,7 @@ async def plan_work_for_queue(
         book = await get_cached_book(meta["id"])
         if not book:
             continue
-        chapters = await split_with_html_preference(meta["id"], book.get("text") or "")
+        chapters = await get_chapters(meta["id"])
         to_translate = []
         for idx, ch in enumerate(chapters):
             if not ch.text.strip():

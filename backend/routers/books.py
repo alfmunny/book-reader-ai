@@ -121,8 +121,8 @@ async def translation_status(book_id: int = Path(..., ge=1), target_language: st
         # Use the shared resolver so total_chapters matches what the reader
         # displays (and what the queue worker processes). Uploaded books now
         # store chapters in the user_book_chapters table (books.text is empty).
-        from services.book_chapters import split_with_html_preference
-        chapters = await split_with_html_preference(book_id, cached.get("text") or "")
+        from services.book_chapters import get_chapters
+        chapters = await get_chapters(book_id)
         total_chapters = len(chapters)
 
     cached_translations = await count_translations_for_book(book_id, target_language)
@@ -171,8 +171,8 @@ async def chapter_queue_status(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
-    from services.book_chapters import split_with_html_preference as _split
-    _chapters = await _split(book_id, book.get("text") or "")
+    from services.book_chapters import get_chapters as _split
+    _chapters = await _split(book_id)
     if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
@@ -220,8 +220,8 @@ async def get_chapter_translation(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
-    from services.book_chapters import split_with_html_preference as _split
-    _chapters = await _split(book_id, book.get("text") or "")
+    from services.book_chapters import get_chapters as _split
+    _chapters = await _split(book_id)
     if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
@@ -298,8 +298,8 @@ async def request_chapter_translation(
         paragraphs = cached["paragraphs"]
         title_translation = cached.get("title_translation")
         if book_meta:
-            from services.book_chapters import split_with_html_preference as _split
-            _ch = await _split(book_id, book_meta.get("text") or "")
+            from services.book_chapters import get_chapters as _split
+            _ch = await _split(book_id)
             if chapter_index < len(_ch):
                 paragraphs, title_translation = _reconcile_subtitle(
                     paragraphs, _ch[chapter_index].text, title_translation
@@ -334,8 +334,8 @@ async def request_chapter_translation(
         )
 
     # 0e. Guard: reject out-of-bounds chapter_index.
-    from services.book_chapters import split_with_html_preference
-    _chapters = await split_with_html_preference(book_id, book_meta.get("text") or "")
+    from services.book_chapters import get_chapters
+    _chapters = await get_chapters(book_id)
     if chapter_index >= len(_chapters):
         raise HTTPException(
             status_code=400,
@@ -483,11 +483,11 @@ async def retry_chapter_translation(
     check_book_access(book, user)
 
     from services.translation_queue import enqueue, queue_status_for_chapter, worker
-    from services.book_chapters import split_with_html_preference as _split
+    from services.book_chapters import get_chapters as _split
 
     target_language = req.target_language.lower().split("-")[0]
 
-    _ch = await _split(book_id, book.get("text") or "")
+    _ch = await _split(book_id)
     if chapter_index >= len(_ch):
         raise HTTPException(
             status_code=400,
@@ -581,8 +581,8 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
             logger.warning("GET /books/%d chapters fetch failed: %s", book_id, exc, exc_info=True)
             raise HTTPException(status_code=404, detail="Could not load book")
 
-    from services.book_chapters import split_with_html_preference, get_chapter_source
-    chapters = await split_with_html_preference(book_id, text)
+    from services.book_chapters import get_chapters, get_chapter_source
+    chapters = await get_chapters(book_id)
     return {
         "book_id": book_id,
         "meta": meta,
@@ -679,8 +679,8 @@ async def import_stream(
 
             # ── 2. Split chapters ───────────────────────────────────────────
             yield _sse("stage", {"stage": "splitting", "message": "Splitting chapters…"})
-            from services.book_chapters import split_with_html_preference
-            chapters = await split_with_html_preference(book_id, text)
+            from services.book_chapters import get_chapters
+            chapters = await get_chapters(book_id)
             total_words = sum(len(c.text.split()) for c in chapters)
             yield _sse("chapters", {
                 "total": len(chapters),

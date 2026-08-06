@@ -275,3 +275,31 @@ the "why a separate table vs reusing book_insights" decision.
 
 Declared FKs from day one per the #754 policy: ON DELETE CASCADE
 means delete_user and admin.delete_book need no shadow-cleanup.
+
+## 038 — `038_users_tier_columns.sql`
+
+Issue #1790 / design doc: docs/design/pricing-plans.md
+PR A of the pricing-plans series. Adds the per-user tier columns
+driving every translation-creation gate. No data movement: existing
+rows backfill to 'free' via the column DEFAULT, which is exactly the
+right entitlement for any user who hasn't gone through Stripe checkout.
+
+The Stripe-related columns are added in this same migration even
+though Stripe code lands in PR C — the columns are inert until then,
+and one schema migration is cheaper than two for the rollout window.
+
+## 039 — `039_billing_events.sql`
+
+Issue #1790 / design doc: docs/design/pricing-plans.md
+PR A of the pricing-plans series. Audit log for every Stripe webhook
+we receive. The UNIQUE constraint on stripe_event_id makes the
+webhook handler trivially idempotent: Stripe redelivers events on
+transient failures, and an INSERT collision tells us "already
+processed, skip". Forensics value is the second use case — payload_json
+preserves the full Stripe event for incident review.
+
+ON DELETE SET NULL on user_id rather than CASCADE: the audit log
+should outlive the user account (legally / forensically useful), but
+without violating FK constraints when a user is deleted.
+
+This table is empty until PR C adds the /billing/webhook handler.

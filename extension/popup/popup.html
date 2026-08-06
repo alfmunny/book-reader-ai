@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Reader AI Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <svg class="logo" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="6" fill="#4f46e5"/>
+        <polygon points="9,8 24,16 9,24" fill="white"/>
+      </svg>
+      <h1>Book Reader AI</h1>
+    </header>
+
+    <div class="field">
+      <label for="backendUrl">Backend URL</label>
+      <input
+        type="url"
+        id="backendUrl"
+        placeholder="https://book-reader-ai-backend.vercel.app/api"
+        spellcheck="false"
+      />
+    </div>
+
+    <div class="field">
+      <label>Voice Gender</label>
+      <div class="toggle-group" role="group" aria-label="Voice gender">
+        <button class="toggle-btn" data-value="female" id="genderFemale">Female</button>
+        <button class="toggle-btn" data-value="male" id="genderMale">Male</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ttsRate">
+        Speech Rate
+        <span class="rate-value" id="rateDisplay">1.0×</span>
+      </label>
+      <input
+        type="range"
+        id="ttsRate"
+        min="0.5"
+        max="2.0"
+        step="0.1"
+        value="1.0"
+      />
+      <div class="range-labels">
+        <span>0.5×</span>
+        <span>1.0×</span>
+        <span>2.0×</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="ttsLanguage">TTS Language</label>
+      <select id="ttsLanguage">
+        <option value="en">English (en)</option>
+        <option value="de">German (de)</option>
+        <option value="fr">French (fr)</option>
+        <option value="es">Spanish (es)</option>
+        <option value="it">Italian (it)</option>
+        <option value="zh">Chinese (zh)</option>
+        <option value="ja">Japanese (ja)</option>
+      </select>
+    </div>
+
+    <button class="save-btn" id="saveBtn">Save Settings</button>
+
+    <div class="status" id="status" hidden></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

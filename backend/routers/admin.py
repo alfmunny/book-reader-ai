@@ -528,8 +528,8 @@ async def retranslate(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found in cache")
 
-    from services.book_chapters import split_with_html_preference
-    chapters = await split_with_html_preference(book_id, book.get("text") or "")
+    from services.book_chapters import get_chapters
+    chapters = await get_chapters(book_id)
     if chapter_index >= len(chapters):
         raise HTTPException(status_code=400, detail=f"Chapter index {chapter_index} out of range (0–{len(chapters) - 1})")
 
@@ -745,8 +745,8 @@ async def retranslate_all(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found in cache")
 
-    from services.book_chapters import split_with_html_preference
-    chapters = await split_with_html_preference(book_id, book.get("text") or "")
+    from services.book_chapters import get_chapters
+    chapters = await get_chapters(book_id)
     if not chapters:
         return {"ok": True, "chapters": 0, "results": []}
     source_language = (book.get("languages") or ["en"])[0]
@@ -841,8 +841,8 @@ async def move_translation(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found in cache")
 
-    from services.book_chapters import split_with_html_preference
-    chapters = await split_with_html_preference(book_id, book.get("text") or "")
+    from services.book_chapters import get_chapters
+    chapters = await get_chapters(book_id)
     new_idx = req.new_chapter_index
     if new_idx >= len(chapters):
         raise HTTPException(

@@ -1,6 +1,6 @@
 # Local-First Content: Fossilized Content Artifacts
 
-**Status:** Draft
+**Status:** User-approved — Merged (PR #2628, 2026-08-06); slice 1 in progress
 **Author:** Architect
 **Date:** 2026-08-06
 **Priority:** P1

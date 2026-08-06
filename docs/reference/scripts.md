@@ -172,6 +172,88 @@ on tier_period_end via the existing users PRIMARY KEY scan.
 python -m scripts.expire_subscriptions
 ```
 
+## `freeze_book.py`
+
+Fossilize a book: freeze its chapter split into a committed artifact.
+
+Slice 1 of the fossilized-content architecture (#2624 /
+docs/design/local-first-content.md). Chapter boundaries are computed at
+request time but translations and annotations are durably keyed to them —
+this script makes the split *data*: it writes data/books/book_<id>.json
+holding the book's metadata, the frozen chapter split (paragraph arrays),
+and every existing translation for the book, merged from both legacy
+export conventions. The artifact carries a content_sha256 over the
+chapters so any later hand-edit to the frozen split fails loudly at
+ingest (scripts/ingest_book.py).
+
+Freezing is a one-way door per book: once annotations anchor to a frozen
+split, re-splitting requires migrating them. --audited-by is therefore a
+required attestation that a human (or agent session) has reviewed the
+chapter list against the source. A mechanical pre-filter flags obvious
+junk chapters (TOC fragments, ISBN notices, stray headings) and blocks
+the write unless --force is given.
+
+When to use: the first time a book acquires something that must stay
+aligned (a translation or an annotation), or when resuming the
+big_translate pipeline on a book (freeze before translating).
+
+Example
+-------
+    cd backend
+    python -m scripts.freeze_book --book-id 2229 --audited-by alfmunny
+    python -m scripts.freeze_book --book-id 2229 --audited-by alfmunny --dry-run
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--book-id` | — |
+| `--audited-by` | Attestation: who reviewed the chapter list against the source |
+| `--dry-run` | — |
+| `--force` | Proceed despite audit findings or an existing freeze |
+
+```bash
+python -m scripts.freeze_book
+```
+
+## `ingest_book.py`
+
+Ingest a fossilized book artifact into the local database.
+
+Slice 1 of the fossilized-content architecture (#2624 /
+docs/design/local-first-content.md). Reads data/books/book_<id>.json
+(written by scripts/freeze_book.py), verifies its content_sha256 over the
+chapters array — aborting loudly on mismatch, exit code 2, nothing
+written — and populates the content tables: the books row (from the
+artifact's meta), book_chapters + book_freeze (the frozen split), and
+translations for every language in the artifact. Runs in one transaction
+per book. Touches ONLY content tables — never annotations, vocabulary,
+reading_history, or any other user table.
+
+When to use: after freezing a book, after `git pull` brings new/updated
+artifacts, or when rebuilding the content cache from data/ (slice 2's
+rebuild script drives this per book).
+
+Example
+-------
+    cd backend
+    python -m scripts.ingest_book --book-id 2229
+    python -m scripts.ingest_book --all
+
+Note: a running server holds a process-local chapter cache; restart it
+(or wait for the next deploy) to serve freshly ingested content.
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--book-id` | — |
+| `--all` | Ingest every artifact under data/books/ |
+
+```bash
+python -m scripts.ingest_book
+```
+
 ## `migrate_upload_chapters.py`
 
 One-time migration: move JSON chapters from books.text to user_book_chapters.

@@ -1,8 +1,25 @@
 name: Smoke test (post-deploy)
 
-# Runs after every push to main, after Railway and Vercel have had time
-# to redeploy. Polls the live backend health endpoint and the live
-# frontend login page to verify the deploy actually came up — catches
+# ⚠️  MANUAL-ONLY while the project is local-first (2026-08-06).
+#
+# There is no deployed backend: the Railway trial expired and both
+# hostnames now return Railway's edge 404 ("Application not found") —
+# see #2623. Development is local-only for now, so there is nothing for
+# an automatic smoke test to poll.
+#
+# The push and 6-hourly cron triggers were therefore removed; every run
+# they produced had failed since at least 2026-05-01. Only
+# workflow_dispatch remains, so this is one click away from working
+# again the moment a backend is redeployed.
+#
+# To restore automatic runs: redeploy the backend, update the
+# BACKEND_URL repository variable to the new hostname, then re-add the
+# `push` and `schedule` triggers below.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# What it does when run: polls the live backend health endpoint and the
+# live frontend login page to verify a deploy actually came up — catches
 # the class of bug that only fails inside the real container, which
 # unit tests and the Docker build CI cannot reach.
 #
@@ -31,23 +48,10 @@ name: Smoke test (post-deploy)
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
-  push:
-    branches: [main]
-    # Skip when the push is docs/design/PM-only — nothing was deployed,
-    # so there is nothing new to smoke-test. The 6-hour cron and manual
-    # workflow_dispatch still cover everything.
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'product/**'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.claude/**'
-      - 'LICENSE'
-      - '.gitignore'
+  # Manual only — see the note at the top of this file. The `push` and
+  # 6-hourly `schedule` triggers were removed on 2026-08-06 because there
+  # is no deployed backend to poll (#2623).
   workflow_dispatch:
-  schedule:
-    # Every 6 hours, catch any silent outage between deploys.
-    - cron: "0 */6 * * *"
 
 permissions:
   issues: write

@@ -134,6 +134,44 @@ signals — the script can be wired into CI as a data-quality gate.
 python -m scripts.epub_split_audit
 ```
 
+## `expire_subscriptions.py`
+
+Daily cron: defensively downgrade users whose paid period has ended.
+
+PR D of the pricing-plans series (#1790 / docs/design/pricing-plans.md).
+
+The Stripe webhook (PR C2) handles `customer.subscription.deleted` by
+clearing `stripe_subscription_id` and leaving the tier alone — the user
+paid through `tier_period_end`, so they keep paid features until then.
+This script enforces the actual downgrade: any user whose
+`tier_period_end < now()` AND has no active subscription gets bumped
+back to `'free'`.
+
+Belt-and-suspenders for two failure modes:
+  1. Stripe webhook drop — the .deleted event never arrived; we still
+     downgrade based on the period end alone.
+  2. Active subscription with expired period — Stripe should have sent
+     subscription.updated to extend the period; if it didn't, this
+     script catches the gap.
+
+Usage
+-----
+    python -m backend.scripts.expire_subscriptions          # default
+    python -m backend.scripts.expire_subscriptions --dry-run  # report only
+
+Schedule: daily at an off-minute (e.g. 03:17 UTC). Cheap query, indexed
+on tier_period_end via the existing users PRIMARY KEY scan.
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--dry-run` | Print users that would be downgraded; don't write. |
+
+```bash
+python -m scripts.expire_subscriptions
+```
+
 ## `migrate_upload_chapters.py`
 
 One-time migration: move JSON chapters from books.text to user_book_chapters.

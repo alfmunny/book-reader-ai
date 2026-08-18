@@ -210,7 +210,7 @@ export default function NotesOverviewPage() {
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
                 onFocus={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
                 onBlur={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
-                className="w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                className="block w-full text-left rounded-xl border border-amber-200 bg-white/80 px-5 py-4 hover:border-amber-400 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">

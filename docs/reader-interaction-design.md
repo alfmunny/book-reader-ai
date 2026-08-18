@@ -56,7 +56,11 @@ Currently, (1) plays both streams simultaneously — a bug.
 user drags to select text
        │
        ▼
-window.selectionchange fires
+selectionchange fires repeatedly during the drag — ignored while the
+pointer is down, so the toolbar never lands under the cursor (#2655)
+       │
+       ▼
+pointerup ends the gesture → final selection evaluated once
        │
 SelectionToolbar mounts at position above/below selection rect
        │

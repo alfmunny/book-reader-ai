@@ -592,3 +592,9 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-05-01 | Flashcard done state: added "Go to Decks" primary CTA — done state only had "Back to Vocabulary"; users had to navigate Vocabulary → Decks to review another deck (WCAG 2.4.4, P3) | app/vocabulary/flashcards/page.tsx | #2576 |
 | 2026-05-01 | Continue reading link: changed static aria-label="Continue reading" to template literal including book title — WCAG 2.4.4 Link Purpose (Level A); screen readers now announce which book the link opens (P2) | app/page.tsx | #2578 |
 | 2026-05-01 | Keyboard word-lookup mode: W (in sentence-select mode) enters per-word navigation, H/L or ←/→ navigate words, Enter opens vocab tooltip, Esc returns to sentence mode — word-select indicator strip + aria-live region for AT (P3) | app/reader/[bookId]/page.tsx, components/SentenceReader.tsx | #2589 |
+
+## Wave 18 — Selection Gesture (2026-08-18)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-18 | SelectionToolbar: defer showing the toolbar until the pointer gesture ends — `selectionchange` fires continuously during a drag, so the toolbar mounted mid-gesture, sat over the text under the cursor and swallowed the pointer events needed to keep extending the selection. Drag now clears any stale toolbar on pointerdown and evaluates the final selection once on pointerup/pointercancel; keyboard (Shift+Arrow) selections resolve off `selectionchange` as before. Pointer timestamp now stamped on release too, so a drag longer than the 300ms keyboard heuristic is no longer misread as a keyboard selection and does not steal focus (P1) | components/SelectionToolbar.tsx | #2655 |

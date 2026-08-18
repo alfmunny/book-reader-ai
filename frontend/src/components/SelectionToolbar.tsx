@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SpeakerIcon, HighlightIcon, NoteIcon, ChatIcon, WordIcon } from "@/components/Icons";
 
 export interface SelectionAction {
@@ -32,7 +32,9 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
   const [focusedToolbarIdx, setFocusedToolbarIdx] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
   // Track the timestamp of the last pointer event to distinguish mouse vs keyboard selections.
-  const lastPointerDownAt = useRef<number>(0);
+  const lastPointerAt = useRef<number>(0);
+  // True while a primary-button pointer drag is extending the selection.
+  const isDragging = useRef(false);
   // Save the element that had focus before we moved it to the toolbar.
   const prevFocusRef = useRef<HTMLElement | null>(null);
 
@@ -50,55 +52,85 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     btns[next].focus();
   }
 
-  useEffect(() => {
-    function handleSelection() {
-      const sel = window.getSelection();
-      const text = sel?.toString().trim() ?? "";
-      if (text.length < 2) {
+  const evaluateSelection = useCallback(() => {
+    const sel = window.getSelection();
+    const text = sel?.toString().trim() ?? "";
+    if (text.length < 2) {
+      setSelection(null);
+      return;
+    }
+    const range = sel?.getRangeAt(0);
+    if (!range) return;
+    const rect = range.getBoundingClientRect();
+    // Only show for selections inside the reader area
+    const readerEl = document.getElementById("reader-scroll");
+    if (!readerEl?.contains(range.commonAncestorContainer)) return;
+    // Don't show toolbar for selections inside translation text
+    let node: Node | null = range.commonAncestorContainer;
+    while (node && node !== readerEl) {
+      if ((node as Element).getAttribute?.("data-translation") === "true") {
         setSelection(null);
         return;
       }
-      const range = sel?.getRangeAt(0);
-      if (!range) return;
-      const rect = range.getBoundingClientRect();
-      // Only show for selections inside the reader area
-      const readerEl = document.getElementById("reader-scroll");
-      if (!readerEl?.contains(range.commonAncestorContainer)) return;
-      // Don't show toolbar for selections inside translation text
-      let node: Node | null = range.commonAncestorContainer;
-      while (node && node !== readerEl) {
-        if ((node as Element).getAttribute?.("data-translation") === "true") {
-          setSelection(null);
-          return;
-        }
-        node = node.parentNode;
-      }
-      const context = extractContext(range.startContainer);
-      setSelection({ text, context, rect });
+      node = node.parentNode;
+    }
+    const context = extractContext(range.startContainer);
+    setSelection({ text, context, rect });
+  }, []);
+
+  // `selectionchange` fires continuously *during* a drag. Showing the toolbar then
+  // parks it over the text under the cursor and swallows the pointer events that
+  // would extend the selection (#2655), so a drag is evaluated only once it ends.
+  // Keyboard selections never set isDragging, so they still resolve here.
+  useEffect(() => {
+    function handleSelection() {
+      if (isDragging.current) return;
+      evaluateSelection();
     }
 
     document.addEventListener("selectionchange", handleSelection);
     return () => document.removeEventListener("selectionchange", handleSelection);
-  }, []);
+  }, [evaluateSelection]);
 
-  // Record the time of the last pointer event (capture phase so it fires before selectionchange).
+  // Track the pointer gesture (capture phase so it runs before selectionchange).
+  // The timestamp also feeds the mouse-vs-keyboard heuristic below: stamping it on
+  // release too keeps a drag longer than the 300ms threshold classified as a mouse
+  // selection, which is what defers the toolbar to pointerup in the first place.
   useEffect(() => {
-    function handlePointerDown() {
-      lastPointerDownAt.current = Date.now();
+    function handlePointerDown(e: MouseEvent) {
+      lastPointerAt.current = Date.now();
+      // Only a primary-button press outside the toolbar starts a text-selection drag.
+      if (e.button !== 0 || toolbarRef.current?.contains(e.target as Node)) return;
+      isDragging.current = true;
+      // Drop any toolbar left over from a previous selection — it would otherwise
+      // sit over the text for the whole of this drag.
+      setSelection(null);
+    }
+    function handlePointerEnd() {
+      lastPointerAt.current = Date.now();
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      evaluateSelection();
     }
     document.addEventListener("pointerdown", handlePointerDown, { capture: true });
-    return () => document.removeEventListener("pointerdown", handlePointerDown, { capture: true });
-  }, []);
+    document.addEventListener("pointerup", handlePointerEnd, { capture: true });
+    document.addEventListener("pointercancel", handlePointerEnd, { capture: true });
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+      document.removeEventListener("pointerup", handlePointerEnd, { capture: true });
+      document.removeEventListener("pointercancel", handlePointerEnd, { capture: true });
+    };
+  }, [evaluateSelection]);
 
   // Auto-focus the first toolbar button when a keyboard-driven selection appears.
-  // Keyboard selection heuristic: selectionchange fires >300ms after the last pointerdown.
+  // Keyboard selection heuristic: the selection resolves >300ms after the last pointer event.
   // Restore focus to the previously focused element when the toolbar is dismissed.
   // Guard: if the toolbar already contains the focused element (user navigated into it),
   // don't steal focus back — JSDOM can re-fire selectionchange on focus changes, which
   // would re-trigger this effect with a new object reference and reset focus to button[0].
   useEffect(() => {
     if (selection) {
-      const isKeyboardSelection = Date.now() - lastPointerDownAt.current > 300;
+      const isKeyboardSelection = Date.now() - lastPointerAt.current > 300;
       const toolbarAlreadyFocused = toolbarRef.current?.contains(document.activeElement as Node) ?? false;
       if (isKeyboardSelection && !toolbarAlreadyFocused) {
         prevFocusRef.current = document.activeElement as HTMLElement | null;

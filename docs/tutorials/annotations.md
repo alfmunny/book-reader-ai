@@ -14,7 +14,7 @@ There are two ways to open the action toolbar while reading:
 
 ### Select a phrase (partial text selection)
 
-Drag to select any span of text — a word, phrase, or passage — and a floating toolbar appears with actions: **Read**, **Highlight**, **Note**, **Chat**, and **Look up word**.
+Drag to select any span of text — a word, phrase, or passage. When you release the mouse button, a floating toolbar appears with actions: **Read**, **Highlight**, **Note**, **Chat**, and **Look up word**. The toolbar stays out of the way while you are still dragging, so you can extend the selection across as many lines as you like.
 
 **Keyboard:** use `Shift+Arrow` keys to extend the selection. The toolbar appears automatically, and focus moves to its first button. Navigate between buttons with `Arrow Left` / `Arrow Right`; press `Escape` to dismiss and return focus to where you were.
 

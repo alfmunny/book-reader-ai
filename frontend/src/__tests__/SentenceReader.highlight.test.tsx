@@ -142,9 +142,9 @@ test("segment containing the scrollTargetSentence as a substring gets data-jump-
   expect(jumpTarget).not.toBeNull();
 });
 
-test("short string (< 10 chars) does not trigger substring jump-target to avoid false positives", () => {
+test("short string (< 10 chars) triggers a single substring jump-target", () => {
   const fullSegment = "It is a truth universally acknowledged.";
-  const shortTarget = "truth";  // length 5 < 10
+  const shortTarget = "truth";  // length 5 — used to be excluded by a >= 10 threshold
 
   const { container } = render(
     <SentenceReader
@@ -157,9 +157,11 @@ test("short string (< 10 chars) does not trigger substring jump-target to avoid 
     />,
   );
 
-  // "truth" < 10 chars — should NOT match as jump target (exact match only for short strings)
-  const jumpTarget = container.querySelector("[data-jump-target]");
-  expect(jumpTarget).toBeNull();
+  // Short text-selection annotations must still flash on notes jumps; the
+  // single-target rule (first containing segment only) prevents the false
+  // positives the old length threshold guarded against.
+  const jumpTargets = container.querySelectorAll("[data-jump-target]");
+  expect(jumpTargets.length).toBe(1);
 });
 
 // ── Trailing text after last match ────────────────────────────────────────────

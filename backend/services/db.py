@@ -357,6 +357,24 @@ async def set_user_gemini_key(user_id: int, encrypted_key: str | None) -> None:
         await db.commit()
 
 
+async def set_user_claude_key(user_id: int, encrypted_key: str | None) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET claude_key = ? WHERE id = ?",
+            (encrypted_key, user_id),
+        )
+        await db.commit()
+
+
+async def set_user_deepseek_key(user_id: int, encrypted_key: str | None) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET deepseek_key = ? WHERE id = ?",
+            (encrypted_key, user_id),
+        )
+        await db.commit()
+
+
 async def get_cached_translation(book_id: int, chapter_index: int, target_language: str) -> list[str] | None:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(

@@ -288,7 +288,7 @@ describe("InsightChat — language select onChange (line 311)", () => {
     render(<InsightChat {...BASE} />);
     await act(async () => await flushPromises());
 
-    const select = screen.getByRole("combobox");
+    const select = screen.getByRole("combobox", { name: "Insight language" });
     expect(select).toBeInTheDocument();
 
     fireEvent.change(select, { target: { value: "de" } });
@@ -300,7 +300,7 @@ describe("InsightChat — language select onChange (line 311)", () => {
 
   it("renders all language options in the select", () => {
     render(<InsightChat {...BASE} />);
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const select = screen.getByRole("combobox", { name: "Insight language" }) as HTMLSelectElement;
     const options = Array.from(select.options).map((o) => o.value);
     expect(options).toEqual(
       expect.arrayContaining(["en", "de", "fr", "es", "it", "zh", "ja"])

@@ -1,4 +1,5 @@
 export type TranslationProvider = "auto" | "gemini" | "google";
+export type ChatProviderSetting = "auto" | "gemini" | "claude" | "deepseek";
 export type FontSize = "sm" | "base" | "lg" | "xl";
 export type ChatFontSize = "xs" | "sm";
 export type Theme = "light" | "dark" | "sepia";
@@ -15,6 +16,7 @@ export interface AppSettings {
   translationProvider: TranslationProvider;
   fontSize: FontSize;
   chatFontSize: ChatFontSize;
+  chatProvider: ChatProviderSetting;
   theme: Theme;
   lineHeight: LineHeight;
   contentWidth: ContentWidth;
@@ -30,6 +32,7 @@ const DEFAULTS: AppSettings = {
   translationProvider: "auto",
   fontSize: "base",
   chatFontSize: "xs",
+  chatProvider: "auto",
   theme: "light",
   lineHeight: "normal",
   contentWidth: "normal",

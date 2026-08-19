@@ -75,6 +75,40 @@ async def answer_question(
     return message.content[0].text
 
 
+async def answer_question_with_key(
+    api_key: str,
+    question: str,
+    passage: str,
+    book_title: str,
+    author: str,
+    response_language: str = "en",
+) -> str:
+    """Insight-chat QA on the user's own Claude key (BYOK provider selection).
+
+    Uses claude-opus-5 with thinking on by default; max_tokens caps thinking
+    plus response text, so it is sized well above the expected answer length.
+    """
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    message = await client.messages.create(
+        model="claude-opus-5",
+        max_tokens=8000,
+        system=SYSTEM_QA + _lang(response_language),
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f'Book: "{book_title}" by {author}\n\n'
+                    f"Current passage:\n---\n{passage}\n---\n\n"
+                    f"Question: {question}"
+                ),
+            }
+        ],
+    )
+    if message.stop_reason == "refusal":
+        raise RuntimeError("Claude declined to answer this request")
+    return next(b.text for b in message.content if b.type == "text")
+
+
 async def translate_chunk(text: str, source_language: str, target_language: str) -> str:
     """Translate a single chunk of text."""
     client = get_client()

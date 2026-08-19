@@ -122,7 +122,7 @@ describe("ProfilePage — Gemini key section states", () => {
     render(<ProfilePage />);
     const input = screen.getByPlaceholderText(/AIza/i);
     fireEvent.change(input, { target: { value: "AIzaTestKey" } });
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /saving…/i })).toBeInTheDocument(),
@@ -169,7 +169,7 @@ describe("ProfilePage — Gemini key section states", () => {
     render(<ProfilePage />);
     const input = screen.getByPlaceholderText(/AIza/i);
     fireEvent.change(input, { target: { value: "AIzaTest" } });
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
 
     await waitFor(() =>
       expect(screen.getByText(/Failed to save key/i)).toBeInTheDocument(),

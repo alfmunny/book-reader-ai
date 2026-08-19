@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access, require_tier
 from services.db import (
-    set_user_gemini_key, get_user_by_id, get_reading_progress,
+    set_user_gemini_key, set_user_claude_key, set_user_deepseek_key,
+    get_user_by_id, get_reading_progress,
     get_obsidian_settings, update_obsidian_settings, get_cached_book,
     upsert_progress_and_log_event, get_user_stats,
 )
@@ -19,19 +20,21 @@ async def me(user: dict = Depends(get_current_user)):
         "name": user["name"],
         "picture": user["picture"],
         "hasGeminiKey": bool(user.get("gemini_key")),
+        "hasClaudeKey": bool(user.get("claude_key")),
+        "hasDeepseekKey": bool(user.get("deepseek_key")),
         "role": user.get("role", "user"),
         "approved": bool(user.get("approved", 0)),
         "plan": user.get("plan", "free"),
     }
 
 
-class GeminiKeyRequest(BaseModel):
+class ApiKeyRequest(BaseModel):
     api_key: str = Field(..., min_length=1, max_length=500)
 
 
 @router.post("/gemini-key")
 async def save_gemini_key(
-    req: GeminiKeyRequest,
+    req: ApiKeyRequest,
     user: dict = Depends(require_tier("pro")),
 ):
     """BYOK: store a per-user Gemini API key. Pro+ tier required.
@@ -52,6 +55,52 @@ async def save_gemini_key(
 async def delete_gemini_key(user: dict = Depends(require_tier("pro"))):
     """BYOK: clear the per-user Gemini API key. Pro+ tier required."""
     await set_user_gemini_key(user["id"], None)
+    return {"ok": True}
+
+
+@router.post("/claude-key")
+async def save_claude_key(
+    req: ApiKeyRequest,
+    user: dict = Depends(require_tier("pro")),
+):
+    """BYOK: store a per-user Claude (Anthropic) API key. Pro+ tier required.
+
+    Same contract as /gemini-key; groundwork for provider selection in the
+    insight chat.
+    """
+    if not req.api_key.strip():
+        raise HTTPException(status_code=400, detail="API key cannot be empty")
+    await set_user_claude_key(user["id"], encrypt_api_key(req.api_key.strip()))
+    return {"ok": True}
+
+
+@router.delete("/claude-key")
+async def delete_claude_key(user: dict = Depends(require_tier("pro"))):
+    """BYOK: clear the per-user Claude API key. Pro+ tier required."""
+    await set_user_claude_key(user["id"], None)
+    return {"ok": True}
+
+
+@router.post("/deepseek-key")
+async def save_deepseek_key(
+    req: ApiKeyRequest,
+    user: dict = Depends(require_tier("pro")),
+):
+    """BYOK: store a per-user DeepSeek API key. Pro+ tier required.
+
+    Same contract as /gemini-key; groundwork for provider selection in the
+    insight chat.
+    """
+    if not req.api_key.strip():
+        raise HTTPException(status_code=400, detail="API key cannot be empty")
+    await set_user_deepseek_key(user["id"], encrypt_api_key(req.api_key.strip()))
+    return {"ok": True}
+
+
+@router.delete("/deepseek-key")
+async def delete_deepseek_key(user: dict = Depends(require_tier("pro"))):
+    """BYOK: clear the per-user DeepSeek API key. Pro+ tier required."""
+    await set_user_deepseek_key(user["id"], None)
     return {"ok": True}
 
 

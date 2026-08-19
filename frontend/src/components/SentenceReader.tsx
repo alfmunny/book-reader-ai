@@ -558,6 +558,19 @@ export default function SentenceReader({
     return partial ? partial.flatIdx : null;
   }, [allSegments, flashTarget]);
 
+  // Persistent <mark> inside the jump-target segment: the vocab word (?word=)
+  // wins; otherwise a notes text-selection substring. Keyed on the props (URL
+  // params), not on flashTarget, so the mark outlives the 2.5s sentence flash
+  // — the reader can still see WHAT was saved once the ring fades.
+  const markTarget = useMemo(() => {
+    if (!scrollTargetSentence) return null;
+    const exact = allSegments.find((s) => s.text === scrollTargetSentence);
+    const seg = exact ?? allSegments.find((s) => s.text.includes(scrollTargetSentence));
+    if (!seg) return null;
+    const text = scrollTargetWord ?? (seg.text === scrollTargetSentence ? undefined : scrollTargetSentence);
+    return text ? { flatIdx: seg.flatIdx, text } : null;
+  }, [allSegments, scrollTargetSentence, scrollTargetWord]);
+
   // Current segment: last one whose startTime ≤ currentTime.
   // Do NOT break early on Infinity values — unmatched segments create holes
   // in the sorted order, so scanning all segments is required.
@@ -875,7 +888,7 @@ export default function SentenceReader({
                 ? buildWordSelectContent(seg.text, selectedWordIdx)
                 : buildSegContent(
                     seg.text,
-                    isJumpTarget ? scrollTargetWord : undefined,
+                    markTarget && seg.flatIdx === markTarget.flatIdx ? markTarget.text : undefined,
                     vocabWords,
                     annotationMatches,
                     (showAnnotations && onAnnotationClick && annotationMatches.length > 0) ? (annId, e) => {

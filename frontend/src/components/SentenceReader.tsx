@@ -545,6 +545,19 @@ export default function SentenceReader({
     [paragraphs]
   );
 
+  // Single jump-target segment for the scrollTargetSentence flash: an exact
+  // segment match wins; otherwise the FIRST segment containing the target.
+  // Text-selection annotations can store substrings of any length ("euch"),
+  // so no minimum length — picking one target instead of flagging every
+  // matching segment is what keeps short strings from flashing all over.
+  const jumpTargetFlatIdx = useMemo(() => {
+    if (flashTarget === null || flashTarget === "") return null;
+    const exact = allSegments.find((s) => s.text === flashTarget);
+    if (exact) return exact.flatIdx;
+    const partial = allSegments.find((s) => s.text.includes(flashTarget));
+    return partial ? partial.flatIdx : null;
+  }, [allSegments, flashTarget]);
+
   // Current segment: last one whose startTime ≤ currentTime.
   // Do NOT break early on Infinity values — unmatched segments create holes
   // in the sorted order, so scanning all segments is required.
@@ -776,10 +789,7 @@ export default function SentenceReader({
         // Render a segment span with annotation underline + note dot
         const renderSeg = (seg: Segment, extraClass = "", trailingSpace = false) => {
           const active = seg.flatIdx === currentIdx;
-          const isJumpTarget = flashTarget !== null && (
-            seg.text === flashTarget ||
-            (flashTarget.length >= 10 && seg.text.includes(flashTarget))
-          );
+          const isJumpTarget = jumpTargetFlatIdx !== null && seg.flatIdx === jumpTargetFlatIdx;
           // All annotations whose sentence_text matches this segment (#1707).
           // The first-matching full-segment annotation drives the wrapping span
           // colour; every sub-sentence annotation becomes its own data-ann-id

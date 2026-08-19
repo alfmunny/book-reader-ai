@@ -17,6 +17,8 @@ from services.db import (
     get_cached_book,
 )
 from services import gemini
+from services.claude import answer_question_with_key as claude_qa
+from services.deepseek import answer_question as deepseek_qa
 from services.tts import synthesize, chunk_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -87,6 +89,8 @@ class QARequest(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+    # "auto" → first provider the user has a key for (gemini → claude → deepseek).
+    provider: Literal["auto", "gemini", "claude", "deepseek"] = "auto"
 
     @field_validator("question", "passage", "book_title", "author")
     @classmethod
@@ -187,14 +191,60 @@ async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="AI service request failed")
 
 
+_QA_KEY_COLUMNS = {"gemini": "gemini_key", "claude": "claude_key", "deepseek": "deepseek_key"}
+_QA_KEY_LABELS = {"gemini": "Gemini", "claude": "Claude", "deepseek": "DeepSeek"}
+
+
+def _resolve_qa_provider(user: dict, provider: str) -> tuple[str, str]:
+    """Return (provider, decrypted key) for a QA request.
+
+    "auto" picks the first provider the user has a key for, in gemini →
+    claude → deepseek order (preserves the pre-selection Gemini behavior).
+    An explicit provider without a stored key is a 400 naming the provider.
+    """
+    if provider == "auto":
+        for name, column in _QA_KEY_COLUMNS.items():
+            if user.get(column):
+                provider = name
+                break
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="An AI provider API key is required. Please add one in your profile.",
+            )
+    raw = user.get(_QA_KEY_COLUMNS[provider])
+    label = _QA_KEY_LABELS[provider]
+    if not raw:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{label} API key required. Please add it in your profile.",
+        )
+    try:
+        return provider, decrypt_api_key(raw)
+    except HTTPException:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Your {label} API key could not be decrypted. Please remove it and add it again in your profile.",
+        )
+
+
 @router.post("/qa")
 async def qa(req: QARequest, user: dict = Depends(get_current_user)):
-    key = _require_gemini_key(user)
+    provider, key = _resolve_qa_provider(user, req.provider)
     try:
-        result = await gemini.answer_question(
-            key, req.question, req.passage, req.book_title, req.author, req.response_language
-        )
-        return {"answer": result}
+        if provider == "claude":
+            result = await claude_qa(
+                key, req.question, req.passage, req.book_title, req.author, req.response_language
+            )
+        elif provider == "deepseek":
+            result = await deepseek_qa(
+                key, req.question, req.passage, req.book_title, req.author, req.response_language
+            )
+        else:
+            result = await gemini.answer_question(
+                key, req.question, req.passage, req.book_title, req.author, req.response_language
+            )
+        return {"answer": result, "provider": provider}
     except Exception as exc:
         logger.exception("POST /ai/qa failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(status_code=500, detail="AI service request failed")

@@ -8,7 +8,7 @@ import {
   getChatMessages,
   postChatMessage,
 } from "@/lib/api";
-import { getSettings, saveSettings } from "@/lib/settings";
+import { getSettings, saveSettings, ChatProviderSetting } from "@/lib/settings";
 import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, AlertCircleIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
@@ -129,8 +129,11 @@ export default function InsightChat({
 
   const [lang, setLang] = useState(() => getSettings().insightLang);
   const [chatFontSize, setChatFontSize] = useState<"xs" | "sm">(() => getSettings().chatFontSize);
+  const [chatProvider, setChatProvider] = useState<ChatProviderSetting>(() => getSettings().chatProvider);
   const langRef = useRef(lang);
   langRef.current = lang;
+  const providerRef = useRef(chatProvider);
+  providerRef.current = chatProvider;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadedFrom, setLoadedFrom] = useState(0);
@@ -360,7 +363,7 @@ export default function InsightChat({
 
     try {
       onAIUsed?.();
-      const r = await askQuestion(text, passage, bookTitle, author, langRef.current);
+      const r = await askQuestion(text, passage, bookTitle, author, langRef.current, providerRef.current);
       setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
       if (userId) postChatMessage(bookId, "assistant", r.answer).catch(() => {});
     } catch (e: any) {
@@ -388,6 +391,21 @@ export default function InsightChat({
           {LANGUAGES.map((l) => (
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
+        </select>
+        <select
+          aria-label="Chat AI provider"
+          className="flex-1 text-xs rounded border border-stone-200 px-2 py-1 text-stone-700 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+          value={chatProvider}
+          onChange={(e) => {
+            const next = e.target.value as ChatProviderSetting;
+            setChatProvider(next);
+            saveSettings({ chatProvider: next });
+          }}
+        >
+          <option value="auto">Auto</option>
+          <option value="gemini">Gemini</option>
+          <option value="claude">Claude</option>
+          <option value="deepseek">DeepSeek</option>
         </select>
         <button
           onClick={() => {

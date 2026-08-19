@@ -426,17 +426,20 @@ export function deleteTranslationCache(bookId: number, chapterIndex: number, tar
   );
 }
 
+export type ChatProvider = "auto" | "gemini" | "claude" | "deepseek";
+
 export function askQuestion(
   question: string,
   passage: string,
   book_title: string,
   author: string,
   response_language = "en",
+  provider: ChatProvider = "auto",
 ) {
-  return request<{ answer: string }>("/ai/qa", {
+  return request<{ answer: string; provider: string }>("/ai/qa", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, passage, book_title, author, response_language }),
+    body: JSON.stringify({ question, passage, book_title, author, response_language, provider }),
   });
 }
 

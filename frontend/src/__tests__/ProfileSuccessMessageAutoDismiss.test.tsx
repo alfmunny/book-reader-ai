@@ -65,7 +65,7 @@ describe("ProfilePage success message auto-dismiss (closes #2368)", () => {
 
     const input = screen.getByPlaceholderText(/AIza/i);
     fireEvent.change(input, { target: { value: "my-gemini-key" } });
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
 
     await waitFor(() =>
       expect(screen.getByText(/Gemini API key saved/i)).toBeInTheDocument()
@@ -84,7 +84,7 @@ describe("ProfilePage success message auto-dismiss (closes #2368)", () => {
 
     const input = screen.getByPlaceholderText(/AIza/i);
     fireEvent.change(input, { target: { value: "bad-key" } });
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
 
     await waitFor(() =>
       expect(screen.getByText(/Bad key/i)).toBeInTheDocument()

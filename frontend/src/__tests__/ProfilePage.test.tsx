@@ -52,7 +52,7 @@ describe("ProfilePage — Gemini key management", () => {
   it("does not call saveGeminiKey when input is empty", async () => {
     const { saveGeminiKey } = require("@/lib/api");
     render(<ProfilePage />);
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
     await act(async () => {});
     expect(saveGeminiKey).not.toHaveBeenCalled();
   });
@@ -63,7 +63,7 @@ describe("ProfilePage — Gemini key management", () => {
 
     const input = screen.getByPlaceholderText(/AIza/i);
     fireEvent.change(input, { target: { value: "  my-key  " } });
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
 
     await waitFor(() => {
       expect(saveGeminiKey).toHaveBeenCalledWith("my-key");
@@ -78,7 +78,7 @@ describe("ProfilePage — Gemini key management", () => {
     render(<ProfilePage />);
     const input = screen.getByPlaceholderText(/AIza/i);
     fireEvent.change(input, { target: { value: "bad-key" } });
-    fireEvent.click(screen.getByRole("button", { name: /save key/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /save key/i })[0]);
 
     await waitFor(() =>
       expect(screen.getByText(/Invalid key format/i)).toBeInTheDocument()

@@ -531,6 +531,8 @@ export function getMe() {
     name: string;
     picture: string;
     hasGeminiKey: boolean;
+    hasClaudeKey: boolean;
+    hasDeepseekKey: boolean;
     role: string;
     approved: boolean;
     plan: string;
@@ -547,6 +549,30 @@ export function saveGeminiKey(api_key: string) {
 
 export function deleteGeminiKey() {
   return request<{ ok: boolean }>("/user/gemini-key", { method: "DELETE" });
+}
+
+export function saveClaudeKey(api_key: string) {
+  return request<{ ok: boolean }>("/user/claude-key", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key }),
+  });
+}
+
+export function deleteClaudeKey() {
+  return request<{ ok: boolean }>("/user/claude-key", { method: "DELETE" });
+}
+
+export function saveDeepseekKey(api_key: string) {
+  return request<{ ok: boolean }>("/user/deepseek-key", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key }),
+  });
+}
+
+export function deleteDeepseekKey() {
+  return request<{ ok: boolean }>("/user/deepseek-key", { method: "DELETE" });
 }
 
 export interface ReadingProgressEntry {

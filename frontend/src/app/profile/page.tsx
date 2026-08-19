@@ -3,8 +3,9 @@ import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { saveGeminiKey, deleteGeminiKey, getMe, getObsidianSettings, saveObsidianSettings, listDecks, DeckSummary } from "@/lib/api";
+import { saveGeminiKey, deleteGeminiKey, saveClaudeKey, deleteClaudeKey, saveDeepseekKey, deleteDeepseekKey, getMe, getObsidianSettings, saveObsidianSettings, listDecks, DeckSummary } from "@/lib/api";
 import { ArrowLeftIcon, CheckIcon, ChevronRightIcon, DeckIcon } from "@/components/Icons";
+import ProviderKeySection from "@/components/ProviderKeySection";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 
 const LANGUAGES = [
@@ -32,6 +33,10 @@ export default function ProfilePage() {
   const [removingKey, setRemovingKey] = useState(false);
   const [keyMessage, setKeyMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const keyMsgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Claude / DeepSeek key state (input + messages live in ProviderKeySection) ─
+  const [hasClaudeKey, setHasClaudeKey] = useState(false);
+  const [hasDeepseekKey, setHasDeepseekKey] = useState(false);
 
   // ── Obsidian settings state ────────────────────────────────────────────────
   const [obsidianOpen, setObsidianOpen] = useState(false);
@@ -106,6 +111,8 @@ export default function ProfilePage() {
     setGeminiKeyFetchError(false);
     getMe().then((me) => {
       setHasKey(me.hasGeminiKey);
+      setHasClaudeKey(me.hasClaudeKey);
+      setHasDeepseekKey(me.hasDeepseekKey);
       setIsAdmin(me.role === "admin");
     }).catch(() => setGeminiKeyFetchError(true));
   }, [session?.backendToken, geminiKeyRetryTick]);
@@ -382,6 +389,62 @@ export default function ProfilePage() {
             {keyMessage?.text ?? ""}
           </p>
         </section>
+
+        {/* ── Claude API key ──────────────────────────────────────────────── */}
+        <ProviderKeySection
+          providerId="claude"
+          heading="Claude API Key"
+          description={
+            <>
+              Add your own key from{" "}
+              <a
+                href="https://platform.claude.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+              >
+                the Claude Developer Platform<span className="sr-only"> (opens in new tab)</span>
+              </a>{" "}
+              to use Anthropic Claude models in the insight chat.
+            </>
+          }
+          placeholder="sk-ant-…"
+          hasKey={hasClaudeKey}
+          activeText="Claude key is active — available as a provider in the insight chat."
+          savedText="Claude API key saved."
+          removedText="Claude key removed."
+          onSave={saveClaudeKey}
+          onRemove={deleteClaudeKey}
+          onKeyChange={setHasClaudeKey}
+        />
+
+        {/* ── DeepSeek API key ────────────────────────────────────────────── */}
+        <ProviderKeySection
+          providerId="deepseek"
+          heading="DeepSeek API Key"
+          description={
+            <>
+              Add your own key from{" "}
+              <a
+                href="https://platform.deepseek.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-700 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+              >
+                the DeepSeek Platform<span className="sr-only"> (opens in new tab)</span>
+              </a>{" "}
+              to use DeepSeek models in the insight chat.
+            </>
+          }
+          placeholder="sk-…"
+          hasKey={hasDeepseekKey}
+          activeText="DeepSeek key is active — available as a provider in the insight chat."
+          savedText="DeepSeek API key saved."
+          removedText="DeepSeek key removed."
+          onSave={saveDeepseekKey}
+          onRemove={deleteDeepseekKey}
+          onKeyChange={setHasDeepseekKey}
+        />
 
         {/* ── Obsidian Export Settings ────────────────────────────────────── */}
         <section aria-label="Obsidian Export" className="bg-white rounded-2xl border border-amber-100 overflow-hidden">

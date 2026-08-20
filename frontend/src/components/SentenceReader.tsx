@@ -558,18 +558,18 @@ export default function SentenceReader({
     return partial ? partial.flatIdx : null;
   }, [allSegments, flashTarget]);
 
-  // Persistent <mark> inside the jump-target segment: the vocab word (?word=)
-  // wins; otherwise a notes text-selection substring. Keyed on the props (URL
-  // params), not on flashTarget, so the mark outlives the 2.5s sentence flash
-  // — the reader can still see WHAT was saved once the ring fades.
+  // <mark> on the saved word (?word=) or notes selection substring inside the
+  // jump-target segment. Gated on flashTarget so it appears with the sentence
+  // flash and fades with it — the ?word=/?sentence= URL params persist for the
+  // page's lifetime, so a mark keyed on them alone would never disappear.
   const markTarget = useMemo(() => {
-    if (!scrollTargetSentence) return null;
+    if (!scrollTargetSentence || flashTarget === null) return null;
     const exact = allSegments.find((s) => s.text === scrollTargetSentence);
     const seg = exact ?? allSegments.find((s) => s.text.includes(scrollTargetSentence));
     if (!seg) return null;
     const text = scrollTargetWord ?? (seg.text === scrollTargetSentence ? undefined : scrollTargetSentence);
     return text ? { flatIdx: seg.flatIdx, text } : null;
-  }, [allSegments, scrollTargetSentence, scrollTargetWord]);
+  }, [allSegments, scrollTargetSentence, scrollTargetWord, flashTarget]);
 
   // Current segment: last one whose startTime ≤ currentTime.
   // Do NOT break early on Infinity values — unmatched segments create holes

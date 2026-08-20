@@ -14,7 +14,7 @@ const src = fs.readFileSync(
 
 describe("Gemini banner link — semantic anchor + new-tab notice (closes #2529)", () => {
   it("does not use window.open for the Gemini key link", () => {
-    const idx = src.indexOf("Add your free Gemini API key");
+    const idx = src.indexOf("Add a key in your profile");
     expect(idx).toBeGreaterThan(-1);
     // Look 200 chars around the text for window.open
     const context = src.slice(Math.max(0, idx - 200), idx + 200);
@@ -22,7 +22,7 @@ describe("Gemini banner link — semantic anchor + new-tab notice (closes #2529)
   });
 
   it("uses an anchor element (not button) for the Gemini key link", () => {
-    const idx = src.indexOf("Add your free Gemini API key");
+    const idx = src.indexOf("Add a key in your profile");
     expect(idx).toBeGreaterThan(-1);
     const context = src.slice(Math.max(0, idx - 500), idx + 50);
     // Should find <a not <button in the vicinity
@@ -31,7 +31,7 @@ describe("Gemini banner link — semantic anchor + new-tab notice (closes #2529)
   });
 
   it("announces 'opens in new tab' for the Gemini key link", () => {
-    const idx = src.indexOf("Add your free Gemini API key");
+    const idx = src.indexOf("Add a key in your profile");
     expect(idx).toBeGreaterThan(-1);
     const context = src.slice(idx, idx + 200);
     expect(context).toContain("opens in new tab");

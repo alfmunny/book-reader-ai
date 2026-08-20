@@ -42,6 +42,8 @@ interface Props {
   bookId: string;
   userId: number | null;
   hasGeminiKey: boolean;
+  hasClaudeKey?: boolean;
+  hasDeepseekKey?: boolean;
   isVisible: boolean;
   chapterText: string;
   chapterTitle: string;
@@ -107,6 +109,8 @@ export default function InsightChat({
   bookId,
   userId,
   hasGeminiKey,
+  hasClaudeKey = false,
+  hasDeepseekKey = false,
   isVisible,
   chapterText,
   chapterTitle,
@@ -129,11 +133,24 @@ export default function InsightChat({
 
   const [lang, setLang] = useState(() => getSettings().insightLang);
   const [chatFontSize, setChatFontSize] = useState<"xs" | "sm">(() => getSettings().chatFontSize);
-  const [chatProvider, setChatProvider] = useState<ChatProviderSetting>(() => getSettings().chatProvider);
+  const [chatProvider, setChatProvider] = useState<ChatProviderSetting>(() => getSettings().chatProvider ?? "auto");
   const langRef = useRef(lang);
   langRef.current = lang;
   const providerRef = useRef(chatProvider);
   providerRef.current = chatProvider;
+
+  // Gate the box on the key for the SELECTED provider, not Gemini alone
+  // (owner feedback: a Claude-only setup was locked out entirely).
+  // "auto" is ready when any provider has a key.
+  const providerKeys = { gemini: hasGeminiKey, claude: hasClaudeKey, deepseek: hasDeepseekKey };
+  const providerReady = chatProvider === "auto"
+    ? hasGeminiKey || hasClaudeKey || hasDeepseekKey
+    : providerKeys[chatProvider];
+  const providerKeyLabel = chatProvider === "auto"
+    ? "an AI provider"
+    : { gemini: "a Gemini", claude: "a Claude", deepseek: "a DeepSeek" }[chatProvider];
+  const providerReadyRef = useRef(providerReady);
+  providerReadyRef.current = providerReady;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadedFrom, setLoadedFrom] = useState(0);
@@ -261,7 +278,7 @@ export default function InsightChat({
   // ── 3. Chapter first-visit insight ───────────────────────────────────
   useEffect(() => {
     if (!isVisible) return;
-    if (!hasGeminiKey) return;
+    if (!providerReadyRef.current) return;
     if (!chapterText || !bookTitle || !bookId) return;
     const key = chapterText.slice(0, 100);
     if (visitedKeys.current.has(key)) return;
@@ -276,7 +293,7 @@ export default function InsightChat({
     setChatLoading(true);
 
     onAIUsed?.();
-    getInsight(chapterText, bookTitle, author, langRef.current)
+    getInsight(chapterText, bookTitle, author, langRef.current, providerRef.current)
       .then((r) => {
         if (cancelled) return;
         setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]);
@@ -290,12 +307,12 @@ export default function InsightChat({
 
   // ── 4. Manual refresh ────────────────────────────────────────────────
   useEffect(() => {
-    if (refreshTick === 0 || !chapterText || !bookTitle || !hasGeminiKey) return;
+    if (refreshTick === 0 || !chapterText || !bookTitle || !providerReadyRef.current) return;
     let cancelled = false;
     autoScrollRef.current = true;
     setChatLoading(true);
     onAIUsed?.();
-    getInsight(chapterText, bookTitle, author, langRef.current)
+    getInsight(chapterText, bookTitle, author, langRef.current, providerRef.current)
       .then((r) => {
         if (cancelled) return;
         setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]);
@@ -425,21 +442,21 @@ export default function InsightChat({
         </button>
         <button
           onClick={() => setRefreshTick((n) => n + 1)}
-          title={hasGeminiKey ? "Append a fresh insight" : "Gemini API key required"}
+          title={providerReady ? "Append a fresh insight" : `${providerKeyLabel[0].toUpperCase()}${providerKeyLabel.slice(1)} API key required`}
           aria-label="Append a fresh insight"
-          disabled={!hasGeminiKey}
+          disabled={!providerReady}
           className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded hover:bg-stone-200 text-stone-600 hover:text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <RetryIcon className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* ── Gemini key notice ─────────────────────────────────────────── */}
-      {!hasGeminiKey && (
+      {/* ── Provider key notice ───────────────────────────────────────── */}
+      {!providerReady && (
         <div className="px-3 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-800">
-          Insights require a{" "}
-          <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Gemini API key<span className="sr-only"> (opens in new tab)</span></a>{" "}
-          — free from Google AI Studio.
+          Insights require {providerKeyLabel}{" "}
+          <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">API key<span className="sr-only"> (opens in new tab)</span></a>
+          {chatProvider === "auto" || chatProvider === "gemini" ? " — Gemini is free from Google AI Studio." : "."}
         </div>
       )}
 
@@ -613,10 +630,10 @@ export default function InsightChat({
           </div>
         )}
 
-        {!hasGeminiKey && (
+        {!providerReady && (
           <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-2 text-xs text-amber-800">
-            Chat requires a{" "}
-            <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Gemini API key<span className="sr-only"> (opens in new tab)</span></a>.
+            Chat requires {providerKeyLabel}{" "}
+            <a href="/profile" target="_blank" rel="noopener noreferrer" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">API key<span className="sr-only"> (opens in new tab)</span></a>.
           </div>
         )}
 
@@ -625,10 +642,10 @@ export default function InsightChat({
             aria-label="Ask about this chapter"
             className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white focus:border-transparent resize-none leading-relaxed transition-colors placeholder:text-stone-600"
             rows={2}
-            placeholder={hasGeminiKey ? "Ask about this chapter…" : "Gemini API key required"}
+            placeholder={providerReady ? "Ask about this chapter…" : "API key required"}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={!hasGeminiKey}
+            disabled={!providerReady}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -638,7 +655,7 @@ export default function InsightChat({
           />
           <button
             onClick={sendMessage}
-            disabled={chatLoading || !input.trim() || !hasGeminiKey}
+            disabled={chatLoading || !input.trim() || !providerReady}
             className="rounded-xl bg-amber-600 p-2 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-white hover:bg-amber-700 disabled:opacity-40 shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-600"
             aria-label="Send message"
             title="Send (Enter)"

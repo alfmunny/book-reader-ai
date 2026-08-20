@@ -109,6 +109,40 @@ async def answer_question_with_key(
     return next(b.text for b in message.content if b.type == "text")
 
 
+async def generate_insight_with_key(
+    api_key: str,
+    chapter_text: str,
+    book_title: str,
+    author: str,
+    response_language: str = "en",
+) -> str:
+    """Chapter insight on the user's own Claude key (BYOK provider selection).
+
+    claude-opus-5 thinks by default and max_tokens caps thinking plus text,
+    so the budget is sized well above the 2-3 paragraph insight.
+    """
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    excerpt = chapter_text[:1500].strip()
+    message = await client.messages.create(
+        model="claude-opus-5",
+        max_tokens=6000,
+        system=SYSTEM_INSIGHT + _lang(response_language),
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f'Book: "{book_title}" by {author}\n\n'
+                    f"Chapter opening:\n---\n{excerpt}\n---\n\n"
+                    "Share one fascinating insight about this passage."
+                ),
+            }
+        ],
+    )
+    if message.stop_reason == "refusal":
+        raise RuntimeError("Claude declined to answer this request")
+    return next(b.text for b in message.content if b.type == "text")
+
+
 async def translate_chunk(text: str, source_language: str, target_language: str) -> str:
     """Translate a single chunk of text."""
     client = get_client()

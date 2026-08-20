@@ -685,6 +685,8 @@ export interface WordDefinition {
   lemma: string;
   language: string;
   definitions: Array<{ pos: string; text: string }>;
+  /** e.g. "past participle of gehen" when `lemma` differs from the word looked up. */
+  form_of?: string | null;
   url: string;
 }
 
@@ -694,6 +696,8 @@ export function getVocabulary() {
 
 export function saveVocabularyWord(data: {
   word: string;
+  /** Base form, when the caller already has a definition — skips a server lookup. */
+  lemma?: string;
   book_id: number;
   chapter_index: number;
   sentence_text: string;

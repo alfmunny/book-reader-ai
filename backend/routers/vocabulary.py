@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 class WordSave(BaseModel):
     word: str = Field(..., min_length=1, max_length=200)
+    # Base form, when the client already fetched a definition (saves a round-trip).
+    lemma: str | None = Field(default=None, max_length=200)
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     sentence_text: str = Field(..., min_length=1, max_length=5000)
@@ -70,6 +72,7 @@ async def save(req: WordSave, user: dict = Depends(get_current_user)):
         req.book_id,
         req.chapter_index,
         req.sentence_text,
+        lemma=req.lemma,
     )
 
 

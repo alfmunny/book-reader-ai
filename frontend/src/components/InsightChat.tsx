@@ -275,33 +275,22 @@ export default function InsightChat({
     } catch {}
   }, [messages, bookId, userId]);
 
-  // ── 3. Chapter first-visit insight ───────────────────────────────────
+  // ── 3. Chapter first-visit header ────────────────────────────────────
+  // Marks the chapter boundary in the thread. No AI call — the automatic
+  // insight fetch was removed (owner, 2026-08-20): opening the chat must not
+  // spend tokens on a request nobody asked for. The suggestion chips below
+  // the messages are the explicit way to ask.
   useEffect(() => {
     if (!isVisible) return;
-    if (!providerReadyRef.current) return;
     if (!chapterText || !bookTitle || !bookId) return;
     const key = chapterText.slice(0, 100);
     if (visitedKeys.current.has(key)) return;
     visitedKeys.current.add(key);
-
-    let cancelled = false;
     autoScrollRef.current = true;
     setMessages((prev) => [
       ...prev,
       { role: "assistant", content: chapterTitle || "Chapter", isChapterHeader: true, chapterKey: key },
     ]);
-    setChatLoading(true);
-
-    onAIUsed?.();
-    getInsight(chapterText, bookTitle, author, langRef.current, providerRef.current)
-      .then((r) => {
-        if (cancelled) return;
-        setMessages((prev) => [...prev, { role: "assistant", content: r.insight }]);
-        if (userId) postChatMessage(bookId, "assistant", r.insight).catch(() => {});
-      })
-      .catch((e) => { if (!cancelled) setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]); })
-      .finally(() => { if (!cancelled) setChatLoading(false); });
-    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterText, chapterTitle, bookTitle, bookId, author, isVisible]);
 
@@ -354,9 +343,18 @@ export default function InsightChat({
     setLoadedFrom((n) => Math.max(0, n - LOAD_BATCH));
   }
 
+  // Quick prompts shown above the input — the explicit replacement for the
+  // removed auto-insight: nothing is sent until the reader taps one.
+  const SUGGESTIONS = [
+    "Summarize this chapter",
+    "Give me one fascinating insight",
+    "Explain the historical context",
+    "Who are the characters so far?",
+  ];
+
   // ── Send message ──────────────────────────────────────────────────────
-  async function sendMessage() {
-    const text = input.trim();
+  async function sendMessage(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || chatLoading) return;
     const attachedContext = contextText || undefined;
     setInput("");
@@ -637,6 +635,22 @@ export default function InsightChat({
           </div>
         )}
 
+        {/* Suggestion chips — tap to send that request about the chapter */}
+        {providerReady && !chatLoading && !input.trim() && (
+          <div className="flex flex-wrap gap-1.5 mb-2" role="group" aria-label="Suggested questions">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => sendMessage(s)}
+                className="text-xs rounded-full border border-amber-200 bg-amber-50 text-amber-800 px-2.5 py-1 min-h-[44px] md:min-h-0 hover:bg-amber-100 hover:border-amber-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2 items-end">
           <textarea
             aria-label="Ask about this chapter"
@@ -654,7 +668,7 @@ export default function InsightChat({
             }}
           />
           <button
-            onClick={sendMessage}
+            onClick={() => sendMessage()}
             disabled={chatLoading || !input.trim() || !providerReady}
             className="rounded-xl bg-amber-600 p-2 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-white hover:bg-amber-700 disabled:opacity-40 shrink-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-600"
             aria-label="Send message"

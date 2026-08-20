@@ -14,7 +14,7 @@ describe("Reader page — notifyAIUsed should not fire on null hasGeminiKey (iss
   it("uses strict equality check in notifyAIUsed (hasGeminiKey === false, not !hasGeminiKey)", () => {
     const fnIdx = SOURCE.indexOf("function notifyAIUsed");
     expect(fnIdx).toBeGreaterThan(-1);
-    const snippet = SOURCE.slice(fnIdx, fnIdx + 200);
+    const snippet = SOURCE.slice(fnIdx, fnIdx + 400);
     // Must use strict false check, not falsy check, to avoid firing when null
     expect(snippet).toMatch(/hasGeminiKey === false/);
     expect(snippet).not.toMatch(/!hasGeminiKey/);

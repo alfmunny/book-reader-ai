@@ -444,7 +444,7 @@ describe("ReaderPage.branches2 — Gemini key reminder banner via notifyAIUsed",
     await userEvent.click(triggerBtns[0]);
 
     await waitFor(() => {
-      expect(screen.getByText(/AI features require your own Gemini API key/)).toBeInTheDocument();
+      expect(screen.getByText(/AI features require your own API key/)).toBeInTheDocument();
     });
   });
 
@@ -460,7 +460,7 @@ describe("ReaderPage.branches2 — Gemini key reminder banner via notifyAIUsed",
     const triggerBtns = await screen.findAllByTestId("trigger-ai-used");
     await userEvent.click(triggerBtns[0]);
 
-    expect(screen.queryByText(/AI features require your own Gemini API key/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI features require your own API key/)).not.toBeInTheDocument();
   });
 
   it("dismisses the Gemini reminder banner when ✕ button is clicked", async () => {
@@ -479,11 +479,11 @@ describe("ReaderPage.branches2 — Gemini key reminder banner via notifyAIUsed",
     await userEvent.click(dismissBtn);
 
     await waitFor(() => {
-      expect(screen.queryByText(/AI features require your own Gemini API key/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/AI features require your own API key/)).not.toBeInTheDocument();
     });
   });
 
-  it("'Add your free Gemini API key' link opens /profile in new tab", async () => {
+  it("'Add a key in your profile' link opens /profile in new tab", async () => {
     mockGetMe.mockResolvedValue({ hasGeminiKey: false, role: "user" });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
@@ -495,9 +495,9 @@ describe("ReaderPage.branches2 — Gemini key reminder banner via notifyAIUsed",
     const triggerBtns = await screen.findAllByTestId("trigger-ai-used");
     await userEvent.click(triggerBtns[0]);
 
-    await screen.findByText(/AI features require your own Gemini API key/);
+    await screen.findByText(/AI features require your own API key/);
 
-    const addKeyLink = screen.getByText(/Add your free Gemini API key/i);
+    const addKeyLink = screen.getByText(/Add a key in your profile/i);
     const anchor = addKeyLink.closest("a") ?? addKeyLink;
     expect(anchor.tagName.toLowerCase()).toBe("a");
     expect(anchor).toHaveAttribute("href", "/profile");

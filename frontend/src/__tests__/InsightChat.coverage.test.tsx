@@ -156,7 +156,7 @@ describe("InsightChat — manual refresh (lines 167-175)", () => {
     await act(async () => {});
 
     // The refresh button should be disabled
-    const refreshBtn = screen.getByTitle("Gemini API key required");
+    const refreshBtn = screen.getByTitle("An AI provider API key required");
     expect(refreshBtn).toBeDisabled();
     expect(mockGetInsight).not.toHaveBeenCalled();
   });
@@ -399,15 +399,16 @@ describe("InsightChat — onSaveInsight (lines 359-397)", () => {
     expect(screen.queryByTitle(/Save this insight/i)).not.toBeInTheDocument();
   });
 
-  it("shows Gemini key notice when hasGeminiKey is false (lines 119-120 render branch)", () => {
+  it("shows the provider key notice when no key is configured", () => {
     render(<InsightChat {...BASE} hasGeminiKey={false} />);
 
-    // Both key-reminder notices should be present
-    expect(screen.getAllByText(/Gemini API key/i).length).toBeGreaterThanOrEqual(1);
+    // Both key-reminder notices should be present (provider-aware since the
+    // dropdown gating change: default "auto" + no keys → generic message)
+    expect(screen.getAllByText(/API key/i).length).toBeGreaterThanOrEqual(1);
     // Insight notice (top of messages area)
     expect(screen.getByText(/Insights require/i)).toBeInTheDocument();
     // Input-area reminder
-    expect(screen.getByText(/Chat requires a/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chat requires/i)).toBeInTheDocument();
   });
 });
 

@@ -231,11 +231,17 @@ export async function* importBookStream(
 }
 
 // AI
-export function getInsight(chapter_text: string, book_title: string, author: string, response_language = "en") {
-  return request<{ insight: string }>("/ai/insight", {
+export function getInsight(
+  chapter_text: string,
+  book_title: string,
+  author: string,
+  response_language = "en",
+  provider: ChatProvider = "auto",
+) {
+  return request<{ insight: string; provider: string }>("/ai/insight", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chapter_text, book_title, author, response_language }),
+    body: JSON.stringify({ chapter_text, book_title, author, response_language, provider }),
   });
 }
 

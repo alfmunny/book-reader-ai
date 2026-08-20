@@ -76,3 +76,35 @@ describe("InsightChat — provider selector", () => {
     expect((screen.getByLabelText("Chat AI provider") as HTMLSelectElement).value).toBe("deepseek");
   });
 });
+
+describe("InsightChat — gating follows the selected provider", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
+  });
+
+  it("unlocks the chat with only a Claude key when Claude is selected", () => {
+    render(<InsightChat {...defaultProps} hasGeminiKey={false} hasClaudeKey />);
+    fireEvent.change(screen.getByLabelText("Chat AI provider"), { target: { value: "claude" } });
+    expect(screen.getByRole("textbox")).toBeEnabled();
+    expect(screen.queryByText(/Chat requires/)).toBeNull();
+  });
+
+  it("unlocks the chat on auto when any provider key exists", () => {
+    render(<InsightChat {...defaultProps} hasGeminiKey={false} hasDeepseekKey />);
+    expect(screen.getByRole("textbox")).toBeEnabled();
+  });
+
+  it("locks the chat when the selected provider has no key, naming the provider", () => {
+    render(<InsightChat {...defaultProps} hasGeminiKey={false} hasClaudeKey />);
+    fireEvent.change(screen.getByLabelText("Chat AI provider"), { target: { value: "gemini" } });
+    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByText(/Chat requires a Gemini/)).toBeInTheDocument();
+  });
+
+  it("locks the chat on auto only when no provider key exists at all", () => {
+    render(<InsightChat {...defaultProps} hasGeminiKey={false} />);
+    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByText(/Chat requires an AI provider/)).toBeInTheDocument();
+  });
+});

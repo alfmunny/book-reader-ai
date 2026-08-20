@@ -67,7 +67,7 @@ describe("InsightChat button focus rings (closes #2180)", () => {
     // aria-label="Append a fresh insight" comes before className — need extra window
     const idx = chat.indexOf('"Append a fresh insight"');
     expect(idx).toBeGreaterThan(-1);
-    const window = chat.slice(idx, idx + 450);
+    const window = chat.slice(idx, idx + 700);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 

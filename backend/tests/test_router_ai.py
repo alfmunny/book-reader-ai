@@ -351,7 +351,9 @@ async def test_insight_without_key_returns_400(client):
         "author": "Goethe",
     })
     assert resp.status_code == 400
-    assert "Gemini" in resp.json()["detail"]
+    # Provider selection (#2660 follow-up): with no key for any provider the
+    # detail names the generic requirement, not Gemini specifically.
+    assert "API key" in resp.json()["detail"]
 
 
 async def test_insight_with_key_returns_text(client, test_user):

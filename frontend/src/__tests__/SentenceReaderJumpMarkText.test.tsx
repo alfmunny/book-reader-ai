@@ -67,7 +67,10 @@ test("vocab jump: explicit word param wins over the selection substring", () => 
   expect(mark?.textContent).toBe("Ishmael");
 });
 
-test("the mark persists after the sentence flash clears", () => {
+test("the mark clears together with the sentence flash", () => {
+  // Owner feedback (2026-08-20): a mark that never fades reads as a stain —
+  // "Meer" stayed highlighted indefinitely because the URL's ?word= param
+  // persists. The mark is visible during the flash window and fades with it.
   jest.useFakeTimers();
   const { container } = renderReader(
     "Ihr naht euch wieder, schwankende Gestalten.",
@@ -79,12 +82,9 @@ test("the mark persists after the sentence flash clears", () => {
     jest.advanceTimersByTime(2600);
   });
 
-  // Flash (ring + data-jump-target) is gone…
+  // Flash (ring + data-jump-target) is gone — and so is the mark.
   expect(container.querySelector("[data-jump-target]")).toBeNull();
-  // …but the selected-text mark is still visible.
-  const mark = container.querySelector("mark");
-  expect(mark).not.toBeNull();
-  expect(mark?.textContent).toBe("euch");
+  expect(container.querySelector("mark")).toBeNull();
 });
 
 test("mark lands only in the target segment, not in other segments containing the text", () => {

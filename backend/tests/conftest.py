@@ -42,8 +42,15 @@ TEST_USER = {
 
 @pytest.fixture(autouse=True)
 def no_wiktionary_http(monkeypatch):
-    """Prevent _update_lemma from making real HTTP calls in every test."""
-    monkeypatch.setattr(db_module, "_update_lemma", AsyncMock(return_value=None))
+    """Prevent base-form resolution from making real HTTP calls in every test.
+
+    Behaves as if the word were already its own base form, so tests that don't
+    care about lemmas see the word they saved. Tests exercising the real
+    resolution monkeypatch this back — see test_vocabulary_base_form.py.
+    """
+    async def _identity(word, book_id, provided=None):
+        return ((provided or word).strip().lower(), "en")
+    monkeypatch.setattr(db_module, "_resolve_base_form", _identity)
 
 
 @pytest.fixture(autouse=True)

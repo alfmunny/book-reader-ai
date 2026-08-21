@@ -51,39 +51,24 @@ def _strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text).strip()
 
 
-async def lookup(word: str, lang: str = "en") -> dict:
-    """Fetch definition and lemma for *word* in *lang* from English Wiktionary.
-
-    Returns::
-
-        {
-            "lemma": str,           # base form (== word if no form-of found)
-            "language": str,        # the lang code used
-            "definitions": [        # up to 3
-                {"pos": str, "text": str}
-            ],
-            "url": str,             # canonical Wiktionary URL
-        }
-    """
+async def _fetch(word: str, lang: str) -> dict | None:
+    """GET the Wiktionary definition payload for *word*, or None on any failure."""
     url = f"{_BASE}/{quote(word.lower(), safe='')}"
-    wikt_url = f"https://en.wiktionary.org/wiki/{quote(word, safe='')}"
-
-    empty = {"lemma": word, "language": lang, "definitions": [], "url": wikt_url}
-
     try:
         async with httpx.AsyncClient(timeout=6.0) as client:
             resp = await client.get(url, headers=_HEADERS)
     except Exception:
-        return empty
-
+        return None
     if resp.status_code != 200:
-        return empty
-
+        return None
     try:
-        data = resp.json()
+        return resp.json()
     except Exception:
-        return empty
+        return None
 
+
+def _parse(data: dict, lang: str, word: str) -> tuple[list[dict], str]:
+    """Return (definitions, lemma) from a Wiktionary payload."""
     entries = data.get(lang) or data.get("en") or []
 
     definitions: list[dict] = []
@@ -109,11 +94,60 @@ async def lookup(word: str, lang: str = "en") -> dict:
         if len(definitions) >= 3:
             break
 
+    return definitions, lemma
+
+
+def _wiki_url(word: str) -> str:
+    return f"https://en.wiktionary.org/wiki/{quote(word, safe='')}"
+
+
+async def lookup(word: str, lang: str = "en") -> dict:
+    """Fetch definition and lemma for *word* in *lang* from English Wiktionary.
+
+    An inflected word's own Wiktionary entry usually says nothing more than which
+    form it is ("past participle of gehen"), which is useless on its own — so when
+    a base form is found the pointer is followed once and the base form's actual
+    definitions are returned instead, with the form-of note kept separately (#2663).
+
+    Returns::
+
+        {
+            "lemma": str,           # base form (== word if no form-of found)
+            "language": str,        # the lang code used
+            "definitions": [        # up to 3, of the base form when one was found
+                {"pos": str, "text": str}
+            ],
+            "form_of": str | None,  # e.g. "past participle of gehen"
+            "url": str,             # canonical Wiktionary URL
+        }
+    """
+    empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None, "url": _wiki_url(word)}
+
+    data = await _fetch(word, lang)
+    if data is None:
+        return empty
+
+    definitions, lemma = _parse(data, lang, word)
+
+    if lemma == word:
+        return {**empty, "definitions": definitions}
+
+    form_of = definitions[0]["text"] if definitions else None
+    base_data = await _fetch(lemma, lang)
+    base_definitions = _parse(base_data, lang, lemma)[0] if base_data else []
+
+    if not base_definitions:
+        # Base form has no usable entry — the form-of statement is still better
+        # than showing the user nothing at all.
+        return {"lemma": lemma, "language": lang, "definitions": definitions,
+                "form_of": form_of, "url": _wiki_url(word)}
+
     return {
         "lemma": lemma,
         "language": lang,
-        "definitions": definitions,
-        "url": wikt_url,
+        "definitions": base_definitions,
+        "form_of": form_of,
+        "url": _wiki_url(lemma),
     }
 
 
@@ -132,8 +166,7 @@ async def ai_lookup(word: str, lang: str, api_key: str) -> dict:
     Returns the same shape as :func:`lookup`.
     """
     from services.gemini import _generate
-    wikt_url = f"https://en.wiktionary.org/wiki/{quote(word, safe='')}"
-    empty = {"lemma": word, "language": lang, "definitions": [], "url": wikt_url}
+    empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None, "url": _wiki_url(word)}
     try:
         prompt = f'Word: "{word}"\nLanguage code: {lang}'
         raw = await _generate(api_key, _AI_SYSTEM, prompt, max_tokens=256)
@@ -151,6 +184,7 @@ async def ai_lookup(word: str, lang: str, api_key: str) -> dict:
             "lemma": data.get("lemma") or word,
             "language": lang,
             "definitions": definitions,
+            "form_of": None,
             "url": "",
         }
     except Exception:

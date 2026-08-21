@@ -684,32 +684,27 @@ export default function SentenceReader({
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";
 
-  // Build a lookup map: sentence_text → annotation
-  const annotationMap = useMemo(() => {
-    const map = new Map<string, Annotation>();
-    annotations?.forEach((a) => map.set(a.sentence_text, a));
-    return map;
-  }, [annotations]);
-
-  // Lookup with substring fallback: annotations from text-selection may store a
-  // substring of the segment text rather than the full sentence. Returns ALL
-  // matching annotations (a single segment may contain multiple sub-sentence
-  // annotations — see #1707). The exact full-segment match (if any) is first.
-  const getAnnotations = useMemo(() => {
-    const anns = annotations ?? [];
-    return (segText: string): Annotation[] => {
-      const out: Annotation[] = [];
-      const exact = annotationMap.get(segText);
-      if (exact) out.push(exact);
-      for (const a of anns) {
-        if (a === exact) continue;
-        if (a.sentence_text.length >= 10 && a.sentence_text !== segText && segText.includes(a.sentence_text)) {
-          out.push(a);
-        }
-      }
-      return out;
+  // Anchor each annotation to exactly ONE segment: an exact segment match
+  // wins, otherwise the FIRST segment containing its sentence_text (substring
+  // annotations, >= 10 chars, see #1707 — multiple can share one segment).
+  // Text anchors carry no position, so a repeated word or phrase (e.g.
+  // "unbegreiflich" appearing on two Prolog lines) would otherwise render its
+  // underline and note dot on every occurrence.
+  const annotationsByFlatIdx = useMemo(() => {
+    const map = new Map<number, Annotation[]>();
+    const add = (flatIdx: number, a: Annotation) => {
+      const list = map.get(flatIdx);
+      if (list) list.push(a); else map.set(flatIdx, [a]);
     };
-  }, [annotations, annotationMap]);
+    for (const a of annotations ?? []) {
+      const exact = allSegments.find((s) => s.text === a.sentence_text);
+      const seg = exact ?? (a.sentence_text.length >= 10
+        ? allSegments.find((s) => s.text.includes(a.sentence_text))
+        : undefined);
+      if (seg) add(seg.flatIdx, a);
+    }
+    return map;
+  }, [annotations, allSegments]);
 
   // Long-press cancel (shared across segments)
   function cancelLongPress() {
@@ -807,7 +802,7 @@ export default function SentenceReader({
           // The first-matching full-segment annotation drives the wrapping span
           // colour; every sub-sentence annotation becomes its own data-ann-id
           // span inside buildSegContent so per-annotation clicks route correctly.
-          const segAnns = showAnnotations ? getAnnotations(seg.text) : [];
+          const segAnns = showAnnotations ? (annotationsByFlatIdx.get(seg.flatIdx) ?? []) : [];
           const fullSegmentAnnotation = segAnns.find((a) => a.sentence_text === seg.text);
           const annotationClass = fullSegmentAnnotation
             ? (ANNOTATION_COLOR_CLASS[fullSegmentAnnotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
@@ -942,7 +937,7 @@ export default function SentenceReader({
         const expandedAnn = expandedNoteFlatIdx !== null
           ? (para.segments
               .filter((s) => s.flatIdx === expandedNoteFlatIdx)
-              .flatMap((s) => getAnnotations(s.text))
+              .flatMap((s) => annotationsByFlatIdx.get(s.flatIdx) ?? [])
               .find((a) => a.note_text) ?? null)
           : null;
         const noteCard = expandedAnn?.note_text ? (

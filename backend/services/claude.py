@@ -85,13 +85,16 @@ async def answer_question_with_key(
 ) -> str:
     """Insight-chat QA on the user's own Claude key (BYOK provider selection).
 
-    Uses claude-opus-5 with thinking on by default; max_tokens caps thinking
-    plus response text, so it is sized well above the expected answer length.
+    claude-sonnet-5 at effort "low": literature Q&A is short-form and not
+    reasoning-heavy, so Sonnet-tier quality is indistinguishable here at
+    roughly a fifth of Opus output pricing (~1 cent per message vs 2-4).
+    Thinking stays adaptive (default); max_tokens caps thinking + text.
     """
     client = anthropic.AsyncAnthropic(api_key=api_key)
     message = await client.messages.create(
-        model="claude-opus-5",
-        max_tokens=8000,
+        model="claude-sonnet-5",
+        max_tokens=3000,
+        output_config={"effort": "low"},
         system=SYSTEM_QA + _lang(response_language),
         messages=[
             {
@@ -100,6 +103,42 @@ async def answer_question_with_key(
                     f'Book: "{book_title}" by {author}\n\n'
                     f"Current passage:\n---\n{passage}\n---\n\n"
                     f"Question: {question}"
+                ),
+            }
+        ],
+    )
+    if message.stop_reason == "refusal":
+        raise RuntimeError("Claude declined to answer this request")
+    return next(b.text for b in message.content if b.type == "text")
+
+
+async def generate_insight_with_key(
+    api_key: str,
+    chapter_text: str,
+    book_title: str,
+    author: str,
+    response_language: str = "en",
+) -> str:
+    """Chapter insight on the user's own Claude key (BYOK provider selection).
+
+    Same cost profile as answer_question_with_key: claude-sonnet-5 at effort
+    "low" — a 2-3 paragraph literary insight doesn't need Opus. max_tokens
+    caps thinking + text.
+    """
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    excerpt = chapter_text[:1500].strip()
+    message = await client.messages.create(
+        model="claude-sonnet-5",
+        max_tokens=2000,
+        output_config={"effort": "low"},
+        system=SYSTEM_INSIGHT + _lang(response_language),
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f'Book: "{book_title}" by {author}\n\n'
+                    f"Chapter opening:\n---\n{excerpt}\n---\n\n"
+                    "Share one fascinating insight about this passage."
                 ),
             }
         ],

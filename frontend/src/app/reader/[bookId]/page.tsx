@@ -277,6 +277,8 @@ export default function ReaderPage() {
 
   // Gemini key reminder — fetch live status so we don't rely on the stale session JWT
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null); // null = not yet loaded
+  const [hasClaudeKey, setHasClaudeKey] = useState(false);
+  const [hasDeepseekKey, setHasDeepseekKey] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [geminiReminderVisible, setGeminiReminderVisible] = useState(false);
   const geminiReminderShown = useRef(false);
@@ -284,6 +286,8 @@ export default function ReaderPage() {
   useEffect(() => {
     getMe().then((me) => {
       setHasGeminiKey(me.hasGeminiKey);
+      setHasClaudeKey(me.hasClaudeKey);
+      setHasDeepseekKey(me.hasDeepseekKey);
       setIsAdmin(me.role === "admin");
     }).catch(() => {
       // Leave hasGeminiKey as null on failure — notifyAIUsed checks === false
@@ -291,7 +295,9 @@ export default function ReaderPage() {
   }, [session?.backendToken]);
 
   function notifyAIUsed() {
-    if (hasGeminiKey === false && !geminiReminderShown.current) {
+    // Remind only when NO provider key exists at all — a Claude/DeepSeek-only
+    // setup is fully usable and should not be nagged about Gemini.
+    if (hasGeminiKey === false && !hasClaudeKey && !hasDeepseekKey && !geminiReminderShown.current) {
       geminiReminderShown.current = true;
       setGeminiReminderVisible(true);
     }
@@ -1033,19 +1039,19 @@ export default function ReaderPage() {
   }
 
   return (
-    <main id="main-content" className="h-screen bg-parchment flex flex-col overflow-hidden">
+    <main id="main-content" className="relative h-screen bg-parchment flex flex-col overflow-hidden">
       {/* ── Gemini key reminder banner ───────────────────────────────────── */}
       {geminiReminderVisible && (
         <div className="shrink-0 bg-amber-50 border-b border-amber-300 px-4 py-2 flex items-center justify-between gap-4 text-sm text-amber-800">
           <span>
-            AI features require your own Gemini API key.{" "}
+            AI features require your own API key (Gemini, Claude, or DeepSeek).{" "}
             <a
               href="/profile"
               target="_blank"
               rel="noopener noreferrer"
               className="underline font-medium hover:text-amber-900 min-h-[44px] md:min-h-0 inline-flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
-              Add your free Gemini API key<span className="sr-only"> (opens in new tab)</span>
+              Add a key in your profile<span className="sr-only"> (opens in new tab)</span>
             </a>{" "}
             to enable them.
           </span>
@@ -2059,6 +2065,8 @@ export default function ReaderPage() {
                   bookId={bookId}
                   userId={session?.backendUser?.id ?? null}
                   hasGeminiKey={hasGeminiKey ?? false}
+                  hasClaudeKey={hasClaudeKey}
+                  hasDeepseekKey={hasDeepseekKey}
                   isVisible={sidebarOpen && sidebarTab === "chat"}
                   chapterText={current?.text ?? ""}
                   chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
@@ -2551,6 +2559,8 @@ export default function ReaderPage() {
               bookId={bookId}
               userId={session?.backendUser?.id ?? null}
               hasGeminiKey={hasGeminiKey ?? false}
+              hasClaudeKey={hasClaudeKey}
+              hasDeepseekKey={hasDeepseekKey}
               isVisible={true}
               chapterText={current?.text ?? ""}
               chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}

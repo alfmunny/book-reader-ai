@@ -17,8 +17,8 @@ from services.db import (
     get_cached_book,
 )
 from services import gemini
-from services.claude import answer_question_with_key as claude_qa
-from services.deepseek import answer_question as deepseek_qa
+from services.claude import answer_question_with_key as claude_qa, generate_insight_with_key as claude_insight
+from services.deepseek import answer_question as deepseek_qa, generate_insight as deepseek_insight
 from services.tts import synthesize, chunk_text
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -71,6 +71,8 @@ class InsightRequest(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
+    # Same dispatch as /ai/qa — "auto" → first provider the user has a key for.
+    provider: Literal["auto", "gemini", "claude", "deepseek"] = "auto"
 
     @field_validator("chapter_text", "book_title", "author")
     @classmethod
@@ -180,12 +182,21 @@ class ChunkTextRequest(BaseModel):
 
 @router.post("/insight")
 async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
-    key = _require_gemini_key(user)
+    provider, key = _resolve_qa_provider(user, req.provider)
     try:
-        result = await gemini.generate_insight(
-            key, req.chapter_text, req.book_title, req.author, req.response_language
-        )
-        return {"insight": result}
+        if provider == "claude":
+            result = await claude_insight(
+                key, req.chapter_text, req.book_title, req.author, req.response_language
+            )
+        elif provider == "deepseek":
+            result = await deepseek_insight(
+                key, req.chapter_text, req.book_title, req.author, req.response_language
+            )
+        else:
+            result = await gemini.generate_insight(
+                key, req.chapter_text, req.book_title, req.author, req.response_language
+            )
+        return {"insight": result, "provider": provider}
     except Exception as exc:
         logger.exception("POST /ai/insight failed for user %s: %s", user.get("id"), exc)
         raise HTTPException(status_code=500, detail="AI service request failed")

@@ -42,10 +42,11 @@ describe("InsightChat — onAIUsed callback", () => {
     jest.clearAllMocks();
   });
 
-  it("calls onAIUsed when the chapter insight is automatically fetched", async () => {
+  it("does NOT call onAIUsed just for opening the chat (auto-insight removed)", async () => {
     const onAIUsed = jest.fn();
     render(<InsightChat {...defaultProps} onAIUsed={onAIUsed} />);
-    await waitFor(() => expect(onAIUsed).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(onAIUsed).not.toHaveBeenCalled();
   });
 
   it("calls onAIUsed when the user sends a chat message", async () => {
@@ -77,9 +78,6 @@ describe("InsightChat — onAIUsed callback", () => {
     expect(() =>
       render(<InsightChat {...defaultProps} />)
     ).not.toThrow();
-    // Let the insight call complete
-    await waitFor(() =>
-      expect(require("@/lib/api").getInsight).toHaveBeenCalled()
-    );
+    await act(async () => {});
   });
 });

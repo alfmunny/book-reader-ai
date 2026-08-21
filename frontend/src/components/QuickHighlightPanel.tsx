@@ -132,6 +132,18 @@ export default function QuickHighlightPanel({
       className="flex flex-col gap-1 animate-fade-in"
       data-testid="quick-highlight-panel"
     >
+    {/* WeChat-style note display: the note lives in this panel — tapping the
+        marked text is the affordance; there is no per-line dot anymore. */}
+    {existingAnnotation?.note_text && (
+      <div
+        data-testid="quick-highlight-note"
+        className="bg-white border border-amber-200 rounded-xl shadow-xl px-3 py-2.5 text-sm text-stone-700 leading-relaxed max-h-40 overflow-y-auto overscroll-contain"
+        style={{ width: PANEL_W + 60 }}
+      >
+        <p className="text-[11px] font-medium text-stone-500 mb-1">Note</p>
+        <p className="whitespace-pre-wrap">{existingAnnotation.note_text}</p>
+      </div>
+    )}
     <div
       ref={toolbarRef}
       role="toolbar"
@@ -160,12 +172,12 @@ export default function QuickHighlightPanel({
       ))}
       {onOpenNote && (
         <button
-          title="Add note"
+          title={existingAnnotation?.note_text ? "Edit note" : "Add note"}
           onClick={onOpenNote}
           onFocus={() => setFocusedToolbarIdx(COLORS.length)}
           tabIndex={focusedToolbarIdx === COLORS.length ? 0 : -1}
           disabled={busy}
-          aria-label="Add note"
+          aria-label={existingAnnotation?.note_text ? "Edit note" : "Add note"}
           className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
         >
           <span className="w-7 h-7 rounded-full bg-stone-100 border border-stone-300 flex items-center justify-center hover:bg-stone-200 transition-colors">

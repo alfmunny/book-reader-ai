@@ -145,45 +145,10 @@ describe("SentenceReader — unknown annotation color ?? fallback (lines 590[1],
       />
     );
 
-    // The annotation dot should render (even with unknown color → yellow fallback via ??)
-    const dot = container.querySelector(".rounded-full");
-    expect(dot).toBeTruthy();
-  });
-});
-
-// ── Line 655[1]: unknown annotation color in note card → ?? fallback ─────────
-
-describe("SentenceReader — unknown annotation color in note card (line 655[1])", () => {
-  it("renders note card with yellow fallback when color is unknown and note is expanded", async () => {
-    const ann: Annotation = {
-      id: 2,
-      book_id: 1,
-      chapter_index: 0,
-      sentence_text: "Sentence with unknown color note.",
-      note_text: "A detailed note for this sentence.",
-      color: "purple" as Annotation["color"],
-    };
-
-    render(
-      <SentenceReader
-        text="Sentence with unknown color note."
-        duration={0}
-        currentTime={0}
-        isPlaying={false}
-        onSegmentClick={noop}
-        annotations={[ann]}
-        showAnnotations={true}
-      />
-    );
-
-    // Click the note dot button to expand the note card
-    const toggleBtn = screen.getByRole("button", { name: /toggle note/i });
-    await userEvent.click(toggleBtn);
-
-    // Note card should render with fallback yellow class (line 655's ?? fires)
-    await waitFor(() =>
-      expect(screen.getByText("A detailed note for this sentence.")).toBeInTheDocument(),
-    );
+    // The annotation underline renders with the yellow fallback class via ??
+    // (the note dot was removed 2026-08-21 — notes show in QuickHighlightPanel)
+    const seg = container.querySelector("[data-seg]");
+    expect(seg?.className).toContain("border-yellow-400");
   });
 });
 

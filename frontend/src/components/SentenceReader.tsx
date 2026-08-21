@@ -513,7 +513,6 @@ export default function SentenceReader({
   onParagraphTimingsUpdate,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
-  const [expandedNoteFlatIdx, setExpandedNoteFlatIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressStartPos = useRef<{ x: number; y: number } | null>(null);
@@ -822,7 +821,6 @@ export default function SentenceReader({
           }
           // For the existing note-dot UI keep keying off "first annotation
           // with a note" — multi-note rendering is a separate follow-up.
-          const noteAnnotation = segAnns.find((a) => a.note_text);
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           const selectedClass = selectedSentenceFlatIdx === seg.flatIdx ? "ring-2 ring-blue-500 bg-blue-50 rounded" : "";
           // Keyboard accessibility for annotated segments (WCAG 2.1.1 / #2553):
@@ -893,17 +891,6 @@ export default function SentenceReader({
                       onAnnotationClick(ann, { x: rect.left + rect.width / 2, y: rect.bottom });
                     } : undefined,
                   )}
-              {noteAnnotation?.note_text && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setExpandedNoteFlatIdx((prev) => prev === seg.flatIdx ? null : seg.flatIdx); }}
-                  className="inline-flex items-center justify-center ml-0.5 align-middle cursor-pointer min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 -m-[19px] p-[19px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                  aria-label={`Toggle note for: ${seg.text.slice(0, 60)}`}
-                  aria-expanded={expandedNoteFlatIdx === seg.flatIdx}
-                  aria-controls={`note-panel-${seg.flatIdx}`}
-                >
-                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${NOTE_DOT_CLASS[noteAnnotation.color] ?? NOTE_DOT_CLASS.yellow}`} />
-                </button>
-              )}
               {trailingSpace ? " " : ""}
             </span>
           );
@@ -931,21 +918,9 @@ export default function SentenceReader({
           );
         }
 
-        // Expanded note card for any annotated sentence in this paragraph.
-        // With multi-annotation support (#1707), pick the first annotation
-        // with a note on the expanded segment.
-        const expandedAnn = expandedNoteFlatIdx !== null
-          ? (para.segments
-              .filter((s) => s.flatIdx === expandedNoteFlatIdx)
-              .flatMap((s) => annotationsByFlatIdx.get(s.flatIdx) ?? [])
-              .find((a) => a.note_text) ?? null)
-          : null;
-        const noteCard = expandedAnn?.note_text ? (
-          <div id={`note-panel-${expandedNoteFlatIdx}`} className={`mt-1.5 text-xs rounded px-2.5 py-1.5 border ${NOTE_CARD_CLASS[expandedAnn.color] ?? NOTE_CARD_CLASS.yellow}`}>
-            <p className="italic leading-relaxed">{expandedAnn.note_text}</p>
-          </div>
-        ) : null;
-
+        // Note display moved to QuickHighlightPanel (WeChat-style, owner
+        // request 2026-08-21): tapping the marked text opens the panel, which
+        // shows the note — no per-line dot, no inline card.
         const focusClass = focusParagraphIdx !== undefined
           ? (pIdx === focusParagraphIdx ? "para-active" : "para-dim")
           : "";
@@ -955,7 +930,6 @@ export default function SentenceReader({
           return (
             <div key={pIdx} data-para-idx={pIdx} className={focusClass}>
               {originalContent}
-              {noteCard}
             </div>
           );
         }
@@ -967,7 +941,6 @@ export default function SentenceReader({
               <div className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2">
                 <div>
                   {originalContent}
-                  {noteCard}
                 </div>
                 <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6" data-translation="true">
                   {translationText ? (
@@ -994,7 +967,6 @@ export default function SentenceReader({
         return (
           <div key={pIdx} data-para-idx={pIdx} className={focusClass}>
             {originalContent}
-            {noteCard}
             {translationLoading && textParaIdx === 0 && !translationText && (
               <div role="status" aria-label="Loading translation">
                 <span className="sr-only">Loading translation...</span>

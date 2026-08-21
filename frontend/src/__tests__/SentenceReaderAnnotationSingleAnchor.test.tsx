@@ -48,10 +48,11 @@ test("a substring annotation renders in only the FIRST containing segment", () =
   expect(seg?.textContent).toContain("hohen Werke"); // Raphael's line, not Gabriel's
 });
 
-test("the note dot appears only once for a repeated-word annotation", () => {
+test("no note dot renders — notes show in the highlight panel instead", () => {
+  // WeChat-style notes (owner request 2026-08-21): the underline itself is
+  // the affordance; tapping it opens QuickHighlightPanel with the note.
   const { container } = renderReader([wordAnnotation]);
-  const noteDots = container.querySelectorAll('[aria-expanded]');
-  expect(noteDots.length).toBe(1);
+  expect(container.querySelectorAll("[aria-expanded]").length).toBe(0);
 });
 
 test("an exact full-segment annotation still wins over an earlier substring match", () => {

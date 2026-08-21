@@ -84,6 +84,8 @@ describe("InsightChat — getInsight failure (line 158)", () => {
     mockGetInsight.mockRejectedValue(new Error("Gemini quota exceeded"));
 
     render(<InsightChat {...BASE} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByTitle("Append a fresh insight"));
 
     await waitFor(() =>
       expect(screen.getByText(/Gemini quota exceeded/)).toBeInTheDocument()
@@ -94,6 +96,8 @@ describe("InsightChat — getInsight failure (line 158)", () => {
     mockGetInsight.mockRejectedValue("quota exceeded"); // plain string, not Error
 
     render(<InsightChat {...BASE} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByTitle("Append a fresh insight"));
 
     await waitFor(() => {
       // Should show the string content, NOT "Error: undefined"
@@ -106,20 +110,15 @@ describe("InsightChat — getInsight failure (line 158)", () => {
 // ── Lines 167-175: manual refresh via ↺ button ───────────────────────────────
 
 describe("InsightChat — manual refresh (lines 167-175)", () => {
-  it("calls getInsight again when the ↺ button is clicked", async () => {
-    mockGetInsight.mockResolvedValue({ insight: "First insight." });
-    render(<InsightChat {...BASE} />);
-
-    // Wait for the initial auto-fetch
-    await waitFor(() => expect(mockGetInsight).toHaveBeenCalledTimes(1));
-
-    // Reset mock for the second call
+  it("calls getInsight when the ↺ button is clicked (no auto-fetch on open)", async () => {
     mockGetInsight.mockResolvedValue({ insight: "Refreshed insight." });
+    render(<InsightChat {...BASE} />);
+    await act(async () => {});
+    expect(mockGetInsight).not.toHaveBeenCalled(); // auto-insight removed
 
-    const refreshBtn = screen.getByTitle("Append a fresh insight");
-    fireEvent.click(refreshBtn);
+    fireEvent.click(screen.getByTitle("Append a fresh insight"));
 
-    await waitFor(() => expect(mockGetInsight).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mockGetInsight).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(screen.getByText(/Refreshed insight/)).toBeInTheDocument()
     );
@@ -128,19 +127,17 @@ describe("InsightChat — manual refresh (lines 167-175)", () => {
   it("calls onAIUsed when manual refresh fires", async () => {
     const onAIUsed = jest.fn();
     render(<InsightChat {...BASE} onAIUsed={onAIUsed} />);
+    await act(async () => {});
+    expect(onAIUsed).not.toHaveBeenCalled(); // nothing fires on open
 
-    // Drain the auto-fetch
+    fireEvent.click(screen.getByTitle("Append a fresh insight"));
+
     await waitFor(() => expect(onAIUsed).toHaveBeenCalledTimes(1));
-
-    const refreshBtn = screen.getByTitle("Append a fresh insight");
-    fireEvent.click(refreshBtn);
-
-    await waitFor(() => expect(onAIUsed).toHaveBeenCalledTimes(2));
   });
 
   it("shows error message when refresh getInsight rejects", async () => {
     render(<InsightChat {...BASE} />);
-    await waitFor(() => expect(mockGetInsight).toHaveBeenCalledTimes(1));
+    await act(async () => {});
 
     mockGetInsight.mockRejectedValue(new Error("Network error"));
     const refreshBtn = screen.getByTitle("Append a fresh insight");
@@ -169,8 +166,6 @@ describe("InsightChat — sendMessage with context (lines 196-206)", () => {
     // Provide selectedText so the context chip appears
     render(<InsightChat {...BASE} selectedText="universally acknowledged" />);
 
-    // Wait for initial insight so loading clears
-    await waitFor(() => expect(mockGetInsight).toHaveBeenCalledTimes(1));
     await act(async () => await flushPromises());
 
     // Type and send a question
@@ -205,7 +200,6 @@ describe("InsightChat — sendMessage with context (lines 196-206)", () => {
 
   it("sends without context prefix when no contextText set", async () => {
     render(<InsightChat {...BASE} />);
-    await waitFor(() => expect(mockGetInsight).toHaveBeenCalledTimes(1));
     await act(async () => await flushPromises());
 
     const input = screen.getByRole("textbox");
@@ -298,7 +292,11 @@ describe("InsightChat — loading state during send (lines 254, 262-311)", () =>
       new Promise<{ insight: string }>((res) => { resolveInsight = res; })
     );
 
-    render(<InsightChat {...BASE} />);
+    // isVisible=false → no chapter header, so the thread is empty; the
+    // hanging manual refresh is now the only way into loading-with-0-messages
+    render(<InsightChat {...BASE} isVisible={false} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByTitle("Append a fresh insight"));
 
     // chatLoading=true, messages.length===0 → skeleton visible
     await waitFor(() => {

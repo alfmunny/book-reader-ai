@@ -73,7 +73,7 @@ describe("InsightChat toolbar — refresh button (#573)", () => {
     render(<InsightChat {...BASE_PROPS} />);
     await act(async () => await flushPromises());
 
-    const btn = screen.getByRole("button", { name: /insight/i });
+    const btn = screen.getByRole("button", { name: "Append a fresh insight" });
     expect(btn).toBeInTheDocument();
   });
 
@@ -81,7 +81,7 @@ describe("InsightChat toolbar — refresh button (#573)", () => {
     render(<InsightChat {...BASE_PROPS} />);
     await act(async () => await flushPromises());
 
-    const btn = screen.getByRole("button", { name: /insight/i });
+    const btn = screen.getByRole("button", { name: "Append a fresh insight" });
     expect(btn.className).toContain("min-h-[44px]");
     expect(btn.className).toContain("min-w-[44px]");
   });
@@ -90,7 +90,7 @@ describe("InsightChat toolbar — refresh button (#573)", () => {
     const { container } = render(<InsightChat {...BASE_PROPS} />);
     await act(async () => await flushPromises());
 
-    const refreshBtn = screen.getByRole("button", { name: /insight/i });
+    const refreshBtn = screen.getByRole("button", { name: "Append a fresh insight" });
     const svg = refreshBtn.querySelector("svg");
     // SVG from Icons.tsx always has aria-hidden="true"
     expect(svg).not.toBeNull();

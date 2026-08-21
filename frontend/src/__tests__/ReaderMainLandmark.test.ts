@@ -12,10 +12,10 @@ const reader = fs.readFileSync(
 
 describe("Reader page main landmark", () => {
   it("uses <main> with id=main-content for the page wrapper", () => {
-    expect(reader).toMatch(/<main[^>]*id="main-content"[^>]*className="h-screen bg-parchment/);
+    expect(reader).toMatch(/<main[^>]*id="main-content"[^>]*className="relative h-screen bg-parchment/);
   });
 
   it("does not use <div> for the page wrapper", () => {
-    expect(reader).not.toMatch(/<div className="h-screen bg-parchment flex flex-col overflow-hidden">/);
+    expect(reader).not.toMatch(/<div className="relative h-screen bg-parchment flex flex-col overflow-hidden">/);
   });
 });

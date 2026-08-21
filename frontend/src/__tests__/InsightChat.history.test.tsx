@@ -40,9 +40,12 @@ beforeEach(() => {
 });
 
 describe("InsightChat — history persistence", () => {
-  it("saves messages to localStorage after receiving an insight (anonymous)", async () => {
+  it("saves messages to localStorage after a manually refreshed insight (anonymous)", async () => {
     // Anonymous users (userId=null) persist to localStorage; authenticated users use server.
+    // The insight is fetched on demand now (auto-insight removed).
     render(<InsightChat {...BASE} userId={null} />);
+    await act(async () => {});
+    fireEvent.click(screen.getByTitle("Append a fresh insight"));
     await waitFor(() => {
       const raw = localStorage.getItem(HISTORY_KEY("anon", "1342"));
       expect(raw).not.toBeNull();
@@ -94,25 +97,29 @@ describe("InsightChat — history persistence", () => {
   });
 });
 
-describe("InsightChat — chapter deduplication", () => {
-  it("does not fetch insight twice for the same chapter", async () => {
+describe("InsightChat — chapter header deduplication (auto-insight removed)", () => {
+  it("never fetches an insight on open or re-open, and adds the header once", async () => {
     const { getInsight } = require("@/lib/api");
-    const { rerender } = render(<InsightChat {...BASE} />);
-    await waitFor(() => expect(getInsight).toHaveBeenCalledTimes(1));
+    // Mount hidden so the async history load settles before the header effect
+    const { rerender } = render(<InsightChat {...BASE} isVisible={false} />);
+    await act(async () => {});
+    rerender(<InsightChat {...BASE} isVisible={true} />);
 
     // Re-render with same chapter (simulate sidebar close/reopen)
     rerender(<InsightChat {...BASE} isVisible={false} />);
     rerender(<InsightChat {...BASE} isVisible={true} />);
 
     await act(async () => {});
-    // Still only one call
-    expect(getInsight).toHaveBeenCalledTimes(1);
+    expect(getInsight).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Chapter I").length).toBe(1);
   });
 
-  it("fetches insight again for a new chapter", async () => {
+  it("adds a new header for a new chapter, still without fetching", async () => {
     const { getInsight } = require("@/lib/api");
-    const { rerender } = render(<InsightChat {...BASE} />);
-    await waitFor(() => expect(getInsight).toHaveBeenCalledTimes(1));
+    const { rerender } = render(<InsightChat {...BASE} isVisible={false} />);
+    await act(async () => {});
+    rerender(<InsightChat {...BASE} isVisible={true} />);
+    await act(async () => {});
 
     rerender(
       <InsightChat
@@ -121,7 +128,9 @@ describe("InsightChat — chapter deduplication", () => {
         chapterTitle="Chapter II"
       />
     );
-    await waitFor(() => expect(getInsight).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    expect(screen.getByText("Chapter II")).toBeInTheDocument();
+    expect(getInsight).not.toHaveBeenCalled();
   });
 
   it("restores visitedKeys from history so insight is not re-fetched after reload (anonymous)", async () => {

@@ -51,6 +51,10 @@ MODEL_LIMITS: dict[str, _Limits] = {
         "rpm": 4000, "rpd": 150000, "max_output_tokens": 7500,
         "input_usd_per_m": 0.10, "output_usd_per_m": 0.40,
     },
+    "gemini-3.1-flash-lite": {
+        "rpm": 4000, "rpd": 150000, "max_output_tokens": 7500,
+        "input_usd_per_m": 0.25, "output_usd_per_m": 1.50,
+    },
     # 2.5 family
     "gemini-2.5-pro": {
         "rpm": 150, "rpd": 1000, "max_output_tokens": 60000,

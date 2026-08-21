@@ -7,7 +7,9 @@ import re
 from google import genai
 from google.genai import types
 
-MODEL = "gemini-2.0-flash-lite"
+# gemini-2.0-flash-lite was shut down by Google (June 2026); 3.1-flash-lite
+# is the current economical tier ($0.25/M in, $1.50/M out).
+MODEL = "gemini-3.1-flash-lite"
 # Model used by the bulk translator. Defaults to the same model that powers
 # the rest of the app (known to work with the user's key). Admins can override
 # this through the bulk-translate start request if they want to try a

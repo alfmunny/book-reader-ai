@@ -48,7 +48,17 @@ async def test_qa_default_uses_gemini(client, test_user):
     assert resp.json() == {"answer": "42", "provider": "gemini"}
 
 
-async def test_qa_provider_auto_prefers_gemini_key(client, test_user):
+async def test_qa_provider_auto_prefers_deepseek_key(client, test_user):
+    """auto picks the cheapest capable provider first: deepseek → gemini → claude."""
+    await _set_gemini(test_user)
+    await _set_deepseek(test_user)
+    with patch("routers.ai.deepseek_qa", new_callable=AsyncMock, return_value="via deepseek"):
+        resp = await client.post("/api/ai/qa", json={**QA_BODY, "provider": "auto"})
+    assert resp.status_code == 200
+    assert resp.json()["provider"] == "deepseek"
+
+
+async def test_qa_provider_auto_gemini_before_claude(client, test_user):
     await _set_gemini(test_user)
     await _set_claude(test_user)
     with patch("routers.ai.gemini") as mock_gemini:

@@ -127,11 +127,8 @@ describe("TagEditor button focus rings (closes #2183)", () => {
 });
 
 describe("SentenceReader button focus rings (closes #2183)", () => {
-  it("note dot toggle button has focus ring", () => {
-    const idx = sentenceReader.indexOf("e.stopPropagation(); setExpandedNoteFlatIdx(");
-    expect(idx).toBeGreaterThan(-1);
-    const window = sentenceReader.slice(idx, idx + 400);
-    expect(window).toContain("focus-visible:ring-amber-400");
+  it("has no note dot toggle anymore (notes moved to QuickHighlightPanel)", () => {
+    expect(sentenceReader.indexOf("setExpandedNoteFlatIdx")).toBe(-1);
   });
 });
 

@@ -23,23 +23,8 @@ const annotationsSidebarSrc = fs.readFileSync(
 );
 
 describe("aria-controls and aria-haspopup for disclosure/dialog triggers (closes #2563)", () => {
-  describe("SentenceReader note-dot button", () => {
-    it("note-dot button has aria-controls referencing note-panel-${seg.flatIdx}", () => {
-      expect(sentenceReaderSrc).toContain('aria-controls={`note-panel-${seg.flatIdx}`}');
-    });
-
-    it("note card div has id matching note-panel-${...}", () => {
-      // The note card is rendered at the expandedNoteFlatIdx level
-      expect(sentenceReaderSrc).toContain('id={`note-panel-${expandedNoteFlatIdx}`}');
-    });
-
-    it("aria-controls appears on the same button as aria-expanded", () => {
-      const idx = sentenceReaderSrc.indexOf("aria-expanded={expandedNoteFlatIdx === seg.flatIdx}");
-      expect(idx).not.toBe(-1);
-      const context = sentenceReaderSrc.slice(Math.max(0, idx - 50), idx + 150);
-      expect(context).toContain('aria-controls={`note-panel-${seg.flatIdx}`}');
-    });
-  });
+  // (SentenceReader note-dot removed 2026-08-21 — notes display in
+  // QuickHighlightPanel; its note block is plain text, not a disclosure)
 
   describe("InsightChat ContextChip toggle", () => {
     it("ContextChip toggle button has aria-controls", () => {

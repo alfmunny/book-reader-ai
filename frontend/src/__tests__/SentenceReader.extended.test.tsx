@@ -367,7 +367,7 @@ describe("SentenceReader annotations", () => {
     expect(annotatedSeg?.className).toContain("border-yellow-400");
   });
 
-  it("shows collapsible note toggle for annotation with note text", () => {
+  it("renders no note dot for annotation with note text (panel shows notes)", () => {
     const annotations: Annotation[] = [
       {
         id: 2,
@@ -390,8 +390,9 @@ describe("SentenceReader annotations", () => {
       />
     );
 
-    // Note dot button should appear on the annotated segment
-    expect(screen.getByRole("button", { name: /^Toggle note for:/i })).toBeInTheDocument();
+    // The note dot was removed (2026-08-21) — notes display in
+    // QuickHighlightPanel when the marked text is tapped.
+    expect(screen.queryByRole("button", { name: /^Toggle note for:/i })).toBeNull();
   });
 
   it("applies blue color class for blue annotation", () => {
@@ -785,7 +786,7 @@ describe("SentenceReader annotation substring matching", () => {
     expect(seg?.className).not.toContain("border-yellow-400");
   });
 
-  it("shows note toggle for annotation matched via substring", () => {
+  it("renders no note dot for substring-matched annotation (panel shows notes)", () => {
     const segmentText = "She came back from my watches below, and reported no vessel in sight.";
     const annotations: Annotation[] = [
       {
@@ -809,6 +810,6 @@ describe("SentenceReader annotation substring matching", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: /^Toggle note for:/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Toggle note for:/i })).toBeNull();
   });
 });

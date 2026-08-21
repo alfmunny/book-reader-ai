@@ -71,7 +71,7 @@ class InsightRequest(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
-    # Same dispatch as /ai/qa — "auto" → first provider the user has a key for.
+    # Same dispatch as /ai/qa — "auto" → deepseek → gemini → claude.
     provider: Literal["auto", "gemini", "claude", "deepseek"] = "auto"
 
     @field_validator("chapter_text", "book_title", "author")
@@ -91,7 +91,7 @@ class QARequest(BaseModel):
     book_title: str = Field(..., min_length=1, max_length=500)
     author: str = Field(..., min_length=1, max_length=500)
     response_language: str = Field(default="en", min_length=1, max_length=20)
-    # "auto" → first provider the user has a key for (gemini → claude → deepseek).
+    # "auto" → first provider the user has a key for (deepseek → gemini → claude).
     provider: Literal["auto", "gemini", "claude", "deepseek"] = "auto"
 
     @field_validator("question", "passage", "book_title", "author")
@@ -202,15 +202,17 @@ async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="AI service request failed")
 
 
-_QA_KEY_COLUMNS = {"gemini": "gemini_key", "claude": "claude_key", "deepseek": "deepseek_key"}
+# Dict order drives "auto": DeepSeek first (fractions of a cent per message),
+# then Gemini, then Claude (owner decision, 2026-08-21).
+_QA_KEY_COLUMNS = {"deepseek": "deepseek_key", "gemini": "gemini_key", "claude": "claude_key"}
 _QA_KEY_LABELS = {"gemini": "Gemini", "claude": "Claude", "deepseek": "DeepSeek"}
 
 
 def _resolve_qa_provider(user: dict, provider: str) -> tuple[str, str]:
     """Return (provider, decrypted key) for a QA request.
 
-    "auto" picks the first provider the user has a key for, in gemini →
-    claude → deepseek order (preserves the pre-selection Gemini behavior).
+    "auto" picks the first provider the user has a key for, in deepseek →
+    gemini → claude order — cheapest capable provider first.
     An explicit provider without a stored key is a 400 naming the provider.
     """
     if provider == "auto":

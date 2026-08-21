@@ -100,3 +100,33 @@ test("the manual refresh button still fetches an insight on demand", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Append a fresh insight" }));
   await waitFor(() => expect(getInsight).toHaveBeenCalledTimes(1));
 });
+
+describe("InsightChat — dismissible suggestions", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    jest.clearAllMocks();
+  });
+
+  it("hides the chips via the close button and shows them again via the link", () => {
+    const { getSettings } = jest.requireActual("@/lib/settings");
+    render(<InsightChat {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide suggestions" }));
+    expect(screen.queryByRole("group", { name: "Suggested questions" })).toBeNull();
+    expect(getSettings().chatSuggestionsHidden).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Show suggestions" }));
+    expect(screen.getByRole("group", { name: "Suggested questions" })).toBeInTheDocument();
+    expect(getSettings().chatSuggestionsHidden).toBe(false);
+  });
+
+  it("keeps the chips hidden on remount when dismissed", () => {
+    const { unmount } = render(<InsightChat {...defaultProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hide suggestions" }));
+    unmount();
+
+    render(<InsightChat {...defaultProps} />);
+    expect(screen.queryByRole("group", { name: "Suggested questions" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Show suggestions" })).toBeInTheDocument();
+  });
+});

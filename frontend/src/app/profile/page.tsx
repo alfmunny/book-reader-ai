@@ -58,6 +58,7 @@ export default function ProfilePage() {
     ttsGender: "female",
     chatFontSize: "xs",
     chatProvider: "auto",
+    chatSuggestionsHidden: false,
     translationProvider: "auto",
     fontSize: "base",
     theme: "light",

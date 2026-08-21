@@ -134,6 +134,7 @@ export default function InsightChat({
   const [lang, setLang] = useState(() => getSettings().insightLang);
   const [chatFontSize, setChatFontSize] = useState<"xs" | "sm">(() => getSettings().chatFontSize);
   const [chatProvider, setChatProvider] = useState<ChatProviderSetting>(() => getSettings().chatProvider ?? "auto");
+  const [suggestionsHidden, setSuggestionsHidden] = useState<boolean>(() => getSettings().chatSuggestionsHidden ?? false);
   const langRef = useRef(lang);
   langRef.current = lang;
   const providerRef = useRef(chatProvider);
@@ -465,7 +466,7 @@ export default function InsightChat({
         aria-live="polite"
         aria-label="Conversation"
         tabIndex={0}
-        className="flex-1 overflow-y-auto px-3 py-3 space-y-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
+        className="flex-1 overflow-y-auto overscroll-contain px-3 py-3 space-y-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
         style={{ fontSize }}
       >
         {hasEarlier && (
@@ -636,8 +637,8 @@ export default function InsightChat({
         )}
 
         {/* Suggestion chips — tap to send that request about the chapter */}
-        {providerReady && !chatLoading && !input.trim() && (
-          <div className="flex flex-wrap gap-1.5 mb-2" role="group" aria-label="Suggested questions">
+        {providerReady && !chatLoading && !input.trim() && !suggestionsHidden && (
+          <div className="flex flex-wrap items-center gap-1.5 mb-2" role="group" aria-label="Suggested questions">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
@@ -648,6 +649,15 @@ export default function InsightChat({
                 {s}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => { setSuggestionsHidden(true); saveSettings({ chatSuggestionsHidden: true }); }}
+              aria-label="Hide suggestions"
+              title="Hide suggestions"
+              className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded text-stone-500 hover:text-stone-700 hover:bg-stone-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            >
+              <CloseIcon aria-hidden="true" className="w-3 h-3" />
+            </button>
           </div>
         )}
 
@@ -677,7 +687,18 @@ export default function InsightChat({
             <ArrowUpIcon className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-[11px] text-stone-600 mt-1">Enter to send · Shift+Enter for newline</p>
+        <p className="text-[11px] text-stone-600 mt-1 flex items-center justify-between gap-2">
+          <span>Enter to send · Shift+Enter for newline</span>
+          {suggestionsHidden && (
+            <button
+              type="button"
+              onClick={() => { setSuggestionsHidden(false); saveSettings({ chatSuggestionsHidden: false }); }}
+              className="text-amber-700 hover:text-amber-900 underline shrink-0 min-h-[44px] md:min-h-0 inline-flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            >
+              Show suggestions
+            </button>
+          )}
+        </p>
       </div>
     </div>
   );

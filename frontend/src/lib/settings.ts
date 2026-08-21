@@ -17,6 +17,7 @@ export interface AppSettings {
   fontSize: FontSize;
   chatFontSize: ChatFontSize;
   chatProvider: ChatProviderSetting;
+  chatSuggestionsHidden: boolean;
   theme: Theme;
   lineHeight: LineHeight;
   contentWidth: ContentWidth;
@@ -33,6 +34,7 @@ const DEFAULTS: AppSettings = {
   fontSize: "base",
   chatFontSize: "xs",
   chatProvider: "auto",
+  chatSuggestionsHidden: false,
   theme: "light",
   lineHeight: "normal",
   contentWidth: "normal",

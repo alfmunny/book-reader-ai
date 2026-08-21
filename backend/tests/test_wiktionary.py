@@ -432,3 +432,129 @@ async def test_ai_lookup_strips_code_fences():
         result = await ai_lookup("lief", "de", api_key="test-key")
     assert result["lemma"] == "laufen"
     assert len(result["definitions"]) == 1
+
+
+# ── lookup follows "form of" pointers to the base form (#2663) ─────────────────
+
+def _mock_client(responses: dict):
+    """Patch httpx.AsyncClient so each requested URL returns its mapped response.
+
+    *responses* maps a substring of the request URL to a mock response; the
+    first matching key wins. Unmapped URLs return a 404.
+    """
+    def _get(url, **_kwargs):
+        for fragment, resp in responses.items():
+            if fragment in url:
+                return resp
+        return _make_mock_response(404, {})
+
+    mock_client_cls = patch("services.wiktionary.httpx.AsyncClient").start()
+    mock_client = AsyncMock()
+    mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(side_effect=_get)
+    return mock_client_cls
+
+
+_GEHEN_FORM_OF = {
+    "de": [{
+        "partOfSpeech": "verb",
+        "definitions": [{"definition": "past participle of <b class='Latn'>gehen</b>"}],
+    }]
+}
+_GEHEN_BASE = {
+    "de": [{
+        "partOfSpeech": "verb",
+        "definitions": [
+            {"definition": "to go, to walk"},
+            {"definition": "to leave, to depart"},
+        ],
+    }]
+}
+
+
+@pytest.mark.asyncio
+async def test_lookup_returns_base_form_meaning_not_just_the_form():
+    """An inflected word's own entry only says which form it is. The caller needs
+    the base form's actual meaning, so the pointer is followed once."""
+    try:
+        _mock_client({"/gegangen": _make_mock_response(200, _GEHEN_FORM_OF),
+                      "/gehen": _make_mock_response(200, _GEHEN_BASE)})
+        result = await lookup("gegangen", "de")
+    finally:
+        patch.stopall()
+
+    assert result["lemma"] == "gehen"
+    texts = " ".join(d["text"] for d in result["definitions"])
+    assert "to go" in texts
+    # The bare form-of statement must not be the only thing returned.
+    assert result["definitions"][0]["text"] != "past participle of gehen"
+
+
+@pytest.mark.asyncio
+async def test_lookup_reports_the_form_relationship_separately():
+    """The 'past participle of gehen' note is still useful context — it moves to
+    its own field rather than masquerading as the definition."""
+    try:
+        _mock_client({"/gegangen": _make_mock_response(200, _GEHEN_FORM_OF),
+                      "/gehen": _make_mock_response(200, _GEHEN_BASE)})
+        result = await lookup("gegangen", "de")
+    finally:
+        patch.stopall()
+
+    assert result["form_of"] == "past participle of gehen"
+
+
+@pytest.mark.asyncio
+async def test_lookup_points_url_at_the_base_form_entry():
+    try:
+        _mock_client({"/gegangen": _make_mock_response(200, _GEHEN_FORM_OF),
+                      "/gehen": _make_mock_response(200, _GEHEN_BASE)})
+        result = await lookup("gegangen", "de")
+    finally:
+        patch.stopall()
+
+    assert result["url"] == "https://en.wiktionary.org/wiki/gehen"
+
+
+@pytest.mark.asyncio
+async def test_lookup_keeps_form_of_text_when_base_form_has_no_entry():
+    """Base form unreachable → show the form-of statement rather than nothing."""
+    try:
+        _mock_client({"/gegangen": _make_mock_response(200, _GEHEN_FORM_OF)})
+        result = await lookup("gegangen", "de")
+    finally:
+        patch.stopall()
+
+    assert result["lemma"] == "gehen"
+    assert len(result["definitions"]) == 1
+    assert "past participle of gehen" in result["definitions"][0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_lookup_does_not_follow_when_word_is_already_a_base_form():
+    """A single request — no wasted round-trip for the common case."""
+    try:
+        cls = _mock_client({"/whale": _make_mock_response(200, {
+            "en": [{"partOfSpeech": "noun", "definitions": [{"definition": "A large aquatic mammal."}]}]
+        })})
+        result = await lookup("whale", "en")
+        call_count = cls.return_value.__aenter__.return_value.get.await_count
+    finally:
+        patch.stopall()
+
+    assert result["lemma"] == "whale"
+    assert result["form_of"] is None
+    assert call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_lookup_form_of_is_none_when_lookup_fails_entirely():
+    try:
+        _mock_client({})
+        result = await lookup("nonexistent", "en")
+    finally:
+        patch.stopall()
+
+    assert result["form_of"] is None
+    assert result["definitions"] == []

@@ -9,7 +9,9 @@ interface Props {
   lang: string;
   rect: DOMRect;
   onClose: () => void;
-  onSave: () => void;
+  /** Receives the word to file in the vocabulary list — the base form when one
+   *  was resolved, otherwise the word exactly as it appeared in the text. */
+  onSave: (wordToSave: string) => void;
 }
 
 export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: Props) {
@@ -66,10 +68,16 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
   if (left + tooltipW > window.innerWidth - 8) left = window.innerWidth - tooltipW - 8;
   if (top + tooltipH > window.innerHeight - 8) top = rect.top - tooltipH - 8;
 
+  // Vocabulary entries are keyed on the base form, so one word met in several
+  // inflections stays one entry (#2663). When the lookup found nothing — no
+  // entry, network failure — fall back to the word as it appeared in the text.
+  const baseForm = def?.lemma?.trim() || word;
+  const isInflected = baseForm.toLowerCase() !== word.toLowerCase();
+
   function handleSave() {
     if (saved) return;
     setSaved(true);
-    onSave();
+    onSave(baseForm);
   }
 
   return (
@@ -114,9 +122,13 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
         )}
         {!loading && def && def.definitions.length > 0 && (
           <div className="space-y-2">
-            {def.lemma && def.lemma !== word && (
+            {isInflected && (
               <p className="text-[11px] text-stone-600">
-                Base form: <span className="font-medium text-stone-600">{def.lemma}</span>
+                Base form:{" "}
+                <span lang={lang ?? undefined} className="font-medium text-ink">{baseForm}</span>
+                {def.form_of && (
+                  <span className="block text-stone-600 italic">{def.form_of}</span>
+                )}
               </p>
             )}
             {def.definitions.slice(0, 2).map((d, i) => (
@@ -154,6 +166,8 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
         >
           {saved ? (
             <span className="flex items-center gap-1"><CheckCircleIcon className="w-3.5 h-3.5" />Saved</span>
+          ) : isInflected ? (
+            <>Save <span lang={lang ?? undefined}>&ldquo;{baseForm}&rdquo;</span> to vocab</>
           ) : "Save to vocab"}
         </button>
       </div>

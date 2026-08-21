@@ -32,10 +32,12 @@ describe("BookCard focus rings (closes #2198)", () => {
 
 describe("VocabWordTooltip focus rings (closes #2198)", () => {
   it("Save to vocab button has focus ring", () => {
-    // className comes before button label text — look backward
-    const idx = vocabTooltipSrc.indexOf("Save to vocab");
+    // Anchored on the handler, not the label: the label became conditional when
+    // the button started naming the base form it saves (#2663), and a backward
+    // window from the label text no longer reaches the className.
+    const idx = vocabTooltipSrc.indexOf("onClick={handleSave}");
     expect(idx).toBeGreaterThan(-1);
-    const window = vocabTooltipSrc.slice(Math.max(0, idx - 460), idx + 20);
+    const window = vocabTooltipSrc.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 });

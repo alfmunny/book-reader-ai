@@ -181,7 +181,8 @@ async def test_delete_user_removes_all_user_data(admin_client, admin_db, admin_u
         google_id="del-user-cascade", email="cascade@test.com", name="Cascade", picture=""
     )
 
-    with patch("services.db._update_lemma", new_callable=AsyncMock):
+    with patch("services.db._resolve_base_form", new_callable=AsyncMock,
+               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en")):
         await save_word(user2["id"], "cascadeword", 100, 0, "A cascade sentence.")
     await create_annotation(user2["id"], 100, 0, "Some text.", "", "yellow")
     await save_insight(user2["id"], 100, 0, "Q?", "A.")
@@ -393,7 +394,8 @@ async def test_delete_user_removes_flashcard_reviews(admin_client, admin_db, adm
     user2 = await get_or_create_user(
         google_id="flashcard-cascade", email="flashcard@test.com", name="FC", picture=""
     )
-    with patch("services.db._update_lemma", new_callable=AsyncMock):
+    with patch("services.db._resolve_base_form", new_callable=AsyncMock,
+               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en")):
         await save_word(user2["id"], "testword", 100, 0, "A test sentence.")
     # Seed flashcard_reviews row for the vocabulary word
     await _ensure_flashcard_rows(user2["id"])
@@ -2187,7 +2189,8 @@ async def test_delete_book_removes_orphaned_vocabulary(admin_client, admin_db, a
         BOOK_TEXT,
     )
 
-    with patch("services.db._update_lemma", new_callable=AsyncMock):
+    with patch("services.db._resolve_base_form", new_callable=AsyncMock,
+               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en")):
         # "orphan" only appears in book 100
         await save_word(admin_user["id"], "orphan", 100, 0, "An orphan word.")
         # "shared" appears in both books

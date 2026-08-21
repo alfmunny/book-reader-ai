@@ -622,57 +622,60 @@ async def test_get_vocabulary_multiple_words_multiple_occurrences(tmp_db):
     assert occ["sentence_text"] == "First zeitgeist sentence."
 
 
-# ── _update_lemma unit tests (issue #1617) ─────────────────────────────────────
+# ── base-form resolution unit tests (issues #1617, #2663) ─────────────────────
 #
-# conftest.py patches db_module._update_lemma for the whole suite so tests
-# never make real Wiktionary HTTP calls.  We import the real function at module
-# load time (before any monkeypatching happens) so these tests can exercise the
-# actual implementation.
+# Lemma resolution used to run as a fire-and-forget task after the insert
+# (_update_lemma); it now resolves before the insert so the entry is stored under
+# its base form (#2663). conftest.py stubs db_module._resolve_base_form for the
+# whole suite so tests never make real Wiktionary HTTP calls. We import the real
+# function at module load time, before any monkeypatching, so these tests can
+# exercise the actual implementation.
 
-from services.db import _update_lemma as _real_update_lemma  # noqa: E402
+from services.db import _resolve_base_form as _real_resolve_base_form  # noqa: E402
 
 
-async def test_update_lemma_writes_lemma_and_language_to_db():
-    """Regression #1617: _update_lemma must update vocabulary.lemma and
-    vocabulary.language when wiktionary.lookup succeeds."""
+async def test_save_word_writes_lemma_and_language_to_db(monkeypatch):
+    """Regression #1617: vocabulary.lemma and vocabulary.language must be
+    populated when wiktionary.lookup succeeds."""
     import aiosqlite
     user = await get_or_create_user("lemma_test_u1", "lemma1@test.com", "L1", "")
-    saved = await save_word(user["id"], "running", 1, 0, "He was running fast.")
-    vocab_id = saved["id"]
+    monkeypatch.setattr(db_module, "_resolve_base_form", _real_resolve_base_form)
 
-    wikt_result = {"lemma": "run", "language": "en", "definitions": []}
+    wikt_result = {"lemma": "run", "language": "en", "definitions": [], "form_of": None, "url": ""}
     with patch("services.wiktionary.lookup", new=AsyncMock(return_value=wikt_result)):
-        await _real_update_lemma(vocab_id, "running", 1)
+        saved = await save_word(user["id"], "running", 1, 0, "He was running fast.")
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT lemma, language FROM vocabulary WHERE id=?", (vocab_id,)) as cur:
+        async with db.execute("SELECT word, lemma, language FROM vocabulary WHERE id=?", (saved["id"],)) as cur:
             row = await cur.fetchone()
 
     assert row["lemma"] == "run", f"Expected lemma='run', got '{row['lemma']}'"
     assert row["language"] == "en", f"Expected language='en', got '{row['language']}'"
+    # #2663: the entry itself is filed under the base form.
+    assert row["word"] == "run", f"Expected word='run', got '{row['word']}'"
 
 
-async def test_update_lemma_swallows_wiktionary_exception():
-    """Regression #1617: _update_lemma must not propagate exceptions — the
-    except Exception block (lines 924-926) must silently absorb failures."""
+async def test_save_word_swallows_wiktionary_exception(monkeypatch):
+    """Regression #1617: a Wiktionary failure must not propagate. The save still
+    succeeds, storing the word exactly as it appeared in the text (#2663)."""
     import aiosqlite
     user = await get_or_create_user("lemma_test_u2", "lemma2@test.com", "L2", "")
-    saved = await save_word(user["id"], "unknown", 1, 0, "An unknown thing.")
-    vocab_id = saved["id"]
+    monkeypatch.setattr(db_module, "_resolve_base_form", _real_resolve_base_form)
 
     with patch("services.wiktionary.lookup", new=AsyncMock(side_effect=RuntimeError("wikt down"))):
         # Must not raise
-        await _real_update_lemma(vocab_id, "unknown", 1)
+        saved = await save_word(user["id"], "unknown", 1, 0, "An unknown thing.")
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT lemma FROM vocabulary WHERE id=?", (vocab_id,)) as cur:
+        async with db.execute("SELECT word, lemma FROM vocabulary WHERE id=?", (saved["id"],)) as cur:
             row = await cur.fetchone()
 
-    assert row["lemma"] is None, (
-        f"lemma must stay NULL when wiktionary raises, got '{row['lemma']}'"
+    assert row["word"] == "unknown", (
+        f"the word must still be saved when wiktionary raises, got '{row['word']}'"
     )
+    assert row["lemma"] == "unknown"
 
 
 # ── Issue #1634: db.py uncovered statements/branches ─────────────────────────

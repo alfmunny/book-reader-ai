@@ -598,3 +598,11 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | Date | Change | File(s) | PR |
 |------|--------|---------|----|
 | 2026-08-18 | SelectionToolbar: defer showing the toolbar until the pointer gesture ends — `selectionchange` fires continuously during a drag, so the toolbar mounted mid-gesture, sat over the text under the cursor and swallowed the pointer events needed to keep extending the selection. Drag now clears any stale toolbar on pointerdown and evaluates the final selection once on pointerup/pointercancel; keyboard (Shift+Arrow) selections resolve off `selectionchange` as before. Pointer timestamp now stamped on release too, so a drag longer than the 300ms keyboard heuristic is no longer misread as a keyboard selection and does not steal focus (P1) | components/SelectionToolbar.tsx | #2655 |
+
+## Wave 19 — Vocabulary Base Forms (2026-08-20)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-20 | Word tooltip: an inflected word's Wiktionary entry only states which form it is ("past participle of gehen"), so the lookup now follows the pointer once and shows the base form's actual definitions, with the form-of note kept as secondary context. Save button names the word it will file (`Save "gehen" to vocab`) so the stored word is never a surprise (P1) | components/VocabWordTooltip.tsx, services/wiktionary.py | #2663 |
+| 2026-08-20 | Vocabulary entries are stored under the base form. One word met in several inflections is now one entry with several occurrences instead of one entry per inflection. Resolution happens before the insert (previously a fire-and-forget task that could silently fail); the tooltip passes the base form it already fetched, so no extra round-trip. Every failure path falls back to the word as it appeared in the text (P1) | services/db.py, routers/vocabulary.py, app/reader/[bookId]/page.tsx | #2663 |
+| 2026-08-20 | Migration 042 merges historical inflected entries into their base form, repointing word_occurrences, flashcard_reviews, vocabulary_tags and deck_members first — all four cascade off vocabulary(id), so deleting first would have wiped spaced-repetition history, tags and deck membership (P1) | migrations/042_vocabulary_base_form_merge.sql | #2663 |

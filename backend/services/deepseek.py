@@ -8,7 +8,9 @@ decrypted by the caller — never a server-wide key.
 import httpx
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
-DEEPSEEK_MODEL = "deepseek-chat"
+# deepseek-chat was retired 2026-07-24; v4-flash is the current workhorse
+# ($0.22/M input, $0.66/M output off-peak — fractions of a cent per chat).
+DEEPSEEK_MODEL = "deepseek-v4-flash"
 
 SYSTEM_QA = """You are a knowledgeable literary assistant helping a reader understand a book.
 Answer questions directly and accurately based on the passage context provided.

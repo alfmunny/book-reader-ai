@@ -1938,3 +1938,210 @@ async def test_migration_040_cascade_deletes_on_book_delete(tmp_db):
                 f"SELECT COUNT(*) FROM {table} WHERE book_id = 1402"
             ) as cur:
                 assert (await cur.fetchone())[0] == 0
+
+
+# ── 042: merge inflected vocabulary entries into their base form (#2663) ──────
+
+_M042 = "042_vocabulary_base_form_merge"
+
+
+async def _seed_for_042(tmp_db, rows, extra=None):
+    """Apply every migration, seed `rows` into vocabulary, then rewind 042.
+
+    Each row is (id, user_id, word, lemma). `extra` runs additional seeding SQL
+    before 042 is re-applied. Returns nothing; caller re-runs the migrations.
+    """
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT INTO users (google_id, email, name, picture) VALUES ('g1','a@b.com','A','')"
+        )
+        await db.execute(
+            "INSERT INTO users (google_id, email, name, picture) VALUES ('g2','b@b.com','B','')"
+        )
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1500, 'T', '[]')")
+        for vid, uid, word, lemma in rows:
+            await db.execute(
+                "INSERT INTO vocabulary (id, user_id, word, lemma, language) VALUES (?,?,?,?,'en')",
+                (vid, uid, word, lemma),
+            )
+        for sql in (extra or []):
+            await db.execute(sql)
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M042,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_042_merges_inflected_entry_into_base_form(tmp_db):
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge"), (2, 1, "acknowledge", "acknowledge")],
+        ["INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) "
+         "VALUES (1, 1500, 0, 'universally acknowledged')"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT word FROM vocabulary WHERE user_id = 1") as cur:
+            assert [r[0] for r in await cur.fetchall()] == ["acknowledge"]
+        # The occurrence moved rather than being cascade-deleted with its old row.
+        async with db.execute(
+            "SELECT vocabulary_id, sentence_text FROM word_occurrences"
+        ) as cur:
+            assert await cur.fetchall() == [(2, "universally acknowledged")]
+
+
+async def test_migration_042_creates_the_base_entry_when_absent(tmp_db):
+    """Only the inflected form was ever saved — the base entry is created."""
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "gegangen", "gehen")],
+        ["INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) "
+         "VALUES (1, 1500, 2, 'Er ist gegangen')"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT word, lemma FROM vocabulary WHERE user_id = 1") as cur:
+            assert await cur.fetchall() == [("gehen", "gehen")]
+        async with db.execute("SELECT sentence_text FROM word_occurrences") as cur:
+            assert await cur.fetchall() == [("Er ist gegangen",)]
+
+
+async def test_migration_042_dedupes_an_occurrence_both_entries_share(tmp_db):
+    """Same sentence saved under both forms → one occurrence, none orphaned."""
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge"), (2, 1, "acknowledge", "acknowledge")],
+        ["INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) "
+         "VALUES (1, 1500, 0, 'same sentence')",
+         "INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) "
+         "VALUES (2, 1500, 0, 'same sentence')"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT COUNT(*) FROM word_occurrences") as cur:
+            assert (await cur.fetchone())[0] == 1
+        async with db.execute("SELECT COUNT(*) FROM word_occurrences WHERE vocabulary_id = 2") as cur:
+            assert (await cur.fetchone())[0] == 1
+
+
+async def test_migration_042_preserves_spaced_repetition_history(tmp_db):
+    """flashcard_reviews cascades off vocabulary(id) — a naive delete would wipe
+    the user's SRS progress for every inflected word."""
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge")],
+        ["INSERT INTO flashcard_reviews (user_id, vocabulary_id, interval_days, ease_factor, "
+         "repetitions, due_date) VALUES (1, 1, 21, 2.6, 7, '2026-09-01')"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT v.word, f.repetitions, f.interval_days FROM flashcard_reviews f "
+            "JOIN vocabulary v ON v.id = f.vocabulary_id"
+        ) as cur:
+            assert await cur.fetchall() == [("acknowledge", 7, 21)]
+
+
+async def test_migration_042_keeps_the_stronger_review_state_on_conflict(tmp_db):
+    """Both entries have review history: the more-reviewed one survives."""
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge"), (2, 1, "acknowledge", "acknowledge")],
+        ["INSERT INTO flashcard_reviews (user_id, vocabulary_id, repetitions, interval_days) "
+         "VALUES (1, 1, 9, 30)",
+         "INSERT INTO flashcard_reviews (user_id, vocabulary_id, repetitions, interval_days) "
+         "VALUES (1, 2, 1, 1)"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT vocabulary_id, repetitions, interval_days FROM flashcard_reviews"
+        ) as cur:
+            assert await cur.fetchall() == [(2, 9, 30)]
+
+
+async def test_migration_042_keeps_base_review_state_when_it_is_stronger(tmp_db):
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge"), (2, 1, "acknowledge", "acknowledge")],
+        ["INSERT INTO flashcard_reviews (user_id, vocabulary_id, repetitions, interval_days) "
+         "VALUES (1, 1, 2, 3)",
+         "INSERT INTO flashcard_reviews (user_id, vocabulary_id, repetitions, interval_days) "
+         "VALUES (1, 2, 8, 40)"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT vocabulary_id, repetitions, interval_days FROM flashcard_reviews"
+        ) as cur:
+            assert await cur.fetchall() == [(2, 8, 40)]
+
+
+async def test_migration_042_preserves_tags_and_deck_membership(tmp_db):
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge")],
+        ["INSERT INTO vocabulary_tags (user_id, vocabulary_id, tag) VALUES (1, 1, 'austen')",
+         "INSERT INTO decks (id, user_id, name, mode) VALUES (5, 1, 'D', 'manual')",
+         "INSERT INTO deck_members (deck_id, vocabulary_id) VALUES (5, 1)"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT v.word, t.tag FROM vocabulary_tags t JOIN vocabulary v ON v.id = t.vocabulary_id"
+        ) as cur:
+            assert await cur.fetchall() == [("acknowledge", "austen")]
+        async with db.execute(
+            "SELECT v.word FROM deck_members m JOIN vocabulary v ON v.id = m.vocabulary_id"
+        ) as cur:
+            assert await cur.fetchall() == [("acknowledge",)]
+
+
+async def test_migration_042_leaves_unresolved_and_base_entries_alone(tmp_db):
+    """lemma IS NULL cannot be resolved offline; lemma == word is already a base."""
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "whale", None), (2, 1, "leviathan", "leviathan")],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT word FROM vocabulary WHERE user_id = 1 ORDER BY word") as cur:
+            assert [r[0] for r in await cur.fetchall()] == ["leviathan", "whale"]
+
+
+async def test_migration_042_skips_chains_rather_than_destroying_them(tmp_db):
+    """word→y where y is itself inflected: merging would move rows onto an entry
+    that is about to be deleted, so the chain is left intact instead."""
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "aaa", "bbb"), (2, 1, "bbb", "ccc")],
+        ["INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) "
+         "VALUES (1, 1500, 0, 'chained')"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        # "aaa" is not merged into "bbb" (which is itself inflected), so its
+        # occurrence must still exist rather than having been cascade-deleted.
+        async with db.execute("SELECT COUNT(*) FROM word_occurrences WHERE sentence_text = 'chained'") as cur:
+            assert (await cur.fetchone())[0] == 1
+
+
+async def test_migration_042_does_not_merge_across_users(tmp_db):
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge"), (2, 2, "acknowledge", "acknowledge")],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT user_id, word FROM vocabulary ORDER BY user_id") as cur:
+            assert await cur.fetchall() == [(1, "acknowledge"), (2, "acknowledge")]
+
+
+async def test_migration_042_is_idempotent(tmp_db):
+    await _seed_for_042(
+        tmp_db,
+        [(1, 1, "acknowledged", "acknowledge")],
+        ["INSERT INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text) "
+         "VALUES (1, 1500, 0, 's')"],
+    )
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M042,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT word FROM vocabulary") as cur:
+            assert [r[0] for r in await cur.fetchall()] == ["acknowledge"]
+        async with db.execute("SELECT COUNT(*) FROM word_occurrences") as cur:
+            assert (await cur.fetchone())[0] == 1

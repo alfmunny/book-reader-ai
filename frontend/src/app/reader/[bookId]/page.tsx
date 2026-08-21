@@ -952,16 +952,21 @@ export default function ReaderPage() {
     document.getElementById("reader-scroll")?.scrollTo(0, 0);
   }
 
-  // Vocabulary save handler
-  async function handleWordSave(word: string, sentenceText: string) {
+  // Vocabulary save handler. `baseForm` is the word's dictionary form when the
+  // caller already resolved one; the backend looks it up otherwise (#2663).
+  async function handleWordSave(word: string, sentenceText: string, baseForm?: string) {
+    const resolved = baseForm?.trim();
     try {
       await saveVocabularyWord({
+        // Only send `lemma` when a base form was actually resolved — sending the
+        // surface word would suppress the backend's own lookup.
+        ...(resolved ? { lemma: resolved } : {}),
         word,
         book_id: Number(bookId),
         chapter_index: chapterIndex,
         sentence_text: sentenceText,
       });
-      setVocabToastWord(word);
+      setVocabToastWord(resolved || word);
       // Refresh sidebar word list
       getVocabulary().then((words) => {
         setVocabWords(words.filter((w) => w.occurrences.some((o) => o.book_id === Number(bookId))));
@@ -1891,8 +1896,8 @@ export default function ReaderPage() {
               lang={bookLanguage}
               rect={vocabTooltip.rect}
               onClose={() => setVocabTooltip(null)}
-              onSave={() => {
-                handleWordSave(vocabTooltip.word, vocabTooltip.context);
+              onSave={(wordToSave) => {
+                handleWordSave(vocabTooltip.word, vocabTooltip.context, wordToSave);
                 setVocabTooltip(null);
               }}
             />

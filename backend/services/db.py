@@ -1004,22 +1004,38 @@ async def get_all_annotations(user_id: int) -> list[dict]:
 
 # ── Vocabulary ────────────────────────────────────────────────────────────────
 
-async def _update_lemma(vocab_id: int, word: str, book_id: int) -> None:
+async def _resolve_base_form(
+    word: str, book_id: int, provided: str | None = None
+) -> tuple[str, str | None]:
+    """Return ``(base form, language)`` for *word*.
+
+    Vocabulary entries are keyed on the base form so one word encountered in
+    several inflections stays a single entry (#2663). Callers that already hold a
+    definition — the reader's word tooltip fetches one before its Save button is
+    reachable — pass it in via *provided*, which skips the round-trip entirely.
+
+    Every failure path falls back to *word* as it appeared in the text: a save must
+    never fail, stall, or be dropped because a dictionary lookup did not work out.
+    """
     try:
         book = await get_cached_book(book_id)
-        langs = book.get("languages", ["en"]) if book else ["en"]
-        lang = langs[0] if langs else "en"
+        langs = book.get("languages") if book else None
+        lang = (langs[0] if langs else None) or "en"
+    except Exception:
+        lang = "en"
+
+    if provided and provided.strip():
+        return provided.strip().lower(), lang
+
+    try:
         from services import wiktionary
         result = await wiktionary.lookup(word, lang)
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute(
-                "UPDATE vocabulary SET lemma = ?, language = ? WHERE id = ?",
-                (result["lemma"], result["language"], vocab_id),
-            )
-            await db.commit()
+        base = (result.get("lemma") or "").strip().lower()
+        return (base or word), (result.get("language") or lang)
     except Exception:
         import logging
-        logging.getLogger(__name__).warning("Lemma update failed for %s", word, exc_info=True)
+        logging.getLogger(__name__).warning("Base-form lookup failed for %s", word, exc_info=True)
+        return word, lang
 
 
 async def save_word(
@@ -1028,20 +1044,26 @@ async def save_word(
     book_id: int,
     chapter_index: int,
     sentence_text: str,
+    lemma: str | None = None,
 ) -> dict:
-    import asyncio
     word = word.strip().lower()
+    base, language = await _resolve_base_form(word, book_id, lemma)
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         await db.execute(
-            "INSERT OR IGNORE INTO vocabulary (user_id, word) VALUES (?, ?)",
-            (user_id, word),
+            "INSERT OR IGNORE INTO vocabulary (user_id, word, lemma, language) VALUES (?, ?, ?, ?)",
+            (user_id, base, base, language),
+        )
+        # An entry saved before base-form storage landed can carry a stale lemma.
+        await db.execute(
+            "UPDATE vocabulary SET lemma = ?, language = COALESCE(?, language) WHERE user_id = ? AND word = ?",
+            (base, language, user_id, base),
         )
         # SQLite makes uncommitted writes visible to subsequent reads on the
         # same connection, so no intermediate commit is needed before the SELECT.
         async with db.execute(
             "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
-            (user_id, word),
+            (user_id, base),
         ) as cursor:
             vocab_row = await cursor.fetchone()
         vocab_id = vocab_row["id"]
@@ -1056,7 +1078,6 @@ async def save_word(
             row = await cursor.fetchone()
         await db.commit()  # single atomic commit for both inserts
 
-    asyncio.create_task(_update_lemma(vocab_id, word, book_id))
     return dict(row) if row else {}
 
 

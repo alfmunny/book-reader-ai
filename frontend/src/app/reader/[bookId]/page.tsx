@@ -2077,10 +2077,12 @@ export default function ReaderPage() {
                   onAIUsed={notifyAIUsed}
                   chapterIndex={chapterIndex}
                   onSaveInsight={session?.backendToken ? (question, answer, context) => {
-                    saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context })
+                    const req = saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context });
+                    req
                       .then(() => setObsidianToast({ msg: "Insight saved to book notes", ok: true }))
                       .catch(() => setObsidianToast({ msg: "Failed to save insight", ok: false }))
                       .finally(() => setTimeout(() => setObsidianToast(null), 3000));
+                    return req;
                   } : undefined}
                 />
               </div>
@@ -2571,10 +2573,12 @@ export default function ReaderPage() {
               onAIUsed={notifyAIUsed}
               chapterIndex={chapterIndex}
               onSaveInsight={session?.backendToken ? (question, answer, context) => {
-                saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context })
+                const req = saveInsight({ book_id: Number(bookId), chapter_index: chapterIndex, question, answer, context_text: context });
+                req
                   .then(() => setObsidianToast({ msg: "Insight saved to book notes", ok: true }))
                   .catch(() => setObsidianToast({ msg: "Failed to save insight", ok: false }))
                   .finally(() => setTimeout(() => setObsidianToast(null), 3000));
+                return req;
               } : undefined}
             />
           </div>

@@ -23,6 +23,7 @@ const mockAskQuestion = jest.fn();
 const mockSaveSettings = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  getInsights: jest.fn().mockResolvedValue([]),
   getInsight: (...args: any[]) => mockGetInsight(...args),
   askQuestion: (...args: any[]) => mockAskQuestion(...args),
   getChatMessages: jest.fn().mockResolvedValue({ messages: [], has_more: false }),

@@ -10,6 +10,7 @@ import InsightChat from "@/components/InsightChat";
 import { getSettings } from "@/lib/settings";
 
 jest.mock("@/lib/api", () => ({
+  getInsights: jest.fn().mockResolvedValue([]),
   getInsight: jest.fn().mockResolvedValue({ insight: "Mocked insight" }),
   askQuestion: jest.fn().mockResolvedValue({ answer: "Mocked answer", provider: "claude" }),
   checkPronunciation: jest.fn().mockResolvedValue({ feedback: "Mocked feedback" }),

@@ -9,6 +9,7 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import InsightChat from "@/components/InsightChat";
 
 jest.mock("@/lib/api", () => ({
+  getInsights: jest.fn().mockResolvedValue([]),
   getInsight: jest.fn().mockResolvedValue({ insight: "Mocked insight", provider: "gemini" }),
   askQuestion: jest.fn().mockResolvedValue({ answer: "Mocked answer", provider: "gemini" }),
   checkPronunciation: jest.fn().mockResolvedValue({ feedback: "Mocked feedback" }),

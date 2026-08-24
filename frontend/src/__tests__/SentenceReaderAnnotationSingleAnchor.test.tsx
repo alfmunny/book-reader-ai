@@ -108,3 +108,30 @@ test("a short single-word highlight (< 10 chars) renders its underline", () => {
   expect(spans.length).toBe(1);
   expect(spans[0].textContent).toBe("Anblick");
 });
+
+test("a tiny annotation ('in') anchors to a standalone word, not inside another word", () => {
+  const tiny: Annotation = {
+    id: 10,
+    book_id: 2229,
+    chapter_index: 2,
+    sentence_text: "in",
+    note_text: null,
+    color: "yellow",
+  };
+  const { container } = render(
+    <SentenceReader
+      text={"Die himmlischen Werke leuchten.\nEs schäumt das Meer in breiten Flüssen"}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={noop}
+      annotations={[tiny]}
+      onAnnotationClick={noop}
+    />,
+  );
+  const spans = container.querySelectorAll("[data-ann-id]");
+  expect(spans.length).toBe(1);
+  // Must underline the standalone "in" (second line), not the "in" inside
+  // "himmlischen" on the first line.
+  expect(spans[0].closest("[data-seg]")?.textContent).toContain("Meer in breiten");
+});

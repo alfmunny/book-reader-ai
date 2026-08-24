@@ -69,6 +69,26 @@ function isVerse(lines: string[]): boolean {
   return median <= 60;
 }
 
+/**
+ * Index of the first occurrence of `needle` in `hay` that sits at word
+ * boundaries, or -1 — so a short annotation like "in" doesn't land inside
+ * "himmlischen". Letter class covers Latin-1 accents (German umlauts) which
+ * /\w/ misses.
+ */
+const WORD_CHAR = /[A-Za-z0-9_\u00C0-\u024F]/;
+function wordBoundaryIndexOf(hay: string, needle: string): number {
+  let i = 0;
+  while (i <= hay.length - needle.length) {
+    const idx = hay.indexOf(needle, i);
+    if (idx === -1) return -1;
+    const pre = idx === 0 || !WORD_CHAR.test(hay[idx - 1]);
+    const post = idx + needle.length >= hay.length || !WORD_CHAR.test(hay[idx + needle.length]);
+    if (pre && post) return idx;
+    i = idx + 1;
+  }
+  return -1;
+}
+
 function parseIntoSegments(
   text: string,
   duration: number,
@@ -684,11 +704,12 @@ export default function SentenceReader({
   const isParallel = hasTranslations && translationDisplayMode === "parallel";
 
   // Anchor each annotation to exactly ONE segment: an exact segment match
-  // wins, otherwise the FIRST segment containing its sentence_text (substring
-  // annotations, >= 10 chars, see #1707 — multiple can share one segment).
-  // Text anchors carry no position, so a repeated word or phrase (e.g.
-  // "unbegreiflich" appearing on two Prolog lines) would otherwise render its
-  // underline and note dot on every occurrence.
+  // wins, otherwise the FIRST segment containing its sentence_text (see
+  // #1707 — multiple can share one segment). No minimum length: a highlight
+  // on a single short word ("Anblick") must render, and single-segment
+  // anchoring already prevents the every-occurrence false positives the old
+  // >= 10-char guard existed for. Text anchors carry no position, so a
+  // repeated word lands on its first occurrence.
   const annotationsByFlatIdx = useMemo(() => {
     const map = new Map<number, Annotation[]>();
     const add = (flatIdx: number, a: Annotation) => {
@@ -696,10 +717,10 @@ export default function SentenceReader({
       if (list) list.push(a); else map.set(flatIdx, [a]);
     };
     for (const a of annotations ?? []) {
-      const exact = allSegments.find((s) => s.text === a.sentence_text);
-      const seg = exact ?? (a.sentence_text.length >= 10
-        ? allSegments.find((s) => s.text.includes(a.sentence_text))
-        : undefined);
+      const seg =
+        allSegments.find((s) => s.text === a.sentence_text)
+        ?? allSegments.find((s) => wordBoundaryIndexOf(s.text, a.sentence_text) >= 0)
+        ?? allSegments.find((s) => s.text.includes(a.sentence_text));
       if (seg) add(seg.flatIdx, a);
     }
     return map;
@@ -809,7 +830,8 @@ export default function SentenceReader({
           const annotationMatches: Array<{ start: number; end: number; className: string; annId: number }> = [];
           for (const a of segAnns) {
             if (a === fullSegmentAnnotation) continue;
-            const start = seg.text.indexOf(a.sentence_text);
+            const boundaryStart = wordBoundaryIndexOf(seg.text, a.sentence_text);
+            const start = boundaryStart >= 0 ? boundaryStart : seg.text.indexOf(a.sentence_text);
             if (start >= 0) {
               annotationMatches.push({
                 start,

@@ -79,3 +79,59 @@ test("multiple sub-sentence annotations in one segment still all render (#1707)"
   const { container } = renderReader([a, b]);
   expect(container.querySelectorAll("[data-ann-id]").length).toBe(2);
 });
+
+test("a short single-word highlight (< 10 chars) renders its underline", () => {
+  // Owner report 2026-08-24: highlighting "Anblick" (7 chars) saved the
+  // annotation but displayed nothing — the assignment map required >= 10
+  // chars for substring matches. With single-segment anchoring the length
+  // guard is unnecessary.
+  const short: Annotation = {
+    id: 9,
+    book_id: 2229,
+    chapter_index: 2,
+    sentence_text: "Anblick",
+    note_text: null,
+    color: "yellow",
+  };
+  const { container } = render(
+    <SentenceReader
+      text={"Ihr Anblick gibt den Engeln Stärke,\nWenn keiner sie ergründen mag;"}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={noop}
+      annotations={[short]}
+      onAnnotationClick={noop}
+    />,
+  );
+  const spans = container.querySelectorAll("[data-ann-id]");
+  expect(spans.length).toBe(1);
+  expect(spans[0].textContent).toBe("Anblick");
+});
+
+test("a tiny annotation ('in') anchors to a standalone word, not inside another word", () => {
+  const tiny: Annotation = {
+    id: 10,
+    book_id: 2229,
+    chapter_index: 2,
+    sentence_text: "in",
+    note_text: null,
+    color: "yellow",
+  };
+  const { container } = render(
+    <SentenceReader
+      text={"Die himmlischen Werke leuchten.\nEs schäumt das Meer in breiten Flüssen"}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={noop}
+      annotations={[tiny]}
+      onAnnotationClick={noop}
+    />,
+  );
+  const spans = container.querySelectorAll("[data-ann-id]");
+  expect(spans.length).toBe(1);
+  // Must underline the standalone "in" (second line), not the "in" inside
+  // "himmlischen" on the first line.
+  expect(spans[0].closest("[data-seg]")?.textContent).toContain("Meer in breiten");
+});

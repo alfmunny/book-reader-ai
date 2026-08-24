@@ -22,6 +22,7 @@ import {
 import { chapterLabel, truncate } from "@/lib/notesMarkdown";
 import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/Icons";
 import UndoToast from "@/components/UndoToast";
+import InsightMarkdown from "@/components/InsightMarkdown";
 
 type ViewMode = "section" | "chapter";
 
@@ -205,7 +206,7 @@ function InsightCard({
       <p className="text-sm text-ink">
         <span className="font-semibold">Q:</span> {ins.question}
       </p>
-      <p className="text-sm text-ink leading-relaxed">{ins.answer}</p>
+      <InsightMarkdown markdown={ins.answer} className="text-sm" />
       <div className="flex items-center gap-3 pt-0.5">
         {readerHref && (
           <a

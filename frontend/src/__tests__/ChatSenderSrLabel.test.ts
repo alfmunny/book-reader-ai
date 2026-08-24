@@ -16,6 +16,13 @@ describe("InsightChat message sender labels", () => {
   });
 
   it("assistant message bubble has sr-only Assistant: prefix", () => {
-    expect(chat).toMatch(/className="sr-only">Assistant: /);
+    // The assistant prefix renders via the shared markdown component's
+    // srPrefix prop (see InsightMarkdown.tsx).
+    expect(chat).toMatch(/srPrefix="Assistant: "/);
+    const md = fs.readFileSync(
+      path.join(process.cwd(), "src/components/InsightMarkdown.tsx"),
+      "utf8",
+    );
+    expect(md).toMatch(/className="sr-only">\{srPrefix\}/);
   });
 });

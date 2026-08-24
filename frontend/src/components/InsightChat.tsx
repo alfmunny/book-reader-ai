@@ -7,6 +7,7 @@ import {
   askQuestion,
   getChatMessages,
   postChatMessage,
+  getInsights,
 } from "@/lib/api";
 import { getSettings, saveSettings, ChatProviderSetting } from "@/lib/settings";
 import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, AlertCircleIcon } from "@/components/Icons";
@@ -23,6 +24,8 @@ export const LANGUAGES = [
 
 const HISTORY_KEY = (userId: number | string, bookId: string) => `chat-history:${userId}:${bookId}`;
 const SAVED_KEY = (userId: number | string, bookId: string) => `saved-insights:${userId}:${bookId}`;
+const insightKey = (question: string, answer: string) =>
+  `${question.slice(0, 60)}|${answer.slice(0, 60)}`;
 const INITIAL_DISPLAY = 30;
 const LOAD_BATCH = 20;
 const MAX_STORED = 200;
@@ -52,7 +55,7 @@ interface Props {
   author: string;
   bookLanguage: string;
   onAIUsed?: () => void;
-  onSaveInsight?: (question: string, answer: string, context?: string) => void;
+  onSaveInsight?: (question: string, answer: string, context?: string) => void | Promise<unknown>;
   chapterIndex?: number;
 }
 
@@ -159,6 +162,7 @@ export default function InsightChat({
   const [input, setInput] = useState("");
   const [contextText, setContextText] = useState("");
   const [refreshTick, setRefreshTick] = useState(0);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   // tracks which message-level contexts are expanded (by absolute index)
   const [expandedMsgCtx, setExpandedMsgCtx] = useState<Set<number>>(new Set());
 
@@ -264,6 +268,24 @@ export default function InsightChat({
         }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, userId]);
+
+  // ── 1b. Saved-state truth: the server's insights, not localStorage ───
+  // Regression (owner report, 2026-08-24): a save that failed after the
+  // optimistic localStorage write left a permanent phantom "Saved" label.
+  // For authenticated users the saved set is rebuilt from what actually
+  // persisted; localStorage is only a seed / anonymous fallback.
+  useEffect(() => {
+    if (!userId || !bookId) return;
+    getInsights(Number(bookId))
+      .then((list) => {
+        const keys = new Set(list.map((i) => insightKey(i.question, i.answer)));
+        setSavedInsights(keys);
+        try {
+          localStorage.setItem(SAVED_KEY(userId, bookId), JSON.stringify([...keys]));
+        } catch {}
+      })
+      .catch(() => {}); // server unreachable — keep the localStorage seed
   }, [bookId, userId]);
 
   // ── 2. Persist history (anonymous fallback only) ─────────────────────
@@ -572,19 +594,30 @@ export default function InsightChat({
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
                 {onSaveInsight && prevUserMsg && (() => {
-                  const saveKey = `${prevUserMsg.content.slice(0, 60)}|${msg.content.slice(0, 60)}`;
+                  const saveKey = insightKey(prevUserMsg.content, msg.content);
                   const isSaved = savedInsights.has(saveKey);
+                  const isSaving = savingKey === saveKey;
                   return (
                     <button
                       onClick={() => {
-                        if (isSaved) return;
-                        const next = new Set(savedInsights).add(saveKey);
-                        setSavedInsights(next);
-                        try {
-                          localStorage.setItem(SAVED_KEY(userId ?? "anon", bookId), JSON.stringify([...next]));
-                        } catch {}
-                        onSaveInsight(prevUserMsg.content, msg.content, prevUserMsg.context);
+                        // Only mark saved once the API confirms — an optimistic
+                        // write here left phantom "Saved" labels on failed saves.
+                        if (isSaved || isSaving) return;
+                        setSavingKey(saveKey);
+                        Promise.resolve(onSaveInsight(prevUserMsg.content, msg.content, prevUserMsg.context))
+                          .then(() => {
+                            setSavedInsights((prev) => {
+                              const next = new Set(prev).add(saveKey);
+                              try {
+                                localStorage.setItem(SAVED_KEY(userId ?? "anon", bookId), JSON.stringify([...next]));
+                              } catch {}
+                              return next;
+                            });
+                          })
+                          .catch(() => {}) // parent surfaces the failure toast
+                          .finally(() => setSavingKey((k) => (k === saveKey ? null : k)));
                       }}
+                      disabled={isSaving}
                       title={isSaved ? "Already saved" : "Save to notes"}
                       className={`mt-1.5 flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded ${
                         isSaved
@@ -593,7 +626,7 @@ export default function InsightChat({
                       }`}
                     >
                       <BookmarkIcon className="w-3 h-3" fill={isSaved ? "currentColor" : "none"} />
-                      {isSaved ? "Saved" : "Save to notes"}
+                      {isSaved ? "Saved" : isSaving ? "Saving…" : "Save to notes"}
                     </button>
                   );
                 })()}

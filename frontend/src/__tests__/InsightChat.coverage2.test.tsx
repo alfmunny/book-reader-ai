@@ -15,6 +15,7 @@ const mockGetInsight = jest.fn();
 const mockAskQuestion = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  getInsights: jest.fn().mockResolvedValue([]),
   getInsight: (...args: any[]) => mockGetInsight(...args),
   askQuestion: (...args: any[]) => mockAskQuestion(...args),
   getChatMessages: jest.fn().mockResolvedValue({ messages: [], has_more: false }),
@@ -95,12 +96,16 @@ describe("InsightChat — savedInsights from localStorage (L114)", () => {
     // Pre-load history with a user + assistant exchange
     const q = "What is the theme?";
     const a = "Answer.";
-    const saveKey = `${q.slice(0, 60)}|${a.slice(0, 60)}`;
     localStorage.setItem(HISTORY_KEY(7, "book-99"), JSON.stringify([
       { role: "user", content: q },
       { role: "assistant", content: a },
     ]));
-    localStorage.setItem(SAVED_KEY(7, "book-99"), JSON.stringify([saveKey]));
+    // Saved state now derives from the server's insights, not localStorage
+    // (a stale localStorage flag caused phantom "Saved" labels).
+    const { getInsights } = jest.requireMock("@/lib/api");
+    getInsights.mockResolvedValue([
+      { id: 1, book_id: 99, chapter_index: 0, question: q, answer: a, created_at: "" },
+    ]);
 
     const onSaveInsight = jest.fn();
     render(<InsightChat {...BASE} onSaveInsight={onSaveInsight} />);
@@ -114,6 +119,8 @@ describe("InsightChat — savedInsights from localStorage (L114)", () => {
   });
 
   it("savedInsights useEffect reloads when bookId changes", async () => {
+    // clearAllMocks does not undo mockResolvedValue from the previous test
+    jest.requireMock("@/lib/api").getInsights.mockResolvedValue([]);
     const saveKey = "some-key";
     localStorage.setItem(SAVED_KEY(7, "book-99"), JSON.stringify([saveKey]));
 
@@ -124,8 +131,9 @@ describe("InsightChat — savedInsights from localStorage (L114)", () => {
     rerender(<InsightChat {...BASE} bookId="book-00" onSaveInsight={jest.fn()} />);
     await act(async () => await flushPromises());
 
-    // No saved insights for book-00
-    expect(localStorage.getItem(SAVED_KEY(7, "book-00"))).toBeNull();
+    // No saved insights for book-00 (the server-truth sync may write an
+    // empty list; either way the set must be empty)
+    expect(JSON.parse(localStorage.getItem(SAVED_KEY(7, "book-00")) ?? "[]")).toEqual([]);
   });
 });
 

@@ -5,6 +5,7 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 
 jest.mock("@/lib/api", () => ({
+  getInsights: jest.fn().mockResolvedValue([]),
   getInsight: jest.fn().mockResolvedValue({ insight: "Insight." }),
   askQuestion: jest.fn().mockResolvedValue({ answer: "Answer." }),
   getChatMessages: jest.fn().mockResolvedValue({ messages: [], has_more: false }),

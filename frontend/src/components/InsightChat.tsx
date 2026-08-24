@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import InsightMarkdown from "@/components/InsightMarkdown";
 import {
   getInsight,
   askQuestion,
@@ -576,23 +575,7 @@ export default function InsightChat({
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <div
-                  className={[
-                    "prose max-w-none break-words",
-                    "prose-p:my-1.5 prose-p:leading-[1.8] prose-p:text-stone-700",
-                    "prose-headings:text-stone-800 prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1",
-                    "prose-strong:text-stone-800 prose-em:text-stone-600",
-                    "prose-li:text-stone-700 prose-li:leading-[1.8] prose-li:my-0",
-                    "prose-ul:my-1.5 prose-ol:my-1.5",
-                    "prose-blockquote:border-l-2 prose-blockquote:border-amber-300 prose-blockquote:text-stone-600 prose-blockquote:not-italic prose-blockquote:pl-3 prose-blockquote:my-2",
-                    "prose-code:text-amber-700 prose-code:bg-amber-50 prose-code:px-1 prose-code:rounded prose-code:font-mono prose-code:text-[0.85em]",
-                    "prose-pre:bg-stone-900 prose-pre:text-stone-100 prose-pre:text-[0.8em] prose-pre:rounded-lg prose-pre:overflow-x-auto",
-                    "text-stone-700",
-                  ].join(" ")}
-                >
-                  <span className="sr-only">Assistant: </span>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                </div>
+                <InsightMarkdown markdown={msg.content} srPrefix="Assistant: " />
                 {onSaveInsight && prevUserMsg && (() => {
                   const saveKey = insightKey(prevUserMsg.content, msg.content);
                   const isSaved = savedInsights.has(saveKey);

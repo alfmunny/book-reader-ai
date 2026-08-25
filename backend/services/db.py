@@ -1231,6 +1231,27 @@ async def get_all_insights(user_id: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def update_insight_question(insight_id: int, user_id: int, question: str) -> dict | None:
+    """Update the question of the user's own insight; the answer is immutable.
+
+    Returns the updated row, or None when the insight doesn't exist or
+    belongs to another user."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "UPDATE book_insights SET question = ? WHERE id = ? AND user_id = ?",
+            (question, insight_id, user_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        async with db.execute(
+            "SELECT * FROM book_insights WHERE id = ?", (insight_id,)
+        ) as c:
+            row = await c.fetchone()
+        await db.commit()
+    return dict(row) if row else None
+
+
 async def delete_insight(insight_id: int, user_id: int) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(

@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
 from services.auth import get_current_user, check_book_access
-from services.db import save_insight, get_insights, get_all_insights, delete_insight, get_cached_book
+from services.db import (
+    save_insight,
+    get_insights,
+    get_all_insights,
+    delete_insight,
+    update_insight_question,
+    get_cached_book,
+)
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -54,6 +61,25 @@ async def list_insights(book_id: int = Query(..., ge=1), user: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
     return await get_insights(user["id"], book_id)
+
+
+class InsightUpdate(BaseModel):
+    # Only the question is editable — the answer is the AI's recorded output.
+    question: str = Field(..., min_length=1, max_length=2000)
+
+
+@router.patch("/{insight_id}")
+async def update(
+    req: InsightUpdate,
+    insight_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    if not req.question.strip():
+        raise HTTPException(status_code=400, detail="question cannot be empty")
+    updated = await update_insight_question(insight_id, user["id"], req.question)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Insight not found")
+    return updated
 
 
 @router.delete("/{insight_id}")

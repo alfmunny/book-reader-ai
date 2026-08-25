@@ -168,6 +168,7 @@ export default function InsightChat({
   // Insight id per saved key — powers the "View note" jump link to the
   // anchored insight on /notes/[bookId].
   const [savedIds, setSavedIds] = useState<Map<string, number>>(new Map());
+  const [savedIdsByAnswer, setSavedIdsByAnswer] = useState<Map<string, number>>(new Map());
   // Message index whose Copy button shows the transient "Copied" state.
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   // tracks which message-level contexts are expanded (by absolute index)
@@ -289,6 +290,10 @@ export default function InsightChat({
         const keys = new Set(list.map((i) => insightKey(i.question, i.answer)));
         setSavedInsights(keys);
         setSavedIds(new Map(list.map((i) => [insightKey(i.question, i.answer), i.id])));
+        // Questions are editable on the notes page (typo fixes) — after an
+        // edit the full question|answer key no longer matches the chat pair,
+        // so keep an answer-only index too (the answer is immutable).
+        setSavedIdsByAnswer(new Map(list.map((i) => [i.answer.slice(0, 60), i.id])));
         try {
           localStorage.setItem(SAVED_KEY(userId, bookId), JSON.stringify([...keys]));
         } catch {}
@@ -663,9 +668,10 @@ export default function InsightChat({
                 </button>
                 {onSaveInsight && prevUserMsg && (() => {
                   const saveKey = insightKey(prevUserMsg.content, msg.content);
-                  const isSaved = savedInsights.has(saveKey);
+                  const answerOnlyKey = msg.content.slice(0, 60);
+                  const isSaved = savedInsights.has(saveKey) || savedIdsByAnswer.has(answerOnlyKey);
                   const isSaving = savingKey === saveKey;
-                  const noteId = savedIds.get(saveKey);
+                  const noteId = savedIds.get(saveKey) ?? savedIdsByAnswer.get(answerOnlyKey);
                   return (
                     <>
                     <button

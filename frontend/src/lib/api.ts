@@ -848,6 +848,14 @@ export function getAllInsights() {
   return request<BookInsightWithBook[]>("/insights/all");
 }
 
+export function updateInsight(id: number, data: { question: string }) {
+  return request<BookInsight>(`/insights/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
 export function saveInsight(data: {
   book_id: number;
   chapter_index?: number;

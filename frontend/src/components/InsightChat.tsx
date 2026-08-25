@@ -38,6 +38,9 @@ interface Message {
   context?: string;
   isChapterHeader?: true;
   chapterKey?: string;
+  /** On an error bubble: the question that failed, so Retry can re-send it. */
+  failedQuestion?: string;
+  failedContext?: string;
 }
 
 interface Props {
@@ -389,12 +392,19 @@ export default function InsightChat({
     setMessages((prev) => [...prev, { role: "user", content: text, context: attachedContext }]);
     // Persist user message to server (fire-and-forget; UI already updated optimistically)
     if (userId) postChatMessage(bookId, "user", text).catch(() => {});
+    await runAsk(text, attachedContext);
+  }
+
+  /** Fire the AI request for an already-appended user message. Failures become
+   *  an error bubble carrying the question so Retry can re-send it without
+   *  duplicating the user's message (owner report, 2026-08-25). */
+  async function runAsk(text: string, attachedContext?: string) {
     setChatLoading(true);
 
     const parts: string[] = [];
     if (attachedContext) parts.push(`Selected passage:\n"${attachedContext}"`);
     const history = messagesRef.current
-      .filter((m) => !m.isChapterHeader)
+      .filter((m) => !m.isChapterHeader && !m.content.startsWith("Error:"))
       .slice(-6)
       .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 400)}`)
       .join("\n\n");
@@ -405,13 +415,30 @@ export default function InsightChat({
     try {
       onAIUsed?.();
       const r = await askQuestion(text, passage, bookTitle, author, langRef.current, providerRef.current);
-      setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
-      if (userId) postChatMessage(bookId, "assistant", r.answer).catch(() => {});
-    } catch (e: any) {
-      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]);
+      const answer = (r.answer ?? "").trim();
+      // A blank answer rendered as an empty bubble is the silent failure the
+      // owner reported — surface it as a retryable error instead.
+      if (!answer) throw new Error("The AI returned an empty answer — retry, or switch provider.");
+      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      if (userId) postChatMessage(bookId, "assistant", answer).catch(() => {});
+    } catch (e: unknown) {
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: `Error: ${e instanceof Error ? e.message : String(e)}`,
+        failedQuestion: text,
+        failedContext: attachedContext,
+      }]);
     } finally {
       setChatLoading(false);
     }
+  }
+
+  function retryFailed(absIdx: number) {
+    const failed = messagesRef.current[absIdx];
+    if (!failed?.failedQuestion || chatLoading) return;
+    autoScrollRef.current = true;
+    setMessages((prev) => prev.filter((_, i) => i !== absIdx));
+    runAsk(failed.failedQuestion, failed.failedContext);
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -564,9 +591,20 @@ export default function InsightChat({
           const isError = msg.content.startsWith("Error:");
           if (isError) {
             return (
-              <div key={i} role="alert" className="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-                <AlertCircleIcon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
-                <span>{msg.content.replace(/^Error:\s*/, "")}</span>
+              <div key={i} role="alert" className="px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <div className="flex items-start gap-2">
+                  <AlertCircleIcon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
+                  <span>{msg.content.replace(/^Error:\s*/, "")}</span>
+                </div>
+                {msg.failedQuestion && (
+                  <button
+                    onClick={() => retryFailed(absIdx)}
+                    disabled={chatLoading}
+                    className="mt-1.5 ml-5 flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] font-medium text-red-700 hover:text-red-800 hover:underline disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 rounded"
+                  >
+                    <RetryIcon className="w-3 h-3" aria-hidden="true" /> Retry
+                  </button>
+                )}
               </div>
             );
           }

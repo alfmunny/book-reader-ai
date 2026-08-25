@@ -25,10 +25,11 @@ describe("Vocabulary word list lang attribute (closes #2245)", () => {
 
   it("context sentence span has lang attribute from group.language", () => {
     // Each occurrence's sentence_text is rendered in the book's language;
-    // it must carry a lang attribute so AT switches pronunciation.
-    const idx = src.indexOf("occ.sentence_text");
+    // it must carry a lang attribute so AT switches pronunciation. Anchor on
+    // the RENDERED sentence (&ldquo;…), not the first source mention — the
+    // occurrence's jump-link href also references occ.sentence_text.
+    const idx = src.indexOf("&ldquo;{occ.sentence_text}");
     expect(idx).toBeGreaterThan(-1);
-    // Check that somewhere near the sentence_text there is a lang attribute
     const window = src.slice(Math.max(0, idx - 200), idx + 50);
     expect(window).toMatch(/lang=\{group\.language/);
   });

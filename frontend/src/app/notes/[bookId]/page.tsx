@@ -9,6 +9,7 @@ import {
   getVocabulary,
   getBookChapters,
   updateAnnotation,
+  updateInsight,
   deleteAnnotation,
   deleteInsight,
   exportVocabularyToObsidian,
@@ -184,6 +185,13 @@ function InsightCard({
   onDelete,
   isDeleting,
   bookLanguage,
+  isEditing,
+  editQuestion,
+  saveError,
+  onEdit,
+  onEditChange,
+  onSave,
+  onCancel,
 }: {
   ins: BookInsight;
   chapters: BookChapter[];
@@ -191,6 +199,13 @@ function InsightCard({
   onDelete: () => void;
   isDeleting: boolean;
   bookLanguage?: string;
+  isEditing: boolean;
+  editQuestion: string;
+  saveError: boolean;
+  onEdit: () => void;
+  onEditChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
 }) {
   const readerHref = ins.chapter_index !== null
     ? `/reader/${bookId}?chapter=${ins.chapter_index}${ins.context_text ? `&sentence=${encodeURIComponent(ins.context_text)}` : ""}`
@@ -203,9 +218,41 @@ function InsightCard({
           &ldquo;{truncate(ins.context_text, 200)}&rdquo;
         </blockquote>
       )}
-      <p className="text-sm text-ink">
-        <span className="font-semibold">Q:</span> {ins.question}
-      </p>
+      {isEditing ? (
+        <div className="space-y-2">
+          <textarea
+            aria-label="Edit question"
+            value={editQuestion}
+            onChange={(e) => onEditChange(e.target.value)}
+            className="w-full text-sm border border-amber-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+            rows={2}
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={onSave}
+              className="px-3 py-1 text-xs bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+            >
+              Save
+            </button>
+            <button
+              onClick={onCancel}
+              className="px-3 py-1 text-xs text-stone-600 hover:text-stone-700 transition-colors min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            >
+              Cancel
+            </button>
+          </div>
+          {saveError && (
+            <p role="alert" className="text-xs text-red-600">
+              Couldn&apos;t save — try again.
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-ink">
+          <span className="font-semibold">Q:</span> {ins.question}
+        </p>
+      )}
       <InsightMarkdown markdown={ins.answer} className="text-sm" />
       <div className="flex items-center gap-3 pt-0.5">
         {readerHref && (
@@ -215,6 +262,16 @@ function InsightCard({
           >
             <ArrowRightIcon className="w-3 h-3 shrink-0" /> {chapterLabel(chapters, ins.chapter_index as number)}
           </a>
+        )}
+        {!isEditing && (
+          <button
+            onClick={onEdit}
+            className="text-stone-600 hover:text-stone-700 transition-colors p-1 min-h-[44px] md:min-h-0 flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            title="Edit question"
+            aria-label={`Edit insight question: ${ins.question.slice(0, 60)}`}
+          >
+            <EditIcon className="w-3.5 h-3.5" />
+          </button>
         )}
         <button
           onClick={onDelete}
@@ -291,6 +348,11 @@ export default function BookNotesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editNote, setEditNote] = useState("");
   const [editSaveError, setEditSaveError] = useState(false);
+
+  // Inline insight-question edit (owner request, 2026-08-26)
+  const [editingInsId, setEditingInsId] = useState<number | null>(null);
+  const [editInsQuestion, setEditInsQuestion] = useState("");
+  const [editInsError, setEditInsError] = useState(false);
 
   // Delete loading sets (still used for notes opened mid-delete)
   const [deletingAnns, setDeletingAnns] = useState<Set<number>>(new Set());
@@ -401,6 +463,18 @@ export default function BookNotesPage() {
     }
   }
 
+  async function saveInsightEdit() {
+    if (editingInsId === null) return;
+    setEditInsError(false);
+    try {
+      const updated = await updateInsight(editingInsId, { question: editInsQuestion });
+      setInsights((prev) => prev.map((i) => (i.id === editingInsId ? { ...i, question: updated.question } : i)));
+      setEditingInsId(null);
+    } catch {
+      setEditInsError(true);
+    }
+  }
+
   function handleDeleteAnnotation(id: number) {
     // If a previous toast is pending, commit that delete immediately
     if (deletedAnnToast) {
@@ -484,6 +558,13 @@ export default function BookNotesPage() {
           onDelete={() => handleDeleteInsight(ins.id)}
           isDeleting={deletingIns.has(ins.id)}
           bookLanguage={bookLanguage}
+          isEditing={editingInsId === ins.id}
+          editQuestion={editInsQuestion}
+          saveError={editInsError}
+          onEdit={() => { setEditInsError(false); setEditingInsId(ins.id); setEditInsQuestion(ins.question); }}
+          onEditChange={setEditInsQuestion}
+          onSave={saveInsightEdit}
+          onCancel={() => { setEditInsError(false); setEditingInsId(null); }}
         />
       </li>
     );

@@ -44,12 +44,6 @@ describe("Reader desktop header toolbar focus rings (closes #2187)", () => {
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
-  it("Chapter summary toggle has focus ring", () => {
-    const idx = readerPage.indexOf("aria-label=\"Chapter summary\"");
-    expect(idx).toBeGreaterThan(-1);
-    const window = readerPage.slice(idx, idx + 400);
-    expect(window).toContain("focus-visible:ring-amber-400");
-  });
 
   it("Vocabulary sidebar toggle has focus ring", () => {
     // aria-label is dynamic; use title="Vocabulary" as a stable anchor

@@ -27,9 +27,6 @@ describe("reader desktop toolbar touch targets (closes #871)", () => {
     checkForward('title="Translation"');
   });
 
-  it("Chapter summary toggle has min-h-[44px]", () => {
-    checkForward('"Chapter summary"');
-  });
 
   it("Notes toggle has min-h-[44px]", () => {
     // Radius enlarged: dynamic aria-label expression is longer than the old static form,

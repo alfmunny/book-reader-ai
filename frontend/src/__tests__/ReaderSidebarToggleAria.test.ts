@@ -29,9 +29,6 @@ describe("reader desktop header sidebar toggle buttons aria-label and aria-press
     checkButton('setSidebarTab("translate")', "Translate");
   });
 
-  it("Chapter summary toggle has aria-label and aria-pressed", () => {
-    checkButton('setSidebarTab("summary")', "Chapter summary");
-  });
 
   it("Notes toggle has aria-label and aria-pressed", () => {
     checkButton('setSidebarTab("notes")', "Annotations & notes");

@@ -13,7 +13,7 @@ const src = readFileSync(
   "utf-8"
 );
 
-const SIDEBAR_TABS = ["chat", "translate", "summary", "notes", "vocab"] as const;
+const SIDEBAR_TABS = ["chat", "translate", "notes", "vocab"] as const;
 
 describe("Reader sidebar panel toggle buttons", () => {
   it("uses aria-pressed (not aria-expanded) on sidebar panel buttons", () => {

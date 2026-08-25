@@ -17,9 +17,8 @@ import QuickHighlightPanel from "@/components/QuickHighlightPanel";
 import VocabularyToast from "@/components/VocabularyToast";
 import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
-import ChapterSummary from "@/components/ChapterSummary";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, SummaryIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // Gemini Flash pricing constants — used for total queue cost estimate in the translation sidebar.
@@ -132,7 +131,7 @@ export default function ReaderPage() {
 
   // Sidebar — hidden by default, resizable, tabbed
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate" | "summary">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [vocabFetchError, setVocabFetchError] = useState(false);
   const [vocabRetryTick, setVocabRetryTick] = useState(0);
@@ -1332,22 +1331,6 @@ export default function ReaderPage() {
             <span className="hidden lg:inline">Translate</span>
           </button>
 
-          {/* Chapter summary */}
-          <button
-            onClick={() => { setSidebarTab("summary"); setSidebarOpen((v) => sidebarTab === "summary" ? !v : true); }}
-            title="Chapter summary"
-            aria-label="Chapter summary"
-            aria-pressed={sidebarOpen && sidebarTab === "summary"}
-            className={`hidden md:flex shrink-0 items-center gap-1.5 px-2 lg:px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-              sidebarOpen && sidebarTab === "summary"
-                ? "bg-amber-700 text-white border-amber-700"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50"
-            }`}
-          >
-            <SummaryIcon className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden lg:inline">Summary</span>
-          </button>
-
           {/* Notes sidebar toggle */}
           <button
             onClick={() => {
@@ -2056,7 +2039,7 @@ export default function ReaderPage() {
         {/* Insight/Vocab/Translate sidebar — desktop only */}
         <div
           role="complementary"
-          aria-label={`${({ chat: "Insight", translate: "Translation", summary: "Summary", notes: "Notes", vocab: "Vocabulary" } as const)[sidebarTab]} panel`}
+          aria-label={`${({ chat: "Insight", translate: "Translation", notes: "Notes", vocab: "Vocabulary" } as const)[sidebarTab]} panel`}
           aria-hidden={!sidebarOpen}
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
           className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200 transition-[width] duration-200"
@@ -2523,18 +2506,6 @@ export default function ReaderPage() {
                 </div>
               )}
 
-              {/* Summary tab */}
-              {sidebarTab === "summary" && (
-                <ChapterSummary
-                  bookId={bookId}
-                  chapterIndex={chapterIndex}
-                  chapterText={current?.text ?? ""}
-                  chapterTitle={current?.title || `Chapter ${chapterIndex + 1}`}
-                  bookTitle={meta?.title ?? ""}
-                  author={meta?.authors[0] ?? ""}
-                  isVisible={sidebarOpen && sidebarTab === "summary"}
-                />
-              )}
             </>
           )}
         </div>

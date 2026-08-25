@@ -325,7 +325,7 @@ export default function FlashcardsPage() {
               style={{ boxShadow: "var(--shadow-card)" }}
             >
               <span className="text-xs text-stone-600 uppercase tracking-wide">
-                {flipped ? "Context" : "Word"}
+                {flipped ? (currentCard.definitions?.length ? "Meaning" : "Context") : "Word"}
               </span>
               {!flipped ? (
                 <span className="font-serif text-3xl text-ink font-bold text-center" lang={currentCard.language ?? undefined}>
@@ -333,6 +333,16 @@ export default function FlashcardsPage() {
                 </span>
               ) : (
                 <div className="text-center space-y-2" aria-live="polite">
+                  {currentCard.definitions?.length ? (
+                    <ul className="space-y-0.5 mb-2">
+                      {currentCard.definitions.slice(0, 2).map((d, i) => (
+                        <li key={i} className="text-sm text-ink leading-relaxed">
+                          {d.pos && <span className="text-xs font-medium text-amber-700 italic mr-1.5">{d.pos}</span>}
+                          {d.text}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   {currentCard.context ? (
                     <p lang={currentCard.language ?? undefined} className="font-serif text-base text-ink leading-relaxed">
                       {currentCard.context}

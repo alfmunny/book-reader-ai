@@ -687,6 +687,11 @@ export interface VocabularyWord {
   lemma?: string | null;
   language?: string | null;
   created_at?: string | null;
+  /** Meaning captured at save time, rendered without a lookup (#2704). */
+  definitions?: Array<{ pos: string; text: string }>;
+  form_of?: string | null;
+  definition_url?: string | null;
+  definition_lang?: string | null;
   occurrences: VocabularyOccurrence[];
 }
 
@@ -696,6 +701,11 @@ export interface WordDefinition {
   definitions: Array<{ pos: string; text: string }>;
   /** e.g. "past participle of gehen" when `lemma` differs from the word looked up. */
   form_of?: string | null;
+  /** The language the definitions are *written in* — may differ from what was
+   *  requested when the chain fell back to English. */
+  definition_lang?: string | null;
+  /** True when served from the saved vocabulary rather than a live lookup. */
+  cached?: boolean;
   url: string;
 }
 
@@ -707,6 +717,11 @@ export function saveVocabularyWord(data: {
   word: string;
   /** Base form, when the caller already has a definition — skips a server lookup. */
   lemma?: string;
+  /** The meaning already in hand, stored once at save time instead of re-fetched. */
+  definitions?: Array<{ pos: string; text: string }>;
+  form_of?: string | null;
+  definition_url?: string | null;
+  definition_lang?: string | null;
   book_id: number;
   chapter_index: number;
   sentence_text: string;
@@ -724,8 +739,11 @@ export function deleteVocabularyWord(word: string) {
   });
 }
 
-export function getWordDefinition(word: string, lang?: string) {
-  const params = lang ? `?lang=${encodeURIComponent(lang)}` : "";
+export function getWordDefinition(word: string, lang?: string, target?: string) {
+  const qs = new URLSearchParams();
+  if (lang) qs.set("lang", lang);
+  if (target) qs.set("target", target);
+  const params = qs.toString() ? `?${qs}` : "";
   return request<WordDefinition>(`/vocabulary/definition/${encodeURIComponent(word)}${params}`);
 }
 
@@ -946,6 +964,9 @@ export interface Flashcard {
   saved_at: string | null;
   context: string | null;
   language?: string;
+  /** Stored meaning, so the card back needs no lookup on first review. */
+  definitions?: Array<{ pos: string; text: string }>;
+  form_of?: string | null;
 }
 
 export interface FlashcardReviewResult {

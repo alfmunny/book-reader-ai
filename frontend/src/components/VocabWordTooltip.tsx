@@ -1,6 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { getWordDefinition, WordDefinition } from "@/lib/api";
+import {
+  DICTIONARY_LANGUAGES,
+  readDictionaryLanguage,
+  writeDictionaryLanguage,
+  dictionaryLanguageLabel,
+} from "@/lib/dictionaryLanguage";
 import { CloseIcon, CheckCircleIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
@@ -10,8 +16,10 @@ interface Props {
   rect: DOMRect;
   onClose: () => void;
   /** Receives the word to file in the vocabulary list — the base form when one
-   *  was resolved, otherwise the word exactly as it appeared in the text. */
-  onSave: (wordToSave: string) => void;
+   *  was resolved, otherwise the word exactly as it appeared in the text — plus
+   *  the definition already fetched, so the save stores it instead of the
+   *  backend looking it up a second time (#2704). */
+  onSave: (wordToSave: string, definition?: WordDefinition | null) => void;
   /** Lowercased words already in the vocabulary. When the looked-up word (or
    *  its resolved base form) is among them, the save button becomes an
    *  "In vocab" link to the saved entry instead. */
@@ -24,6 +32,8 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, sa
   const [fetchError, setFetchError] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const [saved, setSaved] = useState(false);
+  // The language definitions are written in, remembered across lookups (#2704).
+  const [target, setTarget] = useState(readDictionaryLanguage);
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref);
 
@@ -32,11 +42,16 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, sa
     setFetchError(false);
     setDef(null);
     setSaved(false);
-    getWordDefinition(word, lang)
+    getWordDefinition(word, lang, target)
       .then(setDef)
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
-  }, [word, lang, retryTick]);
+  }, [word, lang, target, retryTick]);
+
+  function handleTargetChange(next: string) {
+    writeDictionaryLanguage(next);
+    setTarget(next);
+  }
 
   // Close on outside click
   useEffect(() => {
@@ -89,7 +104,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, sa
   function handleSave() {
     if (saved) return;
     setSaved(true);
-    onSave(baseForm);
+    onSave(baseForm, def);
   }
 
   return (
@@ -105,9 +120,23 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, sa
     >
       <span id="vocab-tooltip-desc" className="sr-only">Word definition and vocabulary actions</span>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-amber-100">
-        <span id="vocab-tooltip-title" lang={lang ?? undefined} className="font-semibold text-ink text-sm">{word}</span>
-        <button onClick={onClose} aria-label="Close word definition" className="text-stone-600 hover:text-stone-700 p-0.5 rounded transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"><CloseIcon className="w-3.5 h-3.5" /></button>
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1.5 border-b border-amber-100">
+        <span id="vocab-tooltip-title" lang={lang ?? undefined} className="font-semibold text-ink text-sm truncate">{word}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Which language the meaning is written in. Remembered for next time. */}
+          <select
+            value={target}
+            onChange={(e) => handleTargetChange(e.target.value)}
+            aria-label="Definition language"
+            title="Look up definitions in"
+            className="text-[11px] text-stone-600 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            {DICTIONARY_LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
+          <button onClick={onClose} aria-label="Close word definition" className="text-stone-600 hover:text-stone-700 p-0.5 rounded transition-colors min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"><CloseIcon className="w-3.5 h-3.5" /></button>
+        </div>
       </div>
 
       {/* Body */}
@@ -130,7 +159,14 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, sa
           </div>
         )}
         {!loading && !fetchError && (!def || def.definitions.length === 0) && (
-          <p className="text-xs text-stone-600 italic">No definition found.</p>
+          <p className="text-xs text-stone-600 italic">
+            No definition found{target !== "en" ? ` in ${dictionaryLanguageLabel(target)}` : ""}.
+          </p>
+        )}
+        {!loading && def && def.definitions.length > 0 && def.definition_lang && def.definition_lang !== target && (
+          <p className="text-[11px] text-stone-600 italic mb-1.5">
+            No {dictionaryLanguageLabel(target)} entry — showing {dictionaryLanguageLabel(def.definition_lang)}.
+          </p>
         )}
         {!loading && def && def.definitions.length > 0 && (
           <div className="space-y-2">

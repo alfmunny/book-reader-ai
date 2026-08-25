@@ -1006,8 +1006,8 @@ async def get_all_annotations(user_id: int) -> list[dict]:
 
 async def _resolve_base_form(
     word: str, book_id: int, provided: str | None = None
-) -> tuple[str, str | None]:
-    """Return ``(base form, language)`` for *word*.
+) -> tuple[str, str | None, dict | None]:
+    """Return ``(base form, language, lookup result or None)`` for *word*.
 
     Vocabulary entries are keyed on the base form so one word encountered in
     several inflections stays a single entry (#2663). Callers that already hold a
@@ -1025,17 +1025,107 @@ async def _resolve_base_form(
         lang = "en"
 
     if provided and provided.strip():
-        return provided.strip().lower(), lang
+        return provided.strip().lower(), lang, None
 
     try:
         from services import wiktionary
         result = await wiktionary.lookup(word, lang)
         base = (result.get("lemma") or "").strip().lower()
-        return (base or word), (result.get("language") or lang)
+        # The caller reuses this payload to store the meaning, so resolving the
+        # base form and capturing the definition cost one request, not two.
+        return (base or word), (result.get("language") or lang), result
     except Exception:
         import logging
         logging.getLogger(__name__).warning("Base-form lookup failed for %s", word, exc_info=True)
-        return word, lang
+        return word, lang, None
+
+
+# Definitions are written in English unless the client asked for another
+# language; a stored meaning must always record one, or it can never be matched
+# against a request and would be re-fetched forever (#2704).
+_DEFAULT_DEFINITION_LANG = "en"
+
+
+def _decode_definitions(raw: str | None) -> list[dict]:
+    """Parse a stored definitions blob, tolerating anything unusable."""
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+async def get_stored_definition(user_id: int, word: str, target: str) -> dict | None:
+    """Return a saved word's stored meaning, or None if there is nothing usable.
+
+    Serves the reader's tooltip without a network round-trip for words the user
+    already saved (#2704). Only a meaning written in *target* qualifies — a stored
+    English gloss must not be handed back to someone who asked for Chinese.
+    """
+    word = word.strip().lower()
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT word, lemma, language, definitions, form_of, definition_url, definition_lang
+                 FROM vocabulary WHERE user_id = ? AND LOWER(word) = ?""",
+            (user_id, word),
+        ) as cursor:
+            row = await cursor.fetchone()
+    if row is None:
+        return None
+    definitions = _decode_definitions(row["definitions"])
+    if not definitions or row["definition_lang"] != target:
+        return None
+    return {
+        "lemma": row["lemma"] or row["word"],
+        "language": row["language"] or "",
+        "definitions": definitions,
+        "form_of": row["form_of"],
+        "url": row["definition_url"] or "",
+        "definition_lang": row["definition_lang"],
+        "cached": True,
+    }
+
+
+async def store_definition(
+    user_id: int, word: str, result: dict, target: str | None = None
+) -> bool:
+    """Persist a freshly looked-up meaning onto an already-saved word (#2704).
+
+    Lazy backfill: entries saved before meanings were stored — and entries whose
+    stored meaning is in a different language than the one now being asked for —
+    are filled in the next time a live lookup happens. Returns True when a row
+    was written.
+    """
+    definitions = result.get("definitions") or []
+    if not definitions:
+        return False
+    word = word.strip().lower()
+    target = target or result.get("definition_lang") or _DEFAULT_DEFINITION_LANG
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, definitions, definition_lang FROM vocabulary WHERE user_id = ? AND LOWER(word) = ?",
+            (user_id, word),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return False
+        # Already stored in the language being asked for — nothing to do.
+        if _decode_definitions(row["definitions"]) and row["definition_lang"] == target:
+            return False
+        await db.execute(
+            """UPDATE vocabulary
+                  SET definitions = ?, form_of = ?, definition_url = ?, definition_lang = ?
+                WHERE id = ?""",
+            (json.dumps(definitions, ensure_ascii=False), result.get("form_of"),
+             result.get("url"), target, row["id"]),
+        )
+        await db.commit()
+    return True
 
 
 async def save_word(
@@ -1045,9 +1135,26 @@ async def save_word(
     chapter_index: int,
     sentence_text: str,
     lemma: str | None = None,
+    definitions: list[dict] | None = None,
+    form_of: str | None = None,
+    definition_url: str | None = None,
+    definition_lang: str | None = None,
 ) -> dict:
     word = word.strip().lower()
-    base, language = await _resolve_base_form(word, book_id, lemma)
+    base, language, looked_up = await _resolve_base_form(word, book_id, lemma)
+
+    # The meaning is captured once, here, instead of being re-fetched on every
+    # click (#2704). The tooltip passes what it already fetched; otherwise the
+    # lookup done for the base form above supplies it at no extra cost.
+    if not definitions and looked_up:
+        definitions = looked_up.get("definitions") or None
+        form_of = form_of or looked_up.get("form_of")
+        definition_url = definition_url if definition_url is not None else looked_up.get("url")
+        definition_lang = definition_lang or looked_up.get("definition_lang")
+    if definitions:
+        definition_lang = definition_lang or _DEFAULT_DEFINITION_LANG
+    defs_json = json.dumps(definitions, ensure_ascii=False) if definitions else None
+
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         await db.execute(
@@ -1059,6 +1166,15 @@ async def save_word(
             "UPDATE vocabulary SET lemma = ?, language = COALESCE(?, language) WHERE user_id = ? AND word = ?",
             (base, language, user_id, base),
         )
+        # COALESCE so a save with nothing in hand (the mobile drawer, which can
+        # save without opening the definition) never blanks a stored meaning.
+        if defs_json:
+            await db.execute(
+                """UPDATE vocabulary
+                      SET definitions = ?, form_of = ?, definition_url = ?, definition_lang = ?
+                    WHERE user_id = ? AND word = ?""",
+                (defs_json, form_of, definition_url, definition_lang, user_id, base),
+            )
         # SQLite makes uncommitted writes visible to subsequent reads on the
         # same connection, so no intermediate commit is needed before the SELECT.
         async with db.execute(
@@ -1094,6 +1210,7 @@ async def get_vocabulary(user_id: int) -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT v.id, v.word, v.lemma, v.language, v.created_at,
+                      v.definitions, v.form_of, v.definition_url, v.definition_lang,
                       wo.book_id, b.title AS book_title, json_extract(b.languages, '$[0]') AS book_language, wo.chapter_index, wo.sentence_text, wo.surface_form
                FROM vocabulary v
                LEFT JOIN word_occurrences wo ON wo.vocabulary_id = v.id
@@ -1114,6 +1231,10 @@ async def get_vocabulary(user_id: int) -> list[dict]:
                 "lemma": row["lemma"],
                 "language": row["language"],
                 "created_at": row["created_at"],
+                "definitions": _decode_definitions(row["definitions"]),
+                "form_of": row["form_of"],
+                "definition_url": row["definition_url"],
+                "definition_lang": row["definition_lang"],
                 "occurrences": [],
             }
         if row["book_id"] is not None:
@@ -1387,6 +1508,7 @@ async def get_flashcards_due(
             SELECT fr.vocabulary_id, fr.interval_days, fr.ease_factor,
                    fr.repetitions, fr.due_date, fr.last_reviewed_at,
                    v.word, v.language, v.created_at AS saved_at,
+                   v.definitions, v.form_of,
                    (SELECT wo.sentence_text FROM word_occurrences wo
                     WHERE wo.vocabulary_id = fr.vocabulary_id
                     ORDER BY wo.id ASC LIMIT 1) AS context
@@ -1402,7 +1524,8 @@ async def get_flashcards_due(
         sql += " ORDER BY fr.due_date ASC, v.word ASC LIMIT 100"
         async with db.execute(sql, params) as cur:
             rows = await cur.fetchall()
-    return [dict(r) for r in rows]
+    # The card back shows the stored meaning rather than fetching one per review.
+    return [{**dict(r), "definitions": _decode_definitions(r["definitions"])} for r in rows]
 
 
 async def review_flashcard(

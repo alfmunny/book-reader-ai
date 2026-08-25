@@ -36,6 +36,14 @@ interface LemmaGroup {
   forms: VocabularyWord[];
 }
 
+/** The stored meaning for a group, from whichever form carries one (#2704). */
+function groupDefinitions(group: LemmaGroup): Array<{ pos: string; text: string }> {
+  for (const f of group.forms) {
+    if (f.definitions?.length) return f.definitions;
+  }
+  return [];
+}
+
 function buildGroups(words: VocabularyWord[]): LemmaGroup[] {
   const map = new Map<string, LemmaGroup>();
   for (const w of words) {
@@ -449,6 +457,16 @@ function VocabularyPageContent() {
             ))}
           </div>
         </div>
+        {groupDefinitions(group).length > 0 && (
+          <ul className="mb-2 space-y-0.5">
+            {groupDefinitions(group).slice(0, 2).map((d, i) => (
+              <li key={i} className="text-sm text-ink leading-relaxed">
+                {d.pos && <span className="text-xs font-medium text-amber-700 italic mr-1.5">{d.pos}</span>}
+                {d.text}
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="space-y-1.5">
           {group.forms.flatMap((f) =>
             f.occurrences.map((occ, i) => (

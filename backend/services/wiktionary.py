@@ -5,7 +5,12 @@ from urllib.parse import quote
 
 import httpx
 
-_BASE = "https://en.wiktionary.org/api/rest_v1/page/definition"
+# Definitions can be requested in any language: each Wiktionary edition is its
+# own wiki, so the *target* language selects the host (#2704). Non-English
+# editions are far thinner than en.wiktionary, which is why the caller falls
+# through to an AI lookup and then to English.
+_BASE_TEMPLATE = "https://{target}.wiktionary.org/api/rest_v1/page/definition"
+DEFAULT_TARGET_LANG = "en"
 _HEADERS = {"User-Agent": "BookReaderAI/1.0 (https://github.com/alfmunny/book-reader-ai)"}
 
 # A form-of statement has one of these words directly before "of"
@@ -53,9 +58,10 @@ def _strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text).strip()
 
 
-async def _fetch(word: str, lang: str) -> dict | None:
-    """GET the Wiktionary definition payload for *word*, or None on any failure."""
-    url = f"{_BASE}/{quote(word.lower(), safe='')}"
+async def _fetch(word: str, lang: str, target: str = DEFAULT_TARGET_LANG) -> dict | None:
+    """GET the definition payload for *word* from *target*'s Wiktionary, or None."""
+    base = _BASE_TEMPLATE.format(target=quote(target, safe=""))
+    url = f"{base}/{quote(word.lower(), safe='')}"
     try:
         async with httpx.AsyncClient(timeout=6.0) as client:
             resp = await client.get(url, headers=_HEADERS)
@@ -71,7 +77,11 @@ async def _fetch(word: str, lang: str) -> dict | None:
 
 def _parse(data: dict, lang: str, word: str) -> tuple[list[dict], str]:
     """Return (definitions, lemma) from a Wiktionary payload."""
-    entries = data.get(lang) or data.get("en") or []
+    # Non-English editions do not always key their sections by ISO code, so fall
+    # back to whichever section the wiki did return rather than finding nothing.
+    entries = data.get(lang) or data.get("en") or next(
+        (v for v in data.values() if isinstance(v, list) and v), []
+    )
 
     definitions: list[dict] = []
     lemma: str = word
@@ -99,12 +109,12 @@ def _parse(data: dict, lang: str, word: str) -> tuple[list[dict], str]:
     return definitions, lemma
 
 
-def _wiki_url(word: str) -> str:
-    return f"https://en.wiktionary.org/wiki/{quote(word, safe='')}"
+def _wiki_url(word: str, target: str = DEFAULT_TARGET_LANG) -> str:
+    return f"https://{target}.wiktionary.org/wiki/{quote(word, safe='')}"
 
 
-async def lookup(word: str, lang: str = "en") -> dict:
-    """Fetch definition and lemma for *word* in *lang* from English Wiktionary.
+async def lookup(word: str, lang: str = "en", target: str = DEFAULT_TARGET_LANG) -> dict:
+    """Fetch definition and lemma for *word* in *lang*.
 
     An inflected word's own Wiktionary entry usually says nothing more than which
     form it is ("past participle of gehen"), which is useless on its own — so when
@@ -121,11 +131,17 @@ async def lookup(word: str, lang: str = "en") -> dict:
             ],
             "form_of": str | None,  # e.g. "past participle of gehen"
             "url": str,             # canonical Wiktionary URL
+            "definition_lang": str, # the language the definitions are written in
         }
-    """
-    empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None, "url": _wiki_url(word)}
 
-    data = await _fetch(word, lang)
+    *lang* is the language the word itself is in; *target* is the language the
+    definitions should be written in, and selects which Wiktionary edition is
+    queried (#2704).
+    """
+    empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None,
+             "url": _wiki_url(word, target), "definition_lang": target}
+
+    data = await _fetch(word, lang, target)
     if data is None:
         return empty
 
@@ -135,21 +151,23 @@ async def lookup(word: str, lang: str = "en") -> dict:
         return {**empty, "definitions": definitions}
 
     form_of = definitions[0]["text"] if definitions else None
-    base_data = await _fetch(lemma, lang)
+    base_data = await _fetch(lemma, lang, target)
     base_definitions = _parse(base_data, lang, lemma)[0] if base_data else []
 
     if not base_definitions:
         # Base form has no usable entry — the form-of statement is still better
         # than showing the user nothing at all.
         return {"lemma": lemma, "language": lang, "definitions": definitions,
-                "form_of": form_of, "url": _wiki_url(word)}
+                "form_of": form_of, "url": _wiki_url(word, target),
+                "definition_lang": target}
 
     return {
         "lemma": lemma,
         "language": lang,
         "definitions": base_definitions,
         "form_of": form_of,
-        "url": _wiki_url(lemma),
+        "url": _wiki_url(lemma, target),
+        "definition_lang": target,
     }
 
 
@@ -165,25 +183,53 @@ _AI_SYSTEM = (
     "No markdown fences, no extra keys, no explanation — raw JSON only."
 )
 
+# Appended when the reader asked for definitions in a language other than English
+# (#2704). `lemma` and `pos` stay machine-readable; only the gloss is translated.
+_AI_TARGET_RULE = (
+    '\nWrite every "text" value in {target_name}. Keep "lemma" in the word\'s own '
+    'language and "pos" as a plain English part-of-speech tag.'
+)
 
-async def ai_lookup(word: str, lang: str, api_key: str, provider: str = "gemini") -> dict:
+# Language names the AI is asked to write in. Anything not listed falls back to
+# the bare code, which the models handle acceptably.
+_LANG_NAMES = {
+    "zh": "Chinese (Simplified)", "de": "German", "fr": "French", "es": "Spanish",
+    "it": "Italian", "pt": "Portuguese", "ru": "Russian", "ja": "Japanese",
+    "ko": "Korean", "nl": "Dutch", "pl": "Polish", "tr": "Turkish",
+    "ar": "Arabic", "hi": "Hindi", "sv": "Swedish", "en": "English",
+}
+
+
+def _system_prompt(target: str) -> str:
+    if target == DEFAULT_TARGET_LANG:
+        return _AI_SYSTEM
+    return _AI_SYSTEM + _AI_TARGET_RULE.format(target_name=_LANG_NAMES.get(target, target))
+
+
+async def ai_lookup(
+    word: str, lang: str, api_key: str, provider: str = "gemini",
+    target: str = DEFAULT_TARGET_LANG,
+) -> dict:
     """Look up *word* with the user's own AI key when Wiktionary returns nothing.
 
     *provider* is one of "deepseek" / "gemini" / "claude" — the key belongs to
-    that provider. Returns the same shape as :func:`lookup`.
+    that provider. *target* is the language the definitions should be written in.
+    Returns the same shape as :func:`lookup`.
     """
-    empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None, "url": _wiki_url(word)}
+    empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None,
+             "url": _wiki_url(word, target), "definition_lang": target}
+    system = _system_prompt(target)
     try:
         prompt = f'Word: "{word}"\nLanguage code: {lang}'
         if provider == "deepseek":
             from services.deepseek import _chat
-            raw = await _chat(api_key, _AI_SYSTEM, prompt, max_tokens=400)
+            raw = await _chat(api_key, system, prompt, max_tokens=400)
         elif provider == "claude":
             from services.claude import dictionary_lookup_with_key
-            raw = await dictionary_lookup_with_key(api_key, _AI_SYSTEM, prompt)
+            raw = await dictionary_lookup_with_key(api_key, system, prompt)
         else:
             from services.gemini import _generate
-            raw = await _generate(api_key, _AI_SYSTEM, prompt, max_tokens=400)
+            raw = await _generate(api_key, system, prompt, max_tokens=400)
         raw = raw.strip()
         if raw.startswith("```"):
             raw = re.sub(r"^```[a-z]*\n?", "", raw)
@@ -200,6 +246,7 @@ async def ai_lookup(word: str, lang: str, api_key: str, provider: str = "gemini"
             "definitions": definitions,
             "form_of": None,
             "url": "",
+            "definition_lang": target,
         }
     except Exception:
         return empty

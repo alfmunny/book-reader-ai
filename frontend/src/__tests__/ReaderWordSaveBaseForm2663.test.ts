@@ -20,12 +20,21 @@ const src = readFileSync(
 
 const handler = src.slice(
   src.indexOf("async function handleWordSave"),
-  src.indexOf("async function handleWordSave") + 900,
+  src.indexOf("async function handleWordSave") + 1600,
 );
 
 describe("reader vocabulary save passes the base form (#2663)", () => {
   it("handleWordSave takes an optional base form", () => {
     expect(handler).toMatch(/handleWordSave\(\s*word: string,\s*sentenceText: string,\s*baseForm\?: string/);
+  });
+
+  it("also takes the definition the tooltip already fetched (#2704)", () => {
+    expect(handler).toMatch(/definition\?: WordDefinition \| null/);
+  });
+
+  it("only sends the stored meaning when there is one", () => {
+    // An empty definitions array must not overwrite a meaning already stored.
+    expect(handler).toMatch(/definition\?\.definitions\?\.length/);
   });
 
   it("only sends `lemma` when a base form was actually resolved", () => {
@@ -42,8 +51,10 @@ describe("reader vocabulary save passes the base form (#2663)", () => {
     expect(handler).toMatch(/setVocabToastWord\(resolved \|\| word\)/);
   });
 
-  it("the tooltip hands its resolved word to the save handler", () => {
-    expect(src).toMatch(/onSave=\{\(wordToSave\) =>/);
-    expect(src).toMatch(/handleWordSave\(vocabTooltip\.word, vocabTooltip\.context, wordToSave\)/);
+  it("the tooltip hands its resolved word and definition to the save handler", () => {
+    expect(src).toMatch(/onSave=\{\(wordToSave, definition\) =>/);
+    expect(src).toMatch(
+      /handleWordSave\(vocabTooltip\.word, vocabTooltip\.context, wordToSave, definition\)/,
+    );
   });
 });

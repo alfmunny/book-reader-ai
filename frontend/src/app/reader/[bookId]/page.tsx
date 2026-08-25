@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -988,13 +988,28 @@ export default function ReaderPage() {
 
   // Vocabulary save handler. `baseForm` is the word's dictionary form when the
   // caller already resolved one; the backend looks it up otherwise (#2663).
-  async function handleWordSave(word: string, sentenceText: string, baseForm?: string) {
+  async function handleWordSave(
+    word: string,
+    sentenceText: string,
+    baseForm?: string,
+    definition?: WordDefinition | null,
+  ) {
     const resolved = baseForm?.trim();
     try {
       await saveVocabularyWord({
         // Only send `lemma` when a base form was actually resolved — sending the
         // surface word would suppress the backend's own lookup.
         ...(resolved ? { lemma: resolved } : {}),
+        // The meaning the tooltip already fetched, stored once at save time so
+        // clicking the word again costs no lookup (#2704).
+        ...(definition?.definitions?.length
+          ? {
+              definitions: definition.definitions,
+              form_of: definition.form_of ?? null,
+              definition_url: definition.url ?? null,
+              definition_lang: definition.definition_lang ?? null,
+            }
+          : {}),
         word,
         book_id: Number(bookId),
         chapter_index: chapterIndex,
@@ -1918,8 +1933,8 @@ export default function ReaderPage() {
               rect={vocabTooltip.rect}
               savedWords={vocabWordsSet}
               onClose={() => setVocabTooltip(null)}
-              onSave={(wordToSave) => {
-                handleWordSave(vocabTooltip.word, vocabTooltip.context, wordToSave);
+              onSave={(wordToSave, definition) => {
+                handleWordSave(vocabTooltip.word, vocabTooltip.context, wordToSave, definition);
                 setVocabTooltip(null);
               }}
             />

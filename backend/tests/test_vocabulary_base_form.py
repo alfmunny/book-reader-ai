@@ -82,7 +82,7 @@ async def test_resolve_falls_back_to_the_word_when_lookup_finds_nothing():
     with patch("services.wiktionary.lookup", AsyncMock(return_value={
         "lemma": "flibbertigibbet", "language": "en", "definitions": [], "form_of": None, "url": "",
     })):
-        base, lang = await _real_resolve_base_form("flibbertigibbet", BOOK_ID, None)
+        base, lang, _looked_up = await _real_resolve_base_form("flibbertigibbet", BOOK_ID, None)
     assert base == "flibbertigibbet"
     assert lang == "en"
 
@@ -91,7 +91,7 @@ async def test_resolve_falls_back_to_the_word_when_lookup_finds_nothing():
 async def test_resolve_falls_back_to_the_word_when_lookup_raises():
     """Network failure must never cost the user their save."""
     with patch("services.wiktionary.lookup", AsyncMock(side_effect=Exception("network down"))):
-        base, _lang = await _real_resolve_base_form("acknowledged", BOOK_ID, None)
+        base, _lang, _looked_up = await _real_resolve_base_form("acknowledged", BOOK_ID, None)
     assert base == "acknowledged"
 
 
@@ -100,7 +100,7 @@ async def test_resolve_falls_back_when_lookup_returns_a_blank_lemma():
     with patch("services.wiktionary.lookup", AsyncMock(return_value={
         "lemma": "   ", "language": "en", "definitions": [], "form_of": None, "url": "",
     })):
-        base, _lang = await _real_resolve_base_form("acknowledged", BOOK_ID, None)
+        base, _lang, _looked_up = await _real_resolve_base_form("acknowledged", BOOK_ID, None)
     assert base == "acknowledged"
 
 
@@ -109,7 +109,7 @@ async def test_resolve_uses_the_lookup_result_when_no_base_form_supplied():
     with patch("services.wiktionary.lookup", AsyncMock(return_value={
         "lemma": "acknowledge", "language": "en", "definitions": [], "form_of": None, "url": "",
     })) as mock_lookup:
-        base, _lang = await _real_resolve_base_form("acknowledged", BOOK_ID, None)
+        base, _lang, _looked_up = await _real_resolve_base_form("acknowledged", BOOK_ID, None)
     assert base == "acknowledge"
     assert mock_lookup.await_count == 1
 
@@ -118,7 +118,7 @@ async def test_resolve_uses_the_lookup_result_when_no_base_form_supplied():
 async def test_resolve_skips_the_lookup_when_a_base_form_is_supplied():
     """The tooltip already fetched the definition — no second round-trip."""
     with patch("services.wiktionary.lookup", AsyncMock()) as mock_lookup:
-        base, _lang = await _real_resolve_base_form("acknowledged", BOOK_ID, "acknowledge")
+        base, _lang, _looked_up = await _real_resolve_base_form("acknowledged", BOOK_ID, "acknowledge")
     assert base == "acknowledge"
     assert mock_lookup.await_count == 0
 

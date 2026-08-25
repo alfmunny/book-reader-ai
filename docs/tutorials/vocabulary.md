@@ -12,12 +12,29 @@ If the word you clicked is an inflected form, the panel resolves it to its base 
 
 A small confirmation toast appears briefly to confirm the save.
 
+The word's meaning is stored with it. Clicking a word you've already saved shows
+the definition instantly, with no dictionary lookup at all.
+
+### Choose the dictionary language
+
+The definition panel has a language selector in its top-right corner. Pick the
+language you want meanings written in — a German book can be explained in
+Chinese, English, or anything else in the list — and the choice is remembered
+for next time.
+
+Coverage varies: `en.wiktionary.org` is by far the richest edition, so for other
+languages the lookup usually falls through to your configured AI provider, which
+writes the definition in the language you asked for. If neither has an entry, an
+English definition is shown as a last resort and the panel says so rather than
+pretending it answered in your language.
+
 ## View your saved words
 
 Go to **Vocabulary** in the main navigation. All saved words appear here, grouped by language and sorted by how recently you saved them.
 
 Each word entry shows:
 - The base form (lemma) of the word
+- Its meaning, captured when you saved it
 - The book and chapter where you saved it
 - A **Delete** button to remove it
 

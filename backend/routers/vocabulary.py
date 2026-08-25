@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field, field_validator
 from services.auth import get_current_user, encrypt_api_key, decrypt_api_key, check_book_access
 from services.db import (
     save_word,
+    store_definition,
+    get_stored_definition,
     get_vocabulary,
     delete_word,
     get_obsidian_settings,
@@ -27,10 +29,20 @@ router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
 logger = logging.getLogger(__name__)
 
 
+class Definition(BaseModel):
+    pos: str = Field(default="", max_length=100)
+    text: str = Field(..., min_length=1, max_length=2000)
+
+
 class WordSave(BaseModel):
     word: str = Field(..., min_length=1, max_length=200)
     # Base form, when the client already fetched a definition (saves a round-trip).
     lemma: str | None = Field(default=None, max_length=200)
+    # The meaning the client already has in hand, stored once at save time (#2704).
+    definitions: list[Definition] | None = Field(default=None, max_length=10)
+    form_of: str | None = Field(default=None, max_length=500)
+    definition_url: str | None = Field(default=None, max_length=1000)
+    definition_lang: str | None = Field(default=None, max_length=20)
     book_id: int = Field(..., ge=1)
     chapter_index: int = Field(..., ge=0)
     sentence_text: str = Field(..., min_length=1, max_length=5000)
@@ -73,6 +85,10 @@ async def save(req: WordSave, user: dict = Depends(get_current_user)):
         req.chapter_index,
         req.sentence_text,
         lemma=req.lemma,
+        definitions=[d.model_dump() for d in req.definitions] if req.definitions else None,
+        form_of=req.form_of,
+        definition_url=req.definition_url,
+        definition_lang=req.definition_lang,
     )
 
 
@@ -85,20 +101,37 @@ async def list_vocabulary(user: dict = Depends(get_current_user)):
 async def get_definition(
     word: str = Path(..., max_length=200),
     lang: str = Query(default="en", min_length=1, max_length=20),
+    target: str = Query(default="en", min_length=1, max_length=20),
     user: dict = Depends(get_current_user),
 ):
+    """Define *word* (written in *lang*) with the gloss written in *target*.
+
+    Saved words are served straight from the vocabulary table so a click costs no
+    network round-trip at all. Otherwise the chain is: *target*'s Wiktionary → the
+    user's AI provider writing in *target* → English Wiktionary as a last resort
+    (#2704). Whatever comes back is persisted onto the entry if the word is saved.
+    """
     word = word.strip()
     if not word:
         raise HTTPException(status_code=422, detail="word cannot be blank")
     lang = lang.strip().lower().split("-")[0]
     if not lang:
         raise HTTPException(status_code=422, detail="lang cannot be blank")
+    target = target.strip().lower().split("-")[0]
+    if not target:
+        raise HTTPException(status_code=422, detail="target cannot be blank")
+
+    stored = await get_stored_definition(user["id"], word, target)
+    if stored:
+        return stored
+
     from services import wiktionary
-    result = await wiktionary.lookup(word, lang)
+    result = await wiktionary.lookup(word, lang, target=target)
     if not result["definitions"]:
         # First configured provider wins, in the chat's auto order (cheapest
         # capable first). Handles words Wiktionary lacks — rare inflections
-        # and author-invented compounds like "Himmelslichts".
+        # and author-invented compounds like "Himmelslichts" — and carries most
+        # of the load for target languages whose Wiktionary is thin.
         for provider, column in (
             ("deepseek", "deepseek_key"),
             ("gemini", "gemini_key"),
@@ -111,8 +144,15 @@ async def get_definition(
                 api_key = decrypt_api_key(raw_key)
             except HTTPException:
                 continue
-            result = await wiktionary.ai_lookup(word, lang, api_key, provider=provider)
+            result = await wiktionary.ai_lookup(word, lang, api_key, provider=provider, target=target)
             break
+    if not result["definitions"] and target != wiktionary.DEFAULT_TARGET_LANG:
+        # Last resort: an English gloss beats no gloss at all. `definition_lang`
+        # tells the client it is not in the language that was asked for.
+        result = await wiktionary.lookup(word, lang, target=wiktionary.DEFAULT_TARGET_LANG)
+
+    if result["definitions"]:
+        await store_definition(user["id"], word, result, result.get("definition_lang") or target)
     return result
 
 

@@ -123,23 +123,28 @@ export default function ReaderPage() {
   const ttsControlsRef = useRef<{ pause: () => void; play: () => void } | null>(null);
   const ttsIsPlayingRef = useRef(false);
 
-  // Annotation display toggle (persisted)
-  const [showAnnotations, setShowAnnotations] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("reader-show-annotations") !== "false";
-  });
+  // Annotation display toggle (persisted; applied after mount — see below)
+  const [showAnnotations, setShowAnnotations] = useState(true);
 
   // Sidebar — hidden by default, resizable, tabbed
-  // Remember the sidebar across visits (owner request, 2026-08-25). Open
-  // state restores on desktop only — the same state drives the mobile bottom
-  // sheet, which must not auto-open on load.
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
-    typeof window !== "undefined" && window.innerWidth >= 768 && getSettings().readerSidebarOpen
-  );
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">(() =>
-    typeof window !== "undefined" ? getSettings().readerSidebarTab : "chat"
-  );
+  // Remember the sidebar across visits (owner request, 2026-08-25). Stored
+  // state is applied AFTER mount: reading it in a useState initializer makes
+  // the client's first render differ from the server's HTML — the "Hydration
+  // failed" overlay the owner hit on 2026-08-26. Open state restores on
+  // desktop only — the same state drives the mobile bottom sheet, which must
+  // not auto-open on load.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
+  const sidebarRestored = useRef(false);
   useEffect(() => {
+    const s = getSettings();
+    if (window.innerWidth >= 768 && s.readerSidebarOpen) setSidebarOpen(true);
+    setSidebarTab(s.readerSidebarTab);
+    setShowAnnotations(localStorage.getItem("reader-show-annotations") !== "false");
+    sidebarRestored.current = true;
+  }, []);
+  useEffect(() => {
+    if (!sidebarRestored.current) return;
     saveSettings({ readerSidebarOpen: sidebarOpen, readerSidebarTab: sidebarTab });
   }, [sidebarOpen, sidebarTab]);
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
@@ -325,12 +330,15 @@ export default function ReaderPage() {
   // Translation state
   const translationCache = useRef(new Map<string, { paragraphs: string[]; label: string }>());
   const currentChapterKey = useRef<string>(""); // tracks which chapter is currently displayed
-  const [translationEnabled, setTranslationEnabled] = useState<boolean>(() =>
-    typeof window !== "undefined" ? getSettings().translationEnabled : false
-  );
-  const [translationLang, setTranslationLang] = useState<string>(() =>
-    typeof window !== "undefined" ? getSettings().translationLang : "en"
-  );
+  // Applied after mount to keep server and client first renders identical
+  // (same hydration hazard as the sidebar state above).
+  const [translationEnabled, setTranslationEnabled] = useState<boolean>(false);
+  const [translationLang, setTranslationLang] = useState<string>("en");
+  useEffect(() => {
+    const s = getSettings();
+    if (s.translationEnabled) setTranslationEnabled(true);
+    setTranslationLang(s.translationLang);
+  }, []);
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);

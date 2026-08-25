@@ -8,12 +8,21 @@ import httpx
 _BASE = "https://en.wiktionary.org/api/rest_v1/page/definition"
 _HEADERS = {"User-Agent": "BookReaderAI/1.0 (https://github.com/alfmunny/book-reader-ai)"}
 
-# Keywords that signal a "form of" definition entry
-_FORM_KEYWORDS = frozenset({
-    "participle", "tense", "plural", "singular", "genitive", "dative",
-    "accusative", "nominative", "inflection", "form", "comparative",
-    "superlative", "conjugation", "imperative", "infinitive",
-})
+# A form-of statement has one of these words directly before "of"
+# ("past participle of X", "plural of X", "comparative degree of X", ...).
+# A bare " of " is NOT enough: ordinary glosses use it constantly
+# ("not befitting someone of higher class") and following those produced
+# nonsense base forms (owner report, 2026-08-25: gewoehnlich -> "higher").
+_FORM_OF_RE = re.compile(
+    r"\b(?:participle|tense|past|present|preterite|plural|singular|genitive"
+    r"|dative|accusative|nominative|inflection|forms?|comparative|superlative"
+    r"|conjugation|imperative|infinitive|subjunctive|gerund|diminutive|degree"
+    r"|spelling|misspelling|abbreviation|contraction|clipping|variant)"
+    r"\s+of\s+",
+    re.IGNORECASE,
+)
+
+_WORD_RE = re.compile(r"[A-Za-z\u00C0-\u00F6\u00F8-\u00FF\u0400-\u04FF\-]+")
 
 
 def _extract_lemma(raw_html: str, current_word: str) -> str | None:
@@ -23,22 +32,15 @@ def _extract_lemma(raw_html: str, current_word: str) -> str | None:
       "past participle of <b class='Latn'>gehen</b>"
       "plural of <a href='./Buch'>Buch</a>"
     """
-    lower = re.sub(r"<[^>]+>", "", raw_html).lower()
-    if " of " not in lower and not any(k in lower for k in _FORM_KEYWORDS):
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", raw_html)).strip()
+    m = _FORM_OF_RE.search(text)
+    if not m:
         return None
 
-    # Extract text node immediately after "of " followed by one or more tags
-    m = re.search(r"\bof\s+(?:<[^>]+>)+([^<\s,;.]+)", raw_html, re.IGNORECASE)
-    if m:
-        candidate = m.group(1).strip(" .,;")
-        if candidate and candidate.lower() != current_word.lower():
-            return candidate
-
-    # Fallback: plain "of word" without HTML tags
-    m = re.search(r"\bof\s+([A-Za-zÀ-öø-ÿ\u0400-\u04FF\-]+)", raw_html, re.IGNORECASE)
-    if m:
-        candidate = m.group(1).strip()
-        if candidate and candidate.lower() != current_word.lower():
+    wm = _WORD_RE.match(text[m.end():])
+    if wm:
+        candidate = wm.group(0)
+        if candidate.lower() != current_word.lower():
             return candidate
 
     return None

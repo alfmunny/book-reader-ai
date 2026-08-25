@@ -21,12 +21,6 @@ describe("Reader toolbar sidebar-toggle buttons aria-label (closes #1022)", () =
     expect(window).toContain('aria-label="Translate"');
   });
 
-  it("Chapter summary toggle has aria-label", () => {
-    const idx = src.indexOf('title="Chapter summary"');
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
-    expect(window).toContain("aria-label");
-  });
 
   it("Notes sidebar toggle has aria-label", () => {
     const idx = src.indexOf('title="Annotations & notes"');

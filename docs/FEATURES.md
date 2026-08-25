@@ -3,7 +3,7 @@
 ## Session 3 — 2026-04-22
 
 ### Implemented this session
-- [x] AI Chapter Summary (PR #262)
+- [x] AI Chapter Summary (PR #262) — UI removed 2026-08-25 (#2685); endpoint retained
 - [x] Reading Statistics Dashboard (PR #268)
 - [x] Immersive Reading Mode (PR #301)
 
@@ -12,7 +12,11 @@
 
 ---
 
-## Feature 1: AI Chapter Summary ✅ (merged — PR #262)
+## Feature 1: AI Chapter Summary ✅ (merged — PR #262; UI removed 2026-08-25, #2685)
+
+> **Status update (2026-08-25):** the Summary tab was removed from the reader menu
+> by owner decision (#2685). The `ChapterSummary` component and the
+> `POST /ai/summary` endpoint remain in the codebase for easy restoration.
 
 ### Overview
 When a user wants to recall what happened in a chapter before continuing, they can click "Summarize" in the reader sidebar to get a concise AI-generated summary. Summaries are cached in the database and shared across all users — just like translations.

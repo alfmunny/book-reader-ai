@@ -59,7 +59,7 @@ describe("Truncated title tooltip coverage (closes #2212)", () => {
   });
 
   it("BookCard title paragraph has title attribute", () => {
-    const idx = cardSrc.indexOf('line-clamp-2 flex-1" title={book.title}');
+    const idx = cardSrc.indexOf('line-clamp-2 min-h-[2.5rem] flex-1" title={book.title}');
     expect(idx).toBeGreaterThan(-1);
   });
 

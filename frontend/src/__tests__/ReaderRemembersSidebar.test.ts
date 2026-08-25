@@ -30,21 +30,27 @@ describe("settings fields", () => {
 });
 
 describe("reader wiring", () => {
-  it("initializes the sidebar from settings, desktop-gated for open state", () => {
+  it("restores the sidebar AFTER mount, desktop-gated for open state", () => {
     expect(readerSrc).toMatch(/readerSidebarOpen/);
     expect(readerSrc).toMatch(/readerSidebarTab/);
     // Restoring "open" must be desktop-only — the same state drives the
     // mobile bottom sheet, which must not auto-open on load.
-    const openInit = readerSrc.slice(
-      readerSrc.indexOf("const [sidebarOpen"),
-      readerSrc.indexOf("const [sidebarTab"),
-    );
-    expect(openInit).toMatch(/innerWidth\s*>=\s*768/);
+    expect(readerSrc).toMatch(/innerWidth\s*>=\s*768/);
   });
 
   it("persists open state and tab on change", () => {
     expect(readerSrc).toMatch(
       /saveSettings\(\{\s*readerSidebarOpen:\s*sidebarOpen,\s*readerSidebarTab:\s*sidebarTab\s*\}\)/,
     );
+  });
+
+  it("never reads settings or localStorage during the first render (hydration)", () => {
+    // Regression (owner report, 2026-08-26): reading persisted state in a
+    // useState initializer makes the client's first render differ from the
+    // server's HTML → "Hydration failed" overlay. Stored state must be
+    // applied in a mount effect instead.
+    expect(readerSrc).not.toMatch(/typeof window !== "undefined"[^\n]*getSettings/);
+    expect(readerSrc).not.toMatch(/useState\([^)\n]*getSettings/);
+    expect(readerSrc).not.toMatch(/useState\(\(\) =>[\s\S]{0,160}localStorage\.getItem\("reader-show-annotations"\)/);
   });
 });

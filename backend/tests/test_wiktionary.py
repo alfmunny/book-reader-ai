@@ -74,6 +74,43 @@ def test_extract_lemma_plain_of():
     assert _extract_lemma(html, "ran") == "run"
 
 
+def test_extract_lemma_ignores_of_inside_gloss_parenthetical():
+    """Regression (owner report, 2026-08-25): en.wiktionary's second definition
+    for the German adjective 'gewöhnlich' is 'vulgar, common (not befitting
+    someone of higher class)'. The bare ' of ' inside the gloss was treated as
+    a form-of pointer, so the tooltip showed 'Base form: higher' with the
+    definitions of the English word 'higher' ('comparative form of high').
+    Only a real form-of statement (form keyword directly before 'of') may set
+    a lemma."""
+    html = (
+        '<a rel="mw:WikiLink" href="/wiki/vulgar">vulgar</a>, '
+        '<a rel="mw:WikiLink" href="/wiki/common">common</a> '
+        '<span class="mention-gloss-paren">(</span>'
+        '<span class="mention-gloss">not befitting someone of higher class</span>'
+        '<span class="mention-gloss-paren">)</span>'
+    )
+    assert _extract_lemma(html, "gewöhnlich") is None
+
+
+def test_extract_lemma_ignores_plain_prepositional_of():
+    """Ordinary glosses use 'of' constantly ('a piece of furniture', 'the act
+    of running'). None of these are form-of statements."""
+    assert _extract_lemma("a piece of furniture with a flat top", "Tisch") is None
+    assert _extract_lemma("the act of running quickly", "Lauf") is None
+
+
+def test_extract_lemma_real_form_of_statements_still_resolve():
+    """The genuine Wiktionary form-of phrasings must keep working."""
+    cases = [
+        ("second-person singular preterite of <b>sehen</b>", "sahst", "sehen"),
+        ("comparative degree of <a href='./hoch'>hoch</a>", "höher", "hoch"),
+        ("inflection of <b>gewöhnlich</b>:", "gewöhnliche", "gewöhnlich"),
+        ("alternative spelling of <b>colour</b>", "color", "colour"),
+    ]
+    for html, word, expected in cases:
+        assert _extract_lemma(html, word) == expected, html
+
+
 # ── lookup ─────────────────────────────────────────────────────────────────────
 
 def _make_mock_response(status_code: int, json_data: dict):
@@ -558,3 +595,37 @@ async def test_lookup_form_of_is_none_when_lookup_fails_entirely():
 
     assert result["form_of"] is None
     assert result["definitions"] == []
+
+
+@pytest.mark.asyncio
+async def test_lookup_gewoehnlich_does_not_become_higher():
+    """Regression (owner report, 2026-08-25): looking up 'gewöhnlich' returned
+    lemma 'higher' because a gloss parenthetical contained '…of higher class'.
+    The word is already a base form — no pointer may be followed."""
+    payload = {
+        "de": [
+            {
+                "partOfSpeech": "Adjective",
+                "definitions": [
+                    {"definition": "<a href='/wiki/usual'>usual</a>, <a href='/wiki/normal'>normal</a>"},
+                    {"definition": "<a href='/wiki/vulgar'>vulgar</a>, common "
+                                   "<span>(</span><span>not befitting someone of higher class</span><span>)</span>"},
+                ],
+            },
+            {
+                "partOfSpeech": "Adverb",
+                "definitions": [{"definition": "<a href='/wiki/usually'>usually</a>"}],
+            },
+        ]
+    }
+    try:
+        cls = _mock_client({"/gew%C3%B6hnlich": _make_mock_response(200, payload)})
+        result = await lookup("gewöhnlich", "de")
+        call_count = cls.return_value.__aenter__.return_value.get.await_count
+    finally:
+        patch.stopall()
+
+    assert result["lemma"] == "gewöhnlich"
+    assert result["form_of"] is None
+    assert "usual" in result["definitions"][0]["text"]
+    assert call_count == 1  # no second fetch for a phantom base form

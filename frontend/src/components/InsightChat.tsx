@@ -9,7 +9,7 @@ import {
   getInsights,
 } from "@/lib/api";
 import { getSettings, saveSettings, ChatProviderSetting } from "@/lib/settings";
-import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, AlertCircleIcon } from "@/components/Icons";
+import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -162,6 +162,9 @@ export default function InsightChat({
   const [contextText, setContextText] = useState("");
   const [refreshTick, setRefreshTick] = useState(0);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  // Insight id per saved key — powers the "View note" jump link to the
+  // anchored insight on /notes/[bookId].
+  const [savedIds, setSavedIds] = useState<Map<string, number>>(new Map());
   // tracks which message-level contexts are expanded (by absolute index)
   const [expandedMsgCtx, setExpandedMsgCtx] = useState<Set<number>>(new Set());
 
@@ -280,6 +283,7 @@ export default function InsightChat({
       .then((list) => {
         const keys = new Set(list.map((i) => insightKey(i.question, i.answer)));
         setSavedInsights(keys);
+        setSavedIds(new Map(list.map((i) => [insightKey(i.question, i.answer), i.id])));
         try {
           localStorage.setItem(SAVED_KEY(userId, bookId), JSON.stringify([...keys]));
         } catch {}
@@ -580,7 +584,9 @@ export default function InsightChat({
                   const saveKey = insightKey(prevUserMsg.content, msg.content);
                   const isSaved = savedInsights.has(saveKey);
                   const isSaving = savingKey === saveKey;
+                  const noteId = savedIds.get(saveKey);
                   return (
+                    <div className="mt-1.5 flex items-center gap-3">
                     <button
                       onClick={() => {
                         // Only mark saved once the API confirms — an optimistic
@@ -588,7 +594,7 @@ export default function InsightChat({
                         if (isSaved || isSaving) return;
                         setSavingKey(saveKey);
                         Promise.resolve(onSaveInsight(prevUserMsg.content, msg.content, prevUserMsg.context))
-                          .then(() => {
+                          .then((created) => {
                             setSavedInsights((prev) => {
                               const next = new Set(prev).add(saveKey);
                               try {
@@ -596,13 +602,17 @@ export default function InsightChat({
                               } catch {}
                               return next;
                             });
+                            const id = (created as { id?: number } | null | undefined)?.id;
+                            if (typeof id === "number") {
+                              setSavedIds((prev) => new Map(prev).set(saveKey, id));
+                            }
                           })
                           .catch(() => {}) // parent surfaces the failure toast
                           .finally(() => setSavingKey((k) => (k === saveKey ? null : k)));
                       }}
                       disabled={isSaving}
                       title={isSaved ? "Already saved" : "Save to notes"}
-                      className={`mt-1.5 flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded ${
+                      className={`flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded ${
                         isSaved
                           ? "text-stone-600 cursor-default"
                           : "text-stone-600 hover:text-amber-700"
@@ -611,6 +621,15 @@ export default function InsightChat({
                       <BookmarkIcon className="w-3 h-3" fill={isSaved ? "currentColor" : "none"} />
                       {isSaved ? "Saved" : isSaving ? "Saving…" : "Save to notes"}
                     </button>
+                    {isSaved && (
+                      <a
+                        href={noteId != null ? `/notes/${bookId}#insight-${noteId}` : `/notes/${bookId}`}
+                        className="flex items-center gap-0.5 min-h-[44px] md:min-h-0 text-[11px] text-amber-700 hover:text-amber-800 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                      >
+                        View note <ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" />
+                      </a>
+                    )}
+                    </div>
                   );
                 })()}
               </div>

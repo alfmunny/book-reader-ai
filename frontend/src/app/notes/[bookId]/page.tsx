@@ -197,7 +197,7 @@ function InsightCard({
     : null;
 
   return (
-    <div className="my-3 space-y-1.5">
+    <div id={`insight-${ins.id}`} className="my-3 space-y-1.5 scroll-mt-24">
       {ins.context_text && (
         <blockquote lang={bookLanguage ?? undefined} className="border-l-4 border-amber-200 pl-4 italic text-stone-600 text-sm leading-relaxed">
           &ldquo;{truncate(ins.context_text, 200)}&rdquo;

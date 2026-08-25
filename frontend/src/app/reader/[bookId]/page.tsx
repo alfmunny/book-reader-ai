@@ -135,18 +135,22 @@ export default function ReaderPage() {
   // not auto-open on load.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
-  const sidebarRestored = useRef(false);
+  // State (not a ref): effects that react to restored values — the persist
+  // effect and the translationLang===bookLanguage correction — must re-run
+  // with FRESH state after the restore, not fire on mount with stale
+  // defaults (the fr→de clobber caught by e2e/annotation-translation).
+  const [settingsRestored, setSettingsRestored] = useState(false);
   useEffect(() => {
     const s = getSettings();
     if (window.innerWidth >= 768 && s.readerSidebarOpen) setSidebarOpen(true);
     setSidebarTab(s.readerSidebarTab);
     setShowAnnotations(localStorage.getItem("reader-show-annotations") !== "false");
-    sidebarRestored.current = true;
+    setSettingsRestored(true);
   }, []);
   useEffect(() => {
-    if (!sidebarRestored.current) return;
+    if (!settingsRestored) return;
     saveSettings({ readerSidebarOpen: sidebarOpen, readerSidebarTab: sidebarTab });
-  }, [sidebarOpen, sidebarTab]);
+  }, [settingsRestored, sidebarOpen, sidebarTab]);
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [vocabFetchError, setVocabFetchError] = useState(false);
   const [vocabRetryTick, setVocabRetryTick] = useState(0);
@@ -518,12 +522,15 @@ export default function ReaderPage() {
   // the single queue (same model chain, same rate limits).
   // Reset translationLang when bookLanguage is known and they coincide.
   useEffect(() => {
-    if (!bookLanguage) return;
+    // Wait for the stored language to be applied — on mount bookLanguage
+    // defaults to "en" and translationLang starts at "en", so running early
+    // clobbered the user's stored choice with available[0] ("de").
+    if (!settingsRestored || !bookLanguage) return;
     const available = LANGUAGES.filter((l) => l.code !== bookLanguage);
     if (translationLang === bookLanguage && available.length > 0) {
       setTranslationLang(available[0].code);
     }
-  }, [bookLanguage, translationLang]);
+  }, [settingsRestored, bookLanguage, translationLang]);
 
   // Eagerly hide the "Translate this chapter" button before the browser paints
   // when we know an async server check is about to run. Without this, the button

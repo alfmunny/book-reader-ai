@@ -28,9 +28,13 @@ describe("Vocabulary page Unicode icon replacements", () => {
     expect(src).toMatch(/ArrowUpRightIcon/);
   });
 
-  it("export button uses ArrowUpRightIcon", () => {
-    const exportIdx = src.indexOf("export-all-btn");
-    const snippet = src.slice(exportIdx, exportIdx + 300);
+  it("export control uses SVG icons — ExportIcon on the trigger, ArrowUpRightIcon on the Obsidian option", () => {
+    const exportIdx = src.indexOf("<ExportMenu");
+    expect(exportIdx).toBeGreaterThan(-1);
+    const snippet = src.slice(exportIdx, exportIdx + 1600);
+    expect(snippet).toMatch(/export-all-btn/);
+    expect(snippet).toMatch(/ExportIcon/);
+    expect(snippet).toMatch(/DownloadIcon/);
     expect(snippet).toMatch(/ArrowUpRightIcon/);
   });
 

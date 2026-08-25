@@ -169,6 +169,7 @@ describe("VocabularyPage — export message link branch", () => {
     await screen.findByText("solitary");
 
     await userEvent.click(screen.getByTestId("export-all-btn"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
     await waitFor(() => {
       const link = screen.getByRole("link", { name: /https:\/\/example\.com\/note\.md/ });
@@ -186,6 +187,7 @@ describe("VocabularyPage — export message link branch", () => {
     await screen.findByText("solitary");
 
     await userEvent.click(screen.getByTestId("export-all-btn"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Export successful but no URL returned")).toBeInTheDocument(),
@@ -205,6 +207,7 @@ describe("VocabularyPage — export urls empty fallback", () => {
     await screen.findByText("solitary");
 
     await userEvent.click(screen.getByTestId("export-all-btn"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Exported successfully")).toBeInTheDocument(),
@@ -224,6 +227,7 @@ describe("VocabularyPage — export error paths", () => {
     await screen.findByText("solitary");
 
     await userEvent.click(screen.getByTestId("export-all-btn"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Obsidian vault not found")).toBeInTheDocument(),
@@ -239,6 +243,7 @@ describe("VocabularyPage — export error paths", () => {
     await screen.findByText("solitary");
 
     await userEvent.click(screen.getByTestId("export-all-btn"));
+    await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
     await waitFor(() =>
       expect(screen.getByText("Export failed")).toBeInTheDocument(),

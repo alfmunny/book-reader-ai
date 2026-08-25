@@ -204,6 +204,7 @@ test("export button calls exportVocabularyToObsidian and shows success", async (
   await waitFor(() => screen.getByText(/Call me Ishmael/));
 
   fireEvent.click(screen.getByRole("button", { name: /Export/i }));
+  fireEvent.click(screen.getByRole("menuitem", { name: /Export to Obsidian/i }));
   await waitFor(() => expect(mockExportVocabularyToObsidian).toHaveBeenCalledWith(10));
   await waitFor(() => expect(screen.getByRole("link", { name: /https:\/\/github\.com\/example\/1/ })).toBeInTheDocument());
 });
@@ -215,6 +216,7 @@ test("export shows 'Exported successfully' when no URL returned", async () => {
   await waitFor(() => screen.getByText(/Call me Ishmael/));
 
   fireEvent.click(screen.getByRole("button", { name: /Export/i }));
+  fireEvent.click(screen.getByRole("menuitem", { name: /Export to Obsidian/i }));
   await waitFor(() => expect(screen.getByText("Exported successfully")).toBeInTheDocument());
 });
 
@@ -225,6 +227,7 @@ test("export shows error message on failure", async () => {
   await waitFor(() => screen.getByText(/Call me Ishmael/));
 
   fireEvent.click(screen.getByRole("button", { name: /Export/i }));
+  fireEvent.click(screen.getByRole("menuitem", { name: /Export to Obsidian/i }));
   await waitFor(() => expect(screen.getByText("Vault not found")).toBeInTheDocument());
 });
 
@@ -467,6 +470,7 @@ test("export shows 'Export failed' when non-Error is thrown (line 372)", async (
   await waitFor(() => screen.getByText(/Call me Ishmael/));
 
   fireEvent.click(screen.getByRole("button", { name: /Export/i }));
+  fireEvent.click(screen.getByRole("menuitem", { name: /Export to Obsidian/i }));
   await waitFor(() => expect(screen.getByText("Export failed")).toBeInTheDocument());
 });
 

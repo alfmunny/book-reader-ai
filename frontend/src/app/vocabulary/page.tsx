@@ -14,7 +14,10 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon, DownloadIcon, ExportIcon } from "@/components/Icons";
+import { buildVocabularyMarkdown } from "@/lib/vocabularyMarkdown";
+import { downloadTextFile } from "@/lib/download";
+import ExportMenu from "@/components/ExportMenu";
 import TagEditor from "@/components/TagEditor";
 import UndoToast from "@/components/UndoToast";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -266,6 +269,7 @@ function VocabularyPageContent() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const [exportOk, setExportOk] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletedWordToast, setDeletedWordToast] = useState<VocabularyWord | null>(null);
   const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
@@ -381,13 +385,23 @@ function VocabularyPageContent() {
     setExporting(true);
     try {
       const { urls } = await exportVocabularyToObsidian(bookId);
+      setExportOk(true);
       setExportMsg(urls[0] || "Exported successfully");
     } catch (e) {
+      setExportOk(false);
       setExportMsg(e instanceof Error ? e.message : "Export failed");
     } finally {
       setExporting(false);
       setTimeout(() => setExportMsg(null), 8000);
     }
+  }
+
+  function handleDownloadMarkdown() {
+    const filename = "vocabulary.md";
+    downloadTextFile(filename, buildVocabularyMarkdown(words));
+    setExportOk(true);
+    setExportMsg(`Downloaded ${filename}`);
+    setTimeout(() => setExportMsg(null), 8000);
   }
 
   const totalOccurrences = words.reduce((sum, w) => sum + w.occurrences.length, 0);
@@ -539,14 +553,29 @@ function VocabularyPageContent() {
           <FlashcardIcon className="w-4 h-4" />
           <span className="hidden sm:inline">Flashcards</span>
         </Link>
-        <button
-          onClick={() => handleExport()}
-          disabled={exporting || words.length === 0}
-          className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors disabled:opacity-50 min-h-[44px] md:min-h-0 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-          data-testid="export-all-btn"
-        >
-          {exporting ? "Exporting…" : (<><ArrowUpRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span className="hidden sm:inline">Export all to Obsidian</span><span className="sm:hidden">Export</span></>)}
-        </button>
+        <ExportMenu
+          busy={exporting}
+          disabled={words.length === 0}
+          icon={<ExportIcon className="w-3.5 h-3.5 shrink-0" />}
+          triggerTestId="export-all-btn"
+          triggerClassName="w-full flex items-center gap-1.5 px-3 py-2 md:py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+          options={[
+            {
+              key: "markdown",
+              label: "Download Markdown",
+              description: "Save a .md file to this device",
+              icon: <DownloadIcon className="w-4 h-4" />,
+              onSelect: handleDownloadMarkdown,
+            },
+            {
+              key: "obsidian",
+              label: "Export to Obsidian",
+              description: "Push every word to your GitHub vault",
+              icon: <ArrowUpRightIcon className="w-4 h-4" />,
+              onSelect: () => handleExport(),
+            },
+          ]}
+        />
       </header>
 
       <div role="status" aria-live="polite" aria-atomic="true" className="mx-6 mt-4">
@@ -554,6 +583,8 @@ function VocabularyPageContent() {
           <div className="border border-amber-300 bg-amber-50 rounded-xl px-4 py-3 text-sm text-ink">
             {exportMsg.startsWith("http") ? (
               <>Exported! <a href={exportMsg} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline break-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">{exportMsg}<span className="sr-only"> (opens in new tab)</span></a></>
+            ) : exportOk ? (
+              <span className="text-emerald-700">{exportMsg}</span>
             ) : (
               <span className="text-red-600">{exportMsg}</span>
             )}

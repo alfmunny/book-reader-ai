@@ -61,3 +61,11 @@ test("insight answers render through the markdown pipeline, not as raw text", as
   expect(md).toHaveTextContent("The wager");
   expect(md.className).toContain("prose");
 });
+
+test("each insight card carries an id anchor so chat links can jump to it", async () => {
+  render(<BookNotesPage />);
+  await waitFor(() => expect(screen.getByText("What is the wager?")).toBeInTheDocument());
+  // The chat's "View note" link targets /notes/<bookId>#insight-<id>; the
+  // page's existing hash-scroll effect needs this element id to land on it.
+  expect(document.getElementById("insight-1")).not.toBeNull();
+});

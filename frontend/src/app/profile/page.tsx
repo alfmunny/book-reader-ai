@@ -59,6 +59,8 @@ export default function ProfilePage() {
     chatFontSize: "xs",
     chatProvider: "auto",
     chatSuggestionsHidden: false,
+    readerSidebarOpen: false,
+    readerSidebarTab: "chat",
     translationProvider: "auto",
     fontSize: "base",
     theme: "light",

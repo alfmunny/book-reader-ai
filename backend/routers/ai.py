@@ -1,6 +1,8 @@
 import asyncio
 import logging
 from collections import defaultdict
+
+import httpx
 from typing import Annotated, Literal
 
 logger = logging.getLogger(__name__)
@@ -180,6 +182,43 @@ class ChunkTextRequest(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+def _provider_error_detail(provider: str, exc: Exception) -> str:
+    """Actionable, non-leaking message for a failed provider call.
+
+    Owner report (2026-08-25): every failure read "AI service request failed" —
+    the reader couldn't tell an invalid key from an exhausted quota. Status
+    codes are read from wherever the SDK puts them: `status_code` (anthropic,
+    httpx errors via response), `code` (google-genai).
+    """
+    label = _QA_KEY_LABELS.get(provider, provider)
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        status = getattr(exc, "code", None)
+    if status is None:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status in (401, 403):
+        return f"{label} rejected your API key — check it in your profile."
+    if status == 402:
+        return f"Your {label} account has insufficient balance — top it up to continue."
+    if status == 429:
+        return f"{label} rate limit or quota exceeded — wait a moment and retry."
+    if isinstance(exc, httpx.TimeoutException) or "timed out" in str(exc).lower():
+        return f"{label} did not respond in time — retry in a moment."
+    return f"The {label} request failed — retry, or switch provider in the dropdown."
+
+
+def _require_nonempty(result: str, provider: str) -> str:
+    """An empty answer renders as a blank chat bubble — the 'silent failure'
+    the owner reported. Surface it as an explicit, retryable error instead."""
+    if not result or not result.strip():
+        label = _QA_KEY_LABELS.get(provider, provider)
+        raise HTTPException(
+            status_code=502,
+            detail=f"{label} returned an empty answer — retry, or switch provider.",
+        )
+    return result
+
+
 @router.post("/insight")
 async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
     provider, key = _resolve_qa_provider(user, req.provider)
@@ -196,10 +235,12 @@ async def insight(req: InsightRequest, user: dict = Depends(get_current_user)):
             result = await gemini.generate_insight(
                 key, req.chapter_text, req.book_title, req.author, req.response_language
             )
-        return {"insight": result, "provider": provider}
+        return {"insight": _require_nonempty(result, provider), "provider": provider}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("POST /ai/insight failed for user %s: %s", user.get("id"), exc)
-        raise HTTPException(status_code=500, detail="AI service request failed")
+        raise HTTPException(status_code=502, detail=_provider_error_detail(provider, exc))
 
 
 # Dict order drives "auto": DeepSeek first (fractions of a cent per message),
@@ -257,10 +298,12 @@ async def qa(req: QARequest, user: dict = Depends(get_current_user)):
             result = await gemini.answer_question(
                 key, req.question, req.passage, req.book_title, req.author, req.response_language
             )
-        return {"answer": result, "provider": provider}
+        return {"answer": _require_nonempty(result, provider), "provider": provider}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.exception("POST /ai/qa failed for user %s: %s", user.get("id"), exc)
-        raise HTTPException(status_code=500, detail="AI service request failed")
+        raise HTTPException(status_code=502, detail=_provider_error_detail(provider, exc))
 
 
 @router.post("/references")

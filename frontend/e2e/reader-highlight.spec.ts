@@ -38,9 +38,7 @@ test("highlight sends the user's selected substring, not the full sentence", asy
 
   // Use evaluate to select just the first word ("It") inside the first [data-seg] span,
   // then dispatch selectionchange so SelectionToolbar picks it up.
-  // Double-dispatch (after 2 RAF cycles) handles the race where React's useEffect
-  // listener hasn't registered on the first dispatch.
-  const segText = await page.evaluate(async () => {
+  const segText = await page.evaluate(() => {
     const seg = document.querySelector("[data-seg]");
     if (!seg || !seg.firstChild) return null;
     const range = document.createRange();
@@ -50,20 +48,21 @@ test("highlight sends the user's selected substring, not the full sentence", asy
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);
-    document.dispatchEvent(new Event("selectionchange"));
-    // Wait 2 animation frames so React's useEffect has time to register listeners,
-    // then dispatch again to ensure the toolbar state is set.
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    document.dispatchEvent(new Event("selectionchange"));
     return seg.textContent?.trim() ?? null;
   });
 
   // The segment must exist and contain text
   expect(segText).toBeTruthy();
 
-  // SelectionToolbar should appear with Highlight button
+  // SelectionToolbar registers its selectionchange listener in a useEffect —
+  // on a slow CI runner a fixed number of dispatches can land before the
+  // listener exists (the flake caught by the CI gate). The selection itself
+  // is stable, so re-dispatch until the toolbar appears instead of guessing.
   const highlightBtn = page.getByRole("button", { name: /highlight/i });
-  await expect(highlightBtn).toBeVisible({ timeout: 6000 });
+  await expect(async () => {
+    await page.evaluate(() => document.dispatchEvent(new Event("selectionchange")));
+    await expect(highlightBtn).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 15000 });
 
   // Click Highlight — this opens the QuickHighlightPanel with color choices
   await highlightBtn.click();
@@ -73,8 +72,10 @@ test("highlight sends the user's selected substring, not the full sentence", asy
   await expect(yellowBtn).toBeVisible({ timeout: 6000 });
   await yellowBtn.click();
 
-  // Verify the POST was made with just the user's selection ("It"), not the full sentence
-  expect(annotationBody).not.toBeNull();
+  // Verify the POST was made with just the user's selection ("It"), not the
+  // full sentence. The click resolves before the request is captured — poll
+  // instead of asserting synchronously (second source of the CI flake).
+  await expect.poll(() => annotationBody, { timeout: 5000 }).not.toBeNull();
   const sentenceText = (annotationBody as Record<string, unknown>)?.sentence_text as string;
   expect(sentenceText).toBe("It");
   // Confirm it is NOT the full sentence

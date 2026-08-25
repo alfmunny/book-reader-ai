@@ -676,6 +676,9 @@ export interface VocabularyOccurrence {
   book_language?: string | null;
   chapter_index: number;
   sentence_text: string;
+  /** The exact form met in the text ("verhöhnt") — the entry's word is the
+   *  base form. NULL on occurrences saved before migration 043. */
+  surface_form?: string | null;
 }
 
 export interface VocabularyWord {

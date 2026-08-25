@@ -1070,9 +1070,17 @@ async def save_word(
 
         # UNIQUE INDEX on (vocabulary_id, book_id, chapter_index, sentence_text) prevents duplicates
         await db.execute(
-            """INSERT OR IGNORE INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text)
-               VALUES (?, ?, ?, ?)""",
-            (vocab_id, book_id, chapter_index, sentence_text),
+            """INSERT OR IGNORE INTO word_occurrences (vocabulary_id, book_id, chapter_index, sentence_text, surface_form)
+               VALUES (?, ?, ?, ?, ?)""",
+            (vocab_id, book_id, chapter_index, sentence_text, word),
+        )
+        # Pre-migration rows carry NULL — a re-save of the same sentence
+        # backfills the surface form instead of duplicating the occurrence.
+        await db.execute(
+            """UPDATE word_occurrences SET surface_form = ?
+               WHERE vocabulary_id = ? AND book_id = ? AND chapter_index = ?
+                 AND sentence_text = ? AND surface_form IS NULL""",
+            (word, vocab_id, book_id, chapter_index, sentence_text),
         )
         async with db.execute("SELECT * FROM vocabulary WHERE id = ?", (vocab_id,)) as cursor:
             row = await cursor.fetchone()
@@ -1086,7 +1094,7 @@ async def get_vocabulary(user_id: int) -> list[dict]:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT v.id, v.word, v.lemma, v.language, v.created_at,
-                      wo.book_id, b.title AS book_title, json_extract(b.languages, '$[0]') AS book_language, wo.chapter_index, wo.sentence_text
+                      wo.book_id, b.title AS book_title, json_extract(b.languages, '$[0]') AS book_language, wo.chapter_index, wo.sentence_text, wo.surface_form
                FROM vocabulary v
                LEFT JOIN word_occurrences wo ON wo.vocabulary_id = v.id
                LEFT JOIN books b ON b.id = wo.book_id
@@ -1115,6 +1123,7 @@ async def get_vocabulary(user_id: int) -> list[dict]:
                 "book_language": row["book_language"],
                 "chapter_index": row["chapter_index"],
                 "sentence_text": row["sentence_text"],
+                "surface_form": row["surface_form"],
             })
     return list(words.values())
 

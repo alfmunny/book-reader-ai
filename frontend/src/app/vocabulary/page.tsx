@@ -453,8 +453,8 @@ function VocabularyPageContent() {
           {group.forms.flatMap((f) =>
             f.occurrences.map((occ, i) => (
               <div key={`${f.word}-${i}`} className="text-sm text-stone-600">
-                {f.word !== group.lemma && (
-                  <span lang={group.language ?? undefined} className="text-xs text-amber-700 font-medium mr-1.5">{f.word}</span>
+                {(occ.surface_form ?? f.word) !== group.lemma && (
+                  <span lang={group.language ?? undefined} className="text-xs text-amber-700 font-medium mr-1.5">{occ.surface_form ?? f.word}</span>
                 )}
                 {occ.book_title ? (
                   <a

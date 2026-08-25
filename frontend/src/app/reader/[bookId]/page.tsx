@@ -2195,6 +2195,21 @@ export default function ReaderPage() {
                 );
                 return (
                   <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {/* Jump links — above the list so they stay reachable without scrolling past every note */}
+                    <div className="border-b border-amber-100 pb-3 flex gap-3 justify-between shrink-0">
+                      <a
+                        href={`/notes/${bookId}`}
+                        className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                      >
+                        Book notes <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
+                      </a>
+                      <a
+                        href="/notes"
+                        className="text-xs text-stone-600 hover:text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                      >
+                        All books
+                      </a>
+                    </div>
                     {/* Filter toggle */}
                     <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-0.5">
                       {(["chapter", "all"] as const).map((v) => (
@@ -2266,21 +2281,6 @@ export default function ReaderPage() {
                         })}
                       </>
                     )}
-                    {/* Footer link */}
-                    <div className="border-t border-amber-100 pb-2 pt-3 flex gap-3 justify-between shrink-0">
-                      <a
-                        href={`/notes/${bookId}`}
-                        className="text-xs text-amber-700 hover:text-amber-900 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
-                      >
-                        Book notes <ArrowRightIcon className="w-3 h-3 inline" aria-hidden="true" />
-                      </a>
-                      <a
-                        href="/notes"
-                        className="text-xs text-stone-600 hover:text-stone-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
-                      >
-                        All books
-                      </a>
-                    </div>
                   </div>
                 );
               })()}

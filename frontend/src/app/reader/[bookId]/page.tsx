@@ -145,8 +145,18 @@ export default function ReaderPage() {
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [vocabFetchError, setVocabFetchError] = useState(false);
   const [vocabRetryTick, setVocabRetryTick] = useState(0);
+  // Base forms plus every recorded surface form — the reader underlines and
+  // recognizes the exact forms met in the text (owner design, 2026-08-26).
   const vocabWordsSet = useMemo(
-    () => new Set(vocabWords.map((v) => v.word.toLowerCase())),
+    () =>
+      new Set(
+        vocabWords.flatMap((v) => [
+          v.word.toLowerCase(),
+          ...v.occurrences
+            .map((o) => o.surface_form?.toLowerCase())
+            .filter((s): s is string => !!s),
+        ]),
+      ),
     [vocabWords],
   );
   const [vocabView, setVocabView] = useState<"chapter" | "book">("chapter");

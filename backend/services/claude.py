@@ -112,6 +112,24 @@ async def answer_question_with_key(
     return next(b.text for b in message.content if b.type == "text")
 
 
+async def dictionary_lookup_with_key(api_key: str, system: str, prompt: str) -> str:
+    """One-shot completion on the user's Claude key for the AI dictionary
+    fallback (services/wiktionary.ai_lookup). Same cost profile as the other
+    BYOK helpers: claude-sonnet-5 at effort "low"; max_tokens caps thinking +
+    the short JSON answer."""
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    message = await client.messages.create(
+        model="claude-sonnet-5",
+        max_tokens=1200,
+        output_config={"effort": "low"},
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    if message.stop_reason == "refusal":
+        raise RuntimeError("Claude declined to answer this request")
+    return next(b.text for b in message.content if b.type == "text")
+
+
 async def generate_insight_with_key(
     api_key: str,
     chapter_text: str,

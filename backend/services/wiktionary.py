@@ -157,21 +157,33 @@ _AI_SYSTEM = (
     "You are a multilingual dictionary. Given a word or phrase and its language, "
     "return ONLY a JSON object with this exact shape:\n"
     '{"lemma": "<base form>", "definitions": [{"pos": "<part of speech>", "text": "<definition>"}]}\n'
-    "Include at most 3 definitions. If the input is already the base form, lemma == input. "
+    "Include at most 3 definitions. If the input is inflected, lemma is its base form. "
+    "If the word is a compound (common in German), the FIRST definition must explain "
+    'its parts with pos "compound", e.g. for "Himmelslicht": '
+    '{"pos": "compound", "text": "Himmel (heaven) + Licht (light): light of heaven"}. '
+    "For rare or author-invented words, infer the meaning from the parts and say so. "
     "No markdown fences, no extra keys, no explanation — raw JSON only."
 )
 
 
-async def ai_lookup(word: str, lang: str, api_key: str) -> dict:
-    """Call Gemini to look up *word* when Wiktionary returns nothing.
+async def ai_lookup(word: str, lang: str, api_key: str, provider: str = "gemini") -> dict:
+    """Look up *word* with the user's own AI key when Wiktionary returns nothing.
 
-    Returns the same shape as :func:`lookup`.
+    *provider* is one of "deepseek" / "gemini" / "claude" — the key belongs to
+    that provider. Returns the same shape as :func:`lookup`.
     """
-    from services.gemini import _generate
     empty = {"lemma": word, "language": lang, "definitions": [], "form_of": None, "url": _wiki_url(word)}
     try:
         prompt = f'Word: "{word}"\nLanguage code: {lang}'
-        raw = await _generate(api_key, _AI_SYSTEM, prompt, max_tokens=256)
+        if provider == "deepseek":
+            from services.deepseek import _chat
+            raw = await _chat(api_key, _AI_SYSTEM, prompt, max_tokens=400)
+        elif provider == "claude":
+            from services.claude import dictionary_lookup_with_key
+            raw = await dictionary_lookup_with_key(api_key, _AI_SYSTEM, prompt)
+        else:
+            from services.gemini import _generate
+            raw = await _generate(api_key, _AI_SYSTEM, prompt, max_tokens=400)
         raw = raw.strip()
         if raw.startswith("```"):
             raw = re.sub(r"^```[a-z]*\n?", "", raw)

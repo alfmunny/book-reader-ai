@@ -96,14 +96,23 @@ async def get_definition(
     from services import wiktionary
     result = await wiktionary.lookup(word, lang)
     if not result["definitions"]:
-        raw_key = user.get("gemini_key")
-        if raw_key:
+        # First configured provider wins, in the chat's auto order (cheapest
+        # capable first). Handles words Wiktionary lacks — rare inflections
+        # and author-invented compounds like "Himmelslichts".
+        for provider, column in (
+            ("deepseek", "deepseek_key"),
+            ("gemini", "gemini_key"),
+            ("claude", "claude_key"),
+        ):
+            raw_key = user.get(column)
+            if not raw_key:
+                continue
             try:
                 api_key = decrypt_api_key(raw_key)
             except HTTPException:
-                api_key = None
-            if api_key:
-                result = await wiktionary.ai_lookup(word, lang, api_key)
+                continue
+            result = await wiktionary.ai_lookup(word, lang, api_key, provider=provider)
+            break
     return result
 
 

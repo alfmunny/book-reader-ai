@@ -160,6 +160,20 @@ test("notes page: export button shows obsidian URL on success", async ({ page })
   await page.goto("/notes/1342");
 
   await page.getByRole("button", { name: /Export/ }).click();
+  await page.getByRole("menuitem", { name: /Export to Obsidian/ }).click();
 
   await expect(page.getByText(/obsidian:\/\//)).toBeVisible();
+});
+
+test("notes page: export menu downloads a markdown file", async ({ page }) => {
+  await withAnnotation(page);
+  await page.goto("/notes/1342");
+
+  await page.getByRole("button", { name: /Export/ }).click();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: /Download Markdown/ }).click();
+  const download = await downloadPromise;
+
+  expect(download.suggestedFilename()).toMatch(/\.md$/);
 });

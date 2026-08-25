@@ -468,7 +468,18 @@ function VocabularyPageContent() {
                 )}{" "}
                 <span className="text-stone-600">{`Ch.${occ.chapter_index + 1}`}</span>
                 {" — "}
-                <span lang={group.language ?? undefined} className="italic">&ldquo;{occ.sentence_text}&rdquo;</span>
+                {occ.book_title ? (
+                  /* Jump to the sentence and pulse the exact form met in the
+                     text (owner request, 2026-08-26) */
+                  <a
+                    href={`/reader/${occ.book_id}?chapter=${occ.chapter_index}&sentence=${encodeURIComponent(occ.sentence_text)}&word=${encodeURIComponent(occ.surface_form ?? f.word)}`}
+                    className="italic text-stone-600 hover:text-amber-700 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                  >
+                    <span lang={group.language ?? undefined}>&ldquo;{occ.sentence_text}&rdquo;</span>
+                  </a>
+                ) : (
+                  <span lang={group.language ?? undefined} className="italic">&ldquo;{occ.sentence_text}&rdquo;</span>
+                )}
               </div>
             ))
           )}

@@ -156,6 +156,7 @@ test("export button calls exportVocabularyToObsidian with no book_id", async () 
 
   const exportBtn = screen.getByTestId("export-all-btn");
   await userEvent.click(exportBtn);
+  await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
   await waitFor(() => {
     expect(mockExportVocabularyToObsidian).toHaveBeenCalledWith(undefined);
@@ -171,6 +172,7 @@ test("export shows URL link when export succeeds", async () => {
 
   const exportBtn = screen.getByTestId("export-all-btn");
   await userEvent.click(exportBtn);
+  await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
   await waitFor(() => {
     const link = screen.getByRole("link", { name: /https:\/\/github\.com\/example\/pr\/1/ });
@@ -187,6 +189,7 @@ test("export shows error message when export fails", async () => {
 
   const exportBtn = screen.getByTestId("export-all-btn");
   await userEvent.click(exportBtn);
+  await userEvent.click(screen.getByRole("menuitem", { name: /export to obsidian/i }));
 
   await waitFor(() => {
     expect(screen.getByText("GitHub API error")).toBeInTheDocument();

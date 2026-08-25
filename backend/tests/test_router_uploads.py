@@ -611,7 +611,7 @@ async def test_delete_uploaded_book_sweeps_vocabulary_orphans(client, test_user,
     book_id = await _upload_and_confirm(client)
 
     with patch("services.db._resolve_base_form", new_callable=AsyncMock,
-               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en")):
+               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en", None)):
         await save_word(test_user["id"], "ephem", book_id, 0, "An ephemeral moment.")
 
     async with aiosqlite.connect(tmp_db) as db:
@@ -947,7 +947,7 @@ async def test_delete_uploaded_book_sweeps_flashcard_reviews(client, test_user, 
     book_id = await _upload_and_confirm(client)
 
     with patch("services.db._resolve_base_form", new_callable=AsyncMock,
-               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en")):
+               side_effect=lambda word, book_id, provided=None: ((provided or word).strip().lower(), "en", None)):
         await save_word(test_user["id"], "ephemword", book_id, 0, "An ephemeral word.")
 
     # Seed flashcard_reviews for this vocabulary word and capture its id

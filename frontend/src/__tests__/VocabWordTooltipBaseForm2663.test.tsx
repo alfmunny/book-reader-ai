@@ -94,7 +94,7 @@ it("saves the base form rather than the inflected word", async () => {
   await waitFor(() => expect(screen.getByText(/to go, to walk/i)).toBeInTheDocument());
 
   await user.click(screen.getByRole("button", { name: /save/i }));
-  expect(onSave).toHaveBeenCalledWith("gehen");
+  expect(onSave.mock.calls[0][0]).toBe("gehen");
 });
 
 it("labels the button with the word that will actually be saved", async () => {
@@ -121,7 +121,7 @@ it("falls back to the word as written when no base form was found", async () => 
   await waitFor(() => expect(screen.getByText(/no definition found/i)).toBeInTheDocument());
 
   await user.click(screen.getByRole("button", { name: /save/i }));
-  expect(onSave).toHaveBeenCalledWith("flibbertigibbet");
+  expect(onSave.mock.calls[0][0]).toBe("flibbertigibbet");
 });
 
 it("falls back to the word as written when the lookup fails outright", async () => {
@@ -131,5 +131,5 @@ it("falls back to the word as written when the lookup fails outright", async () 
   await waitFor(() => expect(screen.getByText(/couldn't load definition/i)).toBeInTheDocument());
 
   await user.click(screen.getByRole("button", { name: /save/i }));
-  expect(onSave).toHaveBeenCalledWith("gegangen");
+  expect(onSave.mock.calls[0][0]).toBe("gegangen");
 });

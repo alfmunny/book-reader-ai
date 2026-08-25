@@ -91,7 +91,12 @@ CREATE TABLE vocabulary_new (
     UNIQUE(user_id, word)
 );
 
-INSERT INTO vocabulary_new SELECT * FROM vocabulary;
+-- Explicit column list (not SELECT *) for the same reason as migrations 033
+-- and 034: a bare SELECT * breaks the moment a later migration ALTERs the
+-- source table (044 appends the stored-definition columns), because the
+-- rebuilt table only ever has the six columns listed here.
+INSERT INTO vocabulary_new (id, user_id, word, created_at, lemma, language)
+SELECT id, user_id, word, created_at, lemma, language FROM vocabulary;
 
 DROP TABLE vocabulary;
 

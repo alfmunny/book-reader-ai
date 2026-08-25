@@ -600,6 +600,15 @@ export default function SentenceReader({
     [text, duration, chunks]
   );
 
+  // Selection is origin-aware in translation mode (owner report, 2026-08-26):
+  // the DOM interleaves original and translation per paragraph, so a drag
+  // across paragraphs swept up both. Whichever side the drag starts on is
+  // selectable; the other side gets select-none. Defaults to the original
+  // text so highlight/word/chat selections stay clean.
+  const [selectionOrigin, setSelectionOrigin] = useState<"original" | "translation">("original");
+  const translationSelectClass = selectionOrigin === "original" ? " select-none" : "";
+  const originalSelectClass = selectionOrigin === "translation" ? "select-none" : undefined;
+
   // For coloring: which chunk indices have actually loaded (duration > 0)
   const loadedChunkIndices = useMemo(() => {
     if (!chunks) return null;
@@ -798,7 +807,14 @@ export default function SentenceReader({
 
   return (
     <>
-      <div ref={containerRef} className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}>
+      <div
+        ref={containerRef}
+        className={isParallel ? "max-w-7xl mx-auto divide-y divide-amber-100" : "prose-reader mx-auto space-y-4"}
+        onPointerDown={hasTranslations ? (e) => {
+          const inTranslation = !!(e.target as HTMLElement).closest?.('[data-translation]');
+          setSelectionOrigin(inTranslation ? "translation" : "original");
+        } : undefined}
+      >
       {paragraphs.map((para, pIdx) => {
         // Track the text paragraph index so we
         // can pair with the right entry in translations[].
@@ -1018,10 +1034,10 @@ export default function SentenceReader({
           return (
             <div key={pIdx} data-para-idx={pIdx} className={`py-4 first:pt-0 last:pb-0 ${focusClass}`}>
               <div className="flex flex-col md:grid md:grid-cols-2 md:gap-6 gap-2">
-                <div>
+                <div data-original="true" className={originalSelectClass}>
                   {originalContent}
                 </div>
-                <div className="border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6" data-translation="true">
+                <div className={`border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6${translationSelectClass}`} data-translation="true">
                   {translationText ? (
                     <p lang={translationLang} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
                       {translationText}
@@ -1045,7 +1061,9 @@ export default function SentenceReader({
         // ── Translation: inline (below) ──
         return (
           <div key={pIdx} data-para-idx={pIdx} className={focusClass}>
-            {originalContent}
+            <div data-original="true" className={originalSelectClass}>
+              {originalContent}
+            </div>
             {translationLoading && textParaIdx === 0 && !translationText && (
               <div role="status" aria-label="Loading translation">
                 <span className="sr-only">Loading translation...</span>
@@ -1056,7 +1074,7 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p lang={translationLang} data-translation="true" className="mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap">
+              <p lang={translationLang} data-translation="true" className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}`}>
                 {translationText}
               </p>
             )}

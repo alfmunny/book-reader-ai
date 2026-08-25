@@ -424,7 +424,31 @@ function buildSegContent(
   };
 
   if (targetWord) addMatches(targetWord, "target");
-  vocabWords?.forEach((w) => addMatches(w, "vocab"));
+  if (vocabWords?.size) {
+    // Vocabulary stores base forms ("verhöhnen"), while the text shows
+    // inflections ("verhöhnt") — exact matching left saved words unmarked
+    // (owner report, 2026-08-26). A token matches when it equals a saved
+    // word, or when it is a saved word's stem plus a common German
+    // inflection ending. Short words stay exact-only.
+    const stems: string[] = [];
+    vocabWords.forEach((w) => {
+      const lw = w.toLowerCase();
+      if (lw.length >= 6 && lw.endsWith("en")) stems.push(lw.slice(0, -2));
+      else if (lw.length >= 5 && (lw.endsWith("e") || lw.endsWith("n"))) stems.push(lw.slice(0, -1));
+      else if (lw.length >= 4) stems.push(lw);
+    });
+    const lowered = new Set([...vocabWords].map((w) => w.toLowerCase()));
+    const SUFFIXES = new Set(["", "e", "en", "er", "es", "em", "n", "s", "t", "st", "te", "ten", "tet", "et"]);
+    const tokenRe = /[A-Za-zÀ-ɏ]+/g;
+    let tok: RegExpExecArray | null;
+    while ((tok = tokenRe.exec(text)) !== null) {
+      const lower = tok[0].toLowerCase();
+      const hit =
+        lowered.has(lower) ||
+        stems.some((s) => lower.startsWith(s) && SUFFIXES.has(lower.slice(s.length)));
+      if (hit) matches.push({ start: tok.index, end: tok.index + tok[0].length, type: "vocab" });
+    }
+  }
   if (annotationMatches) {
     for (const m of annotationMatches) matches.push({ ...m, type: "annotation" });
   }

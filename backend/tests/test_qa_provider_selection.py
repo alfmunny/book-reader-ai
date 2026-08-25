@@ -131,11 +131,11 @@ async def test_qa_invalid_provider_returns_422(client, test_user):
     assert resp.status_code == 422
 
 
-# ── provider errors surface as 500, without leaking details ──────────────────
+# ── provider errors surface as 502, without leaking details ──────────────────
 
-async def test_qa_claude_error_returns_500(client, test_user):
+async def test_qa_claude_error_returns_502(client, test_user):
     await _set_claude(test_user)
     with patch("routers.ai.claude_qa", new_callable=AsyncMock, side_effect=RuntimeError("boom")):
         resp = await client.post("/api/ai/qa", json={**QA_BODY, "provider": "claude"})
-    assert resp.status_code == 500
+    assert resp.status_code == 502
     assert "boom" not in resp.json()["detail"]

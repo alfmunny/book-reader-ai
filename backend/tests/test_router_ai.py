@@ -505,27 +505,27 @@ async def test_tts_chunks_no_auth_required(client):
 
 # ── Videos ────────────────────────────────────────────────────────────────────
 
-async def test_insight_gemini_error_returns_500(client, test_user):
+async def test_insight_gemini_error_returns_502(client, test_user):
     await _set_key(test_user)
     with patch("routers.ai.gemini") as mock_gemini:
         mock_gemini.generate_insight = AsyncMock(side_effect=RuntimeError("AI down"))
         resp = await client.post("/api/ai/insight", json={
             "chapter_text": "text", "book_title": "Book", "author": "Author",
         })
-    assert resp.status_code == 500
+    assert resp.status_code == 502
     detail = resp.json()["detail"]
     assert "AI down" not in detail
     assert ":" not in detail
 
 
-async def test_qa_gemini_error_returns_500(client, test_user):
+async def test_qa_gemini_error_returns_502(client, test_user):
     await _set_key(test_user)
     with patch("routers.ai.gemini") as mock_gemini:
         mock_gemini.answer_question = AsyncMock(side_effect=RuntimeError("fail"))
         resp = await client.post("/api/ai/qa", json={
             "question": "?", "passage": "text", "book_title": "Book", "author": "Author",
         })
-    assert resp.status_code == 500
+    assert resp.status_code == 502
 
 
 async def test_translate_gemini_error_falls_back_to_google(client, test_user):
@@ -1885,7 +1885,7 @@ async def test_insight_gemini_error_logs_underlying_exception(client, test_user,
             resp = await client.post("/api/ai/insight", json={
                 "chapter_text": "text", "book_title": "Book", "author": "Author",
             })
-    assert resp.status_code == 500
+    assert resp.status_code == 502
     assert _DIAG_MSG not in resp.json()["detail"], "Provider detail must not leak to wire"
     assert _has_diag_in_logs(caplog), (
         f"Regression #1771: insight 500 must log the underlying exception. "
@@ -1903,7 +1903,7 @@ async def test_qa_gemini_error_logs_underlying_exception(client, test_user, capl
             resp = await client.post("/api/ai/qa", json={
                 "question": "?", "passage": "text", "book_title": "Book", "author": "Author",
             })
-    assert resp.status_code == 500
+    assert resp.status_code == 502
     assert _DIAG_MSG not in resp.json()["detail"]
     assert _has_diag_in_logs(caplog), (
         f"Regression #1771: qa 500 must log the underlying exception. "

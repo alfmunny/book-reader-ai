@@ -8,6 +8,7 @@ const DURATION_MS = 5000;
 interface Props {
   message: string;
   onUndo: () => void;
+  /** Commits the destructive action. Runs at most once, and never after Undo. */
   onDone: () => void;
 }
 
@@ -15,19 +16,35 @@ export default function UndoToast({ message, onUndo, onDone }: Props) {
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pausedRef = useRef(false);
+  const settledRef = useRef(false);
+
+  // Call sites build onDone inline, so it is a fresh closure on every parent
+  // render. Held in a ref, the countdown below survives those re-renders.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  const commit = useCallback(() => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    onDoneRef.current();
+  }, []);
 
   const startTimer = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setVisible(false);
-      setTimeout(onDone, 300);
+      setTimeout(commit, 300);
     }, DURATION_MS);
-  }, [onDone]);
+  }, [commit]);
 
   useEffect(() => {
     startTimer();
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [startTimer]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      // Navigating away must not swallow the pending action — flush it.
+      commit();
+    };
+  }, [startTimer, commit]);
 
   function pause() {
     if (!pausedRef.current) {
@@ -44,9 +61,10 @@ export default function UndoToast({ message, onUndo, onDone }: Props) {
   }
 
   function handleUndo() {
+    settledRef.current = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
     setVisible(false);
     onUndo();
-    setTimeout(onDone, 300);
   }
 
   return (

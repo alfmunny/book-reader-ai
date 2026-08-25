@@ -130,8 +130,18 @@ export default function ReaderPage() {
   });
 
   // Sidebar — hidden by default, resizable, tabbed
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
+  // Remember the sidebar across visits (owner request, 2026-08-25). Open
+  // state restores on desktop only — the same state drives the mobile bottom
+  // sheet, which must not auto-open on load.
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth >= 768 && getSettings().readerSidebarOpen
+  );
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">(() =>
+    typeof window !== "undefined" ? getSettings().readerSidebarTab : "chat"
+  );
+  useEffect(() => {
+    saveSettings({ readerSidebarOpen: sidebarOpen, readerSidebarTab: sidebarTab });
+  }, [sidebarOpen, sidebarTab]);
   const [vocabWords, setVocabWords] = useState<VocabularyWord[]>([]);
   const [vocabFetchError, setVocabFetchError] = useState(false);
   const [vocabRetryTick, setVocabRetryTick] = useState(0);

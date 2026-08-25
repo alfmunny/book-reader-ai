@@ -7,6 +7,7 @@ export type TTSGender = "female" | "male";
 export type LineHeight = "tight" | "normal" | "relaxed";
 export type ContentWidth = "narrow" | "normal" | "wide";
 export type FontFamily = "serif" | "sans";
+export type ReaderSidebarTab = "chat" | "notes" | "vocab" | "translate";
 
 export interface AppSettings {
   insightLang: string;
@@ -23,6 +24,10 @@ export interface AppSettings {
   contentWidth: ContentWidth;
   fontFamily: FontFamily;
   paragraphFocus: boolean;
+  // Reader sidebar memory: restored on load so the insight panel reopens
+  // where the reader left it (open state restored on desktop only).
+  readerSidebarOpen: boolean;
+  readerSidebarTab: ReaderSidebarTab;
 }
 
 const DEFAULTS: AppSettings = {
@@ -40,6 +45,8 @@ const DEFAULTS: AppSettings = {
   contentWidth: "normal",
   fontFamily: "serif",
   paragraphFocus: false,
+  readerSidebarOpen: false,
+  readerSidebarTab: "chat",
 };
 
 const KEY = "book-reader-settings";

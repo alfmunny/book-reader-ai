@@ -12,9 +12,13 @@ interface Props {
   /** Receives the word to file in the vocabulary list — the base form when one
    *  was resolved, otherwise the word exactly as it appeared in the text. */
   onSave: (wordToSave: string) => void;
+  /** Lowercased words already in the vocabulary. When the looked-up word (or
+   *  its resolved base form) is among them, the save button becomes an
+   *  "In vocab" link to the saved entry instead. */
+  savedWords?: Set<string>;
 }
 
-export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: Props) {
+export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, savedWords }: Props) {
   const [def, setDef] = useState<WordDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
@@ -73,6 +77,14 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
   // entry, network failure — fall back to the word as it appeared in the text.
   const baseForm = def?.lemma?.trim() || word;
   const isInflected = baseForm.toLowerCase() !== word.toLowerCase();
+
+  // Already in the vocabulary (by surface word or resolved base form) —
+  // offer the saved entry instead of saving a duplicate.
+  const savedAs = savedWords?.has(word.toLowerCase())
+    ? word
+    : savedWords?.has(baseForm.toLowerCase())
+      ? baseForm
+      : null;
 
   function handleSave() {
     if (saved) return;
@@ -155,6 +167,15 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
             Wiktionary <ArrowUpRightIcon className="w-3 h-3 inline" aria-hidden="true" /><span className="sr-only"> (opens in new tab)</span>
           </a>
         ) : <span />}
+        {savedAs ? (
+          <a
+            href={`/vocabulary?word=${encodeURIComponent(savedAs)}`}
+            className="text-xs font-medium px-3 py-1 min-h-[44px] md:min-h-0 rounded-lg bg-stone-100 text-stone-700 hover:bg-stone-200 transition-colors flex items-center justify-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+          >
+            <CheckCircleIcon className="w-3.5 h-3.5" aria-hidden="true" />
+            In vocab <ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" />
+          </a>
+        ) : (
         <button
           onClick={handleSave}
           disabled={saved}
@@ -170,6 +191,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave }: 
             <>Save <span lang={lang ?? undefined}>&ldquo;{baseForm}&rdquo;</span> to vocab</>
           ) : "Save to vocab"}
         </button>
+        )}
       </div>
     </div>
   );

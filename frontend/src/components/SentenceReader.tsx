@@ -356,6 +356,12 @@ interface Props {
   selectedWordIdx?: number | null;
   /** Vocabulary words to show with a subtle dotted underline in all segments. */
   vocabWords?: Set<string>;
+  /**
+   * When provided, dotted vocab words become tappable and report the word,
+   * its sentence, and the word's bounding rect (for anchoring the definition
+   * tooltip). Without it the underline stays purely decorative.
+   */
+  onVocabWordClick?: (word: string, sentenceText: string, rect: DOMRect) => void;
   /** When set, dims all paragraphs except this index. */
   focusParagraphIdx?: number;
   /** When true, fires onParagraphVisible as the user scrolls. */
@@ -396,6 +402,7 @@ function buildSegContent(
   vocabWords: Set<string> | undefined,
   annotationMatches?: Array<{ start: number; end: number; className: string; annId: number }>,
   onAnnotationKeyDown?: (annId: number, e: React.KeyboardEvent<HTMLSpanElement>) => void,
+  onVocabClick?: (word: string, target: HTMLSpanElement) => void,
 ): React.ReactNode {
   if (!targetWord && !vocabWords?.size && (!annotationMatches || annotationMatches.length === 0)) return text;
 
@@ -464,6 +471,28 @@ function buildSegContent(
           {word}
         </span>,
       );
+    } else if (onVocabClick) {
+      nodes.push(
+        <span
+          key={m.start}
+          className="underline decoration-amber-400 decoration-dotted decoration-2 underline-offset-2 cursor-pointer hover:bg-amber-100/70 rounded-sm"
+          role="button"
+          tabIndex={0}
+          aria-label={`Saved word: ${word}. Press Enter to view its entry.`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onVocabClick(word, e.currentTarget);
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            e.preventDefault();
+            e.stopPropagation();
+            onVocabClick(word, e.currentTarget);
+          }}
+        >
+          {word}
+        </span>,
+      );
     } else {
       nodes.push(
         <span key={m.start} className="underline decoration-amber-400 decoration-dotted decoration-2 underline-offset-2">
@@ -526,6 +555,7 @@ export default function SentenceReader({
   wordSelectMode = false,
   selectedWordIdx = null,
   vocabWords,
+  onVocabWordClick,
   focusParagraphIdx,
   paragraphFocusEnabled = false,
   onParagraphVisible,
@@ -911,6 +941,9 @@ export default function SentenceReader({
                       if (!ann) return;
                       const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
                       onAnnotationClick(ann, { x: rect.left + rect.width / 2, y: rect.bottom });
+                    } : undefined,
+                    onVocabWordClick ? (word, target) => {
+                      onVocabWordClick(word, seg.text, target.getBoundingClientRect());
                     } : undefined,
                   )}
               {trailingSpace ? " " : ""}

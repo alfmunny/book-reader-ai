@@ -1734,6 +1734,9 @@ export default function ReaderPage() {
                   scrollTargetSentence={scrollTargetSentence}
                   scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
                   vocabWords={vocabWordsSet}
+                  onVocabWordClick={session?.backendToken ? (word, sentenceText, rect) => {
+                    setVocabTooltip({ word, context: sentenceText, rect });
+                  } : undefined}
                   onSegmentClick={(startTime) => {
                     ttsSeekRef.current(startTime);
                   }}
@@ -1895,6 +1898,7 @@ export default function ReaderPage() {
               word={vocabTooltip.word}
               lang={bookLanguage}
               rect={vocabTooltip.rect}
+              savedWords={vocabWordsSet}
               onClose={() => setVocabTooltip(null)}
               onSave={(wordToSave) => {
                 handleWordSave(vocabTooltip.word, vocabTooltip.context, wordToSave);

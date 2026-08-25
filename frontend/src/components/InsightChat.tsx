@@ -9,7 +9,7 @@ import {
   getInsights,
 } from "@/lib/api";
 import { getSettings, saveSettings, ChatProviderSetting } from "@/lib/settings";
-import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/Icons";
+import { PaperclipIcon, CloseIcon, RetryIcon, BookmarkIcon, ArrowUpIcon, ArrowUpRightIcon, AlertCircleIcon, CopyIcon, CheckCircleIcon } from "@/components/Icons";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -38,6 +38,9 @@ interface Message {
   context?: string;
   isChapterHeader?: true;
   chapterKey?: string;
+  /** On an error bubble: the question that failed, so Retry can re-send it. */
+  failedQuestion?: string;
+  failedContext?: string;
 }
 
 interface Props {
@@ -165,6 +168,8 @@ export default function InsightChat({
   // Insight id per saved key — powers the "View note" jump link to the
   // anchored insight on /notes/[bookId].
   const [savedIds, setSavedIds] = useState<Map<string, number>>(new Map());
+  // Message index whose Copy button shows the transient "Copied" state.
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   // tracks which message-level contexts are expanded (by absolute index)
   const [expandedMsgCtx, setExpandedMsgCtx] = useState<Set<number>>(new Set());
 
@@ -389,12 +394,19 @@ export default function InsightChat({
     setMessages((prev) => [...prev, { role: "user", content: text, context: attachedContext }]);
     // Persist user message to server (fire-and-forget; UI already updated optimistically)
     if (userId) postChatMessage(bookId, "user", text).catch(() => {});
+    await runAsk(text, attachedContext);
+  }
+
+  /** Fire the AI request for an already-appended user message. Failures become
+   *  an error bubble carrying the question so Retry can re-send it without
+   *  duplicating the user's message (owner report, 2026-08-25). */
+  async function runAsk(text: string, attachedContext?: string) {
     setChatLoading(true);
 
     const parts: string[] = [];
     if (attachedContext) parts.push(`Selected passage:\n"${attachedContext}"`);
     const history = messagesRef.current
-      .filter((m) => !m.isChapterHeader)
+      .filter((m) => !m.isChapterHeader && !m.content.startsWith("Error:"))
       .slice(-6)
       .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content.slice(0, 400)}`)
       .join("\n\n");
@@ -405,13 +417,40 @@ export default function InsightChat({
     try {
       onAIUsed?.();
       const r = await askQuestion(text, passage, bookTitle, author, langRef.current, providerRef.current);
-      setMessages((prev) => [...prev, { role: "assistant", content: r.answer }]);
-      if (userId) postChatMessage(bookId, "assistant", r.answer).catch(() => {});
-    } catch (e: any) {
-      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${e instanceof Error ? e.message : String(e)}` }]);
+      const answer = (r.answer ?? "").trim();
+      // A blank answer rendered as an empty bubble is the silent failure the
+      // owner reported — surface it as a retryable error instead.
+      if (!answer) throw new Error("The AI returned an empty answer — retry, or switch provider.");
+      setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      if (userId) postChatMessage(bookId, "assistant", answer).catch(() => {});
+    } catch (e: unknown) {
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: `Error: ${e instanceof Error ? e.message : String(e)}`,
+        failedQuestion: text,
+        failedContext: attachedContext,
+      }]);
     } finally {
       setChatLoading(false);
     }
+  }
+
+  function retryFailed(absIdx: number) {
+    const failed = messagesRef.current[absIdx];
+    if (!failed?.failedQuestion || chatLoading) return;
+    autoScrollRef.current = true;
+    setMessages((prev) => prev.filter((_, i) => i !== absIdx));
+    runAsk(failed.failedQuestion, failed.failedContext);
+  }
+
+  function copyMessage(absIdx: number, text: string) {
+    navigator.clipboard
+      ?.writeText(text)
+      .then(() => {
+        setCopiedIdx(absIdx);
+        setTimeout(() => setCopiedIdx((cur) => (cur === absIdx ? null : cur)), 1500);
+      })
+      .catch(() => {});
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -535,10 +574,20 @@ export default function InsightChat({
           // ── User message ───────────────────────────────────────────
           if (msg.role === "user") {
             return (
-              <div key={i} className="flex flex-col items-end gap-1.5">
+              <div key={i} className="flex flex-col items-end gap-1">
                 <div className="bg-amber-700 text-white rounded-2xl rounded-tr-sm px-3.5 py-2 max-w-[88%] leading-relaxed shadow-sm break-words">
                   <span className="sr-only">You: </span>{msg.content}
                 </div>
+                <button
+                  onClick={() => copyMessage(absIdx, msg.content)}
+                  aria-label={copiedIdx === absIdx ? "Copied" : "Copy your message"}
+                  title="Copy"
+                  className="flex items-center min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 justify-center text-stone-400 hover:text-stone-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                >
+                  {copiedIdx === absIdx
+                    ? <CheckCircleIcon className="w-3 h-3 text-green-600" aria-hidden="true" />
+                    : <CopyIcon className="w-3 h-3" aria-hidden="true" />}
+                </button>
                 {msg.context && (
                   <div className="max-w-[88%] w-full">
                     <MsgContextBlock
@@ -564,9 +613,31 @@ export default function InsightChat({
           const isError = msg.content.startsWith("Error:");
           if (isError) {
             return (
-              <div key={i} role="alert" className="flex items-start gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-                <AlertCircleIcon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
-                <span>{msg.content.replace(/^Error:\s*/, "")}</span>
+              <div key={i} role="alert" className="px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                <div className="flex items-start gap-2">
+                  <AlertCircleIcon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" aria-hidden="true" />
+                  <span>{msg.content.replace(/^Error:\s*/, "")}</span>
+                </div>
+                <div className="mt-1.5 ml-5 flex items-center gap-3">
+                  {msg.failedQuestion && (
+                    <button
+                      onClick={() => retryFailed(absIdx)}
+                      disabled={chatLoading}
+                      className="flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] font-medium text-red-700 hover:text-red-800 hover:underline disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 rounded"
+                    >
+                      <RetryIcon className="w-3 h-3" aria-hidden="true" /> Retry
+                    </button>
+                  )}
+                  <button
+                    onClick={() => copyMessage(absIdx, msg.content.replace(/^Error:\s*/, ""))}
+                    aria-label={copiedIdx === absIdx ? "Copied" : "Copy error"}
+                    className="flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] text-red-700 hover:text-red-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 rounded"
+                  >
+                    {copiedIdx === absIdx
+                      ? <><CheckCircleIcon className="w-3 h-3" aria-hidden="true" /> Copied</>
+                      : <><CopyIcon className="w-3 h-3" aria-hidden="true" /> Copy</>}
+                  </button>
+                </div>
               </div>
             );
           }
@@ -580,13 +651,23 @@ export default function InsightChat({
               </div>
               <div className="flex-1 min-w-0">
                 <InsightMarkdown markdown={msg.content} srPrefix="Assistant: " />
+                <div className="mt-1.5 flex items-center gap-3">
+                <button
+                  onClick={() => copyMessage(absIdx, msg.content)}
+                  aria-label={copiedIdx === absIdx ? "Copied" : "Copy answer"}
+                  className="flex items-center gap-1 min-h-[44px] md:min-h-0 text-[11px] text-stone-600 hover:text-amber-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
+                >
+                  {copiedIdx === absIdx
+                    ? <><CheckCircleIcon className="w-3 h-3 text-green-600" aria-hidden="true" /> Copied</>
+                    : <><CopyIcon className="w-3 h-3" aria-hidden="true" /> Copy</>}
+                </button>
                 {onSaveInsight && prevUserMsg && (() => {
                   const saveKey = insightKey(prevUserMsg.content, msg.content);
                   const isSaved = savedInsights.has(saveKey);
                   const isSaving = savingKey === saveKey;
                   const noteId = savedIds.get(saveKey);
                   return (
-                    <div className="mt-1.5 flex items-center gap-3">
+                    <>
                     <button
                       onClick={() => {
                         // Only mark saved once the API confirms — an optimistic
@@ -629,9 +710,10 @@ export default function InsightChat({
                         View note <ArrowUpRightIcon className="w-3 h-3" aria-hidden="true" />
                       </a>
                     )}
-                    </div>
+                    </>
                   );
                 })()}
+                </div>
               </div>
             </div>
           );

@@ -142,6 +142,7 @@ All changes live in the existing translation tab + `SentenceReader` rendering pa
 - `GET /translation-sessions/published?book_id` → list of `{author_name, session_name, target_language, model_tags, updated_at, id}`; the reader's switcher grows a "Community" group.
 - **Comments**: new `translation_comments (id, session_id, chapter_index NULL, paragraph_index NULL, user_id, body, created_at)` — a discussion thread per version, optionally anchored per paragraph. Rendered in a side panel on the reading page.
 - Moderation: owner/admin can unpublish; publishing is per-chapter (a book-level "publish all" is sugar later).
+- **Future idea (owner, 2026-08-26): comparison view** — render two or more versions side by side (e.g. Editorial · 诗意版 · a community session) for the same paragraph, to compare renderings. Not scheduled; noted so the per-paragraph storage keeps making this cheap (it does — any version's paragraph is addressable by (chapter_index, paragraph_index)).
 - Phase 2 gets its own implementation issue after this doc merges; nothing in phase 1 blocks on it.
 
 ## Costs
@@ -162,5 +163,5 @@ All schema is additive; disabling the feature is removing the UI entry points. N
 
 1. ~~Sub-paragraph granularity~~ **Resolved (owner, 2026-08-26)**: paragraph-level operations are the v1 contract — a tapped sentence translates its containing paragraph. True sentence-level patching is deferred until a concrete need appears.
 2. ~~Multiple named versions~~ **Resolved (owner, 2026-08-26)**: the unit is a named, book-scoped translation session; users create, name, and switch between as many as they like.
-3. **Editorial fallback in Mine mode** — v1 shows explicit gaps rather than mixing sources. Confirm.
+3. ~~Editorial fallback~~ **Resolved (owner, 2026-08-26)**: explicit "not translated" placeholders, no mixing — a session is one coherent version, and rendering another translation into it would blur whose words are whose. (Related future idea recorded below: multi-version comparison view.)
 4. **Publish scope** — per-chapter publishing (proposed) vs whole-book only?

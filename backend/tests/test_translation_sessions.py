@@ -211,26 +211,40 @@ async def test_chapter_run_error_is_reported_via_polling(client, test_user):
     assert "DeepSeek" in data["run"]["error"]
 
 
-async def test_chapter_run_skips_edited_paragraphs_unless_forced(client, test_user):
+async def test_chapter_run_fills_missing_only_by_default(client, test_user):
+    """A second chapter click never silently re-burns tokens: the default
+    run translates only paragraphs with no translation yet (owner,
+    2026-08-27). force=true retranslates machine paragraphs but ALWAYS
+    keeps manual edits."""
     await set_user_deepseek_key(test_user["id"], encrypt_api_key("sk-ds"))
     sid = (await _create(client)).json()["id"]
     await client.patch(f"/api/translation-sessions/{sid}/chapters/0/paragraphs/0",
                        json={"text": "我亲手写的译文"})
     with patch("services.user_translate.translate_paragraph",
-               new=AsyncMock(return_value=("机器译文", "deepseek-v4-flash"))):
+               new=AsyncMock(return_value=("第一轮", "deepseek-v4-flash"))):
         await client.post(f"/api/translation-sessions/{sid}/translate",
                           json={"chapter_index": 0, "scope": "chapter"})
         data = await _await_run(client, sid)
-    paragraphs = data["paragraphs"]
-    assert paragraphs["0"]["text"] == "我亲手写的译文"      # edited row untouched
-    assert paragraphs["1"]["text"] == "机器译文"
+    assert data["paragraphs"]["0"]["text"] == "我亲手写的译文"  # edited kept
+    assert data["paragraphs"]["1"]["text"] == "第一轮"
 
+    # Default re-run: nothing missing → nothing re-translated
+    mock = AsyncMock(return_value=("第二轮", "deepseek-v4-flash"))
+    with patch("services.user_translate.translate_paragraph", new=mock):
+        await client.post(f"/api/translation-sessions/{sid}/translate",
+                          json={"chapter_index": 0, "scope": "chapter"})
+        data = await _await_run(client, sid)
+    assert mock.await_count == 0
+    assert data["paragraphs"]["1"]["text"] == "第一轮"
+
+    # Explicit retranslate: machine paragraphs redo, edits still kept
     with patch("services.user_translate.translate_paragraph",
-               new=AsyncMock(return_value=("机器译文", "deepseek-v4-flash"))):
+               new=AsyncMock(return_value=("第二轮", "deepseek-v4-flash"))):
         await client.post(f"/api/translation-sessions/{sid}/translate",
                           json={"chapter_index": 0, "scope": "chapter", "force": True})
         data = await _await_run(client, sid)
-    assert data["paragraphs"]["0"]["text"] == "机器译文"  # force overrides
+    assert data["paragraphs"]["0"]["text"] == "我亲手写的译文"  # edits survive force
+    assert data["paragraphs"]["1"]["text"] == "第二轮"
 
 
 async def test_provider_override_uses_that_key(client, test_user):

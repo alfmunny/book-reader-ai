@@ -426,14 +426,14 @@ export default function ReaderPage() {
     } catch {}
   }
 
-  async function handleSessionTranslateChapter() {
+  async function handleSessionTranslateChapter(force = false) {
     if (!activeSession || sessionTranslating || chapterRunActive) return;
     setSessionTranslating(true);
     setSessionActionError(null);
     try {
       // Starts a background run; the polling effect renders paragraphs as
       // they finish and surfaces run errors.
-      const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter" });
+      const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter", force });
       setSessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
@@ -2633,6 +2633,7 @@ export default function ReaderPage() {
                         onSelect={selectTranslationSession}
                         onSessionsChanged={setTranslationSessions}
                         onTranslateChapter={handleSessionTranslateChapter}
+                        chapterChars={chapters[chapterIndex]?.text?.length ?? 0}
                         translating={sessionTranslating || chapterRunActive}
                         runProgress={sessionChapter?.run?.active ? { done: sessionChapter.run.done, total: sessionChapter.run.total } : null}
                         actionError={sessionActionError}

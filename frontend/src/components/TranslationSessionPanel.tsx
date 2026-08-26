@@ -22,7 +22,10 @@ interface Props {
   hasDeepseekKey: boolean;
   onSelect: (session: TranslationSession | null) => void;
   onSessionsChanged: (sessions: TranslationSession[]) => void;
-  onTranslateChapter: () => void;
+  onTranslateChapter: (force?: boolean) => void;
+  /** Characters of the current chapter's source text — drives the rough
+   *  token/cost estimate in the retranslate confirmation. */
+  chapterChars?: number;
   translating: boolean;
   /** Persistent error from the last session action (translate/delete). */
   actionError?: string | null;
@@ -45,6 +48,7 @@ export default function TranslationSessionPanel({
   onSelect,
   onSessionsChanged,
   onTranslateChapter,
+  chapterChars = 0,
   translating,
   actionError,
   onDismissError,
@@ -60,6 +64,7 @@ export default function TranslationSessionPanel({
   const [busy, setBusy] = useState(false);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [confirmRetranslate, setConfirmRetranslate] = useState(false);
 
   const active = sessions.find((s) => s.id === activeSessionId) ?? null;
   const providerReady = provider === "deepseek" ? hasDeepseekKey : hasClaudeKey;
@@ -154,6 +159,18 @@ export default function TranslationSessionPanel({
   const chaptersCovered = active
     ? Object.keys(active.coverage ?? {}).length
     : 0;
+
+  const chapterComplete = !!chapterProgress && chapterProgress.total > 0 && chapterProgress.done >= chapterProgress.total;
+  const chapterPartial = !!chapterProgress && chapterProgress.done > 0 && chapterProgress.done < chapterProgress.total;
+
+  // Rough, transparent estimate: input ≈ chars/4 tokens, output about the
+  // same. Marked as approximate in the dialog — the point is awareness, not
+  // accounting (owner, 2026-08-27: "make the user aware this costs money").
+  const estTokens = Math.max(1, Math.round((chapterChars / 4) * 2));
+  const price = active?.provider === "claude"
+    ? { name: "claude-sonnet-5", cost: (chapterChars / 4) * 3e-6 + (chapterChars / 4) * 15e-6 }
+    : { name: "deepseek-v4-flash", cost: (chapterChars / 4) * 0.22e-6 + (chapterChars / 4) * 0.66e-6 };
+  const estCost = price.cost < 0.01 ? "< $0.01" : `≈ $${price.cost.toFixed(2)}`;
 
   return (
     <div className="mb-4" data-testid="translation-session-panel">
@@ -322,7 +339,7 @@ export default function TranslationSessionPanel({
             </div>
           )}
           <button
-            onClick={onTranslateChapter}
+            onClick={() => (chapterComplete ? setConfirmRetranslate(true) : onTranslateChapter(false))}
             disabled={translating}
             aria-busy={translating}
             data-testid="translate-chapter-button"
@@ -340,9 +357,38 @@ export default function TranslationSessionPanel({
             <span className="relative">
               {runProgress && runProgress.total > 0
                 ? `Translating ${runProgress.done} / ${runProgress.total}…`
-                : translating ? "Translating…" : "Translate this chapter"}
+                : translating ? "Translating…"
+                : chapterComplete ? "Retranslate this chapter"
+                : chapterPartial ? `Translate remaining (${chapterProgress!.total - chapterProgress!.done})`
+                : "Translate this chapter"}
             </span>
           </button>
+          {confirmRetranslate && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true" aria-label="Confirm retranslation">
+              <div className="bg-white rounded-xl border border-amber-200 shadow-xl p-4 w-full max-w-sm space-y-3" data-testid="retranslate-confirm">
+                <p className="text-sm font-semibold text-ink">Retranslate this chapter?</p>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  This re-runs {price.name} over the whole chapter and <b>costs real tokens</b>:
+                  roughly {estTokens.toLocaleString()} tokens, {estCost} on your key (rough estimate).
+                  Manually edited paragraphs are kept.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setConfirmRetranslate(false)}
+                    className="px-3 py-1.5 min-h-[44px] md:min-h-0 text-sm text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { setConfirmRetranslate(false); onTranslateChapter(true); }}
+                    className="px-4 py-1.5 min-h-[44px] md:min-h-0 text-sm rounded-lg bg-amber-700 text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                  >
+                    Retranslate ({estCost})
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <p className="text-[11px] text-stone-600" data-testid="session-coverage">
             {chapterProgress ? `${chapterProgress.done} / ${chapterProgress.total} paragraphs in this chapter · ` : ""}
             {chaptersCovered} / {chapterCount} chapters started

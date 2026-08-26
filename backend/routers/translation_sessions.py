@@ -140,7 +140,7 @@ class TranslateRequest(BaseModel):
     # translates exactly that paragraph (v1 granularity, owner-approved).
     scope: Literal["chapter"] | int = Field(...)
     provider: Literal["deepseek", "claude"] | None = None  # one-off override
-    force: bool = False  # include manually edited paragraphs in a chapter run
+    force: bool = False  # chapter scope: retranslate machine paragraphs (edited ones are always kept)
 
     @field_validator("scope")
     @classmethod
@@ -288,10 +288,17 @@ async def translate(
     # scope == "chapter": background run + polling (owner feedback,
     # 2026-08-27 — one long request rendered nothing until reload).
     existing = await get_session_paragraphs(session_id, req.chapter_index)
-    targets = [
-        i for i in range(len(paragraphs))
-        if req.force or not existing.get(i, {}).get("edited_by_user")
-    ]
+    if req.force:
+        # Explicit retranslate: redo everything machine-made; manual edits
+        # are kept (only a per-paragraph action touches those).
+        targets = [
+            i for i in range(len(paragraphs))
+            if not existing.get(i, {}).get("edited_by_user")
+        ]
+    else:
+        # Default fill run: only paragraphs with no translation yet — a
+        # second click never silently re-burns tokens (owner, 2026-08-27).
+        targets = [i for i in range(len(paragraphs)) if i not in existing]
     run = {"done": 0, "total": len(targets), "error": None, "finished": len(targets) == 0}
     _chapter_runs[run_key] = run
 

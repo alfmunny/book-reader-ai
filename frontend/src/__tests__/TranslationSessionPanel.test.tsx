@@ -89,8 +89,9 @@ test("active session shows the style panel and translate-chapter button", () => 
   expect(screen.getByLabelText("Style & requirements")).toHaveValue("优雅的书面语");
   expect(screen.getByTestId("session-coverage")).toHaveTextContent("3 / 29 paragraphs");
   expect(screen.getByTestId("session-coverage")).toHaveTextContent("1 / 28 chapters started");
-  fireEvent.click(screen.getByRole("button", { name: "Translate this chapter" }));
-  expect(props.onTranslateChapter).toHaveBeenCalled();
+  // 3/29 done → the button offers the remaining fill run
+  fireEvent.click(screen.getByRole("button", { name: "Translate remaining (26)" }));
+  expect(props.onTranslateChapter).toHaveBeenCalledWith(false);
 });
 
 test("the language is changeable on an existing version", async () => {
@@ -100,6 +101,43 @@ test("the language is changeable on an existing version", async () => {
   await waitFor(() => expect(api.updateTranslationSession).toHaveBeenCalledWith(5, { target_language: "en" }));
   // Reselected so the reader picks up the new language immediately
   expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ target_language: "en" }));
+});
+
+test("a complete chapter offers Retranslate behind a cost confirmation", () => {
+  const { props } = renderPanel({
+    activeSessionId: 5,
+    chapterProgress: { done: 29, total: 29 },
+    chapterChars: 8000,
+  });
+  const btn = screen.getByTestId("translate-chapter-button");
+  expect(btn).toHaveTextContent("Retranslate this chapter");
+
+  fireEvent.click(btn);
+  // No run yet — the confirm dialog opens first
+  expect(props.onTranslateChapter).not.toHaveBeenCalled();
+  const dialog = screen.getByTestId("retranslate-confirm");
+  expect(dialog).toHaveTextContent(/costs real tokens/);
+  expect(dialog).toHaveTextContent(/deepseek-v4-flash/);
+  expect(dialog).toHaveTextContent(/4,000 tokens/);
+
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(props.onTranslateChapter).not.toHaveBeenCalled();
+
+  fireEvent.click(btn);
+  fireEvent.click(screen.getByRole("button", { name: /^Retranslate \(/ }));
+  expect(props.onTranslateChapter).toHaveBeenCalledWith(true);
+});
+
+test("a partially translated chapter offers 'Translate remaining' directly", () => {
+  const { props } = renderPanel({
+    activeSessionId: 5,
+    chapterProgress: { done: 10, total: 29 },
+  });
+  const btn = screen.getByTestId("translate-chapter-button");
+  expect(btn).toHaveTextContent("Translate remaining (19)");
+  fireEvent.click(btn);
+  expect(props.onTranslateChapter).toHaveBeenCalledWith(false);
+  expect(screen.queryByTestId("retranslate-confirm")).toBeNull();
 });
 
 test("during a chapter run the button is a blocking progress bar", () => {

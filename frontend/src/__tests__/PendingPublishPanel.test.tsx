@@ -126,3 +126,73 @@ it("tolerates a malformed response without crashing", async () => {
   render(<PendingPublishPanel />);
   expect(await screen.findByText(/Nothing waiting/i)).toBeInTheDocument();
 });
+
+// ── translation readiness ─────────────────────────────────────────────────────
+
+it("shows how far each translation has got", async () => {
+  mockAdminFetch.mockResolvedValue([{
+    ...BOOK,
+    translations: [{ language: "zh", translated: 11, total: 42, complete: false }],
+  }]);
+  render(<PendingPublishPanel />);
+  expect(await screen.findByText("zh 11/42")).toBeInTheDocument();
+});
+
+it("says complete rather than a ratio when a translation is finished", async () => {
+  mockAdminFetch.mockResolvedValue([{
+    ...BOOK,
+    translations: [{ language: "zh", translated: 42, total: 42, complete: true }],
+  }]);
+  render(<PendingPublishPanel />);
+  expect(await screen.findByText("zh complete")).toBeInTheDocument();
+});
+
+it("spells out what is missing on hover", async () => {
+  mockAdminFetch.mockResolvedValue([{
+    ...BOOK,
+    translations: [{ language: "zh", translated: 11, total: 42, complete: false }],
+  }]);
+  render(<PendingPublishPanel />);
+  expect(await screen.findByTitle(/31 of 42 chapters still untranslated/)).toBeInTheDocument();
+});
+
+it("lists every target language", async () => {
+  mockAdminFetch.mockResolvedValue([{
+    ...BOOK,
+    translations: [
+      { language: "de", translated: 1, total: 4, complete: false },
+      { language: "zh", translated: 4, total: 4, complete: true },
+    ],
+  }]);
+  render(<PendingPublishPanel />);
+  expect(await screen.findByText("de 1/4")).toBeInTheDocument();
+  expect(screen.getByText("zh complete")).toBeInTheDocument();
+});
+
+it("says so when a book has no translation at all", async () => {
+  mockAdminFetch.mockResolvedValue([{ ...BOOK, translations: [] }]);
+  render(<PendingPublishPanel />);
+  expect(await screen.findByText("not translated")).toBeInTheDocument();
+});
+
+it("tolerates a response without the translations field", async () => {
+  mockAdminFetch.mockResolvedValue([BOOK]);
+  render(<PendingPublishPanel />);
+  expect(await screen.findByText("not translated")).toBeInTheDocument();
+});
+
+it("still allows publishing a part-translated book — informs, does not block", async () => {
+  const user = userEvent.setup();
+  mockAdminFetch.mockResolvedValue([{
+    ...BOOK,
+    translations: [{ language: "zh", translated: 1, total: 42, complete: false }],
+  }]);
+  render(<PendingPublishPanel />);
+  await screen.findByText("zh 1/42");
+
+  mockAdminFetch.mockResolvedValueOnce({ ok: true });
+  await user.click(screen.getByRole("button", { name: /publish/i }));
+  await waitFor(() =>
+    expect(mockAdminFetch).toHaveBeenCalledWith("/admin/books/2229/publish", { method: "POST" }),
+  );
+});

@@ -653,3 +653,9 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 |------|--------|---------|----|
 | 2026-08-26 | Bookshelf carries unfinished audits: cover, `31 of 118 chapters reviewed`, a progress bar, and a button that reads **Continue audit** or **Add to shelf** depending on whether every chapter is ticked. The draft already persisted server-side, but there was no way back to a half-audited book short of remembering its URL. An empty shelf with work in flight now points at the work rather than at the library | app/bookshelf/page.tsx | audit |
 | 2026-08-26 | `Your upload` badge actually wired up. It shipped as a `BookCard` prop nobody passed — the component test set it directly, which hid that no call site ever did. `GET /books/uploads/mine` supplies the ids, since the shelf is built from localStorage and entries saved before `source` was recorded carry no marker | app/bookshelf/page.tsx, routers/uploads.py | audit |
+
+## Wave 25 — Translation readiness in the review queue (2026-08-26)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-26 | The review queue reports translation progress per target language — `zh 11/42`, `zh complete`, or `not translated`. A frozen split says the chapters are right; it says nothing about whether the book is ready, and publishing a book mid-translation puts a half-translated book in the library. Counted with DISTINCT, so a re-translated chapter is still one translated chapter. Shown but not enforced — publishing an untranslated original is legitimate, so it informs rather than blocks | services/db.py, components/PendingPublishPanel.tsx | queue |

@@ -212,3 +212,90 @@ async def test_admin_books_reports_published(client, test_user):
     book = next(b for b in (await client.get("/api/admin/books")).json() if b["id"] == 7303)
     assert book["frozen"] is True
     assert book["published"] is True
+
+
+# ── translation readiness in the review queue ────────────────────────────────
+
+async def _chapters(book_id: int, n: int) -> None:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.executemany(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text) VALUES (?,?,?,?)",
+            [(book_id, i, f"Ch {i}", "x") for i in range(n)],
+        )
+        await db.commit()
+
+
+async def _translate(book_id: int, lang: str, chapter_indices) -> None:
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.executemany(
+            "INSERT OR IGNORE INTO translations (book_id, chapter_index, target_language, paragraphs)"
+            " VALUES (?,?,?,'[\"p\"]')",
+            [(book_id, i, lang) for i in chapter_indices],
+        )
+        await db.commit()
+
+
+async def test_queue_reports_translation_progress(client, test_user):
+    """A frozen book can still be mid-translation. Publishing it then puts a
+    half-translated book in the library, so the queue has to say."""
+    await _make(7401, "Crime and Punishment")
+    await _freeze(7401, published=False)
+    await _chapters(7401, 42)
+    await _translate(7401, "zh", range(11))
+
+    entry = (await list_frozen_unpublished())[0]
+    assert entry["translations"] == [
+        {"language": "zh", "translated": 11, "total": 42, "complete": False}
+    ]
+
+
+async def test_queue_marks_a_finished_translation_complete(client, test_user):
+    await _make(7402)
+    await _freeze(7402, published=False)
+    await _chapters(7402, 3)
+    await _translate(7402, "zh", range(3))
+    assert (await list_frozen_unpublished())[0]["translations"][0]["complete"] is True
+
+
+async def test_queue_reports_every_target_language(client, test_user):
+    await _make(7403)
+    await _freeze(7403, published=False)
+    await _chapters(7403, 4)
+    await _translate(7403, "zh", range(4))
+    await _translate(7403, "de", range(1))
+
+    langs = {t["language"]: t for t in (await list_frozen_unpublished())[0]["translations"]}
+    assert langs["zh"]["complete"] is True
+    assert langs["de"] == {"language": "de", "translated": 1, "total": 4, "complete": False}
+
+
+async def test_queue_reports_an_untranslated_book_as_such(client, test_user):
+    await _make(7404)
+    await _freeze(7404, published=False)
+    await _chapters(7404, 5)
+    assert (await list_frozen_unpublished())[0]["translations"] == []
+
+
+async def test_translation_status_reaches_the_admin_endpoint(client, test_user):
+    await _make(7406, "Faust")
+    await _freeze(7406, published=False)
+    await _chapters(7406, 2)
+    await _translate(7406, "zh", [0])
+
+    resp = await client.get("/api/admin/books/pending-publish")
+    book = next(b for b in resp.json() if b["id"] == 7406)
+    assert book["translations"] == [
+        {"language": "zh", "translated": 1, "total": 2, "complete": False}
+    ]
+
+
+async def test_incomplete_translation_does_not_block_publishing(client, test_user):
+    """Shown, not enforced — publishing an untranslated original is legitimate."""
+    await _make(7407)
+    await _freeze(7407, published=False)
+    await _chapters(7407, 4)
+    await _translate(7407, "zh", range(1))
+
+    resp = await client.post("/api/admin/books/7407/publish")
+    assert resp.status_code == 200
+    assert [b["id"] for b in await list_audited_books()] == [7407]

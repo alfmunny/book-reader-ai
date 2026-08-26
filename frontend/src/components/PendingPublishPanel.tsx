@@ -14,6 +14,12 @@ export interface PendingBook {
   splitter: string | null;
   chapter_source: string | null;
   chapter_count: number;
+  translations?: {
+    language: string;
+    translated: number;
+    total: number;
+    complete: boolean;
+  }[];
 }
 
 /**
@@ -129,6 +135,34 @@ export default function PendingPublishPanel() {
                   {book.chapter_count} chapters
                   {book.frozen_at ? ` · frozen ${book.frozen_at}` : ""}
                   {book.audited_by ? ` · audited by ${book.audited_by}` : ""}
+                </p>
+                {/* A frozen split says nothing about whether the book is ready.
+                    Shown, not enforced: publishing an untranslated original is
+                    legitimate, so this informs rather than blocks. */}
+                <p className="flex flex-wrap items-center gap-1.5 mt-1.5 m-0">
+                  {book.translations?.length ? (
+                    book.translations.map((t) => (
+                      <span
+                        key={t.language}
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded tabular-nums ${
+                          t.complete
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-800"
+                        }`}
+                        title={
+                          t.complete
+                            ? `${t.language}: all ${t.total} chapters translated`
+                            : `${t.language}: ${t.total - t.translated} of ${t.total} chapters still untranslated`
+                        }
+                      >
+                        {t.language} {t.complete ? "complete" : `${t.translated}/${t.total}`}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+                      not translated
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-2">

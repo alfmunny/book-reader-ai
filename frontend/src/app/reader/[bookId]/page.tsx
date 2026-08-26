@@ -2588,18 +2588,31 @@ export default function ReaderPage() {
             onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
           />
           {/* Chat sheet (bottom half) */}
-          <div ref={chatSheetRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Chat" aria-describedby="reader-chat-desc" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom focus:outline-none">
-            <span id="reader-chat-desc" className="sr-only">AI chat about the current passage</span>
+          <div ref={chatSheetRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={sidebarTab === "toc" && !chatSheetText ? "Contents" : "Chat"} aria-describedby="reader-chat-desc" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom focus:outline-none">
+            <span id="reader-chat-desc" className="sr-only">
+              {sidebarTab === "toc" && !chatSheetText
+                ? "Jump to a chapter"
+                : "AI chat about the current passage"}
+            </span>
             {/* Drag handle + close */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-amber-200 shrink-0">
               <div className="w-10 h-1 bg-amber-200 rounded-full" />
-              <span className="font-serif font-semibold text-ink text-sm">Chat</span>
+              <span className="font-serif font-semibold text-ink text-sm">
+                {sidebarTab === "toc" && !chatSheetText ? "Contents" : "Chat"}
+              </span>
               <button
                 onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
                 className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-center text-amber-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                aria-label="Close chat"
+                aria-label={sidebarTab === "toc" && !chatSheetText ? "Close contents" : "Close chat"}
               ><CloseIcon className="w-4 h-4" aria-hidden="true" /></button>
             </div>
+            {sidebarTab === "toc" && !chatSheetText ? (
+              <TableOfContents
+                chapters={chapters}
+                chapterIndex={chapterIndex}
+                onSelect={(i) => { goToChapter(i); setSidebarOpen(false); }}
+              />
+            ) : (
             <InsightChat
               bookId={bookId}
               userId={session?.backendUser?.id ?? null}
@@ -2624,6 +2637,7 @@ export default function ReaderPage() {
                 return req;
               } : undefined}
             />
+            )}
           </div>
         </div>
       )}

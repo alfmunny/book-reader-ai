@@ -29,21 +29,25 @@ test.describe("Mobile reader bottom bar", () => {
     await expect(page.getByLabel("Next chapter")).not.toBeVisible();
   });
 
-  test("chapter dropdown navigates to chapter 2", async ({ page }) => {
-    // The mobile bottom bar contains a select for chapter navigation
+  // The mobile bottom bar's chapter <select> became a Contents button that
+  // opens the sidebar panel as a sheet (#2745).
+  async function pickChapter(page: import("@playwright/test").Page, name: string) {
     const mobileBar = page.locator(".md\\:hidden").last();
-    const select = mobileBar.locator("select");
-    await select.selectOption("1");
+    await mobileBar.getByRole("button", { name: "Table of contents" }).click();
+    const toc = page.getByRole("navigation", { name: /table of contents/i });
+    await toc.getByRole("button", { name }).click();
+  }
+
+  test("the contents panel navigates to chapter 2", async ({ page }) => {
+    await pickChapter(page, "2. Chapter II");
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
   });
 
-  test("chapter dropdown returns to chapter 1 from chapter 2", async ({ page }) => {
-    const mobileBar = page.locator(".md\\:hidden").last();
-    const select = mobileBar.locator("select");
-    await select.selectOption("1");
+  test("the contents panel returns to chapter 1 from chapter 2", async ({ page }) => {
+    await pickChapter(page, "2. Chapter II");
     await expect(page.getByText(MOCK_CHAPTERS[1].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
 
-    await select.selectOption("0");
+    await pickChapter(page, "1. Chapter I");
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
   });
 

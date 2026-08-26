@@ -1900,7 +1900,7 @@ describe("ReaderPage.branches2 — mobile contents control", () => {
     expect(openers.length).toBe(2);
     await userEvent.click(openers[1]);
 
-    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    const [nav] = await screen.findAllByRole("navigation", { name: /table of contents/i });
     await userEvent.click(within(nav).getByRole("button", { name: /Chapter Two/ }));
 
     await waitFor(() => {
@@ -1959,7 +1959,7 @@ describe("ReaderPage.branches2 — contents fallback label", () => {
     const openers = await screen.findAllByRole("button", { name: "Table of contents" });
     await userEvent.click(openers[0]);
 
-    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    const [nav] = await screen.findAllByRole("navigation", { name: /table of contents/i });
     expect(within(nav).getByRole("button", { name: /Section 1/ })).toBeInTheDocument();
   });
 });
@@ -2134,7 +2134,7 @@ describe("ReaderPage.branches2 — contents navigation to a later chapter", () =
     const openers = await screen.findAllByRole("button", { name: "Table of contents" });
     await userEvent.click(openers[1]);
 
-    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    const [nav] = await screen.findAllByRole("navigation", { name: /table of contents/i });
     await userEvent.click(within(nav).getByRole("button", { name: /Chapter Three/ }));
 
     await waitFor(() => {
@@ -2311,8 +2311,8 @@ describe("ReaderPage.branches2 — both contents controls open the same panel", 
     for (const opener of openers) {
       await userEvent.click(opener);
       expect(
-        await screen.findByRole("navigation", { name: /table of contents/i }),
-      ).toBeInTheDocument();
+        (await screen.findAllByRole("navigation", { name: /table of contents/i })).length,
+      ).toBeGreaterThan(0);
     }
   });
 });

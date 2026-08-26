@@ -446,7 +446,7 @@ describe("ReaderPage — chapter navigation", () => {
     const openers = await screen.findAllByRole("button", { name: "Table of contents" });
     await userEvent.click(openers[0]);
 
-    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    const [nav] = await screen.findAllByRole("navigation", { name: /table of contents/i });
     await userEvent.click(within(nav).getByRole("button", { name: /Chapter Two/ }));
 
     await waitFor(() => {
@@ -1253,7 +1253,7 @@ describe("ReaderPage — keyboard navigation", () => {
 
     const openers = await screen.findAllByRole("button", { name: "Table of contents" });
     await userEvent.click(openers[0]);
-    const filter = await screen.findByRole("searchbox", { name: /filter chapters/i });
+    const [filter] = await screen.findAllByRole("searchbox", { name: /filter chapters/i });
     mockReplace.mockClear();
 
     fireEvent.keyDown(filter, { key: "ArrowRight" });

@@ -5,10 +5,7 @@ const importPage = fs.readFileSync(
   path.join(__dirname, "../app/import/[bookId]/page.tsx"),
   "utf8"
 );
-const chaptersPage = fs.readFileSync(
-  path.join(__dirname, "../app/upload/[bookId]/chapters/page.tsx"),
-  "utf8"
-);
+const chaptersPage = ["../app/upload/[bookId]/chapters/page.tsx", "../components/ChapterAuditPanel.tsx"].map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 
 function checkBefore(src: string, anchor: string, before = 300): void {
   const idx = src.indexOf(anchor);
@@ -16,6 +13,11 @@ function checkBefore(src: string, anchor: string, before = 300): void {
   const window = src.slice(Math.max(0, idx - before), idx + 20);
   expect(window).toContain("min-h-[44px]");
 }
+
+const panelSrc = fs.readFileSync(
+  path.join(__dirname, "../components/ChapterAuditPanel.tsx"),
+  "utf8"
+);
 
 describe("Import and upload-chapters flow touch targets (closes #838)", () => {
   it("Start import button has min-h-[44px]", () => {
@@ -34,12 +36,13 @@ describe("Import and upload-chapters flow touch targets (closes #838)", () => {
     checkBefore(importPage, "Cancel\n");
   });
 
-  it("Upload chapters Back button has min-h-[44px]", () => {
-    checkBefore(chaptersPage, "Back\n");
+  it("Upload chapters Bookshelf link has min-h-[44px]", () => {
+    checkBefore(chaptersPage, "Bookshelf\n");
   });
 
-  it("Confirm & Start Reading button has min-h-[44px]", () => {
-    checkBefore(chaptersPage, "Confirm & Start Reading", 600);
+  it("Add-to-shelf button has min-h-[44px]", () => {
+    // The finish control lives in the shared panel now.
+    checkBefore(panelSrc, "{busy ? \"Working…\"", 600);
   });
 
   it("Try another file button has min-h-[44px]", () => {

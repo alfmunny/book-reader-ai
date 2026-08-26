@@ -27,7 +27,7 @@ describe("Upload page Unicode icon replacements", () => {
   });
 
   it("upload page Back button uses ArrowLeftIcon", () => {
-    expect(uploadSrc).toMatch(/ArrowLeftIcon[\s\S]{0,50}Back/);
+    expect(uploadSrc).toMatch(/ArrowLeftIcon[\s\S]{0,80}(Back|Bookshelf)/);
   });
 });
 
@@ -41,7 +41,7 @@ describe("Upload chapters page Unicode icon replacements", () => {
   });
 
   it("chapters page Back button uses ArrowLeftIcon", () => {
-    expect(chaptersSrc).toMatch(/ArrowLeftIcon[\s\S]{0,50}Back/);
+    expect(chaptersSrc).toMatch(/ArrowLeftIcon[\s\S]{0,80}(Back|Bookshelf)/);
   });
 });
 

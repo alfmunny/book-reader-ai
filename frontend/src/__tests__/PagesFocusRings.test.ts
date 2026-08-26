@@ -12,6 +12,9 @@ const chaptersPage = fs.readFileSync(
 const importPage = fs.readFileSync(
   path.resolve(__dirname, "../app/import/[bookId]/page.tsx"), "utf8");
 
+const panelSrc = fs.readFileSync(
+  path.resolve(__dirname, "../components/ChapterAuditPanel.tsx"), "utf8");
+
 describe("error.tsx button focus rings (closes #2185)", () => {
   it("Try again button (amber-700 bg) has focus ring with offset", () => {
     const idx = errorPage.indexOf("reset()");
@@ -52,10 +55,7 @@ describe("upload/page.tsx button focus rings (closes #2185)", () => {
 
 describe("upload/[bookId]/chapters/page.tsx button focus rings (closes #2185)", () => {
   it("error retry button (amber-700 bg) has focus ring with offset", () => {
-    // Skip function definition and useEffect — find onClick={loadChapters}
-    const def1 = chaptersPage.indexOf("loadChapters");
-    const def2 = chaptersPage.indexOf("loadChapters", def1 + 1);
-    const idx = chaptersPage.indexOf("loadChapters", def2 + 1);
+    const idx = chaptersPage.indexOf("onClick={load}");
     expect(idx).toBeGreaterThan(-1);
     const window = chaptersPage.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
@@ -71,12 +71,11 @@ describe("upload/[bookId]/chapters/page.tsx button focus rings (closes #2185)", 
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
-  it("Save/Import button (amber-700 bg) has focus ring with offset", () => {
-    // Skip function definition — find onClick={handleConfirm}
-    const defIdx = chaptersPage.indexOf("handleConfirm");
-    const idx = chaptersPage.indexOf("handleConfirm", defIdx + 1);
+  it("finish button (amber-700 bg) has focus ring with offset", () => {
+    // The finish control moved into the shared audit panel.
+    const idx = panelSrc.indexOf("onClick={() => onFinish(chs)}");
     expect(idx).toBeGreaterThan(-1);
-    const window = chaptersPage.slice(idx, idx + 400);
+    const window = panelSrc.slice(idx, idx + 600);
     expect(window).toContain("focus-visible:ring-amber-400");
     expect(window).toContain("ring-offset-amber-700");
   });

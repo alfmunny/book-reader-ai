@@ -1,32 +1,39 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { getDraftChapters, confirmChapters, DraftChapter, ApiError } from "@/lib/api";
-import { TrashIcon, ArrowLeftIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
+import {
+  getDraftChapters,
+  confirmChapters,
+  saveDraftChapterMeta,
+  saveDraftChapterStructure,
+  DraftChapter,
+  ApiError,
+} from "@/lib/api";
+import ChapterAuditPanel, { AuditChapter } from "@/components/ChapterAuditPanel";
+import { ArrowLeftIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 
-interface ChapterSpec {
-  title: string;
-  original_index: number;
-  word_count: number;
-  preview: string;
-}
-
+/**
+ * Audit the chapter split of an uploaded book before it joins your shelf.
+ *
+ * Every edit autosaves to the draft, so a long book can be audited across several
+ * sessions — the previous editor held everything in React state and lost the work
+ * if the tab closed.
+ */
 export default function ChapterEditorPage() {
   const { bookId } = useParams<{ bookId: string }>();
   const router = useRouter();
 
-  const [chapters, setChapters] = useState<ChapterSpec[]>([]);
-  const [selected, setSelected] = useState(0);
+  const [chapters, setChapters] = useState<AuditChapter[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
-    document.title = "Upload: Review Chapters — Book Reader AI";
+    document.title = "Review chapters — Book Reader AI";
   }, []);
 
-  function loadChapters() {
+  const load = useCallback(() => {
     if (!bookId) return;
     setError(null);
     setLoading(true);
@@ -35,45 +42,50 @@ export default function ChapterEditorPage() {
         setChapters(
           data.chapters.map((ch: DraftChapter) => ({
             title: ch.title,
-            original_index: ch.index,
-            word_count: ch.word_count,
-            preview: ch.preview,
+            text: ch.text ?? ch.preview ?? "",
+            reviewed: Boolean(ch.reviewed),
           })),
         );
       })
-      .catch((e: unknown) => {
-        setError(e instanceof ApiError ? e.message : "Failed to load chapters.");
-      })
+      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : "Failed to load chapters."))
       .finally(() => setLoading(false));
-  }
+  }, [bookId]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadChapters(); }, [bookId]);
+  useEffect(load, [load]);
 
-  function handleTitleChange(idx: number, value: string) {
-    setChapters((prev) => prev.map((ch, i) => (i === idx ? { ...ch, title: value } : ch)));
-  }
+  const saveMeta = useCallback(
+    (next: AuditChapter[]) =>
+      saveDraftChapterMeta(
+        Number(bookId),
+        next.map((c, i) => ({ chapter_index: i, title: c.title, reviewed: c.reviewed })),
+      ),
+    [bookId],
+  );
 
-  function handleRemove(idx: number) {
-    setChapters((prev) => {
-      const next = prev.filter((_, i) => i !== idx);
-      if (selected >= next.length) setSelected(Math.max(0, next.length - 1));
-      return next;
-    });
-  }
+  const saveStructure = useCallback(
+    (next: AuditChapter[]) =>
+      saveDraftChapterStructure(
+        Number(bookId),
+        next.map((c) => ({ title: c.title, text: c.text, reviewed: c.reviewed })),
+      ),
+    [bookId],
+  );
 
-  async function handleConfirm() {
+  async function finish(next: AuditChapter[]) {
     setError(null);
-    setConfirming(true);
+    setFinishing(true);
     try {
+      // Persist the final structure first — confirm reads the draft rows, so an
+      // unsaved split would be dropped on the way through.
+      await saveStructure(next);
       await confirmChapters(
         Number(bookId),
-        chapters.map((ch) => ({ title: ch.title, original_index: ch.original_index })),
+        next.map((c, i) => ({ title: c.title, original_index: i })),
       );
       router.push(`/reader/${bookId}`);
     } catch (e: unknown) {
-      setError(e instanceof ApiError ? e.message : "Failed to confirm chapters.");
-      setConfirming(false);
+      setError(e instanceof ApiError ? e.message : "Failed to add the book to your shelf.");
+      setFinishing(false);
     }
   }
 
@@ -88,7 +100,7 @@ export default function ChapterEditorPage() {
     );
   }
 
-  if (error && chapters.length === 0) {
+  if (error && !chapters) {
     return (
       <main id="main-content" className="min-h-screen bg-parchment flex items-center justify-center px-4">
         <div role="alert" className="text-center max-w-sm">
@@ -98,7 +110,7 @@ export default function ChapterEditorPage() {
           <div className="flex items-center justify-center gap-3">
             <button
               type="button"
-              onClick={loadChapters}
+              onClick={load}
               className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
             >
               <RetryIcon className="w-4 h-4" aria-hidden="true" />
@@ -116,130 +128,42 @@ export default function ChapterEditorPage() {
     );
   }
 
-  const selectedChapter = chapters[selected];
-
   return (
-    <main id="main-content" className="min-h-screen bg-parchment flex flex-col">
-      {/* Header */}
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 shrink-0">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+    <main id="main-content" className="min-h-screen bg-parchment">
+      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <Link
-              href="/upload"
+              href="/bookshelf"
               className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
             >
-              <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
+              <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Bookshelf
             </Link>
-            <h1 className="font-serif text-lg font-semibold text-ink">
-              Review Chapters
-              <span className="ml-2 text-sm font-normal text-stone-600">({chapters.length} detected)</span>
-            </h1>
+            <h1 className="font-serif text-lg font-semibold text-ink">Review chapters</h1>
           </div>
-          <button
-            onClick={handleConfirm}
-            disabled={confirming || chapters.length === 0}
-            className="rounded-lg bg-amber-700 px-5 min-h-[44px] md:min-h-0 text-white text-sm font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-          >
-            {confirming && (
-              <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true" />
-            )}
-            {confirming ? "Saving…" : "Confirm & Start Reading"}
-          </button>
+          <p className="text-xs text-stone-600 m-0">
+            Saved as you go — you can stop and come back.
+          </p>
         </div>
       </header>
 
-      {error && (
-        <div className="max-w-5xl mx-auto w-full px-4 md:px-6 pt-4">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-5 space-y-4">
+        {error && chapters && (
           <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
             <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span>{error}</span>
+            {error}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Two-panel layout */}
-      <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-        {/* Left: chapter list */}
-        <ul role="list" aria-label="Chapters" className="overflow-y-auto space-y-2 pr-1 list-none p-0 m-0">
-          {chapters.length === 0 && (
-            <li className="flex flex-col items-center justify-center py-12 text-center gap-2">
-              <p className="text-sm font-medium text-ink">No chapters remaining</p>
-              <p className="text-xs text-stone-500">At least one chapter is needed to continue.</p>
-              <Link href="/upload" className="mt-2 text-sm text-amber-700 underline underline-offset-2 hover:text-amber-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded">
-                ← Upload a different file
-              </Link>
-            </li>
-          )}
-          {chapters.map((ch, i) => {
-            const wordWarn = ch.word_count > 8000 || ch.word_count < 100;
-            return (
-              <li key={ch.original_index + "-" + i}>
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label={`Chapter ${i + 1}: ${ch.title}${selected === i ? " (selected)" : ""}`}
-                onClick={() => setSelected(i)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setSelected(i)}
-                className={`rounded-xl border p-3 cursor-pointer transition-all duration-150 ${
-                  selected === i
-                    ? "border-amber-400 bg-amber-50"
-                    : "border-amber-100 bg-white hover:border-amber-200"
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <input
-                      type="text"
-                      value={ch.title}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => handleTitleChange(i, e.target.value)}
-                      className="w-full text-sm font-medium text-ink bg-transparent border-none outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 -mx-1"
-                      aria-label={`Chapter ${i + 1} title`}
-                    />
-                    <div className="flex items-center gap-2 mt-1">
-                      <span
-                        className={`text-xs px-1.5 py-0.5 rounded font-mono inline-flex items-center gap-1 ${
-                          wordWarn
-                            ? "bg-amber-100 text-amber-700"
-                            : "bg-stone-100 text-stone-600"
-                        }`}
-                      >
-                        {wordWarn && <AlertCircleIcon className="w-3 h-3 shrink-0" aria-hidden="true" />}
-                        {ch.word_count.toLocaleString()} words
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    aria-label={`Remove chapter ${i + 1}`}
-                    onClick={(e) => { e.stopPropagation(); handleRemove(i); }}
-                    className="shrink-0 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded text-stone-600 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                  >
-                    <TrashIcon className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Right: preview */}
-        <div tabIndex={0} className="bg-white rounded-xl border border-amber-100 p-5 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset">
-          {selectedChapter ? (
-            <>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-3">Preview</h2>
-              <p className="font-serif font-semibold text-ink mb-3">{selectedChapter.title}</p>
-              <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap font-serif">
-                {selectedChapter.preview}
-                {selectedChapter.preview.length >= 300 && (
-                  <span className="text-stone-600">…</span>
-                )}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-stone-600 text-center mt-8">Select a chapter to preview</p>
-          )}
-        </div>
+        {chapters && (
+          <ChapterAuditPanel
+            chapters={chapters}
+            onSaveMeta={saveMeta}
+            onSaveStructure={saveStructure}
+            onFinish={finish}
+            busy={finishing}
+          />
+        )}
       </div>
     </main>
   );

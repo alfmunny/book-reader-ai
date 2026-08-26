@@ -26,27 +26,24 @@ describe("Contrast wave 8 (closes #1369)", () => {
   });
 
   it("chapters page detected count uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
-    expect(chaptersPage).not.toContain("text-sm font-normal text-stone-400");
-    expect(chaptersPage).not.toContain("text-sm font-normal text-stone-500");
-    expect(chaptersPage).toContain("text-sm font-normal text-stone-600");
+    // The "(n detected)" subtitle went with the old header; what remains must
+    // still avoid the too-faint greys on parchment.
+    expect(chaptersPage).not.toContain("text-stone-400");
+    expect(chaptersPage).not.toContain("text-stone-500");
   });
 
-  it("chapters page Preview heading uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
-    expect(chaptersPage).not.toContain("text-stone-400 mb-3");
-    expect(chaptersPage).not.toContain("text-stone-500 mb-3");
-    expect(chaptersPage).toContain("text-stone-600 mb-3");
-  });
-
-  it("chapters page ellipsis uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
-    expect(chaptersPage).not.toContain('"text-stone-400">…');
-    expect(chaptersPage).not.toContain('"text-stone-500">…');
-    expect(chaptersPage).toContain('"text-stone-600">…');
+  it("chapters page uses no too-faint greys on parchment", () => {
+    // The Preview heading and the truncation ellipsis went with the preview pane
+    // (#audit); the guarantee that survives is that nothing faint is left.
+    expect(chaptersPage).not.toMatch(/text-stone-[45]00/);
   });
 
   it("chapters page empty state uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
-    expect(chaptersPage).not.toContain("text-sm text-stone-400 text-center mt-8");
+    expect(chaptersPage).not.toMatch(/text-stone-[45]00/);
     expect(chaptersPage).not.toContain("text-sm text-stone-500 text-center mt-8");
-    expect(chaptersPage).toContain("text-sm text-stone-600 text-center mt-8");
+    // The old centred empty state went with the preview pane; the guarantee that
+    // survives is that no too-faint grey is left on this surface.
+    expect(chaptersPage).not.toMatch(/text-stone-[45]00/);
   });
 
   it("import page footer note uses text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {

@@ -1,6 +1,6 @@
 """CI guard for the fossilized Crime and Punishment: data/books/book_2554.json.
 
-This book is frozen at 8/42 coverage, deliberately. Freezing before the
+This book is frozen at 9/42 coverage, deliberately. Freezing before the
 remaining chapters are translated is the point: a translation made against a
 frozen anchor cannot orphan, which is the failure every repair in #2712,
 #2713, #2716, #2725 and #2733 existed to undo.
@@ -18,7 +18,7 @@ from scripts.ingest_book import load_artifact
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT = REPO_ROOT / "data" / "books" / "book_2554.json"
-TRANSLATED = [1, 2, 3, 4, 5, 6, 7, 9]
+TRANSLATED = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
 def test_artifact_loads_and_sha_verifies():
@@ -78,3 +78,17 @@ def test_no_entry_opens_with_its_own_heading():
         title = (entry.get("title_translation") or "").strip()
         assert title, f"chapter {entry['index']} has no title translation"
         assert entry["paragraphs"][0].strip() != title
+
+
+def test_part_one_is_complete():
+    """Chapter 8 (Part I, chapter VII) was translated in-session against the
+    already-frozen split, so it needed no realignment: it was born aligned.
+    That completes Part I — chapters 2-8."""
+    artifact = load_artifact(ARTIFACT)
+    by_index = {e["index"]: e for e in artifact["translations"]["zh"]["chapters"]}
+    chapters = {c["index"]: c for c in artifact["chapters"]}
+
+    assert set(range(2, 9)) <= set(by_index), "Part I is chapters 2-8"
+    entry = by_index[8]
+    assert entry["title_translation"] == "第一部 第七章"
+    assert len(entry["paragraphs"]) == len(chapters[8]["paragraphs"]) == 89

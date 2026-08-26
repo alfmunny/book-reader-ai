@@ -6,9 +6,15 @@ request time but translations and annotations are durably keyed to them —
 this script makes the split *data*: it writes data/books/book_<id>.json
 holding the book's metadata, the frozen chapter split (paragraph arrays),
 and every existing translation for the book, merged from both legacy
-export conventions. The artifact carries a content_sha256 over the
-chapters so any later hand-edit to the frozen split fails loudly at
-ingest (scripts/ingest_book.py).
+export conventions and from the book's own previous artifact. The
+artifact carries a content_sha256 over the chapters so any later
+hand-edit to the frozen split fails loudly at ingest
+(scripts/ingest_book.py).
+
+The split is always re-derived from the source text at freeze time, then
+passed through scripts/chapter_split_overrides.py, which corrects the
+boundaries the splitter invents for a handful of books. Re-freezing with
+--force therefore repairs a bad split rather than re-stamping it.
 
 Freezing is a one-way door per book: once annotations anchor to a frozen
 split, re-splitting requires migrating them. --audited-by is therefore a
@@ -46,6 +52,8 @@ from pathlib import Path
 
 # Allow `python -m scripts.freeze_book` from backend/.
 sys.path.insert(0, str(__file__).rsplit("/backend/", 1)[0] + "/backend")
+
+from scripts.chapter_split_overrides import apply_overrides  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BOOKS_DIR = REPO_ROOT / "data" / "books"
@@ -110,10 +118,14 @@ def mechanical_audit(chapters: list[dict]) -> list[str]:
     return findings
 
 
-def _load_legacy_entries(book_id: int) -> tuple[dict[str, dict[int, dict]], list[str]]:
-    """Read every legacy translation export for this book from both
-    conventions. Returns ({lang: {chapter_index: entry}}, warnings).
-    Convention A (DB export) wins on conflict; B fills gaps."""
+def _load_legacy_entries(
+    book_id: int, books_dir: Path | None = None
+) -> tuple[dict[str, dict[int, dict]], list[str]]:
+    """Read every translation this book has, from both legacy conventions and
+    — when `books_dir` is given — its own existing artifact.
+
+    Returns ({lang: {chapter_index: entry}}, warnings). Priority, lowest
+    first: existing artifact, Convention B, Convention A (DB export wins)."""
     merged: dict[str, dict[int, dict]] = {}
     warnings: list[str] = []
 
@@ -128,7 +140,31 @@ def _load_legacy_entries(book_id: int) -> tuple[dict[str, dict[int, dict]], list
                     )
                 by_index[idx] = e
 
-    # Convention B first so A can override on conflict.
+    # The book's own artifact first — lowest priority, but it must be read.
+    # A re-freeze that repairs a split has to carry forward translations that
+    # exist nowhere else: Hamlet #1524's single chapter lives only here, and
+    # dropping it would be exactly the silent loss of paid work #2634 forbids.
+    artifact_path = (books_dir / f"book_{book_id}.json") if books_dir else None
+    if artifact_path is not None and artifact_path.exists():
+        existing = json.loads(artifact_path.read_text())
+        for lang, block in sorted(existing.get("translations", {}).items()):
+            _absorb(
+                [
+                    {
+                        "chapter_index": c["index"],
+                        "paragraphs": c["paragraphs"],
+                        "title_translation": c.get("title_translation"),
+                        "provider": block.get("provider"),
+                        "model": block.get("model"),
+                    }
+                    for c in block.get("chapters", [])
+                ],
+                lang,
+                artifact_path.name,
+                authoritative=False,
+            )
+
+    # Convention B next so A can override on conflict.
     for path in sorted(LEGACY_DIR_B.glob(f"{book_id}_*.json")):
         lang = path.stem.split("_", 1)[1]
         _absorb(json.loads(path.read_text()), lang, path.name, authoritative=False)
@@ -141,8 +177,10 @@ def _load_legacy_entries(book_id: int) -> tuple[dict[str, dict[int, dict]], list
 
 def build_translations(
     book_id: int, num_chapters: int, chapters: list[dict],
+    books_dir: Path | None = None,
 ) -> tuple[dict, list[str], list[str]]:
-    """Assemble the artifact's translations block from legacy exports.
+    """Assemble the artifact's translations block from legacy exports and,
+    when `books_dir` is given, the book's own existing artifact.
 
     Returns (translations, warnings, errors). Out-of-range and
     paragraph-count-mismatched entries are ERRORS, never dropped and
@@ -150,7 +188,7 @@ def build_translations(
     stale anchor means the splitter moved underneath them, and
     fossilizing the wrong index is permanent. The fix is realignment
     (scripts/realign_translations.py), not exclusion."""
-    merged, warnings = _load_legacy_entries(book_id)
+    merged, warnings = _load_legacy_entries(book_id, books_dir)
     result: dict[str, dict] = {}
     errors: list[str] = []
     for lang, by_index in sorted(merged.items()):
@@ -191,7 +229,7 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
                  dry_run: bool = False, books_dir: Path = BOOKS_DIR) -> Path | None:
     """Build and write the artifact. Returns the path written, or None on
     dry-run. Raises SystemExit on audit failure or an already-frozen book."""
-    from services.book_chapters import get_chapters, get_chapter_source
+    from services.book_chapters import get_chapter_source, split_with_html_preference
     from services.db import get_book_freeze, get_cached_book
 
     existing = await get_book_freeze(book_id)
@@ -206,9 +244,17 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
     if book is None:
         raise SystemExit(f"Book {book_id} is not in the local DB — import it first.")
 
-    raw_chapters = await get_chapters(book_id)
+    # Build-time split: always re-derive from the source text. get_chapters()
+    # is the *runtime* resolver and returns the stored chapters for a frozen
+    # book, so using it here would make --force re-freeze the very split it was
+    # invoked to repair. allow_epub_backfill=False keeps the background EPUB
+    # fetch — which deletes the book's translations (#1556) — out of a build step.
+    raw_chapters = await split_with_html_preference(
+        book_id, book.get("text") or "", allow_epub_backfill=False
+    )
     if not raw_chapters:
         raise SystemExit(f"Book {book_id} produced no chapters — nothing to freeze.")
+    raw_chapters = apply_overrides(book_id, raw_chapters)
     chapter_source = await get_chapter_source(book_id)
 
     chapters = [
@@ -225,7 +271,9 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
             f"than not freezing. Review, fix the split, or pass --force."
         )
 
-    translations, warnings, errors = build_translations(book_id, len(chapters), chapters)
+    translations, warnings, errors = build_translations(
+        book_id, len(chapters), chapters, books_dir
+    )
     for w in warnings:
         print(f"WARN: {w}", file=sys.stderr)
     if errors:

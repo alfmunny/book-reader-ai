@@ -75,7 +75,9 @@ async def get_chapters(book_id: int) -> list[Chapter]:
     return await split_with_html_preference(book_id, text)
 
 
-async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
+async def split_with_html_preference(
+    book_id: int, text: str, *, allow_epub_backfill: bool = True
+) -> list[Chapter]:
     """Return the canonical chapter list for a book (DB-only, no external calls).
 
     The `text` argument is used only for the plain-text regex fallback (Gutenberg).
@@ -84,6 +86,11 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
     Runtime callers should migrate to get_chapters(book_id) (issue #2624);
     this function remains the build-time splitting path and the fallback for
     books that are not yet fossilized.
+
+    `allow_epub_backfill=False` suppresses the background EPUB fetch a missing
+    EPUB would otherwise trigger. Build-time callers (scripts/freeze_book.py)
+    must pass it: the fetch's completion deletes every translation for the book
+    (#1556), which is never an acceptable side effect of freezing one.
     """
     cached = _chapter_cache.get(book_id)
     if cached is not None:
@@ -116,7 +123,7 @@ async def split_with_html_preference(book_id: int, text: str) -> list[Chapter]:
                     _chapter_cache[book_id] = chapters
                     _chapter_source_used[book_id] = "epub"
                     return chapters
-            elif book_id not in _epub_fetch_attempted:
+            elif allow_epub_backfill and book_id not in _epub_fetch_attempted:
                 # Existing book with no EPUB yet — fetch silently in background.
                 # Current request falls through to plain-text; EPUB available next restart.
                 _epub_fetch_attempted.add(book_id)

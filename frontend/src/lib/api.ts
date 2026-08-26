@@ -927,7 +927,17 @@ export function saveObsidianSettings(data: {
 // ── Book uploads ──────────────────────────────────────────────────────────────
 
 export interface UploadQuota { used: number; max: number; }
-export interface DraftChapter { index: number; title: string; preview: string; word_count: number; }
+export interface DraftChapter {
+  index: number;
+  /** Row key on the server — what PATCH addresses. */
+  chapter_index?: number;
+  title: string;
+  /** Full chapter text. A preview is not enough to judge a split on (#audit). */
+  text?: string;
+  preview: string;
+  word_count: number;
+  reviewed?: boolean;
+}
 export interface UploadResult { book_id: number; title: string; author: string; format: string; detected_chapters: DraftChapter[]; }
 
 export function uploadBook(file: File): Promise<UploadResult> {
@@ -942,6 +952,44 @@ export function getUploadQuota(): Promise<UploadQuota> {
 
 export function getDraftChapters(bookId: number): Promise<{ chapters: DraftChapter[] }> {
   return request("/books/" + bookId + "/chapters/draft");
+}
+
+/** Save titles and review ticks. The autosave path — never carries text. */
+export function saveDraftChapterMeta(
+  bookId: number,
+  chapters: { chapter_index: number; title?: string; reviewed?: boolean }[],
+): Promise<{ ok: boolean; updated_at: string }> {
+  return request("/books/" + bookId + "/chapters/draft", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chapters }),
+  });
+}
+
+/** Replace the whole draft structure. Used after a split or merge moves text. */
+export function saveDraftChapterStructure(
+  bookId: number,
+  chapters: { title: string; text: string; reviewed?: boolean }[],
+): Promise<{ ok: boolean; chapter_count: number; updated_at: string }> {
+  return request("/books/" + bookId + "/chapters/draft", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chapters }),
+  });
+}
+
+export interface DraftAudit {
+  book_id: number;
+  title: string;
+  authors: string[];
+  chapter_count: number;
+  reviewed_count: number;
+  updated_at: string | null;
+}
+
+/** Books this reader has started auditing but not finished. */
+export function getDraftAudits(): Promise<DraftAudit[]> {
+  return request("/books/uploads/drafts");
 }
 
 export function confirmChapters(bookId: number, chapters: { title: string; original_index: number }[]): Promise<{ ok: boolean; chapter_count: number }> {

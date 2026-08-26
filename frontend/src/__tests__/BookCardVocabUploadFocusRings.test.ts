@@ -15,10 +15,7 @@ const vocabTooltipSrc = fs.readFileSync(
   "utf8"
 );
 
-const uploadSrc = fs.readFileSync(
-  path.join(__dirname, "../app/upload/[bookId]/chapters/page.tsx"),
-  "utf8"
-);
+const uploadSrc = ["../app/upload/[bookId]/chapters/page.tsx", "../components/ChapterAuditPanel.tsx"].map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 
 describe("BookCard focus rings (closes #2198)", () => {
   it("Remove book button has focus ring", () => {
@@ -43,9 +40,9 @@ describe("VocabWordTooltip focus rings (closes #2198)", () => {
 });
 
 describe("Upload chapters focus rings (closes #2198)", () => {
-  it("Remove chapter button has focus ring", () => {
+  it("Discard chapter control has focus ring", () => {
     // className comes after aria-label — look forward
-    const idx = uploadSrc.indexOf("Remove chapter");
+    const idx = uploadSrc.indexOf("const tool =");
     expect(idx).toBeGreaterThan(-1);
     const window = uploadSrc.slice(idx, idx + 380);
     expect(window).toContain("focus-visible:ring-amber-400");

@@ -20,8 +20,9 @@ describe("Upload + chapters section heading hierarchy", () => {
     expect(uploadPage).not.toMatch(/<p[^>]*>Tips<\/p>/);
   });
 
-  it('chapters page uses <h2> for "Preview" label', () => {
-    expect(chaptersPage).toMatch(/<h2[^>]*>Preview<\/h2>/);
+  it("chapters page has a single h1 and no orphan pseudo-headings", () => {
+    // The Preview pane became the full chapter text (#audit), so its <h2> is gone.
+    expect(chaptersPage).toMatch(/<h1[^>]*>Review chapters<\/h1>/);
     expect(chaptersPage).not.toMatch(/<p[^>]*>Preview<\/p>/);
   });
 });

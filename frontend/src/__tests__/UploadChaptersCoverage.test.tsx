@@ -1,9 +1,9 @@
 /**
- * Regression tests for missing branch coverage in
- * app/upload/[bookId]/chapters/page.tsx — closes #1977.
+ * The chapters page is a shell around ChapterAuditPanel: load the draft, wire the
+ * save callbacks, finish by persisting the structure and confirming.
  *
- * Targets: handleTitleChange, handleRemove, handleConfirm (success + error),
- * chapter card click/keyboard selection, back/navigation buttons.
+ * The editing behaviours it used to own — title changes, removal, chapter
+ * selection — moved into the panel and are covered by ChapterAuditPanel.test.tsx.
  */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -17,10 +17,14 @@ jest.mock("next/navigation", () => ({
 
 const mockGetDraftChapters = jest.fn();
 const mockConfirmChapters = jest.fn();
+const mockSaveMeta = jest.fn();
+const mockSaveStructure = jest.fn();
 
 jest.mock("@/lib/api", () => ({
-  getDraftChapters: (...args: unknown[]) => mockGetDraftChapters(...args),
-  confirmChapters: (...args: unknown[]) => mockConfirmChapters(...args),
+  getDraftChapters: (...a: unknown[]) => mockGetDraftChapters(...a),
+  confirmChapters: (...a: unknown[]) => mockConfirmChapters(...a),
+  saveDraftChapterMeta: (...a: unknown[]) => mockSaveMeta(...a),
+  saveDraftChapterStructure: (...a: unknown[]) => mockSaveStructure(...a),
   ApiError: class ApiError extends Error {
     status: number;
     constructor(status: number, message: string) {
@@ -33,178 +37,91 @@ jest.mock("@/lib/api", () => ({
 
 import ChapterEditorPage from "@/app/upload/[bookId]/chapters/page";
 
-const TWO_CHAPTERS = {
+const DRAFT = {
   chapters: [
-    { index: 0, title: "Chapter 1", word_count: 500, preview: "In the beginning..." },
-    { index: 1, title: "Chapter 2", word_count: 350, preview: "The story continues..." },
+    { index: 0, chapter_index: 0, title: "Chapter 1", text: "a\n\nb", preview: "a", word_count: 5, reviewed: true },
+    { index: 1, chapter_index: 1, title: "Chapter 2", text: "c\n\nd", preview: "c", word_count: 5, reviewed: true },
   ],
 };
-
-const ONE_CHAPTER = {
-  chapters: [
-    { index: 0, title: "Chapter 1", word_count: 500, preview: "In the beginning..." },
-  ],
-};
-
-const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockGetDraftChapters.mockResolvedValue(TWO_CHAPTERS);
+  mockGetDraftChapters.mockResolvedValue(DRAFT);
   mockConfirmChapters.mockResolvedValue({});
+  mockSaveMeta.mockResolvedValue({});
+  mockSaveStructure.mockResolvedValue({});
 });
 
-// ── Back button navigation ────────────────────────────────────────────────────
-
-test("back link points to /upload", async () => {
+test("loads the draft and renders the audit panel", async () => {
   render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  const backLink = screen.getByRole("link", { name: /back/i });
-  expect(backLink).toHaveAttribute("href", "/upload");
+  expect(await screen.findByRole("heading", { name: /review chapters/i })).toBeInTheDocument();
+  expect(mockGetDraftChapters).toHaveBeenCalledWith(42);
 });
 
-// ── Try another file navigation (error state) ─────────────────────────────────
-
-test("'Try another file' link points to /upload from error state", async () => {
-  mockGetDraftChapters.mockRejectedValue(new Error("network failure"));
+test("says the work is saved as you go", async () => {
   render(<ChapterEditorPage />);
-  await flushPromises();
-
-  await screen.findByRole("alert");
-  const tryAnotherLink = screen.getByRole("link", { name: /try another file/i });
-  expect(tryAnotherLink).toHaveAttribute("href", "/upload");
+  expect(await screen.findByText(/saved as you go/i)).toBeInTheDocument();
 });
 
-// ── handleTitleChange ─────────────────────────────────────────────────────────
-
-test("editing a chapter title input updates the title in the list", async () => {
+test("back link goes to the bookshelf, where the draft is listed", async () => {
   render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  const titleInput = screen.getByRole("textbox", { name: /chapter 1 title/i });
-  await userEvent.clear(titleInput);
-  await userEvent.type(titleInput, "Prologue");
-
-  expect((titleInput as HTMLInputElement).value).toBe("Prologue");
+  const link = await screen.findByRole("link", { name: /bookshelf/i });
+  expect(link).toHaveAttribute("href", "/bookshelf");
 });
 
-// ── handleRemove ──────────────────────────────────────────────────────────────
-
-test("clicking remove on a chapter removes it from the list", async () => {
-  render(<ChapterEditorPage />);
-  // Wait for both chapter title inputs to be rendered by display value
-  await waitFor(() => screen.getByDisplayValue("Chapter 1"));
-  await waitFor(() => screen.getByDisplayValue("Chapter 2"));
-
-  // Remove chapter 1 — after removal, only "Chapter 2" remains
-  await userEvent.click(screen.getByRole("button", { name: /remove chapter 1/i }));
-
-  await waitFor(() => {
-    expect(screen.queryByDisplayValue("Chapter 1")).not.toBeInTheDocument();
-  });
-  expect(screen.getByDisplayValue("Chapter 2")).toBeInTheDocument();
-});
-
-test("removing the selected chapter adjusts selection to within bounds", async () => {
-  // Load only 1 chapter so removing it leaves selection at 0 (clamped)
-  mockGetDraftChapters.mockResolvedValue(ONE_CHAPTER);
-  render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  // Remove the only chapter — should not crash
-  await userEvent.click(screen.getByRole("button", { name: /remove chapter 1/i }));
-
-  // No chapter cards remain; confirm button should be disabled
-  const confirmBtn = screen.getByRole("button", { name: /confirm & start reading/i });
-  expect(confirmBtn).toBeDisabled();
-});
-
-// ── handleConfirm success ─────────────────────────────────────────────────────
-
-test("clicking Confirm calls confirmChapters and redirects to reader", async () => {
-  render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  await userEvent.click(screen.getByRole("button", { name: /confirm & start reading/i }));
-
-  await waitFor(() => {
-    expect(mockConfirmChapters).toHaveBeenCalledWith(
-      42,
-      expect.arrayContaining([
-        expect.objectContaining({ title: "Chapter 1", original_index: 0 }),
-        expect.objectContaining({ title: "Chapter 2", original_index: 1 }),
-      ]),
-    );
-    expect(mockPush).toHaveBeenCalledWith("/reader/42");
-  });
-});
-
-// ── handleConfirm error paths ─────────────────────────────────────────────────
-
-test("confirm failure with ApiError shows the API error message inline", async () => {
+test("shows an error with a retry when the draft cannot be loaded", async () => {
   const { ApiError } = jest.requireMock("@/lib/api");
-  mockConfirmChapters.mockRejectedValue(new ApiError(500, "Server overloaded"));
-
+  mockGetDraftChapters.mockRejectedValue(new ApiError(500, "boom"));
   render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
 
-  await userEvent.click(screen.getByRole("button", { name: /confirm & start reading/i }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("boom");
 
-  await waitFor(() => {
-    expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText("Server overloaded")).toBeInTheDocument();
-  });
-  // Should NOT navigate away
+  mockGetDraftChapters.mockResolvedValue(DRAFT);
+  await userEvent.click(screen.getByRole("button", { name: /retry/i }));
+  expect(await screen.findByRole("heading", { name: /review chapters/i })).toBeInTheDocument();
+});
+
+test("finishing saves the structure before confirming", async () => {
+  const user = userEvent.setup();
+  render(<ChapterEditorPage />);
+  await screen.findByRole("heading", { name: /review chapters/i });
+
+  await user.click(screen.getByRole("button", { name: /add to shelf/i }));
+
+  // confirm reads the draft rows, so an unsaved split would be dropped en route.
+  await waitFor(() => expect(mockSaveStructure).toHaveBeenCalled());
+  await waitFor(() => expect(mockConfirmChapters).toHaveBeenCalledWith(42, [
+    { title: "Chapter 1", original_index: 0 },
+    { title: "Chapter 2", original_index: 1 },
+  ]));
+});
+
+test("finishing sends the reader to the book", async () => {
+  const user = userEvent.setup();
+  render(<ChapterEditorPage />);
+  await screen.findByRole("heading", { name: /review chapters/i });
+
+  await user.click(screen.getByRole("button", { name: /add to shelf/i }));
+  await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/reader/42"));
+});
+
+test("a failed finish explains itself and keeps you on the page", async () => {
+  const { ApiError } = jest.requireMock("@/lib/api");
+  mockConfirmChapters.mockRejectedValue(new ApiError(400, "chapters list cannot be empty"));
+  const user = userEvent.setup();
+  render(<ChapterEditorPage />);
+  await screen.findByRole("heading", { name: /review chapters/i });
+
+  await user.click(screen.getByRole("button", { name: /add to shelf/i }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("chapters list cannot be empty");
   expect(mockPush).not.toHaveBeenCalled();
 });
 
-test("confirm failure with generic Error shows fallback error message", async () => {
-  mockConfirmChapters.mockRejectedValue(new Error("Something went wrong"));
-
-  render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  await userEvent.click(screen.getByRole("button", { name: /confirm & start reading/i }));
-
-  await waitFor(() => {
-    expect(screen.getByText(/failed to confirm chapters/i)).toBeInTheDocument();
+test("falls back to the preview when the server sends no full text", async () => {
+  mockGetDraftChapters.mockResolvedValue({
+    chapters: [{ index: 0, title: "Only", preview: "just a preview", word_count: 3 }],
   });
-  expect(mockPush).not.toHaveBeenCalled();
-});
-
-// ── Chapter card selection ────────────────────────────────────────────────────
-
-test("clicking a chapter card selects it", async () => {
   render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  // Click chapter 2 card to select it
-  const ch2Card = screen.getByRole("button", { name: /chapter 2:/i });
-  await userEvent.click(ch2Card);
-
-  // The card now has "(selected)" in its aria-label
-  expect(screen.getByRole("button", { name: /chapter 2.*selected/i })).toBeInTheDocument();
-});
-
-test("pressing Enter on a chapter card selects it", async () => {
-  render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  const ch2Card = screen.getByRole("button", { name: /chapter 2:/i });
-  ch2Card.focus();
-  await userEvent.keyboard("{Enter}");
-
-  expect(screen.getByRole("button", { name: /chapter 2.*selected/i })).toBeInTheDocument();
-});
-
-test("pressing Space on a chapter card selects it", async () => {
-  render(<ChapterEditorPage />);
-  await waitFor(() => screen.getByText("Chapter 1"));
-
-  const ch2Card = screen.getByRole("button", { name: /chapter 2:/i });
-  ch2Card.focus();
-  await userEvent.keyboard(" ");
-
-  expect(screen.getByRole("button", { name: /chapter 2.*selected/i })).toBeInTheDocument();
+  expect(await screen.findByText("just a preview")).toBeInTheDocument();
 });

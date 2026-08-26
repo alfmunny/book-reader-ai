@@ -629,6 +629,16 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-08-26 | "Your Library" became "Your Bookshelf" on its own `/bookshelf` route, carrying the greeting, Continue Reading, stats strip and book grid. The two-tab strip became a real `<nav>` landmark with links and `aria-current="page"` — tabs promised in-page panels that no longer exist (P2) | app/bookshelf/page.tsx, components/SiteHeader.tsx | #2711 |
 | 2026-08-26 | Header and primary nav extracted to `SiteHeader` — it now has to render on two routes rather than living inline in the homepage (P2) | components/SiteHeader.tsx | #2711 |
 
+## Wave 22 — Chapter audit panel (2026-08-26)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-26 | Chapter split audit rebuilt as a shared `ChapterAuditPanel`. The previous editor could retitle and remove, showed a 300-character preview, and had **no split or merge** — the two operations a bad split actually needs, since a merged pair of chapters is the commonest failure. Splitting now happens between paragraphs where the eye already is; merge and discard sit beside it; the full chapter text replaces the preview | components/ChapterAuditPanel.tsx, app/upload/[bookId]/chapters/page.tsx | audit |
+| 2026-08-26 | Per-chapter flags so a long audit is a search rather than a read: runt, oversized (>3× median — the merged-chapters tell), no title, and "shouting" (an all-caps speaker cue buried in a long paragraph — the verse-collapse pattern from #820, reusing the signal `epub_split_audit.py` applies at book level). Hints, never gates | lib/chapterFlags.ts | audit |
+| 2026-08-26 | Autosave: debounced PATCH while typing, immediate PUT after a split or merge, with a quiet saved marker and an explicit warning when a save fails — an unsaved change is only on that device. Review ticks and a progress meter let a 47-chapter audit be interrupted and resumed | components/ChapterAuditPanel.tsx | audit |
+| 2026-08-26 | Bulk title tools — number them (strips any existing ordinal first, so running twice cannot produce "2. 1. Nacht"), use first line (fills empty titles only), strip numerals — each one undo step | lib/chapterFlags.ts | audit |
+| 2026-08-26 | Chapter rows became real `<button>`s rather than divs with `role="button"` + `onKeyDown`, and the scrollable text pane keeps its `tabIndex={0}` for keyboard scrolling (#2519) | components/ChapterAuditPanel.tsx | audit |
+
 ## Wave 23 — Fossilize on confirm, generated covers (2026-08-26)
 
 | Date | Change | File(s) | PR |

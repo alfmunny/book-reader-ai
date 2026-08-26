@@ -7,7 +7,7 @@ export type TTSGender = "female" | "male";
 export type LineHeight = "tight" | "normal" | "relaxed";
 export type ContentWidth = "narrow" | "normal" | "wide";
 export type FontFamily = "serif" | "sans";
-export type ReaderSidebarTab = "chat" | "notes" | "vocab" | "translate";
+export type ReaderSidebarTab = "toc" | "chat" | "notes" | "vocab" | "translate";
 
 export interface AppSettings {
   insightLang: string;

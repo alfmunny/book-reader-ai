@@ -210,13 +210,16 @@ test.describe("Display customisation (desktop)", () => {
     expect(fontSize).toBe("lg");
   });
 
-  test("desktop header shows chapter selector dropdown", async ({ page }) => {
-    await expect(page.locator("header select").first()).toBeVisible();
+  test("desktop header shows the contents control", async ({ page }) => {
+    await expect(
+      page.locator("header").getByRole("button", { name: "Table of contents" })
+    ).toBeVisible();
   });
 
-  test("chapter selector dropdown lets user jump directly to a chapter", async ({ page }) => {
-    const select = page.locator("header select").first();
-    await select.selectOption({ index: 2 }); // chapter III
+  test("the contents panel lets a reader jump directly to a chapter (#2745)", async ({ page }) => {
+    await page.locator("header").getByRole("button", { name: "Table of contents" }).click();
+    const toc = page.getByRole("navigation", { name: /table of contents/i });
+    await toc.getByRole("button", { name: /Chapter III/ }).click();
     await expect(page.getByText(MOCK_CHAPTERS[2].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 5000 });
   });
 });

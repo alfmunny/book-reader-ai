@@ -60,7 +60,7 @@ test.describe("Mobile reader bottom bar", () => {
 });
 
 test.describe("Desktop reader unchanged", () => {
-  test("desktop header shows Translate button and chapter selector", async ({ page }) => {
+  test("desktop header shows Translate button and contents control", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await mockBackend(page);
     await page.route("**/api/annotations/*", (r) => r.fulfill({ json: [] }));
@@ -69,8 +69,10 @@ test.describe("Desktop reader unchanged", () => {
     await page.goto("/reader/1342");
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
 
-    // Header has chapter select and Translate
-    await expect(page.locator("header select").first()).toBeVisible();
+    // Header has the contents control and Translate
+    await expect(
+      page.locator("header").getByRole("button", { name: "Table of contents" })
+    ).toBeVisible();
     await expect(page.locator("header").getByText("Translate")).toBeVisible();
   });
 });

@@ -160,7 +160,7 @@ All schema is additive; disabling the feature is removing the UI entry points. N
 
 ## Open questions
 
-1. **Sub-paragraph granularity** — is paragraph-level ops acceptable for v1 (a tapped sentence translates its paragraph), or is true sentence-level patching required from the start?
+1. ~~Sub-paragraph granularity~~ **Resolved (owner, 2026-08-26)**: paragraph-level operations are the v1 contract — a tapped sentence translates its containing paragraph. True sentence-level patching is deferred until a concrete need appears.
 2. ~~Multiple named versions~~ **Resolved (owner, 2026-08-26)**: the unit is a named, book-scoped translation session; users create, name, and switch between as many as they like.
 3. **Editorial fallback in Mine mode** — v1 shows explicit gaps rather than mixing sources. Confirm.
 4. **Publish scope** — per-chapter publishing (proposed) vs whole-book only?

@@ -42,34 +42,39 @@ A user-owned translation layer beside the editorial one:
 
 ## Schema (migration 044 — additive only, no cleanup step required)
 
+The unit of work is a **named translation session** (owner refinement, 2026-08-26): the user starts translating a book under a name they choose ("诗意版", "Literal study"), all work lands in that session across chapters, and they can switch sessions or start a new one at any time.
+
 ```sql
-CREATE TABLE user_translations (
+CREATE TABLE translation_sessions (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
     book_id         INTEGER NOT NULL REFERENCES books(id)  ON DELETE CASCADE,
-    chapter_index   INTEGER NOT NULL,
-    target_language TEXT    NOT NULL,
+    name            TEXT    NOT NULL,                  -- user-chosen session name
+    target_language TEXT    NOT NULL,                  -- one language per session
     style_prompt    TEXT,                              -- user's standing instructions
-    provider        TEXT    NOT NULL,                  -- default provider for this version
+    provider        TEXT    NOT NULL,                  -- default provider for new runs
     status          TEXT    NOT NULL DEFAULT 'private',-- 'private' | 'published' (phase 2)
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, book_id, chapter_index, target_language)
+    UNIQUE(user_id, book_id, name)
 );
 
-CREATE TABLE user_translation_paragraphs (
+CREATE TABLE translation_session_paragraphs (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    translation_id  INTEGER NOT NULL REFERENCES user_translations(id) ON DELETE CASCADE,
+    session_id      INTEGER NOT NULL REFERENCES translation_sessions(id) ON DELETE CASCADE,
+    chapter_index   INTEGER NOT NULL,
     paragraph_index INTEGER NOT NULL,                  -- aligns with chapter paragraph split
     text            TEXT    NOT NULL,
     provider        TEXT    NOT NULL,                  -- what ACTUALLY produced this paragraph
     model           TEXT    NOT NULL,                  -- e.g. 'deepseek-v4-flash' — the visible tag
     edited_by_user  INTEGER NOT NULL DEFAULT 0,        -- 1 after a manual edit (tag shows "edited")
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(translation_id, paragraph_index)
+    UNIQUE(session_id, chapter_index, paragraph_index)
 );
-CREATE INDEX ut_paragraphs_by_translation ON user_translation_paragraphs(translation_id, paragraph_index);
+CREATE INDEX ts_paragraphs_by_chapter ON translation_session_paragraphs(session_id, chapter_index, paragraph_index);
 ```
+
+A session is **book-scoped** — it spans chapters, so "continue translating where I stopped" is the natural flow, and per-book session management (rename, delete, switch) lives in one place. Sessions carry exactly one target language; a zh session and an en session are simply two sessions.
 
 Why per-paragraph rows instead of one JSON blob (as the editorial table does):
 - **Partial coverage** is first-class — the sentence-by-sentence workflow is "translate the paragraph I'm reading now"; untranslated paragraphs simply have no row.
@@ -83,27 +88,30 @@ Paragraph alignment uses the same `text.split(/\n\n+/)` contract the editorial p
 All endpoints require auth and operate only on the caller's rows (404 on other users' ids). Provider errors reuse the actionable 502 mapping from #2683.
 
 ```
-GET    /translations/mine?book_id&chapter_index&lang
-       → { version: {...header, paragraph_count}, paragraphs: {index: {text, provider, model, edited_by_user}} }
-       404 when the user has no version for this chapter+lang.
+GET    /translation-sessions?book_id
+       → the user's sessions for this book: [{id, name, target_language, provider,
+         style_prompt, status, chapters_covered, updated_at}]
 
-POST   /translations/mine/translate
-       { book_id, chapter_index, lang,
-         scope: "chapter" | {paragraph_index},
-         provider: "deepseek" | "claude",
-         style_prompt?: string }
-       → upserts the version header (updating style_prompt if given), translates the
-         requested scope with the user's stored key, upserts paragraph rows tagged
-         with the concrete model, returns the GET shape.
+POST   /translation-sessions            { book_id, name, target_language, provider, style_prompt? }
+       → create a session (409 on duplicate name for the book).
+PATCH  /translation-sessions/{id}       { name? | style_prompt? | provider? } → rename / retune.
+DELETE /translation-sessions/{id}       → delete the session and all its paragraphs.
+
+GET    /translation-sessions/{id}/chapters/{chapter_index}
+       → { paragraphs: {index: {text, provider, model, edited_by_user}} } (may be partial)
+
+POST   /translation-sessions/{id}/translate
+       { chapter_index, scope: "chapter" | {paragraph_index}, provider?: override }
+       → translates the scope with the user's stored key using the session's
+         style_prompt (+ optional one-off provider override), upserts paragraph
+         rows tagged with the concrete model.
        Chapter scope translates paragraphs concurrently in small batches (the
        claude.translate_text chunking pattern), skipping paragraphs that already
        have an edited_by_user row unless force=true.
 
-PATCH  /translations/mine/{id}/paragraphs/{index}   { text }
+PATCH  /translation-sessions/{id}/chapters/{ch}/paragraphs/{index}   { text }
        → manual edit; sets edited_by_user=1 (tag renders as "edited").
-
-DELETE /translations/mine/{id}/paragraphs/{index}   → remove one paragraph (falls back in UI).
-DELETE /translations/mine/{id}                      → remove the whole version.
+DELETE /translation-sessions/{id}/chapters/{ch}/paragraphs/{index}   → remove one paragraph.
 ```
 
 **Provider call**: a new `services/user_translate.py` with one function per provider, mirroring the BYOK helpers in `services/claude.py` / `services/deepseek.py`:
@@ -117,9 +125,9 @@ DELETE /translations/mine/{id}                      → remove the whole version
 
 All changes live in the existing translation tab + `SentenceReader` rendering path; the parallel/inline renderer is reused untouched (it consumes `translations: string[]`).
 
-1. **Target language stays first-class**: the translation tab's existing "Target language" select governs BOTH sources. Editorial and Mine are each per-language (the schema keys versions on `target_language`), and the switcher operates within the currently selected language — the user's zh version and en version are independent, each with its own style prompt and coverage.
-2. **Version switcher** below the language select: `Editorial` / `Mine` (radio-style, persisted in `AppSettings.translationSource`, per language). The "Mine" entry shows the version's dominant model tag as a chip (`deepseek-v4-flash`), or "start translating" when no version exists. Switching is instant — both sources are independently cached client-side; the user's version is never mutated by switching.
-3. **Style panel** (popover next to the switcher): textarea for the style prompt (prefilled from the version / last used), provider select (DeepSeek/Claude, gated on stored keys like the chat dropdown), and a "Translate whole chapter" button with per-paragraph progress.
+1. **Target language**: the existing select governs the Editorial source. Each user session carries its own language (shown as a chip on the session entry); selecting a session displays that session's language.
+2. **Session switcher** below the language select: `Editorial` / the user's named sessions for this book / `+ New session`. Creating a session asks for a name, target language, provider, and optional style prompt. The active session per book persists in settings. A small overflow menu on each session offers Rename / Delete. Switching is instant and non-destructive. 
+3. **Style panel** (below the switcher): edits the ACTIVE session's style prompt and default provider (DeepSeek/Claude, gated on stored keys like the chat dropdown), plus a "Translate whole chapter" button with per-paragraph progress and a per-book coverage line (e.g. "chapters 1–4 of 28 covered").
 4. **Per-paragraph actions** (visible in "Mine" mode, on hover/tap of a translation block):
    - **Translate / Retranslate** — runs `scope: {paragraph_index}` with the current style + provider; a small provider picker on the button allows a one-off different provider.
    - **Edit** — inline textarea (same pattern as the notes-page question editing), saves via PATCH, tags the paragraph "edited".
@@ -130,9 +138,9 @@ All changes live in the existing translation tab + `SentenceReader` rendering pa
 
 ## Phase 2 — publishing (schema-ready now, shipped later)
 
-- `status='published'` on the version header; publishing requires every paragraph translated (no gaps) and snapshots `published_at`.
-- `GET /translations/published?book_id&chapter_index&lang` → list of `{author_name, model_tags, updated_at, id}`; the reader's switcher grows a "Community" group.
-- **Comments**: new `translation_comments (id, translation_id, paragraph_index NULL, user_id, body, created_at)` — a discussion thread per version, optionally anchored per paragraph. Rendered in a side panel on the reading page.
+- `status='published'` on the session; publishing is per session, chapter granular in the reader (chapters with gaps show as "not yet translated" to visitors); snapshots `published_at`.
+- `GET /translation-sessions/published?book_id` → list of `{author_name, session_name, target_language, model_tags, updated_at, id}`; the reader's switcher grows a "Community" group.
+- **Comments**: new `translation_comments (id, session_id, chapter_index NULL, paragraph_index NULL, user_id, body, created_at)` — a discussion thread per version, optionally anchored per paragraph. Rendered in a side panel on the reading page.
 - Moderation: owner/admin can unpublish; publishing is per-chapter (a book-level "publish all" is sugar later).
 - Phase 2 gets its own implementation issue after this doc merges; nothing in phase 1 blocks on it.
 
@@ -153,6 +161,6 @@ All schema is additive; disabling the feature is removing the UI entry points. N
 ## Open questions
 
 1. **Sub-paragraph granularity** — is paragraph-level ops acceptable for v1 (a tapped sentence translates its paragraph), or is true sentence-level patching required from the start?
-2. **Multiple named versions** per (user, chapter, lang) — v1 assumes one; publishing may eventually want "draft vs published" copies. OK to defer?
+2. ~~Multiple named versions~~ **Resolved (owner, 2026-08-26)**: the unit is a named, book-scoped translation session; users create, name, and switch between as many as they like.
 3. **Editorial fallback in Mine mode** — v1 shows explicit gaps rather than mixing sources. Confirm.
 4. **Publish scope** — per-chapter publishing (proposed) vs whole-book only?

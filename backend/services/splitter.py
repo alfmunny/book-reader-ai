@@ -1245,8 +1245,16 @@ def _html_inline_text(elem) -> str:
     if elem.text:
         chunks.append(elem.text)
     for child in elem.iterchildren():
-        tag = child.tag if isinstance(child.tag, str) else ""
-        if tag == "br":
+        # Comments and processing instructions have a non-str tag. They are
+        # markup, not content: Gutenberg's EPUB conversion marks every anchor
+        # with `<a id="link2HCH0001"><!-- H2 anchor --></a>`, and recursing
+        # into one collects its own text (#2624 — this put a trailing
+        # 'H2 anchor' paragraph in all 137 chapters of Moby Dick #2701).
+        # Their tail still belongs to the surrounding flow.
+        tag = child.tag if isinstance(child.tag, str) else None
+        if tag is None:
+            pass
+        elif tag == "br":
             chunks.append("\n")
         else:
             inner = _html_inline_text(child)

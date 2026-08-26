@@ -45,6 +45,10 @@ async def _deepseek_call(api_key: str, system: str, prompt: str, max_tokens: int
                     {"role": "user", "content": prompt},
                 ],
                 "max_tokens": max_tokens,
+                # v4-flash reasons by default; for translation the thinking
+                # adds 30-120s latency and can consume the WHOLE token budget,
+                # returning empty content (verified live, 2026-08-27).
+                "thinking": {"type": "disabled"},
             },
         )
         resp.raise_for_status()
@@ -89,7 +93,7 @@ async def translate_paragraph(
         # never accept an empty translation.
         system = _system(style_prompt)
         prompt = _prompt(text, source_language, target_language)
-        result = await _deepseek_call(api_key, system, prompt, 6000)
+        result = await _deepseek_call(api_key, system, prompt, 4000)
         if not result.strip():
             result = await _deepseek_call(api_key, system, prompt, 8000)
         if not result.strip():

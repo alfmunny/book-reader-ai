@@ -5,6 +5,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
+// The review queue is its own component with its own tests
+// (PendingPublishPanel.test.tsx); these suites are about the books list, and an
+// unmocked fetch from it would perturb their adminFetch call counts.
+jest.mock("@/components/PendingPublishPanel", () => {
+  const PendingPublishPanel = () => null;
+  PendingPublishPanel.displayName = "PendingPublishPanel";
+  return { __esModule: true, default: PendingPublishPanel };
+});
+
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));

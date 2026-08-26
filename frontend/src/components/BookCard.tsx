@@ -1,6 +1,7 @@
 "use client";
 import { BookMeta } from "@/lib/api";
-import { BookCoverPlaceholderIcon, CloseIcon } from "@/components/Icons";
+import { CloseIcon } from "@/components/Icons";
+import GeneratedCover from "@/components/GeneratedCover";
 
 interface Props {
   book: BookMeta;
@@ -10,9 +11,12 @@ interface Props {
    *  calls this handler without navigating. Used on the "Your Library"
    *  tab to let users remove books from their local recent list. */
   onRemove?: () => void;
+  /** Marks a book the reader brought themselves. Library books stay unmarked —
+   *  the badge marks the exception, not the rule. */
+  ownedByUser?: boolean;
 }
 
-export default function BookCard({ book, onClick, badge, onRemove }: Props) {
+export default function BookCard({ book, onClick, badge, onRemove, ownedByUser }: Props) {
   return (
     <div className="relative h-full">
       {onRemove && (
@@ -47,12 +51,17 @@ export default function BookCard({ book, onClick, badge, onRemove }: Props) {
             className="w-full h-40 object-cover rounded-lg mb-2"
           />
         ) : (
-          <div className="w-full h-40 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg mb-2 flex flex-col items-center justify-center border border-amber-100 overflow-hidden relative">
-            <BookCoverPlaceholderIcon className="w-10 h-14 text-amber-600" />
-            <p className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 text-[10px] text-amber-700/60 text-center font-serif leading-tight line-clamp-2">
-              {book.title}
-            </p>
-          </div>
+          <GeneratedCover
+            title={book.title}
+            authors={book.authors}
+            seed={book.id}
+            className="w-full h-40 mb-2"
+          />
+        )}
+        {ownedByUser && (
+          <span className="self-start mb-1 text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+            Your upload
+          </span>
         )}
         <p className="font-serif font-semibold text-sm text-ink line-clamp-2 min-h-[2.5rem] flex-1" title={book.title}>
           {book.title}

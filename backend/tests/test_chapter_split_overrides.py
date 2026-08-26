@@ -9,12 +9,13 @@ cutting the play scene in two.
 """
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 import scripts.chapter_split_overrides as overrides_module
-from scripts.chapter_split_overrides import apply_overrides
+from scripts.chapter_split_overrides import apply_overrides, translation_index_map
 from services.splitter import Chapter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -193,6 +194,48 @@ def test_retitle_indices_refer_to_the_raw_split_not_the_merged_one(registry):
     ]
 
 
+# ── translation_index_map ────────────────────────────────────────────────────
+
+def test_index_map_is_identity_for_an_unregistered_book():
+    assert translation_index_map(4242, 4) == {0: 0, 1: 1, 2: 2, 3: 3}
+
+
+def test_index_map_is_identity_when_only_retitles_are_registered(registry):
+    """A retitle moves nothing, so nothing keyed to chapter index moves."""
+    registry({"retitle": [{"index": 0, "expect_title": "ACT III", "title": "X"}]})
+
+    assert translation_index_map(999, 4) == {0: 0, 1: 1, 2: 2, 3: 3}
+
+
+def test_index_map_shifts_everything_after_a_merge_down(registry):
+    """Regression: A Room with a View's only translation sat at index 20 and
+    had to land on 19 when chapter 15 was folded away — without this, the
+    repair orphans it."""
+    registry({"merge_into_previous": [{"index": 2, "expect_title": "PROLOGUE."}]})
+
+    # 2 is absorbed into 1; 3 slides down into its place.
+    assert translation_index_map(999, 4) == {0: 0, 1: 1, 2: 1, 3: 2}
+
+
+def test_index_map_agrees_with_apply_overrides_on_length(registry):
+    registry({"merge_into_previous": [
+        {"index": 1, "expect_title": "SCENE II. A hall in the Castle."},
+        {"index": 3, "expect_title": "SCENE III. A room in the Castle."},
+    ]})
+    chapters = _scene_split()
+
+    mapping = translation_index_map(999, len(chapters))
+
+    assert len(set(mapping.values())) == len(apply_overrides(999, chapters))
+
+
+def test_index_map_rejects_an_out_of_range_merge(registry):
+    registry({"merge_into_previous": [{"index": 99, "expect_title": "X"}]})
+
+    with pytest.raises(SystemExit, match="out of range"):
+        translation_index_map(999, 4)
+
+
 # ── The committed Hamlet artifact (#1524) ────────────────────────────────────
 
 def test_hamlet_artifact_has_no_standalone_prologue_chapter():
@@ -251,3 +294,44 @@ def test_dracula_keeps_all_thirty_chapters_and_translations_aligned():
     assert len(numbered) == 27
     for e in entries:
         assert len(e["paragraphs"]) == len(chapters[e["index"]]["paragraphs"])
+
+
+# ── The committed A Room with a View artifact (#2641) ────────────────────────
+
+RWAV_ARTIFACT = REPO_ROOT / "data" / "books" / "book_2641.json"
+
+
+def test_rwav_has_no_chapter_invented_from_prose():
+    """Regression: the splitter matched "Chapter two" inside narrative prose —
+    Lucy reading Miss Lavish's novel — and tore the last 15 paragraphs off
+    Chapter XV."""
+    artifact = json.loads(RWAV_ARTIFACT.read_text())
+
+    titles = [c["title"] for c in artifact["chapters"]]
+    assert not any("Chapter two was found" in t for t in titles)
+    assert len(titles) == 20, "A Room with a View is 20 chapters"
+
+
+def test_rwav_chapter_xv_is_whole():
+    artifact = json.loads(RWAV_ARTIFACT.read_text())
+    chapter = next(c for c in artifact["chapters"]
+                   if c["title"] == "PART TWO — Chapter XV")
+
+    # The source hard-wraps lines inside paragraphs, so compare on normalised
+    # whitespace rather than the raw text.
+    joined = re.sub(r"\s+", " ", "\n\n".join(chapter["paragraphs"]))
+    assert "Find me chapter two, if it isn’t bothering you." in joined
+    # …and the passage that used to be its own chapter follows in the same one.
+    assert "Chapter two was found, and she glanced at its opening sentences." in joined
+    assert "was kissed by him" in joined
+
+
+def test_rwav_translation_followed_its_chapter_down():
+    """The single zh entry was anchored at index 20; after the merge Chapter XX
+    is index 19, and the entry must have moved with it."""
+    artifact = json.loads(RWAV_ARTIFACT.read_text())
+    entries = artifact["translations"]["zh"]["chapters"]
+
+    assert [e["index"] for e in entries] == [19]
+    assert artifact["chapters"][19]["title"] == "PART TWO — Chapter XX"
+    assert len(entries[0]["paragraphs"]) == len(artifact["chapters"][19]["paragraphs"])

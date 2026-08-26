@@ -22,9 +22,9 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "text",
-    "frozen_at": "2026-08-06",
-    "audited_by": "architect-agent",
-    "content_sha256": "6129136b815bf277f7ac54efa368f3c973ba9b45d10cd6498e389ab5d6541510"
+    "frozen_at": "2026-08-26",
+    "audited_by": "architect-agent (Chapter XV boundary re-audit)",
+    "content_sha256": "d4043bf3c9fa111e3d297db2277edb657466895672fa0d833ae938fab83998c1"
   },
   "chapters": [
     {
@@ -1715,13 +1715,7 @@
         "“Mr. Emerson, go and find tennis balls.” She opened the book. Cecil\nmust have his reading and anything else that he liked. But her\nattention wandered to George’s mother, who—according to Mr. Eager—had\nbeen murdered in the sight of God and—according to her son—had seen as\nfar as Hindhead.",
         "“Am I really to go?” asked George.",
         "“No, of course not really,” she answered.",
-        "“Chapter two,” said Cecil, yawning. “Find me chapter two, if it isn’t\nbothering you.”"
-      ]
-    },
-    {
-      "index": 15,
-      "title": "PART TWO — Chapter two was found, and she glanced at its opening sentences.",
-      "paragraphs": [
+        "“Chapter two,” said Cecil, yawning. “Find me chapter two, if it isn’t\nbothering you.”",
         "Chapter two was found, and she glanced at its opening sentences.",
         "She thought she had gone mad.",
         "“Here—hand me the book.”",
@@ -1740,7 +1734,7 @@
       ]
     },
     {
-      "index": 16,
+      "index": 15,
       "title": "PART TWO — Chapter XVI",
       "paragraphs": [
         "Chapter XVI\nLying to George",
@@ -1841,7 +1835,7 @@
       ]
     },
     {
-      "index": 17,
+      "index": 16,
       "title": "PART TWO — Chapter XVII",
       "paragraphs": [
         "Chapter XVII\nLying to Cecil",
@@ -1903,7 +1897,7 @@
       ]
     },
     {
-      "index": 18,
+      "index": 17,
       "title": "PART TWO — Chapter XVIII",
       "paragraphs": [
         "Chapter XVIII\nLying to Mr. Beebe, Mrs. Honeychurch, Freddy, and The Servants",
@@ -2070,7 +2064,7 @@
       ]
     },
     {
-      "index": 19,
+      "index": 18,
       "title": "PART TWO — Chapter XIX",
       "paragraphs": [
         "Chapter XIX\nLying to Mr. Emerson",
@@ -2253,7 +2247,7 @@
       ]
     },
     {
-      "index": 20,
+      "index": 19,
       "title": "PART TWO — Chapter XX",
       "paragraphs": [
         "Chapter XX\nThe End of the Middle Ages",
@@ -2323,7 +2317,7 @@
       "model": "claude-opus-4-7",
       "chapters": [
         {
-          "index": 20,
+          "index": 19,
           "title_translation": "第二十章 中世纪之终",
           "paragraphs": [
             "第二十章\n中世纪之终",

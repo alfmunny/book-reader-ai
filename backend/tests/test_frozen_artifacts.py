@@ -41,3 +41,26 @@ def test_artifact_indices_contiguous_and_translations_aligned(path):
             assert len(e["paragraphs"]) == len(by_index[e["index"]]["paragraphs"]), (
                 f"{lang} ch{e['index']}: paragraph count mismatch"
             )
+
+
+# Book 45304 (City of God) is frozen with 126 of 133 titles lifted from its own
+# prose — the splitter never found its BOOK I–XIII structure. Repairing it means
+# re-anchoring 133 translated chapters, so it stays as-is pending that decision.
+# Every other frozen book must be clean, and this list must only ever shrink.
+KNOWN_FABRICATED_TITLES = {45304}
+
+
+@pytest.mark.parametrize("path", ARTIFACTS, ids=lambda p: p.stem)
+def test_no_artifact_gains_a_fabricated_title(path):
+    """Guards the audit gate's threshold: a newly frozen book must not carry a
+    title the splitter lifted from the chapter's own opening prose."""
+    from scripts.freeze_book import _is_fabricated_title
+
+    artifact = json.loads(path.read_text())
+    flagged = [
+        c["index"] for c in artifact["chapters"]
+        if _is_fabricated_title(c["title"], c["paragraphs"])
+    ]
+    if artifact["book_id"] in KNOWN_FABRICATED_TITLES:
+        pytest.skip(f"book {artifact['book_id']}: known, pending a re-split decision")
+    assert flagged == [], f"chapters {flagged} are named after their own text"

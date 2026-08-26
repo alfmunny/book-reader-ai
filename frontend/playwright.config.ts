@@ -12,12 +12,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // One worker made the E2E job the second-slowest check (~4m20s for ~100
-  // specs). Every spec stubs the backend with page.route(), so there is no
-  // shared server state for workers to collide on; the only shared resource
-  // is the single `next dev` server, which is why this is 2 and not the
-  // runner's full core count.
-  workers: process.env.CI ? 2 : undefined,
+  // Stays at 1. Two workers were tried and reverted: the specs themselves are
+  // independent (each stubs the backend with page.route()), but they share one
+  // `next dev` server, which compiles each route on first request. Two workers
+  // requesting different routes at once pushed the first paint past the 5s
+  // expect timeout — "vocab sidebar: clicking an occurrence closes the sidebar"
+  // failed at 8.0s and passed on retry at 4.3s, tripping the fail-on-flaky gate.
+  // Raising this is worth revisiting only together with serving a production
+  // build (`next build` + `next start`), which removes lazy compilation.
+  workers: process.env.CI ? 1 : undefined,
   reporter: [
     ["list"],
     ["json", { outputFile: "e2e-results.json" }],

@@ -53,11 +53,15 @@ test("preserves chapter index from previous record if not provided", () => {
   expect(getRecentBooks()[0].lastChapter).toBe(5);
 });
 
-test("caps recent books list at 8", () => {
-  for (let i = 0; i < 10; i++) {
+test("keeps every started book — no cap (owner report, 2026-08-26)", () => {
+  // The old MAX=8 cap silently dropped the oldest book from the shelf as
+  // soon as a 9th was opened. Every book the reader started must stay.
+  for (let i = 0; i < 25; i++) {
     recordRecentBook({ ...BOOK, id: i });
   }
-  expect(getRecentBooks()).toHaveLength(8);
+  expect(getRecentBooks()).toHaveLength(25);
+  // Most recently read stays first
+  expect(getRecentBooks()[0].id).toBe(24);
 });
 
 test("sets lastRead to recent timestamp", () => {

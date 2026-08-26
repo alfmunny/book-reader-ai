@@ -3,10 +3,10 @@
  * linking into the reader at its anchor.
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 jest.mock("next-auth/react", () => ({
-  useSession: () => ({ status: "authenticated", data: { backendToken: "t" } }),
+  useSession: () => ({ status: "authenticated", data: { backendToken: "t", backendUser: { id: 9 } } }),
 }));
 jest.mock("@/components/SiteHeader", () => {
   const SiteHeader = () => <div data-testid="site-header" />;
@@ -15,6 +15,8 @@ jest.mock("@/components/SiteHeader", () => {
 });
 jest.mock("@/lib/api", () => ({
   getStoryFeed: jest.fn(),
+  followUser: jest.fn(),
+  unfollowUser: jest.fn(),
 }));
 
 import * as api from "@/lib/api";
@@ -61,4 +63,31 @@ test("feed failure shows an error, not a blank page", async () => {
   (api.getStoryFeed as jest.Mock).mockRejectedValue(new Error("nope"));
   render(<DiscoverPage />);
   expect(await screen.findByRole("alert")).toHaveTextContent("Could not load the feed");
+});
+
+test("Following tab refetches with the scope and shows its own empty state", async () => {
+  (api.getStoryFeed as jest.Mock).mockResolvedValue({ stories: [] });
+  render(<DiscoverPage />);
+  await screen.findByText("Nothing shared yet");
+  fireEvent.click(screen.getByRole("tab", { name: "Following" }));
+  await waitFor(() => expect(api.getStoryFeed).toHaveBeenLastCalledWith("following"));
+  expect(await screen.findByText("Your timeline is quiet")).toBeInTheDocument();
+});
+
+test("Follow button toggles and calls the API; own stories get no button", async () => {
+  (api.getStoryFeed as jest.Mock).mockResolvedValue({
+    stories: [
+      { ...FEED[0], following_author: false },
+      { ...FEED[1], user_id: 9 }, // the viewer's own share
+    ],
+  });
+  (api.followUser as jest.Mock).mockResolvedValue({ ok: true });
+  render(<DiscoverPage />);
+
+  const followBtn = await screen.findByRole("button", { name: "Follow Mira" });
+  fireEvent.click(followBtn);
+  await waitFor(() => expect(api.followUser).toHaveBeenCalledWith(2));
+  expect(await screen.findByRole("button", { name: "Unfollow Mira" })).toBeInTheDocument();
+  // Own story (user_id 9) shows no follow control
+  expect(screen.queryByRole("button", { name: /Follow Jonas/ })).toBeNull();
 });

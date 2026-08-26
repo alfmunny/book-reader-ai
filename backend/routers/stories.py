@@ -27,6 +27,9 @@ from services.db import (
     delete_story_comment,
     get_annotations,
     list_story_feed,
+    follow_user,
+    unfollow_user,
+    list_following,
 )
 
 router = APIRouter(prefix="/stories", tags=["stories"])
@@ -111,11 +114,41 @@ async def list_for_book(
 
 
 @router.get("/feed")
-async def feed(user: dict = Depends(get_current_user)):
-    """Recent shares across all books — the Discover page. Private uploads
-    never surface here: their books are excluded from sharing by access
-    rules at creation (the author owns the book they shared from)."""
-    return {"stories": await list_story_feed()}
+async def feed(
+    scope: Literal["all", "following"] = Query(default="all"),
+    user: dict = Depends(get_current_user),
+):
+    """Recent shares across all books — the Discover page. scope=following
+    limits the timeline to authors the caller follows."""
+    follower_id = user["id"] if scope == "following" else None
+    stories = await list_story_feed(follower_id=follower_id)
+    following = {u["id"] for u in await list_following(user["id"])}
+    for s in stories:
+        s["following_author"] = s["user_id"] in following
+    return {"stories": stories}
+
+
+@router.get("/following")
+async def following(user: dict = Depends(get_current_user)):
+    return {"following": await list_following(user["id"])}
+
+
+@router.post("/follow/{user_id}")
+async def follow(user_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
+    if user_id == user["id"]:
+        raise HTTPException(status_code=422, detail="You cannot follow yourself.")
+    from services.db import get_user_by_id
+    if not await get_user_by_id(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    await follow_user(user["id"], user_id)
+    return {"ok": True}
+
+
+@router.delete("/follow/{user_id}")
+async def unfollow(user_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
+    if not await unfollow_user(user["id"], user_id):
+        raise HTTPException(status_code=404, detail="Not following this user")
+    return {"ok": True}
 
 
 @router.delete("/comments/{comment_id}")

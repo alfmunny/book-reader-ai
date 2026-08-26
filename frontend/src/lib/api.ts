@@ -1249,6 +1249,7 @@ export interface Story {
   color?: string | null;
   // feed only
   book_title?: string;
+  following_author?: boolean;
 }
 
 export interface StoryComment {
@@ -1283,8 +1284,16 @@ export function listStories(bookId: number, chapterIndex?: number) {
   return request<{ stories: Story[] }>(`/stories?${params}`);
 }
 
-export function getStoryFeed() {
-  return request<{ stories: Story[] }>(`/stories/feed`);
+export function getStoryFeed(scope: "all" | "following" = "all") {
+  return request<{ stories: Story[] }>(`/stories/feed?scope=${scope}`);
+}
+
+export function followUser(userId: number) {
+  return request<{ ok: boolean }>(`/stories/follow/${userId}`, { method: "POST" });
+}
+
+export function unfollowUser(userId: number) {
+  return request<{ ok: boolean }>(`/stories/follow/${userId}`, { method: "DELETE" });
 }
 
 export function deleteStory(storyId: number) {

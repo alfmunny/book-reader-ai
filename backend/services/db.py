@@ -2053,13 +2053,20 @@ async def delete_story_comment(comment_id: int, user_id: int, is_admin: bool = F
         return cursor.rowcount > 0
 
 
-async def list_story_feed(limit: int = 50) -> list[dict]:
+async def list_story_feed(limit: int = 50, follower_id: int | None = None) -> list[dict]:
     """Cross-book recent stories for the Discover feed — same live-reference
-    JOIN as list_stories, plus the book title for the feed card."""
+    JOIN as list_stories, plus the book title for the feed card. With
+    follower_id, only stories from users that reader follows (the
+    Following timeline)."""
+    follow_clause = (
+        "WHERE s.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)"
+        if follower_id is not None else ""
+    )
+    params: tuple = (follower_id, limit) if follower_id is not None else (limit,)
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT s.*, u.name AS author_name,
+            f"""SELECT s.*, u.name AS author_name,
                       ts.name AS session_name, ts.target_language,
                       a.sentence_text, a.note_text, a.color,
                       b.title AS book_title,
@@ -2069,9 +2076,10 @@ async def list_story_feed(limit: int = 50) -> list[dict]:
                JOIN books b ON b.id = s.book_id
                LEFT JOIN translation_sessions ts ON ts.id = s.session_id
                LEFT JOIN annotations a ON a.id = s.annotation_id
+               {follow_clause}
                ORDER BY s.created_at DESC, s.id DESC
                LIMIT ?""",
-            (limit,),
+            params,
         ) as c:
             rows = [dict(r) for r in await c.fetchall()]
         for story in rows:
@@ -2087,3 +2095,36 @@ async def list_story_feed(limit: int = 50) -> list[dict]:
                 ) as c:
                     story["paragraphs"] = [dict(r) for r in await c.fetchall()]
     return rows
+
+
+# ── Follow graph (owner request 2026-08-27, #2752 extension) ────────────────
+
+async def follow_user(follower_id: int, followee_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO follows (follower_id, followee_id) VALUES (?, ?)",
+            (follower_id, followee_id),
+        )
+        await db.commit()
+
+
+async def unfollow_user(follower_id: int, followee_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM follows WHERE follower_id = ? AND followee_id = ?",
+            (follower_id, followee_id),
+        )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def list_following(follower_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT u.id, u.name FROM follows f JOIN users u ON u.id = f.followee_id
+               WHERE f.follower_id = ? ORDER BY f.created_at DESC""",
+            (follower_id,),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]

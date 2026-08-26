@@ -5,15 +5,25 @@
  * Recent shares across all books: translation renderings and shared notes,
  * each linking into the reader at its anchor chapter. Content is a live
  * reference — the feed always shows the author's current rendering.
+ * "Following" narrows the timeline to authors the reader follows
+ * (owner request, 2026-08-27).
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Story, getStoryFeed } from "@/lib/api";
+import { Story, getStoryFeed, followUser, unfollowUser } from "@/lib/api";
 import SiteHeader from "@/components/SiteHeader";
 import { BookOpenIcon, ChatIcon } from "@/components/Icons";
 
-function StoryCard({ story }: { story: Story }) {
+function StoryCard({
+  story,
+  ownUserId,
+  onToggleFollow,
+}: {
+  story: Story;
+  ownUserId?: number;
+  onToggleFollow: (story: Story) => void;
+}) {
   return (
     <article
       className="rounded-xl border border-amber-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5"
@@ -22,6 +32,19 @@ function StoryCard({ story }: { story: Story }) {
     >
       <div className="flex items-center gap-1.5 flex-wrap text-xs text-stone-500">
         <span className="font-medium text-ink">{story.author_name}</span>
+        {ownUserId != null && story.user_id !== ownUserId && (
+          <button
+            onClick={() => onToggleFollow(story)}
+            aria-label={`${story.following_author ? "Unfollow" : "Follow"} ${story.author_name}`}
+            className={`px-1.5 py-0.5 rounded-full border text-[11px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              story.following_author
+                ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            {story.following_author ? "Following" : "＋ Follow"}
+          </button>
+        )}
         {story.kind === "translation" ? (
           <>
             <span>shared a translation</span>
@@ -68,25 +91,59 @@ function StoryCard({ story }: { story: Story }) {
 }
 
 export default function DiscoverPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const ownUserId = (session as { backendUser?: { id?: number } } | null)?.backendUser?.id;
+  const [scope, setScope] = useState<"all" | "following">("all");
   const [stories, setStories] = useState<Story[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    getStoryFeed()
+    setStories(null);
+    setError(false);
+    getStoryFeed(scope)
       .then((r) => setStories(r.stories))
       .catch(() => setError(true));
-  }, [status]);
+  }, [status, scope]);
+
+  async function handleToggleFollow(story: Story) {
+    try {
+      if (story.following_author) await unfollowUser(story.user_id);
+      else await followUser(story.user_id);
+      setStories((prev) =>
+        prev?.map((s) =>
+          s.user_id === story.user_id ? { ...s, following_author: !story.following_author } : s,
+        ) ?? prev,
+      );
+    } catch {
+      /* keep the previous state; next fetch corrects it */
+    }
+  }
 
   return (
     <main className="min-h-screen bg-parchment">
-      <SiteHeader />
+      <SiteHeader current="discover" />
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="font-serif text-2xl font-bold text-ink">Discover</h1>
         <p className="mt-1 text-sm text-stone-500">
           What other readers are translating and thinking, across the library.
         </p>
+
+        <div role="tablist" aria-label="Feed scope" className="mt-4 flex rounded-lg border border-amber-300 overflow-hidden w-fit text-sm">
+          {(["all", "following"] as const).map((s) => (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={scope === s}
+              onClick={() => setScope(s)}
+              className={`px-4 py-1.5 min-h-[44px] md:min-h-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                scope === s ? "bg-amber-700 text-white" : "bg-white text-amber-800 hover:bg-amber-50"
+              }`}
+            >
+              {s === "all" ? "Everyone" : "Following"}
+            </button>
+          ))}
+        </div>
 
         {error && (
           <p className="mt-6 text-sm text-red-700" role="alert">Could not load the feed — try reloading.</p>
@@ -104,24 +161,29 @@ export default function DiscoverPage() {
         {stories !== null && stories.length === 0 && (
           <div className="mt-10 text-center">
             <BookOpenIcon className="w-10 h-10 mx-auto text-amber-300" aria-hidden="true" />
-            <h2 className="mt-3 font-serif text-lg text-ink">Nothing shared yet</h2>
+            <h2 className="mt-3 font-serif text-lg text-ink">
+              {scope === "following" ? "Your timeline is quiet" : "Nothing shared yet"}
+            </h2>
             <p className="mt-1 text-sm text-stone-500 max-w-sm mx-auto">
-              Share a paragraph from one of your translation versions, or a note
-              you made while reading — it will appear here for other readers.
+              {scope === "following"
+                ? "Follow readers from the Everyone tab and their shares will appear here."
+                : "Share a paragraph from one of your translation versions, or a note you made while reading — it will appear here for other readers."}
             </p>
-            <Link
-              href="/"
-              className="mt-4 inline-block text-sm px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              Open a book
-            </Link>
+            {scope === "all" && (
+              <Link
+                href="/"
+                className="mt-4 inline-block text-sm px-4 py-2 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Open a book
+              </Link>
+            )}
           </div>
         )}
 
         {stories !== null && stories.length > 0 && (
           <div className="mt-6 space-y-4">
             {stories.map((s) => (
-              <StoryCard key={s.id} story={s} />
+              <StoryCard key={s.id} story={s} ownUserId={ownUserId} onToggleFollow={handleToggleFollow} />
             ))}
           </div>
         )}

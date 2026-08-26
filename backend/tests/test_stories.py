@@ -209,3 +209,63 @@ async def test_feed_lists_recent_stories_with_book_title(client, test_user):
     assert data["stories"][0]["book_title"] == "Faust"
     kinds = {s["kind"] for s in data["stories"]}
     assert kinds == {"translation", "note"}
+
+
+# ── Follow graph + Following timeline ───────────────────────────────────────
+
+async def _second_author_story(book_id=1):
+    """A story by a second (non-caller) user, inserted directly."""
+    from services.db import get_or_create_user, create_story
+    other = await get_or_create_user(google_id="g-mira", email="mira@example.com", name="Mira", picture="")
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        cur = await db.execute(
+            "INSERT INTO translation_sessions (user_id, book_id, name, target_language, provider) VALUES (?, ?, 'M', 'zh', 'deepseek')",
+            (other["id"], book_id),
+        )
+        sid = cur.lastrowid
+        await db.execute(
+            "INSERT INTO translation_session_paragraphs (session_id, chapter_index, paragraph_index, text, provider, model) VALUES (?, 0, 0, 'x', 'deepseek', 'm')",
+            (sid,),
+        )
+        await db.commit()
+    story = await create_story(other["id"], {
+        "kind": "translation", "book_id": book_id, "chapter_index": 0,
+        "session_id": sid, "paragraph_start": 0, "paragraph_end": 0,
+    })
+    return other, story
+
+
+async def test_follow_and_following_timeline(client, test_user):
+    other, _story = await _second_author_story()
+    # Own story too — must NOT appear in the following timeline
+    sid = await _translated_session(client)
+    await _share_translation(client, sid)
+
+    # Empty before following
+    empty = (await client.get("/api/stories/feed", params={"scope": "following"})).json()
+    assert empty["stories"] == []
+
+    assert (await client.post(f"/api/stories/follow/{other['id']}")).status_code == 200
+    timeline = (await client.get("/api/stories/feed", params={"scope": "following"})).json()
+    assert [s["author_name"] for s in timeline["stories"]] == ["Mira"]
+    assert timeline["stories"][0]["following_author"] is True
+
+    # The full feed flags followed authors
+    full = (await client.get("/api/stories/feed")).json()
+    flags = {s["author_name"]: s["following_author"] for s in full["stories"]}
+    assert flags["Mira"] is True and flags[test_user["name"]] is False
+
+
+async def test_unfollow_empties_the_timeline(client, test_user):
+    other, _ = await _second_author_story()
+    await client.post(f"/api/stories/follow/{other['id']}")
+    assert (await client.delete(f"/api/stories/follow/{other['id']}")).status_code == 200
+    timeline = (await client.get("/api/stories/feed", params={"scope": "following"})).json()
+    assert timeline["stories"] == []
+    # Unfollowing again is a 404
+    assert (await client.delete(f"/api/stories/follow/{other['id']}")).status_code == 404
+
+
+async def test_cannot_follow_yourself_or_ghosts(client, test_user):
+    assert (await client.post(f"/api/stories/follow/{test_user['id']}")).status_code == 422
+    assert (await client.post("/api/stories/follow/9999")).status_code == 404

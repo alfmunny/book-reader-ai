@@ -13,7 +13,7 @@ import { SettingsIcon } from "@/components/Icons";
  * onto its own /bookshelf route (#2711) — the nav now has to render on both pages
  * rather than living inline in the homepage.
  */
-export default function SiteHeader({ current }: { current: "home" | "bookshelf" }) {
+export default function SiteHeader({ current }: { current: "home" | "bookshelf" | "discover" }) {
   const { data: session, status } = useSession();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -89,7 +89,7 @@ export default function SiteHeader({ current }: { current: "home" | "bookshelf" 
             <Link href="/upload" className={linkClass(false)}>Upload</Link>
           )}
           {status === "authenticated" && (
-            <Link href="/discover" className={linkClass(false)}>Discover</Link>
+            <Link href="/discover" aria-current={current === "discover" ? "page" : undefined} className={linkClass(current === "discover")}>Discover</Link>
           )}
           {status === "authenticated" && (
             <Link href="/notes" className={linkClass(false)}>Your Notes</Link>

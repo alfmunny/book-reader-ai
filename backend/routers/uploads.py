@@ -1,6 +1,7 @@
 """User book upload endpoints."""
 import json
 import logging
+from datetime import datetime, timezone
 
 import aiosqlite
 import services.db as _db
@@ -198,9 +199,12 @@ async def get_draft_chapters(book_id: int = Path(..., ge=1), user: dict = Depend
         "chapters": [
             {
                 "index": i,
+                "chapter_index": r["chapter_index"],
                 "title": r["title"],
+                "text": r["text"] or "",
                 "preview": (r["text"] or "")[:300].strip(),
                 "word_count": len((r["text"] or "").split()),
+                "reviewed": bool(r["reviewed"]),
             }
             for i, r in enumerate(draft_rows)
             if r["is_draft"] == 1
@@ -284,6 +288,154 @@ async def confirm_chapters(
     from services.book_chapters import clear_cache as _clear_chapter_cache
     _clear_chapter_cache(book_id)
     return {"ok": True, "chapter_count": len(final_chapters)}
+
+
+class DraftMetaSpec(BaseModel):
+    chapter_index: int = Field(..., ge=0)
+    title: str | None = Field(default=None, max_length=500)
+    reviewed: bool | None = None
+
+
+class DraftMetaBody(BaseModel):
+    chapters: list[DraftMetaSpec] = Field(..., max_length=2000)
+
+
+class DraftChapterSpec(BaseModel):
+    title: str = Field(default="", max_length=500)
+    text: str = Field(default="")
+    reviewed: bool = False
+
+
+class DraftStructureBody(BaseModel):
+    chapters: list[DraftChapterSpec] = Field(..., max_length=2000)
+
+
+async def _owned_draft_book(book_id: int, user: dict) -> None:
+    """Raise unless *user* may edit this uploaded book's draft chapters."""
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        async with db.execute(
+            "SELECT owner_user_id, source FROM books WHERE id=?", (book_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if row[1] != "upload":
+        raise HTTPException(status_code=400, detail="Not an uploaded book")
+    if row[0] != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Not your book")
+
+
+@router.patch("/{book_id}/chapters/draft")
+async def patch_draft_chapters(
+    body: DraftMetaBody,
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Save titles and review ticks on a draft.
+
+    The autosave path, fired on a debounce while the reader types, so it never
+    carries chapter text — only a split or merge changes what text a chapter
+    holds, and that goes through PUT. An unknown chapter_index is ignored rather
+    than erroring: a stale tab should not be able to fail the whole save.
+    """
+    await _owned_draft_book(book_id, user)
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        for spec in body.chapters:
+            sets, params = [], []
+            if spec.title is not None:
+                sets.append("title = ?")
+                params.append(spec.title.strip())
+            if spec.reviewed is not None:
+                sets.append("reviewed = ?")
+                params.append(1 if spec.reviewed else 0)
+            if not sets:
+                continue
+            sets.append("updated_at = ?")
+            params.append(stamp)
+            params.extend([book_id, spec.chapter_index])
+            await db.execute(
+                f"UPDATE user_book_chapters SET {', '.join(sets)}"
+                " WHERE book_id = ? AND chapter_index = ? AND is_draft = 1",
+                params,
+            )
+        await db.commit()
+    return {"ok": True, "updated_at": stamp}
+
+
+@router.put("/{book_id}/chapters/draft")
+async def put_draft_chapters(
+    body: DraftStructureBody,
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Replace the whole draft structure, text included.
+
+    Used after a split or merge — the only edits that move text between
+    chapters. Rows stay drafts: this is an autosave, not a confirmation.
+    """
+    if not body.chapters:
+        raise HTTPException(status_code=400, detail="chapters list cannot be empty")
+    await _owned_draft_book(book_id, user)
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        # BEGIN IMMEDIATE for the same reason confirm_chapters uses it (#451):
+        # a concurrent writer must not interleave with the delete + reinsert.
+        await db.execute("BEGIN IMMEDIATE")
+        await db.execute(
+            "DELETE FROM user_book_chapters WHERE book_id=? AND is_draft=1", (book_id,)
+        )
+        await db.executemany(
+            """INSERT INTO user_book_chapters
+                   (book_id, chapter_index, title, text, is_draft, reviewed, updated_at)
+               VALUES (?, ?, ?, ?, 1, ?, ?)""",
+            [
+                (book_id, i, c.title.strip(), c.text, 1 if c.reviewed else 0, stamp)
+                for i, c in enumerate(body.chapters)
+            ],
+        )
+        await db.execute("COMMIT")
+
+    from services.book_chapters import clear_cache as _clear_chapter_cache
+    _clear_chapter_cache(book_id)
+    return {"ok": True, "chapter_count": len(body.chapters), "updated_at": stamp}
+
+
+@router.get("/uploads/drafts")
+async def list_draft_audits(user: dict = Depends(get_current_user)):
+    """Books this reader has started auditing but not yet finished.
+
+    Feeds the "In progress" section of the bookshelf: how far in they got, and
+    when they last touched it, most recent first.
+    """
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT b.id AS book_id, b.title, b.authors,
+                      COUNT(*) AS chapter_count,
+                      SUM(c.reviewed) AS reviewed_count,
+                      MAX(c.updated_at) AS updated_at
+                 FROM user_book_chapters c
+                 JOIN books b ON b.id = c.book_id
+                WHERE c.is_draft = 1 AND b.owner_user_id = ?
+             GROUP BY b.id
+             ORDER BY MAX(c.updated_at) IS NULL, MAX(c.updated_at) DESC, b.id DESC""",
+            (user["id"],),
+        ) as cur:
+            rows = await cur.fetchall()
+
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["reviewed_count"] = int(d["reviewed_count"] or 0)
+        try:
+            d["authors"] = json.loads(d["authors"]) if isinstance(d["authors"], str) else (d["authors"] or [])
+        except (ValueError, TypeError):
+            d["authors"] = []
+        out.append(d)
+    return out
 
 
 @router.delete("/upload/{book_id}")

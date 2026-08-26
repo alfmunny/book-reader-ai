@@ -156,7 +156,7 @@ async def translation_status(book_id: int = Path(..., ge=1), target_language: st
       - bulk_active: legacy one-shot bulk job, kept for back-compat.
     """
     import aiosqlite
-    from services.db import count_translations_for_book, DB_PATH
+    from services.db import count_translations_for_book, get_translated_chapter_indices, DB_PATH
 
     target_language = target_language.strip().lower().split("-")[0]
     if not target_language:
@@ -193,6 +193,9 @@ async def translation_status(book_id: int = Path(..., ge=1), target_language: st
         "target_language": target_language,
         "total_chapters": total_chapters,
         "translated_chapters": cached_translations,
+        # Which chapters, not just how many — the reader's Contents panel marks
+        # each row translated or not (#2754), and a count cannot answer that.
+        "translated_indices": await get_translated_chapter_indices(book_id, target_language),
         "queue_pending": queue_counts.get("pending", 0),
         "queue_running": queue_counts.get("running", 0),
         "queue_failed": queue_counts.get("failed", 0),

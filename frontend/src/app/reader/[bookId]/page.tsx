@@ -504,6 +504,17 @@ export default function ReaderPage() {
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
   const [bookTranslationStatus, setBookTranslationStatus] = useState<TranslationStatus | null>(null);
+
+  // Which chapters the Contents panel should mark as translated (#2754).
+  // undefined — not the empty set — when coverage is unknown, so the panel
+  // stays silent instead of claiming nothing is translated.
+  const translatedChapters = useMemo(
+    () =>
+      bookTranslationStatus?.translated_indices
+        ? new Set(bookTranslationStatus.translated_indices)
+        : undefined,
+    [bookTranslationStatus],
+  );
   // Which languages have editorial translations at all — shown as chips so
   // nobody has to cycle target languages to discover coverage (owner,
   // 2026-08-27).
@@ -2326,6 +2337,7 @@ export default function ReaderPage() {
                 <TableOfContents
                   chapters={chapters}
                   chapterIndex={chapterIndex}
+                  translated={translatedChapters}
                   onSelect={(i) => {
                     goToChapter(i);
                     // On mobile the sidebar covers the page, so a pick should
@@ -2584,6 +2596,7 @@ export default function ReaderPage() {
               <TableOfContents
                 chapters={chapters}
                 chapterIndex={chapterIndex}
+                translated={translatedChapters}
                 onSelect={(i) => { goToChapter(i); setSidebarOpen(false); }}
               />
             ) : (

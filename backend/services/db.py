@@ -462,6 +462,22 @@ async def count_translations_for_book(book_id: int, target_language: str) -> int
     return row[0] if row else 0
 
 
+async def get_translated_chapter_indices(book_id: int, target_language: str) -> list[int]:
+    """Return the chapter indices of a book that have a translation cached.
+
+    The reader's Contents panel marks each row translated or not (#2754), which
+    a bare count cannot answer. Sorted so the caller can rely on the order.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT chapter_index FROM translations WHERE book_id=? AND target_language=? "
+            "ORDER BY chapter_index",
+            (book_id, target_language),
+        ) as cursor:
+            rows = await cursor.fetchall()
+    return [row[0] for row in rows]
+
+
 async def delete_translations_for_book(book_id: int) -> None:
     """Delete all cached translations for a book across all languages and chapters."""
     async with aiosqlite.connect(DB_PATH) as db:

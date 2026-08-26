@@ -2623,3 +2623,31 @@ def test_segment_body_by_anchors_none_anchor_id_is_skipped_in_validation():
     assert len(result) == 2
     assert result[0][0] == "Chapter 1"
     assert result[1][0] == "Chapter 2"
+
+
+# ── HTML comments are markup, never content (#2624) ──────────────────────────
+
+def test_html_inline_text_skips_comments():
+    """Regression: Gutenberg's EPUB conversion marks anchors with comments —
+    `<a id="link2HCH0001"><!-- H2 anchor --></a>`. A comment node's tag is not
+    a str, so it fell through to the recursion branch and its own text was
+    collected as content, giving every chapter of Moby Dick #2701 a trailing
+    'H2 anchor' paragraph."""
+    from lxml import html as lxml_html
+    root = lxml_html.fromstring(
+        '<p><a id="link2HCH0001"><!-- H2 anchor --></a></p>'
+    )
+    p = root if root.tag == "p" else root.find(".//p")
+
+    assert _html_inline_text(p) == ""
+
+
+def test_html_inline_text_keeps_text_around_a_comment():
+    """A comment must not swallow the text that follows it in the flow."""
+    from lxml import html as lxml_html
+    root = lxml_html.fromstring("<p>before <!-- note --> after</p>")
+    p = root if root.tag == "p" else root.find(".//p")
+
+    text = _html_inline_text(p)
+    assert "before" in text and "after" in text
+    assert "note" not in text

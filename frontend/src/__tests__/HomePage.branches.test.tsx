@@ -31,6 +31,9 @@ const mockSearchBooks = jest.fn();
 const mockGetReadingProgress = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  // The bookshelf lists unfinished audits and marks the reader's own uploads.
+  getDraftAudits: () => Promise.resolve([]),
+  getMyUploads: () => Promise.resolve([]),
   getCatalogBooks: () => Promise.resolve([]),
   getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),

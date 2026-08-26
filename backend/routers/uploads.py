@@ -430,6 +430,24 @@ async def put_draft_chapters(
     return {"ok": True, "chapter_count": len(body.chapters), "updated_at": stamp}
 
 
+@router.get("/uploads/mine")
+async def list_my_uploads(user: dict = Depends(get_current_user)):
+    """Ids of books this reader uploaded themselves.
+
+    The shelf is built from localStorage, so it cannot tell whose book is whose —
+    entries saved before `source` was recorded have no marker at all. Asking the
+    server is reliable for every entry, old or new.
+    """
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT id, title FROM books WHERE source = 'upload' AND owner_user_id = ?",
+            (user["id"],),
+        ) as cur:
+            rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
 @router.get("/uploads/drafts")
 async def list_draft_audits(user: dict = Depends(get_current_user)):
     """Books this reader has started auditing but not yet finished.

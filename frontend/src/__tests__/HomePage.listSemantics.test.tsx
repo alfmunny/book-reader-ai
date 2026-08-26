@@ -16,10 +16,11 @@ const homeSrc = read("app/page.tsx");
 const bookshelfSrc = read("app/bookshelf/page.tsx");
 
 function assertListGrid(src: string, label: string) {
-  const idx = src.indexOf(`role="list"`);
+  // Match the role and label together: the bookshelf has several lists now, and
+  // "Your Bookshelf" also labels the enclosing <section>.
+  const idx = src.indexOf(`role="list" aria-label="${label}"`);
   expect(idx).toBeGreaterThan(-1);
   const window = src.slice(idx, idx + 200);
-  expect(window).toContain(`aria-label="${label}"`);
   // Items must be <li>, not bare divs, or the list role is a lie.
   expect(src.slice(idx, idx + 700)).toMatch(/<li\b/);
 }

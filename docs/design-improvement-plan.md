@@ -646,3 +646,10 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-08-26 | Finishing an upload's audit fossilizes it: `confirm` writes a `book_freeze` row with `audited_by` = the owner's user id, and copies the confirmed chapters into `book_chapters`. Annotations anchor to `chapter_index`, so a split that can still move silently re-anchors them. `published_at` stays NULL — an upload is private for good | routers/uploads.py | audit |
 | 2026-08-26 | Covers are drawn from the record instead of stored, with the ground colour derived deterministically from the book. A shelf of identical placeholders cannot be scanned, and recognition is the whole job of a cover; hues stay inside the app's warm range so a shelf still reads as one set. Long titles step down a size and wrap rather than truncate | components/GeneratedCover.tsx, components/BookCard.tsx | audit |
 | 2026-08-26 | `Your upload` badge on cards for books the reader brought themselves (`source='upload'`). Library books stay unmarked — the badge marks the exception | components/BookCard.tsx | audit |
+
+## Wave 24 — Bookshelf "In progress" (2026-08-26)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-26 | Bookshelf carries unfinished audits: cover, `31 of 118 chapters reviewed`, a progress bar, and a button that reads **Continue audit** or **Add to shelf** depending on whether every chapter is ticked. The draft already persisted server-side, but there was no way back to a half-audited book short of remembering its URL. An empty shelf with work in flight now points at the work rather than at the library | app/bookshelf/page.tsx | audit |
+| 2026-08-26 | `Your upload` badge actually wired up. It shipped as a `BookCard` prop nobody passed — the component test set it directly, which hid that no call site ever did. `GET /books/uploads/mine` supplies the ids, since the shelf is built from localStorage and entries saved before `source` was recorded carry no marker | app/bookshelf/page.tsx, routers/uploads.py | audit |

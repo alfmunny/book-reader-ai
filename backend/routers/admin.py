@@ -22,6 +22,8 @@ from services.db import (
     list_cached_books,
     get_cached_book,
     save_book,
+    list_frozen_unpublished,
+    set_book_published,
     save_translation,
     replace_translations_for_book,
     get_setting,
@@ -203,6 +205,37 @@ async def get_books(_admin: dict = Depends(_require_admin)):
 
 class ImportBookRequest(BaseModel):
     book_id: int = Field(..., ge=1)
+
+
+@router.get("/books/pending-publish")
+async def pending_publish(_admin: dict = Depends(_require_admin)):
+    """Frozen books awaiting a human's decision to put them in the library.
+
+    An architect session fixes the split on its own — that call is technical and
+    irreversible. Putting the book in front of readers is editorial, outward-facing
+    and reversible, so it waits here (migration 046).
+    """
+    return await list_frozen_unpublished()
+
+
+@router.post("/books/{book_id}/publish")
+async def publish_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
+    """Put a frozen book in the library."""
+    if not await set_book_published(book_id, True):
+        raise HTTPException(status_code=404, detail="Book is not frozen — audit and freeze it first")
+    return {"ok": True, "published": True}
+
+
+@router.post("/books/{book_id}/unpublish")
+async def unpublish_book(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
+    """Take a book back out of the library.
+
+    Reversible on purpose: the freeze is untouched, so every annotation stays
+    anchored to the same chapter indices.
+    """
+    if not await set_book_published(book_id, False):
+        raise HTTPException(status_code=404, detail="Book is not frozen")
+    return {"ok": True, "published": False}
 
 
 @router.post("/books/import")

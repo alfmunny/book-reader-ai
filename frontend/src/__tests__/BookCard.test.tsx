@@ -38,10 +38,25 @@ test("renders cover image when cover URL is provided", () => {
   expect(img).toHaveAttribute("alt", "");
 });
 
-test("renders SVG placeholder when no cover URL", () => {
+test("draws a generated cover when there is no cover URL", () => {
+  // The SVG placeholder was the same for every book, which made a shelf of
+  // coverless books unscannable. A generated cover carries the title and a
+  // ground colour derived from the book.
   const { container } = render(<BookCard book={{ ...BOOK, cover: "" }} onClick={jest.fn()} />);
   expect(screen.queryByRole("img")).not.toBeInTheDocument();
-  expect(container.querySelector("svg")).toBeInTheDocument();
+  const cover = container.querySelector("[aria-hidden='true']") as HTMLElement;
+  expect(cover).toBeInTheDocument();
+  expect(cover.style.background).toBeTruthy();
+});
+
+test("marks a book the reader uploaded themselves", () => {
+  render(<BookCard book={BOOK} onClick={jest.fn()} ownedByUser />);
+  expect(screen.getByText("Your upload")).toBeInTheDocument();
+});
+
+test("library books carry no ownership badge", () => {
+  render(<BookCard book={BOOK} onClick={jest.fn()} />);
+  expect(screen.queryByText("Your upload")).not.toBeInTheDocument();
 });
 
 test("renders badge when provided", () => {

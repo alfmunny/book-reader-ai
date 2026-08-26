@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -18,6 +18,7 @@ import QuickHighlightPanel from "@/components/QuickHighlightPanel";
 import VocabularyToast from "@/components/VocabularyToast";
 import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
+import TranslationSessionPanel from "@/components/TranslationSessionPanel";
 import AuthPromptModal from "@/components/AuthPromptModal";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -347,6 +348,128 @@ export default function ReaderPage() {
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
+  // ── Translation sessions (design: docs/design/user-translations.md) ──
+  const [translationSessions, setTranslationSessions] = useState<TranslationSession[]>([]);
+  const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
+  const [sessionChapter, setSessionChapter] = useState<SessionChapter | null>(null);
+  const [sessionTranslating, setSessionTranslating] = useState(false);
+  const [translatingParas, setTranslatingParas] = useState<Set<number>>(new Set());
+  const [paragraphEditor, setParagraphEditor] = useState<{ paraIdx: number; text: string } | null>(null);
+  const [paragraphEditorError, setParagraphEditorError] = useState(false);
+  const activeSessionRef = useRef<TranslationSession | null>(null);
+  activeSessionRef.current = activeSession;
+
+  // Load the user's sessions for this book; restore the active one per book.
+  useEffect(() => {
+    if (!session?.backendToken) return;
+    let cancelled = false;
+    listTranslationSessions(Number(bookId))
+      .then((list) => {
+        if (cancelled) return;
+        setTranslationSessions(list);
+        try {
+          const savedId = Number(localStorage.getItem(`translation-session-active:${bookId}`));
+          const restored = list.find((s) => s.id === savedId) ?? null;
+          setActiveSession(restored);
+        } catch {}
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, session?.backendToken]);
+
+  // Fetch the active session's paragraphs for the current chapter.
+  useEffect(() => {
+    if (!activeSession) { setSessionChapter(null); return; }
+    let cancelled = false;
+    getSessionChapter(activeSession.id, chapterIndex)
+      .then((data) => { if (!cancelled) setSessionChapter(data); })
+      .catch(() => { if (!cancelled) setSessionChapter(null); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, chapterIndex]);
+
+  function selectTranslationSession(sess: TranslationSession | null) {
+    setActiveSession(sess);
+    try {
+      if (sess) localStorage.setItem(`translation-session-active:${bookId}`, String(sess.id));
+      else localStorage.removeItem(`translation-session-active:${bookId}`);
+    } catch {}
+  }
+
+  async function handleSessionTranslateChapter() {
+    if (!activeSession || sessionTranslating) return;
+    setSessionTranslating(true);
+    try {
+      const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter" });
+      setSessionChapter(data);
+      listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
+    } catch (e) {
+      setObsidianToast({ msg: e instanceof Error ? e.message : "Translation failed", ok: false });
+      setTimeout(() => setObsidianToast(null), 4000);
+    } finally {
+      setSessionTranslating(false);
+    }
+  }
+
+  async function handleSessionTranslateParagraph(paraIdx: number) {
+    if (!activeSession) return;
+    setTranslatingParas((prev) => new Set(prev).add(paraIdx));
+    try {
+      const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: paraIdx });
+      setSessionChapter(data);
+    } catch (e) {
+      setObsidianToast({ msg: e instanceof Error ? e.message : "Translation failed", ok: false });
+      setTimeout(() => setObsidianToast(null), 4000);
+    } finally {
+      setTranslatingParas((prev) => { const next = new Set(prev); next.delete(paraIdx); return next; });
+    }
+  }
+
+  async function handleParagraphEditSave() {
+    if (!activeSession || !paragraphEditor) return;
+    setParagraphEditorError(false);
+    try {
+      await editSessionParagraph(activeSession.id, chapterIndex, paragraphEditor.paraIdx, paragraphEditor.text);
+      const data = await getSessionChapter(activeSession.id, chapterIndex);
+      setSessionChapter(data);
+      setParagraphEditor(null);
+    } catch {
+      setParagraphEditorError(true);
+    }
+  }
+
+  async function handleSessionDeleteParagraph(paraIdx: number) {
+    if (!activeSession) return;
+    try {
+      await deleteSessionParagraph(activeSession.id, chapterIndex, paraIdx);
+      const data = await getSessionChapter(activeSession.id, chapterIndex);
+      setSessionChapter(data);
+    } catch (e) {
+      setObsidianToast({ msg: e instanceof Error ? e.message : "Delete failed", ok: false });
+      setTimeout(() => setObsidianToast(null), 4000);
+    }
+  }
+
+  // Session paragraphs as the reader's translations[] contract: undefined
+  // gaps render the explicit session placeholder (never editorial mixing).
+  const sessionTranslations = useMemo(() => {
+    if (!activeSession || !sessionChapter) return null;
+    const arr: (string | undefined)[] = new Array(sessionChapter.paragraph_count).fill(undefined);
+    for (const [idx, p] of Object.entries(sessionChapter.paragraphs)) {
+      arr[Number(idx)] = p.text;
+    }
+    return arr;
+  }, [activeSession, sessionChapter]);
+
+  const sessionMeta = useMemo(() => {
+    if (!sessionChapter) return undefined;
+    const meta: Record<number, { model: string; edited: boolean }> = {};
+    for (const [idx, p] of Object.entries(sessionChapter.paragraphs)) {
+      meta[Number(idx)] = { model: p.model, edited: p.edited_by_user };
+    }
+    return meta;
+  }, [sessionChapter]);
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
@@ -1756,10 +1879,19 @@ export default function ReaderPage() {
                   isPlaying={ttsIsPlaying}
                   chunks={ttsChunks.length > 0 ? ttsChunks : undefined}
                   disabled={ttsIsLoading}
-                  translations={translationEnabled ? translatedParagraphs : undefined}
+                  translations={translationEnabled ? ((activeSession && sessionTranslations ? sessionTranslations : translatedParagraphs) as string[]) : undefined}
                   translationDisplayMode={displayMode}
-                  translationLang={translationEnabled ? translationLang : undefined}
-                  translationLoading={translationLoading}
+                  translationLang={translationEnabled ? (activeSession ? activeSession.target_language : translationLang) : undefined}
+                  translationLoading={activeSession ? false : translationLoading}
+                  sessionMode={translationEnabled && !!activeSession}
+                  translationMeta={sessionMeta}
+                  translatingParagraphs={translatingParas}
+                  onTranslateParagraph={activeSession ? handleSessionTranslateParagraph : undefined}
+                  onEditParagraph={activeSession ? (idx) => {
+                    setParagraphEditorError(false);
+                    setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
+                  } : undefined}
+                  onDeleteParagraph={activeSession ? handleSessionDeleteParagraph : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
                   onAnnotationClick={session?.backendToken ? (annotation, position) => {
@@ -1930,6 +2062,40 @@ export default function ReaderPage() {
                 });
               }}
             />
+          )}
+
+          {/* Session paragraph editor (design: docs/design/user-translations.md) */}
+          {paragraphEditor && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true" aria-label="Edit translation paragraph">
+              <div className="bg-white rounded-xl border border-amber-200 shadow-xl p-4 w-full max-w-lg space-y-3">
+                <p className="text-sm font-medium text-ink">Edit translation · paragraph {paragraphEditor.paraIdx + 1}</p>
+                <textarea
+                  aria-label="Translation text"
+                  value={paragraphEditor.text}
+                  onChange={(e) => setParagraphEditor({ ...paragraphEditor, text: e.target.value })}
+                  rows={6}
+                  className="w-full text-sm font-serif border border-amber-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-y"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setParagraphEditor(null)}
+                    className="px-3 py-1.5 min-h-[44px] md:min-h-0 text-sm text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleParagraphEditSave}
+                    className="px-4 py-1.5 min-h-[44px] md:min-h-0 text-sm rounded-lg bg-amber-700 text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                  >
+                    Save
+                  </button>
+                </div>
+                {paragraphEditorError && (
+                  <p role="alert" className="text-xs text-red-600">Couldn&apos;t save — try again.</p>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Word definition tooltip */}
@@ -2422,7 +2588,30 @@ export default function ReaderPage() {
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
 
-                    {/* Language selector */}
+                    {/* Session switcher (design: docs/design/user-translations.md) */}
+                    {session?.backendToken && translationEnabled && (
+                      <TranslationSessionPanel
+                        bookId={Number(bookId)}
+                        bookLanguage={bookLanguage}
+                        sessions={translationSessions}
+                        activeSessionId={activeSession?.id ?? null}
+                        chapterCount={chapters.length}
+                        chapterIndex={chapterIndex}
+                        hasClaudeKey={hasClaudeKey}
+                        hasDeepseekKey={hasDeepseekKey}
+                        onSelect={selectTranslationSession}
+                        onSessionsChanged={setTranslationSessions}
+                        onTranslateChapter={handleSessionTranslateChapter}
+                        translating={sessionTranslating}
+                        chapterProgress={activeSession && sessionChapter ? {
+                          done: Object.keys(sessionChapter.paragraphs).length,
+                          total: sessionChapter.paragraph_count,
+                        } : null}
+                      />
+                    )}
+
+                    {/* Language selector (governs the Editorial source) */}
+                    {!activeSession && (
                     <div className="mb-4">
                       <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
                       <select
@@ -2439,6 +2628,7 @@ export default function ReaderPage() {
                         ))}
                       </select>
                     </div>
+                    )}
 
                     {/* Display mode */}
                     <div className="mb-4">
@@ -2462,7 +2652,7 @@ export default function ReaderPage() {
                     </div>
 
                     {/* Translate this chapter button — explicit user action required */}
-                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
+                    {!activeSession && translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
                       <div className="mb-4">
                         {session?.backendToken ? (
                           <>
@@ -2482,7 +2672,7 @@ export default function ReaderPage() {
                     )}
 
                     {/* Status */}
-                    {translationEnabled && (
+                    {!activeSession && translationEnabled && (
                       <div role="status" className="text-xs">
                         {translationLoading && !translationUsedProvider && (
                           <span className="animate-pulse text-amber-700">Checking for translation…</span>

@@ -20,6 +20,11 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/lib/api", () => ({
+  listTranslationSessions: jest.fn().mockResolvedValue([]),
+  getSessionChapter: jest.fn().mockResolvedValue({ session_id: 1, chapter_index: 0, paragraph_count: 0, paragraphs: {} }),
+  translateSession: jest.fn(),
+  editSessionParagraph: jest.fn(),
+  deleteSessionParagraph: jest.fn(),
   getBookChapters: jest.fn().mockResolvedValue({
     meta: { id: 42, title: "Moby Dick", authors: [], languages: [], subjects: [], download_count: 0, cover: "" },
     chapters: [{ title: "Chapter 1", text: "Call me Ishmael." }],

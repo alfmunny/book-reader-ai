@@ -311,6 +311,19 @@ interface Props {
   translationLang?: string;
   /** Show a loading skeleton for translations that haven't arrived yet. */
   translationLoading?: boolean;
+  /**
+   * Translation-session mode (design: docs/design/user-translations.md).
+   * Untranslated paragraphs render an explicit placeholder (never editorial
+   * fallback), translated ones carry provenance chips and actions.
+   */
+  sessionMode?: boolean;
+  /** paragraph index → provenance for the chip row (session mode). */
+  translationMeta?: Record<number, { model: string; edited: boolean }>;
+  /** Paragraph indexes currently being translated (spinner state). */
+  translatingParagraphs?: Set<number>;
+  onTranslateParagraph?: (paragraphIdx: number) => void;
+  onEditParagraph?: (paragraphIdx: number) => void;
+  onDeleteParagraph?: (paragraphIdx: number) => void;
   /** Sentence text to scroll to and briefly highlight. */
   scrollTargetSentence?: string;
   /**
@@ -567,6 +580,12 @@ export default function SentenceReader({
   translationDisplayMode = "parallel",
   translationLang,
   translationLoading = false,
+  sessionMode = false,
+  translationMeta,
+  translatingParagraphs,
+  onTranslateParagraph,
+  onEditParagraph,
+  onDeleteParagraph,
   onAnnotationClick,
   chapterIndex = 0,
   annotations,
@@ -819,6 +838,68 @@ export default function SentenceReader({
     if (Math.sqrt(dx * dx + dy * dy) > 10) cancelLongPress();
   }
 
+  // Session-mode chrome for one paragraph's translation cell: provenance
+  // chips + actions when translated, an explicit placeholder when not.
+  const renderSessionExtras = (paraIdx: number, hasText: boolean) => {
+    if (!sessionMode) return null;
+    const meta = translationMeta?.[paraIdx];
+    const busy = translatingParagraphs?.has(paraIdx) ?? false;
+    if (!hasText) {
+      return (
+        <div className="border border-dashed border-amber-300 rounded-lg px-3 py-2.5 text-xs text-stone-500 flex items-center justify-between gap-2" data-testid={`session-gap-${paraIdx}`}>
+          <span>{busy ? "Translating…" : "Not translated yet"}</span>
+          {!busy && onTranslateParagraph && (
+            <button
+              onClick={() => onTranslateParagraph(paraIdx)}
+              className="shrink-0 text-xs font-medium text-amber-700 border border-amber-300 rounded-lg px-2.5 py-1 min-h-[44px] md:min-h-0 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              Translate
+            </button>
+          )}
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1.5 mt-1 flex-wrap" data-testid={`session-meta-${paraIdx}`}>
+        {meta && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono">{meta.model}</span>
+        )}
+        {meta?.edited && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">edited</span>
+        )}
+        <span className="flex-1" />
+        {onTranslateParagraph && (
+          <button
+            onClick={() => onTranslateParagraph(paraIdx)}
+            disabled={busy}
+            aria-label={`Retranslate paragraph ${paraIdx + 1}`}
+            className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+          >
+            {busy ? "Translating…" : "Retranslate"}
+          </button>
+        )}
+        {onEditParagraph && (
+          <button
+            onClick={() => onEditParagraph(paraIdx)}
+            aria-label={`Edit translation of paragraph ${paraIdx + 1}`}
+            className="text-[11px] text-stone-600 hover:text-stone-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+          >
+            Edit
+          </button>
+        )}
+        {onDeleteParagraph && (
+          <button
+            onClick={() => onDeleteParagraph(paraIdx)}
+            aria-label={`Delete translation of paragraph ${paraIdx + 1}`}
+            className="text-[11px] text-red-600 hover:text-red-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <div
@@ -1054,9 +1135,14 @@ export default function SentenceReader({
                 </div>
                 <div className={`border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6${translationSelectClass}`} data-translation="true">
                   {translationText ? (
-                    <p lang={translationLang} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
-                      {translationText}
-                    </p>
+                    <>
+                      <p lang={translationLang} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
+                        {translationText}
+                      </p>
+                      {renderSessionExtras(textParaIdx, true)}
+                    </>
+                  ) : sessionMode ? (
+                    renderSessionExtras(textParaIdx, false)
                   ) : translationLoading ? (
                     <div role="status" aria-label="Loading translation">
                       <span className="sr-only">Loading translation...</span>
@@ -1092,6 +1178,9 @@ export default function SentenceReader({
               <p lang={translationLang} data-translation="true" className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}`}>
                 {translationText}
               </p>
+            )}
+            {sessionMode && (
+              <div className="mt-1">{renderSessionExtras(textParaIdx, !!translationText)}</div>
             )}
           </div>
         );

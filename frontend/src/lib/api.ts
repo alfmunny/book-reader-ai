@@ -882,6 +882,104 @@ export function updateInsight(id: number, data: { question: string }) {
   });
 }
 
+// ── Translation sessions (design: docs/design/user-translations.md, #2740) ──
+
+export type SessionProvider = "deepseek" | "claude";
+
+export interface TranslationSession {
+  id: number;
+  book_id: number;
+  name: string;
+  target_language: string;
+  style_prompt?: string | null;
+  provider: SessionProvider;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  /** chapter_index → translated paragraph count */
+  coverage: Record<string, number>;
+}
+
+export interface SessionParagraph {
+  text: string;
+  provider: string;
+  model: string;
+  edited_by_user: boolean;
+}
+
+export interface SessionChapter {
+  session_id: number;
+  chapter_index: number;
+  paragraph_count: number;
+  paragraphs: Record<string, SessionParagraph>;
+}
+
+export function listTranslationSessions(bookId: number) {
+  return request<TranslationSession[]>(`/translation-sessions?book_id=${bookId}`);
+}
+
+export function createTranslationSession(data: {
+  book_id: number;
+  name: string;
+  target_language: string;
+  provider: SessionProvider;
+  style_prompt?: string;
+}) {
+  return request<TranslationSession>("/translation-sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateTranslationSession(
+  id: number,
+  data: { name?: string; style_prompt?: string; provider?: SessionProvider },
+) {
+  return request<TranslationSession>(`/translation-sessions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTranslationSession(id: number) {
+  return request<{ ok: boolean }>(`/translation-sessions/${id}`, { method: "DELETE" });
+}
+
+export function getSessionChapter(sessionId: number, chapterIndex: number) {
+  return request<SessionChapter>(`/translation-sessions/${sessionId}/chapters/${chapterIndex}`);
+}
+
+export function translateSession(
+  sessionId: number,
+  data: { chapter_index: number; scope: "chapter" | number; provider?: SessionProvider; force?: boolean },
+) {
+  return request<SessionChapter>(`/translation-sessions/${sessionId}/translate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function editSessionParagraph(
+  sessionId: number, chapterIndex: number, paragraphIndex: number, text: string,
+) {
+  return request<SessionParagraph>(
+    `/translation-sessions/${sessionId}/chapters/${chapterIndex}/paragraphs/${paragraphIndex}`,
+    { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) },
+  );
+}
+
+export function deleteSessionParagraph(
+  sessionId: number, chapterIndex: number, paragraphIndex: number,
+) {
+  return request<{ ok: boolean }>(
+    `/translation-sessions/${sessionId}/chapters/${chapterIndex}/paragraphs/${paragraphIndex}`,
+    { method: "DELETE" },
+  );
+}
+
 export function saveInsight(data: {
   book_id: number;
   chapter_index?: number;

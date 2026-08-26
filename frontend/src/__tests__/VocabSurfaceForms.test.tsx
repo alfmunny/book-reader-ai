@@ -18,6 +18,11 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: () => null }),
 }));
 jest.mock("@/lib/api", () => ({
+  listTranslationSessions: jest.fn().mockResolvedValue([]),
+  getSessionChapter: jest.fn().mockResolvedValue({ session_id: 1, chapter_index: 0, paragraph_count: 0, paragraphs: {} }),
+  translateSession: jest.fn(),
+  editSessionParagraph: jest.fn(),
+  deleteSessionParagraph: jest.fn(),
   getVocabulary: jest.fn(),
   deleteVocabularyWord: jest.fn(),
   exportVocabularyToObsidian: jest.fn(),

@@ -56,6 +56,7 @@ sys.path.insert(0, str(__file__).rsplit("/backend/", 1)[0] + "/backend")
 
 from scripts.chapter_split_overrides import (  # noqa: E402
     apply_overrides,
+    forced_source,
     translation_index_map,
 )
 
@@ -318,16 +319,24 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
     # book, so using it here would make --force re-freeze the very split it was
     # invoked to repair. allow_epub_backfill=False keeps the background EPUB
     # fetch — which deletes the book's translations (#1556) — out of a build step.
-    raw_chapters = await split_with_html_preference(
-        book_id, book.get("text") or "", allow_epub_backfill=False
-    )
+    # A book may be pinned to a splitting path when its stored EPUB is the
+    # worse input (see scripts/chapter_split_overrides.py).
+    pinned = forced_source(book_id)
+    if pinned == "text":
+        from services.splitter import build_chapters
+        raw_chapters = build_chapters(book.get("text") or "")
+        chapter_source = "text"
+    else:
+        raw_chapters = await split_with_html_preference(
+            book_id, book.get("text") or "", allow_epub_backfill=False
+        )
+        chapter_source = await get_chapter_source(book_id)
     if not raw_chapters:
         raise SystemExit(f"Book {book_id} produced no chapters — nothing to freeze.")
     # Built against the raw split, before apply_overrides renumbers it, so
     # translations move onto the corrected indices with their chapters.
     index_map = translation_index_map(book_id, len(raw_chapters))
     raw_chapters = apply_overrides(book_id, raw_chapters)
-    chapter_source = await get_chapter_source(book_id)
 
     chapters = [
         {"index": i, "title": ch.title, "paragraphs": paragraphs_of(ch.text)}

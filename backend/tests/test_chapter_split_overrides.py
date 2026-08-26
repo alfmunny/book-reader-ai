@@ -15,7 +15,11 @@ from pathlib import Path
 import pytest
 
 import scripts.chapter_split_overrides as overrides_module
-from scripts.chapter_split_overrides import apply_overrides, translation_index_map
+from scripts.chapter_split_overrides import (
+    apply_overrides,
+    forced_source,
+    translation_index_map,
+)
 from services.splitter import Chapter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -335,3 +339,26 @@ def test_rwav_translation_followed_its_chapter_down():
     assert [e["index"] for e in entries] == [19]
     assert artifact["chapters"][19]["title"] == "PART TWO — Chapter XX"
     assert len(entries[0]["paragraphs"]) == len(artifact["chapters"][19]["paragraphs"])
+
+
+# ── source override ──────────────────────────────────────────────────────────
+
+def test_forced_source_is_none_for_an_unregistered_book():
+    assert forced_source(4242) is None
+
+
+def test_forced_source_is_none_when_the_entry_omits_it(registry):
+    registry({"retitle": [{"index": 0, "expect_title": "ACT III", "title": "X"}]})
+    assert forced_source(999) is None
+
+
+def test_forced_source_returns_the_registered_path(registry):
+    registry({"source": "text", "why": "illustrated EPUB corrupts the text"})
+    assert forced_source(999) == "text"
+
+
+def test_pride_and_prejudice_is_pinned_to_the_text_split():
+    """#1342's stored EPUB is the 1894 illustrated edition: the decorative
+    drop-cap is lost so every chapter loses its opening letter, illustration
+    captions bleed into chapter titles, and copyright lines become paragraphs."""
+    assert forced_source(1342) == "text"

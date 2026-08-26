@@ -7,9 +7,10 @@ model they didn't pick; same rule as the insight chat).
 """
 
 import anthropic
+import httpx
 
 from services.claude import SYSTEM_TRANSLATOR
-from services.deepseek import DEEPSEEK_MODEL, _chat as _deepseek_chat
+from services.deepseek import DEEPSEEK_API_URL, DEEPSEEK_MODEL
 
 CLAUDE_MODEL = "claude-sonnet-5"
 
@@ -30,6 +31,27 @@ def _prompt(text: str, source_language: str, target_language: str) -> str:
     return f"Translate from {source_language} to {target_language}:\n\n{text}"
 
 
+async def _deepseek_call(api_key: str, system: str, prompt: str, max_tokens: int) -> str:
+    """Dedicated HTTP call (not the chat helper): translation paragraphs plus
+    reasoning can exceed the chat helper's 60s timeout, so use a longer one."""
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        resp = await client.post(
+            DEEPSEEK_API_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": DEEPSEEK_MODEL,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": max_tokens,
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    return data["choices"][0]["message"].get("content") or ""
+
+
 async def translate_paragraph(
     provider: str,
     api_key: str,
@@ -47,22 +69,33 @@ async def translate_paragraph(
         client = anthropic.AsyncAnthropic(api_key=api_key)
         message = await client.messages.create(
             model=CLAUDE_MODEL,
-            max_tokens=3000,
+            max_tokens=5000,
             output_config={"effort": "low"},
             system=_system(style_prompt),
             messages=[{"role": "user", "content": _prompt(text, source_language, target_language)}],
         )
         if message.stop_reason == "refusal":
             raise RuntimeError("Claude declined to translate this passage")
-        return next(b.text for b in message.content if b.type == "text"), CLAUDE_MODEL
+        result = next((b.text for b in message.content if b.type == "text"), "")
+        if not result.strip():
+            raise RuntimeError("Claude returned an empty translation")
+        return result, CLAUDE_MODEL
 
     if provider == "deepseek":
-        result = await _deepseek_chat(
-            api_key,
-            _system(style_prompt),
-            _prompt(text, source_language, target_language),
-            max_tokens=3000,
-        )
+        # deepseek-v4-flash is a REASONING model: hidden thinking counts
+        # against max_tokens, and when it eats the whole budget the API
+        # returns 200 with EMPTY content (owner report, 2026-08-27 — blank
+        # paragraphs stored). Budget generously, retry once bigger, and
+        # never accept an empty translation.
+        system = _system(style_prompt)
+        prompt = _prompt(text, source_language, target_language)
+        result = await _deepseek_call(api_key, system, prompt, 6000)
+        if not result.strip():
+            result = await _deepseek_call(api_key, system, prompt, 8000)
+        if not result.strip():
+            raise RuntimeError(
+                "DeepSeek returned an empty translation (its reasoning consumed the token budget)"
+            )
         return result, DEEPSEEK_MODEL
 
     raise ValueError(f"Unknown translation provider: {provider}")

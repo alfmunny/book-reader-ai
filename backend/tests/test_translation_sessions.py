@@ -243,7 +243,7 @@ def test_system_prompt_appends_readers_requirements():
 
 @pytest.mark.asyncio
 async def test_deepseek_dispatch_returns_model_tag():
-    with patch("services.user_translate._deepseek_chat",
+    with patch("services.user_translate._deepseek_call",
                new=AsyncMock(return_value="译文")) as mock:
         text, model = await user_translate.translate_paragraph(
             "deepseek", "sk-ds", "Die Sonne tönt", "de", "zh", "优雅"
@@ -251,3 +251,29 @@ async def test_deepseek_dispatch_returns_model_tag():
     assert text == "译文"
     assert model == "deepseek-v4-flash"
     assert "Reader's requirements:" in mock.await_args.args[1]
+
+
+@pytest.mark.asyncio
+async def test_deepseek_empty_content_retries_with_bigger_budget():
+    """Regression (owner report, 2026-08-27): deepseek-v4-flash is a
+    reasoning model — thinking can eat the whole max_tokens budget and the
+    API returns 200 with EMPTY content, which we stored as blank paragraphs.
+    An empty first answer retries once with a larger budget."""
+    mock = AsyncMock(side_effect=["", "译文"])
+    with patch("services.user_translate._deepseek_call", new=mock):
+        text, model = await user_translate.translate_paragraph(
+            "deepseek", "sk-ds", "Die Sonne tönt", "de", "zh", None
+        )
+    assert text == "译文"
+    assert mock.await_count == 2
+    assert mock.await_args_list[0].args[3] < mock.await_args_list[1].args[3]
+
+
+@pytest.mark.asyncio
+async def test_deepseek_empty_twice_raises_never_stores_blank():
+    with patch("services.user_translate._deepseek_call",
+               new=AsyncMock(side_effect=["", "  "])):
+        with pytest.raises(RuntimeError, match="empty translation"):
+            await user_translate.translate_paragraph(
+                "deepseek", "sk-ds", "Die Sonne tönt", "de", "zh", None
+            )

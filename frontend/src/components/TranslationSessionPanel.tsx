@@ -8,6 +8,7 @@ import {
   deleteTranslationSession,
 } from "@/lib/api";
 import { LANGUAGES } from "@/components/InsightChat";
+import { getSettings } from "@/lib/settings";
 import { TrashIcon, EditIcon } from "@/components/Icons";
 
 interface Props {
@@ -61,7 +62,13 @@ export default function TranslationSessionPanel({
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [lang, setLang] = useState(() => LANGUAGES.find((l) => l.code !== bookLanguage)?.code ?? "en");
-  const [provider, setProvider] = useState<SessionProvider>(hasDeepseekKey || !hasClaudeKey ? "deepseek" : "claude");
+  const [provider, setProvider] = useState<SessionProvider>(() => {
+    // Profile default first, when its key exists; else whichever key is saved.
+    const preferred = getSettings().versionProviderDefault ?? "deepseek";
+    const keyFor = { deepseek: hasDeepseekKey, claude: hasClaudeKey };
+    if (keyFor[preferred]) return preferred;
+    return hasDeepseekKey || !hasClaudeKey ? "deepseek" : "claude";
+  });
   const [style, setStyle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

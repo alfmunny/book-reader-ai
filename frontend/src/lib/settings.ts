@@ -14,7 +14,10 @@ export interface AppSettings {
   translationLang: string;
   translationEnabled: boolean;
   ttsGender: TTSGender;
+  /** @deprecated queue-era editorial provider — no longer read anywhere. */
   translationProvider: TranslationProvider;
+  /** Default provider preselected when creating a new translation version. */
+  versionProviderDefault: "deepseek" | "claude";
   fontSize: FontSize;
   chatFontSize: ChatFontSize;
   chatProvider: ChatProviderSetting;
@@ -36,6 +39,7 @@ const DEFAULTS: AppSettings = {
   translationEnabled: false,
   ttsGender: "female",
   translationProvider: "auto",
+  versionProviderDefault: "deepseek",
   fontSize: "base",
   chatFontSize: "xs",
   chatProvider: "auto",

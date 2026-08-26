@@ -313,7 +313,11 @@ export default function ReaderPage() {
   const [geminiReminderVisible, setGeminiReminderVisible] = useState(false);
   const geminiReminderShown = useRef(false);
 
+  // Re-fetched when the translate or chat tab opens so a key saved in the
+  // profile (possibly in another tab) unlocks providers without a reload
+  // (owner report, 2026-08-27: DeepSeek stayed disabled after saving its key).
   useEffect(() => {
+    if (!session?.backendToken && session !== undefined) return;
     getMe().then((me) => {
       setHasGeminiKey(me.hasGeminiKey);
       setHasClaudeKey(me.hasClaudeKey);
@@ -322,7 +326,8 @@ export default function ReaderPage() {
     }).catch(() => {
       // Leave hasGeminiKey as null on failure — notifyAIUsed checks === false
     });
-  }, [session?.backendToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.backendToken, sidebarOpen && (sidebarTab === "translate" || sidebarTab === "chat")]);
 
   function notifyAIUsed() {
     // Remind only when NO provider key exists at all — a Claude/DeepSeek-only

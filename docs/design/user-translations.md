@@ -1,6 +1,6 @@
 # Per-User Translation Versions
 
-**Status:** Draft
+**Status:** Draft — all open questions resolved by owner (2026-08-26); awaiting formal approval
 **Author:** Dev (Claude session, owner-directed)
 **Date:** 2026-08-26
 **Priority:** P1
@@ -138,11 +138,32 @@ All changes live in the existing translation tab + `SentenceReader` rendering pa
 
 ## Phase 2 — publishing (schema-ready now, shipped later)
 
-- `status='published'` on the session; publishing is per session, chapter granular in the reader (chapters with gaps show as "not yet translated" to visitors); snapshots `published_at`.
-- `GET /translation-sessions/published?book_id` → list of `{author_name, session_name, target_language, model_tags, updated_at, id}`; the reader's switcher grows a "Community" group.
-- **Comments**: new `translation_comments (id, session_id, chapter_index NULL, paragraph_index NULL, user_id, body, created_at)` — a discussion thread per version, optionally anchored per paragraph. Rendered in a side panel on the reading page.
-- Moderation: owner/admin can unpublish; publishing is per-chapter (a book-level "publish all" is sugar later).
-- **Future idea (owner, 2026-08-26): comparison view** — render two or more versions side by side (e.g. Editorial · 诗意版 · a community session) for the same paragraph, to compare renderings. Not scheduled; noted so the per-paragraph storage keeps making this cheap (it does — any version's paragraph is addressable by (chapter_index, paragraph_index)).
+Two distinct publishing tracks (owner decision, 2026-08-26):
+
+**Track A — story shares (social, partial).** A reader shares a translated paragraph (or a small consecutive range) from a session as a **story** in their storyline — a social post others can read and discuss. Partial coverage is the point: "look how I rendered this stanza."
+
+```sql
+CREATE TABLE translation_stories (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id      INTEGER NOT NULL REFERENCES translation_sessions(id) ON DELETE CASCADE,
+    chapter_index   INTEGER NOT NULL,
+    paragraph_start INTEGER NOT NULL,
+    paragraph_end   INTEGER NOT NULL,                  -- inclusive; == start for one paragraph
+    caption         TEXT,                              -- the author's note on the share
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+The story snapshots nothing — it references live session paragraphs (an author improving their rendering improves the story). Comments anchor to the story.
+
+**Track B — complete session publication (reading, selection).** Publishing a session as a readable, selectable translation version in other readers' switchers requires the **whole book translated** — every paragraph of every chapter covered. `status='published'` is only reachable through that completeness check; `published_at` is stamped. Visitors get a coherent full translation or nothing — no half-books in the reader switcher.
+
+- `GET /translation-sessions/published?book_id` → `{author_name, session_name, target_language, model_tags, published_at, id}`; the reader's switcher grows a "Community" group (complete sessions only).
+- `GET /stories?book_id` (and later a cross-book feed) → story shares for the social surface.
+- **Comments**: `translation_comments (id, story_id NULL, session_id NULL, chapter_index NULL, paragraph_index NULL, user_id, body, created_at)` — anchored to a story (track A) or to a published session's paragraph (track B).
+- Moderation: owner/admin can unpublish either kind.
+- **Future idea (owner, 2026-08-26): comparison view** — render two or more versions side by side (e.g. Editorial · 诗意版 · a community session) for the same paragraph, to compare renderings. Not scheduled; the per-paragraph storage keeps this cheap — any version's paragraph is addressable by (chapter_index, paragraph_index).
 - Phase 2 gets its own implementation issue after this doc merges; nothing in phase 1 blocks on it.
 
 ## Costs
@@ -164,4 +185,4 @@ All schema is additive; disabling the feature is removing the UI entry points. N
 1. ~~Sub-paragraph granularity~~ **Resolved (owner, 2026-08-26)**: paragraph-level operations are the v1 contract — a tapped sentence translates its containing paragraph. True sentence-level patching is deferred until a concrete need appears.
 2. ~~Multiple named versions~~ **Resolved (owner, 2026-08-26)**: the unit is a named, book-scoped translation session; users create, name, and switch between as many as they like.
 3. ~~Editorial fallback~~ **Resolved (owner, 2026-08-26)**: explicit "not translated" placeholders, no mixing — a session is one coherent version, and rendering another translation into it would blur whose words are whose. (Related future idea recorded below: multi-version comparison view.)
-4. **Publish scope** — per-chapter publishing (proposed) vs whole-book only?
+4. ~~Publish scope~~ **Resolved (owner, 2026-08-26)**: two tracks — story shares of a paragraph or range (partial, social, discussable) vs. full-session publication into the reader switcher, which requires the complete book translated.

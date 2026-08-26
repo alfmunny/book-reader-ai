@@ -1,7 +1,6 @@
 import { BookMeta } from "./api";
 
 const KEY = "recent_books";
-const MAX = 8;
 
 export interface RecentBook extends BookMeta {
   lastRead: number;    // unix ms
@@ -27,7 +26,7 @@ export function recordRecentBook(book: BookMeta, chapterIndex?: number) {
         lastChapter: chapterIndex ?? prev?.lastChapter ?? 0,
       },
       ...existing.filter((b) => b.id !== book.id),
-    ].slice(0, MAX);
+    ]; // No cap — every started book stays on the shelf (owner report, 2026-08-26).
     localStorage.setItem(KEY, JSON.stringify(updated));
   } catch {}
 }

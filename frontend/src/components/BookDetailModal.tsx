@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { BookMeta, getBookTranslationStatus, TranslationStatus } from "@/lib/api";
 import { RecentBook } from "@/lib/recentBooks";
 import { getSettings } from "@/lib/settings";
@@ -19,9 +20,11 @@ interface Props {
   recentBook?: RecentBook;
   onClose: () => void;
   onRead: () => void;
+  /** Your own upload — offers a way back into its chapter split. */
+  ownedByUser?: boolean;
 }
 
-export default function BookDetailModal({ book, recentBook, onClose, onRead }: Props) {
+export default function BookDetailModal({ book, recentBook, onClose, onRead, ownedByUser }: Props) {
   const [translationStatus, setTranslationStatus] = useState<TranslationStatus | null>(null);
   const translationLang = getSettings().translationLang;
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -143,6 +146,16 @@ export default function BookDetailModal({ book, recentBook, onClose, onRead }: P
             ? `Continue Reading — Ch. ${recentBook.lastChapter + 1}`
             : "Start Reading"}
         </button>
+        {ownedByUser && (
+          // Where a bad split is actually noticed is while reading, so the way
+          // back to the audit lives on the book itself.
+          <Link
+            href={`/upload/${book.id}/chapters`}
+            className="mt-2 w-full px-4 py-2.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 text-sm font-medium hover:bg-amber-50 transition-colors inline-flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+          >
+            Review chapter split
+          </Link>
+        )}
 
         <div className="flex items-center justify-between mt-3">
           {book.download_count > 0 && (

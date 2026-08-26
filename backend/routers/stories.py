@@ -1,0 +1,154 @@
+"""Story shares — the generic share pipeline (design: user-translations.md
+phase 2, issue #2752).
+
+One pipeline for every share kind: a translated paragraph range from the
+author's own translation session, or one of their annotations (highlight +
+note). Stories snapshot nothing — reads JOIN the live rows, so improving a
+rendering improves the story. Reading stays calm: the reader only fetches
+stories when the "Show others' shares" toggle is on.
+"""
+
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from pydantic import BaseModel, Field
+
+from services.auth import get_current_user, check_book_access
+from services.db import (
+    get_cached_book,
+    get_translation_session,
+    get_session_paragraphs,
+    create_story,
+    list_stories,
+    get_story,
+    delete_story,
+    create_story_comment,
+    list_story_comments,
+    delete_story_comment,
+    get_annotations,
+    list_story_feed,
+)
+
+router = APIRouter(prefix="/stories", tags=["stories"])
+
+
+class StoryCreate(BaseModel):
+    kind: Literal["translation", "note"]
+    book_id: int = Field(ge=1)
+    chapter_index: int = Field(ge=0)
+    # kind='translation'
+    session_id: int | None = Field(default=None, ge=1)
+    paragraph_start: int | None = Field(default=None, ge=0)
+    paragraph_end: int | None = Field(default=None, ge=0)
+    # kind='note'
+    annotation_id: int | None = Field(default=None, ge=1)
+    caption: str | None = Field(default=None, max_length=2000)
+
+
+class CommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+async def _require_book(book_id: int, user: dict) -> dict:
+    book = await get_cached_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
+    return book
+
+
+@router.post("")
+async def create(req: StoryCreate, user: dict = Depends(get_current_user)):
+    await _require_book(req.book_id, user)
+    fields = req.model_dump()
+
+    if req.kind == "translation":
+        if req.session_id is None or req.paragraph_start is None or req.paragraph_end is None:
+            raise HTTPException(
+                status_code=422,
+                detail="A translation story needs session_id, paragraph_start and paragraph_end.",
+            )
+        if req.paragraph_end < req.paragraph_start:
+            raise HTTPException(status_code=422, detail="paragraph_end must be >= paragraph_start.")
+        session = await get_translation_session(req.session_id, user["id"])
+        if not session or session["book_id"] != req.book_id:
+            raise HTTPException(status_code=404, detail="Version not found")
+        paragraphs = await get_session_paragraphs(req.session_id, req.chapter_index)
+        missing = [
+            i for i in range(req.paragraph_start, req.paragraph_end + 1)
+            if i not in paragraphs
+        ]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail="Every paragraph in the shared range must be translated first.",
+            )
+        fields["annotation_id"] = None
+
+    else:  # kind == "note"
+        if req.annotation_id is None:
+            raise HTTPException(status_code=422, detail="A note story needs annotation_id.")
+        annotations = await get_annotations(user["id"], req.book_id)
+        anno = next((a for a in annotations if a["id"] == req.annotation_id), None)
+        if not anno:
+            raise HTTPException(status_code=404, detail="Annotation not found")
+        fields["chapter_index"] = anno["chapter_index"]
+        fields["session_id"] = None
+        fields["paragraph_start"] = None
+        fields["paragraph_end"] = None
+
+    return await create_story(user["id"], fields)
+
+
+@router.get("")
+async def list_for_book(
+    book_id: int = Query(ge=1),
+    chapter_index: int | None = Query(default=None, ge=0),
+    user: dict = Depends(get_current_user),
+):
+    await _require_book(book_id, user)
+    return {"stories": await list_stories(book_id, chapter_index)}
+
+
+@router.get("/feed")
+async def feed(user: dict = Depends(get_current_user)):
+    """Recent shares across all books — the Discover page. Private uploads
+    never surface here: their books are excluded from sharing by access
+    rules at creation (the author owns the book they shared from)."""
+    return {"stories": await list_story_feed()}
+
+
+@router.delete("/comments/{comment_id}")
+async def remove_comment(comment_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
+    if not await delete_story_comment(comment_id, user["id"], is_admin=user.get("role") == "admin"):
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return {"ok": True}
+
+
+@router.delete("/{story_id}")
+async def delete(story_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
+    if not await delete_story(story_id, user["id"], is_admin=user.get("role") == "admin"):
+        raise HTTPException(status_code=404, detail="Story not found")
+    return {"ok": True}
+
+
+@router.post("/{story_id}/comments")
+async def add_comment(
+    req: CommentCreate,
+    story_id: int = Path(ge=1),
+    user: dict = Depends(get_current_user),
+):
+    story = await get_story(story_id)
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    await _require_book(story["book_id"], user)
+    return await create_story_comment(story_id, user["id"], req.body.strip())
+
+
+@router.get("/{story_id}/comments")
+async def get_comments(story_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
+    story = await get_story(story_id)
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    await _require_book(story["book_id"], user)
+    return {"comments": await list_story_comments(story_id)}

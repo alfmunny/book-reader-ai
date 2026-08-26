@@ -943,7 +943,7 @@ export function createTranslationSession(data: {
 
 export function updateTranslationSession(
   id: number,
-  data: { name?: string; style_prompt?: string; provider?: SessionProvider },
+  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string },
 ) {
   return request<TranslationSession>(`/translation-sessions/${id}`, {
     method: "PATCH",

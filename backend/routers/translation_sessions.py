@@ -69,7 +69,7 @@ def _require_key(user: dict, provider: str) -> str:
 async def _require_session(session_id: int, user: dict) -> dict:
     session = await get_translation_session(session_id, user["id"])
     if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        raise HTTPException(status_code=404, detail="Version not found")
     return session
 
 
@@ -119,6 +119,19 @@ class SessionUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     style_prompt: str | None = Field(default=None, max_length=2000)
     provider: Literal["deepseek", "claude"] | None = None
+    # Changeable mid-version (owner decision, 2026-08-27): paragraphs already
+    # translated to the old language simply stay — not strict on purpose.
+    target_language: str | None = Field(default=None, min_length=1, max_length=20)
+
+    @field_validator("target_language")
+    @classmethod
+    def lang_normalized(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip().lower().split("-")[0]
+        if not s:
+            raise ValueError("target_language cannot be blank")
+        return s
 
 
 class TranslateRequest(BaseModel):
@@ -165,7 +178,7 @@ async def create_session(req: SessionCreate, user: dict = Depends(get_current_us
         user["id"], req.book_id, req.name, req.target_language, req.provider, req.style_prompt
     )
     if created is None:
-        raise HTTPException(status_code=409, detail=f'You already have a session named "{req.name}" for this book.')
+        raise HTTPException(status_code=409, detail=f'You already have a version named "{req.name}" for this book.')
     created["coverage"] = {}
     return created
 
@@ -183,9 +196,9 @@ async def update_session(
     try:
         updated = await update_translation_session(session_id, user["id"], fields)
     except aiosqlite.IntegrityError:
-        raise HTTPException(status_code=409, detail="You already have a session with that name for this book.")
+        raise HTTPException(status_code=409, detail="You already have a version with that name for this book.")
     if updated is None:
-        raise HTTPException(status_code=404, detail="Session not found")
+        raise HTTPException(status_code=404, detail="Version not found")
     return updated
 
 
@@ -193,7 +206,7 @@ async def update_session(
 async def delete_session(session_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
     deleted = await delete_translation_session(session_id, user["id"])
     if not deleted:
-        raise HTTPException(status_code=404, detail="Session not found")
+        raise HTTPException(status_code=404, detail="Version not found")
     return {"ok": True}
 
 

@@ -62,10 +62,10 @@ test("creating a session posts and selects it", async () => {
   (api.createTranslationSession as jest.Mock).mockResolvedValue(created);
   const { props } = renderPanel();
 
-  fireEvent.click(screen.getByText("＋ New session…"));
-  fireEvent.change(screen.getByLabelText("Session name"), { target: { value: "直译版" } });
-  fireEvent.change(screen.getByLabelText("Session provider"), { target: { value: "claude" } });
-  fireEvent.click(screen.getByRole("button", { name: "Create session" }));
+  fireEvent.click(screen.getByText("＋ New version…"));
+  fireEvent.change(screen.getByLabelText("Version name"), { target: { value: "直译版" } });
+  fireEvent.change(screen.getAllByLabelText("Version provider")[0], { target: { value: "claude" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create version" }));
 
   await waitFor(() => expect(api.createTranslationSession).toHaveBeenCalledWith(
     expect.objectContaining({ book_id: 2229, name: "直译版", provider: "claude" }),
@@ -77,9 +77,9 @@ test("creating a session posts and selects it", async () => {
 test("duplicate-name error from the API is shown", async () => {
   (api.createTranslationSession as jest.Mock).mockRejectedValue(new Error('You already have a session named "诗意版" for this book.'));
   renderPanel();
-  fireEvent.click(screen.getByText("＋ New session…"));
-  fireEvent.change(screen.getByLabelText("Session name"), { target: { value: "诗意版" } });
-  fireEvent.click(screen.getByRole("button", { name: "Create session" }));
+  fireEvent.click(screen.getByText("＋ New version…"));
+  fireEvent.change(screen.getByLabelText("Version name"), { target: { value: "诗意版" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create version" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/already have a session/);
 });
 
@@ -91,6 +91,15 @@ test("active session shows the style panel and translate-chapter button", () => 
   expect(screen.getByTestId("session-coverage")).toHaveTextContent("1 / 28 chapters started");
   fireEvent.click(screen.getByRole("button", { name: "Translate this chapter" }));
   expect(props.onTranslateChapter).toHaveBeenCalled();
+});
+
+test("the language is changeable on an existing version", async () => {
+  (api.updateTranslationSession as jest.Mock).mockResolvedValue({ ...SESSION, target_language: "en" });
+  const { props } = renderPanel({ activeSessionId: 5 });
+  fireEvent.change(screen.getByLabelText("Version target language"), { target: { value: "en" } });
+  await waitFor(() => expect(api.updateTranslationSession).toHaveBeenCalledWith(5, { target_language: "en" }));
+  // Reselected so the reader picks up the new language immediately
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ target_language: "en" }));
 });
 
 test("during a chapter run the button is a blocking progress bar", () => {
@@ -124,7 +133,7 @@ test("a failed action shows a persistent, dismissible in-panel error", () => {
 test("deleting a session removes it and falls back to Editorial when active", async () => {
   (api.deleteTranslationSession as jest.Mock).mockResolvedValue({ ok: true });
   const { props } = renderPanel({ activeSessionId: 5 });
-  fireEvent.click(screen.getByRole("button", { name: "Delete session 诗意版" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete version 诗意版" }));
   await waitFor(() => expect(api.deleteTranslationSession).toHaveBeenCalledWith(5));
   expect(props.onSessionsChanged).toHaveBeenCalledWith([]);
   expect(props.onSelect).toHaveBeenCalledWith(null);

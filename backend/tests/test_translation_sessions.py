@@ -67,6 +67,7 @@ async def test_duplicate_name_is_409(client, test_user):
     resp = await _create(client)
     assert resp.status_code == 409
     assert "诗意版" in resp.json()["detail"]
+    assert "version" in resp.json()["detail"]
 
 
 async def test_rename_and_retune(client, test_user):
@@ -79,6 +80,22 @@ async def test_rename_and_retune(client, test_user):
     assert data["name"] == "直译版"
     assert data["provider"] == "claude"
     assert data["style_prompt"] == "直译"
+
+
+async def test_target_language_changeable_mid_version(client, test_user):
+    """Owner decision (2026-08-27): the language is editable on an existing
+    version; already-translated paragraphs stay untouched."""
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("sk-ds"))
+    sid = (await _create(client, lang="zh")).json()["id"]
+    with patch("services.user_translate.translate_paragraph",
+               new=AsyncMock(return_value=("译文", "deepseek-v4-flash"))):
+        await client.post(f"/api/translation-sessions/{sid}/translate",
+                          json={"chapter_index": 0, "scope": 0})
+    resp = await client.patch(f"/api/translation-sessions/{sid}", json={"target_language": "EN-us"})
+    assert resp.status_code == 200
+    assert resp.json()["target_language"] == "en"
+    data = (await client.get(f"/api/translation-sessions/{sid}/chapters/0")).json()
+    assert data["paragraphs"]["0"]["text"] == "译文"  # old-language paragraph survives
 
 
 async def test_delete_session_cascades(client, test_user):

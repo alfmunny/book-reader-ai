@@ -82,7 +82,7 @@ export default function TranslationSessionPanel({
       setName("");
       setStyle("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create the session.");
+      setError(e instanceof Error ? e.message : "Could not create the version.");
     } finally {
       setBusy(false);
     }
@@ -97,7 +97,7 @@ export default function TranslationSessionPanel({
       onSessionsChanged(sessions.map((s) => (s.id === session.id ? { ...s, ...updated, coverage: s.coverage } : s)));
       setRenamingId(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not rename the session.");
+      setError(e instanceof Error ? e.message : "Could not rename the version.");
     } finally {
       setBusy(false);
     }
@@ -112,7 +112,7 @@ export default function TranslationSessionPanel({
       onSessionsChanged(sessions.filter((s) => s.id !== session.id));
       if (activeSessionId === session.id) onSelect(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not delete the session.");
+      setError(e instanceof Error ? e.message : "Could not delete the version.");
     } finally {
       setBusy(false);
     }
@@ -125,6 +125,19 @@ export default function TranslationSessionPanel({
       onSessionsChanged(sessions.map((s) => (s.id === active.id ? { ...s, ...updated, coverage: s.coverage } : s)));
     } catch {
       setError("Could not save the style prompt.");
+    }
+  }
+
+  async function handleLanguageSave(value: string) {
+    if (!active) return;
+    try {
+      const updated = await updateTranslationSession(active.id, { target_language: value });
+      const merged = { ...active, ...updated, coverage: active.coverage };
+      onSessionsChanged(sessions.map((s) => (s.id === active.id ? merged : s)));
+      // Reselect so the reader picks up the new language immediately
+      onSelect(merged);
+    } catch {
+      setError("Could not change the language.");
     }
   }
 
@@ -144,8 +157,8 @@ export default function TranslationSessionPanel({
 
   return (
     <div className="mb-4" data-testid="translation-session-panel">
-      <p className="block text-xs text-amber-700 mb-1">Translation sessions</p>
-      <div className="space-y-1.5" role="radiogroup" aria-label="Translation sessions">
+      <p className="block text-xs text-amber-700 mb-1">Translation versions</p>
+      <div className="space-y-1.5" role="radiogroup" aria-label="Translation versions">
         <button
           role="radio"
           aria-checked={activeSessionId === null}
@@ -165,7 +178,7 @@ export default function TranslationSessionPanel({
             {renamingId === s.id ? (
               <div className="p-2 space-y-1.5">
                 <input
-                  aria-label="Session name"
+                  aria-label="Version name"
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
                   className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -190,14 +203,14 @@ export default function TranslationSessionPanel({
                 </button>
                 <button
                   onClick={() => { setRenamingId(s.id); setRenameValue(s.name); }}
-                  aria-label={`Rename session ${s.name}`}
+                  aria-label={`Rename version ${s.name}`}
                   className="shrink-0 p-1 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
                   <EditIcon className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(s)}
-                  aria-label={`Delete session ${s.name}`}
+                  aria-label={`Delete version ${s.name}`}
                   className="shrink-0 p-1 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-red-500 hover:text-red-600 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
                 >
                   <TrashIcon className="w-3.5 h-3.5" />
@@ -212,20 +225,20 @@ export default function TranslationSessionPanel({
             onClick={() => setCreating(true)}
             className="text-sm text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
-            ＋ New session…
+            ＋ New version…
           </button>
         ) : (
           <div className="rounded-lg border border-amber-300 bg-white p-3 space-y-2" data-testid="new-session-form">
             <input
-              aria-label="Session name"
-              placeholder="Session name (e.g. 诗意版)"
+              aria-label="Version name"
+              placeholder="Version name (e.g. 诗意版)"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
               autoFocus
             />
             <select
-              aria-label="Session target language"
+              aria-label="Version target language"
               value={lang}
               onChange={(e) => setLang(e.target.value)}
               className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -235,7 +248,7 @@ export default function TranslationSessionPanel({
               ))}
             </select>
             <select
-              aria-label="Session provider"
+              aria-label="Version provider"
               value={provider}
               onChange={(e) => setProvider(e.target.value as SessionProvider)}
               className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -257,7 +270,7 @@ export default function TranslationSessionPanel({
                 disabled={busy || !name.trim() || !providerReady}
                 className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
-                Create session
+                Create version
               </button>
               <button onClick={() => { setCreating(false); setError(null); }} className="text-xs px-2 py-1.5 min-h-[44px] md:min-h-0 text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Cancel</button>
             </div>
@@ -271,6 +284,18 @@ export default function TranslationSessionPanel({
       {/* Active session: style panel + chapter translate */}
       {active && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3 space-y-2" data-testid="session-style-panel">
+          <label className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide" htmlFor="version-lang">Target language</label>
+          <select
+            id="version-lang"
+            aria-label="Version target language"
+            value={active.target_language}
+            onChange={(e) => handleLanguageSave(e.target.value)}
+            className="w-full text-sm border border-amber-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
+              <option key={l.code} value={l.code}>{l.label}</option>
+            ))}
+          </select>
           <label htmlFor="session-style" className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide">Style &amp; requirements</label>
           <textarea
             id="session-style"
@@ -280,7 +305,7 @@ export default function TranslationSessionPanel({
             className="w-full text-sm border border-amber-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
           <select
-            aria-label="Session provider"
+            aria-label="Version provider"
             value={active.provider}
             onChange={(e) => handleProviderSave(e.target.value as SessionProvider)}
             className="w-full text-sm border border-amber-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"

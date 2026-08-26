@@ -1817,7 +1817,7 @@ async def get_translation_session(session_id: int, user_id: int) -> dict | None:
 async def update_translation_session(session_id: int, user_id: int, fields: dict) -> dict | None:
     """Update name / style_prompt / provider; returns the row, None if not
     owned, or raises IntegrityError → caller maps to 409 on duplicate name."""
-    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider")}
+    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider", "target_language")}
     if not allowed:
         return await get_translation_session(session_id, user_id)
     sets = ", ".join(f"{k} = ?" for k in allowed)

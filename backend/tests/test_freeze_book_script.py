@@ -49,8 +49,10 @@ def frozen_env(tmp_db, tmp_path, monkeypatch):
     monkeypatch.setattr(freeze_module, "LEGACY_DIR_B", tmp_path / "legacy_b")
     (tmp_path / "legacy_a").mkdir()
     (tmp_path / "legacy_b").mkdir()
+    # freeze() splits at build time, so the *splitter* is what gets patched —
+    # not get_chapters(), which is the runtime resolver.
     monkeypatch.setattr(
-        "services.book_chapters.get_chapters",
+        "services.book_chapters.split_with_html_preference",
         AsyncMock(return_value=_chapters()),
     )
     monkeypatch.setattr(
@@ -105,7 +107,7 @@ def test_mechanical_audit_flags_junk():
 async def test_audit_findings_block_without_force(frozen_env, tmp_path, monkeypatch):
     await save_book(2229, _META, "irrelevant")
     monkeypatch.setattr(
-        "services.book_chapters.get_chapters",
+        "services.book_chapters.split_with_html_preference",
         AsyncMock(return_value=[Chapter(title="ISBN", text="ISBN 978-0")]),
     )
     with pytest.raises(SystemExit, match="audit finding"):
@@ -248,3 +250,126 @@ async def test_dry_run_writes_nothing(frozen_env, tmp_path):
 def test_audited_by_is_required():
     with pytest.raises(SystemExit):
         freeze_module.main(["--book-id", "2229"])
+
+
+# ── Re-freeze repairs a bad split (#2624 split-override registry) ─────────────
+
+async def test_refreeze_resplits_instead_of_reading_the_frozen_chapters(
+    frozen_env, tmp_path
+):
+    """Regression: freeze() must derive the split at build time. Reading it
+    back through get_chapters() would make --force re-freeze the very split it
+    was invoked to repair, so a mis-cut boundary could never be corrected."""
+    import aiosqlite
+    import services.db as db_module
+    await save_book(2229, _META, "irrelevant")
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        # A freeze row with no book_chapters rows behind it: get_chapters()
+        # would return nothing here, the splitter returns two chapters.
+        await db.execute(
+            "INSERT INTO book_freeze (book_id, splitter, chapter_source, "
+            "frozen_at, audited_by, content_sha256) "
+            "VALUES (2229, 'html_preference', 'epub', '2026-08-01', 'alfmunny', 'x')"
+        )
+        await db.commit()
+
+    out = await freeze(2229, "alfmunny", force=True, books_dir=tmp_path / "books")
+
+    chapters = json.loads(out.read_text())["chapters"]
+    assert [c["title"] for c in chapters] == ["Zueignung", "Nacht"]
+
+
+async def test_freeze_applies_registered_split_overrides(
+    frozen_env, tmp_path, monkeypatch
+):
+    """A registered correction reshapes the artifact the freeze writes."""
+    import scripts.chapter_split_overrides as overrides_module
+    monkeypatch.setattr(overrides_module, "OVERRIDES", {
+        2229: {"merge_into_previous": [
+            {"index": 1, "expect_title": "Nacht", "restore_title_as": "speaker_cue"},
+        ]},
+    })
+    await save_book(2229, _META, "irrelevant")
+
+    out = await freeze(2229, "alfmunny", books_dir=tmp_path / "books")
+
+    artifact = json.loads(out.read_text())
+    assert [c["title"] for c in artifact["chapters"]] == ["Zueignung"]
+    assert content_sha256(artifact["chapters"]) == artifact["split"]["content_sha256"]
+
+
+async def test_freeze_does_not_trigger_the_translation_deleting_epub_fetch(
+    tmp_db, tmp_path, monkeypatch
+):
+    """#1556: the background EPUB fetch deletes every translation for a book.
+    Freezing one must never set that off."""
+    import services.book_chapters as bc
+    monkeypatch.setattr(freeze_module, "LEGACY_DIR_A", tmp_path / "a")
+    monkeypatch.setattr(freeze_module, "LEGACY_DIR_B", tmp_path / "b")
+    monkeypatch.setattr(
+        "services.book_chapters.get_chapter_source", AsyncMock(return_value="text")
+    )
+    monkeypatch.setattr(bc, "_epub_fetch_attempted", set())
+    fetch = AsyncMock()
+    monkeypatch.setattr(bc, "_background_fetch_epub", fetch)
+    bc.clear_cache(2229)
+    await save_book(2229, _META, "CHAPTER I\n\n" + _PROSE + "\n\nCHAPTER II\n\n" + _PROSE)
+
+    await freeze(2229, "alfmunny", force=True, books_dir=tmp_path / "books")
+
+    fetch.assert_not_called()
+
+
+async def test_refreeze_carries_forward_translations_only_the_artifact_has(
+    frozen_env, tmp_path
+):
+    """#2634 in the repair path: a re-freeze must not drop translations that
+    exist nowhere else. Hamlet #1524 has no legacy export file — its single
+    translated chapter lives only in the artifact."""
+    await save_book(2229, _META, "irrelevant")
+    books_dir = tmp_path / "books"
+    books_dir.mkdir()
+    (books_dir / "book_2229.json").write_text(json.dumps({
+        "schema_version": 1, "book_id": 2229, "meta": {}, "split": {},
+        "chapters": [],
+        "translations": {"zh": {
+            "generated_at": None, "provider": "claude-code", "model": "opus",
+            "chapters": [{"index": 0, "title_translation": "献辞",
+                          "paragraphs": ["译一", "译二", "译三"]}],
+        }},
+    }))
+
+    out = await freeze(2229, "alfmunny", force=True, books_dir=books_dir)
+
+    block = json.loads(out.read_text())["translations"]["zh"]
+    assert [c["index"] for c in block["chapters"]] == [0]
+    assert block["chapters"][0]["title_translation"] == "献辞"
+    assert block["provider"] == "claude-code"
+
+
+async def test_legacy_export_still_overrides_the_artifact_copy(frozen_env, tmp_path):
+    """The artifact is the lowest-priority source: a fresh DB export must win,
+    or a re-freeze would resurrect a stale translation."""
+    await save_book(2229, _META, "irrelevant")
+    books_dir = tmp_path / "books"
+    books_dir.mkdir()
+    (books_dir / "book_2229.json").write_text(json.dumps({
+        "schema_version": 1, "book_id": 2229, "meta": {}, "split": {},
+        "chapters": [],
+        "translations": {"zh": {"generated_at": None, "provider": "stale",
+                                "model": "stale", "chapters": [
+            {"index": 0, "title_translation": "旧", "paragraphs": ["旧一", "旧二", "旧三"]}
+        ]}},
+    }))
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [{"book_id": 2229, "chapter_index": 0, "target_language": "zh",
+                     "paragraphs": ["新一", "新二", "新三"], "provider": "claude-code",
+                     "title_translation": "新"}],
+    }))
+
+    out = await freeze(2229, "alfmunny", force=True, books_dir=books_dir)
+
+    entry = json.loads(out.read_text())["translations"]["zh"]["chapters"][0]
+    assert entry["paragraphs"] == ["新一", "新二", "新三"]
+    assert entry["title_translation"] == "新"

@@ -1,0 +1,170 @@
+"""Tests for scripts/chapter_split_overrides.py — freeze-time corrections to
+splitter output (#2624).
+
+The registry exists because fossilization stores the splitter's *output*: a
+boundary the splitter invents is permanent once frozen, and every later
+annotation anchors to it. Hamlet #1524 is the first entry — the text splitter
+promoted the Player Prologue's speaker cue inside III.ii to a chapter,
+cutting the play scene in two.
+"""
+
+import json
+from pathlib import Path
+
+import pytest
+
+import scripts.chapter_split_overrides as overrides_module
+from scripts.chapter_split_overrides import apply_overrides
+from services.splitter import Chapter
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+HAMLET_ARTIFACT = REPO_ROOT / "data" / "books" / "book_1524.json"
+
+
+def _scene_split():
+    """A miniature of the Hamlet mis-cut: a speaker cue promoted to chapter 2."""
+    return [
+        Chapter(title="ACT III", text="SCENE I.\n\nTo be, or not to be."),
+        Chapter(
+            title="SCENE II. A hall in the Castle.",
+            text="Enter Hamlet and certain Players.\n\nEnter Prologue.",
+        ),
+        Chapter(
+            title="PROLOGUE.",
+            text="   _For us, and for our tragedy,_\n\nHAMLET.\nIs this a prologue?",
+        ),
+        Chapter(title="SCENE III. A room in the Castle.", text="Enter King."),
+    ]
+
+
+@pytest.fixture
+def registry(monkeypatch):
+    """Point the registry at book 999 so tests don't depend on real entries."""
+    def _install(spec):
+        monkeypatch.setattr(overrides_module, "OVERRIDES", {999: spec})
+    return _install
+
+
+def test_unregistered_book_is_returned_untouched():
+    chapters = _scene_split()
+    assert apply_overrides(4242, chapters) == chapters
+
+
+def test_merge_folds_chapter_into_predecessor_and_shifts_the_tail(registry):
+    registry({"merge_into_previous": [
+        {"index": 2, "expect_title": "PROLOGUE.", "restore_title_as": "speaker_cue"},
+    ]})
+
+    result = apply_overrides(999, _scene_split())
+
+    assert [c.title for c in result] == [
+        "ACT III",
+        "SCENE II. A hall in the Castle.",
+        "SCENE III. A room in the Castle.",
+    ]
+
+
+def test_merge_restores_the_consumed_title_as_a_speaker_cue(registry):
+    """The splitter ate 'PROLOGUE.' to build the heading. Merging without
+    putting it back would silently drop a line of the play."""
+    registry({"merge_into_previous": [
+        {"index": 2, "expect_title": "PROLOGUE.", "restore_title_as": "speaker_cue"},
+    ]})
+
+    merged = apply_overrides(999, _scene_split())[1].text
+
+    # Predecessor's text is intact, the cue is restored, and the verse keeps
+    # its original indentation.
+    assert merged.startswith("Enter Hamlet and certain Players.\n\nEnter Prologue.")
+    assert "PROLOGUE.\n   _For us, and for our tragedy,_" in merged
+    assert merged.endswith("HAMLET.\nIs this a prologue?")
+
+
+def test_merge_without_cue_restoration_drops_the_heading(registry):
+    registry({"merge_into_previous": [{"index": 2, "expect_title": "PROLOGUE."}]})
+
+    merged = apply_overrides(999, _scene_split())[1].text
+
+    assert "PROLOGUE." not in merged
+    assert "_For us, and for our tragedy,_" in merged
+
+
+def test_paragraph_count_is_conserved_by_a_merge(registry):
+    """A merge must not create or destroy paragraphs — translations key on
+    paragraph index, so a drift here would mis-anchor paid work (#2634)."""
+    registry({"merge_into_previous": [
+        {"index": 2, "expect_title": "PROLOGUE.", "restore_title_as": "speaker_cue"},
+    ]})
+    before = _scene_split()
+
+    after = apply_overrides(999, before)
+
+    def paragraphs(chapters):
+        return sum(len(c.text.split("\n\n")) for c in chapters)
+
+    assert paragraphs(after) == paragraphs(before)
+
+
+def test_title_mismatch_aborts_rather_than_merging_the_wrong_chapter(registry):
+    """If the splitter's output moved, the recorded index now points at
+    something else — abort instead of silently corrupting a good boundary."""
+    registry({"merge_into_previous": [
+        {"index": 2, "expect_title": "EPILOGUE.", "restore_title_as": "speaker_cue"},
+    ]})
+
+    with pytest.raises(SystemExit, match="expected chapter 2"):
+        apply_overrides(999, _scene_split())
+
+
+def test_out_of_range_index_aborts(registry):
+    registry({"merge_into_previous": [{"index": 99, "expect_title": "PROLOGUE."}]})
+
+    with pytest.raises(SystemExit, match="out of range"):
+        apply_overrides(999, _scene_split())
+
+
+def test_index_zero_aborts_having_no_predecessor(registry):
+    registry({"merge_into_previous": [{"index": 0, "expect_title": "ACT III"}]})
+
+    with pytest.raises(SystemExit, match="out of range"):
+        apply_overrides(999, _scene_split())
+
+
+def test_multiple_merges_apply_highest_index_first(registry):
+    """Later merges must not invalidate earlier indices."""
+    registry({"merge_into_previous": [
+        {"index": 1, "expect_title": "SCENE II. A hall in the Castle."},
+        {"index": 3, "expect_title": "SCENE III. A room in the Castle."},
+    ]})
+
+    result = apply_overrides(999, _scene_split())
+
+    assert [c.title for c in result] == ["ACT III", "PROLOGUE."]
+
+
+# ── The committed Hamlet artifact (#1524) ────────────────────────────────────
+
+def test_hamlet_artifact_has_no_standalone_prologue_chapter():
+    """Regression: 'PROLOGUE.' is a speaker cue inside ACT III SCENE II, not
+    a chapter. Freezing it as one cut the play scene in two."""
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+
+    titles = [c["title"] for c in artifact["chapters"]]
+    assert "PROLOGUE." not in titles
+    assert len(titles) == 20, "Hamlet is 20 scenes across five acts"
+
+
+def test_hamlet_play_scene_is_whole_and_keeps_the_prologue_cue():
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+    play_scene = next(
+        c for c in artifact["chapters"]
+        if c["title"] == "SCENE II. A hall in the Castle." and c["index"] < 15
+    )
+
+    joined = "\n\n".join(play_scene["paragraphs"])
+    # The cue sits with its speech, as every other speech in the play does.
+    assert any(p.startswith("PROLOGUE.\n") for p in play_scene["paragraphs"])
+    # The scene runs from the players' entrance through to the King's exit.
+    assert joined.startswith("Enter Hamlet and certain Players.")
+    assert "Enter Prologue." in joined
+    assert "Is this a prologue, or the posy of a ring?" in joined

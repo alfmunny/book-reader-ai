@@ -19,6 +19,10 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-build.yml'
+  # Merge queue: path filters don't apply to merge_group, so queued merges
+  # always run the build — a required check that never reports would wedge
+  # the queue.
+  merge_group:
   push:
     branches: [main]
     paths:

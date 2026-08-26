@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Merge queue (owner request, 2026-08-26): required checks must also run on
+  # queued merge groups or queue entries never turn green. Path filtering
+  # doesn't apply to merge_group, so the changes job forces the full matrix.
+  merge_group:
   # Weekly full-matrix run, Sundays at 03:17 UTC (off-minute). Safety net
   # for drift the path-scoped PR CI might miss — e.g. backend contract
   # changes that didn't touch the frontend but break it, or vice versa.
@@ -39,9 +43,9 @@ jobs:
     # the full matrix runs regardless of what the last push touched.
     # On push/PR events, the filter step drives the outputs normally.
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-      backend:  ${{ steps.filter.outputs.backend  == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-      docker:   ${{ steps.filter.outputs.docker   == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      frontend: ${{ steps.filter.outputs.frontend == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group' }}
+      backend:  ${{ steps.filter.outputs.backend  == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group' }}
+      docker:   ${{ steps.filter.outputs.docker   == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group' }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3

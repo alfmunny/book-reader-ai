@@ -1,4 +1,5 @@
 """User book upload endpoints."""
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -281,6 +282,32 @@ async def confirm_chapters(
             """INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)
                VALUES (?, ?, ?, ?, 0)""",
             [(book_id, i, ch["title"], ch["text"]) for i, ch in enumerate(final_chapters)],
+        )
+
+        # Fossilize. Annotations anchor to chapter_index, so a split that can still
+        # move silently re-anchors them; confirming is the moment the reader says
+        # this split is right, which is when to fix it.
+        #
+        # get_chapters routes any book with a book_freeze row to book_chapters, so
+        # the frozen copy has to be written too — a freeze row alone would leave
+        # the reader with an empty book.
+        await db.execute("DELETE FROM book_chapters WHERE book_id=?", (book_id,))
+        await db.executemany(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text) VALUES (?, ?, ?, ?)",
+            [(book_id, i, ch["title"], ch["text"]) for i, ch in enumerate(final_chapters)],
+        )
+        digest = hashlib.sha256(
+            "\n\x00".join(f"{ch['title']}\x00{ch['text']}" for ch in final_chapters).encode("utf-8")
+        ).hexdigest()
+        # published_at stays NULL: an upload is private to its owner for good, and
+        # list_audited_books excludes source='upload' anyway (belt and braces).
+        await db.execute(
+            """INSERT OR REPLACE INTO book_freeze
+                   (book_id, splitter, chapter_source, frozen_at, audited_by,
+                    content_sha256, published_at)
+               VALUES (?, 'user_audit', 'upload', ?, ?, ?, NULL)""",
+            (book_id, datetime.now(timezone.utc).isoformat(timespec="seconds"),
+             str(user["id"]), digest),
         )
         await db.execute("COMMIT")
 

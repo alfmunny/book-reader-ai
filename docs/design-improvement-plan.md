@@ -628,3 +628,11 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | 2026-08-26 | Home shows the curated catalog directly. Readers no longer import books — an admin/architect session audits the chapter split and writes the freeze record — so the Gutenberg search and the Discover tab it lived in are removed, and Home absorbs Discover entirely. The catalog is keyed on `book_freeze` ("published"), not on ownership, so the coming user-upload flow stays additive (P2) | app/page.tsx, routers/books.py, services/db.py | #2711 |
 | 2026-08-26 | "Your Library" became "Your Bookshelf" on its own `/bookshelf` route, carrying the greeting, Continue Reading, stats strip and book grid. The two-tab strip became a real `<nav>` landmark with links and `aria-current="page"` — tabs promised in-page panels that no longer exist (P2) | app/bookshelf/page.tsx, components/SiteHeader.tsx | #2711 |
 | 2026-08-26 | Header and primary nav extracted to `SiteHeader` — it now has to render on two routes rather than living inline in the homepage (P2) | components/SiteHeader.tsx | #2711 |
+
+## Wave 23 — Fossilize on confirm, generated covers (2026-08-26)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-26 | Finishing an upload's audit fossilizes it: `confirm` writes a `book_freeze` row with `audited_by` = the owner's user id, and copies the confirmed chapters into `book_chapters`. Annotations anchor to `chapter_index`, so a split that can still move silently re-anchors them. `published_at` stays NULL — an upload is private for good | routers/uploads.py | audit |
+| 2026-08-26 | Covers are drawn from the record instead of stored, with the ground colour derived deterministically from the book. A shelf of identical placeholders cannot be scanned, and recognition is the whole job of a cover; hues stay inside the app's warm range so a shelf still reads as one set. Long titles step down a size and wrap rather than truncate | components/GeneratedCover.tsx, components/BookCard.tsx | audit |
+| 2026-08-26 | `Your upload` badge on cards for books the reader brought themselves (`source='upload'`). Library books stay unmarked — the badge marks the exception | components/BookCard.tsx | audit |

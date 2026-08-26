@@ -157,13 +157,20 @@ CREATE TABLE translation_stories (
 
 The story snapshots nothing — it references live session paragraphs (an author improving their rendering improves the story). Comments anchor to the story.
 
+**Stories surface in the reader, WeRead-style (owner refinement, 2026-08-26).** A story is anchored at its paragraph, so it appears in two places:
+
+1. **The storyline/feed** — social browsing, as above.
+2. **Inline at the paragraph** — while reading (any version active) or while translating, each paragraph that has shared renderings shows a small muted count marker at its end (the WeRead margin-comment pattern). Tapping it expands an inline panel listing other readers' renderings of exactly this paragraph — author, session name, model tag, caption — with the discussion thread right there. This doubles as a lightweight per-paragraph comparison view while translating: see how others rendered the stanza you're working on.
+
+Visibility is an explicit toggle — "Show others' shares" in the translation tab, off by default and persisted in settings — so reading stays calm unless the reader opts in ("if you turn on the others' comments"). The count marker only renders when the toggle is on and stories exist for that paragraph; `GET /stories?book_id&chapter_index` returns per-paragraph counts in one call so the reader adds no per-paragraph requests.
+
 **Track B — complete session publication (reading, selection).** Publishing a session as a readable, selectable translation version in other readers' switchers requires the **whole book translated** — every paragraph of every chapter covered. `status='published'` is only reachable through that completeness check; `published_at` is stamped. Visitors get a coherent full translation or nothing — no half-books in the reader switcher.
 
 - `GET /translation-sessions/published?book_id` → `{author_name, session_name, target_language, model_tags, published_at, id}`; the reader's switcher grows a "Community" group (complete sessions only).
 - `GET /stories?book_id` (and later a cross-book feed) → story shares for the social surface.
 - **Comments**: `translation_comments (id, story_id NULL, session_id NULL, chapter_index NULL, paragraph_index NULL, user_id, body, created_at)` — anchored to a story (track A) or to a published session's paragraph (track B).
 - Moderation: owner/admin can unpublish either kind.
-- **Future idea (owner, 2026-08-26): comparison view** — render two or more versions side by side (e.g. Editorial · 诗意版 · a community session) for the same paragraph, to compare renderings. Not scheduled; the per-paragraph storage keeps this cheap — any version's paragraph is addressable by (chapter_index, paragraph_index).
+- **Future idea (owner, 2026-08-26): comparison view** — render two or more versions side by side (e.g. Editorial · 诗意版 · a community session) for the same paragraph. The inline story panel above already delivers a per-paragraph version of this; a full side-by-side mode across whole chapters stays future work. The per-paragraph storage keeps both cheap — any version's paragraph is addressable by (chapter_index, paragraph_index).
 - Phase 2 gets its own implementation issue after this doc merges; nothing in phase 1 blocks on it.
 
 ## Costs

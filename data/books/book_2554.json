@@ -22,8 +22,8 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-26",
-    "audited_by": "architect-agent (Part II ch3 translated in-session)",
+    "frozen_at": "2026-08-27",
+    "audited_by": "architect-agent (front-matter classification #2745)",
     "content_sha256": "c8cb25d329700139741e47b54621170f02e90a74579ab892e5eb5d90512c71b2"
   },
   "chapters": [
@@ -79,7 +79,8 @@
         "CHAPTER VII",
         "CHAPTER VIII",
         "EPILOGUE"
-      ]
+      ],
+      "role": "frontmatter"
     },
     {
       "index": 1,

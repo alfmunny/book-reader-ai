@@ -12,6 +12,9 @@ Schema:
     OVERRIDES[book_id] = {
         'source': 'text',                       # optional; pins the split path
         'why': str,                             # required alongside 'source'
+        'frontmatter': [
+            {'index': int, 'expect_title': str, 'why': str},
+        ],
         'retitle': [
             {'index': int, 'expect_title': str, 'title': str, 'why': str},
         ],
@@ -34,6 +37,20 @@ edition, whose decorative drop-cap is lost in extraction (so every chapter
 loses its opening letter), whose illustration captions bleed into chapter
 titles, and whose plate copyright lines become paragraphs. Pinning `'text'`
 selects `build_chapters` and records `chapter_source: "text"` in the artifact.
+
+`frontmatter` marks a chapter as publisher apparatus rather than the work —
+a title page, a copyright notice, a printed contents listing. It writes
+`role: "frontmatter"` onto the chapter and changes nothing else: no index
+moves, no paragraph is touched, and `content_sha256` covers only index, title
+and paragraphs, so marking a chapter leaves the frozen split's identity
+intact. The reader collapses these; nothing is deleted, because deleting
+would discard translated paragraphs and shift every index after it.
+
+Classify from **content, not title**. Two chapters that look like apparatus
+by their heading are not: The Great Gatsby's chapter 0 is titled "Table of
+Contents" but holds Fitzgerald's epigraph, and Moby Dick's chapter 1 opens
+with one transcriber's line and then runs 93 paragraphs of the real Etymology
+and Extracts. Marking either would hide the book's own text.
 
 `retitle` replaces a heading the splitter invented or left as a placeholder
 ("Section 2" over Dracula's prefatory note). It moves nothing — indices and
@@ -80,6 +97,42 @@ OVERRIDES: dict[int, dict] = {
         "why": "illustrated EPUB drops each chapter's opening letter and "
                "pollutes titles with plate captions",
     },
+    64317: {  # The Great Gatsby
+        # Chapter 0 is titled "Table of Contents" but contains neither a
+        # contents listing nor apparatus — it is Fitzgerald's epigraph,
+        # attributed to Thomas Parke d'Invilliers. Found while classifying
+        # front matter (#2745): the title says apparatus, the content says
+        # otherwise, so it is retitled rather than hidden.
+        # Audited against Gutenberg #64317, 2026-08-27.
+        "retitle": [
+            {
+                "index": 0,
+                "expect_title": "Table of Contents",
+                "title": "EPIGRAPH",
+                "why": "holds the novel's epigraph, not a contents listing",
+            },
+        ],
+    },
+    2554: {  # Crime and Punishment
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "Translated By Constance Garnett",
+                "why": "48 paragraphs, entirely a printed contents listing",
+            },
+        ],
+    },
+    2701: {  # Moby Dick
+        # Chapter 1 is deliberately NOT marked: it opens with one transcriber's
+        # line and then runs 93 paragraphs of the real Etymology and Extracts.
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "MOBY-DICK; or, THE WHALE.",
+                "why": "title line plus a 138-entry printed contents listing",
+            },
+        ],
+    },
     345: {  # Dracula
         # Front matter only. Dracula's split is otherwise sound: 27 numbered
         # chapters with correct boundaries, and all 30 zh entries paragraph-
@@ -88,6 +141,13 @@ OVERRIDES: dict[int, dict] = {
         # placeholder. Both new titles match the title_translation the
         # translator already recorded (题名 / 前言), so nothing is invented.
         # Audited against Gutenberg #345, 2026-08-26.
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "TITLE PAGE",
+                "why": "publisher's title page and copyright notice",
+            },
+        ],
         "retitle": [
             {
                 "index": 0,
@@ -170,6 +230,25 @@ def forced_source(book_id: int) -> str | None:
     resolver choose. Only 'text' is meaningful today — see the module
     docstring for why a stored EPUB is not always the better input."""
     return (OVERRIDES.get(book_id) or {}).get("source")
+
+
+def frontmatter_roles(book_id: int, chapters: list[Chapter]) -> dict[int, str]:
+    """Return {index: "frontmatter"} for this book's apparatus chapters.
+
+    Indices name the corrected split, after retitles and merges — Dracula's
+    entry expects "TITLE PAGE", the name its retitle gives it. A mismatch
+    aborts rather than marking the wrong chapter: hiding a chapter of the work
+    is worse than showing a title page.
+    """
+    spec = OVERRIDES.get(book_id)
+    if not spec:
+        return {}
+    roles: dict[int, str] = {}
+    for entry in spec.get("frontmatter", []):
+        index = entry["index"]
+        _check(book_id, chapters, index, entry["expect_title"], allow_first=True)
+        roles[index] = "frontmatter"
+    return roles
 
 
 def _merges(spec: dict) -> list[dict]:

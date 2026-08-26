@@ -882,6 +882,39 @@ async def get_user_stats(user_id: int) -> dict:
     }
 
 
+async def list_audited_books() -> list[dict]:
+    """Return the published catalog: cached books that have been audited (#2711).
+
+    A book is published once it carries a `book_freeze` row — written only after a
+    session has audited its chapter split and recorded `audited_by`. Keying the
+    public catalog on *published* rather than on ownership keeps the later
+    user-upload flow additive: an unaudited book is simply not in the catalog,
+    whoever put it there.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT b.id, b.title, b.authors, b.languages, b.subjects,"
+            " b.download_count, b.cover, b.cached_at, f.frozen_at"
+            " FROM books b"
+            " JOIN book_freeze f ON f.book_id = b.id"
+            " WHERE (b.source IS NULL OR b.source != 'upload')"
+            " ORDER BY b.title COLLATE NOCASE"
+        ) as cursor:
+            rows = await cursor.fetchall()
+    result = []
+    for row in rows:
+        d = dict(row)
+        for field in ("authors", "languages", "subjects"):
+            if isinstance(d.get(field), str):
+                try:
+                    d[field] = json.loads(d[field])
+                except (ValueError, TypeError):
+                    d[field] = []
+        result.append(d)
+    return result
+
+
 async def list_cached_books() -> list[dict]:
     """Return publicly available cached books (Gutenberg only, without text field).
 

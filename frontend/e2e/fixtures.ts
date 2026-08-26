@@ -55,6 +55,11 @@ export async function mockBackend(page: Page) {
     route.fulfill({ json: [MOCK_BOOK] })
   );
 
+  // The published catalog the home page lists (#2711) — audited books only.
+  await page.route("**/api/books/catalog", (route) =>
+    route.fulfill({ json: [MOCK_BOOK, MOCK_FAUST] })
+  );
+
   await page.route(/\/api\/books\/search\?/, (route) => {
     const url = route.request().url();
     if (url.includes("Faust")) {

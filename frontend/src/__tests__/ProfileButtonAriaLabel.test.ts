@@ -5,7 +5,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const src = readFileSync(join(__dirname, "../app/page.tsx"), "utf-8");
+const src = readFileSync(join(__dirname, "../components/SiteHeader.tsx"), "utf-8");
 
 describe("Home page profile button aria-label (closes #2142)", () => {
   it("aria-label template includes Profile & Settings alongside user name", () => {

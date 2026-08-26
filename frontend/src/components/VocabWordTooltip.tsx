@@ -129,7 +129,7 @@ export default function VocabWordTooltip({ word, lang, rect, onClose, onSave, sa
             onChange={(e) => handleTargetChange(e.target.value)}
             aria-label="Definition language"
             title="Look up definitions in"
-            className="text-[11px] text-stone-600 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="text-[11px] text-stone-600 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 min-h-[44px] md:min-h-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
           >
             {DICTIONARY_LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>{l.label}</option>

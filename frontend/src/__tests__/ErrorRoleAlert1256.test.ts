@@ -6,11 +6,11 @@ function read(rel: string) {
 }
 
 describe("role=alert on dynamic error containers (closes #1256)", () => {
-  it("homepage searchError div has role=alert", () => {
+  it("home catalog fetch error div has role=alert", () => {
     const src = read("../app/page.tsx");
-    const idx = src.indexOf("searchError &&");
+    const idx = src.indexOf("fetchError &&");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 150);
+    const window = src.slice(idx, idx + 200);
     expect(window).toMatch(/role="alert"/);
   });
 

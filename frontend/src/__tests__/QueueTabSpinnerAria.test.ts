@@ -46,10 +46,9 @@ describe("QueueTab Spinner and button spinner aria attributes", () => {
   });
 });
 
-describe("page.tsx search button spinner aria attribute", () => {
-  it("search button spinner is aria-hidden", () => {
-    expect(pageSrc).toMatch(
-      /animate-spin"[^/]*aria-hidden="true"/,
-    );
+describe("page.tsx catalog spinner aria attribute", () => {
+  it("catalog loading spinner is aria-hidden inside a labelled status region", () => {
+    expect(pageSrc).toMatch(/role="status"[\s\S]{0,300}animate-spin/);
+    expect(pageSrc).toMatch(/animate-spin[^>]*aria-hidden="true"/);
   });
 });

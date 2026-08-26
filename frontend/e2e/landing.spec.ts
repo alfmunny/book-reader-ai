@@ -27,26 +27,24 @@ async function mockUnauthenticated(page: import("@playwright/test").Page) {
   );
 }
 
-test("unauthenticated visitor sees landing hero on discover tab", async ({ page }) => {
+test("unauthenticated visitor still sees the catalog and a sign-in link", async ({ page }) => {
   await mockUnauthenticated(page);
   await page.goto("/");
 
-  // The page should show the landing hero headline
-  // JSX uses &rsquo; (U+2019) so we use .s wildcard to avoid ASCII vs curly-quote mismatch
-  await expect(
-    page.getByText(/Read the world.s greatest books/i)
-  ).toBeVisible({ timeout: 5000 });
-
-  // Sign-in CTA should be present
-  await expect(page.getByRole("link", { name: /Sign in free/i })).toBeVisible();
+  // The Discover landing hero went with the Discover tab (#2711); a signed-out
+  // visitor now lands straight on the catalog.
+  await expect(page.getByRole("heading", { name: "The Library" })).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole("link", { name: /Sign in/i })).toBeVisible();
 });
 
-test("authenticated user does not see landing hero", async ({ page }) => {
+test("unauthenticated visitor is not offered a bookshelf", async ({ page }) => {
+  await mockUnauthenticated(page);
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Your Bookshelf" })).toHaveCount(0);
+});
+
+test("authenticated user gets the bookshelf link", async ({ page }) => {
   await mockBackend(page);
   await page.goto("/");
-
-  // The page should NOT show the hero headline
-  await expect(
-    page.getByText(/Read the world.s greatest books/i)
-  ).not.toBeVisible({ timeout: 3000 });
+  await expect(page.getByRole("link", { name: "Your Bookshelf" })).toBeVisible();
 });

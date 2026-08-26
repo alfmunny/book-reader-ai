@@ -6,10 +6,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const src = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
-  "utf8",
-);
+const src = ["../components/SiteHeader.tsx", "../app/page.tsx", "../app/bookshelf/page.tsx"]
+  .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8"))
+  .join("\n");
 
 test("sign-in button: md:py-1.5 desktop padding paired with md:min-h-0", () => {
   // The button has md:py-1.5 to be compact on desktop.
@@ -30,16 +29,3 @@ test("profile avatar: md:w-9 md:h-9 desktop sizing paired with md:min-h-0 md:min
   expect(match![0]).toContain("md:min-w-0");
 });
 
-test("Gutenberg quick-search pills include md:min-h-0 for compact desktop pills", () => {
-  // Pills styled with text-xs py-1 should be compact on desktop.
-  const match = src.match(/className="[^"]*text-xs rounded-full border border-amber-300 px-3 py-1[^"]*"/);
-  expect(match).not.toBeNull();
-  expect(match![0]).toContain("md:min-h-0");
-});
-
-test("popular-books category filter tags include md:min-h-0", () => {
-  // Category tag pills with text-xs py-1 should also be compact on desktop.
-  const match = src.match(/`[^`]*text-xs rounded-full px-3 py-1 min-h-\[44px\][^`]*`/);
-  expect(match).not.toBeNull();
-  expect(match![0]).toContain("md:min-h-0");
-});

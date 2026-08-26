@@ -7,7 +7,6 @@ const searchBarSrc = readFileSync(join(__dirname, "../components/SearchBar.tsx")
 const insightChatSrc = readFileSync(join(__dirname, "../components/InsightChat.tsx"), "utf-8");
 const notesPageSrc = readFileSync(join(__dirname, "../app/notes/page.tsx"), "utf-8");
 const vocabPageSrc = readFileSync(join(__dirname, "../app/vocabulary/page.tsx"), "utf-8");
-const homePageSrc = readFileSync(join(__dirname, "../app/page.tsx"), "utf-8");
 const decksNewSrc = readFileSync(join(__dirname, "../app/decks/new/page.tsx"), "utf-8");
 const profileSrc = readFileSync(join(__dirname, "../app/profile/page.tsx"), "utf-8");
 const tagEditorSrc = readFileSync(join(__dirname, "../components/TagEditor.tsx"), "utf-8");
@@ -46,9 +45,8 @@ describe("Placeholder text contrast — WCAG 1.4.3", () => {
     expect(countOccurrences(vocabPageSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(1);
   });
 
-  it("app/page.tsx Gutenberg search input must use placeholder:text-stone-600", () => {
-    expect(countOccurrences(homePageSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(1);
-  });
+  // The homepage's Gutenberg search input is gone (#2711) — readers no longer
+  // import books. The remaining search input on the page is SearchBar, covered above.
 
   it("decks/new/page.tsx must use placeholder:text-stone-600 on all 5 inputs", () => {
     expect(countOccurrences(decksNewSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(5);

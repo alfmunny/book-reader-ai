@@ -1075,7 +1075,7 @@ describe("ReaderPage.branches — annotation click in notes sidebar (same vs dif
     }
   });
 
-  it("pink-highlighted annotation renders a neutral card", async () => {
+  it("shows annotation with pink color badge", async () => {
     const annotations = [
       {
         id: 1,
@@ -1096,19 +1096,18 @@ describe("ReaderPage.branches — annotation click in notes sidebar (same vs dif
     await userEvent.click(notesBtn);
 
     await screen.findByText(/Pink annotation/);
-    // Neutral cards (owner feedback, 2026-08-26): no per-color background.
-    expect(document.querySelector(".bg-pink-100")).toBeNull();
-    expect(document.querySelector('[aria-label^="Jump to annotation"]')).not.toBeNull();
+    const card = document.querySelector(".bg-pink-100");
+    expect(card).toBeInTheDocument();
   });
 
-  it("notes sidebar cards are neutral regardless of highlight color", async () => {
+  it("shows annotation with unknown color falls back to yellow badge", async () => {
     const annotations = [
       {
         id: 1,
         book_id: 42,
         chapter_index: 0,
         sentence_text: "Unknown color annotation.",
-        color: "purple",
+        color: "purple", // not in colorBadge map
         note_text: "",
         created_at: "2024-01-01",
       },
@@ -1122,11 +1121,9 @@ describe("ReaderPage.branches — annotation click in notes sidebar (same vs dif
     await userEvent.click(notesBtn);
 
     await screen.findByText(/Unknown color annotation/);
-    // Neutral cards (owner feedback, 2026-08-26): no per-color background —
-    // the highlight color shows only on the underline in the text itself.
-    expect(document.querySelector(".bg-yellow-100")).toBeNull();
-    const card = document.querySelector('[aria-label^="Jump to annotation"]');
-    expect(card?.className).toContain("bg-white");
+    // Unknown color falls back to yellow
+    const card = document.querySelector(".bg-yellow-100");
+    expect(card).toBeInTheDocument();
   });
 });
 

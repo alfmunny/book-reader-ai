@@ -18,7 +18,8 @@ const decksNewSrc = readSrc("decks/new/page.tsx");
 const deckDetailSrc = readSrc("decks/[deckId]/page.tsx");
 const adminBooksSrc = readSrc("admin/books/page.tsx");
 const adminUploadsSrc = readSrc("admin/uploads/page.tsx");
-const homeSrc = readSrc("page.tsx");
+const homeSrc = ["page.tsx", "bookshelf/page.tsx"].map(readSrc).join("\n")
+  + fs.readFileSync(path.join(__dirname, "../components/SiteHeader.tsx"), "utf8");
 const readerSrc = readSrc("reader/[bookId]/page.tsx");
 
 describe("profile page nav links (closes #2451)", () => {

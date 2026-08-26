@@ -26,10 +26,10 @@ describe("Select focus ring — admin/books", () => {
   });
 });
 
-describe("Select focus ring — home page", () => {
-  const src = read("../app/page.tsx");
-  it("filter-by-language select has amber focus ring", () => {
-    assertSelectHasFocusRing(src, 'aria-label="Filter by language"');
+describe("Select focus ring — word tooltip", () => {
+  const src = read("../components/VocabWordTooltip.tsx");
+  it("definition-language select has amber focus ring", () => {
+    assertSelectHasFocusRing(src, 'aria-label="Definition language"');
   });
 });
 

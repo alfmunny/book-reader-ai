@@ -1,111 +1,77 @@
 /**
- * Regression test for homepage tab bar ARIA roles (closes #2035).
+ * Primary navigation exposes correct semantics to assistive tech.
  *
- * Verifies that:
- *  - The tab container has role="tablist"
- *  - Each tab button has role="tab" and aria-selected
- *  - The active tab has aria-selected="true", inactive has "false"
- *  - Each panel has role="tabpanel" and aria-labelledby pointing to its tab
- *  - Clicking a tab updates aria-selected and shows the correct panel
+ * Originally asserted the Home/Discover tab strip (role=tablist / role=tab /
+ * aria-selected). With #2711 the strip became real navigation — Home and Your
+ * Bookshelf are separate routes — so the correct semantics are a <nav> landmark
+ * with links, and aria-current marking the active one. Tabs would now be wrong:
+ * they promise in-page panels that no longer exist.
  */
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 
+const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
-  useSession: () => ({ status: "unauthenticated", data: null }),
+  useSession: (...args: unknown[]) => mockUseSession(...args),
 }));
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
-  usePathname: () => "/",
 }));
 
 jest.mock("@/lib/api", () => ({
-  searchBooks: jest.fn().mockResolvedValue([]),
-  getPopularBooks: jest.fn().mockResolvedValue({ books: [], total: 0 }),
-  getMe: jest.fn().mockResolvedValue(null),
-  getReadingProgress: jest.fn().mockResolvedValue([]),
-  getUserStats: jest.fn().mockResolvedValue(null),
+  getMe: () => Promise.resolve({ role: "user" }),
 }));
 
-jest.mock("@/lib/settings", () => ({
-  getSettings: () => ({ insightLang: "en", ttsGender: "female", translationEnabled: false }),
-  saveSettings: jest.fn(),
-}));
-
-jest.mock("next/link", () => {
-  const Link = ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
-    <a href={href} className={className}>{children}</a>
-  );
-  Link.displayName = "Link";
-  return { __esModule: true, default: Link };
-});
-
-jest.mock("@/components/BookDetailModal", () => {
-  const BookDetailModal = () => null;
-  BookDetailModal.displayName = "BookDetailModal";
-  return BookDetailModal;
-});
-
-import HomePage from "@/app/page";
+import SiteHeader from "@/components/SiteHeader";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
-test("tab bar has role=tablist", async () => {
-  render(<HomePage />);
-  await flushPromises();
-  expect(document.querySelector('[role="tablist"]')).toBeInTheDocument();
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockUseSession.mockReturnValue({
+    data: { backendUser: { name: "User", picture: "" } },
+    status: "authenticated",
+  });
 });
 
-test("Home and Discover buttons have role=tab", async () => {
-  render(<HomePage />);
+test("primary navigation is a labelled nav landmark", async () => {
+  render(<SiteHeader current="home" />);
   await flushPromises();
-  const tabs = screen.getAllByRole("tab");
-  const labels = tabs.map((t) => t.textContent?.trim());
+  expect(screen.getByRole("navigation", { name: /main navigation/i })).toBeInTheDocument();
+});
+
+test("Home and Your Bookshelf are links, not tabs", async () => {
+  render(<SiteHeader current="home" />);
+  await flushPromises();
+  const labels = screen.getAllByRole("link").map((l) => l.textContent?.trim());
   expect(labels).toContain("Home");
-  expect(labels).toContain("Discover");
+  expect(labels).toContain("Your Bookshelf");
+  // Tabs promise in-page panels; these navigate to real routes.
+  expect(screen.queryAllByRole("tab")).toHaveLength(0);
 });
 
-test("active tab has aria-selected=true, inactive has false", async () => {
-  render(<HomePage />);
+test("the active destination is marked with aria-current=page", async () => {
+  render(<SiteHeader current="bookshelf" />);
   await flushPromises();
-
-  // Wait for effects to settle (unauthenticated → Discover tab becomes active)
-  await waitFor(() => {
-    const discoverTab = screen.getByRole("tab", { name: /discover/i });
-    expect(discoverTab).toHaveAttribute("aria-selected", "true");
-  });
-  expect(screen.getByRole("tab", { name: /home/i })).toHaveAttribute("aria-selected", "false");
+  const current = screen.getByRole("link", { current: "page" });
+  expect(current).toHaveTextContent("Your Bookshelf");
 });
 
-test("clicking a tab updates aria-selected", async () => {
-  render(<HomePage />);
+test("only one destination is current at a time", async () => {
+  render(<SiteHeader current="home" />);
   await flushPromises();
-
-  const homeTab = screen.getByRole("tab", { name: /home/i });
-  await userEvent.click(homeTab);
-
-  await waitFor(() => {
-    expect(homeTab).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tab", { name: /discover/i })).toHaveAttribute("aria-selected", "false");
-  });
+  const marked = screen.getAllByRole("link").filter(
+    (l) => l.getAttribute("aria-current") === "page",
+  );
+  expect(marked).toHaveLength(1);
+  expect(marked[0]).toHaveTextContent("Home");
 });
 
-test("active panel has role=tabpanel and aria-labelledby pointing to active tab", async () => {
-  render(<HomePage />);
+test("Your Bookshelf is hidden from signed-out visitors", async () => {
+  mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
+  render(<SiteHeader current="home" />);
   await flushPromises();
-
-  // Wait for panel to appear after effects settle
-  await waitFor(() => {
-    expect(document.querySelector('[role="tabpanel"]')).toBeInTheDocument();
-  });
-
-  const panel = document.querySelector('[role="tabpanel"]')!;
-  const labelledBy = panel.getAttribute("aria-labelledby");
-  expect(labelledBy).toBeTruthy();
-
-  const labellingTab = document.getElementById(labelledBy!);
-  expect(labellingTab).toBeInTheDocument();
-  expect(labellingTab?.getAttribute("aria-selected")).toBe("true");
+  const labels = screen.getAllByRole("link").map((l) => l.textContent?.trim());
+  expect(labels).not.toContain("Your Bookshelf");
 });

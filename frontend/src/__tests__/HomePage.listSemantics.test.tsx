@@ -1,119 +1,41 @@
 /**
- * Regression test for #2041: book grids must use list semantics so
- * screen readers can announce item counts and navigation position.
+ * Book grids expose list semantics (WCAG 1.3.1) so screen readers announce the
+ * item count and allow list navigation.
+ *
+ * Originally covered the Popular Classics and Gutenberg search grids. Both went
+ * with the Discover tab (#2711); the two grids that replaced them — the home
+ * catalog and Your Bookshelf — carry the same requirement.
  */
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import fs from "fs";
+import path from "path";
 
-jest.mock("next-auth/react", () => ({
-  useSession: () => ({ status: "unauthenticated", data: null }),
-}));
+const read = (rel: string) =>
+  fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
 
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() }),
-}));
+const homeSrc = read("app/page.tsx");
+const bookshelfSrc = read("app/bookshelf/page.tsx");
 
-function makeBook(id: number) {
-  return {
-    id,
-    title: `Book ${id}`,
-    authors: [`Author ${id}`],
-    subjects: [],
-    languages: ["en"],
-    download_count: id * 100,
-    cover_url: null,
-  };
+function assertListGrid(src: string, label: string) {
+  const idx = src.indexOf(`role="list"`);
+  expect(idx).toBeGreaterThan(-1);
+  const window = src.slice(idx, idx + 200);
+  expect(window).toContain(`aria-label="${label}"`);
+  // Items must be <li>, not bare divs, or the list role is a lie.
+  expect(src.slice(idx, idx + 700)).toMatch(/<li\b/);
 }
 
-const BOOKS = Array.from({ length: 3 }, (_, i) => makeBook(i + 1));
-
-const mockGetPopularBooks = jest.fn().mockResolvedValue({ books: BOOKS, total: 3 });
-const mockGetMe = jest.fn().mockResolvedValue({ role: "user" });
-const mockSearchBooks = jest.fn().mockResolvedValue({ books: BOOKS });
-const mockGetReadingProgress = jest.fn().mockResolvedValue([]);
-const mockGetUserStats = jest.fn().mockResolvedValue(null);
-
-jest.mock("@/lib/api", () => ({
-  getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
-  getMe: (...args: unknown[]) => mockGetMe(...args),
-  searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
-  getReadingProgress: (...args: unknown[]) => mockGetReadingProgress(...args),
-  getUserStats: (...args: unknown[]) => mockGetUserStats(...args),
-}));
-
-jest.mock("@/lib/recentBooks", () => ({
-  getRecentBooks: () => [],
-  removeRecentBook: jest.fn(),
-  recordRecentBook: jest.fn(),
-}));
-
-jest.mock("@/components/BookCard", () => {
-  const BookCard = ({ book }: { book: { id: number; title: string } }) => (
-    <div data-testid={`book-card-${book.id}`}>{book.title}</div>
-  );
-  BookCard.displayName = "BookCard";
-  return BookCard;
-});
-
-jest.mock("@/components/BookDetailModal", () => {
-  const BookDetailModal = () => null;
-  BookDetailModal.displayName = "BookDetailModal";
-  return BookDetailModal;
-});
-
-jest.mock("@/components/UndoToast", () => {
-  const UndoToast = () => null;
-  UndoToast.displayName = "UndoToast";
-  return UndoToast;
-});
-
-jest.mock("@/components/ReadingStats", () => {
-  const ReadingStats = () => null;
-  ReadingStats.displayName = "ReadingStats";
-  return ReadingStats;
-});
-
-jest.mock("@/components/SeedPopularButton", () => {
-  const SeedPopularButton = () => null;
-  SeedPopularButton.displayName = "SeedPopularButton";
-  return SeedPopularButton;
-});
-
-import Home from "@/app/page";
-
-const flushPromises = () => new Promise((r) => setTimeout(r, 0));
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  mockGetPopularBooks.mockResolvedValue({ books: BOOKS, total: 3 });
-  mockSearchBooks.mockResolvedValue({ books: BOOKS });
-});
-
-test("Popular Classics grid renders as a list element", async () => {
-  render(<Home />);
-  await flushPromises();
-
-  // After popular books load, the grid container should be a <ul> with role=list
-  const list = await screen.findByRole("list", { name: /popular classics/i });
-  expect(list).toBeInTheDocument();
-  // All book cards should be inside list items
-  const items = screen.getAllByRole("listitem");
-  expect(items.length).toBeGreaterThanOrEqual(3);
-});
-
-test("search results grid renders as a list element", async () => {
-  render(<Home />);
-  await flushPromises();
-
-  const searchInput = screen.getByRole("textbox", { name: /search by title or author/i });
-  const user = userEvent.setup();
-  await user.type(searchInput, "Pride");
-  await user.keyboard("{Enter}");
-
-  await waitFor(() => {
-    expect(screen.getByRole("list", { name: /search results/i })).toBeInTheDocument();
+describe("book grids expose list semantics", () => {
+  it("home catalog grid is a labelled list", () => {
+    assertListGrid(homeSrc, "The Library");
   });
-  const items = screen.getAllByRole("listitem");
-  expect(items.length).toBeGreaterThanOrEqual(3);
+
+  it("bookshelf grid is a labelled list", () => {
+    assertListGrid(bookshelfSrc, "Your Bookshelf");
+  });
+
+  it("both grids render their items as list items", () => {
+    for (const src of [homeSrc, bookshelfSrc]) {
+      expect(src).toMatch(/<li key=\{book\.id\}>/);
+    }
+  });
 });

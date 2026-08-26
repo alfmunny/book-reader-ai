@@ -7,10 +7,8 @@
 import fs from "fs";
 import path from "path";
 
-const src = fs.readFileSync(
-  path.resolve(__dirname, "..", "app/page.tsx"),
-  "utf-8"
-);
+const src = ["../components/SiteHeader.tsx", "../app/page.tsx", "../app/bookshelf/page.tsx"]
+  .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 
 function sectionHasLabelledby(headingId: string): boolean {
   return new RegExp(`aria-labelledby="${headingId}"`).test(src);
@@ -26,47 +24,33 @@ function headingHasId(text: string, id: string): boolean {
 describe("Home page sections have aria-labelledby for landmark navigation (closes #2535)", () => {
   it("Continue Reading h2 has id attribute", () => {
     // indexOf("Continue Reading") finds the JSX comment first; check for the id directly
-    expect(src).toContain('id="home-continue-reading-heading"');
+    expect(src).toContain('id="bookshelf-continue-reading-heading"');
   });
 
   it("Continue Reading section has aria-labelledby", () => {
-    expect(sectionHasLabelledby("home-continue-reading-heading")).toBe(true);
+    expect(sectionHasLabelledby("bookshelf-continue-reading-heading")).toBe(true);
   });
 
   it("Your Progress h2 has id attribute", () => {
-    expect(headingHasId("Your Progress", "home-progress-heading")).toBe(true);
+    expect(headingHasId("Your Progress", "bookshelf-progress-heading")).toBe(true);
   });
 
   it("Your Progress section has aria-labelledby", () => {
-    expect(sectionHasLabelledby("home-progress-heading")).toBe(true);
+    expect(sectionHasLabelledby("bookshelf-progress-heading")).toBe(true);
   });
 
-  it("Your Library section has aria-label (conditional h2, no labelledby)", () => {
-    expect(src).toContain('aria-label="Your Library"');
+  it("Your Bookshelf section has aria-label (conditional h2, no labelledby)", () => {
+    expect(src).toContain('aria-label="Your Bookshelf"');
   });
 
-  it("Landing hero h2 has id attribute", () => {
-    expect(headingHasId("Read the world", "home-hero-heading")).toBe(true);
+  it("home catalog h2 has id attribute", () => {
+    expect(headingHasId("The Library", "home-catalog-heading")).toBe(true);
   });
 
-  it("Landing hero section has aria-labelledby", () => {
-    expect(sectionHasLabelledby("home-hero-heading")).toBe(true);
+  it("home catalog section has aria-labelledby", () => {
+    expect(sectionHasLabelledby("home-catalog-heading")).toBe(true);
   });
 
-  it("Search h2 has id attribute", () => {
-    expect(headingHasId(">Search<", "home-search-heading")).toBe(true);
-  });
-
-  it("Search section has aria-labelledby", () => {
-    expect(sectionHasLabelledby("home-search-heading")).toBe(true);
-  });
-
-  it("Popular Classics h2 has id attribute", () => {
-    // Use ">Popular Classics<" to skip the JSX comment "Popular Classics section" on the line above
-    expect(headingHasId(">Popular Classics<", "home-popular-heading")).toBe(true);
-  });
-
-  it("Popular Classics section has aria-labelledby", () => {
-    expect(sectionHasLabelledby("home-popular-heading")).toBe(true);
-  });
+  // The landing hero, Gutenberg search and Popular Classics sections were
+  // removed with the Discover tab (#2711).
 });

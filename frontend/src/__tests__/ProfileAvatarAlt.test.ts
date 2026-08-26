@@ -8,7 +8,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const homeSrc = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
+  path.join(__dirname, "../components/SiteHeader.tsx"),
   "utf8",
 );
 

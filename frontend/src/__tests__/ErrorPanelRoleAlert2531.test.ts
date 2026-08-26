@@ -20,7 +20,7 @@ function nearestRoleBefore(src: string, marker: string): string | null {
 
 describe("Error panels use role=alert not role=status (closes #2531)", () => {
   it("home page stats error uses role=alert", () => {
-    const src = readSrc("app/page.tsx");
+    const src = ["components/SiteHeader.tsx", "app/page.tsx", "app/bookshelf/page.tsx"].map(readSrc).join("\n");
     const role = nearestRoleBefore(src, "Couldn&apos;t load stats");
     expect(role).toBe("alert");
   });

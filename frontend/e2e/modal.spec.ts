@@ -6,11 +6,9 @@ import { mockBackend, MOCK_BOOK, MOCK_FAUST } from "./fixtures";
 
 test.beforeEach(async ({ page }) => {
   await mockBackend(page);
-  // Mock popular books so the Discover tab has clickable cards
-  await page.route("**/api/books/popular*", (route) =>
-    route.fulfill({
-      json: { books: [MOCK_BOOK, MOCK_FAUST], total: 2, page: 1, per_page: 50 },
-    })
+  // The home catalog supplies the clickable cards.
+  await page.route("**/api/books/catalog", (route) =>
+    route.fulfill({ json: [MOCK_BOOK, MOCK_FAUST] })
   );
   // Mock reading progress for authenticated user
   await page.route("**/api/user/reading-progress", (route) =>
@@ -18,10 +16,8 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-test("clicking a search result opens the book detail modal", async ({ page }) => {
+test("clicking a catalog book opens the book detail modal", async ({ page }) => {
   await page.goto("/");
-  await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("Faust").first()).toBeVisible();
 
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
@@ -37,9 +33,7 @@ test("modal shows Continue Reading for a book in the library", async ({ page }) 
       { ...book, lastRead: Date.now(), lastChapter: 3 },
     ]));
   }, MOCK_BOOK);
-  await page.reload();
-
-  await page.getByRole("tab", { name: "Home" }).click();
+  await page.goto("/bookshelf");
   // Use data-testid to target the grid BookCard, not the Continue Reading banner
   const bookCard = page.getByTestId("book-card").filter({ hasText: "Jane Austen" });
   await bookCard.click();
@@ -49,9 +43,6 @@ test("modal shows Continue Reading for a book in the library", async ({ page }) 
 
 test("modal CTA navigates to reader", async ({ page }) => {
   await page.goto("/");
-  await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
   await page.getByRole("button", { name: /Start Reading/ }).click();
 
@@ -61,9 +52,6 @@ test("modal CTA navigates to reader", async ({ page }) => {
 
 test("modal closes when clicking the close button", async ({ page }) => {
   await page.goto("/");
-  await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
   await expect(page.getByRole("heading", { name: "Faust" })).toBeVisible();
 
@@ -73,9 +61,6 @@ test("modal closes when clicking the close button", async ({ page }) => {
 
 test("modal closes on Escape key", async ({ page }) => {
   await page.goto("/");
-  await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
   await expect(page.getByRole("heading", { name: "Faust" })).toBeVisible();
 
@@ -85,9 +70,6 @@ test("modal closes on Escape key", async ({ page }) => {
 
 test("modal shows language tag for the book", async ({ page }) => {
   await page.goto("/");
-  await page.getByPlaceholder(/Search by title or author/).fill("Faust");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-
   await page.getByRole("button").filter({ hasText: "Goethe" }).first().click();
 
   // MOCK_FAUST has language "de" → should show "German" tag in the modal

@@ -27,7 +27,7 @@ describe("focus-visible rings on interactive cards (closes #1785)", () => {
 
   it("reader inline annotation card has focus-visible ring", () => {
     // The reader has multiple role=button divs; check the annotation renderCard pattern
-    expect(readerSrc).toMatch(/colorBadge\[ann\.color\].*focus-visible:ring|focus-visible:ring.*colorBadge\[ann\.color\]/s);
+    expect(readerSrc).toMatch(/Jump to annotation[\s\S]{0,800}focus-visible:ring/);
   });
 
   it("AnnotationsSidebar annotation card has focus-visible ring", () => {

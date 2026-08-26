@@ -2454,25 +2454,6 @@ export default function ReaderPage() {
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
 
-                    {/* Target language — per book (owner, 2026-08-26), grouped
-                        with the Editorial card it governs. The dropdown offers
-                        EVERY language (including ones with no editorial
-                        translation yet); the chips below reflect what exists. */}
-                    <div className="mb-3">
-                      <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
-                      <select
-                        id="reader-trans-lang"
-                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                        value={translationLang}
-                        onChange={(e) => setBookTranslationLang(e.target.value)}
-                      >
-                        {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
-                          <option key={l.code} value={l.code}>{l.label}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-[11px] text-stone-500">For this book only — new books start from your profile default.</p>
-                    </div>
-
                     {/* Session switcher (design: docs/design/user-translations.md) */}
                     {session?.backendToken && translationEnabled && (
                       <TranslationSessionPanel
@@ -2494,7 +2475,7 @@ export default function ReaderPage() {
                           languages: editorialLanguages.languages.map((l) => ({ code: l.target_language, chapters: l.translated_chapters })),
                         } : null}
                         translationLang={translationLang}
-                        onSelectEditorialLanguage={(lang) => {
+                        onChangeLanguage={(lang) => {
                           setBookTranslationLang(lang);
                           selectTranslationSession(null);
                         }}

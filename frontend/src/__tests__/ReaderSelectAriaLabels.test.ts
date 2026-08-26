@@ -29,7 +29,12 @@ describe("reader page select elements aria-label (closes #969)", () => {
   });
 
   it("translation sidebar target language select has id for label association", () => {
-    const idx = src.indexOf('"reader-trans-lang"');
+    // The select moved into the Editorial card (TranslationSessionPanel)
+    const panelSrc = fs.readFileSync(
+      path.join(__dirname, "../components/TranslationSessionPanel.tsx"),
+      "utf8"
+    );
+    const idx = panelSrc.indexOf('"reader-trans-lang"');
     expect(idx).toBeGreaterThan(-1);
   });
 

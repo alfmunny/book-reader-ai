@@ -32,6 +32,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof TranslationS
     onSelect: jest.fn(),
     onSessionsChanged: jest.fn(),
     onTranslateChapter: jest.fn(),
+    onChangeLanguage: jest.fn(),
     translating: false,
     chapterProgress: null,
     ...overrides,
@@ -222,31 +223,35 @@ test("deleting a session removes it and falls back to Editorial when active", as
   expect(props.onSelect).toHaveBeenCalledWith(null);
 });
 
-test("selected language with no editorial coverage renders as a dashed 0/N chip", () => {
+test("target language options carry editorial coverage numbers", () => {
   renderPanel({
     translationLang: "fr",
     editorialLanguages: { total: 28, languages: [{ code: "zh", chapters: 28 }] },
   });
-  const chip = screen.getByTestId("editorial-current-empty-chip");
-  expect(chip).toHaveTextContent("Français");
-  expect(chip).toHaveTextContent("0/28");
-  // Covered languages keep their clickable chips alongside
-  expect(screen.getByRole("button", { name: /中文/ })).toBeInTheDocument();
+  const select = screen.getByLabelText("Target language") as HTMLSelectElement;
+  expect(select.value).toBe("fr");
+  const texts = Array.from(select.options).map((o) => o.text);
+  expect(texts).toContain("中文 — 28/28 ch");
+  expect(texts).toContain("Français — 0/28 ch");
+  // The book's own language is not offered
+  expect(texts.some((t) => t.startsWith("Deutsch"))).toBe(false);
 });
 
-test("selected language that has coverage shows no dashed chip", () => {
-  renderPanel({
-    translationLang: "zh",
-    editorialLanguages: { total: 28, languages: [{ code: "zh", chapters: 28 }] },
+test("changing the target language fires onChangeLanguage", () => {
+  const { props } = renderPanel({
+    translationLang: "fr",
+    editorialLanguages: { total: 28, languages: [] },
   });
-  expect(screen.queryByTestId("editorial-current-empty-chip")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Target language"), { target: { value: "zh" } });
+  expect(props.onChangeLanguage).toHaveBeenCalledWith("zh");
 });
 
-test("no editorial languages at all: dashed chip for the selection plus the empty-state note", () => {
+test("no editorial languages at all: options show 0/N and the empty-state note appears", () => {
   renderPanel({
     translationLang: "fr",
     editorialLanguages: { total: 28, languages: [] },
   });
-  expect(screen.getByTestId("editorial-current-empty-chip")).toHaveTextContent("Français");
+  const select = screen.getByLabelText("Target language") as HTMLSelectElement;
+  expect(Array.from(select.options).map((o) => o.text)).toContain("Français — 0/28 ch");
   expect(screen.getByText(/None yet — editorial translations are prepared offline/)).toBeInTheDocument();
 });

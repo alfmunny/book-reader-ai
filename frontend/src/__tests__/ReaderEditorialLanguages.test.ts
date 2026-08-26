@@ -19,7 +19,7 @@ describe("editorial language chips", () => {
 
   it("feeds language coverage into the session panel's editorial card", () => {
     expect(src).toContain("editorialLanguages={editorialLanguages ?");
-    expect(src).toMatch(/onSelectEditorialLanguage=\{\(lang\) => \{/);
+    expect(src).toMatch(/onChangeLanguage=\{\(lang\) => \{/);
     expect(src).toContain("selectTranslationSession(null)");
   });
 });

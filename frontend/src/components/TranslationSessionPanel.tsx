@@ -38,7 +38,7 @@ interface Props {
   /** All languages that have editorial translations, with coverage. */
   editorialLanguages?: { total: number; languages: Array<{ code: string; chapters: number }> } | null;
   translationLang?: string;
-  onSelectEditorialLanguage?: (lang: string) => void;
+  onChangeLanguage?: (lang: string) => void;
   /** paragraphs translated / total in the current chapter (session view) */
   chapterProgress?: { done: number; total: number } | null;
 }
@@ -63,7 +63,7 @@ export default function TranslationSessionPanel({
   editorialStatus,
   editorialLanguages,
   translationLang,
-  onSelectEditorialLanguage,
+  onChangeLanguage,
   chapterProgress,
 }: Props) {
   const [creating, setCreating] = useState(false);
@@ -227,44 +227,27 @@ export default function TranslationSessionPanel({
           )}
         </button>
         <div className="px-3 pb-2.5" data-testid="editorial-languages">
-          {editorialLanguages ? (
-            <div className="flex flex-wrap gap-1.5 items-center">
-              {editorialLanguages.languages.map((l) => (
-                <button
-                  key={l.code}
-                  onClick={() => onSelectEditorialLanguage?.(l.code)}
-                  aria-pressed={activeSessionId === null && translationLang === l.code}
-                  className={`text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                    activeSessionId === null && translationLang === l.code
-                      ? "border-amber-600 bg-amber-700 text-white"
-                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  {LANGUAGES.find((x) => x.code === l.code)?.label ?? l.code}
-                  {" "}
-                  <span className="opacity-75 font-mono text-[10px]">{l.chapters}/{editorialLanguages.total}</span>
-                </button>
-              ))}
-              {/* The selected target language always appears among the chips,
-                  dashed when empty — so the dropdown and the card visibly
-                  agree on why nothing renders (owner, 2026-08-26). */}
-              {translationLang && !editorialLanguages.languages.some((l) => l.code === translationLang) && (
-                <span
-                  data-testid="editorial-current-empty-chip"
-                  title="No editorial translation in this language yet"
-                  className="text-xs px-2.5 py-1 rounded-full border border-dashed border-stone-300 text-stone-400"
-                >
-                  {LANGUAGES.find((x) => x.code === translationLang)?.label ?? translationLang}
-                  {" "}
-                  <span className="opacity-75 font-mono text-[10px]">0/{editorialLanguages.total}</span>
-                </span>
-              )}
-              {editorialLanguages.languages.length === 0 && (
-                <p className="text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
-              )}
-            </div>
-          ) : (
-            <p className="text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
+          {/* Coverage lives IN the options (owner, 2026-08-27): every language
+              is pickable, and "0/28 ch" right in the dropdown explains an
+              empty editorial view before it happens. */}
+          <label htmlFor="reader-trans-lang" className="block text-[11px] text-stone-500 mb-1">Target language</label>
+          <select
+            id="reader-trans-lang"
+            className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            value={translationLang}
+            onChange={(e) => onChangeLanguage?.(e.target.value)}
+          >
+            {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => {
+              const covered = editorialLanguages?.languages.find((x) => x.code === l.code)?.chapters ?? 0;
+              const suffix = editorialLanguages ? ` — ${covered}/${editorialLanguages.total} ch` : "";
+              return (
+                <option key={l.code} value={l.code}>{l.label}{suffix}</option>
+              );
+            })}
+          </select>
+          <p className="mt-1 text-[11px] text-stone-500">For this book only — numbers show chapters with an editorial translation.</p>
+          {editorialLanguages && editorialLanguages.languages.length === 0 && (
+            <p className="mt-1 text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
           )}
         </div>
       </div>
@@ -422,7 +405,7 @@ export default function TranslationSessionPanel({
       {/* Active session: style panel + chapter translate */}
       {active && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3 space-y-2" data-testid="session-style-panel">
-          <label className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide" htmlFor="version-lang">Target language</label>
+          <label className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide" htmlFor="version-lang">Version target language</label>
           <select
             id="version-lang"
             aria-label="Version target language"

@@ -484,7 +484,10 @@ describe("ReaderPage — chapter navigation", () => {
     const translateBtn = await screen.findByTitle("Translation");
     await userEvent.click(translateBtn);
 
-    // Translation tab content: "Target language" label should appear
+    // Translation tab content: the enable toggle appears; the language
+    // selector lives inside the Editorial card and only shows once enabled.
+    expect(await screen.findByText("Disabled")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Disabled"));
     expect(await screen.findByText("Target language")).toBeInTheDocument();
   });
 
@@ -627,13 +630,14 @@ describe("ReaderPage — translation panel", () => {
 
     const translateBtn = await screen.findByTitle("Translation");
     await userEvent.click(translateBtn);
+    await userEvent.click(await screen.findByText("Disabled"));
 
     expect(await screen.findByText("Target language")).toBeInTheDocument();
-    // The language select should be there
+    // The language select should be there (option text may carry a coverage suffix)
     await waitFor(() => {
       const selects = screen.getAllByRole("combobox");
       const langSelect = selects.find((s) =>
-        Array.from((s as HTMLSelectElement).options).some((o) => o.text === "Chinese"),
+        Array.from((s as HTMLSelectElement).options).some((o) => o.text.startsWith("Chinese")),
       );
       expect(langSelect).toBeDefined();
     });
@@ -1026,17 +1030,18 @@ describe("ReaderPage — language selection in translate sidebar", () => {
 
     const translateBtn = await screen.findByTitle("Translation");
     await userEvent.click(translateBtn);
+    await userEvent.click(await screen.findByText("Disabled"));
 
     await waitFor(() => {
       const selects = screen.getAllByRole("combobox");
       const langSelect = selects.find((s) =>
-        Array.from((s as HTMLSelectElement).options).some((o) => o.text === "Chinese"),
+        Array.from((s as HTMLSelectElement).options).some((o) => o.text.startsWith("Chinese")),
       );
       expect(langSelect).toBeDefined();
     });
 
     const langSelect = screen.getAllByRole("combobox").find((s) =>
-      Array.from((s as HTMLSelectElement).options).some((o) => o.text === "Chinese"),
+      Array.from((s as HTMLSelectElement).options).some((o) => o.text.startsWith("Chinese")),
     ) as HTMLSelectElement;
 
     await userEvent.selectOptions(langSelect, "zh");

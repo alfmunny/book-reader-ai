@@ -20,8 +20,10 @@ import {
   BookMeta,
 } from "@/lib/api";
 
-import { chapterLabel, truncate } from "@/lib/notesMarkdown";
-import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon, ArrowUpRightIcon, AlertCircleIcon } from "@/components/Icons";
+import { buildMarkdown, chapterLabel, truncate } from "@/lib/notesMarkdown";
+import { downloadTextFile, slugifyFilename } from "@/lib/download";
+import { ArrowLeftIcon, TrashIcon, EditIcon, ChevronRightIcon, ChevronDownIcon, ArrowRightIcon, RetryIcon, EmptyNotesIcon, ArrowUpRightIcon, AlertCircleIcon, DownloadIcon, ExportIcon } from "@/components/Icons";
+import ExportMenu from "@/components/ExportMenu";
 import UndoToast from "@/components/UndoToast";
 import InsightMarkdown from "@/components/InsightMarkdown";
 
@@ -521,6 +523,19 @@ export default function BookNotesPage() {
     }
   }
 
+  function handleDownloadMarkdown() {
+    setExportUrl(null);
+    if (!meta || annCount + insCount + vocCount === 0) {
+      setExportMsg("Nothing to export yet.");
+      setTimeout(() => setExportMsg(null), 5000);
+      return;
+    }
+    const filename = `${slugifyFilename(meta.title, "book")}-notes.md`;
+    downloadTextFile(filename, buildMarkdown(viewMode, meta, chapters, annotations, insights, vocab, bookId));
+    setExportMsg(`Downloaded ${filename}`);
+    setTimeout(() => setExportMsg(null), 5000);
+  }
+
   const annCount = annotations.length;
   const insCount = insights.length;
   const vocCount = bookVocab.length;
@@ -829,14 +844,28 @@ export default function BookNotesPage() {
             ))}
           </div>
 
-          {/* Export */}
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-          >
-            {exporting ? "Exporting…" : <><ArrowUpRightIcon className="w-3.5 h-3.5 inline" aria-hidden="true" /> Export</>}
-          </button>
+          {/* Export — Markdown download or the Obsidian vault flow */}
+          <ExportMenu
+            busy={exporting}
+            icon={<ExportIcon className="w-3.5 h-3.5" />}
+            triggerClassName="w-full flex items-center gap-1.5 px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+            options={[
+              {
+                key: "markdown",
+                label: "Download Markdown",
+                description: "Save a .md file to this device",
+                icon: <DownloadIcon className="w-4 h-4" />,
+                onSelect: handleDownloadMarkdown,
+              },
+              {
+                key: "obsidian",
+                label: "Export to Obsidian",
+                description: "Push to your GitHub vault",
+                icon: <ArrowUpRightIcon className="w-4 h-4" />,
+                onSelect: handleExport,
+              },
+            ]}
+          />
         </div>
 
         <div className="max-w-3xl mx-auto mt-2">

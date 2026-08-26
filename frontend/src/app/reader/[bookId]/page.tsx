@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -871,19 +871,6 @@ export default function ReaderPage() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [translationEnabled, translationLang, bookId]);
 
-  async function handleRetranslate() {
-    const bid = Number(bookId);
-    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
-    // Delete backend cache
-    await deleteTranslationCache(bid, chapterIndex, translationLang).catch(() => {});
-    // Clear frontend caches
-    translationCache.current.delete(cacheKey);
-    setTranslatedParagraphs([]);
-    // Re-trigger by toggling translation off then on
-    setTranslationEnabled(false);
-    setTimeout(() => setTranslationEnabled(true), 50);
-  }
-
   const [enqueueingBook, setEnqueueingBook] = useState(false);
 
   async function handleTranslateWholeBook() {
@@ -933,7 +920,7 @@ export default function ReaderPage() {
   }
 
   async function handleRetryFailed() {
-    // Different from handleRetranslate: there is no cached translation to
+    // Unlike the removed queue-era retranslate: there is no cached translation to
     // delete (the chapter failed), we just need to revive the failed queue
     // row so the worker picks it up again. Clearing frontend state + the
     // toggle dance re-starts polling once the row is pending.
@@ -2775,16 +2762,6 @@ export default function ReaderPage() {
                         </div>
                       );
                     })()}
-
-                    {/* Admin: retranslate */}
-                    {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
-                      <button
-                        onClick={handleRetranslate}
-                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                      >
-                        Retranslate chapter
-                      </button>
-                    )}
 
                     {/* Retry failed */}
                     {!translationLoading && translationUsedProvider.startsWith("queue failed") && (

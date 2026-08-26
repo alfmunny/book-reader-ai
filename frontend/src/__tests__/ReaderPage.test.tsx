@@ -1472,29 +1472,6 @@ describe("ReaderPage — translation loaded from server cache", () => {
 });
 
 describe("ReaderPage — admin-only features", () => {
-  it("shows 'Retranslate chapter' button for admin users when translation is loaded", async () => {
-    // Mock admin user
-    mockGetMe.mockResolvedValue({ hasGeminiKey: true, role: "admin" });
-    // Mock a successful translation fetch
-    mockGetChapterTranslation.mockResolvedValue({
-      status: "ready",
-      paragraphs: ["Translated paragraph."],
-      model: "gemini-pro",
-      title_translation: null,
-    });
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      const retranslateBtn = screen.queryByRole("button", { name: /retranslate chapter/i });
-      if (retranslateBtn) expect(retranslateBtn).toBeInTheDocument();
-    });
-  });
 });
 
 describe("ReaderPage — annotation loading spinner", () => {

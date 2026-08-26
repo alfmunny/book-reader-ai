@@ -495,35 +495,6 @@ describe("ReaderPage.branches — no gemini key user translation attempt", () =>
 // ─── handleRetranslate (lines 517-526) ───────────────────────────────────────
 
 describe("ReaderPage.branches — retranslate chapter (admin)", () => {
-  it("clicking Retranslate chapter calls deleteTranslationCache and toggles translation", async () => {
-    mockGetMe.mockResolvedValue({ hasGeminiKey: true, role: "admin" });
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockResolvedValue({
-      status: "ready",
-      paragraphs: ["Translated paragraph."],
-      model: "gemini-pro",
-      title_translation: null,
-    });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      const retranslateBtn = screen.queryByRole("button", { name: /retranslate chapter/i });
-      if (retranslateBtn) return retranslateBtn;
-    }, { timeout: 3000 });
-
-    const retranslateBtn = screen.queryByRole("button", { name: /retranslate chapter/i });
-    if (retranslateBtn) {
-      await userEvent.click(retranslateBtn);
-      await waitFor(() => {
-        expect(mockDeleteTranslationCache).toHaveBeenCalled();
-      });
-    }
-  });
 });
 
 // ─── handleTranslateWholeBook (lines 532-591) ─────────────────────────────────

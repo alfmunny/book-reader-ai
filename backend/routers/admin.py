@@ -4,7 +4,9 @@ Full CRUD where applicable.
 """
 
 import json
+import hashlib
 import logging
+from datetime import datetime, timezone
 import aiosqlite
 
 logger = logging.getLogger(__name__)
@@ -221,6 +223,107 @@ async def get_books(_admin: dict = Depends(_require_admin)):
 
 class ImportBookRequest(BaseModel):
     book_id: int = Field(..., ge=1)
+
+
+class AdminChapterSpec(BaseModel):
+    title: str = Field(default="", max_length=500)
+    text: str = Field(default="")
+
+
+class AdminChaptersBody(BaseModel):
+    chapters: list[AdminChapterSpec] = Field(..., max_length=2000)
+
+
+async def _split_dependents(book_id: int) -> dict:
+    """Count rows that anchor to this book's chapter_index.
+
+    annotations, word_occurrences and translations all store a bare index, so
+    changing the split re-anchors them silently. A book in the review queue has
+    none of these — nobody can read it before it is published — which is why
+    editing there is safe.
+    """
+    counts = {}
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        for label, sql in (
+            ("annotations", "SELECT COUNT(*) FROM annotations WHERE book_id = ?"),
+            ("vocabulary", "SELECT COUNT(*) FROM word_occurrences WHERE book_id = ?"),
+            ("translations", "SELECT COUNT(*) FROM translations WHERE book_id = ?"),
+        ):
+            async with db.execute(sql, (book_id,)) as cur:
+                n = (await cur.fetchone())[0]
+            if n:
+                counts[label] = n
+    return counts
+
+
+@router.get("/books/{book_id}/chapters")
+async def admin_get_chapters(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
+    """The frozen split, for review or correction."""
+    freeze = await db_module.get_book_freeze(book_id)
+    if freeze is None:
+        raise HTTPException(status_code=404, detail="Book is not frozen — nothing to review")
+    rows = await db_module.get_frozen_chapters(book_id)
+    blocked = await _split_dependents(book_id)
+    return {
+        "chapters": [
+            {"index": r["chapter_index"], "title": r["title"], "text": r["text"]} for r in rows
+        ],
+        "editable": not blocked,
+        "blocked_by": blocked,
+        "published": bool(freeze.get("published_at")),
+    }
+
+
+@router.put("/books/{book_id}/chapters")
+async def admin_put_chapters(
+    body: AdminChaptersBody,
+    book_id: int = Path(..., ge=1),
+    admin: dict = Depends(_require_admin),
+):
+    """Rewrite a frozen split.
+
+    Freezing is a source selector, not a lock: it stops the splitter drifting, it
+    does not forbid deliberate correction. What it must not do is move indices out
+    from under live notes, so this refuses once anything anchors to the split.
+    """
+    if not body.chapters:
+        raise HTTPException(status_code=400, detail="chapters list cannot be empty")
+    freeze = await db_module.get_book_freeze(book_id)
+    if freeze is None:
+        raise HTTPException(status_code=404, detail="Book is not frozen — nothing to edit")
+
+    blocked = await _split_dependents(book_id)
+    if blocked:
+        detail = ", ".join(f"{n} {label}" for label, n in blocked.items())
+        raise HTTPException(
+            status_code=409,
+            detail=f"{detail} anchor to this split — changing it would move them to the wrong chapters",
+        )
+
+    digest = hashlib.sha256(
+        "\n\x00".join(f"{c.title}\x00{c.text}" for c in body.chapters).encode("utf-8")
+    ).hexdigest()
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute("BEGIN IMMEDIATE")
+        await db.execute("DELETE FROM book_chapters WHERE book_id = ?", (book_id,))
+        await db.executemany(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text) VALUES (?, ?, ?, ?)",
+            [(book_id, i, c.title.strip(), c.text) for i, c in enumerate(body.chapters)],
+        )
+        # Re-stamp: the hash is the attestation that what was reviewed is what is
+        # stored. Editing never publishes — that stays a separate decision.
+        await db.execute(
+            "UPDATE book_freeze SET content_sha256 = ?, audited_by = ?, frozen_at = ?"
+            " WHERE book_id = ?",
+            (digest, str(admin["id"]),
+             datetime.now(timezone.utc).isoformat(timespec="seconds"), book_id),
+        )
+        await db.execute("COMMIT")
+
+    from services.book_chapters import clear_cache as _clear
+    _clear(book_id)
+    return {"ok": True, "chapter_count": len(body.chapters)}
 
 
 @router.get("/books/pending-publish")

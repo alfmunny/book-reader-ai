@@ -1,6 +1,6 @@
 # Per-User Translation Versions
 
-**Status:** Draft — all open questions resolved by owner (2026-08-26); awaiting formal approval
+**Status:** User-approved (2026-08-26)
 **Author:** Dev (Claude session, owner-directed)
 **Date:** 2026-08-26
 **Priority:** P1

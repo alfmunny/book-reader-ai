@@ -17,5 +17,9 @@ python-jose[cryptography]==3.3.0
 cryptography>=42.0.0
 respx
 pytest-cov
+# Runs the suite across worker processes (`pytest -n auto`). Safe here because
+# tests/conftest.py mkdtemp()s DB_PATH at import — one throwaway DB per worker
+# process — and the per-test `tmp_db` fixture layers another on top.
+pytest-xdist>=3.8.0
 ebooklib>=0.18
 stripe>=10.0.0

@@ -12,7 +12,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // One worker made the E2E job the second-slowest check (~4m20s for ~100
+  // specs). Every spec stubs the backend with page.route(), so there is no
+  // shared server state for workers to collide on; the only shared resource
+  // is the single `next dev` server, which is why this is 2 and not the
+  // runner's full core count.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [
     ["list"],
     ["json", { outputFile: "e2e-results.json" }],

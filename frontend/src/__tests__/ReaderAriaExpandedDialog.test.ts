@@ -53,11 +53,13 @@ describe("Mobile chat sheet role=dialog (closes #1245)", () => {
     expect(window).toContain('aria-modal="true"');
   });
 
-  it("chat sheet inner div has aria-label", () => {
+  it("chat sheet inner div has an accessible name", () => {
+    // #2745 made the sheet render the selected sidebar tab, so its name is now
+    // conditional ("Contents" or "Chat") rather than a literal.
     const idx = src.indexOf("Chat sheet (bottom half)");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 200);
-    expect(window).toContain('aria-label="Chat"');
+    const window = src.slice(idx, idx + 400);
+    expect(window).toMatch(/aria-label=\{[^}]*"Contents"[^}]*"Chat"[^}]*\}/);
   });
 
   it("chat sheet div has ref and tabIndex=-1 for programmatic focus (WCAG 2.4.3 / #1877)", () => {

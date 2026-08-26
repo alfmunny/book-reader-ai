@@ -7,6 +7,7 @@ import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBo
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
+import TableOfContents from "@/components/TableOfContents";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
 import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
@@ -18,7 +19,7 @@ import VocabularyToast from "@/components/VocabularyToast";
 import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // Gemini Flash pricing constants — used for total queue cost estimate in the translation sidebar.
@@ -134,7 +135,7 @@ export default function ReaderPage() {
   // desktop only — the same state drives the mobile bottom sheet, which must
   // not auto-open on load.
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<"chat" | "notes" | "vocab" | "translate">("chat");
+  const [sidebarTab, setSidebarTab] = useState<"toc" | "chat" | "notes" | "vocab" | "translate">("chat");
   // State (not a ref): effects that react to restored values — the persist
   // effect and the translationLang===bookLanguage correction — must re-run
   // with FRESH state after the restore, not fire on mount with stale
@@ -941,6 +942,10 @@ export default function ReaderPage() {
       } else if (e.key === "ArrowRight" && chapterIndex < chapters.length - 1) {
         e.preventDefault();
         goToChapter(chapterIndex + 1);
+      } else if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        setSidebarTab("toc");
+        setSidebarOpen((v) => (sidebarTab === "toc" ? !v : true));
       } else if (e.key === "f" || e.key === "F") {
         e.preventDefault();
         setFocusMode((v) => {
@@ -1192,6 +1197,7 @@ export default function ReaderPage() {
               { keys: ["Space"], label: "Play / Pause TTS" },
               { keys: ["←", "→"], label: "Previous / Next chapter" },
               { keys: ["F"], label: "Toggle focus mode" },
+              { keys: ["T"], label: "Table of contents" },
               { keys: ["?"], label: "Show this panel" },
               { keys: ["N"], label: "Sentence selection mode" },
               { keys: ["W"], label: "Word mode (in N mode)" },
@@ -1285,21 +1291,22 @@ export default function ReaderPage() {
                 >
                   <ArrowLeftIcon className="w-3.5 h-3.5" />
                 </button>
-                <div className="relative">
-                  <select
-                    aria-label="Go to chapter"
-                    className="appearance-none text-xs rounded-lg border border-amber-300 pl-2.5 pr-7 py-1.5 text-ink bg-white max-w-[160px] cursor-pointer hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-400 transition-colors"
-                    value={chapterIndex}
-                    onChange={(e) => goToChapter(Number(e.target.value))}
-                  >
-                    {chapters.map((ch, i) => (
-                      <option key={i} value={i}>
-                        {i + 1}. {ch.title || `Section ${i + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-700" />
-                </div>
+                <button
+                  onClick={() => { setSidebarTab("toc"); setSidebarOpen((v) => sidebarTab === "toc" ? !v : true); }}
+                  title="Table of contents"
+                  aria-label="Table of contents"
+                  aria-pressed={sidebarOpen && sidebarTab === "toc"}
+                  className={`flex items-center gap-1.5 max-w-[200px] text-xs rounded-lg border px-2.5 py-1.5 min-h-[44px] md:min-h-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
+                    sidebarOpen && sidebarTab === "toc"
+                      ? "bg-amber-700 text-white border-amber-700"
+                      : "border-amber-300 text-ink bg-white hover:border-amber-400"
+                  }`}
+                >
+                  <ListViewIcon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">
+                    {chapterIndex + 1}. {chapters[chapterIndex]?.title || `Section ${chapterIndex + 1}`}
+                  </span>
+                </button>
                 <button
                   onClick={() => goToChapter(Math.min(chapters.length - 1, chapterIndex + 1))}
                   disabled={chapterIndex === chapters.length - 1}
@@ -2089,7 +2096,7 @@ export default function ReaderPage() {
         {/* Insight/Vocab/Translate sidebar — desktop only */}
         <div
           role="complementary"
-          aria-label={`${({ chat: "Insight", translate: "Translation", notes: "Notes", vocab: "Vocabulary" } as const)[sidebarTab]} panel`}
+          aria-label={`${({ toc: "Contents", chat: "Insight", translate: "Translation", notes: "Notes", vocab: "Vocabulary" } as const)[sidebarTab]} panel`}
           aria-hidden={!sidebarOpen}
           style={sidebarOpen ? { width: sidebarWidth } : { width: 0 }}
           className="hidden md:flex flex-col overflow-hidden shrink-0 border-l border-amber-200 transition-[width] duration-200"
@@ -2281,6 +2288,20 @@ export default function ReaderPage() {
                   </div>
                 );
               })()}
+
+              {/* Contents tab (#2745) — replaces the truncating chapter dropdown. */}
+              {sidebarTab === "toc" && (
+                <TableOfContents
+                  chapters={chapters}
+                  chapterIndex={chapterIndex}
+                  onSelect={(i) => {
+                    goToChapter(i);
+                    // On mobile the sidebar covers the page, so a pick should
+                    // reveal the chapter it just navigated to.
+                    if (window.innerWidth < 768) setSidebarOpen(false);
+                  }}
+                />
+              )}
 
               {/* Vocab tab */}
               {sidebarTab === "vocab" && (() => {
@@ -2567,18 +2588,31 @@ export default function ReaderPage() {
             onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
           />
           {/* Chat sheet (bottom half) */}
-          <div ref={chatSheetRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Chat" aria-describedby="reader-chat-desc" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom focus:outline-none">
-            <span id="reader-chat-desc" className="sr-only">AI chat about the current passage</span>
+          <div ref={chatSheetRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={sidebarTab === "toc" && !chatSheetText ? "Contents" : "Chat"} aria-describedby="reader-chat-desc" className="h-[55vh] bg-parchment border-t border-amber-200 rounded-t-2xl shadow-2xl flex flex-col animate-slide-up safe-bottom focus:outline-none">
+            <span id="reader-chat-desc" className="sr-only">
+              {sidebarTab === "toc" && !chatSheetText
+                ? "Jump to a chapter"
+                : "AI chat about the current passage"}
+            </span>
             {/* Drag handle + close */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-amber-200 shrink-0">
               <div className="w-10 h-1 bg-amber-200 rounded-full" />
-              <span className="font-serif font-semibold text-ink text-sm">Chat</span>
+              <span className="font-serif font-semibold text-ink text-sm">
+                {sidebarTab === "toc" && !chatSheetText ? "Contents" : "Chat"}
+              </span>
               <button
                 onClick={() => { setSidebarOpen(false); setChatSheetText(null); }}
                 className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 flex items-center justify-center text-amber-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                aria-label="Close chat"
+                aria-label={sidebarTab === "toc" && !chatSheetText ? "Close contents" : "Close chat"}
               ><CloseIcon className="w-4 h-4" aria-hidden="true" /></button>
             </div>
+            {sidebarTab === "toc" && !chatSheetText ? (
+              <TableOfContents
+                chapters={chapters}
+                chapterIndex={chapterIndex}
+                onSelect={(i) => { goToChapter(i); setSidebarOpen(false); }}
+              />
+            ) : (
             <InsightChat
               bookId={bookId}
               userId={session?.backendUser?.id ?? null}
@@ -2603,6 +2637,7 @@ export default function ReaderPage() {
                 return req;
               } : undefined}
             />
+            )}
           </div>
         </div>
       )}
@@ -2739,21 +2774,14 @@ export default function ReaderPage() {
               aria-label={ttsIsPlaying ? "Pause" : "Read aloud"}
             >{ttsIsPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4" />}</button>
 
-            <div className="relative flex-1 min-w-0 max-w-[110px]">
-              <select
-                aria-label="Go to chapter"
-                className="appearance-none h-11 w-full text-xs rounded-lg border border-amber-200 pl-2 pr-6 text-amber-700 bg-white truncate cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-300 transition-colors"
-                value={chapterIndex}
-                onChange={(e) => goToChapter(Number(e.target.value))}
-              >
-                {chapters.map((ch, i) => (
-                  <option key={i} value={i}>
-                    {i + 1}. {ch.title || `§${i + 1}`}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-amber-700" />
-            </div>
+            <button
+              onClick={() => { setSidebarTab("toc"); setSidebarOpen(true); }}
+              aria-label="Table of contents"
+              className="flex-1 min-w-0 max-w-[110px] h-11 flex items-center gap-1 text-xs rounded-lg border border-amber-200 px-2 text-amber-700 bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <ListViewIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{chapterIndex + 1}. {chapters[chapterIndex]?.title || `§${chapterIndex + 1}`}</span>
+            </button>
 
             <button
               onClick={() => {

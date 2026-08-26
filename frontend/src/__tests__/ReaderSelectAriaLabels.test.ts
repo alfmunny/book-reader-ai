@@ -7,12 +7,25 @@ const src = fs.readFileSync(
 );
 
 describe("reader page select elements aria-label (closes #969)", () => {
-  it("desktop chapter navigation select has aria-label", () => {
-    // The desktop chapter nav select sits near goToChapter — find the first occurrence
-    const idx = src.indexOf("goToChapter(Number(e.target.value))");
+  // #2745 replaced both chapter <select> dropdowns with buttons that open the
+  // Contents sidebar. The accessible-name requirement from #969 carries over
+  // to the controls that took their place.
+  it("both chapter navigation controls have an accessible name", () => {
+    // Desktop toolbar and mobile bottom bar. The keyboard shortcut also opens
+    // the tab, so match on the labelled controls rather than the tab setter.
+    const labels = [...src.matchAll(/aria-label="Table of contents"/g)];
+    expect(labels.length).toBe(2);
+  });
+
+  it("the contents panel is reachable from the keyboard", () => {
+    const idx = src.indexOf('e.key === "t"');
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 450), idx + 50);
-    expect(window).toContain('aria-label="Go to chapter"');
+    expect(src.slice(idx, idx + 220)).toContain('setSidebarTab("toc")');
+  });
+
+  it("no chapter dropdown remains to truncate long titles", () => {
+    expect(src).not.toContain('aria-label="Go to chapter"');
+    expect(src).not.toContain("goToChapter(Number(e.target.value))");
   });
 
   it("translation sidebar target language select has id for label association", () => {
@@ -28,13 +41,4 @@ describe("reader page select elements aria-label (closes #969)", () => {
     expect(window).toContain('aria-label="Translation language"');
   });
 
-  it("mobile chapter navigation select has aria-label", () => {
-    // The mobile chapter nav select is the second goToChapter occurrence
-    const first = src.indexOf("goToChapter(Number(e.target.value))");
-    expect(first).toBeGreaterThan(-1);
-    const idx = src.indexOf("goToChapter(Number(e.target.value))", first + 1);
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 450), idx + 50);
-    expect(window).toContain('aria-label="Go to chapter"');
-  });
 });

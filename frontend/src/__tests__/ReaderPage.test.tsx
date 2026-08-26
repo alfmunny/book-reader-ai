@@ -437,18 +437,18 @@ describe("ReaderPage — chapter navigation", () => {
     });
   });
 
-  it("chapter select dropdown changes chapter", async () => {
+  it("the contents panel changes chapter (#2745)", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bookIdCounter }, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    // Multiple selects: desktop header + mobile toolbar
-    const selects = await screen.findAllByRole("combobox");
-    const chapterSelect = selects.find(
-      (s) => (s as HTMLSelectElement).options?.[0]?.text?.includes("Chapter One"),
-    );
-    expect(chapterSelect).toBeDefined();
-    await userEvent.selectOptions(chapterSelect!, "1");
+    // Two controls open it — desktop toolbar and mobile bottom bar.
+    const openers = await screen.findAllByRole("button", { name: "Table of contents" });
+    await userEvent.click(openers[0]);
+
+    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    await userEvent.click(within(nav).getByRole("button", { name: /Chapter Two/ }));
+
     await waitFor(() => {
       expect(mockReplace).toHaveBeenCalledWith(
         expect.stringContaining("chapter=1"),
@@ -456,9 +456,7 @@ describe("ReaderPage — chapter navigation", () => {
       );
     });
   });
-});
 
-describe("ReaderPage — sidebar tabs", () => {
   it("opens insight chat sidebar when 💬 Insight button is clicked", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
@@ -1241,16 +1239,24 @@ describe("ReaderPage — keyboard navigation", () => {
     });
   });
 
-  it("keys are ignored when a select element is focused", async () => {
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
+  it("keys are ignored when a form control inside the reader is focused", async () => {
+    // The guard covers INPUT/TEXTAREA/SELECT/A. Exercised here through the
+    // contents filter, which is the form control a reader is most likely to
+    // be typing in while chapter arrows are live (#2745).
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      title: `Chapter ${i + 1}`,
+      text: "Body text.",
+    }));
+    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: ++bookIdCounter }, chapters: many });
     render(<ReaderPage />);
     await flushPromises();
-    await screen.findByTestId("reader-chapter-heading");
 
-    const selects = screen.getAllByRole("combobox");
+    const openers = await screen.findAllByRole("button", { name: "Table of contents" });
+    await userEvent.click(openers[0]);
+    const filter = await screen.findByRole("searchbox", { name: /filter chapters/i });
     mockReplace.mockClear();
 
-    fireEvent.keyDown(selects[0], { key: "ArrowRight" });
+    fireEvent.keyDown(filter, { key: "ArrowRight" });
     expect(mockReplace).not.toHaveBeenCalled();
   });
 });

@@ -1888,32 +1888,27 @@ describe("ReaderPage.branches2 — handleRetryFailed success path", () => {
 
 // ─── Mobile bottom bar: notes button with annotation note_text ────────────────
 
-describe("ReaderPage.branches2 — mobile bottom bar chapter select", () => {
-  it("mobile chapter select dropdown changes chapter", async () => {
+describe("ReaderPage.branches2 — mobile contents control", () => {
+  it("the mobile contents button opens the panel and navigates (#2745)", async () => {
     const bid = bookIdCounter;
     mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    // The mobile select has h-10 class
-    const allSelects = await screen.findAllByRole("combobox");
-    // Find the mobile chapter select (has §1 format in options)
-    const mobileSelect = allSelects.find((s) =>
-      Array.from((s as HTMLSelectElement).options).some((o) => o.text.includes("§")),
-    );
+    // Second labelled control is the mobile bottom-bar one.
+    const openers = await screen.findAllByRole("button", { name: "Table of contents" });
+    expect(openers.length).toBe(2);
+    await userEvent.click(openers[1]);
 
-    if (mobileSelect) {
-      await userEvent.selectOptions(mobileSelect, "1");
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith(
-          expect.stringContaining("chapter=1"),
-          expect.anything(),
-        );
-      });
-    } else {
-      // fallback: any chapter select works
-      expect(allSelects.length).toBeGreaterThan(0);
-    }
+    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    await userEvent.click(within(nav).getByRole("button", { name: /Chapter Two/ }));
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.stringContaining("chapter=1"),
+        expect.anything(),
+      );
+    });
   });
 });
 
@@ -1950,8 +1945,8 @@ describe("ReaderPage.branches2 — SelectionToolbar onNote opens toolbar", () =>
 
 // ─── Chapter option uses `Section N` fallback when title is empty ─────────────
 
-describe("ReaderPage.branches2 — chapter select option fallback text", () => {
-  it("shows 'Section N' in chapter dropdown when chapter title is empty", async () => {
+describe("ReaderPage.branches2 — contents fallback label", () => {
+  it("shows 'Section N' in the contents panel when a chapter title is empty", async () => {
     const chaptersWithBlankTitle = [
       { title: "", text: "Chapter content." },
       { title: "Chapter Two", text: "Content." },
@@ -1959,15 +1954,13 @@ describe("ReaderPage.branches2 — chapter select option fallback text", () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: chaptersWithBlankTitle });
     render(<ReaderPage />);
     await flushPromises();
-
     await screen.findByTestId("sentence-reader");
 
-    // Check for "Section 1" in the selects
-    const selects = await screen.findAllByRole("combobox");
-    const hasSection = selects.some((s) =>
-      Array.from((s as HTMLSelectElement).options).some((o) => o.text.includes("Section 1")),
-    );
-    expect(hasSection).toBeTruthy();
+    const openers = await screen.findAllByRole("button", { name: "Table of contents" });
+    await userEvent.click(openers[0]);
+
+    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    expect(within(nav).getByRole("button", { name: /Section 1/ })).toBeInTheDocument();
   });
 });
 
@@ -2130,33 +2123,26 @@ describe("ReaderPage.branches2 — mobile bottom bar TTS play button", () => {
 
 // ─── Mobile bottom bar: chapter select navigates ─────────────────────────────
 
-describe("ReaderPage.branches2 — mobile chapter select navigation", () => {
-  it("mobile chapter select (§N format) navigates when changed", async () => {
+describe("ReaderPage.branches2 — contents navigation to a later chapter", () => {
+  it("navigates to chapter 3 from the contents panel", async () => {
     const bid = bookIdCounter;
     mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bid }, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
-
     await screen.findByTestId("sentence-reader");
 
-    // Find the mobile chapter select — identified by having §N options
-    const allSelects = screen.getAllByRole("combobox");
-    const mobileSelect = allSelects.find((s) =>
-      Array.from((s as HTMLSelectElement).options).some((o) => o.text.includes("§")),
-    );
+    const openers = await screen.findAllByRole("button", { name: "Table of contents" });
+    await userEvent.click(openers[1]);
 
-    if (mobileSelect) {
-      await userEvent.selectOptions(mobileSelect, "2");
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith(
-          expect.stringContaining("chapter=2"),
-          expect.anything(),
-        );
-      });
-    } else {
-      // Mobile select may not have § format; try any available combobox
-      expect(allSelects.length).toBeGreaterThan(0);
-    }
+    const nav = await screen.findByRole("navigation", { name: /table of contents/i });
+    await userEvent.click(within(nav).getByRole("button", { name: /Chapter Three/ }));
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.stringContaining("chapter=2"),
+        expect.anything(),
+      );
+    });
   });
 });
 
@@ -2313,36 +2299,21 @@ describe("ReaderPage.branches2 — mobile onSaveInsight failure toast", () => {
 
 // ─── Mobile chapter select onChange: goToChapter (line 1634) ─────────────────
 
-describe("ReaderPage.branches2 — mobile bottom bar chapter select goToChapter", () => {
-  it("fires goToChapter on each chapter select (desktop + mobile)", async () => {
-    const bid = bookIdCounter;
-    mockGetBookChapters.mockResolvedValue({
-      meta: { ...SAMPLE_META, id: bid },
-      chapters: SAMPLE_CHAPTERS,
-    });
+describe("ReaderPage.branches2 — both contents controls open the same panel", () => {
+  it("desktop and mobile controls each open the contents panel", async () => {
+    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    await screen.findByTestId("sentence-reader");
+    const openers = await screen.findAllByRole("button", { name: "Table of contents" });
+    expect(openers.length).toBe(2);
 
-    // Fire change on ALL selects that have chapter options (value="1")
-    // This hits both the desktop header select (line 752) and mobile select (line 1634)
-    const allSelects = Array.from(document.querySelectorAll("select")) as HTMLSelectElement[];
-    const chapterSelects = allSelects.filter((s) =>
-      Array.from(s.options).some((o) => o.value === "1"),
-    );
-    expect(chapterSelects.length).toBeGreaterThan(0);
-
-    for (const sel of chapterSelects) {
-      fireEvent.change(sel, { target: { value: "1" } });
+    for (const opener of openers) {
+      await userEvent.click(opener);
+      expect(
+        await screen.findByRole("navigation", { name: /table of contents/i }),
+      ).toBeInTheDocument();
     }
-
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith(
-        expect.stringContaining("chapter=1"),
-        expect.anything(),
-      );
-    });
   });
 });
 

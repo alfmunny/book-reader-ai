@@ -637,7 +637,13 @@ export default function SentenceReader({
     const exact = allSegments.find((s) => s.text === flashTarget);
     if (exact) return exact.flatIdx;
     const partial = allSegments.find((s) => s.text.includes(flashTarget));
-    return partial ? partial.flatIdx : null;
+    if (partial) return partial.flatIdx;
+    // Multi-line target (verse-spanning note): anchor by its first line.
+    const firstLine = flashTarget.split(/\n+/).map((t) => t.trim()).find(Boolean);
+    if (!firstLine || firstLine === flashTarget) return null;
+    const byLine = allSegments.find((s) => s.text === firstLine)
+      ?? allSegments.find((s) => s.text.includes(firstLine));
+    return byLine ? byLine.flatIdx : null;
   }, [allSegments, flashTarget]);
 
   // <mark> on the saved word (?word=) or notes selection substring inside the
@@ -774,17 +780,25 @@ export default function SentenceReader({
   // >= 10-char guard existed for. Text anchors carry no position, so a
   // repeated word lands on its first occurrence.
   const annotationsByFlatIdx = useMemo(() => {
-    const map = new Map<number, Annotation[]>();
-    const add = (flatIdx: number, a: Annotation) => {
+    const map = new Map<number, Array<{ ann: Annotation; matchText: string }>>();
+    const add = (flatIdx: number, ann: Annotation, matchText: string) => {
       const list = map.get(flatIdx);
-      if (list) list.push(a); else map.set(flatIdx, [a]);
+      const entry = { ann, matchText };
+      if (list) list.push(entry); else map.set(flatIdx, [entry]);
     };
+    const anchor = (text: string) =>
+      allSegments.find((s) => s.text === text)
+      ?? allSegments.find((s) => wordBoundaryIndexOf(s.text, text) >= 0)
+      ?? allSegments.find((s) => s.text.includes(text));
     for (const a of annotations ?? []) {
-      const seg =
-        allSegments.find((s) => s.text === a.sentence_text)
-        ?? allSegments.find((s) => wordBoundaryIndexOf(s.text, a.sentence_text) >= 0)
-        ?? allSegments.find((s) => s.text.includes(a.sentence_text));
-      if (seg) add(seg.flatIdx, a);
+      // A selection spanning verse line breaks matches no single segment —
+      // split it into per-line pieces, each anchored to its own segment
+      // (owner report, 2026-08-26: a two-line Faust note rendered nothing).
+      const pieces = a.sentence_text.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+      for (const piece of pieces) {
+        const seg = anchor(piece);
+        if (seg) add(seg.flatIdx, a, piece);
+      }
     }
     return map;
   }, [annotations, allSegments]);
@@ -893,21 +907,22 @@ export default function SentenceReader({
           // colour; every sub-sentence annotation becomes its own data-ann-id
           // span inside buildSegContent so per-annotation clicks route correctly.
           const segAnns = showAnnotations ? (annotationsByFlatIdx.get(seg.flatIdx) ?? []) : [];
-          const fullSegmentAnnotation = segAnns.find((a) => a.sentence_text === seg.text);
+          const fullSegmentEntry = segAnns.find((e) => e.matchText === seg.text);
+          const fullSegmentAnnotation = fullSegmentEntry?.ann;
           const annotationClass = fullSegmentAnnotation
             ? (ANNOTATION_COLOR_CLASS[fullSegmentAnnotation.color] ?? ANNOTATION_COLOR_CLASS.yellow)
             : "";
           const annotationMatches: Array<{ start: number; end: number; className: string; annId: number }> = [];
-          for (const a of segAnns) {
-            if (a === fullSegmentAnnotation) continue;
-            const boundaryStart = wordBoundaryIndexOf(seg.text, a.sentence_text);
-            const start = boundaryStart >= 0 ? boundaryStart : seg.text.indexOf(a.sentence_text);
+          for (const e of segAnns) {
+            if (e === fullSegmentEntry) continue;
+            const boundaryStart = wordBoundaryIndexOf(seg.text, e.matchText);
+            const start = boundaryStart >= 0 ? boundaryStart : seg.text.indexOf(e.matchText);
             if (start >= 0) {
               annotationMatches.push({
                 start,
-                end: start + a.sentence_text.length,
-                className: ANNOTATION_COLOR_CLASS[a.color] ?? ANNOTATION_COLOR_CLASS.yellow,
-                annId: a.id,
+                end: start + e.matchText.length,
+                className: ANNOTATION_COLOR_CLASS[e.ann.color] ?? ANNOTATION_COLOR_CLASS.yellow,
+                annId: e.ann.id,
               });
             }
           }

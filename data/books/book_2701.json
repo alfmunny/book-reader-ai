@@ -22,8 +22,8 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-26",
-    "audited_by": "architect-agent (comment-artifact + heading-paragraph realign)",
+    "frozen_at": "2026-08-27",
+    "audited_by": "architect-agent (front-matter classification #2745)",
     "content_sha256": "5c0b1ff87767bf26b4b95852408069f5f1a4d691c65a8f239cbb832765dd5f64"
   },
   "chapters": [
@@ -171,7 +171,8 @@
         "CHAPTER 134. The Chase—Second Day.",
         "CHAPTER 135. The Chase.—Third Day.",
         "Epilogue"
-      ]
+      ],
+      "role": "frontmatter"
     },
     {
       "index": 1,

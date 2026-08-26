@@ -336,8 +336,20 @@ export default function ReaderPage() {
   useEffect(() => {
     const s = getSettings();
     if (s.translationEnabled) setTranslationEnabled(true);
-    setTranslationLang(s.translationLang);
-  }, []);
+    // Target language is PER BOOK (owner, 2026-08-26: "sometimes you want
+    // this book in one language and another book in another") — the profile
+    // preference only seeds the first visit.
+    let lang = s.translationLang;
+    try {
+      const perBook = localStorage.getItem(`translation-lang:${bookId}`);
+      if (perBook) lang = perBook;
+    } catch { /* private mode */ }
+    setTranslationLang(lang);
+  }, [bookId]);
+  const setBookTranslationLang = (lang: string) => {
+    setTranslationLang(lang);
+    try { localStorage.setItem(`translation-lang:${bookId}`, lang); } catch { /* private mode */ }
+  };
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
@@ -2442,6 +2454,25 @@ export default function ReaderPage() {
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
 
+                    {/* Target language — per book (owner, 2026-08-26), grouped
+                        with the Editorial card it governs. The dropdown offers
+                        EVERY language (including ones with no editorial
+                        translation yet); the chips below reflect what exists. */}
+                    <div className="mb-3">
+                      <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
+                      <select
+                        id="reader-trans-lang"
+                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        value={translationLang}
+                        onChange={(e) => setBookTranslationLang(e.target.value)}
+                      >
+                        {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
+                          <option key={l.code} value={l.code}>{l.label}</option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-stone-500">For this book only — new books start from your profile default.</p>
+                    </div>
+
                     {/* Session switcher (design: docs/design/user-translations.md) */}
                     {session?.backendToken && translationEnabled && (
                       <TranslationSessionPanel
@@ -2464,8 +2495,7 @@ export default function ReaderPage() {
                         } : null}
                         translationLang={translationLang}
                         onSelectEditorialLanguage={(lang) => {
-                          setTranslationLang(lang);
-                          saveSettings({ translationLang: lang });
+                          setBookTranslationLang(lang);
                           selectTranslationSession(null);
                         }}
                         editorialStatus={bookTranslationStatus ? {
@@ -2483,26 +2513,6 @@ export default function ReaderPage() {
                           total: sessionChapter.paragraph_count,
                         } : null}
                       />
-                    )}
-
-                    {/* Language selector (governs the Editorial source) */}
-                    {!activeSession && (
-                    <div className="mb-4">
-                      <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
-                      <select
-                        id="reader-trans-lang"
-                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                        value={translationLang}
-                        onChange={(e) => {
-                          setTranslationLang(e.target.value);
-                          saveSettings({ translationLang: e.target.value });
-                        }}
-                      >
-                        {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
-                          <option key={l.code} value={l.code}>{l.label}</option>
-                        ))}
-                      </select>
-                    </div>
                     )}
 
                     {/* Display mode */}
@@ -2636,7 +2646,7 @@ export default function ReaderPage() {
                 aria-label="Translation language"
                 className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px] md:min-h-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 value={translationLang}
-                onChange={(e) => setTranslationLang(e.target.value)}
+                onChange={(e) => setBookTranslationLang(e.target.value)}
               >
                 {LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>{l.label}</option>

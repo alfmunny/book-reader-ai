@@ -227,8 +227,8 @@ export default function TranslationSessionPanel({
           )}
         </button>
         <div className="px-3 pb-2.5" data-testid="editorial-languages">
-          {editorialLanguages && editorialLanguages.languages.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
+          {editorialLanguages ? (
+            <div className="flex flex-wrap gap-1.5 items-center">
               {editorialLanguages.languages.map((l) => (
                 <button
                   key={l.code}
@@ -245,6 +245,23 @@ export default function TranslationSessionPanel({
                   <span className="opacity-75 font-mono text-[10px]">{l.chapters}/{editorialLanguages.total}</span>
                 </button>
               ))}
+              {/* The selected target language always appears among the chips,
+                  dashed when empty — so the dropdown and the card visibly
+                  agree on why nothing renders (owner, 2026-08-26). */}
+              {translationLang && !editorialLanguages.languages.some((l) => l.code === translationLang) && (
+                <span
+                  data-testid="editorial-current-empty-chip"
+                  title="No editorial translation in this language yet"
+                  className="text-xs px-2.5 py-1 rounded-full border border-dashed border-stone-300 text-stone-400"
+                >
+                  {LANGUAGES.find((x) => x.code === translationLang)?.label ?? translationLang}
+                  {" "}
+                  <span className="opacity-75 font-mono text-[10px]">0/{editorialLanguages.total}</span>
+                </span>
+              )}
+              {editorialLanguages.languages.length === 0 && (
+                <p className="text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
+              )}
             </div>
           ) : (
             <p className="text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>

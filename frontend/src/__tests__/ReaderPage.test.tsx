@@ -1019,7 +1019,7 @@ describe("ReaderPage — display mode toggle", () => {
 });
 
 describe("ReaderPage — language selection in translate sidebar", () => {
-  it("changing language select updates translationLang and saves settings", async () => {
+  it("changing language select persists per book, not to the profile", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
@@ -1041,8 +1041,11 @@ describe("ReaderPage — language selection in translate sidebar", () => {
 
     await userEvent.selectOptions(langSelect, "zh");
 
-    expect(mockSaveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ translationLang: "zh" }),
+    // Per-book, not profile-wide (owner, 2026-08-26): persisted under the
+    // book-scoped localStorage key; the profile setting is untouched.
+    expect(localStorage.getItem(`translation-lang:${bookIdCounter}`)).toBe("zh");
+    expect(mockSaveSettings).not.toHaveBeenCalledWith(
+      expect.objectContaining({ translationLang: expect.anything() }),
     );
   });
 });

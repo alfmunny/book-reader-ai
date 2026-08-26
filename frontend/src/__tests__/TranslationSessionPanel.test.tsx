@@ -221,3 +221,32 @@ test("deleting a session removes it and falls back to Editorial when active", as
   expect(props.onSessionsChanged).toHaveBeenCalledWith([]);
   expect(props.onSelect).toHaveBeenCalledWith(null);
 });
+
+test("selected language with no editorial coverage renders as a dashed 0/N chip", () => {
+  renderPanel({
+    translationLang: "fr",
+    editorialLanguages: { total: 28, languages: [{ code: "zh", chapters: 28 }] },
+  });
+  const chip = screen.getByTestId("editorial-current-empty-chip");
+  expect(chip).toHaveTextContent("Français");
+  expect(chip).toHaveTextContent("0/28");
+  // Covered languages keep their clickable chips alongside
+  expect(screen.getByRole("button", { name: /中文/ })).toBeInTheDocument();
+});
+
+test("selected language that has coverage shows no dashed chip", () => {
+  renderPanel({
+    translationLang: "zh",
+    editorialLanguages: { total: 28, languages: [{ code: "zh", chapters: 28 }] },
+  });
+  expect(screen.queryByTestId("editorial-current-empty-chip")).toBeNull();
+});
+
+test("no editorial languages at all: dashed chip for the selection plus the empty-state note", () => {
+  renderPanel({
+    translationLang: "fr",
+    editorialLanguages: { total: 28, languages: [] },
+  });
+  expect(screen.getByTestId("editorial-current-empty-chip")).toHaveTextContent("Français");
+  expect(screen.getByText(/None yet — editorial translations are prepared offline/)).toBeInTheDocument();
+});

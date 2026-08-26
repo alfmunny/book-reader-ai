@@ -110,7 +110,7 @@ export default function TableOfContents({
         </span>
         <span
           aria-hidden="true"
-          className={`flex-1 min-w-0 truncate text-xs leading-relaxed ${
+          className={`flex-1 min-w-0 break-words text-xs leading-relaxed ${
             isCurrent
               ? "font-semibold text-ink"
               : isFront

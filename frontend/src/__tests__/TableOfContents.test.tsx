@@ -57,6 +57,16 @@ describe("TableOfContents", () => {
     );
   });
 
+  it("wraps a long title rather than clipping it", () => {
+    // #2745 acceptance: "No chapter title is truncated in the panel." A tooltip
+    // is a mitigation, not the criterion — the row has to show the whole title.
+    const long = "But it is the occasion of this great Apology which invests it";
+    renderToc({ chapters: [{ title: long }] });
+    const titleEl = screen.getByText(long);
+    expect(titleEl.className).not.toContain("truncate");
+    expect(titleEl.className).toContain("break-words");
+  });
+
   // ── Filter ────────────────────────────────────────────────────────────────
 
   it("hides the filter for short books", () => {

@@ -1,10 +1,24 @@
 # Multi-Level Table of Contents
 
-**Status:** Draft
+**Status:** Superseded (#2745, 2026-08-27)
 **Author:** Architect
 **Date:** 2026-04-27
 **Priority:** P1
 **Prior work:** #1742 (issue), `docs/design/epub-ncx-fragment-anchors.md` (parent splitter rewrite that exposed full NCX walks), `docs/design/epub-nested-ncx-titles.md` (the existing parent-leaf composed-title fallback), `docs/design/splitter-version-cache-invalidation.md` (companion follow-up — the resplit pipeline this design depends on for migrating existing books)
+
+> **Superseded by #2745.** The *topic* remains valid — grouped navigation for
+> books with parts, acts or scenes — but this design is not the way there.
+>
+> It predates fossilization (#2624) by four months and is built around a
+> migration we have decided not to run: its Prior-work line names
+> `splitter-version-cache-invalidation.md` as "the resplit pipeline this design
+> depends on for migrating existing books", and that pipeline is gone. Books are
+> frozen artifacts now, not recomputed splits.
+>
+> #2745 replaced the chapter `<select>` with a Contents panel in the reader
+> sidebar (shipped in #2746) and folds grouping in as a second phase, gated on
+> recording part metadata deliberately rather than inferring it. Kept for the
+> problem statement and the survey of affected books, which are still accurate.
 
 ## Problem
 

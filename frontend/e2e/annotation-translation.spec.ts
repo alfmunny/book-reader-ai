@@ -29,27 +29,23 @@ test("toolbar Translate button opens sidebar without enabling translation", asyn
 
   await page.getByRole("button", { name: /Translate/i }).first().click();
 
-  // Sidebar translate panel is visible, but translation is still disabled
-  await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });
-  await expect(page.getByText("Disabled")).toBeVisible();
+  // Sidebar translate panel is visible, but translation is still disabled —
+  // the language selector only appears (inside the Editorial card) once enabled
+  await expect(page.getByText("Disabled")).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("Target language")).not.toBeVisible();
 });
 
 test("enabling the translation toggle loads translation and persists to settings", async ({ page }) => {
-  await page.route("**/api/books/*/chapters/*/translation", (route) => {
-    if (route.request().method() === "GET") {
-      route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
-    } else {
-      route.fulfill({ json: { status: "ready", paragraphs: ["Auto-loaded translation."], cached: true } });
-    }
+  await page.route("**/api/books/*/chapters/*/translation*", (route) => {
+    route.fulfill({ json: { status: "ready", paragraphs: ["Auto-loaded translation."], provider: "gemini", model: "gemini-2.0-flash" } });
   });
 
   await page.goto("/reader/1342");
   await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
 
+  // Editorial translations load automatically once the toggle is enabled —
+  // there is no user-triggered translate button anymore (local-first #2624)
   await openAndEnableTranslation(page);
-
-  // Enabling the toggle alone does not fire — user must click the button
-  await page.getByRole("button", { name: "Translate this chapter" }).click();
 
   await expect(page.getByText("Auto-loaded translation.")).toBeVisible({ timeout: 5000 });
 
@@ -62,12 +58,8 @@ test("enabling the translation toggle loads translation and persists to settings
 });
 
 test("translationEnabled persists: reopening the reader resumes translation", async ({ page }) => {
-  await page.route("**/api/books/*/chapters/*/translation", (route) => {
-    if (route.request().method() === "GET") {
-      route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
-    } else {
-      route.fulfill({ json: { status: "ready", paragraphs: ["Persisted translation."], cached: true } });
-    }
+  await page.route("**/api/books/*/chapters/*/translation*", (route) => {
+    route.fulfill({ json: { status: "ready", paragraphs: ["Persisted translation."], provider: "gemini", model: "gemini-2.0-flash" } });
   });
 
   // Seed settings with translationEnabled = true before first navigation
@@ -79,10 +71,7 @@ test("translationEnabled persists: reopening the reader resumes translation", as
   });
   await page.goto("/reader/1342");
 
-  // Toggle is restored — user opens sidebar and clicks the button
-  await page.getByRole("button", { name: /Translate/i }).first().click();
-  await page.getByRole("button", { name: "Translate this chapter" }).click();
-
+  // Toggle is restored — the editorial translation loads with no interaction
   await expect(page.getByText("Persisted translation.")).toBeVisible({ timeout: 5000 });
 });
 
@@ -94,7 +83,7 @@ test("translation sidebar has no standalone title heading", async ({ page }) => 
   await expect(page.getByRole("heading", { name: /^Translation$/, level: 3 })).not.toBeVisible();
 });
 
-test("translation language is persisted to settings on change", async ({ page }) => {
+test("translation language is persisted per book on change", async ({ page }) => {
   await page.route("**/api/books/*/chapters/*/translation", (route) => {
     if (route.request().method() === "GET") {
       route.fulfill({ status: 404, json: { detail: "Translation not cached" } });
@@ -109,11 +98,9 @@ test("translation language is persisted to settings on change", async ({ page })
   await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });
   await page.locator("label", { hasText: "Target language" }).locator("..").locator("select").selectOption({ value: "de" });
 
-  const saved = await page.evaluate(() => {
-    const raw = localStorage.getItem("book-reader-settings");
-    return raw ? JSON.parse(raw) : null;
-  });
-  expect(saved?.translationLang).toBe("de");
+  // Per-book key set; the profile-wide preference is untouched
+  const perBook = await page.evaluate(() => localStorage.getItem("translation-lang:1342"));
+  expect(perBook).toBe("de");
 });
 
 test("translation language is loaded from settings on page open", async ({ page }) => {
@@ -126,7 +113,7 @@ test("translation language is loaded from settings on page open", async ({ page 
   });
   await page.goto("/reader/1342");
 
-  await page.getByRole("button", { name: /Translate/i }).first().click();
+  await openAndEnableTranslation(page);
   await expect(page.getByText("Target language")).toBeVisible({ timeout: 3000 });
 
   const selectValue = await page.locator("label", { hasText: "Target language" })
@@ -236,7 +223,7 @@ test("annotation count badge appears on Notes button when annotations exist", as
   await expect(page.getByRole("button", { name: /notes/i }).getByText("2")).toBeVisible({ timeout: 5000 });
 });
 
-test("translation status shows 'From cache · model' when server returns cached translation", async ({ page }) => {
+test("translation status shows 'Editorial translation · model' when server returns one", async ({ page }) => {
   // Use regex so query params (?target_language=…) on the GET are also matched
   await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation/, (route) => {
     route.fulfill({ json: { status: "ready", paragraphs: ["Cached text."], provider: "gemini", model: "gemini-2.0-flash" } });
@@ -247,25 +234,8 @@ test("translation status shows 'From cache · model' when server returns cached 
 
   await openAndEnableTranslation(page);
   await expect(page.getByText("Cached text.")).toBeVisible({ timeout: 5000 });
-  await expect(page.getByText(/From cache · gemini-2\.0-flash/)).toBeVisible({ timeout: 3000 });
-});
-
-test("translation status shows 'Translated · model' after user-triggered translation", async ({ page }) => {
-  await page.route(/\/api\/books\/\d+\/chapters\/\d+\/translation/, (route) => {
-    if (route.request().method() === "GET") {
-      route.fulfill({ status: 404, json: { detail: "not cached" } });
-    } else {
-      route.fulfill({ json: { status: "ready", paragraphs: ["Fresh translation."], provider: "gemini", model: "gemini-2.0-flash" } });
-    }
-  });
-
-  await page.goto("/reader/1342");
-  await expect(page.getByText(/truth universally acknowledged/)).toBeVisible();
-
-  await openAndEnableTranslation(page);
-  await page.getByRole("button", { name: "Translate this chapter" }).click();
-  await expect(page.getByText("Fresh translation.")).toBeVisible({ timeout: 5000 });
-  await expect(page.getByText(/Translated · gemini-2\.0-flash/)).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText(/Editorial translation · /)).toBeVisible({ timeout: 3000 });
+  await expect(page.getByText("gemini-2.0-flash")).toBeVisible();
 });
 
 test("Translate this chapter button does not flash when translation is already cached", async ({ page }) => {

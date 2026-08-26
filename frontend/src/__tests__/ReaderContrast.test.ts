@@ -26,11 +26,6 @@ describe("Reader page contrast (closes #1356)", () => {
     expect(readerSrc).toContain("tracking-widest text-stone-600");
   });
 
-  it("cache status spans use text-stone-600 not text-stone-400 (WCAG AA on parchment)", () => {
-    expect(readerSrc).not.toContain('"text-stone-400">Loaded from cache');
-    expect(readerSrc).not.toContain('"text-stone-500">Loaded from cache');
-    expect(readerSrc).toContain('"text-stone-600">Loaded from cache');
-  });
 
   it("separator pipe spans all have aria-hidden=true", () => {
     const separatorLines = readerSrc

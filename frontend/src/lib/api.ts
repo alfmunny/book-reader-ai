@@ -309,6 +309,16 @@ export interface TranslationStatus {
   bulk_active: boolean;
 }
 
+export interface BookTranslationLanguages {
+  book_id: number;
+  total_chapters: number;
+  languages: Array<{ target_language: string; translated_chapters: number }>;
+}
+
+export function getBookTranslationLanguages(bookId: number) {
+  return request<BookTranslationLanguages>(`/books/${bookId}/translation-languages`);
+}
+
 export function getBookTranslationStatus(
   bookId: number,
   targetLanguage: string,
@@ -880,6 +890,113 @@ export function updateInsight(id: number, data: { question: string }) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+}
+
+// ── Translation sessions (design: docs/design/user-translations.md, #2740) ──
+
+export type SessionProvider = "deepseek" | "claude";
+
+export interface TranslationSession {
+  id: number;
+  book_id: number;
+  name: string;
+  target_language: string;
+  style_prompt?: string | null;
+  provider: SessionProvider;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+  /** chapter_index → translated paragraph count */
+  coverage: Record<string, number>;
+}
+
+export interface SessionParagraph {
+  text: string;
+  provider: string;
+  model: string;
+  edited_by_user: boolean;
+}
+
+export interface ChapterRun {
+  active: boolean;
+  done: number;
+  total: number;
+  error: string | null;
+}
+
+export interface SessionChapter {
+  session_id: number;
+  chapter_index: number;
+  paragraph_count: number;
+  paragraphs: Record<string, SessionParagraph>;
+  /** Background chapter-translation run, when one is (or just was) active. */
+  run?: ChapterRun | null;
+}
+
+export function listTranslationSessions(bookId: number) {
+  return request<TranslationSession[]>(`/translation-sessions?book_id=${bookId}`);
+}
+
+export function createTranslationSession(data: {
+  book_id: number;
+  name: string;
+  target_language: string;
+  provider: SessionProvider;
+  style_prompt?: string;
+}) {
+  return request<TranslationSession>("/translation-sessions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateTranslationSession(
+  id: number,
+  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string },
+) {
+  return request<TranslationSession>(`/translation-sessions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTranslationSession(id: number) {
+  return request<{ ok: boolean }>(`/translation-sessions/${id}`, { method: "DELETE" });
+}
+
+export function getSessionChapter(sessionId: number, chapterIndex: number) {
+  return request<SessionChapter>(`/translation-sessions/${sessionId}/chapters/${chapterIndex}`);
+}
+
+export function translateSession(
+  sessionId: number,
+  data: { chapter_index: number; scope: "chapter" | number; provider?: SessionProvider; force?: boolean },
+) {
+  return request<SessionChapter>(`/translation-sessions/${sessionId}/translate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function editSessionParagraph(
+  sessionId: number, chapterIndex: number, paragraphIndex: number, text: string,
+) {
+  return request<SessionParagraph>(
+    `/translation-sessions/${sessionId}/chapters/${chapterIndex}/paragraphs/${paragraphIndex}`,
+    { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) },
+  );
+}
+
+export function deleteSessionParagraph(
+  sessionId: number, chapterIndex: number, paragraphIndex: number,
+) {
+  return request<{ ok: boolean }>(
+    `/translation-sessions/${sessionId}/chapters/${chapterIndex}/paragraphs/${paragraphIndex}`,
+    { method: "DELETE" },
+  );
 }
 
 export function saveInsight(data: {

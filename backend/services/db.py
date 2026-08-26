@@ -1754,3 +1754,151 @@ async def get_flashcard_stats(
         "due_today": due_today,
         "reviewed_today": reviewed_today,
     }
+
+
+# ── Translation sessions (design: docs/design/user-translations.md, #2740) ───
+
+async def create_translation_session(
+    user_id: int, book_id: int, name: str, target_language: str,
+    provider: str, style_prompt: str | None = None,
+) -> dict | None:
+    """Create a named session; returns the row, or None on a duplicate name."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        try:
+            cursor = await db.execute(
+                """INSERT INTO translation_sessions
+                   (user_id, book_id, name, target_language, provider, style_prompt)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (user_id, book_id, name, target_language, provider, style_prompt),
+            )
+        except aiosqlite.IntegrityError:
+            return None
+        session_id = cursor.lastrowid
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE id = ?", (session_id,)
+        ) as c:
+            row = await c.fetchone()
+        await db.commit()
+    return dict(row) if row else None
+
+
+async def list_translation_sessions(user_id: int, book_id: int) -> list[dict]:
+    """The user's sessions for a book, each with per-chapter coverage counts."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE user_id = ? AND book_id = ? ORDER BY created_at",
+            (user_id, book_id),
+        ) as c:
+            sessions = [dict(r) for r in await c.fetchall()]
+        for s in sessions:
+            async with db.execute(
+                """SELECT chapter_index, COUNT(*) AS n
+                   FROM translation_session_paragraphs
+                   WHERE session_id = ? GROUP BY chapter_index""",
+                (s["id"],),
+            ) as c:
+                s["coverage"] = {r["chapter_index"]: r["n"] for r in await c.fetchall()}
+    return sessions
+
+
+async def get_translation_session(session_id: int, user_id: int) -> dict | None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE id = ? AND user_id = ?",
+            (session_id, user_id),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
+
+
+async def update_translation_session(session_id: int, user_id: int, fields: dict) -> dict | None:
+    """Update name / style_prompt / provider; returns the row, None if not
+    owned, or raises IntegrityError → caller maps to 409 on duplicate name."""
+    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider", "target_language")}
+    if not allowed:
+        return await get_translation_session(session_id, user_id)
+    sets = ", ".join(f"{k} = ?" for k in allowed)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            f"UPDATE translation_sessions SET {sets}, updated_at = CURRENT_TIMESTAMP "
+            f"WHERE id = ? AND user_id = ?",
+            (*allowed.values(), session_id, user_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE id = ?", (session_id,)
+        ) as c:
+            row = await c.fetchone()
+        await db.commit()
+    return dict(row) if row else None
+
+
+async def delete_translation_session(session_id: int, user_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM translation_sessions WHERE id = ? AND user_id = ?",
+            (session_id, user_id),
+        )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def get_session_paragraphs(session_id: int, chapter_index: int) -> dict[int, dict]:
+    """Paragraph rows for one chapter, keyed by paragraph_index (may be partial)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT paragraph_index, text, provider, model, edited_by_user
+               FROM translation_session_paragraphs
+               WHERE session_id = ? AND chapter_index = ?
+               ORDER BY paragraph_index""",
+            (session_id, chapter_index),
+        ) as c:
+            rows = await c.fetchall()
+    return {
+        r["paragraph_index"]: {
+            "text": r["text"],
+            "provider": r["provider"],
+            "model": r["model"],
+            "edited_by_user": bool(r["edited_by_user"]),
+        }
+        for r in rows
+    }
+
+
+async def upsert_session_paragraph(
+    session_id: int, chapter_index: int, paragraph_index: int,
+    text: str, provider: str, model: str, edited_by_user: bool = False,
+) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """INSERT INTO translation_session_paragraphs
+               (session_id, chapter_index, paragraph_index, text, provider, model, edited_by_user)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(session_id, chapter_index, paragraph_index)
+               DO UPDATE SET text = excluded.text, provider = excluded.provider,
+                             model = excluded.model, edited_by_user = excluded.edited_by_user,
+                             updated_at = CURRENT_TIMESTAMP""",
+            (session_id, chapter_index, paragraph_index, text, provider, model, int(edited_by_user)),
+        )
+        await db.execute(
+            "UPDATE translation_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (session_id,),
+        )
+        await db.commit()
+
+
+async def delete_session_paragraph(session_id: int, chapter_index: int, paragraph_index: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            """DELETE FROM translation_session_paragraphs
+               WHERE session_id = ? AND chapter_index = ? AND paragraph_index = ?""",
+            (session_id, chapter_index, paragraph_index),
+        )
+        await db.commit()
+        return cursor.rowcount > 0

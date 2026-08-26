@@ -45,6 +45,12 @@ const mockSaveInsight = jest.fn();
 const mockSynthesizeSpeech = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  getBookTranslationLanguages: jest.fn().mockResolvedValue({ book_id: 1, total_chapters: 0, languages: [] }),
+  listTranslationSessions: jest.fn().mockResolvedValue([]),
+  getSessionChapter: jest.fn().mockResolvedValue({ session_id: 1, chapter_index: 0, paragraph_count: 0, paragraphs: {} }),
+  translateSession: jest.fn(),
+  editSessionParagraph: jest.fn(),
+  deleteSessionParagraph: jest.fn(),
   getBookChapters: (...a: unknown[]) => mockGetBookChapters(...a),
   getMe: (...a: unknown[]) => mockGetMe(...a),
   getAnnotations: (...a: unknown[]) => mockGetAnnotations(...a),
@@ -478,7 +484,10 @@ describe("ReaderPage — chapter navigation", () => {
     const translateBtn = await screen.findByTitle("Translation");
     await userEvent.click(translateBtn);
 
-    // Translation tab content: "Target language" label should appear
+    // Translation tab content: the enable toggle appears; the language
+    // selector lives inside the Editorial card and only shows once enabled.
+    expect(await screen.findByText("Disabled")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Disabled"));
     expect(await screen.findByText("Target language")).toBeInTheDocument();
   });
 
@@ -613,21 +622,6 @@ describe("ReaderPage — translation panel", () => {
     );
   });
 
-  it("shows 'Translate this chapter' button when translation is enabled and no translation cached", async () => {
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    expect(await screen.findByRole("button", { name: /translate this chapter/i })).toBeInTheDocument();
-  });
 
   it("shows language selector in translate tab", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
@@ -636,13 +630,14 @@ describe("ReaderPage — translation panel", () => {
 
     const translateBtn = await screen.findByTitle("Translation");
     await userEvent.click(translateBtn);
+    await userEvent.click(await screen.findByText("Disabled"));
 
     expect(await screen.findByText("Target language")).toBeInTheDocument();
-    // The language select should be there
+    // The language select should be there (option text may carry a coverage suffix)
     await waitFor(() => {
       const selects = screen.getAllByRole("combobox");
       const langSelect = selects.find((s) =>
-        Array.from((s as HTMLSelectElement).options).some((o) => o.text === "Chinese"),
+        Array.from((s as HTMLSelectElement).options).some((o) => o.text.startsWith("Chinese")),
       );
       expect(langSelect).toBeDefined();
     });
@@ -1028,30 +1023,34 @@ describe("ReaderPage — display mode toggle", () => {
 });
 
 describe("ReaderPage — language selection in translate sidebar", () => {
-  it("changing language select updates translationLang and saves settings", async () => {
+  it("changing language select persists per book, not to the profile", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
     const translateBtn = await screen.findByTitle("Translation");
     await userEvent.click(translateBtn);
+    await userEvent.click(await screen.findByText("Disabled"));
 
     await waitFor(() => {
       const selects = screen.getAllByRole("combobox");
       const langSelect = selects.find((s) =>
-        Array.from((s as HTMLSelectElement).options).some((o) => o.text === "Chinese"),
+        Array.from((s as HTMLSelectElement).options).some((o) => o.text.startsWith("Chinese")),
       );
       expect(langSelect).toBeDefined();
     });
 
     const langSelect = screen.getAllByRole("combobox").find((s) =>
-      Array.from((s as HTMLSelectElement).options).some((o) => o.text === "Chinese"),
+      Array.from((s as HTMLSelectElement).options).some((o) => o.text.startsWith("Chinese")),
     ) as HTMLSelectElement;
 
     await userEvent.selectOptions(langSelect, "zh");
 
-    expect(mockSaveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ translationLang: "zh" }),
+    // Per-book, not profile-wide (owner, 2026-08-26): persisted under the
+    // book-scoped localStorage key; the profile setting is untouched.
+    expect(localStorage.getItem(`translation-lang:${bookIdCounter}`)).toBe("zh");
+    expect(mockSaveSettings).not.toHaveBeenCalledWith(
+      expect.objectContaining({ translationLang: expect.anything() }),
     );
   });
 });
@@ -1446,50 +1445,9 @@ describe("ReaderPage — translation loaded from server cache", () => {
     });
   });
 
-  it("calls requestChapterTranslation when 'Translate this chapter' button is clicked", async () => {
-    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bookIdCounter }, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
 });
 
 describe("ReaderPage — admin-only features", () => {
-  it("shows 'Retranslate chapter' button for admin users when translation is loaded", async () => {
-    // Mock admin user
-    mockGetMe.mockResolvedValue({ hasGeminiKey: true, role: "admin" });
-    // Mock a successful translation fetch
-    mockGetChapterTranslation.mockResolvedValue({
-      status: "ready",
-      paragraphs: ["Translated paragraph."],
-      model: "gemini-pro",
-      title_translation: null,
-    });
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      const retranslateBtn = screen.queryByRole("button", { name: /retranslate chapter/i });
-      if (retranslateBtn) expect(retranslateBtn).toBeInTheDocument();
-    });
-  });
 });
 
 describe("ReaderPage — annotation loading spinner", () => {

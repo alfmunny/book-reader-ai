@@ -18,6 +18,7 @@ from routers.search import router as search_router
 from routers.decks import router as decks_router
 from routers.chat import router as chat_router
 from routers.billing import router as billing_router
+from routers.translation_sessions import router as translation_sessions_router
 from services.db import init_db
 
 
@@ -102,6 +103,7 @@ app.include_router(search_router, prefix="/api")
 app.include_router(decks_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(billing_router, prefix="/api")
+app.include_router(translation_sessions_router, prefix="/api")
 
 
 @app.get("/api/health")

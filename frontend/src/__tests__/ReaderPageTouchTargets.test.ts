@@ -48,7 +48,4 @@ describe("Reader page touch targets", () => {
     expect(src).toMatch(/sentence_text[\s\S]{0,300}min-h-\[44px\]/);
   });
 
-  it("Translate remaining button has min-h-[44px]", () => {
-    expect(src).toMatch(/handleTranslateWholeBook[\s\S]{0,300}min-h-\[44px\]/);
-  });
 });

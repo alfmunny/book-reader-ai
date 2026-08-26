@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, deleteTranslationCache, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -18,6 +18,7 @@ import QuickHighlightPanel from "@/components/QuickHighlightPanel";
 import VocabularyToast from "@/components/VocabularyToast";
 import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
+import TranslationSessionPanel from "@/components/TranslationSessionPanel";
 import AuthPromptModal from "@/components/AuthPromptModal";
 import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -27,18 +28,6 @@ const FLASH_COST_PER_M = 2.5; // USD per 1M output tokens
 const TOKENS_PER_WORD = 1.4;
 const WORDS_DEFAULT = 2000;
 
-function queueTotalCostLabel(text: string | undefined, chapterCount: number): string {
-  const words = text ? text.split(/\s+/).filter(Boolean).length : WORDS_DEFAULT;
-  const tokens = Math.round(words * TOKENS_PER_WORD) * chapterCount;
-  const usd = (tokens / 1_000_000) * FLASH_COST_PER_M;
-  const cost = usd < 0.005 ? "< $0.01" : `~$${usd.toFixed(2)}`;
-  const tok = tokens >= 1_000_000
-    ? `~${(tokens / 1_000_000).toFixed(1)}M`
-    : tokens >= 1000
-    ? `~${(tokens / 1000).toFixed(1)}K`
-    : `~${tokens}`;
-  return `${cost} · ${tok} tokens`;
-}
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -312,7 +301,11 @@ export default function ReaderPage() {
   const [geminiReminderVisible, setGeminiReminderVisible] = useState(false);
   const geminiReminderShown = useRef(false);
 
+  // Re-fetched when the translate or chat tab opens so a key saved in the
+  // profile (possibly in another tab) unlocks providers without a reload
+  // (owner report, 2026-08-27: DeepSeek stayed disabled after saving its key).
   useEffect(() => {
+    if (!session?.backendToken && session !== undefined) return;
     getMe().then((me) => {
       setHasGeminiKey(me.hasGeminiKey);
       setHasClaudeKey(me.hasClaudeKey);
@@ -321,7 +314,8 @@ export default function ReaderPage() {
     }).catch(() => {
       // Leave hasGeminiKey as null on failure — notifyAIUsed checks === false
     });
-  }, [session?.backendToken]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.backendToken, sidebarOpen && (sidebarTab === "translate" || sidebarTab === "chat")]);
 
   function notifyAIUsed() {
     // Remind only when NO provider key exists at all — a Claude/DeepSeek-only
@@ -342,15 +336,178 @@ export default function ReaderPage() {
   useEffect(() => {
     const s = getSettings();
     if (s.translationEnabled) setTranslationEnabled(true);
-    setTranslationLang(s.translationLang);
-  }, []);
+    // Target language is PER BOOK (owner, 2026-08-26: "sometimes you want
+    // this book in one language and another book in another") — the profile
+    // preference only seeds the first visit.
+    let lang = s.translationLang;
+    try {
+      const perBook = localStorage.getItem(`translation-lang:${bookId}`);
+      if (perBook) lang = perBook;
+    } catch { /* private mode */ }
+    setTranslationLang(lang);
+  }, [bookId]);
+  const setBookTranslationLang = (lang: string) => {
+    setTranslationLang(lang);
+    try { localStorage.setItem(`translation-lang:${bookId}`, lang); } catch { /* private mode */ }
+  };
   // Translation provider removed — queue handles all translation via the admin's chain.
   const [displayMode, setDisplayMode] = useState<"parallel" | "inline">("parallel");
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
+  // ── Translation sessions (design: docs/design/user-translations.md) ──
+  const [translationSessions, setTranslationSessions] = useState<TranslationSession[]>([]);
+  const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
+  const [sessionChapter, setSessionChapter] = useState<SessionChapter | null>(null);
+  const [sessionTranslating, setSessionTranslating] = useState(false);
+  const [translatingParas, setTranslatingParas] = useState<Set<number>>(new Set());
+  const [paragraphEditor, setParagraphEditor] = useState<{ paraIdx: number; text: string } | null>(null);
+  const [paragraphEditorError, setParagraphEditorError] = useState(false);
+  // Persistent, in-panel error for session actions (owner report: a failed
+  // translate showed nothing — the corner toast was too transient).
+  const [sessionActionError, setSessionActionError] = useState<string | null>(null);
+  const activeSessionRef = useRef<TranslationSession | null>(null);
+  activeSessionRef.current = activeSession;
+
+  // Load the user's sessions for this book; restore the active one per book.
+  useEffect(() => {
+    if (!session?.backendToken) return;
+    let cancelled = false;
+    listTranslationSessions(Number(bookId))
+      .then((list) => {
+        if (cancelled) return;
+        setTranslationSessions(list);
+        try {
+          const savedId = Number(localStorage.getItem(`translation-session-active:${bookId}`));
+          const restored = list.find((s) => s.id === savedId) ?? null;
+          setActiveSession(restored);
+        } catch {}
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId, session?.backendToken]);
+
+  // Fetch the active session's paragraphs for the current chapter.
+  useEffect(() => {
+    if (!activeSession) { setSessionChapter(null); return; }
+    let cancelled = false;
+    getSessionChapter(activeSession.id, chapterIndex)
+      .then((data) => { if (!cancelled) setSessionChapter(data); })
+      .catch(() => { if (!cancelled) setSessionChapter(null); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, chapterIndex]);
+
+  // Poll while a background chapter run is active — paragraphs appear
+  // gradually and the run survives page reloads (the server keeps going;
+  // any fresh GET sees run.active and resumes the watch).
+  const chapterRunActive = !!sessionChapter?.run?.active;
+  useEffect(() => {
+    if (!activeSession || !chapterRunActive) return;
+    const timer = setInterval(() => {
+      getSessionChapter(activeSession.id, chapterIndex)
+        .then((data) => {
+          setSessionChapter(data);
+          if (data.run && !data.run.active) {
+            if (data.run.error) setSessionActionError(data.run.error);
+            listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 1500);
+    return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, chapterIndex, chapterRunActive]);
+
+  function selectTranslationSession(sess: TranslationSession | null) {
+    setActiveSession(sess);
+    try {
+      if (sess) localStorage.setItem(`translation-session-active:${bookId}`, String(sess.id));
+      else localStorage.removeItem(`translation-session-active:${bookId}`);
+    } catch {}
+  }
+
+  async function handleSessionTranslateChapter(force = false) {
+    if (!activeSession || sessionTranslating || chapterRunActive) return;
+    setSessionTranslating(true);
+    setSessionActionError(null);
+    try {
+      // Starts a background run; the polling effect renders paragraphs as
+      // they finish and surfaces run errors.
+      const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter", force });
+      setSessionChapter(data);
+    } catch (e) {
+      setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
+      getSessionChapter(activeSession.id, chapterIndex).then(setSessionChapter).catch(() => {});
+    } finally {
+      setSessionTranslating(false);
+    }
+  }
+
+  async function handleSessionTranslateParagraph(paraIdx: number) {
+    if (!activeSession) return;
+    setTranslatingParas((prev) => new Set(prev).add(paraIdx));
+    setSessionActionError(null);
+    try {
+      const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: paraIdx });
+      setSessionChapter(data);
+    } catch (e) {
+      setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
+    } finally {
+      setTranslatingParas((prev) => { const next = new Set(prev); next.delete(paraIdx); return next; });
+    }
+  }
+
+  async function handleParagraphEditSave() {
+    if (!activeSession || !paragraphEditor) return;
+    setParagraphEditorError(false);
+    try {
+      await editSessionParagraph(activeSession.id, chapterIndex, paragraphEditor.paraIdx, paragraphEditor.text);
+      const data = await getSessionChapter(activeSession.id, chapterIndex);
+      setSessionChapter(data);
+      setParagraphEditor(null);
+    } catch {
+      setParagraphEditorError(true);
+    }
+  }
+
+  async function handleSessionDeleteParagraph(paraIdx: number) {
+    if (!activeSession) return;
+    try {
+      await deleteSessionParagraph(activeSession.id, chapterIndex, paraIdx);
+      const data = await getSessionChapter(activeSession.id, chapterIndex);
+      setSessionChapter(data);
+    } catch (e) {
+      setSessionActionError(e instanceof Error ? e.message : "Delete failed — try again.");
+    }
+  }
+
+  // Session paragraphs as the reader's translations[] contract: undefined
+  // gaps render the explicit session placeholder (never editorial mixing).
+  const sessionTranslations = useMemo(() => {
+    if (!activeSession || !sessionChapter) return null;
+    const arr: (string | undefined)[] = new Array(sessionChapter.paragraph_count).fill(undefined);
+    for (const [idx, p] of Object.entries(sessionChapter.paragraphs)) {
+      arr[Number(idx)] = p.text;
+    }
+    return arr;
+  }, [activeSession, sessionChapter]);
+
+  const sessionMeta = useMemo(() => {
+    if (!sessionChapter) return undefined;
+    const meta: Record<number, { model: string; edited: boolean }> = {};
+    for (const [idx, p] of Object.entries(sessionChapter.paragraphs)) {
+      meta[Number(idx)] = { model: p.model, edited: p.edited_by_user };
+    }
+    return meta;
+  }, [sessionChapter]);
   const [translatedTitle, setTranslatedTitle] = useState<string | null>(null);
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
   const [bookTranslationStatus, setBookTranslationStatus] = useState<TranslationStatus | null>(null);
+  // Which languages have editorial translations at all — shown as chips so
+  // nobody has to cycle target languages to discover coverage (owner,
+  // 2026-08-27).
+  const [editorialLanguages, setEditorialLanguages] = useState<BookTranslationLanguages | null>(null);
 
   // Reader display settings
   const [fontSize, setFontSize] = useState<FontSize>("base");
@@ -596,208 +753,39 @@ export default function ReaderPage() {
       } catch {
         // 404 = not cached yet; other errors fall through to show button
       }
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-      // Not cached — check if already queued so we can show the queue banner
-      try {
-        const queueStatus = await getChapterQueueStatus(bid, chapterIndex, translationLang);
-        if (cancelled || currentChapterKey.current !== cacheKey) return;
-        if (queueStatus.status === "pending" || queueStatus.status === "running") {
-          setTranslationLoading(false);
-          setTranslationUsedProvider(
-            queueStatus.status === "running"
-              ? "queue · translating now"
-              : `queue · position ${queueStatus.position ?? "?"}`
-          );
-          return;
-        }
-      } catch { /* ignore */ }
-
-      // Not translated and not queued — show "Translate this chapter" button
-      if (!cancelled && currentChapterKey.current === cacheKey) setTranslationLoading(false);
+      // Not cached: editorial translations are produced offline (local-first,
+      // #2624) — nothing to request online; the status line explains the gap.
+      if (!cancelled && currentChapterKey.current === cacheKey) {
+        setTranslationLoading(false);
+        setTranslationUsedProvider("none");
+      }
     })();
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, chapterIndex, bookId, chapters]);
 
-  async function handleTranslateThisChapter() {
-    const current = chapters[chapterIndex];
-    if (!current?.text) return;
-    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
-    currentChapterKey.current = cacheKey;
-
-    setTranslationLoading(true);
-    setTranslatedParagraphs([]);
-    setTranslationUsedProvider("");
-
-    const bid = Number(bookId);
-
-    function showResult(res: { paragraphs?: string[]; provider?: string; model?: string; title_translation?: string | null }) {
-      if (!res.paragraphs) return;
-      const label = res.model ? `translated · ${res.model}` : (res.provider ? `translated · ${res.provider}` : "translated");
-      translationCache.current.set(cacheKey, { paragraphs: res.paragraphs, label });
-      setTranslatedParagraphs(res.paragraphs);
-      setTranslatedTitle(res.title_translation ?? null);
-      setTranslationUsedProvider(label);
-      setTranslationLoading(false);
-    }
-
-    function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
-      if (r.status === "running") return "queue · translating now";
-      if (r.worker_running === false) return "queue · worker is offline";
-      return `queue · position ${r.position ?? "?"}`;
-    }
-
-    let res;
-    try {
-      res = await requestChapterTranslation(bid, chapterIndex, translationLang);
-    } catch (e) {
-      if (currentChapterKey.current === cacheKey) {
-        if (e instanceof ApiError && e.status === 401) setTranslationUsedProvider("login required");
-        else if (e instanceof ApiError && e.status === 403) setTranslationUsedProvider("gemini key required");
-        else setTranslationUsedProvider("error · check admin queue");
-        setTranslationLoading(false);
-      }
-      return;
-    }
-    if (currentChapterKey.current !== cacheKey) return;
-
-    if (res.status === "ready") { showResult(res); return; }
-
-    if (hasGeminiKey === false && !isAdmin) {
-      setTranslationUsedProvider("gemini key required");
-      setTranslationLoading(false);
-      return;
-    }
-
-    setTranslationUsedProvider(describeStatus(res));
-
-    (async () => {
-      try {
-        const status = await getBookTranslationStatus(bid, translationLang);
-        if (currentChapterKey.current === cacheKey) setBookTranslationStatus(status);
-      } catch { /* ignore */ }
-    })();
-
-    const POLL_MS = 3000;
-    let cancelled = false;
-    while (!cancelled && currentChapterKey.current === cacheKey) {
-      await new Promise((r) => setTimeout(r, POLL_MS));
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-      let tick;
-      try { tick = await requestChapterTranslation(bid, chapterIndex, translationLang); }
-      catch { continue; }
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-      if (tick.status === "ready") { showResult(tick); return; }
-      if (tick.status === "failed") {
-        setTranslationUsedProvider(`queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`);
-        setTranslationLoading(false);
-        return;
-      }
-      setTranslationUsedProvider(describeStatus(tick));
-    }
-  }
-
-  // Poll book-level translation status when translation is enabled — shows
-  // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
   useEffect(() => {
-    if (!translationEnabled || !bookId) {
-      setBookTranslationStatus(null);
-      return;
-    }
     let cancelled = false;
-    async function fetchStatus() {
-      try {
-        const status = await getBookTranslationStatus(Number(bookId), translationLang);
-        if (!cancelled) setBookTranslationStatus(status);
-      } catch { /* ignore */ }
-    }
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
+    getBookTranslationLanguages(Number(bookId))
+      .then((data) => { if (!cancelled) setEditorialLanguages(data); })
+      .catch(() => { if (!cancelled) setEditorialLanguages(null); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId]);
+
+  // Editorial coverage for the status display — a single fetch per
+  // (book, language); the queue-era 15s polling is gone with the queue UI.
+  useEffect(() => {
+    if (!translationEnabled) { setBookTranslationStatus(null); return; }
+    let cancelled = false;
+    getBookTranslationStatus(Number(bookId), translationLang)
+      .then((status) => { if (!cancelled) setBookTranslationStatus(status); })
+      .catch(() => { if (!cancelled) setBookTranslationStatus(null); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, bookId]);
 
-  async function handleRetranslate() {
-    const bid = Number(bookId);
-    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
-    // Delete backend cache
-    await deleteTranslationCache(bid, chapterIndex, translationLang).catch(() => {});
-    // Clear frontend caches
-    translationCache.current.delete(cacheKey);
-    setTranslatedParagraphs([]);
-    // Re-trigger by toggling translation off then on
-    setTranslationEnabled(false);
-    setTimeout(() => setTranslationEnabled(true), 50);
-  }
-
-  const [enqueueingBook, setEnqueueingBook] = useState(false);
-
-  async function handleTranslateWholeBook() {
-    const bid = Number(bookId);
-    setEnqueueingBook(true);
-    try {
-      const res = await enqueueBookTranslation(bid, translationLang);
-      // Refresh whole-book status immediately so the banner updates
-      // without waiting for the 15s poll tick — the banner may have
-      // been showing stale "not started" counts because a chapter
-      // was on-demand-queued by the reader between polls.
-      let fresh: TranslationStatus | null = null;
-      try {
-        fresh = await getBookTranslationStatus(bid, translationLang);
-        setBookTranslationStatus(fresh);
-      } catch { /* ignore */ }
-
-      // Distinguish "nothing to queue because everything's done" from
-      // "nothing to queue because everything's already queued" — the
-      // button disappearing + a vague 'already queued' message used
-      // to look like the click was a no-op even when the worker was
-      // actively translating.
-      let msg;
-      if (res.enqueued > 0) {
-        msg = `Queued ${res.enqueued} chapter${res.enqueued === 1 ? "" : "s"} for translation into ${translationLang}.`;
-      } else if (fresh) {
-        const queued = (fresh.queue_pending ?? 0) + (fresh.queue_running ?? 0);
-        const failed = fresh.queue_failed ?? 0;
-        if (queued > 0) {
-          msg = `Nothing new to queue — ${queued} chapter${queued === 1 ? " is" : "s are"} already in the queue and being processed.`;
-        } else if (failed > 0) {
-          msg = `Nothing new to queue — ${failed} chapter${failed === 1 ? "" : "s"} previously failed. Use the Retry button to revive them.`;
-        } else {
-          msg = `All chapters are already translated.`;
-        }
-      } else {
-        msg = `All chapters are already translated or already queued.`;
-      }
-      setEnqueueToast({ msg, ok: true });
-      setTimeout(() => setEnqueueToast(null), 5000);
-    } catch (e) {
-      setEnqueueToast({ msg: e instanceof Error ? e.message : "Failed to queue book", ok: false });
-      setTimeout(() => setEnqueueToast(null), 5000);
-    } finally {
-      setEnqueueingBook(false);
-    }
-  }
-
-  async function handleRetryFailed() {
-    // Different from handleRetranslate: there is no cached translation to
-    // delete (the chapter failed), we just need to revive the failed queue
-    // row so the worker picks it up again. Clearing frontend state + the
-    // toggle dance re-starts polling once the row is pending.
-    const bid = Number(bookId);
-    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
-    try {
-      await retryChapterTranslation(bid, chapterIndex, translationLang);
-    } catch (e) {
-      setRetryToast(e instanceof Error ? e.message : "Retry failed");
-      setTimeout(() => setRetryToast(null), 5000);
-      return;
-    }
-    translationCache.current.delete(cacheKey);
-    setTranslatedParagraphs([]);
-    setTranslationEnabled(false);
-    setTimeout(() => setTranslationEnabled(true), 50);
-  }
 
   const handleSelection = useCallback(() => {
     const sel = window.getSelection()?.toString().trim() || "";
@@ -1756,10 +1744,20 @@ export default function ReaderPage() {
                   isPlaying={ttsIsPlaying}
                   chunks={ttsChunks.length > 0 ? ttsChunks : undefined}
                   disabled={ttsIsLoading}
-                  translations={translationEnabled ? translatedParagraphs : undefined}
+                  translations={translationEnabled ? ((activeSession && sessionTranslations ? sessionTranslations : translatedParagraphs) as string[]) : undefined}
                   translationDisplayMode={displayMode}
-                  translationLang={translationEnabled ? translationLang : undefined}
-                  translationLoading={translationLoading}
+                  translationLang={translationEnabled ? (activeSession ? activeSession.target_language : translationLang) : undefined}
+                  translationLoading={activeSession ? false : translationLoading}
+                  sessionMode={translationEnabled && !!activeSession}
+                  translationMeta={sessionMeta}
+                  translatingParagraphs={translatingParas}
+                  actionsDisabled={sessionTranslating || chapterRunActive}
+                  onTranslateParagraph={activeSession ? handleSessionTranslateParagraph : undefined}
+                  onEditParagraph={activeSession ? (idx) => {
+                    setParagraphEditorError(false);
+                    setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
+                  } : undefined}
+                  onDeleteParagraph={activeSession ? handleSessionDeleteParagraph : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
                   onAnnotationClick={session?.backendToken ? (annotation, position) => {
@@ -1930,6 +1928,40 @@ export default function ReaderPage() {
                 });
               }}
             />
+          )}
+
+          {/* Session paragraph editor (design: docs/design/user-translations.md) */}
+          {paragraphEditor && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="dialog" aria-modal="true" aria-label="Edit translation paragraph">
+              <div className="bg-white rounded-xl border border-amber-200 shadow-xl p-4 w-full max-w-lg space-y-3">
+                <p className="text-sm font-medium text-ink">Edit translation · paragraph {paragraphEditor.paraIdx + 1}</p>
+                <textarea
+                  aria-label="Translation text"
+                  value={paragraphEditor.text}
+                  onChange={(e) => setParagraphEditor({ ...paragraphEditor, text: e.target.value })}
+                  rows={6}
+                  className="w-full text-sm font-serif border border-amber-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-y"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setParagraphEditor(null)}
+                    className="px-3 py-1.5 min-h-[44px] md:min-h-0 text-sm text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleParagraphEditSave}
+                    className="px-4 py-1.5 min-h-[44px] md:min-h-0 text-sm rounded-lg bg-amber-700 text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                  >
+                    Save
+                  </button>
+                </div>
+                {paragraphEditorError && (
+                  <p role="alert" className="text-xs text-red-600">Couldn&apos;t save — try again.</p>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Word definition tooltip */}
@@ -2422,23 +2454,47 @@ export default function ReaderPage() {
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
 
-                    {/* Language selector */}
-                    <div className="mb-4">
-                      <label htmlFor="reader-trans-lang" className="block text-xs text-amber-700 mb-1">Target language</label>
-                      <select
-                        id="reader-trans-lang"
-                        className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-                        value={translationLang}
-                        onChange={(e) => {
-                          setTranslationLang(e.target.value);
-                          saveSettings({ translationLang: e.target.value });
+                    {/* Session switcher (design: docs/design/user-translations.md) */}
+                    {session?.backendToken && translationEnabled && (
+                      <TranslationSessionPanel
+                        bookId={Number(bookId)}
+                        bookLanguage={bookLanguage}
+                        sessions={translationSessions}
+                        activeSessionId={activeSession?.id ?? null}
+                        chapterCount={chapters.length}
+                        chapterIndex={chapterIndex}
+                        hasClaudeKey={hasClaudeKey}
+                        hasDeepseekKey={hasDeepseekKey}
+                        onSelect={selectTranslationSession}
+                        onSessionsChanged={setTranslationSessions}
+                        onTranslateChapter={handleSessionTranslateChapter}
+                        chapterChars={chapters[chapterIndex]?.text?.length ?? 0}
+                        translating={sessionTranslating || chapterRunActive}
+                        editorialLanguages={editorialLanguages ? {
+                          total: editorialLanguages.total_chapters || chapters.length,
+                          languages: editorialLanguages.languages.map((l) => ({ code: l.target_language, chapters: l.translated_chapters })),
+                        } : null}
+                        translationLang={translationLang}
+                        onChangeLanguage={(lang) => {
+                          setBookTranslationLang(lang);
+                          selectTranslationSession(null);
                         }}
-                      >
-                        {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
-                          <option key={l.code} value={l.code}>{l.label}</option>
-                        ))}
-                      </select>
-                    </div>
+                        editorialStatus={bookTranslationStatus ? {
+                          lang: translationLang,
+                          done: bookTranslationStatus.translated_chapters,
+                          total: bookTranslationStatus.total_chapters,
+                          thisChapter: translatedParagraphs.length > 0,
+                          loading: translationLoading,
+                        } : null}
+                        runProgress={sessionChapter?.run?.active ? { done: sessionChapter.run.done, total: sessionChapter.run.total } : null}
+                        actionError={sessionActionError}
+                        onDismissError={() => setSessionActionError(null)}
+                        chapterProgress={activeSession && sessionChapter ? {
+                          done: Object.keys(sessionChapter.paragraphs).length,
+                          total: sessionChapter.paragraph_count,
+                        } : null}
+                      />
+                    )}
 
                     {/* Display mode */}
                     <div className="mb-4">
@@ -2461,115 +2517,33 @@ export default function ReaderPage() {
                       </div>
                     </div>
 
-                    {/* Translate this chapter button — explicit user action required */}
-                    {translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
-                      <div className="mb-4">
-                        {session?.backendToken ? (
-                          <>
-                            <button
-                              onClick={handleTranslateThisChapter}
-                              className="w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-                            >
-                              Translate this chapter
-                            </button>
-                          </>
-                        ) : (
-                          <p className="text-xs text-amber-700">
-                            <a href="/api/auth/signin" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Sign in</a> to translate this chapter.
-                          </p>
-                        )}
-                      </div>
-                    )}
-
                     {/* Status */}
-                    {translationEnabled && (
+                    {!activeSession && translationEnabled && (
                       <div role="status" className="text-xs">
                         {translationLoading && !translationUsedProvider && (
                           <span className="animate-pulse text-amber-700">Checking for translation…</span>
                         )}
-                        {translationLoading && translationUsedProvider.startsWith("queue") && (
-                          <span className="animate-pulse text-sky-600">
-                            {translationUsedProvider === "queue · translating now"
-                              ? "Translating now…"
-                              : translationUsedProvider === "queue · worker is offline"
-                              ? "Worker offline — translation queued"
-                              : `In queue · position ${translationUsedProvider.replace(/^queue · position /, "")}`}
-                          </span>
-                        )}
                         {!translationLoading && (
                           translationUsedProvider === "cache" ? (
-                            <span className="text-stone-600">Loaded from cache</span>
+                            <span className="text-stone-600">Editorial translation loaded</span>
                           ) : translationUsedProvider.startsWith("cache · ") ? (
-                            <span className="text-stone-600">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
-                          ) : translationUsedProvider === "translated" ? (
-                            <span className="text-green-700">Translated</span>
-                          ) : translationUsedProvider.startsWith("translated · ") ? (
-                            <span className="text-green-700">Translated · <span className="font-mono">{translationUsedProvider.slice(13)}</span></span>
-                          ) : translationUsedProvider.startsWith("queue failed") ? (
-                            <span className="text-red-600">{translationUsedProvider}</span>
-                          ) : translationUsedProvider.startsWith("error") ? (
-                            <span className="text-red-600">Translation failed — please try again</span>
+                            <span className="text-stone-600">Editorial translation · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
+                          ) : translationUsedProvider === "none" ? (
+                            <span className="text-stone-600" data-testid="editorial-empty">
+                              No editorial translation for this chapter in {LANGUAGES.find((l) => l.code === translationLang)?.label ?? translationLang} yet — editorial translations are prepared offline. Your own translation versions above work anytime.
+                            </span>
                           ) : null
                         )}
                       </div>
                     )}
 
-                    {/* Book-level translation progress */}
-                    {translationEnabled && bookTranslationStatus && (() => {
-                      const s = bookTranslationStatus;
-                      const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
-                      const ready = s.translated_chapters;
-                      const total = s.total_chapters;
-                      const notStarted = Math.max(0, total - ready - queued - (s.queue_failed ?? 0));
-                      return (
-                        <div className="mt-3 pt-3 border-t border-amber-200">
-                          <div className="flex items-center gap-1.5 text-xs text-amber-700">
-                            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" aria-hidden="true" />}
-                            <span>
-                              <strong>{ready} / {total}</strong> chapters translated
-                              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
-                              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
-                            </span>
-                          </div>
-                          {notStarted > 0 && (
-                            <>
-                              <button
-                                onClick={handleTranslateWholeBook}
-                                disabled={enqueueingBook}
-                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                              >
-                                {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
-                              </button>
-                              {hasGeminiKey === true && !enqueueingBook && (
-                                <p className="mt-1 text-xs text-stone-600 text-center" aria-label="Rough cost estimate for queuing remaining chapters">
-                                  Rough estimate: {queueTotalCostLabel(current?.text, notStarted)}
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Admin: retranslate */}
-                    {isAdmin && !translationLoading && translatedParagraphs.length > 0 && (
-                      <button
-                        onClick={handleRetranslate}
-                        className="mt-3 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                      >
-                        Retranslate chapter
-                      </button>
+                    {/* Editorial coverage (read-only; produced offline) */}
+                    {!activeSession && translationEnabled && bookTranslationStatus && (
+                      <div className="mt-3 pt-3 border-t border-amber-200 text-xs text-amber-700" data-testid="editorial-coverage">
+                        <strong>{bookTranslationStatus.translated_chapters} / {bookTranslationStatus.total_chapters}</strong> chapters have an editorial translation
+                      </div>
                     )}
 
-                    {/* Retry failed */}
-                    {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
-                      <button
-                        onClick={handleRetryFailed}
-                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
-                      >
-                        Retry failed translation
-                      </button>
-                    )}
                   </div>
                 </div>
               )}
@@ -2653,7 +2627,7 @@ export default function ReaderPage() {
                 aria-label="Translation language"
                 className="text-xs rounded border border-amber-300 px-2 py-2 text-ink bg-white flex-1 min-h-[44px] md:min-h-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 value={translationLang}
-                onChange={(e) => setTranslationLang(e.target.value)}
+                onChange={(e) => setBookTranslationLang(e.target.value)}
               >
                 {LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>{l.label}</option>

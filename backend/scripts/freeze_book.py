@@ -53,7 +53,10 @@ from pathlib import Path
 # Allow `python -m scripts.freeze_book` from backend/.
 sys.path.insert(0, str(__file__).rsplit("/backend/", 1)[0] + "/backend")
 
-from scripts.chapter_split_overrides import apply_overrides  # noqa: E402
+from scripts.chapter_split_overrides import (  # noqa: E402
+    apply_overrides,
+    translation_index_map,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BOOKS_DIR = REPO_ROOT / "data" / "books"
@@ -175,12 +178,41 @@ def _load_legacy_entries(
     return merged, warnings
 
 
+def _remap(
+    merged: dict[str, dict[int, dict]], index_map: dict[int, int]
+) -> dict[str, dict[int, dict]]:
+    """Move entries from raw chapter indices onto the corrected split's.
+
+    Entries a merge folded together are joined in raw-index order — the order
+    their chapters' text was merged in. Indices the map does not cover are left
+    alone so the caller's range check still reports them."""
+    remapped: dict[str, dict[int, dict]] = {}
+    for lang, by_index in merged.items():
+        grouped: dict[int, list[dict]] = {}
+        for raw in sorted(by_index):
+            grouped.setdefault(index_map.get(raw, raw), []).append(by_index[raw])
+        remapped[lang] = {
+            new: (
+                group[0] if len(group) == 1
+                else {**group[0],
+                      "paragraphs": [p for e in group for p in e["paragraphs"]]}
+            )
+            for new, group in grouped.items()
+        }
+    return remapped
+
+
 def build_translations(
     book_id: int, num_chapters: int, chapters: list[dict],
-    books_dir: Path | None = None,
+    books_dir: Path | None = None, index_map: dict[int, int] | None = None,
 ) -> tuple[dict, list[str], list[str]]:
     """Assemble the artifact's translations block from legacy exports and,
     when `books_dir` is given, the book's own existing artifact.
+
+    `index_map` (from chapter_split_overrides.translation_index_map) moves
+    entries onto the corrected split when a split override merged chapters —
+    without it, a repair that removes a chapter orphans every translation
+    after it.
 
     Returns (translations, warnings, errors). Out-of-range and
     paragraph-count-mismatched entries are ERRORS, never dropped and
@@ -189,6 +221,8 @@ def build_translations(
     fossilizing the wrong index is permanent. The fix is realignment
     (scripts/realign_translations.py), not exclusion."""
     merged, warnings = _load_legacy_entries(book_id, books_dir)
+    if index_map is not None:
+        merged = _remap(merged, index_map)
     result: dict[str, dict] = {}
     errors: list[str] = []
     for lang, by_index in sorted(merged.items()):
@@ -254,6 +288,9 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
     )
     if not raw_chapters:
         raise SystemExit(f"Book {book_id} produced no chapters — nothing to freeze.")
+    # Built against the raw split, before apply_overrides renumbers it, so
+    # translations move onto the corrected indices with their chapters.
+    index_map = translation_index_map(book_id, len(raw_chapters))
     raw_chapters = apply_overrides(book_id, raw_chapters)
     chapter_source = await get_chapter_source(book_id)
 
@@ -272,7 +309,7 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
         )
 
     translations, warnings, errors = build_translations(
-        book_id, len(chapters), chapters, books_dir
+        book_id, len(chapters), chapters, books_dir, index_map
     )
     for w in warnings:
         print(f"WARN: {w}", file=sys.stderr)

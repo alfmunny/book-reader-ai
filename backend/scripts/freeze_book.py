@@ -46,6 +46,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -77,6 +78,16 @@ SCHEMA_VERSION = 1
 MIN_PARAGRAPHS = 2
 MIN_CHARS = 100
 MAX_UPPERCASE_RATIO = 0.5
+# A title that simply restates the body's opening is usually fine — most books
+# repeat the chapter heading as the first line. It is a *fabricated* title when
+# it is long, because then it is a truncated sentence the splitter lifted from
+# the prose rather than a heading it found. Measured across the frozen corpus:
+# legitimate repeats run to 13 characters ("Chapter XVIII"), while City of God's
+# 126 invented titles start at 49. The threshold sits in that gap.
+FABRICATED_TITLE_MIN_CHARS = 40
+# The splitter prefixes some titles with the enclosing section ("PART TWO — …");
+# stripping it is what exposes A Room with a View's invented chapter.
+_SECTION_PREFIX = re.compile(r"^(PART|BOOK|VOLUME)\s+[A-Z0-9IVXL]+\s*[—–-]\s*", re.I)
 
 
 def paragraphs_of(text: str) -> list[str]:
@@ -97,9 +108,28 @@ def content_sha256(chapters: list[dict]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _is_fabricated_title(title: str, paragraphs: list[str]) -> bool:
+    """True when the title is a long chunk of the chapter's own opening text.
+
+    The signature of a split made where no heading exists: having found nothing
+    to name the chapter with, the splitter names it after the prose it starts
+    with. Catches City of God #45304 (126 of 133 chapters) and the boundary
+    invented inside A Room with a View #2641."""
+    if not paragraphs:
+        return False
+    normalised = _SECTION_PREFIX.sub("", re.sub(r"\s+", " ", title or "").strip())
+    if len(normalised) < FABRICATED_TITLE_MIN_CHARS:
+        return False
+    return re.sub(r"\s+", " ", paragraphs[0]).strip().startswith(normalised)
+
+
 def mechanical_audit(chapters: list[dict]) -> list[str]:
     """Cheap pre-filter for obviously-broken chapters. Returns human-readable
-    findings; any finding blocks the freeze unless --force."""
+    findings; any finding blocks the freeze unless --force.
+
+    This catches shapes, never meaning: a boundary in the wrong *place* between
+    two healthy-looking chapters is invisible here, which is what --audited-by
+    attests that a human checked."""
     findings: list[str] = []
     for ch in chapters:
         text = "\n\n".join(ch["paragraphs"])
@@ -114,6 +144,11 @@ def mechanical_audit(chapters: list[dict]) -> list[str]:
             problems.append(f"only {len(text)} chars")
         if upper_ratio > MAX_UPPERCASE_RATIO:
             problems.append(f"{upper_ratio:.0%} uppercase")
+        if _is_fabricated_title(ch["title"], ch["paragraphs"]):
+            problems.append(
+                "title is the opening of its own text — the splitter found no "
+                "heading here and named the chapter after its prose"
+            )
         if problems:
             findings.append(
                 f"chapter {ch['index']} ({ch['title']!r}): " + ", ".join(problems)

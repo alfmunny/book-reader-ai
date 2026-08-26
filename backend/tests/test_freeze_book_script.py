@@ -7,6 +7,7 @@ prose and verse, the mechanical audit gate, legacy translation merge
 """
 
 import json
+import re
 
 import pytest
 from unittest.mock import AsyncMock
@@ -373,3 +374,73 @@ async def test_legacy_export_still_overrides_the_artifact_copy(frozen_env, tmp_p
     entry = json.loads(out.read_text())["translations"]["zh"]["chapters"][0]
     assert entry["paragraphs"] == ["新一", "新二", "新三"]
     assert entry["title_translation"] == "新"
+
+
+# ── Fabricated-title detector (audit gate) ───────────────────────────────────
+
+def test_audit_flags_a_title_lifted_from_its_own_first_paragraph():
+    """City of God #45304: the splitter found no headings and built 126 of 133
+    titles out of each chapter's opening sentence. Every chapter looked healthy
+    to the length/uppercase filters, so the batch froze it."""
+    opening = (
+        "But it is the occasion of this great Apology which invests it at "
+        "once with gravity and interest, and the whole is worth reading."
+    )
+    findings = mechanical_audit([
+        {"index": 0, "title": opening[:60], "paragraphs": [opening, _PROSE]},
+    ])
+
+    assert len(findings) == 1
+    assert "title is the opening of its own text" in findings[0]
+
+
+def test_audit_flags_a_boundary_invented_inside_prose():
+    """A Room with a View #2641, before #2716: 'Chapter two' matched inside
+    narrative prose. The section prefix must not hide it."""
+    opening = "Chapter two was found, and she glanced at its opening sentences."
+    findings = mechanical_audit([
+        {"index": 15, "title": f"PART TWO — {opening}",
+         "paragraphs": [opening, _PROSE]},
+    ])
+
+    assert len(findings) == 1
+    assert "title is the opening of its own text" in findings[0]
+
+
+def test_audit_ignores_a_real_heading_repeated_in_the_body():
+    """Most books restate the chapter heading as the body's first line. Across
+    the frozen corpus those run to 13 characters; fabricated prose titles start
+    at 49 — the threshold sits in that gap."""
+    findings = mechanical_audit([
+        {"index": 14, "title": "PART TWO — Chapter XV",
+         "paragraphs": ["Chapter XV\nThe Disaster Within", _PROSE]},
+        {"index": 0, "title": "CHAPTER I. Down the Rabbit-Hole",
+         "paragraphs": ["CHAPTER I. Down the Rabbit-Hole", _PROSE]},
+    ])
+
+    assert findings == []
+
+
+def test_audit_ignores_a_long_title_that_does_not_open_its_text():
+    """Dracula's chapter 24 title is 65 characters and entirely legitimate —
+    length alone must not trip the detector."""
+    findings = mechanical_audit([
+        {"index": 25,
+         "title": "CHAPTER XXIV DR. SEWARD’S PHONOGRAPH DIARY, SPOKEN BY VAN HELSING",
+         "paragraphs": ["This to Jonathan Harker.", _PROSE]},
+    ])
+
+    assert findings == []
+
+
+def test_audit_tolerates_whitespace_differences_between_title_and_body():
+    opening = (
+        "The propriety of publishing a translation of so choice a specimen "
+        "of ancient learning needs no defence."
+    )
+    findings = mechanical_audit([
+        {"index": 2, "title": re.sub(r"\s+", "  ", opening[:58]),
+         "paragraphs": [opening.replace(" ", "\n", 3), _PROSE]},
+    ])
+
+    assert len(findings) == 1

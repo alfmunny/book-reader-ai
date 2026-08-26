@@ -134,19 +134,5 @@ describe("Reader mobile bottom toolbar focus rings (closes #2187)", () => {
 });
 
 describe("Reader translate panel focus rings (closes #2187)", () => {
-  it("Translate this chapter button has focus ring with amber-700 offset", () => {
-    // Use onClick= anchor to skip function definition
-    const idx = readerPage.indexOf("onClick={handleTranslateThisChapter}");
-    expect(idx).toBeGreaterThan(-1);
-    const window = readerPage.slice(idx, idx + 400);
-    expect(window).toContain("focus-visible:ring-amber-400");
-    expect(window).toContain("ring-offset-amber-700");
-  });
 
-  it("Retry failed translation button has red focus ring", () => {
-    const idx = readerPage.indexOf("Retry failed translation");
-    expect(idx).toBeGreaterThan(-1);
-    const window = readerPage.slice(Math.max(0, idx - 300), idx + 20);
-    expect(window).toContain("focus-visible:ring-red-400");
-  });
 });

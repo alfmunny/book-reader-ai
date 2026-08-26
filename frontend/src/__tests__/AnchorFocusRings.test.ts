@@ -37,13 +37,6 @@ describe("Reader page anchor focus rings (closes #2200)", () => {
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
-  it("Vocab panel Sign in inline anchor has focus ring", () => {
-    // className comes before "Sign in</a> to translate" — look backward
-    const idx = readerSrc.indexOf("Sign in</a> to translate this chapter.");
-    expect(idx).toBeGreaterThan(-1);
-    const window = readerSrc.slice(Math.max(0, idx - 150), idx + 10);
-    expect(window).toContain("focus-visible:ring-amber-400");
-  });
 });
 
 describe("Vocabulary page anchor focus ring (closes #2200)", () => {

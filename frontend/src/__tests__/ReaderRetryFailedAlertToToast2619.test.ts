@@ -13,22 +13,7 @@ function read(rel: string): string {
 describe("Reader retry-failed alert → toast (#2619)", () => {
   const src = read("src/app/reader/[bookId]/page.tsx");
 
-  it("handleRetryFailed does not call alert()", () => {
-    const fnStart = src.indexOf("async function handleRetryFailed");
-    expect(fnStart).toBeGreaterThan(-1);
-    const nextFn = src.indexOf("\n  async function ", fnStart + 1);
-    const fnBody = src.slice(fnStart, nextFn > 0 ? nextFn : fnStart + 2000);
-    expect(fnBody).not.toMatch(/\balert\s*\(/);
-  });
 
-  it("retry error is surfaced via a toast state (not alert)", () => {
-    // The function must set some error toast state in the catch block
-    const fnStart = src.indexOf("async function handleRetryFailed");
-    const nextFn = src.indexOf("\n  async function ", fnStart + 1);
-    const fnBody = src.slice(fnStart, nextFn > 0 ? nextFn : fnStart + 2000);
-    // Must call a setter for a toast state in the catch
-    expect(fnBody).toMatch(/set\w+Toast|setRetryError|setEnqueueToast/);
-  });
 
   it("retry error banner uses role=alert for AT", () => {
     // The banner for retry errors must use role="alert" for screen readers

@@ -847,7 +847,9 @@ async def test_migration_025_user_book_chapters_table_created(tmp_db):
             "SELECT name FROM pragma_table_info('user_book_chapters')"
         ) as cur:
             cols = {r[0] for r in await cur.fetchall()}
-    assert cols == {"id", "book_id", "chapter_index", "title", "text", "is_draft"}
+    # Subset, not equality: later migrations legitimately append columns
+    # (045 adds reviewed/updated_at for cross-session audit drafts).
+    assert {"id", "book_id", "chapter_index", "title", "text", "is_draft"} <= cols
 
 
 # ── SQL splitter keeps CREATE TRIGGER BEGIN...END blocks intact ─────────────
@@ -2145,3 +2147,40 @@ async def test_migration_042_is_idempotent(tmp_db):
             assert [r[0] for r in await cur.fetchall()] == ["acknowledge"]
         async with db.execute("SELECT COUNT(*) FROM word_occurrences") as cur:
             assert (await cur.fetchone())[0] == 1
+
+
+# ── 045: cross-session chapter-audit drafts ──────────────────────────────────
+
+async def test_migration_045_adds_audit_draft_columns(tmp_db):
+    """reviewed/updated_at let an audit resume in a later session."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT name FROM pragma_table_info('user_book_chapters')") as cur:
+            cols = {r[0] for r in await cur.fetchall()}
+    assert {"reviewed", "updated_at"} <= cols
+
+
+async def test_migration_045_defaults_existing_rows_to_unreviewed(tmp_db):
+    """Additive and defaulted — a draft written before 045 reads as untouched."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1600, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)"
+            " VALUES (1600, 0, 'A', 'x', 1)"
+        )
+        await db.commit()
+        async with db.execute(
+            "SELECT reviewed, updated_at FROM user_book_chapters WHERE book_id=1600"
+        ) as cur:
+            assert await cur.fetchone() == (0, None)
+
+
+async def test_migration_045_creates_the_recency_index(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='ubc_draft_recent'"
+        ) as cur:
+            assert await cur.fetchone() is not None

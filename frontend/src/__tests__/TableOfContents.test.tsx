@@ -142,4 +142,27 @@ describe("TableOfContents", () => {
       "true"
     );
   });
+
+
+  // ── Visual hierarchy (#2745 follow-up) ────────────────────────────────────
+
+  it("distinguishes the current chapter by weight, not colour alone", () => {
+    renderToc();
+    const current = screen.getByRole("button", { current: true });
+    const other = screen.getByRole("button", { name: "1. CHAPTER I" });
+
+    // The title span carries the emphasis; aria-current already carries the
+    // semantics, so this guards the visible cue a sighted reader relies on.
+    expect(current.querySelector("span:nth-child(2)")?.className).toContain("font-semibold");
+    expect(other.querySelector("span:nth-child(2)")?.className).not.toContain("font-semibold");
+  });
+
+  it("keeps unselected titles below full-strength ink so the list is scannable", () => {
+    renderToc();
+    const other = screen.getByRole("button", { name: "1. CHAPTER I" });
+    const title = other.querySelector("span:nth-child(2)")?.className ?? "";
+
+    expect(title).toContain("text-stone-600");
+    expect(title).not.toContain("text-ink");
+  });
 });

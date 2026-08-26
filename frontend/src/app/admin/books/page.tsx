@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { adminFetch } from "@/lib/adminFetch";
 import SeedPopularButton from "@/components/SeedPopularButton";
+import PendingPublishPanel from "@/components/PendingPublishPanel";
 import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
 import { AlertCircleIcon, ChevronDownIcon, ChevronRightIcon, RetryIcon, CloseIcon } from "@/components/Icons";
 
@@ -25,6 +26,11 @@ interface Book {
   queue?: QueueBreakdown;
   active?: boolean;
   active_language?: string | null;
+  /** Audit state (migration 046): frozen = split fixed; published = in the library. */
+  frozen?: boolean;
+  published?: boolean;
+  audited_by?: string | null;
+  frozen_at?: string | null;
 }
 interface TranslationEntry {
   book_id: number;
@@ -245,6 +251,8 @@ export default function BooksPage() {
   return (
     <div className="space-y-4">
       <h2 className="sr-only">Books</h2>
+
+      <PendingPublishPanel />
       {error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-3">
           <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -390,6 +398,22 @@ export default function BooksPage() {
                         aria-label={b.active_language ? `Translating to ${b.active_language}` : "Translating"}
                       >
                         translating{b.active_language ? ` → ${b.active_language}` : ""}
+                      </span>
+                    )}
+                    {!b.frozen && (
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600"
+                        title="No frozen split yet — audit and freeze it before it can be published"
+                      >
+                        not audited
+                      </span>
+                    )}
+                    {b.frozen && !b.published && (
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800"
+                        title={`Frozen${b.frozen_at ? ` ${b.frozen_at}` : ""}${b.audited_by ? ` by ${b.audited_by}` : ""} — waiting to be published`}
+                      >
+                        awaiting review
                       </span>
                     )}
                   </div>

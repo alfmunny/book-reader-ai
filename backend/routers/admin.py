@@ -152,6 +152,18 @@ async def get_books(_admin: dict = Depends(_require_admin)):
         ) as cursor:
             queue_rows = await cursor.fetchall()
 
+        # Audit state per book (#2711 / migration 046): a freeze row means the
+        # split is fixed; published_at means a human put it in the library.
+        async with db.execute(
+            "SELECT book_id, frozen_at, audited_by, published_at FROM book_freeze"
+        ) as cursor:
+            freeze_rows = await cursor.fetchall()
+
+    freeze_by_book = {
+        r[0]: {"frozen_at": r[1], "audited_by": r[2], "published_at": r[3]}
+        for r in freeze_rows
+    }
+
     translations: dict[int, dict[str, dict]] = {}
     for book_id, lang, chapters, size_chars in trans_rows:
         translations.setdefault(book_id, {})[lang] = {
@@ -199,6 +211,10 @@ async def get_books(_admin: dict = Depends(_require_admin)):
                 if current and current["book_id"] == b["id"]
                 else None
             ),
+            "frozen": b["id"] in freeze_by_book,
+            "published": bool((freeze_by_book.get(b["id"]) or {}).get("published_at")),
+            "audited_by": (freeze_by_book.get(b["id"]) or {}).get("audited_by"),
+            "frozen_at": (freeze_by_book.get(b["id"]) or {}).get("frozen_at"),
         })
     return result
 

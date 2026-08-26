@@ -184,3 +184,31 @@ async def test_publish_requires_admin(client, test_user):
     resp = await client.post("/api/admin/books/7217/publish")
     assert resp.status_code in (401, 403)
     assert await list_audited_books() == []
+
+
+# ── audit state on the main admin list ───────────────────────────────────────
+
+async def test_admin_books_reports_unfrozen_state(client, test_user):
+    await _make(7301, "Never audited")
+    book = next(b for b in (await client.get("/api/admin/books")).json() if b["id"] == 7301)
+    assert book["frozen"] is False
+    assert book["published"] is False
+    assert book["audited_by"] is None
+
+
+async def test_admin_books_reports_frozen_but_unpublished(client, test_user):
+    await _make(7302, "Awaiting review")
+    await _freeze(7302, published=False)
+    book = next(b for b in (await client.get("/api/admin/books")).json() if b["id"] == 7302)
+    assert book["frozen"] is True
+    assert book["published"] is False
+    assert book["audited_by"] == "architect"
+    assert book["frozen_at"] == "2026-08-26"
+
+
+async def test_admin_books_reports_published(client, test_user):
+    await _make(7303, "Live")
+    await _freeze(7303, published=True)
+    book = next(b for b in (await client.get("/api/admin/books")).json() if b["id"] == 7303)
+    assert book["frozen"] is True
+    assert book["published"] is True

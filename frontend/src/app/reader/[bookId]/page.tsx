@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -492,6 +492,10 @@ export default function ReaderPage() {
   const [translationLoading, setTranslationLoading] = useState(false);
   const [translationUsedProvider, setTranslationUsedProvider] = useState<string>("");
   const [bookTranslationStatus, setBookTranslationStatus] = useState<TranslationStatus | null>(null);
+  // Which languages have editorial translations at all — shown as chips so
+  // nobody has to cycle target languages to discover coverage (owner,
+  // 2026-08-27).
+  const [editorialLanguages, setEditorialLanguages] = useState<BookTranslationLanguages | null>(null);
 
   // Reader display settings
   const [fontSize, setFontSize] = useState<FontSize>("base");
@@ -748,6 +752,15 @@ export default function ReaderPage() {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, chapterIndex, bookId, chapters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getBookTranslationLanguages(Number(bookId))
+      .then((data) => { if (!cancelled) setEditorialLanguages(data); })
+      .catch(() => { if (!cancelled) setEditorialLanguages(null); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookId]);
 
   // Editorial coverage for the status display — a single fetch per
   // (book, language); the queue-era 15s polling is gone with the queue UI.
@@ -2428,6 +2441,39 @@ export default function ReaderPage() {
                       />
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
+
+                    {/* Editorial availability at a glance (owner request) */}
+                    {translationEnabled && editorialLanguages && (
+                      <div className="mb-4" data-testid="editorial-languages">
+                        <p className="block text-xs text-amber-700 mb-1">Editorial translations for this book</p>
+                        {editorialLanguages.languages.length === 0 ? (
+                          <p className="text-xs text-stone-500 italic">None yet — editorial translations are prepared offline. Your own versions below work anytime.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {editorialLanguages.languages.map((l) => (
+                              <button
+                                key={l.target_language}
+                                onClick={() => {
+                                  setTranslationLang(l.target_language);
+                                  saveSettings({ translationLang: l.target_language });
+                                  selectTranslationSession(null);
+                                }}
+                                aria-pressed={!activeSession && translationLang === l.target_language}
+                                className={`text-xs px-2.5 py-1.5 min-h-[44px] md:min-h-0 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                                  !activeSession && translationLang === l.target_language
+                                    ? "border-amber-600 bg-amber-700 text-white"
+                                    : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                                }`}
+                              >
+                                {LANGUAGES.find((x) => x.code === l.target_language)?.label ?? l.target_language}
+                                {" "}
+                                <span className="opacity-75 font-mono text-[10px]">{l.translated_chapters}/{editorialLanguages.total_chapters || chapters.length}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Session switcher (design: docs/design/user-translations.md) */}
                     {session?.backendToken && translationEnabled && (

@@ -309,6 +309,16 @@ export interface TranslationStatus {
   bulk_active: boolean;
 }
 
+export interface BookTranslationLanguages {
+  book_id: number;
+  total_chapters: number;
+  languages: Array<{ target_language: string; translated_chapters: number }>;
+}
+
+export function getBookTranslationLanguages(bookId: number) {
+  return request<BookTranslationLanguages>(`/books/${bookId}/translation-languages`);
+}
+
 export function getBookTranslationStatus(
   bookId: number,
   targetLanguage: string,

@@ -105,6 +105,44 @@ async def popular_books(
     }
 
 
+@router.get("/{book_id}/translation-languages")
+async def translation_languages(book_id: int = Path(..., ge=1), user: dict | None = Depends(get_optional_user)):
+    """Which languages have editorial translations for this book, with
+    coverage — so the reader can show what exists WITHOUT the user cycling
+    through every target language (owner request, 2026-08-27)."""
+    import aiosqlite
+    from services.db import DB_PATH
+
+    cached = await get_cached_book(book_id)
+    if not cached:
+        raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(cached, user)
+
+    total_chapters = 0
+    if cached.get("text") or cached.get("source") == "upload":
+        from services.book_chapters import get_chapters
+        chapters = await get_chapters(book_id)
+        total_chapters = len(chapters)
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """SELECT target_language, COUNT(*) FROM translations
+               WHERE book_id=? GROUP BY target_language
+               ORDER BY COUNT(*) DESC""",
+            (book_id,),
+        ) as cursor:
+            rows = [row async for row in cursor]
+
+    return {
+        "book_id": book_id,
+        "total_chapters": total_chapters,
+        "languages": [
+            {"target_language": lang, "translated_chapters": n}
+            for lang, n in rows
+        ],
+    }
+
+
 @router.get("/{book_id}/translation-status")
 async def translation_status(book_id: int = Path(..., ge=1), target_language: str = Query(..., min_length=1, max_length=20), user: dict | None = Depends(get_optional_user)):
     """Return book-level translation progress for the reader banner.

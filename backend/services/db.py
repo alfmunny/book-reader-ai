@@ -611,7 +611,8 @@ async def get_user_book_chapters(
     book_id: int, include_drafts: bool = False,
 ) -> list[dict]:
     """Return rows from user_book_chapters for an uploaded book, ordered by chapter_index."""
-    query = "SELECT id, chapter_index, title, text, is_draft FROM user_book_chapters WHERE book_id = ?"
+    query = ("SELECT id, chapter_index, title, text, is_draft, reviewed, updated_at"
+             " FROM user_book_chapters WHERE book_id = ?")
     if not include_drafts:
         query += " AND is_draft = 0"
     query += " ORDER BY chapter_index"

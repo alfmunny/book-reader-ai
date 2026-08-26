@@ -62,7 +62,7 @@ test("creating a session posts and selects it", async () => {
   (api.createTranslationSession as jest.Mock).mockResolvedValue(created);
   const { props } = renderPanel();
 
-  fireEvent.click(screen.getByText("＋ New version…"));
+  fireEvent.click(screen.getByText("＋ Add your own version"));
   fireEvent.change(screen.getByLabelText("Version name"), { target: { value: "直译版" } });
   fireEvent.change(screen.getAllByLabelText("Version provider")[0], { target: { value: "claude" } });
   fireEvent.click(screen.getByRole("button", { name: "Create version" }));
@@ -77,7 +77,7 @@ test("creating a session posts and selects it", async () => {
 test("duplicate-name error from the API is shown", async () => {
   (api.createTranslationSession as jest.Mock).mockRejectedValue(new Error('You already have a session named "诗意版" for this book.'));
   renderPanel();
-  fireEvent.click(screen.getByText("＋ New version…"));
+  fireEvent.click(screen.getByText("＋ Add your own version"));
   fireEvent.change(screen.getByLabelText("Version name"), { target: { value: "诗意版" } });
   fireEvent.click(screen.getByRole("button", { name: "Create version" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/already have a session/);

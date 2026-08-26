@@ -17,14 +17,9 @@ describe("editorial language chips", () => {
     expect(src).toMatch(/getBookTranslationLanguages\(Number\(bookId\)\)/);
   });
 
-  it("renders clickable chips that switch to that editorial language", () => {
-    const block = src.slice(src.indexOf('data-testid="editorial-languages"'), src.indexOf("Session switcher"));
-    expect(block).toContain("setTranslationLang(l.target_language)");
-    expect(block).toContain("selectTranslationSession(null)");
-    expect(block).toContain("translated_chapters");
-  });
-
-  it("has an explicit empty state instead of silence", () => {
-    expect(src).toContain("None yet — editorial translations are prepared offline");
+  it("feeds language coverage into the session panel's editorial card", () => {
+    expect(src).toContain("editorialLanguages={editorialLanguages ?");
+    expect(src).toMatch(/onSelectEditorialLanguage=\{\(lang\) => \{/);
+    expect(src).toContain("selectTranslationSession(null)");
   });
 });

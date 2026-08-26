@@ -35,6 +35,10 @@ interface Props {
   runProgress?: { done: number; total: number } | null;
   /** Editorial coverage for the Editorial entry's status (read-only). */
   editorialStatus?: { lang: string; done: number; total: number; thisChapter: boolean; loading: boolean } | null;
+  /** All languages that have editorial translations, with coverage. */
+  editorialLanguages?: { total: number; languages: Array<{ code: string; chapters: number }> } | null;
+  translationLang?: string;
+  onSelectEditorialLanguage?: (lang: string) => void;
   /** paragraphs translated / total in the current chapter (session view) */
   chapterProgress?: { done: number; total: number } | null;
 }
@@ -57,6 +61,9 @@ export default function TranslationSessionPanel({
   onDismissError,
   runProgress,
   editorialStatus,
+  editorialLanguages,
+  translationLang,
+  onSelectEditorialLanguage,
   chapterProgress,
 }: Props) {
   const [creating, setCreating] = useState(false);
@@ -200,7 +207,52 @@ export default function TranslationSessionPanel({
 
   return (
     <div className="mb-4" data-testid="translation-session-panel">
-      <p className="block text-xs text-amber-700 mb-1">Translation versions</p>
+      <p className="block text-xs text-amber-700 mb-1">Editorial translation</p>
+      <div className={`rounded-lg border mb-3 ${activeSessionId === null ? "border-amber-600 ring-1 ring-amber-600 bg-white" : "border-amber-200 bg-white"}`} data-testid="editorial-card">
+        <button
+          role="radio"
+          aria-checked={activeSessionId === null}
+          onClick={() => onSelect(null)}
+          className="w-full flex items-center gap-2 px-3 py-2 min-h-[44px] md:min-h-0 text-sm text-left transition-colors hover:bg-amber-50/50 rounded-t-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          <span className="font-medium text-ink flex-1">Editorial</span>
+          {editorialStatus && !editorialStatus.loading && (
+            <span
+              data-testid="editorial-chip-status"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full ${editorialStatus.thisChapter ? "bg-green-50 text-green-700" : "bg-stone-100 text-stone-500"}`}
+              title={`${editorialStatus.done} / ${editorialStatus.total} chapters have an editorial translation`}
+            >
+              {editorialStatus.thisChapter ? `✓ ${editorialStatus.done}/${editorialStatus.total} ch` : `– ${editorialStatus.done}/${editorialStatus.total} ch`}
+            </span>
+          )}
+        </button>
+        <div className="px-3 pb-2.5" data-testid="editorial-languages">
+          {editorialLanguages && editorialLanguages.languages.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {editorialLanguages.languages.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => onSelectEditorialLanguage?.(l.code)}
+                  aria-pressed={activeSessionId === null && translationLang === l.code}
+                  className={`text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                    activeSessionId === null && translationLang === l.code
+                      ? "border-amber-600 bg-amber-700 text-white"
+                      : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                  }`}
+                >
+                  {LANGUAGES.find((x) => x.code === l.code)?.label ?? l.code}
+                  {" "}
+                  <span className="opacity-75 font-mono text-[10px]">{l.chapters}/{editorialLanguages.total}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
+          )}
+        </div>
+      </div>
+
+      <p className="block text-xs text-amber-700 mb-1">Other translation versions</p>
       {showFilter && (
         <div className="mb-2 space-y-1.5" data-testid="version-filter">
           <input
@@ -235,29 +287,7 @@ export default function TranslationSessionPanel({
           </div>
         </div>
       )}
-      <div className="space-y-1.5" role="radiogroup" aria-label="Translation versions">
-        <button
-          role="radio"
-          aria-checked={activeSessionId === null}
-          onClick={() => onSelect(null)}
-          className={`w-full flex items-center gap-2 rounded-lg border px-3 py-2 min-h-[44px] md:min-h-0 text-sm text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-            activeSessionId === null ? "border-amber-600 ring-1 ring-amber-600 bg-white" : "border-amber-200 bg-white hover:bg-amber-50"
-          }`}
-        >
-          <span className="font-medium text-ink flex-1">Editorial</span>
-          {editorialStatus && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">{editorialStatus.lang}</span>
-          )}
-          {editorialStatus && !editorialStatus.loading && (
-            <span
-              data-testid="editorial-chip-status"
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${editorialStatus.thisChapter ? "bg-green-50 text-green-700" : "bg-stone-100 text-stone-500"}`}
-              title={`${editorialStatus.done} / ${editorialStatus.total} chapters have an editorial translation`}
-            >
-              {editorialStatus.thisChapter ? `✓ ${editorialStatus.done}/${editorialStatus.total} ch` : `– ${editorialStatus.done}/${editorialStatus.total} ch`}
-            </span>
-          )}
-        </button>
+      <div className="space-y-1.5" role="radiogroup" aria-label="Other translation versions">
 
         {showFilter && visibleSessions.length === 0 && (
           <p className="text-xs text-stone-500 italic px-1" data-testid="no-version-match">No versions match the filter.</p>
@@ -316,7 +346,7 @@ export default function TranslationSessionPanel({
             onClick={() => setCreating(true)}
             className="text-sm text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
-            ＋ New version…
+            ＋ Add your own version
           </button>
         ) : (
           <div className="rounded-lg border border-amber-300 bg-white p-3 space-y-2" data-testid="new-session-form">

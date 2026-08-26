@@ -2442,39 +2442,6 @@ export default function ReaderPage() {
                       <span className="text-sm text-ink">{translationEnabled ? "Enabled" : "Disabled"}</span>
                     </label>
 
-                    {/* Editorial availability at a glance (owner request) */}
-                    {translationEnabled && editorialLanguages && (
-                      <div className="mb-4" data-testid="editorial-languages">
-                        <p className="block text-xs text-amber-700 mb-1">Editorial translations for this book</p>
-                        {editorialLanguages.languages.length === 0 ? (
-                          <p className="text-xs text-stone-500 italic">None yet — editorial translations are prepared offline. Your own versions below work anytime.</p>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {editorialLanguages.languages.map((l) => (
-                              <button
-                                key={l.target_language}
-                                onClick={() => {
-                                  setTranslationLang(l.target_language);
-                                  saveSettings({ translationLang: l.target_language });
-                                  selectTranslationSession(null);
-                                }}
-                                aria-pressed={!activeSession && translationLang === l.target_language}
-                                className={`text-xs px-2.5 py-1.5 min-h-[44px] md:min-h-0 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                                  !activeSession && translationLang === l.target_language
-                                    ? "border-amber-600 bg-amber-700 text-white"
-                                    : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                                }`}
-                              >
-                                {LANGUAGES.find((x) => x.code === l.target_language)?.label ?? l.target_language}
-                                {" "}
-                                <span className="opacity-75 font-mono text-[10px]">{l.translated_chapters}/{editorialLanguages.total_chapters || chapters.length}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {/* Session switcher (design: docs/design/user-translations.md) */}
                     {session?.backendToken && translationEnabled && (
                       <TranslationSessionPanel
@@ -2491,6 +2458,16 @@ export default function ReaderPage() {
                         onTranslateChapter={handleSessionTranslateChapter}
                         chapterChars={chapters[chapterIndex]?.text?.length ?? 0}
                         translating={sessionTranslating || chapterRunActive}
+                        editorialLanguages={editorialLanguages ? {
+                          total: editorialLanguages.total_chapters || chapters.length,
+                          languages: editorialLanguages.languages.map((l) => ({ code: l.target_language, chapters: l.translated_chapters })),
+                        } : null}
+                        translationLang={translationLang}
+                        onSelectEditorialLanguage={(lang) => {
+                          setTranslationLang(lang);
+                          saveSettings({ translationLang: lang });
+                          selectTranslationSession(null);
+                        }}
                         editorialStatus={bookTranslationStatus ? {
                           lang: translationLang,
                           done: bookTranslationStatus.translated_chapters,

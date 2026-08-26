@@ -397,6 +397,27 @@ export default function ReaderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id, chapterIndex]);
 
+  // Poll while a background chapter run is active — paragraphs appear
+  // gradually and the run survives page reloads (the server keeps going;
+  // any fresh GET sees run.active and resumes the watch).
+  const chapterRunActive = !!sessionChapter?.run?.active;
+  useEffect(() => {
+    if (!activeSession || !chapterRunActive) return;
+    const timer = setInterval(() => {
+      getSessionChapter(activeSession.id, chapterIndex)
+        .then((data) => {
+          setSessionChapter(data);
+          if (data.run && !data.run.active) {
+            if (data.run.error) setSessionActionError(data.run.error);
+            listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }, 1500);
+    return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, chapterIndex, chapterRunActive]);
+
   function selectTranslationSession(sess: TranslationSession | null) {
     setActiveSession(sess);
     try {
@@ -406,16 +427,16 @@ export default function ReaderPage() {
   }
 
   async function handleSessionTranslateChapter() {
-    if (!activeSession || sessionTranslating) return;
+    if (!activeSession || sessionTranslating || chapterRunActive) return;
     setSessionTranslating(true);
     setSessionActionError(null);
     try {
+      // Starts a background run; the polling effect renders paragraphs as
+      // they finish and surfaces run errors.
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter" });
       setSessionChapter(data);
-      listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
-      // Paragraphs translated before the failure ARE saved — show them.
       getSessionChapter(activeSession.id, chapterIndex).then(setSessionChapter).catch(() => {});
     } finally {
       setSessionTranslating(false);
@@ -1895,6 +1916,7 @@ export default function ReaderPage() {
                   sessionMode={translationEnabled && !!activeSession}
                   translationMeta={sessionMeta}
                   translatingParagraphs={translatingParas}
+                  actionsDisabled={sessionTranslating || chapterRunActive}
                   onTranslateParagraph={activeSession ? handleSessionTranslateParagraph : undefined}
                   onEditParagraph={activeSession ? (idx) => {
                     setParagraphEditorError(false);
@@ -2611,7 +2633,8 @@ export default function ReaderPage() {
                         onSelect={selectTranslationSession}
                         onSessionsChanged={setTranslationSessions}
                         onTranslateChapter={handleSessionTranslateChapter}
-                        translating={sessionTranslating}
+                        translating={sessionTranslating || chapterRunActive}
+                        runProgress={sessionChapter?.run?.active ? { done: sessionChapter.run.done, total: sessionChapter.run.total } : null}
                         actionError={sessionActionError}
                         onDismissError={() => setSessionActionError(null)}
                         chapterProgress={activeSession && sessionChapter ? {

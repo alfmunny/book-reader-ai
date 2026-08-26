@@ -321,6 +321,8 @@ interface Props {
   translationMeta?: Record<number, { model: string; edited: boolean }>;
   /** Paragraph indexes currently being translated (spinner state). */
   translatingParagraphs?: Set<number>;
+  /** Locks all per-paragraph actions (e.g. while a chapter run is active). */
+  actionsDisabled?: boolean;
   onTranslateParagraph?: (paragraphIdx: number) => void;
   onEditParagraph?: (paragraphIdx: number) => void;
   onDeleteParagraph?: (paragraphIdx: number) => void;
@@ -583,6 +585,7 @@ export default function SentenceReader({
   sessionMode = false,
   translationMeta,
   translatingParagraphs,
+  actionsDisabled = false,
   onTranslateParagraph,
   onEditParagraph,
   onDeleteParagraph,
@@ -843,11 +846,11 @@ export default function SentenceReader({
   const renderSessionExtras = (paraIdx: number, hasText: boolean) => {
     if (!sessionMode) return null;
     const meta = translationMeta?.[paraIdx];
-    const busy = translatingParagraphs?.has(paraIdx) ?? false;
+    const busy = (translatingParagraphs?.has(paraIdx) ?? false) || actionsDisabled;
     if (!hasText) {
       return (
         <div className="border border-dashed border-amber-300 rounded-lg px-3 py-2.5 text-xs text-stone-500 flex items-center justify-between gap-2" data-testid={`session-gap-${paraIdx}`}>
-          <span>{busy ? "Translating…" : "Not translated yet"}</span>
+          <span>{busy ? (actionsDisabled ? "Chapter translation running…" : "Translating…") : "Not translated yet"}</span>
           {!busy && onTranslateParagraph && (
             <button
               onClick={() => onTranslateParagraph(paraIdx)}
@@ -881,6 +884,7 @@ export default function SentenceReader({
         {onEditParagraph && (
           <button
             onClick={() => onEditParagraph(paraIdx)}
+            disabled={actionsDisabled}
             aria-label={`Edit translation of paragraph ${paraIdx + 1}`}
             className="text-[11px] text-stone-600 hover:text-stone-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
@@ -890,6 +894,7 @@ export default function SentenceReader({
         {onDeleteParagraph && (
           <button
             onClick={() => onDeleteParagraph(paraIdx)}
+            disabled={actionsDisabled}
             aria-label={`Delete translation of paragraph ${paraIdx + 1}`}
             className="text-[11px] text-red-600 hover:text-red-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
           >

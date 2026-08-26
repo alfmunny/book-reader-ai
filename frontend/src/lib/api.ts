@@ -907,11 +907,20 @@ export interface SessionParagraph {
   edited_by_user: boolean;
 }
 
+export interface ChapterRun {
+  active: boolean;
+  done: number;
+  total: number;
+  error: string | null;
+}
+
 export interface SessionChapter {
   session_id: number;
   chapter_index: number;
   paragraph_count: number;
   paragraphs: Record<string, SessionParagraph>;
+  /** Background chapter-translation run, when one is (or just was) active. */
+  run?: ChapterRun | null;
 }
 
 export function listTranslationSessions(bookId: number) {

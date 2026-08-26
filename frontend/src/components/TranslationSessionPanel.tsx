@@ -27,6 +27,8 @@ interface Props {
   /** Persistent error from the last session action (translate/delete). */
   actionError?: string | null;
   onDismissError?: () => void;
+  /** Live background-run progress; the translate button becomes a bar. */
+  runProgress?: { done: number; total: number } | null;
   /** paragraphs translated / total in the current chapter (session view) */
   chapterProgress?: { done: number; total: number } | null;
 }
@@ -46,6 +48,7 @@ export default function TranslationSessionPanel({
   translating,
   actionError,
   onDismissError,
+  runProgress,
   chapterProgress,
 }: Props) {
   const [creating, setCreating] = useState(false);
@@ -296,9 +299,24 @@ export default function TranslationSessionPanel({
           <button
             onClick={onTranslateChapter}
             disabled={translating}
-            className="w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 hover:bg-amber-800 disabled:opacity-60 text-white text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+            aria-busy={translating}
+            data-testid="translate-chapter-button"
+            className="relative w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg overflow-hidden bg-amber-700 hover:bg-amber-800 disabled:hover:bg-amber-700 text-white text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
           >
-            {translating ? "Translating…" : "Translate this chapter"}
+            {/* The button IS the progress bar during a run */}
+            {runProgress && runProgress.total > 0 && (
+              <span
+                aria-hidden="true"
+                data-testid="translate-progress-fill"
+                className="absolute inset-y-0 left-0 bg-amber-500/80 transition-all duration-500"
+                style={{ width: `${Math.round((runProgress.done / runProgress.total) * 100)}%` }}
+              />
+            )}
+            <span className="relative">
+              {runProgress && runProgress.total > 0
+                ? `Translating ${runProgress.done} / ${runProgress.total}…`
+                : translating ? "Translating…" : "Translate this chapter"}
+            </span>
           </button>
           <p className="text-[11px] text-stone-600" data-testid="session-coverage">
             {chapterProgress ? `${chapterProgress.done} / ${chapterProgress.total} paragraphs in this chapter · ` : ""}

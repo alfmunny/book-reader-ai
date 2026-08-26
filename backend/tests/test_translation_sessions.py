@@ -109,6 +109,17 @@ async def test_foreign_session_is_404(client, test_user):
         assert (await call).status_code == 404
 
 
+async def _await_run(client, sid, chapter=0, tries=50):
+    """Poll the chapter endpoint until the background run finishes."""
+    import asyncio as _asyncio
+    for _ in range(tries):
+        data = (await client.get(f"/api/translation-sessions/{sid}/chapters/{chapter}")).json()
+        if data.get("run") is None or not data["run"]["active"]:
+            return data
+        await _asyncio.sleep(0.02)
+    raise AssertionError("chapter run did not finish")
+
+
 # ── Translate ────────────────────────────────────────────────────────────────
 
 async def test_translate_single_paragraph_records_model_tag(client, test_user):
@@ -128,15 +139,59 @@ async def test_translate_single_paragraph_records_model_tag(client, test_user):
     assert mock.await_args.args[5] == "优雅的书面语"
 
 
-async def test_translate_chapter_covers_all_paragraphs(client, test_user):
+async def test_translate_chapter_runs_in_background_with_progress(client, test_user):
+    """Chapter scope returns immediately with a run status; paragraphs land
+    incrementally and the run reports done/total (owner feedback: the old
+    single long request rendered nothing until a reload)."""
     await set_user_deepseek_key(test_user["id"], encrypt_api_key("sk-ds"))
     sid = (await _create(client)).json()["id"]
     with patch("services.user_translate.translate_paragraph",
                new=AsyncMock(return_value=("译文", "deepseek-v4-flash"))):
         resp = await client.post(f"/api/translation-sessions/{sid}/translate",
                                  json={"chapter_index": 0, "scope": "chapter"})
-    assert resp.status_code == 200
-    assert set(resp.json()["paragraphs"].keys()) == {"0", "1"}
+        assert resp.status_code == 200
+        run = resp.json()["run"]
+        assert run["total"] == 2
+        data = await _await_run(client, sid)
+    assert set(data["paragraphs"].keys()) == {"0", "1"}
+
+
+async def test_second_chapter_run_is_409_and_paragraph_locked_during_run(client, test_user):
+    import asyncio as _asyncio
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("sk-ds"))
+    sid = (await _create(client)).json()["id"]
+    gate = _asyncio.Event()
+
+    async def _blocked(*a, **k):
+        await gate.wait()
+        return ("译文", "deepseek-v4-flash")
+
+    with patch("services.user_translate.translate_paragraph", new=AsyncMock(side_effect=_blocked)):
+        first = await client.post(f"/api/translation-sessions/{sid}/translate",
+                                  json={"chapter_index": 0, "scope": "chapter"})
+        assert first.status_code == 200 and first.json()["run"]["active"]
+        second = await client.post(f"/api/translation-sessions/{sid}/translate",
+                                   json={"chapter_index": 0, "scope": "chapter"})
+        assert second.status_code == 409
+        para = await client.post(f"/api/translation-sessions/{sid}/translate",
+                                 json={"chapter_index": 0, "scope": 0})
+        assert para.status_code == 409
+        gate.set()
+        await _await_run(client, sid)
+
+
+async def test_chapter_run_error_is_reported_via_polling(client, test_user):
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("sk-ds"))
+    sid = (await _create(client)).json()["id"]
+    with patch("services.user_translate.translate_paragraph",
+               new=AsyncMock(side_effect=RuntimeError("secret boom"))):
+        resp = await client.post(f"/api/translation-sessions/{sid}/translate",
+                                 json={"chapter_index": 0, "scope": "chapter"})
+        assert resp.status_code == 200
+        data = await _await_run(client, sid)
+    assert data["run"]["error"] is not None
+    assert "boom" not in data["run"]["error"]
+    assert "DeepSeek" in data["run"]["error"]
 
 
 async def test_chapter_run_skips_edited_paragraphs_unless_forced(client, test_user):
@@ -146,17 +201,19 @@ async def test_chapter_run_skips_edited_paragraphs_unless_forced(client, test_us
                        json={"text": "我亲手写的译文"})
     with patch("services.user_translate.translate_paragraph",
                new=AsyncMock(return_value=("机器译文", "deepseek-v4-flash"))):
-        resp = await client.post(f"/api/translation-sessions/{sid}/translate",
-                                 json={"chapter_index": 0, "scope": "chapter"})
-    paragraphs = resp.json()["paragraphs"]
+        await client.post(f"/api/translation-sessions/{sid}/translate",
+                          json={"chapter_index": 0, "scope": "chapter"})
+        data = await _await_run(client, sid)
+    paragraphs = data["paragraphs"]
     assert paragraphs["0"]["text"] == "我亲手写的译文"      # edited row untouched
     assert paragraphs["1"]["text"] == "机器译文"
 
     with patch("services.user_translate.translate_paragraph",
                new=AsyncMock(return_value=("机器译文", "deepseek-v4-flash"))):
-        resp = await client.post(f"/api/translation-sessions/{sid}/translate",
-                                 json={"chapter_index": 0, "scope": "chapter", "force": True})
-    assert resp.json()["paragraphs"]["0"]["text"] == "机器译文"  # force overrides
+        await client.post(f"/api/translation-sessions/{sid}/translate",
+                          json={"chapter_index": 0, "scope": "chapter", "force": True})
+        data = await _await_run(client, sid)
+    assert data["paragraphs"]["0"]["text"] == "机器译文"  # force overrides
 
 
 async def test_provider_override_uses_that_key(client, test_user):

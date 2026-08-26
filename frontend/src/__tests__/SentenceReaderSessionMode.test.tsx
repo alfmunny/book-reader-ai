@@ -68,6 +68,19 @@ test("a translating paragraph shows progress instead of the button", () => {
   expect(gap.querySelector("button")).toBeNull();
 });
 
+test("actionsDisabled locks every per-paragraph action during a chapter run", () => {
+  const { props } = renderSession({ actionsDisabled: true });
+  // Gap shows the running notice, no Translate button
+  expect(screen.getByTestId("session-gap-1")).toHaveTextContent("Chapter translation running…");
+  expect(screen.getByTestId("session-gap-1").querySelector("button")).toBeNull();
+  // Existing paragraph's actions disabled
+  expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Edit translation of paragraph 1" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Delete translation of paragraph 1" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Retranslate paragraph 1" }));
+  expect(props.onTranslateParagraph).not.toHaveBeenCalled();
+});
+
 test("without sessionMode nothing session-related renders (editorial unchanged)", () => {
   renderSession({ sessionMode: false, translationMeta: undefined });
   expect(screen.queryByTestId("session-meta-0")).toBeNull();

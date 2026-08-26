@@ -33,6 +33,13 @@ from routers.ai import _provider_error_detail
 router = APIRouter(prefix="/translation-sessions", tags=["translation-sessions"])
 logger = logging.getLogger(__name__)
 
+# Active chapter-translation runs, keyed (session_id, chapter_index).
+# In-process only — sufficient for single-process deployment (same pattern
+# as the summary locks in routers/ai.py). A run survives page reloads: the
+# client polls the chapter endpoint, which reports {active, done, total,
+# error}; finished runs are reported once more, then cleared.
+_chapter_runs: dict[tuple[int, int], dict] = {}
+
 _KEY_COLUMNS = {"deepseek": "deepseek_key", "claude": "claude_key"}
 _LABELS = {"deepseek": "DeepSeek", "claude": "Claude"}
 
@@ -199,11 +206,18 @@ async def chapter_paragraphs(
     session = await _require_session(session_id, user)
     text, _ = await _chapter_text(session["book_id"], chapter_index, user)
     paragraphs = await get_session_paragraphs(session_id, chapter_index)
+    run = _chapter_runs.get((session_id, chapter_index))
+    run_status = None
+    if run is not None:
+        run_status = {"active": not run["finished"], "done": run["done"], "total": run["total"], "error": run["error"]}
+        if run["finished"]:
+            _chapter_runs.pop((session_id, chapter_index), None)
     return {
         "session_id": session_id,
         "chapter_index": chapter_index,
         "paragraph_count": len(_chapter_paragraphs(text)),
         "paragraphs": paragraphs,
+        "run": run_status,
     }
 
 
@@ -218,24 +232,12 @@ async def translate(
     api_key = _require_key(user, provider)
     text, source_language = await _chapter_text(session["book_id"], req.chapter_index, user)
     paragraphs = _chapter_paragraphs(text)
+    run_key = (session_id, req.chapter_index)
+    active_run = _chapter_runs.get(run_key)
+    if active_run is not None and not active_run["finished"]:
+        raise HTTPException(status_code=409, detail="This chapter is already being translated — watch the progress bar.")
 
-    if isinstance(req.scope, int):
-        if req.scope >= len(paragraphs):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Paragraph index out of range (chapter has {len(paragraphs)} paragraph(s)).",
-            )
-        targets = [req.scope]
-    else:
-        existing = await get_session_paragraphs(session_id, req.chapter_index)
-        targets = [
-            i for i in range(len(paragraphs))
-            if req.force or not existing.get(i, {}).get("edited_by_user")
-        ]
-
-    sem = asyncio.Semaphore(3)
-
-    async def _one(i: int):
+    async def _translate_one(i: int, sem: asyncio.Semaphore):
         async with sem:
             translated, model = await user_translate.translate_paragraph(
                 provider, api_key, paragraphs[i],
@@ -245,23 +247,67 @@ async def translate(
             session_id, req.chapter_index, i, translated, provider, model
         )
 
-    try:
-        await asyncio.gather(*[_one(i) for i in targets])
-    except HTTPException:
-        raise
-    except Exception as exc:
-        logger.exception(
-            "translation session %s translate failed for user %s: %s",
-            session_id, user.get("id"), exc,
-        )
-        raise HTTPException(status_code=502, detail=_provider_error_detail(provider, exc))
+    if isinstance(req.scope, int):
+        if active_run is not None and not active_run["finished"]:
+            raise HTTPException(status_code=409, detail="This chapter is already being translated — wait for the run to finish.")
+        if req.scope >= len(paragraphs):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Paragraph index out of range (chapter has {len(paragraphs)} paragraph(s)).",
+            )
+        try:
+            await _translate_one(req.scope, asyncio.Semaphore(1))
+        except Exception as exc:
+            logger.exception(
+                "translation session %s paragraph translate failed for user %s: %s",
+                session_id, user.get("id"), exc,
+            )
+            raise HTTPException(status_code=502, detail=_provider_error_detail(provider, exc))
+        updated = await get_session_paragraphs(session_id, req.chapter_index)
+        return {
+            "session_id": session_id,
+            "chapter_index": req.chapter_index,
+            "paragraph_count": len(paragraphs),
+            "paragraphs": updated,
+            "run": None,
+        }
 
-    updated = await get_session_paragraphs(session_id, req.chapter_index)
+    # scope == "chapter": background run + polling (owner feedback,
+    # 2026-08-27 — one long request rendered nothing until reload).
+    existing = await get_session_paragraphs(session_id, req.chapter_index)
+    targets = [
+        i for i in range(len(paragraphs))
+        if req.force or not existing.get(i, {}).get("edited_by_user")
+    ]
+    run = {"done": 0, "total": len(targets), "error": None, "finished": len(targets) == 0}
+    _chapter_runs[run_key] = run
+
+    async def _run_chapter():
+        sem = asyncio.Semaphore(3)
+
+        async def _tracked(i: int):
+            await _translate_one(i, sem)
+            run["done"] += 1
+
+        try:
+            await asyncio.gather(*[_tracked(i) for i in targets])
+        except Exception as exc:
+            logger.exception(
+                "translation session %s chapter run failed for user %s: %s",
+                session_id, user.get("id"), exc,
+            )
+            run["error"] = _provider_error_detail(provider, exc)
+        finally:
+            run["finished"] = True
+
+    if targets:
+        asyncio.create_task(_run_chapter())
     return {
         "session_id": session_id,
         "chapter_index": req.chapter_index,
         "paragraph_count": len(paragraphs),
-        "paragraphs": updated,
+        "paragraphs": existing,
+        "run": {"active": not run["finished"], "done": run["done"], "total": run["total"], "error": run["error"]},
     }
 
 

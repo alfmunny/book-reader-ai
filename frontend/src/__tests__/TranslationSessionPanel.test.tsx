@@ -93,6 +93,21 @@ test("active session shows the style panel and translate-chapter button", () => 
   expect(props.onTranslateChapter).toHaveBeenCalled();
 });
 
+test("during a chapter run the button is a blocking progress bar", () => {
+  const { props } = renderPanel({
+    activeSessionId: 5,
+    translating: true,
+    runProgress: { done: 12, total: 29 },
+  });
+  const btn = screen.getByTestId("translate-chapter-button");
+  expect(btn).toBeDisabled();
+  expect(btn).toHaveTextContent("Translating 12 / 29…");
+  const fill = screen.getByTestId("translate-progress-fill");
+  expect(fill.style.width).toBe("41%");
+  fireEvent.click(btn);
+  expect(props.onTranslateChapter).not.toHaveBeenCalled();
+});
+
 test("a failed action shows a persistent, dismissible in-panel error", () => {
   const onDismissError = jest.fn();
   renderPanel({

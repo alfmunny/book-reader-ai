@@ -57,6 +57,7 @@ sys.path.insert(0, str(__file__).rsplit("/backend/", 1)[0] + "/backend")
 from scripts.chapter_split_overrides import (  # noqa: E402
     apply_overrides,
     forced_source,
+    frontmatter_roles,
     translation_index_map,
 )
 
@@ -338,8 +339,13 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
     index_map = translation_index_map(book_id, len(raw_chapters))
     raw_chapters = apply_overrides(book_id, raw_chapters)
 
+    # Apparatus chapters carry a role so the reader can collapse them (#2745).
+    # It sits outside content_sha256 by design, so marking a chapter moves no
+    # anchor and leaves the frozen split's identity unchanged.
+    roles = frontmatter_roles(book_id, raw_chapters)
     chapters = [
-        {"index": i, "title": ch.title, "paragraphs": paragraphs_of(ch.text)}
+        {"index": i, "title": ch.title, "paragraphs": paragraphs_of(ch.text),
+         **({"role": roles[i]} if i in roles else {})}
         for i, ch in enumerate(raw_chapters)
     ]
 

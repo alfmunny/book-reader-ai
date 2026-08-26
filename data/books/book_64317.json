@@ -22,14 +22,14 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-26",
-    "audited_by": "architect-agent (paragraph realign to EPUB split)",
-    "content_sha256": "014c1ab56e1863650ccad2d208c714beb4969e9a984ce2eb720fb33113feb01d"
+    "frozen_at": "2026-08-27",
+    "audited_by": "architect-agent (front-matter classification #2745)",
+    "content_sha256": "084941aee82edd60d5956998130842e36500229cfd621d73cbc3c7c60ef57f17"
   },
   "chapters": [
     {
       "index": 0,
-      "title": "Table of Contents",
+      "title": "EPIGRAPH",
       "paragraphs": [
         "Then wear the gold hat, if that will move her;\nIf you can bounce high, bounce for her too,\nTill she cry “Lover, gold-hatted, high-bouncing lover,\nI must have you!”",
         "Thomas Parke d’Invilliers"

@@ -18,6 +18,7 @@ import scripts.chapter_split_overrides as overrides_module
 from scripts.chapter_split_overrides import (
     apply_overrides,
     forced_source,
+    frontmatter_roles,
     translation_index_map,
 )
 from services.splitter import Chapter
@@ -362,3 +363,69 @@ def test_pride_and_prejudice_is_pinned_to_the_text_split():
     drop-cap is lost so every chapter loses its opening letter, illustration
     captions bleed into chapter titles, and copyright lines become paragraphs."""
     assert forced_source(1342) == "text"
+
+
+# ── frontmatter ──────────────────────────────────────────────────────────────
+
+def test_no_frontmatter_for_an_unregistered_book():
+    assert frontmatter_roles(4242, _scene_split()) == {}
+
+
+def test_frontmatter_marks_the_named_chapter(registry):
+    registry({"frontmatter": [{"index": 0, "expect_title": "ACT III"}]})
+    assert frontmatter_roles(999, _scene_split()) == {0: "frontmatter"}
+
+
+def test_frontmatter_aborts_rather_than_marking_the_wrong_chapter(registry):
+    """Hiding a chapter of the work is worse than showing a title page, so a
+    moved split must stop the freeze rather than guess."""
+    registry({"frontmatter": [{"index": 0, "expect_title": "SOMETHING ELSE"}]})
+    with pytest.raises(SystemExit, match="expected chapter 0"):
+        frontmatter_roles(999, _scene_split())
+
+
+def test_frontmatter_indices_are_checked_against_the_corrected_split(registry):
+    """Dracula's entry expects "TITLE PAGE" — the name its own retitle gives
+    chapter 0 — so frontmatter resolves after retitles, not before."""
+    registry({
+        "retitle": [{"index": 0, "expect_title": "ACT III", "title": "TITLE PAGE"}],
+        "frontmatter": [{"index": 0, "expect_title": "TITLE PAGE"}],
+    })
+    corrected = apply_overrides(999, _scene_split())
+    assert frontmatter_roles(999, corrected) == {0: "frontmatter"}
+
+
+# ── the committed artifacts ──────────────────────────────────────────────────
+
+def _artifact(book_id: int):
+    return json.loads((REPO_ROOT / "data" / "books" / f"book_{book_id}.json").read_text())
+
+
+def test_apparatus_chapters_are_marked_across_the_corpus():
+    for book_id in (345, 2554, 2701):
+        chapters = _artifact(book_id)["chapters"]
+        assert chapters[0].get("role") == "frontmatter", f"book {book_id} ch0 unmarked"
+
+
+def test_marking_frontmatter_does_not_disturb_the_frozen_split():
+    """role sits outside content_sha256, so a marked book still verifies."""
+    from scripts.ingest_book import load_artifact
+    for book_id in (345, 2554, 2701):
+        load_artifact(REPO_ROOT / "data" / "books" / f"book_{book_id}.json")
+
+
+def test_gatsby_epigraph_is_named_not_hidden():
+    """Chapter 0 is titled 'Table of Contents' in the source but holds the
+    novel's epigraph. It is retitled, and deliberately not marked apparatus."""
+    chapters = _artifact(64317)["chapters"]
+    assert chapters[0]["title"] == "EPIGRAPH"
+    assert "role" not in chapters[0]
+    assert "gold hat" in chapters[0]["paragraphs"][0]
+
+
+def test_moby_dick_etymology_chapter_is_not_marked_apparatus():
+    """Chapter 1 opens with a transcriber's line but runs 93 paragraphs of the
+    real Etymology and Extracts. Marking it would hide the book's own text."""
+    chapters = _artifact(2701)["chapters"]
+    assert "role" not in chapters[1]
+    assert len(chapters[1]["paragraphs"]) > 50

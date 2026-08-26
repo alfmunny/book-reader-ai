@@ -20,11 +20,16 @@ _META = {
 
 
 async def _freeze(book_id: int, audited_by: str = "alfmunny") -> None:
+    """Freeze *and* publish — these tests are about what the catalog lists.
+
+    Freezing alone no longer publishes (migration 046); the gate itself is
+    covered in test_publish_gate.py.
+    """
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         await db.execute(
             "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
-            " audited_by, content_sha256) VALUES (?, 'html_preference', 'epub',"
-            " '2026-08-26', ?, 'abc')",
+            " audited_by, content_sha256, published_at) VALUES (?, 'html_preference',"
+            " 'epub', '2026-08-26', ?, 'abc', '2026-08-26')",
             (book_id, audited_by),
         )
         await db.commit()

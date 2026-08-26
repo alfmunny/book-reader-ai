@@ -15,7 +15,7 @@ describe("UndoToast", () => {
     expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
-  it("calls onUndo and onDone when Undo is clicked", async () => {
+  it("calls onUndo — and not onDone — when Undo is clicked", async () => {
     const onUndo = jest.fn();
     const onDone = jest.fn();
     render(<UndoToast message="Highlight deleted" onUndo={onUndo} onDone={onDone} />);
@@ -23,7 +23,9 @@ describe("UndoToast", () => {
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
 
     expect(onUndo).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1), { timeout: 500 });
+    // onDone commits the destructive action, so Undo must never reach it.
+    await new Promise((r) => setTimeout(r, 400));
+    expect(onDone).not.toHaveBeenCalled();
   });
 
   it("auto-dismisses after 5 seconds by calling onDone", async () => {

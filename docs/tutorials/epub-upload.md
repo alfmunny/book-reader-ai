@@ -26,38 +26,66 @@ You can upload in two ways:
 
 A spinner appears while the file uploads and the backend parses the chapters. For large EPUBs (500+ pages) this can take a few seconds.
 
-## 3. Review the detected chapters
+## 3. Audit the chapter split
 
-After the upload completes, you are taken to the **Review Chapters** page. The backend has parsed the EPUB's table of contents (or split the text file into chapters) and shows you every chapter it found.
+After the upload completes you land on the chapter audit panel. Auditing a split is a search problem, not a reading problem — you are not reading the whole book, you are finding the places the splitter got it wrong.
 
-The page has two panels:
+The page has two panels: the chapter list on the left, and the full text of the selected chapter on the right.
 
-| Panel | What it shows |
+### Start with the flags
+
+The left rail marks chapters worth looking at:
+
+| Flag | What it usually means |
 |---|---|
-| Left — chapter list | Every detected chapter with its title and word count |
-| Right — preview | The first few hundred words of the selected chapter |
+| **Runt** | Under 400 characters or a single paragraph — often a stray heading that became its own chapter |
+| **Oversized** | More than 3× the median chapter — usually two chapters that failed to separate |
+| **No title** | The splitter found no heading |
+| **Shouting** | An all-caps speaker cue buried in a long paragraph — verse or drama collapsed into one block |
 
-### Edit chapter titles
+Flags are hints, not verdicts. A flagged chapter can be perfectly correct, and an unflagged one can be wrong.
 
-Click any chapter in the left list to select it. The title is editable — click the title field and type a new name if the detected title is wrong or missing.
+### Split a merged chapter
 
-### Remove chapters
+Hover between any two paragraphs in the text panel and click **split here**. The chapter divides at that point and the new half starts untitled, so you can name it.
 
-Click the **trash icon** next to any chapter you want to exclude. Prefaces, tables of contents, copyright pages, and advertisements are common candidates for removal. Removed chapters do not appear in the reader.
+This is the fix for the commonest failure: two chapters run together because the source had no heading between them.
 
-### Preview before confirming
+### Merge a chapter that was cut in the middle
 
-Select each chapter to read the preview and confirm the split looks correct. If chapter 1 starts mid-sentence, the EPUB's table-of-contents metadata may be missing; you may need to remove the partial-content chapters manually.
+Select the chapter that starts mid-scene and click **Merge into previous**.
 
-## 4. Confirm and open the reader
+### Titles
 
-When the chapter list looks right, click **Confirm** (top-right of the page).
+Edit any title directly in the field above the text. For bulk work:
 
-The backend saves your chapter selection and opens the reader at Chapter 1 of your book. From here, the book works exactly like a Gutenberg title: you can translate chapters, look up vocabulary, add annotations, and queue it for background translation.
+- **Number them** — prefixes `1.`, `2.` and so on, keeping existing names. Any ordinal already there is stripped first, so running it twice is safe.
+- **Use first line** — fills only the empty titles from each chapter's opening line.
+- **Strip numerals** — removes leading ordinals.
+
+Each is one **Undo** step.
+
+### Discard a chapter
+
+**Discard** removes a chapter entirely. Prefaces, copyright pages and advertisements are the usual candidates.
+
+### Work through it at your own pace
+
+Tick **Mark reviewed** on each chapter as you check it; the panel moves you to the next one. A progress meter shows how far in you are.
+
+**Everything saves as you work.** Close the tab, come back tomorrow, use a different computer — your titles, splits and ticks are all still there. The book appears under **In progress** on your bookshelf with its progress, so you can find your way back.
+
+## 4. Add it to your shelf
+
+When every chapter is ticked, **Add to shelf** becomes available.
+
+This fixes the split permanently, which is what lets your notes stay anchored to the right text, and opens the book in the reader. From here it behaves like any library book: translate chapters, save vocabulary, add annotations.
+
+Uploaded books are **private to you, always**. They never appear in the shared library, and there is no way to publish them.
 
 ## Tips
 
-- **Re-upload to reset:** if you confirmed a bad split, go back to `/upload` and upload the same file again. The old draft is replaced by the new one.
+- **Fixing a split later:** open the book from your bookshelf and choose **Review chapter split**. This works until something anchors to the split — once you have annotations or translations on the book, changing chapter boundaries would move them to the wrong text, so the panel refuses and says what would break.
 - **Large EPUB files:** files over ~10 MB may take longer to parse. If you see an error on the chapter review page, hit **Retry** — it usually succeeds on the second attempt once the backend has finished processing.
 - **Plain-text splits:** `.txt` files without explicit chapter headings are split on blank lines. If the result has too many tiny chapters, re-export the file from your e-reader with chapter headings before uploading.
 
@@ -66,4 +94,4 @@ The backend saves your chapter selection and opens the reader at Chapter 1 of yo
 - **"Only .txt and .epub files are supported"** — rename the file if it has a `.PDF` or `.mobi` extension. Converting other formats (MOBI, AZW3, PDF) to EPUB with Calibre before uploading is the most reliable option.
 - **Upload failed** — check your quota (shown on the upload page). If the quota is 0, you have reached your upload limit.
 - **No chapters detected** — the EPUB has no table-of-contents entries and the backend could not split it automatically. Try opening the file in Sigil or Calibre and adding a basic NCX/nav table of contents before re-uploading.
-- **Chapter preview is empty** — some EPUBs embed content inside `<image>` or `<svg>` tags with no text. The reader cannot translate image-based pages.
+- **A chapter is empty** — some EPUBs embed content inside `<image>` or `<svg>` tags with no text. The reader cannot translate image-based pages. Discard those chapters during the audit.

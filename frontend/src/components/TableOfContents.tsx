@@ -94,7 +94,7 @@ export default function TableOfContents({
         title={title}
         aria-current={isCurrent ? "true" : undefined}
         aria-label={`${index + 1}. ${title}${coverage}`}
-        className={`w-full flex items-baseline gap-2 px-2 py-1.5 min-h-[44px] md:min-h-0 text-left border-l-2 rounded-r-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
+        className={`w-full flex items-baseline gap-2 px-2 py-1 min-h-[44px] md:min-h-0 text-left border-l-2 rounded-r-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset ${
           isCurrent
             ? "border-amber-700 bg-amber-50"
             : "border-transparent hover:bg-amber-50/60"
@@ -102,7 +102,7 @@ export default function TableOfContents({
       >
         <span
           aria-hidden="true"
-          className={`text-[11px] tabular-nums shrink-0 min-w-[1.4rem] ${
+          className={`text-[10px] tabular-nums shrink-0 min-w-[1.3rem] ${
             isCurrent ? "text-amber-700" : "text-stone-400"
           }`}
         >
@@ -110,8 +110,12 @@ export default function TableOfContents({
         </span>
         <span
           aria-hidden="true"
-          className={`flex-1 min-w-0 truncate font-serif text-[13.5px] leading-snug ${
-            isCurrent ? "font-semibold text-ink" : isFront ? "italic text-stone-500" : "text-ink"
+          className={`flex-1 min-w-0 truncate text-xs leading-relaxed ${
+            isCurrent
+              ? "font-semibold text-ink"
+              : isFront
+              ? "italic text-stone-400"
+              : "text-stone-600"
           }`}
         >
           {title}
@@ -153,7 +157,7 @@ export default function TableOfContents({
               type="button"
               onClick={() => setFrontOpen((v) => !v)}
               aria-expanded={frontOpen || insideFront}
-              className="w-full flex items-center gap-1.5 px-2 pt-2 pb-1 min-h-[44px] md:min-h-0 text-left text-[10.5px] uppercase tracking-wider font-semibold text-stone-400 hover:text-amber-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              className="w-full flex items-center gap-1.5 px-2 pt-2 pb-1 min-h-[44px] md:min-h-0 text-left text-[10px] uppercase tracking-wider font-semibold text-stone-400 hover:text-amber-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
             >
               <span
                 aria-hidden="true"
@@ -173,10 +177,10 @@ export default function TableOfContents({
         {nothingMatched && (
           <div className="px-4 py-10 text-center">
             <SearchIcon className="w-6 h-6 mx-auto mb-2 text-stone-300" />
-            <p className="font-serif text-sm text-stone-500 mb-1">
+            <p className="font-serif text-[13px] text-stone-500 mb-1">
               No chapter matches that
             </p>
-            <p className="text-xs text-stone-400">Try a number, or part of a title.</p>
+            <p className="text-[11px] text-stone-400">Try a number, or part of a title.</p>
           </div>
         )}
       </nav>

@@ -253,3 +253,32 @@ async def test_drafts_list_orders_most_recently_touched_first(client, test_user)
         await db.commit()
     resp = await client.get("/api/books/uploads/drafts")
     assert [d["book_id"] for d in resp.json()][:2] == [9405, 9404]
+
+
+# ── which books are the reader's own ──────────────────────────────────────────
+
+async def test_my_uploads_lists_only_my_own(client, test_user):
+    from services.db import get_or_create_user
+    other = await get_or_create_user("mine_other", "mo@x.com", "O", "")
+    await _make_upload(other["id"], [("A", "a")], book_id=9601)
+    await _make_upload(test_user["id"], [("B", "b")], book_id=9602)
+
+    resp = await client.get("/api/books/uploads/mine")
+    assert resp.status_code == 200
+    assert [b["id"] for b in resp.json()] == [9602]
+
+
+async def test_my_uploads_excludes_library_books(client, test_user):
+    await save_book(9603, _META, "text")  # gutenberg default source
+    resp = await client.get("/api/books/uploads/mine")
+    assert 9603 not in [b["id"] for b in resp.json()]
+
+
+async def test_my_uploads_includes_confirmed_books(client, test_user):
+    """Still yours once the audit is finished — that is when the badge matters."""
+    await _make_upload(test_user["id"], [("A", "a")], book_id=9604)
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        await db.execute("UPDATE user_book_chapters SET is_draft=0 WHERE book_id=9604")
+        await db.commit()
+    resp = await client.get("/api/books/uploads/mine")
+    assert 9604 in [b["id"] for b in resp.json()]

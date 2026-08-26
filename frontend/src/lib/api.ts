@@ -987,6 +987,11 @@ export interface DraftAudit {
   updated_at: string | null;
 }
 
+/** Ids of books this reader uploaded themselves — the shelf badge source. */
+export function getMyUploads(): Promise<{ id: number; title: string }[]> {
+  return request("/books/uploads/mine");
+}
+
 /** Books this reader has started auditing but not finished. */
 export function getDraftAudits(): Promise<DraftAudit[]> {
   return request("/books/uploads/drafts");

@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getMe, getReadingProgress, getUserStats, UserStats, BookMeta } from "@/lib/api";
+import { getMe, getReadingProgress, getUserStats, getDraftAudits, getMyUploads, UserStats, BookMeta, DraftAudit } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, recordRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
 import SiteHeader from "@/components/SiteHeader";
+import GeneratedCover from "@/components/GeneratedCover";
 import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, VocabIcon, BookCoverPlaceholderIcon } from "@/components/Icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -39,6 +40,10 @@ export default function Bookshelf() {
   const [statsExpanded, setStatsExpanded] = useState(false);
   const [removedBookToast, setRemovedBookToast] = useState<RecentBook | null>(null);
   const [selectedBook, setSelectedBook] = useState<BookMeta | null>(null);
+  const [drafts, setDrafts] = useState<DraftAudit[]>([]);
+  // Which shelf books the reader brought themselves. localStorage cannot say —
+  // entries saved before `source` was recorded carry no marker at all.
+  const [uploadIds, setUploadIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     document.title = "Your Bookshelf — Book Reader AI";
@@ -51,6 +56,8 @@ export default function Bookshelf() {
   useEffect(() => {
     if (status !== "authenticated") return;
     getMe().catch(() => {});
+    getDraftAudits().then(setDrafts).catch(() => {});
+    getMyUploads().then((b) => setUploadIds(new Set(b.map((x) => x.id)))).catch(() => {});
     setUserStatsFetchError(false);
     getUserStats().then(setUserStats).catch(() => setUserStatsFetchError(true));
     getReadingProgress().then((entries) => {
@@ -83,6 +90,58 @@ export default function Bookshelf() {
             <p className="font-serif text-xl text-ink">
               Welcome back, {session.backendUser.name.split(" ")[0]}
             </p>
+          )}
+
+          {/* An unfinished audit cannot live in the tab, so the shelf carries it
+              until the reader says it is done. Without this the persisted draft
+              exists but there is no way back to it. */}
+          {drafts.length > 0 && (
+            <section aria-labelledby="bookshelf-drafts-heading">
+              <h2 id="bookshelf-drafts-heading" className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
+                In progress
+              </h2>
+              <ul role="list" aria-label="Books you are still reviewing" className="list-none p-0 m-0 space-y-2">
+                {drafts.map((d) => {
+                  const ready = d.chapter_count > 0 && d.reviewed_count === d.chapter_count;
+                  return (
+                    <li
+                      key={d.book_id}
+                      className="flex items-center gap-3 rounded-xl border border-amber-200 bg-white p-3"
+                      style={{ boxShadow: "var(--shadow-card)" }}
+                    >
+                      <GeneratedCover title={d.title} authors={d.authors} seed={d.book_id} className="w-11 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-serif font-semibold text-sm text-ink line-clamp-1" title={d.title}>{d.title}</p>
+                        <p className="text-xs text-stone-600 mt-0.5 tabular-nums">
+                          {ready
+                            ? `All ${d.chapter_count} chapters reviewed — ready`
+                            : `${d.reviewed_count} of ${d.chapter_count} chapters reviewed`}
+                        </p>
+                        <span
+                          role="progressbar"
+                          aria-label={`${d.title} review progress`}
+                          aria-valuenow={d.reviewed_count}
+                          aria-valuemin={0}
+                          aria-valuemax={d.chapter_count}
+                          className="mt-1.5 block h-1 w-full max-w-[240px] rounded-full bg-amber-100 overflow-hidden"
+                        >
+                          <span
+                            className={`block h-full ${ready ? "bg-emerald-600" : "bg-amber-700"}`}
+                            style={{ width: `${d.chapter_count ? (d.reviewed_count / d.chapter_count) * 100 : 0}%` }}
+                          />
+                        </span>
+                      </div>
+                      <Link
+                        href={`/upload/${d.book_id}/chapters`}
+                        className="text-xs font-medium px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors inline-flex items-center shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                      >
+                        {ready ? "Add to shelf" : "Continue audit"}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
 
           {/* Continue Reading */}
@@ -206,6 +265,7 @@ export default function Bookshelf() {
                   <li key={book.id}>
                     <BookCard
                       book={book}
+                      ownedByUser={uploadIds.has(book.id)}
                       onClick={() => setSelectedBook(book)}
                       badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
                       onRemove={() => {
@@ -226,9 +286,13 @@ export default function Bookshelf() {
                   <div key={i} className="w-6 rounded-t-sm bg-amber-700" style={{ height: h }} />
                 ))}
               </div>
-              <h2 className="font-serif text-xl font-semibold text-ink mb-2">Your bookshelf is empty</h2>
+              <h2 className="font-serif text-xl font-semibold text-ink mb-2">
+                {drafts.length > 0 ? "Nothing on the shelf yet" : "Your bookshelf is empty"}
+              </h2>
               <p className="text-sm text-amber-700 mb-6 max-w-xs mx-auto">
-                Books you open will appear here for quick access. Browse the library to find one to start.
+                {drafts.length > 0
+                  ? "You have a book part-way through review — finish it and it lands here."
+                  : "Books you open will appear here for quick access. Browse the library to find one to start."}
               </p>
               <Link
                 href="/"

@@ -24,6 +24,9 @@ jest.mock("next/navigation", () => ({
 
 // ─── @/lib/api ───────────────────────────────────────────────────────────────
 jest.mock("@/lib/api", () => ({
+  // The bookshelf lists unfinished audits and marks the reader's own uploads.
+  getDraftAudits: () => Promise.resolve([]),
+  getMyUploads: () => Promise.resolve([]),
   getCatalogBooks: () => Promise.resolve([]),
   getPopularBooks: () => Promise.resolve({ books: [], total: 0, page: 1, per_page: 50 }),
   getMe: () => Promise.resolve({ hasGeminiKey: false, role: "user", approved: true }),

@@ -73,20 +73,25 @@ test("Download Markdown writes vocabulary.md with the saved words", async () => 
   render(<VocabularyPage />);
   await openExportMenu();
   await userEvent.click(screen.getByRole("menuitem", { name: /download markdown/i }));
+  // Grouping/scope are chosen in the export dialog (#2703 follow-up).
+  await userEvent.click(screen.getByRole("button", { name: /^download$/i }));
 
   expect(mockDownload).toHaveBeenCalledTimes(1);
   expect(mockDownload.mock.calls[0][0]).toBe("vocabulary.md");
   const md = mockDownload.mock.calls[0][1];
   expect(md).toContain("# Vocabulary");
-  expect(md).toContain("## Moby Dick");
+  // The dialog opens on A–Z, so sections are initials and each line names its book.
+  expect(md).toContain("## E");
   expect(md).toContain("**ephemeral**");
   expect(md).toContain("The ephemeral whale loomed.");
+  expect(md).toContain("Moby Dick");
 });
 
 test("a successful download is reported in the status line", async () => {
   render(<VocabularyPage />);
   await openExportMenu();
   await userEvent.click(screen.getByRole("menuitem", { name: /download markdown/i }));
+  await userEvent.click(screen.getByRole("button", { name: /^download$/i }));
 
   await waitFor(() => expect(screen.getByText(/Downloaded vocabulary\.md/i)).toBeInTheDocument());
 });

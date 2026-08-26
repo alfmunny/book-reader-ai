@@ -80,6 +80,25 @@ OVERRIDES: dict[int, dict] = {
             },
         ],
     },
+    2641: {  # A Room with a View
+        # The splitter matched "Chapter two" inside running prose — Lucy is
+        # reading Miss Lavish's novel, and Cecil has just said "Find me chapter
+        # two". The cut tore the last 15 paragraphs off Chapter XV: Lucy
+        # realising the novel describes her, and George's second kiss.
+        # No cue to restore — the sentence the title was built from is still
+        # the chapter's first paragraph, so merging plain would duplicate it.
+        # Audited against Gutenberg #2641, 2026-08-26.
+        "merge_into_previous": [
+            {
+                "index": 15,
+                "expect_title": (
+                    "PART TWO — Chapter two was found, and she glanced at its "
+                    "opening sentences."
+                ),
+                "why": "tail of Chapter XV; 'Chapter two' is narrative prose, not a heading",
+            },
+        ],
+    },
     1524: {  # Hamlet
         "merge_into_previous": [
             {
@@ -121,12 +140,59 @@ def _check(
         )
 
 
+def _merges(spec: dict) -> list[dict]:
+    """This book's merges, highest index first — the order both the chapter
+    rewrite and the translation index map must apply them in, so the lower
+    indices stay valid as entries are removed."""
+    return sorted(
+        spec.get("merge_into_previous", []), key=lambda m: m["index"], reverse=True
+    )
+
+
+def translation_index_map(book_id: int, num_chapters: int) -> dict[int, int]:
+    """Map each raw chapter index to its index in the corrected split.
+
+    Translations and annotations are keyed to chapter index, so a merge has to
+    move them in lockstep or the repair orphans them. An absorbed chapter maps
+    to the chapter that absorbed it: several old indices can therefore share
+    one new index, and the caller joins their content in old-index order —
+    the order the text was merged in.
+
+    Retitles are absent by construction: they move nothing.
+    """
+    spec = OVERRIDES.get(book_id)
+    if not spec:
+        return {i: i for i in range(num_chapters)}
+
+    # Mirror apply_overrides' pops exactly, tracking which raw indices ride
+    # along in each surviving position.
+    positions: list[list[int]] = [[i] for i in range(num_chapters)]
+    for merge in _merges(spec):
+        index = merge["index"]
+        if not 0 < index < len(positions):
+            raise SystemExit(
+                f"book {book_id}: override index {index} is out of range for a "
+                f"{len(positions)}-chapter split — re-audit "
+                f"scripts/chapter_split_overrides.py before freezing."
+            )
+        positions[index - 1].extend(positions.pop(index))
+
+    return {
+        raw: new
+        for new, raws in enumerate(positions)
+        for raw in raws
+    }
+
+
 def apply_overrides(book_id: int, chapters: list[Chapter]) -> list[Chapter]:
     """Return `chapters` with this book's registered corrections applied.
 
     Raises SystemExit if a correction no longer matches the split it was
     written against — skipping silently would freeze the uncorrected boundary,
     which is the failure this registry exists to prevent.
+
+    Callers holding anything keyed to chapter index must put it through
+    translation_index_map() as well.
     """
     spec = OVERRIDES.get(book_id)
     if not spec:
@@ -143,10 +209,7 @@ def apply_overrides(book_id: int, chapters: list[Chapter]) -> list[Chapter]:
         chapter = corrected[index]
         corrected[index] = Chapter(title=entry["title"], text=chapter.text)
 
-    # Highest index first, so the lower indices stay valid as entries are removed.
-    for merge in sorted(
-        spec.get("merge_into_previous", []), key=lambda m: m["index"], reverse=True
-    ):
+    for merge in _merges(spec):
         index = merge["index"]
         _check(book_id, corrected, index, merge["expect_title"], allow_first=False)
 

@@ -93,6 +93,19 @@ test("active session shows the style panel and translate-chapter button", () => 
   expect(props.onTranslateChapter).toHaveBeenCalled();
 });
 
+test("a failed action shows a persistent, dismissible in-panel error", () => {
+  const onDismissError = jest.fn();
+  renderPanel({
+    activeSessionId: 5,
+    actionError: "Claude rejected your API key — check it in your profile.",
+    onDismissError,
+  });
+  const alert = screen.getByTestId("session-action-error");
+  expect(alert).toHaveTextContent(/rejected your API key/);
+  fireEvent.click(screen.getByRole("button", { name: "Dismiss error" }));
+  expect(onDismissError).toHaveBeenCalled();
+});
+
 test("deleting a session removes it and falls back to Editorial when active", async () => {
   (api.deleteTranslationSession as jest.Mock).mockResolvedValue({ ok: true });
   const { props } = renderPanel({ activeSessionId: 5 });

@@ -356,6 +356,9 @@ export default function ReaderPage() {
   const [translatingParas, setTranslatingParas] = useState<Set<number>>(new Set());
   const [paragraphEditor, setParagraphEditor] = useState<{ paraIdx: number; text: string } | null>(null);
   const [paragraphEditorError, setParagraphEditorError] = useState(false);
+  // Persistent, in-panel error for session actions (owner report: a failed
+  // translate showed nothing — the corner toast was too transient).
+  const [sessionActionError, setSessionActionError] = useState<string | null>(null);
   const activeSessionRef = useRef<TranslationSession | null>(null);
   activeSessionRef.current = activeSession;
 
@@ -400,13 +403,15 @@ export default function ReaderPage() {
   async function handleSessionTranslateChapter() {
     if (!activeSession || sessionTranslating) return;
     setSessionTranslating(true);
+    setSessionActionError(null);
     try {
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter" });
       setSessionChapter(data);
       listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
     } catch (e) {
-      setObsidianToast({ msg: e instanceof Error ? e.message : "Translation failed", ok: false });
-      setTimeout(() => setObsidianToast(null), 4000);
+      setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
+      // Paragraphs translated before the failure ARE saved — show them.
+      getSessionChapter(activeSession.id, chapterIndex).then(setSessionChapter).catch(() => {});
     } finally {
       setSessionTranslating(false);
     }
@@ -415,12 +420,12 @@ export default function ReaderPage() {
   async function handleSessionTranslateParagraph(paraIdx: number) {
     if (!activeSession) return;
     setTranslatingParas((prev) => new Set(prev).add(paraIdx));
+    setSessionActionError(null);
     try {
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: paraIdx });
       setSessionChapter(data);
     } catch (e) {
-      setObsidianToast({ msg: e instanceof Error ? e.message : "Translation failed", ok: false });
-      setTimeout(() => setObsidianToast(null), 4000);
+      setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
     } finally {
       setTranslatingParas((prev) => { const next = new Set(prev); next.delete(paraIdx); return next; });
     }
@@ -446,8 +451,7 @@ export default function ReaderPage() {
       const data = await getSessionChapter(activeSession.id, chapterIndex);
       setSessionChapter(data);
     } catch (e) {
-      setObsidianToast({ msg: e instanceof Error ? e.message : "Delete failed", ok: false });
-      setTimeout(() => setObsidianToast(null), 4000);
+      setSessionActionError(e instanceof Error ? e.message : "Delete failed — try again.");
     }
   }
 
@@ -2603,6 +2607,8 @@ export default function ReaderPage() {
                         onSessionsChanged={setTranslationSessions}
                         onTranslateChapter={handleSessionTranslateChapter}
                         translating={sessionTranslating}
+                        actionError={sessionActionError}
+                        onDismissError={() => setSessionActionError(null)}
                         chapterProgress={activeSession && sessionChapter ? {
                           done: Object.keys(sessionChapter.paragraphs).length,
                           total: sessionChapter.paragraph_count,

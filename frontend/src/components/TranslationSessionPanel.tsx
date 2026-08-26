@@ -24,6 +24,9 @@ interface Props {
   onSessionsChanged: (sessions: TranslationSession[]) => void;
   onTranslateChapter: () => void;
   translating: boolean;
+  /** Persistent error from the last session action (translate/delete). */
+  actionError?: string | null;
+  onDismissError?: () => void;
   /** paragraphs translated / total in the current chapter (session view) */
   chapterProgress?: { done: number; total: number } | null;
 }
@@ -41,6 +44,8 @@ export default function TranslationSessionPanel({
   onSessionsChanged,
   onTranslateChapter,
   translating,
+  actionError,
+  onDismissError,
   chapterProgress,
 }: Props) {
   const [creating, setCreating] = useState(false);
@@ -280,6 +285,14 @@ export default function TranslationSessionPanel({
             <option value="deepseek" disabled={!hasDeepseekKey}>DeepSeek · deepseek-v4-flash{hasDeepseekKey ? "" : " (no key)"}</option>
             <option value="claude" disabled={!hasClaudeKey}>Claude · claude-sonnet-5{hasClaudeKey ? "" : " (no key)"}</option>
           </select>
+          {actionError && (
+            <div role="alert" data-testid="session-action-error" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 flex items-start justify-between gap-2">
+              <span className="flex-1">{actionError}</span>
+              {onDismissError && (
+                <button onClick={onDismissError} aria-label="Dismiss error" className="shrink-0 font-bold text-red-400 hover:text-red-600 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded">×</button>
+              )}
+            </div>
+          )}
           <button
             onClick={onTranslateChapter}
             disabled={translating}

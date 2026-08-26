@@ -51,13 +51,13 @@ it("offers a way to read the book before publishing it", async () => {
   expect(screen.getByRole("link", { name: /read it first/i })).toHaveAttribute("href", "/reader/2229");
 });
 
-it("publishes and drops the row", async () => {
+it("adds to the library and drops the row", async () => {
   const user = userEvent.setup();
   render(<PendingPublishPanel />);
   await screen.findByText("Faust");
 
   mockAdminFetch.mockResolvedValueOnce({ ok: true, published: true });
-  await user.click(screen.getByRole("button", { name: /publish/i }));
+  await user.click(screen.getByRole("button", { name: /add to library/i }));
 
   await waitFor(() =>
     expect(mockAdminFetch).toHaveBeenCalledWith("/admin/books/2229/publish", { method: "POST" }),
@@ -71,18 +71,18 @@ it("confirms what just went live rather than going silently empty", async () => 
   await screen.findByText("Faust");
 
   mockAdminFetch.mockResolvedValueOnce({ ok: true });
-  await user.click(screen.getByRole("button", { name: /publish/i }));
+  await user.click(screen.getByRole("button", { name: /add to library/i }));
 
   expect(await screen.findByText(/Faust.*is in the library/)).toBeInTheDocument();
 });
 
-it("keeps the row when publishing fails, and says why", async () => {
+it("keeps the row when adding fails, and says why", async () => {
   const user = userEvent.setup();
   render(<PendingPublishPanel />);
   await screen.findByText("Faust");
 
   mockAdminFetch.mockRejectedValueOnce(new Error("Book is not frozen"));
-  await user.click(screen.getByRole("button", { name: /publish/i }));
+  await user.click(screen.getByRole("button", { name: /add to library/i }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent("Book is not frozen");
   expect(screen.getByText("Faust")).toBeInTheDocument();
@@ -181,7 +181,7 @@ it("tolerates a response without the translations field", async () => {
   expect(await screen.findByText("not translated")).toBeInTheDocument();
 });
 
-it("still allows publishing a part-translated book — informs, does not block", async () => {
+it("still allows adding a part-translated book — informs, does not block", async () => {
   const user = userEvent.setup();
   mockAdminFetch.mockResolvedValue([{
     ...BOOK,
@@ -191,8 +191,87 @@ it("still allows publishing a part-translated book — informs, does not block",
   await screen.findByText("zh 1/42");
 
   mockAdminFetch.mockResolvedValueOnce({ ok: true });
-  await user.click(screen.getByRole("button", { name: /publish/i }));
+  await user.click(screen.getByRole("button", { name: /add to library/i }));
   await waitFor(() =>
     expect(mockAdminFetch).toHaveBeenCalledWith("/admin/books/2229/publish", { method: "POST" }),
   );
+});
+
+// ── fixing a bad split without leaving the queue ──────────────────────────────
+
+const CHAPTERS = {
+  chapters: [
+    { index: 0, title: "Nacht", text: "a\n\nb" },
+    { index: 1, title: "Vor dem Tor", text: "c\n\nd" },
+  ],
+  editable: true,
+  blocked_by: {},
+  published: false,
+};
+
+it("opens the split for review", async () => {
+  const user = userEvent.setup();
+  render(<PendingPublishPanel />);
+  await screen.findByText("Faust");
+
+  mockAdminFetch.mockResolvedValueOnce(CHAPTERS);
+  await user.click(screen.getByRole("button", { name: /review split/i }));
+
+  expect(await screen.findByText(/Reviewing the split — Faust/)).toBeInTheDocument();
+  expect(mockAdminFetch).toHaveBeenCalledWith("/admin/books/2229/chapters");
+});
+
+it("refuses to edit a split that notes anchor to, and says what would break", async () => {
+  const user = userEvent.setup();
+  render(<PendingPublishPanel />);
+  await screen.findByText("Faust");
+
+  mockAdminFetch.mockResolvedValueOnce({
+    chapters: [], editable: false, blocked_by: { annotations: 3 }, published: true,
+  });
+  await user.click(screen.getByRole("button", { name: /review split/i }));
+
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("3 annotations");
+  expect(alert).toHaveTextContent(/wrong chapters/);
+});
+
+it("the finish button names the library, not the shelf", async () => {
+  const user = userEvent.setup();
+  render(<PendingPublishPanel />);
+  await screen.findByText("Faust");
+
+  mockAdminFetch.mockResolvedValueOnce(CHAPTERS);
+  await user.click(screen.getByRole("button", { name: /review split/i }));
+
+  // The queue row also offers "Add to library"; the panel's own finish button is
+  // the second one, and the shelf wording must not appear at all here.
+  const buttons = await screen.findAllByRole("button", { name: /add to library/i });
+  expect(buttons.length).toBeGreaterThanOrEqual(2);
+  expect(screen.queryByRole("button", { name: /add to shelf/i })).not.toBeInTheDocument();
+});
+
+it("closing the reviewer leaves the queue intact", async () => {
+  const user = userEvent.setup();
+  render(<PendingPublishPanel />);
+  await screen.findByText("Faust");
+
+  mockAdminFetch.mockResolvedValueOnce(CHAPTERS);
+  await user.click(screen.getByRole("button", { name: /review split/i }));
+  await screen.findByText(/Reviewing the split/);
+
+  await user.click(screen.getByRole("button", { name: /^close$/i }));
+  expect(screen.queryByText(/Reviewing the split/)).not.toBeInTheDocument();
+  expect(screen.getByText("Faust")).toBeInTheDocument();
+});
+
+it("a failure opening the chapters is reported, not swallowed", async () => {
+  const user = userEvent.setup();
+  render(<PendingPublishPanel />);
+  await screen.findByText("Faust");
+
+  mockAdminFetch.mockRejectedValueOnce(new Error("Book is not frozen"));
+  await user.click(screen.getByRole("button", { name: /review split/i }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Book is not frozen");
 });

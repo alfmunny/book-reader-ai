@@ -659,3 +659,12 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | Date | Change | File(s) | PR |
 |------|--------|---------|----|
 | 2026-08-26 | The review queue reports translation progress per target language — `zh 11/42`, `zh complete`, or `not translated`. A frozen split says the chapters are right; it says nothing about whether the book is ready, and publishing a book mid-translation puts a half-translated book in the library. Counted with DISTINCT, so a re-translated chapter is still one translated chapter. Shown but not enforced — publishing an untranslated original is legitimate, so it informs rather than blocks | services/db.py, components/PendingPublishPanel.tsx | queue |
+
+## Wave 26 — Admin can fix a split; library actions named (2026-08-27)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-27 | Finding a bad split in a queued book was a dead end. The audit panel is now mounted in the review queue — **Review split** opens it in place, edits rewrite `book_chapters` and re-stamp `content_sha256`, and **Add to library** saves and publishes in one step. Freezing is a source selector, not a lock: it stops the splitter drifting, it does not forbid deliberate correction | components/PendingPublishPanel.tsx, routers/admin.py | admin-panel |
+| 2026-08-27 | Editing refuses once anything anchors to the split — annotations, vocabulary occurrences or translations — naming what would break. A queued book has none, since nobody can read an unpublished book, so the guard never fires for the case the queue exists for | routers/admin.py | admin-panel |
+| 2026-08-27 | Buttons name their destination rather than the operation: **Add to library** / **Remove from library** for the public catalog, **Add to shelf** for the reader's own. "Publish" never said where; The Library and Your Bookshelf are named places in the UI since #2711 | components/PendingPublishPanel.tsx, app/admin/books/page.tsx | admin-panel |
+| 2026-08-27 | **Remove from library** exists at all. The unpublish endpoint shipped with the publish gate but nothing ever called it — a book could go into the library and never come back out without SQL | app/admin/books/page.tsx | admin-panel |

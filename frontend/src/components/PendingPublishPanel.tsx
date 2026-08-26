@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { adminFetch } from "@/lib/adminFetch";
 import { AlertCircleIcon, RetryIcon, CheckCircleIcon } from "@/components/Icons";
+import ChapterAuditPanel, { AuditChapter } from "@/components/ChapterAuditPanel";
 
 export interface PendingBook {
   id: number;
@@ -40,6 +41,51 @@ export default function PendingPublishPanel() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [justPublished, setJustPublished] = useState<string | null>(null);
+  // Open a queued book's split for correction. Finding a bad split used to be a
+  // dead end — the chapters were frozen and nothing here could change them.
+  const [editing, setEditing] = useState<PendingBook | null>(null);
+  const [editChapters, setEditChapters] = useState<AuditChapter[] | null>(null);
+  const [editBlocked, setEditBlocked] = useState<string | null>(null);
+
+  async function openEditor(book: PendingBook) {
+    setEditing(book);
+    setEditChapters(null);
+    setEditBlocked(null);
+    try {
+      const data = await adminFetch(`/admin/books/${book.id}/chapters`);
+      if (!data.editable) {
+        const why = Object.entries(data.blocked_by || {})
+          .map(([k, n]) => `${n} ${k}`)
+          .join(", ");
+        setEditBlocked(`${why} anchor to this split — editing would move them to the wrong chapters.`);
+        return;
+      }
+      setEditChapters(
+        (data.chapters || []).map((c: { title: string; text: string }) => ({
+          title: c.title, text: c.text, reviewed: false,
+        })),
+      );
+    } catch (e) {
+      setEditBlocked(e instanceof Error ? e.message : "Couldn't open the chapters.");
+    }
+  }
+
+  async function saveSplit(next: AuditChapter[]) {
+    if (!editing) return;
+    await adminFetch(`/admin/books/${editing.id}/chapters`, {
+      method: "PUT",
+      body: JSON.stringify({ chapters: next.map((c) => ({ title: c.title, text: c.text })) }),
+    });
+  }
+
+  async function saveAndAdd(next: AuditChapter[]) {
+    if (!editing) return;
+    await saveSplit(next);
+    await publish(editing);
+    setEditing(null);
+    setEditChapters(null);
+  }
+
 
   const load = useCallback(() => {
     setLoading(true);
@@ -61,7 +107,7 @@ export default function PendingPublishPanel() {
       setBooks((prev) => prev.filter((b) => b.id !== book.id));
       setJustPublished(book.title);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Couldn't publish that book.");
+      setActionError(e instanceof Error ? e.message : "Couldn't add that book to the library.");
     } finally {
       setBusyId(null);
     }
@@ -166,6 +212,12 @@ export default function PendingPublishPanel() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => openEditor(book)}
+                  className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                >
+                  Review split
+                </button>
                 <Link
                   href={`/reader/${book.id}`}
                   className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
@@ -177,12 +229,46 @@ export default function PendingPublishPanel() {
                   disabled={busyId === book.id}
                   className="text-xs font-medium px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
                 >
-                  {busyId === book.id ? "Publishing…" : (<><CheckCircleIcon className="w-3.5 h-3.5" aria-hidden="true" />Publish</>)}
+                  {busyId === book.id ? "Adding…" : (<><CheckCircleIcon className="w-3.5 h-3.5" aria-hidden="true" />Add to library</>)}
                 </button>
               </div>
             </li>
           ))}
         </ul>
+      )}
+
+      {editing && (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50/40 p-3">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <h3 className="font-serif text-sm font-semibold text-ink m-0">
+              Reviewing the split — {editing.title}
+            </h3>
+            <button
+              onClick={() => { setEditing(null); setEditChapters(null); setEditBlocked(null); }}
+              className="ml-auto text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              Close
+            </button>
+          </div>
+
+          {editBlocked && (
+            <p role="alert" className="text-xs text-red-700 m-0">{editBlocked}</p>
+          )}
+
+          {!editBlocked && !editChapters && (
+            <p role="status" className="text-xs text-stone-600 m-0">Loading chapters…</p>
+          )}
+
+          {editChapters && (
+            <ChapterAuditPanel
+              chapters={editChapters}
+              onSaveMeta={saveSplit}
+              onSaveStructure={saveSplit}
+              onFinish={saveAndAdd}
+              finishLabel="Add to library"
+            />
+          )}
+        </div>
       )}
     </section>
   );

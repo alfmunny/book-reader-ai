@@ -22,14 +22,14 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-06",
-    "audited_by": "architect-agent",
-    "content_sha256": "b69db5a0a7296983a0a7278f784b0f6b87d10a029ac57e3263c94aadd220b850"
+    "frozen_at": "2026-08-26",
+    "audited_by": "architect-agent (front-matter re-audit)",
+    "content_sha256": "7daaf95bf0bcb3d6aa2f5af3cd7fc348f9b35a3a014cf808ccf1f9f5b7c7eef9"
   },
   "chapters": [
     {
       "index": 0,
-      "title": "D R A C U L A",
+      "title": "TITLE PAGE",
       "paragraphs": [
         "by\nBram Stoker\nNEW YORK\nGROSSET & DUNLAP\nPublishers",
         "Copyright, 1897, in the United States of America, according\nto Act of Congress, by Bram Stoker\n[All rights reserved.]\nPRINTED IN THE UNITED STATES\nAT\nTHE COUNTRY LIFE PRESS, GARDEN CITY, N.Y."
@@ -37,7 +37,7 @@
     },
     {
       "index": 1,
-      "title": "Section 2",
+      "title": "PREFACE",
       "paragraphs": [
         "How these papers have been placed in sequence will be made manifest in the\nreading of them. All needless matters have been eliminated, so that a history\nalmost at variance with the possibilities of later-day belief may stand forth\nas simple fact. There is throughout no statement of past things wherein memory\nmay err, for all the records chosen are exactly contemporary, given from the\nstandpoints and within the range of knowledge of those who made them."
       ]

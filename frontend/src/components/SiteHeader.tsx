@@ -89,6 +89,9 @@ export default function SiteHeader({ current }: { current: "home" | "bookshelf" 
             <Link href="/upload" className={linkClass(false)}>Upload</Link>
           )}
           {status === "authenticated" && (
+            <Link href="/discover" className={linkClass(false)}>Discover</Link>
+          )}
+          {status === "authenticated" && (
             <Link href="/notes" className={linkClass(false)}>Your Notes</Link>
           )}
           {status === "authenticated" && (

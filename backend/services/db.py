@@ -941,6 +941,20 @@ async def list_frozen_unpublished() -> list[dict]:
             " ORDER BY f.frozen_at DESC, b.id DESC"
         ) as cursor:
             rows = await cursor.fetchall()
+
+        # A frozen book can still be mid-translation. Publishing it then puts a
+        # half-translated book in the library, so the queue has to say — DISTINCT
+        # because a re-translated chapter is still one translated chapter.
+        async with db.execute(
+            "SELECT book_id, target_language, COUNT(DISTINCT chapter_index) AS n"
+            "  FROM translations GROUP BY book_id, target_language"
+        ) as cursor:
+            trans_rows = await cursor.fetchall()
+
+    by_book: dict[int, list[tuple[str, int]]] = {}
+    for r in trans_rows:
+        by_book.setdefault(r["book_id"], []).append((r["target_language"], r["n"]))
+
     result = []
     for row in rows:
         d = dict(row)
@@ -950,6 +964,16 @@ async def list_frozen_unpublished() -> list[dict]:
                     d[field] = json.loads(d[field])
                 except (ValueError, TypeError):
                     d[field] = []
+        total = d.get("chapter_count") or 0
+        d["translations"] = [
+            {
+                "language": lang,
+                "translated": n,
+                "total": total,
+                "complete": total > 0 and n >= total,
+            }
+            for lang, n in sorted(by_book.get(d["id"], []))
+        ]
         result.append(d)
     return result
 

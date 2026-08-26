@@ -10,6 +10,8 @@ Books absent from the registry freeze exactly as the splitter emits them.
 
 Schema:
     OVERRIDES[book_id] = {
+        'source': 'text',                       # optional; pins the split path
+        'why': str,                             # required alongside 'source'
         'retitle': [
             {'index': int, 'expect_title': str, 'title': str, 'why': str},
         ],
@@ -24,6 +26,14 @@ Schema:
 Every `index` names a chapter in the splitter's **raw** output: retitles are
 resolved before any merge shifts the list, so one registry entry never has to
 account for another.
+
+`source` pins which splitting path the freeze uses. The resolver prefers a
+stored EPUB because it usually carries real structure, but a bad EPUB is worse
+than the plain text: Pride and Prejudice #1342 ships the 1894 illustrated
+edition, whose decorative drop-cap is lost in extraction (so every chapter
+loses its opening letter), whose illustration captions bleed into chapter
+titles, and whose plate copyright lines become paragraphs. Pinning `'text'`
+selects `build_chapters` and records `chapter_source: "text"` in the artifact.
 
 `retitle` replaces a heading the splitter invented or left as a placeholder
 ("Section 2" over Dracula's prefatory note). It moves nothing — indices and
@@ -55,6 +65,21 @@ from __future__ import annotations
 from services.splitter import Chapter
 
 OVERRIDES: dict[int, dict] = {
+    1342: {  # Pride and Prejudice
+        # The stored EPUB is the 1894 George Allen illustrated edition. Its
+        # extraction is materially worse than the plain text: the decorative
+        # drop-cap is lost, so every chapter loses its opening letter ("It is
+        # a truth…" arrives as "IT is a truth…", "Mr. Bennet was…" as "R.
+        # BENNET was…"); plate copyright lines land as paragraphs; and
+        # illustration captions bleed into the chapter titles ("Covering a
+        # screen. CHAPTER VIII."). The plain-text split yields Austen's 61
+        # chapters with clean titles and intact openings, and is what the
+        # existing translations were made against.
+        # Audited against Gutenberg #1342, 2026-08-26.
+        "source": "text",
+        "why": "illustrated EPUB drops each chapter's opening letter and "
+               "pollutes titles with plate captions",
+    },
     345: {  # Dracula
         # Front matter only. Dracula's split is otherwise sound: 27 numbered
         # chapters with correct boundaries, and all 30 zh entries paragraph-
@@ -138,6 +163,13 @@ def _check(
             f"but the splitter produced {found!r} — the split moved; re-audit "
             f"scripts/chapter_split_overrides.py before freezing."
         )
+
+
+def forced_source(book_id: int) -> str | None:
+    """Return the splitting path this book is pinned to, or None to let the
+    resolver choose. Only 'text' is meaningful today — see the module
+    docstring for why a stored EPUB is not always the better input."""
+    return (OVERRIDES.get(book_id) or {}).get("source")
 
 
 def _merges(spec: dict) -> list[dict]:

@@ -117,15 +117,16 @@ DELETE /translations/mine/{id}                      → remove the whole version
 
 All changes live in the existing translation tab + `SentenceReader` rendering path; the parallel/inline renderer is reused untouched (it consumes `translations: string[]`).
 
-1. **Version switcher** at the top of the translation tab: `Editorial` / `Mine` (radio-style, persisted in `AppSettings.translationSource`). The "Mine" entry shows the version's dominant model tag as a chip (`deepseek-v4-flash`), or "start translating" when no version exists. Switching is instant — both sources are independently cached client-side; the user's version is never mutated by switching.
-2. **Style panel** (popover next to the switcher): textarea for the style prompt (prefilled from the version / last used), provider select (DeepSeek/Claude, gated on stored keys like the chat dropdown), and a "Translate whole chapter" button with per-paragraph progress.
-3. **Per-paragraph actions** (visible in "Mine" mode, on hover/tap of a translation block):
+1. **Target language stays first-class**: the translation tab's existing "Target language" select governs BOTH sources. Editorial and Mine are each per-language (the schema keys versions on `target_language`), and the switcher operates within the currently selected language — the user's zh version and en version are independent, each with its own style prompt and coverage.
+2. **Version switcher** below the language select: `Editorial` / `Mine` (radio-style, persisted in `AppSettings.translationSource`, per language). The "Mine" entry shows the version's dominant model tag as a chip (`deepseek-v4-flash`), or "start translating" when no version exists. Switching is instant — both sources are independently cached client-side; the user's version is never mutated by switching.
+3. **Style panel** (popover next to the switcher): textarea for the style prompt (prefilled from the version / last used), provider select (DeepSeek/Claude, gated on stored keys like the chat dropdown), and a "Translate whole chapter" button with per-paragraph progress.
+4. **Per-paragraph actions** (visible in "Mine" mode, on hover/tap of a translation block):
    - **Translate / Retranslate** — runs `scope: {paragraph_index}` with the current style + provider; a small provider picker on the button allows a one-off different provider.
    - **Edit** — inline textarea (same pattern as the notes-page question editing), saves via PATCH, tags the paragraph "edited".
    - **Delete** — removes the row; the block falls back to an "untranslated" placeholder with a Translate button.
    - Each block shows its **model tag** (`deepseek-v4-flash` / `claude-sonnet-5` / `edited`) as a muted chip.
-4. **Untranslated paragraphs** in "Mine" mode render a subtle placeholder ("not translated yet — Translate") instead of silently showing nothing; a toggle "fill gaps from editorial" is explicitly **out of scope for v1** (mixing sources hides which words came from whom).
-5. **Sentence-by-sentence** granularity maps to **paragraph** operations in v1: tapping "translate this" on a selected sentence translates its containing paragraph. True sub-paragraph patching requires sentence-level alignment bookkeeping that the editorial pipeline doesn't have either — deliberately deferred (open question 1).
+5. **Untranslated paragraphs** in "Mine" mode render a subtle placeholder ("not translated yet — Translate") instead of silently showing nothing; a toggle "fill gaps from editorial" is explicitly **out of scope for v1** (mixing sources hides which words came from whom).
+6. **Sentence-by-sentence** granularity maps to **paragraph** operations in v1: tapping "translate this" on a selected sentence translates its containing paragraph. True sub-paragraph patching requires sentence-level alignment bookkeeping that the editorial pipeline doesn't have either — deliberately deferred (open question 1).
 
 ## Phase 2 — publishing (schema-ready now, shipped later)
 

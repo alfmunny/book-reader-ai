@@ -5,13 +5,12 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const src = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
-  "utf8",
-);
+const src = ["../components/SiteHeader.tsx", "../app/page.tsx", "../app/bookshelf/page.tsx"]
+  .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 
 describe("Home page document.title (closes #2103)", () => {
-  it("sets document.title to 'My Library — Book Reader AI'", () => {
-    expect(src).toContain('document.title = "My Library — Book Reader AI"');
+  it("home and bookshelf each set their own document.title", () => {
+    expect(src).toContain('document.title = "Book Reader AI"');
+    expect(src).toContain('document.title = "Your Bookshelf — Book Reader AI"');
   });
 });

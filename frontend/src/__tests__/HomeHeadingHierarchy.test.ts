@@ -5,10 +5,11 @@
 import fs from "fs";
 import path from "path";
 
-const homePage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/page.tsx"),
-  "utf8",
-);
+const homePage = [
+  "src/components/SiteHeader.tsx",
+  "src/app/page.tsx",
+  "src/app/bookshelf/page.tsx",
+].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8")).join("\n");
 
 describe("Home page heading hierarchy", () => {
   it('uses <h2> for "Continue Reading" section label', () => {
@@ -19,13 +20,13 @@ describe("Home page heading hierarchy", () => {
     expect(homePage).toMatch(/<h2[^>]*>\s*Your Progress/);
   });
 
-  it('uses <h2> for "Your Library" section label', () => {
-    expect(homePage).toMatch(/<h2[^>]*>\s*Your Library/);
+  it('uses <h2> for "Your Bookshelf" section label', () => {
+    expect(homePage).toMatch(/<h2[^>]*>\s*Your Bookshelf/);
   });
 
   it("does not use <p> for any of the three section labels", () => {
     expect(homePage).not.toMatch(/<p[^>]*>\s*Continue Reading/);
     expect(homePage).not.toMatch(/<p[^>]*>\s*Your Progress/);
-    expect(homePage).not.toMatch(/<p[^>]*>\s*Your Library/);
+    expect(homePage).not.toMatch(/<p[^>]*>\s*Your Bookshelf/);
   });
 });

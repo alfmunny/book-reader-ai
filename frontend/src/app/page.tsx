@@ -1,902 +1,105 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { searchBooks, getPopularBooks, getMe, getReadingProgress, getUserStats, UserStats, BookMeta } from "@/lib/api";
-import { getRecentBooks, removeRecentBook, recordRecentBook, RecentBook } from "@/lib/recentBooks";
+import { useEffect, useState } from "react";
+import { getCatalogBooks, BookMeta } from "@/lib/api";
+import { getRecentBooks, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
-import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
-import ReadingStats from "@/components/ReadingStats";
-import { FireIcon, ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, InsightIcon, VocabIcon, BookCoverPlaceholderIcon, GlobeIcon, SummaryIcon, SpeakerIcon, GridViewIcon, ListViewIcon, SettingsIcon, SearchIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
-import { SearchBar } from "@/components/SearchBar";
+import SiteHeader from "@/components/SiteHeader";
+import { BookCoverPlaceholderIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useSession } from "next-auth/react";
 
-const FEATURED = [
-  { query: "Faust", lang: "de" },
-  { query: "Hamlet", lang: "en" },
-  { query: "Don Quixote", lang: "en" },
-  { query: "Moby Dick", lang: "en" },
-  { query: "Crime and Punishment", lang: "en" },
-  { query: "Pride and Prejudice", lang: "en" },
-];
-
-const POPULAR_LANGS = [
-  { code: "", label: "All" },
-  { code: "en", label: "English" },
-  { code: "ru", label: "Russian" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
-];
-
-
-function timeAgo(ms: number): string {
-  const diff = Date.now() - ms;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-type Tab = "library" | "discover";
-const TAB_ORDER: Tab[] = ["library", "discover"];
-
+/**
+ * Home — the curated catalog.
+ *
+ * Books are added by an admin session that audits the chapter split before
+ * freezing it, so readers no longer import anything themselves (#2711). The
+ * Gutenberg search and the Discover tab it lived in are gone; what remains is the
+ * audited catalog, shown directly. The personal collection moved to /bookshelf.
+ */
 export default function Home() {
   const router = useRouter();
-  const { data: session, status } = useSession();
 
-  const [tab, setTab] = useState<Tab>("library");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [books, setBooks] = useState<BookMeta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+  const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<BookMeta | null>(null);
 
-  // ── Library / Home state ──
-  const [recentBooks, setRecentBooks] = useState<RecentBook[]>([]);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
-  const [userStatsFetchError, setUserStatsFetchError] = useState(false);
-  const [userStatsRetryTick, setUserStatsRetryTick] = useState(0);
-  const [statsExpanded, setStatsExpanded] = useState(false);
-  const [removedBookToast, setRemovedBookToast] = useState<RecentBook | null>(null);
-
   useEffect(() => {
-    document.title = "My Library — Book Reader AI";
+    document.title = "Book Reader AI";
   }, []);
 
   useEffect(() => {
-    const books = getRecentBooks();
-    setRecentBooks(books);
-    if (books.length === 0) setTab("discover");
+    setRecentBooks(getRecentBooks());
   }, []);
 
-  // Unauthenticated users always see the Discover page first.
   useEffect(() => {
-    if (status === "unauthenticated") setTab("discover");
-  }, [status]);
-
-  // Fetch user info and sync reading progress from backend when authenticated.
-  useEffect(() => {
-    if (status !== "authenticated") return;
-    getMe().then((me) => {
-      setIsAdmin(me.role === "admin");
-    }).catch(() => {});
-    setUserStatsFetchError(false);
-    getUserStats().then(setUserStats).catch(() => setUserStatsFetchError(true));
-    getReadingProgress().then((entries) => {
-      const local = getRecentBooks();
-      let changed = false;
-      const merged = [...local];
-      for (const entry of entries) {
-        const backendTs = new Date(entry.last_read).getTime();
-        const idx = merged.findIndex((b) => b.id === entry.book_id);
-        if (idx === -1) continue;
-        if (backendTs > merged[idx].lastRead || merged[idx].lastChapter !== entry.chapter_index) {
-          merged[idx] = { ...merged[idx], lastChapter: entry.chapter_index, lastRead: Math.max(backendTs, merged[idx].lastRead) };
-          changed = true;
-        }
-      }
-      if (changed) {
-        localStorage.setItem("recent_books", JSON.stringify(merged));
-        setRecentBooks(merged);
-      }
-    }).catch(() => {});
-  }, [status, userStatsRetryTick]);
-
-  // ── Discover state ──
-  const [query, setQuery] = useState("");
-  const [lang, setLang] = useState("");
-  const [searchResults, setSearchResults] = useState<BookMeta[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState("");
-  const [searchedQuery, setSearchedQuery] = useState("");
-
-  const [popularBooks, setPopularBooks] = useState<BookMeta[]>([]);
-  const [popularLoading, setPopularLoading] = useState(false);
-  const [popularError, setPopularError] = useState(false);
-  const [popularLang, setPopularLang] = useState("");
-  const [popularPage, setPopularPage] = useState(1);
-  const [popularTotal, setPopularTotal] = useState(0);
-  const [popularView, setPopularView] = useState<"grid" | "list">("grid");
-
-  const PER_PAGE = 50;
-
-  const searchGenRef = useRef(0);
-
-  function loadPopularBooks() {
-    setPopularError(false);
-    setPopularLoading(true);
-    getPopularBooks(popularLang, popularPage)
-      .then((data) => {
-        setPopularBooks(data.books);
-        setPopularTotal(data.total);
-      })
-      .catch(() => { setPopularError(true); })
-      .finally(() => setPopularLoading(false));
-  }
-
-  useEffect(() => {
-    if (tab !== "discover") return;
-    loadPopularBooks();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, popularLang, popularPage]);
-
-  function handlePopularLangChange(lang: string) {
-    setPopularLang(lang);
-    setPopularPage(1);
-  }
-
-  async function handleSearch(q = query, l = lang) {
-    if (!q.trim()) return;
-    const myGen = ++searchGenRef.current;
-    setSearching(true);
-    setSearchError("");
-    setSearchResults([]);
-    setSearchedQuery(q.trim());
-    try {
-      const data = await searchBooks(q, l);
-      if (myGen !== searchGenRef.current) return;
-      setSearchResults(data.books);
-    } catch (e: any) {
-      if (myGen !== searchGenRef.current) return;
-      setSearchError(e.message);
-    } finally {
-      if (myGen === searchGenRef.current) setSearching(false);
-    }
-  }
-
-  function openBook(id: number) {
-    const inLibrary = recentBooks.some((b) => b.id === id);
-    if (inLibrary) {
-      router.push(`/reader/${id}`);
-    } else {
-      router.push(`/import/${id}?next=/reader/${id}`);
-    }
-  }
-
-  function handleBookClick(book: BookMeta) {
-    setSelectedBook(book);
-  }
+    setLoading(true);
+    setFetchError(false);
+    getCatalogBooks()
+      .then(setBooks)
+      .catch(() => setFetchError(true))
+      .finally(() => setLoading(false));
+  }, [retryTick]);
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      {/* Header */}
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icon.svg" alt="" className="w-10 h-10 rounded-xl shrink-0" />
-            <div>
-              <h1 className="text-xl md:text-2xl font-serif font-bold text-ink">Book Reader AI</h1>
-              <p className="text-xs md:text-sm text-amber-800 mt-0.5">Public domain classics with AI assistance</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {status === "authenticated" ? <SearchBar /> : null}
-            {status === "unauthenticated" ? (
-              <Link
-                href="/login"
-                className="rounded-lg border border-amber-300 px-4 py-2.5 md:py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 flex items-center"
-              >
-                Sign in
-              </Link>
-            ) : (
-              <Link
-                href="/profile"
-                title={`${session?.backendUser?.name ?? "Profile"} — Profile & Settings`}
-                aria-label={`${session?.backendUser?.name ?? "Profile"} — Profile & Settings`}
-                className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 w-11 h-11 md:w-9 md:h-9 rounded-full overflow-hidden border border-amber-200 hover:border-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
-              >
-                {session?.backendUser?.picture ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={session.backendUser.picture} alt="" loading="lazy" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="w-full h-full flex items-center justify-center bg-amber-100 text-amber-700 text-sm font-bold">
-                    {session?.backendUser?.name?.[0] ?? "?"}
-                  </span>
-                )}
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Tab bar */}
-      <div className="border-b border-amber-200 bg-white/40 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          <div
-            role="tablist"
-            aria-label="Main navigation"
-            className="flex gap-1 items-center"
-            onKeyDown={(e) => {
-              const idx = TAB_ORDER.indexOf(tab);
-              if (e.key === "ArrowRight") {
-                const next = TAB_ORDER[(idx + 1) % TAB_ORDER.length];
-                setTab(next);
-                document.getElementById(`tab-${next}`)?.focus();
-              } else if (e.key === "ArrowLeft") {
-                const prev = TAB_ORDER[(idx - 1 + TAB_ORDER.length) % TAB_ORDER.length];
-                setTab(prev);
-                document.getElementById(`tab-${prev}`)?.focus();
-              }
-            }}
-          >
-          {([
-            { key: "library" as Tab, label: "Home", count: recentBooks.length || undefined },
-            { key: "discover" as Tab, label: "Discover" },
-          ]).map(({ key, label, count }) => (
-            <button
-              key={key}
-              id={`tab-${key}`}
-              role="tab"
-              aria-selected={tab === key}
-              aria-controls={`tabpanel-${key}`}
-              tabIndex={tab === key ? 0 : -1}
-              onClick={() => setTab(key)}
-              className={`px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-                tab === key
-                  ? "border-amber-700 text-amber-900"
-                  : "border-transparent text-amber-700 hover:text-amber-900"
-              }`}
-            >
-              {label}
-              {count !== undefined && (
-                <span className="ml-1.5 text-xs opacity-60">({count})</span>
-              )}
-            </button>
-          ))}
-          </div>
-          {status === "authenticated" && (
-            <Link
-              href="/upload"
-              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-            >
-              Upload
-            </Link>
-          )}
-          {status === "authenticated" && (
-            <Link
-              href="/notes"
-              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-            >
-              Your Notes
-            </Link>
-          )}
-          {status === "authenticated" && (
-            <Link
-              href="/vocabulary"
-              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-            >
-              Your Word List
-            </Link>
-          )}
-          {/* Admin link — only visible to admin users */}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              data-testid="admin-tab"
-              className="px-5 py-3 min-h-[44px] md:min-h-0 text-sm font-medium border-b-2 border-transparent text-amber-700 hover:text-amber-800 flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-            >
-              <SettingsIcon className="w-3.5 h-3.5" aria-hidden="true" />
-              Admin
-            </Link>
-          )}
-        </div>
-      </div>
+      <SiteHeader current="home" />
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
-
-        {/* ════════════ Home Tab ════════════ */}
-        {tab === "library" && (
-          <div id="tabpanel-library" role="tabpanel" aria-labelledby="tab-library" tabIndex={0} className="space-y-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 rounded-sm">
-
-            {/* Greeting */}
-            {status === "authenticated" && session?.backendUser?.name && (
-              <p className="font-serif text-xl text-ink">
-                Welcome back, {session.backendUser.name.split(" ")[0]}
-              </p>
-            )}
-
-            {/* Continue Reading */}
-            {recentBooks.length > 0 && (
-              <section aria-labelledby="home-continue-reading-heading">
-                <h2 id="home-continue-reading-heading" className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
-                  Continue Reading
-                </h2>
-                <Link
-                  href={`/reader/${recentBooks[0].id}`}
-                  aria-label={`Continue reading ${recentBooks[0].title}`}
-                  className="w-full text-left rounded-xl border border-amber-200 bg-white p-3 flex items-center gap-3 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 transition-all duration-200"
-                  style={{ boxShadow: "var(--shadow-card)" }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
-                  onFocus={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card-hover)"; }}
-                  onBlur={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-card)"; }}
-                >
-                  {recentBooks[0].cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={recentBooks[0].cover} alt="" loading="lazy" className="w-12 h-16 object-cover rounded-lg shrink-0" />
-                  ) : (
-                    <div className="w-12 h-16 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border border-amber-100 flex items-center justify-center shrink-0">
-                      <BookCoverPlaceholderIcon className="w-6 h-8 text-amber-500" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-serif font-semibold text-sm text-ink line-clamp-1" title={recentBooks[0].title}>{recentBooks[0].title}</p>
-                    <p className="text-xs text-amber-700 mt-0.5 line-clamp-1" title={recentBooks[0].authors?.join(", ")}>{recentBooks[0].authors?.join(", ")}</p>
-                    <p className="text-xs text-stone-600 mt-1">
-                      Chapter {recentBooks[0].lastChapter + 1} · {timeAgo(recentBooks[0].lastRead)}
-                    </p>
-                  </div>
-                  <ArrowRightIcon className="w-4 h-4 text-amber-700 shrink-0" />
-                </Link>
-              </section>
-            )}
-
-            {/* Stats strip */}
-            {status === "authenticated" && (userStats || userStatsFetchError) && (
-              <section aria-labelledby="home-progress-heading">
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 id="home-progress-heading" className="text-xs font-semibold uppercase tracking-widest text-stone-600 flex-1">
-                    Your Progress
-                  </h2>
-                  <button
-                    onClick={() => setStatsExpanded((v) => !v)}
-                    aria-expanded={statsExpanded}
-                    aria-controls="stats-activity-panel"
-                    className="text-xs text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 px-2 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                  >
-                    {statsExpanded ? "Hide activity" : "Show activity"}
-                  </button>
-                </div>
-
-                {userStatsFetchError ? (
-                  <div role="alert" className="flex items-center justify-between rounded-xl border border-amber-100 bg-white px-4 py-3">
-                    <p className="text-sm text-stone-500">Couldn&apos;t load stats.</p>
-                    <button
-                      onClick={() => setUserStatsRetryTick((t) => t + 1)}
-                      className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                    >
-                      Retry
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {userStats!.streak > 0 && (
-                        <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                          <FireIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                          <div>
-                            <p className="text-lg font-bold text-amber-900 leading-none">{userStats!.streak}</p>
-                            <p className="text-[10px] text-stone-600 mt-0.5">day streak</p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                        <BookOpenIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                        <div>
-                          <p className="text-lg font-bold text-stone-800 leading-none">{userStats!.totals.books_started}</p>
-                          <p className="text-[10px] text-stone-600 mt-0.5">books started</p>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                        <VocabIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                        <div>
-                          <p className="text-lg font-bold text-stone-800 leading-none">{userStats!.totals.vocabulary_words}</p>
-                          <p className="text-[10px] text-stone-600 mt-0.5">words saved</p>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-amber-100 px-4 py-3 flex items-center gap-3">
-                        <NoteIcon className="w-5 h-5 text-amber-600 shrink-0" />
-                        <div>
-                          <p className="text-lg font-bold text-stone-800 leading-none">{userStats!.totals.annotations}</p>
-                          <p className="text-[10px] text-stone-600 mt-0.5">annotations</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Collapsible full activity view */}
-                    {statsExpanded && (
-                      <div id="stats-activity-panel" className="mt-4">
-                        <ReadingStats active heatmapOnly />
-                      </div>
-                    )}
-                  </>
-                )}
-              </section>
-            )}
-
-            {/* Book grid */}
-            {recentBooks.length > 0 ? (
-              <section aria-label="Your Library">
-                {recentBooks.length > 1 && (
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-3">
-                    Your Library
-                  </h2>
-                )}
-                <ul role="list" aria-label="Your Library" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
-                  {recentBooks.map((book) => (
-                    <li key={book.id}>
-                      <BookCard
-                        book={book}
-                        onClick={() => handleBookClick(book)}
-                        badge={`Ch. ${book.lastChapter + 1} · ${timeAgo(book.lastRead)}`}
-                        onRemove={() => {
-                          if (removedBookToast) {
-                            setRemovedBookToast(null);
-                          }
-                          removeRecentBook(book.id);
-                          setRecentBooks(getRecentBooks());
-                          setRemovedBookToast(book);
-                        }}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : (
-              <div className="text-center py-20">
-                <div className="inline-flex items-end justify-center gap-1.5 mb-6 opacity-30">
-                  {[40, 56, 48, 60, 44].map((h, i) => (
-                    <div
-                      key={i}
-                      className="w-6 rounded-t-sm bg-amber-700"
-                      style={{ height: h }}
-                    />
-                  ))}
-                </div>
-                <h2 className="font-serif text-xl font-semibold text-ink mb-2">Your library is empty</h2>
-                <p className="text-sm text-amber-700 mb-6 max-w-xs mx-auto">
-                  Books you open will appear here for quick access. Explore 70,000+ free classics to get started.
-                </p>
-                <button
-                  onClick={() => setTab("discover")}
-                  className="rounded-lg bg-amber-700 px-6 py-2.5 min-h-[44px] md:min-h-0 text-white font-medium hover:bg-amber-800 transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-                >
-                  Discover Books
-                </button>
-              </div>
-            )}
+        <section aria-labelledby="home-catalog-heading" className="space-y-4">
+          <div>
+            <h2 id="home-catalog-heading" className="font-serif text-2xl font-semibold text-ink">
+              The Library
+            </h2>
+            <p className="text-sm text-amber-800 mt-1">
+              Classics prepared for reading — each one checked chapter by chapter before it lands here.
+            </p>
           </div>
-        )}
 
-        {/* ════════════ Discover Tab ════════════ */}
-        {tab === "discover" && (
-          <div id="tabpanel-discover" role="tabpanel" aria-labelledby="tab-discover" tabIndex={0} className="space-y-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 rounded-sm">
+          {loading && (
+            <div role="status" aria-label="Loading the library" className="flex items-center gap-2 text-amber-700 text-sm py-6">
+              <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin shrink-0" aria-hidden="true" />
+              Loading the library…
+            </div>
+          )}
 
-            {/* ── Landing hero (unauthenticated visitors only) ── */}
-            {status === "unauthenticated" && (
-              <section aria-labelledby="home-hero-heading" className="pt-4 pb-2">
-                {/* Headline */}
-                <div className="text-center mb-8">
-                  <h2 id="home-hero-heading" className="font-serif text-3xl md:text-4xl font-bold text-ink leading-tight mb-3">
-                    Read the world&rsquo;s greatest books<br className="hidden sm:block" /> in your language
-                  </h2>
-                  <p className="text-amber-800 text-base md:text-lg max-w-xl mx-auto mb-6">
-                    70,000+ free classics from Project Gutenberg — with AI translation, vocabulary building, and reading insights.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                    <Link
-                      href="/login"
-                      className="rounded-lg bg-amber-700 px-7 py-3 min-h-[44px] md:min-h-0 text-white font-semibold text-base hover:bg-amber-800 transition-colors shadow-sm min-w-[160px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700 flex items-center justify-center"
-                    >
-                      Sign in free
-                    </Link>
-                    <button
-                      onClick={() => document.getElementById("discover-search")?.scrollIntoView({ behavior: "smooth" })}
-                      className="rounded-lg border border-amber-300 px-7 py-3 min-h-[44px] md:min-h-0 text-amber-800 font-medium text-base hover:bg-amber-50 transition-colors min-w-[160px] flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                    >
-                      Browse library <ArrowRightIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+          {!loading && fetchError && (
+            <div role="alert" className="flex flex-col items-center gap-3 py-16 text-center">
+              <AlertCircleIcon className="w-8 h-8 text-amber-600" aria-hidden="true" />
+              <p className="text-sm text-stone-600">Couldn&apos;t load the library.</p>
+              <button
+                onClick={() => setRetryTick((t) => t + 1)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 px-4 py-2 min-h-[44px] md:min-h-0 text-sm font-medium text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+              >
+                <RetryIcon className="w-4 h-4" aria-hidden="true" />
+                Retry
+              </button>
+            </div>
+          )}
 
-                {/* Translation preview */}
-                <div className="rounded-2xl border border-amber-200 bg-white overflow-hidden mb-8" style={{ boxShadow: "var(--shadow-card)" }}>
-                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-amber-100 bg-amber-50/60">
-                    <GlobeIcon className="w-4 h-4 text-amber-600" aria-hidden="true" />
-                    <span className="text-xs font-medium text-amber-800">AI Translation — Faust by Goethe (German → English)</span>
-                  </div>
-                  <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-amber-100">
-                    <div className="px-5 py-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-700 mb-2">Original · Deutsch</p>
-                      <p className="font-serif text-sm leading-relaxed text-ink/80">
-                        Habe nun, ach! Philosophie,<br />
-                        Juristerei und Medizin,<br />
-                        Und leider auch Theologie<br />
-                        Durchaus studiert, mit heißem Bemühn.<br />
-                        Da steh ich nun, ich armer Tor!<br />
-                        Und bin so klug als wie zuvor.
-                      </p>
-                    </div>
-                    <div className="px-5 py-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-amber-700 mb-2">Translation · English</p>
-                      <p className="font-serif text-sm leading-relaxed text-ink">
-                        I have, alas! Philosophy,<br />
-                        Medicine, Jurisprudence too,<br />
-                        And to my cost Theology,<br />
-                        With ardent labour studied through.<br />
-                        And here I stand, with all my lore,<br />
-                        Poor fool, no wiser than before.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Feature cards */}
-                <div className="grid sm:grid-cols-3 gap-4 mb-6">
-                  {[
-                    {
-                      icon: <GlobeIcon className="w-5 h-5 text-amber-600" aria-hidden="true" />,
-                      title: "AI Translation",
-                      body: "Read any classic in your native language. Switch languages mid-chapter without losing your place.",
-                    },
-                    {
-                      icon: <VocabIcon className="w-5 h-5 text-amber-600" aria-hidden="true" />,
-                      title: "Vocabulary Builder",
-                      body: "Tap any word to save it. Build a personal reading vocabulary as you go, book by book.",
-                    },
-                    {
-                      icon: <InsightIcon className="w-5 h-5 text-amber-600" aria-hidden="true" />,
-                      title: "AI Reading Insights",
-                      body: "Ask questions about what you just read and get instant answers grounded in the text.",
-                    },
-                  ].map(({ icon, title, body }) => (
-                    <div key={title} className="rounded-xl border border-amber-200 bg-white p-4" style={{ boxShadow: "var(--shadow-card)" }}>
-                      <div className="flex items-center gap-2 mb-2">
-                        {icon}
-                        <h3 className="font-semibold text-sm text-ink">{title}</h3>
-                      </div>
-                      <p className="text-xs text-amber-800 leading-relaxed">{body}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Secondary features row */}
-                <div className="flex flex-wrap justify-center gap-4 text-xs text-amber-700 mb-2">
-                  {[
-                    { icon: <SummaryIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Chapter Summaries" },
-                    { icon: <SpeakerIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Text-to-Speech" },
-                    { icon: <NoteIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Annotations" },
-                    { icon: <BookOpenIcon className="w-3.5 h-3.5" aria-hidden="true" />, label: "Reading Stats" },
-                  ].map(({ icon, label }) => (
-                    <span key={label} className="flex items-center gap-1.5">
-                      {icon}
-                      {label}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="border-t border-amber-100 mt-8" />
-              </section>
-            )}
-
-            {/* Search section */}
-            <section id="discover-search" aria-labelledby="home-search-heading">
-              <h2 id="home-search-heading" className="font-serif font-semibold text-ink text-lg mb-1">Search</h2>
-              <p className="text-sm text-amber-700 mb-3">
-                70,000+ free public domain classics from Project Gutenberg
+          {!loading && !fetchError && books.length === 0 && (
+            <div className="text-center py-20">
+              <BookCoverPlaceholderIcon className="w-12 h-16 text-amber-400 mx-auto mb-5 opacity-50" aria-hidden="true" />
+              <h3 className="font-serif text-xl font-semibold text-ink mb-2">No books yet</h3>
+              <p className="text-sm text-amber-700 max-w-sm mx-auto">
+                Books appear here once they have been prepared and checked. Nothing has been
+                published yet — check back shortly.
               </p>
+            </div>
+          )}
 
-              <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                <input
-                  aria-label="Search by title or author"
-                  className="flex-1 rounded-lg border border-amber-300 bg-white px-4 py-2.5 font-serif text-ink shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400 text-base placeholder:text-stone-600"
-                  placeholder="Search by title or author..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                />
-                <div className="flex gap-2">
-                  <select
-                    aria-label="Filter by language"
-                    className="rounded-lg border border-amber-300 bg-white px-3 py-2.5 text-sm text-ink flex-1 sm:flex-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    value={lang}
-                    onChange={(e) => setLang(e.target.value)}
-                  >
-                    <option value="">Any language</option>
-                    <option value="en">English</option>
-                    <option value="de">German</option>
-                    <option value="fr">French</option>
-                    <option value="ja">Japanese</option>
-                    <option value="it">Italian</option>
-                    <option value="es">Spanish</option>
-                  </select>
-                  <button
-                    className="rounded-lg bg-amber-700 px-5 py-2.5 min-h-[44px] md:min-h-0 text-white font-medium hover:bg-amber-800 disabled:opacity-50 flex items-center justify-center gap-2 flex-1 sm:flex-none focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-                    onClick={() => handleSearch()}
-                    disabled={searching}
-                  >
-                    {searching && (
-                      <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" aria-hidden="true" />
-                    )}
-                    {searching ? "Searching" : "Search"}
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick search pills */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {FEATURED.map((f) => (
-                  <button
-                    key={f.query}
-                    className="text-xs rounded-full border border-amber-300 px-3 py-1 min-h-[44px] md:min-h-0 text-amber-800 hover:bg-amber-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                    onClick={() => { setQuery(f.query); setLang(f.lang); handleSearch(f.query, f.lang); }}
-                    disabled={searching}
-                  >
-                    {f.query}
-                  </button>
-                ))}
-              </div>
-
-              {searchError && (
-                <div role="alert" className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm flex items-center gap-2">
-                  <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  <span>{searchError}</span>
-                </div>
-              )}
-
-              {/* Visually-hidden live region: always-present so AT announces updates (WCAG 4.1.3) */}
-              <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-                {!searching && searchedQuery && !searchError
-                  ? searchResults.length > 0
-                    ? `Found ${searchResults.length} book${searchResults.length === 1 ? "" : "s"} for ${searchedQuery}.`
-                    : `Search complete. No results for ${searchedQuery}.`
-                  : ""}
-              </div>
-
-              {searching && (
-                <div role="status" aria-label="Loading search results">
-                  <span className="sr-only">Loading search results...</span>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
-                        <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
-                        <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
-                        <div className="h-3 bg-amber-100 rounded w-1/2" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {!searching && searchResults.length > 0 && (
-                <ul role="list" aria-label="Search results" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
-                  {searchResults.map((book) => (
-                    <li key={book.id}>
-                      <BookCard book={book} onClick={() => handleBookClick(book)} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {!searching && searchedQuery && searchResults.length === 0 && !searchError && (
-                <div className="text-center py-10 text-amber-700">
-                  <SearchIcon className="w-10 h-10 mx-auto mb-2 text-amber-400" aria-hidden="true" />
-                  <p className="text-lg font-serif mb-1">No books found for &ldquo;{searchedQuery}&rdquo;</p>
-                  <p className="text-sm text-amber-700">Try a different title, author, or language filter.</p>
-                  <button
-                    type="button"
-                    onClick={() => { setQuery(""); setSearchedQuery(""); setSearchResults([]); }}
-                    className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                  >
-                    Clear search
-                  </button>
-                </div>
-              )}
-            </section>
-
-            {/* Popular Classics section */}
-            <section aria-labelledby="home-popular-heading">
-              <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <h2 id="home-popular-heading" className="font-serif font-semibold text-ink text-lg">Popular Classics</h2>
-                  <div role="group" aria-label="Filter by language" className="flex gap-1.5">
-                    {POPULAR_LANGS.map((l) => (
-                      <button
-                        key={l.code}
-                        onClick={() => handlePopularLangChange(l.code)}
-                        aria-pressed={popularLang === l.code}
-                        className={`text-xs rounded-full px-3 py-1 min-h-[44px] md:min-h-0 border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-                          popularLang === l.code
-                            ? "bg-amber-700 text-white border-amber-700"
-                            : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                        }`}
-                      >
-                        {l.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 border border-amber-200 rounded-lg p-0.5 bg-white">
-                  <button
-                    onClick={() => setPopularView("grid")}
-                    title="Grid view"
-                    aria-label="Grid view"
-                    aria-pressed={popularView === "grid"}
-                    className={`p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${popularView === "grid" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
-                  >
-                    <GridViewIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setPopularView("list")}
-                    title="List view"
-                    aria-label="List view"
-                    aria-pressed={popularView === "list"}
-                    className={`p-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${popularView === "list" ? "bg-amber-100 text-amber-800" : "text-amber-600 hover:text-amber-700"}`}
-                  >
-                    <ListViewIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {popularLoading && (
-                <div role="status" aria-label="Loading popular books">
-                  <span className="sr-only">Loading popular books...</span>
-                  {popularView === "grid" ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="rounded-xl border border-amber-200 bg-white p-3 animate-pulse">
-                          <div className="w-full h-40 bg-amber-100 rounded-lg mb-2" />
-                          <div className="h-3 bg-amber-100 rounded w-3/4 mb-1.5" />
-                          <div className="h-3 bg-amber-100 rounded w-1/2" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white">
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
-                          <div className="w-8 h-3 bg-amber-100 rounded shrink-0" />
-                          <div className="w-8 h-12 bg-amber-100 rounded shrink-0" />
-                          <div className="flex-1 space-y-1.5">
-                            <div className="h-3 bg-amber-100 rounded w-2/3" />
-                            <div className="h-3 bg-amber-100 rounded w-1/3" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {!popularLoading && popularBooks.length > 0 && (
-                <>
-                  {popularView === "grid" ? (
-                    <ul role="list" aria-label="Popular Classics" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
-                      {popularBooks.map((book) => (
-                        <li key={book.id}>
-                          <BookCard book={book} onClick={() => handleBookClick(book)} />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <ul role="list" aria-label="Popular Classics" className="divide-y divide-amber-100 border border-amber-200 rounded-xl overflow-hidden bg-white list-none p-0 m-0">
-                      {popularBooks.map((book, idx) => (
-                        <li key={book.id}>
-                          <button
-                            onClick={() => handleBookClick(book)}
-                            aria-label={`Open ${book.title}${book.authors.length ? ` by ${book.authors.join(", ")}` : ""}`}
-                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-inset"
-                          >
-                            <span className="text-xs text-stone-600 w-7 text-right shrink-0 tabular-nums">
-                              {(popularPage - 1) * PER_PAGE + idx + 1}
-                            </span>
-                            {book.cover ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={book.cover} alt="" loading="lazy" className="w-9 h-14 object-cover rounded shrink-0" />
-                            ) : (
-                              <div className="w-9 h-14 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-100 rounded shrink-0 flex items-center justify-center">
-                                <BookCoverPlaceholderIcon className="w-5 h-7 text-amber-500" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-serif text-sm font-semibold text-ink truncate" title={book.title}>{book.title}</p>
-                              <p className="text-xs text-amber-700 truncate" title={book.authors.join(", ")}>{book.authors.join(", ")}</p>
-                            </div>
-                            {book.download_count > 0 ? (
-                              <span className="text-xs text-stone-600 shrink-0 tabular-nums">
-                                {book.download_count.toLocaleString()}
-                              </span>
-                            ) : null}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  {/* Pagination */}
-                  {popularTotal > PER_PAGE && (
-                    <div className="flex items-center justify-center gap-4 mt-6">
-                      <button
-                        onClick={() => setPopularPage((p) => p - 1)}
-                        disabled={popularPage === 1}
-                        aria-label="Previous page of popular books"
-                        className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                      >
-                        <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Prev
-                      </button>
-                      <span
-                        role="status"
-                        aria-live="polite"
-                        aria-atomic="true"
-                        aria-label={`Page ${popularPage} of ${Math.ceil(popularTotal / PER_PAGE)}`}
-                        className="text-sm text-amber-700"
-                      >
-                        Page {popularPage} of {Math.ceil(popularTotal / PER_PAGE)}
-                      </span>
-                      <button
-                        onClick={() => setPopularPage((p) => p + 1)}
-                        disabled={popularPage >= Math.ceil(popularTotal / PER_PAGE)}
-                        aria-label="Next page of popular books"
-                        className="px-4 py-2.5 md:py-1.5 text-sm rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                      >
-                        Next <ArrowRightIcon className="w-4 h-4 inline" aria-hidden="true" />
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {!popularLoading && popularError && (
-                <div role="alert" className="text-center py-10 flex flex-col items-center gap-2">
-                  <AlertCircleIcon className="w-10 h-10 text-red-300 mx-auto" aria-hidden="true" />
-                  <p className="font-serif text-base text-red-700">Failed to load books.</p>
-                  <p className="text-sm text-stone-600">Check your connection and try again.</p>
-                  <button
-                    type="button"
-                    onClick={loadPopularBooks}
-                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                  >
-                    <RetryIcon className="w-4 h-4" aria-hidden="true" />
-                    Try again
-                  </button>
-                </div>
-              )}
-
-              {!popularLoading && !popularError && popularBooks.length === 0 && (
-                <div className="text-center py-10 flex flex-col items-center gap-3">
-                  <BookOpenIcon className="w-12 h-12 text-amber-300 mx-auto" aria-hidden="true" />
-                  <p className="font-serif text-lg text-ink">No popular books yet</p>
-                  <p className="text-sm text-stone-600 max-w-xs">
-                    Popular classics from Project Gutenberg haven&apos;t been loaded yet.
-                    Search above to find any title or author.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const el = document.querySelector<HTMLInputElement>('[aria-label="Search by title or author"]');
-                      el?.focus();
-                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }}
-                    className="mt-1 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                  >
-                    Search for a book
-                  </button>
-                </div>
-              )}
-            </section>
-          </div>
-        )}
+          {!loading && !fetchError && books.length > 0 && (
+            <ul role="list" aria-label="The Library" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 list-none p-0 m-0">
+              {books.map((book) => (
+                <li key={book.id}>
+                  <BookCard book={book} onClick={() => setSelectedBook(book)} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
 
       {selectedBook && (
@@ -905,21 +108,10 @@ export default function Home() {
           recentBook={recentBooks.find((rb) => rb.id === selectedBook.id)}
           onClose={() => setSelectedBook(null)}
           onRead={() => {
+            const id = selectedBook.id;
             setSelectedBook(null);
-            openBook(selectedBook.id);
+            router.push(`/reader/${id}`);
           }}
-        />
-      )}
-
-      {removedBookToast && (
-        <UndoToast
-          message={`"${removedBookToast.title}" removed from library`}
-          onUndo={() => {
-            recordRecentBook(removedBookToast, removedBookToast.lastChapter);
-            setRecentBooks(getRecentBooks());
-            setRemovedBookToast(null);
-          }}
-          onDone={() => setRemovedBookToast(null)}
         />
       )}
     </main>

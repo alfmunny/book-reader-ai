@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const pageSrc = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
+  path.join(__dirname, "../app/bookshelf/page.tsx"),
   "utf8"
 );
 const cardSrc = fs.readFileSync(
@@ -43,15 +43,8 @@ const deckCardSrc = fs.readFileSync(
 );
 
 describe("Truncated title tooltip coverage (closes #2212)", () => {
-  it("Popular Classics list-view book title has title attribute", () => {
-    const idx = pageSrc.indexOf('text-ink truncate" title={book.title}');
-    expect(idx).toBeGreaterThan(-1);
-  });
-
-  it("Popular Classics list-view author has title attribute", () => {
-    const idx = pageSrc.indexOf('text-amber-700 truncate" title={book.authors.join(", ")}');
-    expect(idx).toBeGreaterThan(-1);
-  });
+  // The Popular Classics list view is gone with the Discover tab (#2711). Book
+  // titles in the catalog grid are rendered by BookCard, covered below.
 
   it("Continue Reading banner book title has title attribute", () => {
     const idx = pageSrc.indexOf('line-clamp-1" title={recentBooks[0].title}');

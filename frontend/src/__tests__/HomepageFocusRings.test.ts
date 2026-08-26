@@ -4,10 +4,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const src = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
-  "utf8"
-);
+const src = ["../components/SiteHeader.tsx", "../app/page.tsx", "../app/bookshelf/page.tsx"]
+  .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8"))
+  .join("\n");
 
 describe("Homepage header buttons focus rings (closes #2193)", () => {
   it("Sign in link (unauthenticated header) has focus ring", () => {
@@ -28,58 +27,35 @@ describe("Homepage header buttons focus rings (closes #2193)", () => {
   });
 });
 
-describe("Homepage tab bar focus rings (closes #2193)", () => {
-  it("Home/Discover tab buttons have focus ring", () => {
-    const idx = src.indexOf("tabpanel-${key}");
+describe("Primary nav focus rings (closes #2193)", () => {
+  it("shared nav link style carries the focus ring", () => {
+    // Nav links share a linkClass helper, so the ring lives there rather than
+    // beside each href (#2711).
+    const idx = src.indexOf("const linkClass");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 400);
+    const window = src.slice(idx, idx + 500);
     expect(window).toContain("focus-visible:ring-amber-400");
   });
 
-  it("Upload nav link has focus ring", () => {
-    const idx = src.indexOf("href=\"/upload\"");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 300);
-    expect(window).toContain("focus-visible:ring-amber-400");
+  it("every primary nav destination is rendered through it", () => {
+    for (const href of ['href="/"', 'href="/bookshelf"', 'href="/upload"', 'href="/notes"']) {
+      expect(src.indexOf(href)).toBeGreaterThan(-1);
+    }
+    expect(src).toMatch(/className=\{linkClass\(/);
   });
 });
 
-describe("Homepage discover section focus rings (closes #2193)", () => {
-  it("Sign in free hero button (amber-700) has ring with amber-700 offset", () => {
-    const idx = src.indexOf("Sign in free");
+describe("Homepage CTA focus rings (closes #2193)", () => {
+  it("amber-700 CTA has ring with amber-700 offset", () => {
+    // Anchor on the CTA's class signature — the phrase also appears in the
+    // empty-state paragraph above it.
+    const idx = src.indexOf("bg-amber-700 px-6");
     expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 300), idx + 20);
+    const window = src.slice(idx, idx + 400);
     expect(window).toContain("focus-visible:ring-amber-400");
     expect(window).toContain("ring-offset-amber-700");
   });
 
-  it("Search button (amber-700) has ring with amber-700 offset", () => {
-    // className is ~458 chars before "Searching" button label — look 500 chars back
-    const idx = src.indexOf("\"Searching\"");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 500), idx + 20);
-    expect(window).toContain("focus-visible:ring-amber-400");
-    expect(window).toContain("ring-offset-amber-700");
-  });
-
-  it("Popular language filter buttons have focus ring", () => {
-    const idx = src.indexOf("popularLang === l.code");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 300);
-    expect(window).toContain("focus-visible:ring-amber-400");
-  });
-
-  it("Grid/List view toggle buttons have focus ring", () => {
-    const idx = src.indexOf("aria-label=\"Grid view\"");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 300);
-    expect(window).toContain("focus-visible:ring-amber-400");
-  });
-
-  it("Pagination Previous/Next buttons have focus ring", () => {
-    const idx = src.indexOf("aria-label=\"Previous page of popular books\"");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(idx, idx + 350);
-    expect(window).toContain("focus-visible:ring-amber-400");
-  });
+  // The Discover hero buttons, Gutenberg search button, popular-language filter
+  // and grid/list toggle were removed with the Discover tab (#2711).
 });

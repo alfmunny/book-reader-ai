@@ -5,7 +5,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const src = readFileSync(join(__dirname, "../app/page.tsx"), "utf-8");
+const src = readFileSync(join(__dirname, "../components/SiteHeader.tsx"), "utf-8");
 
 test("profile button title includes Profile & Settings (not just user name)", () => {
   // title should use the same template pattern as aria-label

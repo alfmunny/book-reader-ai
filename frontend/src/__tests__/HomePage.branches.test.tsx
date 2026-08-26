@@ -31,6 +31,7 @@ const mockSearchBooks = jest.fn();
 const mockGetReadingProgress = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  getCatalogBooks: () => Promise.resolve([]),
   getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
@@ -103,7 +104,7 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let Home: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/page");
+  const mod = await import("@/app/bookshelf/page");
   Home = mod.default;
 });
 
@@ -319,21 +320,6 @@ describe("HomePage — getReadingProgress merges backend data (lines 73-83)", ()
 
 // ── Line 116: getPopularBooks catch branch ────────────────────────────────────
 
-describe("HomePage — getPopularBooks error (line 116)", () => {
-  it("shows error state (not empty-state) when API fails", async () => {
-    mockGetPopularBooks.mockRejectedValue(new Error("Network error"));
-
-    await renderHome();
-
-    // Should show error state with retry button, not the empty-library message
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toBeInTheDocument(),
-    );
-    expect(screen.queryByText("No popular books available yet.")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
-  });
-});
-
 // ── Line 216: "Your Notes" tab navigates to /notes ───────────────────────────
 
 describe("HomePage — Your Notes tab (line 216)", () => {
@@ -424,159 +410,11 @@ describe("HomePage — onRemove handler (lines 253-255)", () => {
 
 // ── Line 297: language selector changes search lang ──────────────────────────
 
-describe("HomePage — search language selector (line 297)", () => {
-  it("changes lang state when language selector is changed", async () => {
-    mockSearchBooks.mockResolvedValue({ books: [makeBook(50, "Faust")] });
-
-    const user = userEvent.setup();
-    await renderHome();
-
-    const langSelect = screen.getByRole("combobox");
-    await user.selectOptions(langSelect, "de");
-
-    // Now search with de language
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Faust");
-    await user.click(screen.getByRole("button", { name: "Search" }));
-
-    await waitFor(() => expect(mockSearchBooks).toHaveBeenCalledWith("Faust", "de"));
-  });
-});
-
 // ── Line 426: popular books list view loading skeleton ────────────────────────
-
-describe("HomePage — popular books list view loading skeleton (line 426)", () => {
-  it("shows list-view skeleton when popularLoading and view is list", async () => {
-    let resolve: (v: unknown) => void;
-    mockGetPopularBooks.mockReturnValue(new Promise((r) => { resolve = r; }));
-
-    const user = userEvent.setup();
-    render(<Home />);
-    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-
-    // Switch to list view
-    const listViewBtn = screen.getByTitle("List view");
-    await user.click(listViewBtn);
-
-    // Should show list skeleton (divide-y container with animate-pulse items)
-    const pulseItems = document.querySelectorAll(".animate-pulse");
-    expect(pulseItems.length).toBeGreaterThan(0);
-
-    resolve!(makePopularResponse());
-  });
-});
 
 // ── Line 452: popular books list view with cover image ────────────────────────
 
-describe("HomePage — popular books list view with cover image (line 452)", () => {
-  it("renders img element for books with a cover in list view", async () => {
-    const bookWithCover = makeBook(77, "Faust with Cover", "https://cover.example.com/77.jpg");
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse([bookWithCover]));
-
-    const user = userEvent.setup();
-    await renderHome();
-
-    // Switch to list view
-    const listViewBtn = screen.getByTitle("List view");
-    await user.click(listViewBtn);
-
-    await waitFor(() => {
-      const img = document.querySelector('img[src="https://cover.example.com/77.jpg"]');
-      expect(img).toBeInTheDocument();
-    });
-  });
-
-  it("renders SVG placeholder for books without cover in list view", async () => {
-    const bookNoCover = makeBook(78, "No Cover Book", "");
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse([bookNoCover]));
-
-    const user = userEvent.setup();
-    await renderHome();
-
-    const listViewBtn = screen.getByTitle("List view");
-    await user.click(listViewBtn);
-
-    await waitFor(() => {
-      expect(document.querySelector("svg")).toBeInTheDocument();
-    });
-  });
-
-  it("shows download count in list view when > 0", async () => {
-    const book = makeBook(79, "Popular Book", "");
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse([book]));
-
-    const user = userEvent.setup();
-    await renderHome();
-
-    const listViewBtn = screen.getByTitle("List view");
-    await user.click(listViewBtn);
-
-    await waitFor(() => {
-      // download_count is id*100 = 7900, which renders as "7,900"
-      expect(screen.getByText("7,900")).toBeInTheDocument();
-    });
-  });
-});
-
 // ── Pagination ────────────────────────────────────────────────────────────────
-
-describe("HomePage — popular books pagination", () => {
-  it("shows pagination when total > PER_PAGE (50)", async () => {
-    // Total 100 > 50 = 2 pages
-    mockGetPopularBooks.mockResolvedValue(
-      makePopularResponse(
-        Array.from({ length: 50 }, (_, i) => makeBook(i + 1)),
-        100,
-      ),
-    );
-
-    await renderHome();
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /Prev/i })).toBeInTheDocument(),
-    );
-    expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument();
-    expect(screen.getByText(/Page 1 of 2/i)).toBeInTheDocument();
-  });
-
-  it("clicking Next goes to page 2", async () => {
-    const page1Books = Array.from({ length: 50 }, (_, i) => makeBook(i + 1));
-    const page2Books = [makeBook(51, "Page 2 Book")];
-
-    mockGetPopularBooks
-      .mockResolvedValueOnce(makePopularResponse(page1Books, 51))
-      .mockResolvedValueOnce(makePopularResponse(page2Books, 51));
-
-    const user = userEvent.setup();
-    await renderHome();
-
-    await waitFor(() => expect(screen.getByRole("button", { name: /Next/i })).toBeInTheDocument());
-
-    await user.click(screen.getByRole("button", { name: /Next/i }));
-
-    await waitFor(() =>
-      expect(mockGetPopularBooks).toHaveBeenCalledTimes(2),
-    );
-  });
-
-  it("Prev button is disabled on page 1", async () => {
-    mockGetPopularBooks.mockResolvedValue(
-      makePopularResponse(
-        Array.from({ length: 50 }, (_, i) => makeBook(i + 1)),
-        100,
-      ),
-    );
-
-    await renderHome();
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /Prev/i })).toBeInTheDocument(),
-    );
-
-    const prevBtn = screen.getByRole("button", { name: /Prev/i });
-    expect(prevBtn).toBeDisabled();
-  });
-});
 
 // ── Profile picture branch ─────────────────────────────────────────────────────
 

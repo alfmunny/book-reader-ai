@@ -24,6 +24,7 @@ jest.mock("next/navigation", () => ({
 
 // ─── @/lib/api ───────────────────────────────────────────────────────────────
 jest.mock("@/lib/api", () => ({
+  getCatalogBooks: () => Promise.resolve([]),
   getPopularBooks: () => Promise.resolve({ books: [], total: 0, page: 1, per_page: 50 }),
   getMe: () => Promise.resolve({ hasGeminiKey: false, role: "user", approved: true }),
   searchBooks: () => Promise.resolve({ books: [] }),
@@ -102,7 +103,7 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let Home: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/page");
+  const mod = await import("@/app/bookshelf/page");
   Home = mod.default;
 });
 
@@ -110,7 +111,11 @@ beforeEach(() => {
   jest.clearAllMocks();
   capturedOnUndo = undefined;
   capturedOnDone = undefined;
-  mockGetRecentBooks.mockReturnValue([RECENT_BOOK]);
+  // Intent-based rather than call-count based: the list holds the book until it
+  // is removed. The bookshelf page reads it from more than one effect (#2711).
+  let removed = false;
+  mockRemoveRecentBook.mockImplementation(() => { removed = true; });
+  mockGetRecentBooks.mockImplementation(() => (removed ? [] : [RECENT_BOOK]));
   mockUseSession.mockReturnValue({
     data: { backendToken: "tok", backendUser: { id: 1, name: "User", picture: "" } },
     status: "authenticated",
@@ -120,9 +125,6 @@ beforeEach(() => {
 // ── onUndo (line 833): clicking Undo restores the book ───────────────────────
 
 test("onUndo calls recordRecentBook and refreshes list (line 833, #2007)", async () => {
-  mockGetRecentBooks
-    .mockReturnValueOnce([RECENT_BOOK])
-    .mockReturnValue([]);
 
   const user = userEvent.setup();
   render(<Home />);
@@ -149,9 +151,6 @@ test("onUndo calls recordRecentBook and refreshes list (line 833, #2007)", async
 // ── onDone (line 838): toast expiry clears state ─────────────────────────────
 
 test("onDone clears removedBookToast state (line 838, #2007)", async () => {
-  mockGetRecentBooks
-    .mockReturnValueOnce([RECENT_BOOK])
-    .mockReturnValue([]);
 
   const user = userEvent.setup();
   render(<Home />);

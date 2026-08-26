@@ -22,8 +22,13 @@ You have a fresh Book Reader AI running locally (Docker Compose, `http://localho
 
 ## 3. Start reading
 
-1. Go back to the home page. *Faust* now appears in your library.
-2. Click the cover. The reader opens on chapter 1.
+1. Go back to the home page. **Faust does not appear there yet** — the home page
+   lists only *audited* books, and an imported book has not been audited.
+   Auditing means a session has checked the chapter split and written the freeze
+   record (see the book-freeze pipeline under `backend/scripts/`).
+2. Until it is audited, open it directly at `/reader/2229`.
+3. Once audited, *Faust* appears in the catalog on the home page, and any book
+   you have opened appears under **Your Bookshelf** in the nav.
 3. Use the **←** / **→** keys (or the on-screen chevrons) to move between chapters.
 
 ## 4. Translate a chapter

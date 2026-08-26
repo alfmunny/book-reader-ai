@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 
 const SOURCE = fs.readFileSync(
-  path.resolve(__dirname, "../app/page.tsx"),
+  path.resolve(__dirname, "../app/bookshelf/page.tsx"),
   "utf8"
 );
 

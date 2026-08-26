@@ -130,7 +130,7 @@ test("translation shows worker offline message when worker not running", async (
   await expect(page.getByText(/queue · worker is offline/).first()).toBeVisible({ timeout: 5000 });
 });
 
-test("Your Library shows chapter badge from recent-read data", async ({ page }) => {
+test("Your Bookshelf shows chapter badge from recent-read data", async ({ page }) => {
   // Seed a recent book with lastChapter = 4
   await page.goto("/");
   await page.evaluate(() => {
@@ -151,10 +151,7 @@ test("Your Library shows chapter badge from recent-read data", async ({ page }) 
       ])
     );
   });
-  await page.reload();
-
-  // Click the Home tab to ensure it's active
-  await page.getByRole("tab", { name: "Home" }).click();
+  await page.goto("/bookshelf");
   // Badge format: "Ch. 5 · just now" (1-indexed display)
   await expect(page.getByText(/Ch\. 5/)).toBeVisible();
 });

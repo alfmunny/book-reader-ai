@@ -20,6 +20,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 // ─── @/lib/api ────────────────────────────────────────────────────────────────
+const mockGetCatalogBooks = jest.fn();
 const mockGetPopularBooks = jest.fn();
 const mockGetMe = jest.fn();
 const mockSearchBooks = jest.fn();
@@ -27,6 +28,7 @@ const mockGetReadingProgress = jest.fn();
 const mockGetUserStats = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  getCatalogBooks: (...args: unknown[]) => mockGetCatalogBooks(...args),
   getPopularBooks: (...args: unknown[]) => mockGetPopularBooks(...args),
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
@@ -101,15 +103,17 @@ function makePopularResponse(books = [makeBook(1), makeBook(2), makeBook(3)], to
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let Home: React.ComponentType;
+let Bookshelf: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/page");
-  Home = mod.default;
+  Home = (await import("@/app/page")).default;
+  Bookshelf = (await import("@/app/bookshelf/page")).default;
 });
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetRecentBooks.mockReturnValue([]);
   mockGetMe.mockResolvedValue({ hasGeminiKey: true, role: "user", approved: true });
+  mockGetCatalogBooks.mockResolvedValue([]);
   mockGetPopularBooks.mockResolvedValue(makePopularResponse());
   mockSearchBooks.mockResolvedValue({ books: [] });
   mockGetReadingProgress.mockResolvedValue([]);
@@ -120,6 +124,12 @@ beforeEach(() => {
 // ─── Render helper ────────────────────────────────────────────────────────────
 async function renderHome() {
   render(<Home />);
+  await act(flushPromises);
+  await act(flushPromises);
+}
+
+async function renderBookshelf() {
+  render(<Bookshelf />);
   await act(flushPromises);
   await act(flushPromises);
 }
@@ -152,16 +162,6 @@ describe("HomePage — initial render", () => {
     expect(signInLink).toHaveAttribute("href", "/login");
   });
 
-  it("shows Discover tab by default when library is empty", async () => {
-    await renderHome();
-    expect(screen.getByRole("tab", { name: /Discover/i })).toBeInTheDocument();
-  });
-
-  it("renders Library and Discover tab buttons", async () => {
-    await renderHome();
-    expect(screen.getByRole("tab", { name: /Home/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Discover/i })).toBeInTheDocument();
-  });
 });
 
 describe("HomePage — signed-in state", () => {
@@ -209,10 +209,9 @@ describe("HomePage — signed-in state", () => {
     expect(link).toHaveAttribute("href", "/vocabulary");
   });
 
-  it("calls getMe and getReadingProgress on mount", async () => {
+  it("calls getMe on mount", async () => {
     await renderHome();
     await waitFor(() => expect(mockGetMe).toHaveBeenCalled());
-    await waitFor(() => expect(mockGetReadingProgress).toHaveBeenCalled());
   });
 
   it("shows Admin tab for admin users", async () => {
@@ -240,288 +239,7 @@ describe("HomePage — signed-in state", () => {
   });
 });
 
-describe("HomePage — Library tab with books", () => {
-  const RECENT_BOOKS = [
-    { id: 1, title: "Moby Dick", authors: ["Melville"], languages: ["en"], lastChapter: 2, lastRead: Date.now() - 60000 },
-    { id: 2, title: "Hamlet", authors: ["Shakespeare"], languages: ["en"], lastChapter: 0, lastRead: Date.now() - 3600000 },
-  ];
-
-  beforeEach(() => {
-    mockGetRecentBooks.mockReturnValue(RECENT_BOOKS);
-    mockUseSession.mockReturnValue({
-      data: { backendToken: "tok", backendUser: { id: 1, name: "User", picture: "" } },
-      status: "authenticated",
-    });
-    mockGetReadingProgress.mockResolvedValue([]);
-  });
-
-  it("shows library books when recent books exist", async () => {
-    await renderHome();
-    // Moby Dick appears in Continue Reading card + grid; Hamlet appears in grid only
-    expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(0);
-    expect(screen.getByText("Hamlet")).toBeInTheDocument();
-  });
-
-  it("shows Library tab active when recent books exist", async () => {
-    await renderHome();
-    // Library tab is active by default when books exist
-    expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(0);
-  });
-
-  it("shows book count badge in Library tab", async () => {
-    await renderHome();
-    expect(screen.getByText("(2)")).toBeInTheDocument();
-  });
-
-  it("clicking a book card opens BookDetailModal", async () => {
-    const user = userEvent.setup();
-    await renderHome();
-    // Use Hamlet (grid-only, single occurrence) to avoid the Continue Reading card
-    await user.click(screen.getByText("Hamlet"));
-    expect(await screen.findByTestId("book-detail-modal")).toBeInTheDocument();
-  });
-
-  it("closing BookDetailModal removes it", async () => {
-    const user = userEvent.setup();
-    await renderHome();
-    await user.click(screen.getByText("Hamlet"));
-    await user.click(await screen.findByRole("button", { name: "Close" }));
-    expect(screen.queryByTestId("book-detail-modal")).not.toBeInTheDocument();
-  });
-
-  it("clicking Read in modal navigates to reader (book in library)", async () => {
-    const user = userEvent.setup();
-    await renderHome();
-    await user.click(screen.getByText("Hamlet"));
-    await user.click(await screen.findByRole("button", { name: "Read" }));
-    expect(mockPush).toHaveBeenCalledWith("/reader/2");
-  });
-
-  it("shows 'Your library is empty' message when no recent books", async () => {
-    mockGetRecentBooks.mockReturnValue([]);
-    mockUseSession.mockReturnValue({
-      data: { backendToken: "tok", backendUser: { id: 1, name: "User", picture: "" } },
-      status: "authenticated",
-    });
-    render(<Home />);
-    await act(flushPromises);
-    // Tab should switch to discover automatically, but manual click to Library shows empty
-    // Switch to library tab
-    await userEvent.click(screen.getByRole("tab", { name: /Home/i }));
-    expect(screen.getByText("Your library is empty")).toBeInTheDocument();
-  });
-
-  it("'Discover Books' button switches to discover tab from empty library", async () => {
-    mockGetRecentBooks.mockReturnValue([]);
-    mockUseSession.mockReturnValue({
-      data: { backendToken: "tok", backendUser: { id: 1, name: "User", picture: "" } },
-      status: "authenticated",
-    });
-    const user = userEvent.setup();
-    render(<Home />);
-    await act(flushPromises);
-    await user.click(screen.getByRole("tab", { name: /Home/i }));
-    await user.click(screen.getByRole("button", { name: "Discover Books" }));
-    // Use exact-match to avoid matching the global header "Open search" button (SearchBar).
-    expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
-  });
-});
-
-describe("HomePage — Discover tab", () => {
-  it("shows Search heading in Discover tab", async () => {
-    await renderHome();
-    expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
-  });
-
-  it("shows Popular Classics section", async () => {
-    await renderHome();
-    expect(screen.getByText("Popular Classics")).toBeInTheDocument();
-  });
-
-  it("shows popular books after loading", async () => {
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse([makeBook(1, "Crime and Punishment")]));
-    await renderHome();
-    await waitFor(() => {
-      // There may be a featured pill AND a book card with the same title — use getAllByText
-      const matches = screen.getAllByText("Crime and Punishment");
-      expect(matches.length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("shows loading skeletons while popular books are loading", async () => {
-    let resolve: (v: unknown) => void;
-    mockGetPopularBooks.mockReturnValue(new Promise((r) => { resolve = r; }));
-    render(<Home />);
-    // Give the first effect a tick
-    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-    expect(document.querySelector(".animate-pulse")).toBeInTheDocument();
-    // cleanup
-    resolve!(makePopularResponse());
-  });
-
-  it("shows proper empty state with icon, headline, and CTA when popular books list is empty", async () => {
-    mockGetPopularBooks.mockResolvedValue({ books: [], total: 0, page: 1, per_page: 50 });
-    await renderHome();
-    await waitFor(() => {
-      expect(screen.getByText("No popular books yet")).toBeInTheDocument();
-    });
-    expect(screen.getByRole("button", { name: "Search for a book" })).toBeInTheDocument();
-  });
-
-  it("clicking a popular book opens BookDetailModal", async () => {
-    const user = userEvent.setup();
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse([makeBook(99, "Faust")]));
-    await renderHome();
-    await waitFor(() => expect(screen.queryByTestId("book-card-99")).toBeInTheDocument());
-    // Click the BookCard button (not the featured pill)
-    const card = screen.getByTestId("book-card-99");
-    await user.click(card.querySelector("button")!);
-    expect(await screen.findByTestId("book-detail-modal")).toBeInTheDocument();
-    expect(screen.getByTestId("book-detail-modal")).toHaveTextContent("Faust");
-  });
-
-  it("navigates to import page for books not in library", async () => {
-    const user = userEvent.setup();
-    mockGetPopularBooks.mockResolvedValue(makePopularResponse([makeBook(999, "Odyssey")]));
-    await renderHome();
-    await waitFor(() => screen.getByText("Odyssey"));
-    await user.click(screen.getByText("Odyssey"));
-    await user.click(await screen.findByRole("button", { name: "Read" }));
-    expect(mockPush).toHaveBeenCalledWith("/import/999?next=/reader/999");
-  });
-});
-
-describe("HomePage — Search functionality", () => {
-  it("search input accepts text", async () => {
-    const user = userEvent.setup();
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Hamlet");
-    expect(input).toHaveValue("Hamlet");
-  });
-
-  it("pressing Enter in search input triggers search", async () => {
-    const user = userEvent.setup();
-    mockSearchBooks.mockResolvedValue({ books: [makeBook(42, "Hamlet")] });
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Hamlet");
-    await user.keyboard("{Enter}");
-    await waitFor(() => expect(mockSearchBooks).toHaveBeenCalledWith("Hamlet", ""));
-  });
-
-  it("clicking Search button triggers search", async () => {
-    const user = userEvent.setup();
-    mockSearchBooks.mockResolvedValue({ books: [makeBook(42, "Hamlet")] });
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Hamlet");
-    await user.click(screen.getByRole("button", { name: "Search" }));
-    await waitFor(() => expect(mockSearchBooks).toHaveBeenCalled());
-  });
-
-  it("shows search results after successful search", async () => {
-    const user = userEvent.setup();
-    mockSearchBooks.mockResolvedValue({ books: [makeBook(42, "Hamlet")] });
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Hamlet");
-    await user.click(screen.getByRole("button", { name: "Search" }));
-    await waitFor(() => {
-      // Hamlet may appear as featured pill + search result card
-      expect(screen.queryByTestId("book-card-42")).toBeInTheDocument();
-    });
-  });
-
-  it("shows 'No books found' when search returns empty", async () => {
-    const user = userEvent.setup();
-    mockSearchBooks.mockResolvedValue({ books: [] });
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "xyzzy123");
-    await user.click(screen.getByRole("button", { name: "Search" }));
-    await waitFor(() => {
-      expect(screen.getByText(/No books found for/i)).toBeInTheDocument();
-    });
-  });
-
-  it("shows error message when search fails", async () => {
-    const user = userEvent.setup();
-    mockSearchBooks.mockRejectedValue(new Error("Network error"));
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Hamlet");
-    await user.click(screen.getByRole("button", { name: "Search" }));
-    await waitFor(() => {
-      expect(screen.getByText("Network error")).toBeInTheDocument();
-    });
-  });
-
-  it("shows loading state during search", async () => {
-    const user = userEvent.setup();
-    let resolve: (v: unknown) => void;
-    mockSearchBooks.mockReturnValue(new Promise((r) => { resolve = r; }));
-    await renderHome();
-    const input = screen.getByPlaceholderText(/Search by title or author/i);
-    await user.type(input, "Hamlet");
-    await user.click(screen.getByRole("button", { name: "Search" }));
-    // Searching state
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Searching/i })).toBeInTheDocument();
-    });
-    resolve!({ books: [] });
-  });
-
-  it("clicking a featured pill sets query and triggers search", async () => {
-    const user = userEvent.setup();
-    mockSearchBooks.mockResolvedValue({ books: [] });
-    await renderHome();
-    const faustPill = screen.getByRole("button", { name: "Faust" });
-    await user.click(faustPill);
-    await waitFor(() => {
-      expect(mockSearchBooks).toHaveBeenCalledWith("Faust", "de");
-    });
-  });
-
-  it("does not search when query is empty", async () => {
-    const user = userEvent.setup();
-    await renderHome();
-    await user.click(screen.getByRole("button", { name: "Search" }));
-    expect(mockSearchBooks).not.toHaveBeenCalled();
-  });
-});
-
-describe("HomePage — tab switching", () => {
-  it("clicking Discover tab shows discover content", async () => {
-    mockGetRecentBooks.mockReturnValue([makeBook(1, "Moby Dick") as unknown as ReturnType<typeof mockGetRecentBooks>]);
-    const user = userEvent.setup();
-    render(<Home />);
-    await act(flushPromises);
-    await user.click(screen.getByRole("tab", { name: /Discover/i }));
-    expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
-  });
-
-  it("clicking Library tab shows library content", async () => {
-    const user = userEvent.setup();
-    await renderHome();
-    await user.click(screen.getByRole("tab", { name: /Home/i }));
-    // Library tab is now active; heading or empty state visible
-    expect(
-      screen.getByText("Your library is empty") ||
-      screen.queryByText(/Home/i)
-    ).toBeTruthy();
-  });
-});
-
-describe("HomePage — unauthenticated always sees discover", () => {
-  it("starts on Discover tab when unauthenticated (no recent books)", async () => {
-    await renderHome();
-    // Search section should be visible (discover tab is active)
-    expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
-  });
-});
-
-describe("HomePage — Home dashboard (UX-008)", () => {
+describe("Bookshelf — dashboard (UX-008)", () => {
   const RECENT_BOOKS = [
     { id: 1, title: "Moby Dick", authors: ["Melville"], languages: ["en"], lastChapter: 2, lastRead: Date.now() - 60000 },
     { id: 2, title: "Hamlet", authors: ["Shakespeare"], languages: ["en"], lastChapter: 0, lastRead: Date.now() - 3600000 },
@@ -537,19 +255,19 @@ describe("HomePage — Home dashboard (UX-008)", () => {
   });
 
   it("shows personalized greeting with first name", async () => {
-    await renderHome();
+    await renderBookshelf();
     expect(screen.getByText(/Welcome back, Alice/i)).toBeInTheDocument();
   });
 
   it("shows Continue Reading card for most recent book", async () => {
-    await renderHome();
+    await renderBookshelf();
     expect(screen.getByText("Continue Reading")).toBeInTheDocument();
     // Moby Dick is recentBooks[0] — appears in both the Continue Reading card and the grid
     expect(screen.getAllByText("Moby Dick").length).toBeGreaterThan(1);
   });
 
   it("Continue Reading card is a link to the reader", async () => {
-    await renderHome();
+    await renderBookshelf();
     // The Continue Reading card is now a <Link href="/reader/1">
     const continueLink = screen.getByRole("link", { name: /Continue reading/i });
     expect(continueLink).toHaveAttribute("href", "/reader/1");
@@ -562,23 +280,25 @@ describe("HomePage — Home dashboard (UX-008)", () => {
       totals: { books_started: 3, vocabulary_words: 42, annotations: 7, insights: 2 },
       activity: [],
     });
-    await renderHome();
+    await renderBookshelf();
     await waitFor(() => expect(screen.getByText("Your Progress")).toBeInTheDocument());
     expect(screen.getByText("5")).toBeInTheDocument(); // streak count
     expect(screen.getByText("3")).toBeInTheDocument(); // books started
   });
 
   it("'Show activity' toggle reveals and hides the heatmap", async () => {
-    await renderHome();
+    await renderBookshelf();
     await waitFor(() => expect(screen.getByText("Your Progress")).toBeInTheDocument());
     const toggle = screen.getByRole("button", { name: /Show activity/i });
     await userEvent.click(toggle);
     expect(screen.getByRole("button", { name: /Hide activity/i })).toBeInTheDocument();
   });
 
-  it("tab is labelled Home not Your Library", async () => {
-    await renderHome();
-    expect(screen.getByRole("tab", { name: /^Home/i })).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: /Your Library/i })).not.toBeInTheDocument();
+  it("nav offers Home and Your Bookshelf, never 'Your Library'", async () => {
+    await renderBookshelf();
+    const labels = screen.getAllByRole("link").map((l) => l.textContent?.trim());
+    expect(labels).toContain("Home");
+    expect(labels).toContain("Your Bookshelf");
+    expect(labels).not.toContain("Your Library");
   });
 });

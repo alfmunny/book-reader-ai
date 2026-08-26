@@ -138,6 +138,11 @@ export interface PopularBooksResponse {
   per_page: number;
 }
 
+/** The published catalog — audited books only (#2711). */
+export function getCatalogBooks() {
+  return request<BookMeta[]>("/books/catalog");
+}
+
 export function getPopularBooks(language = "", page = 1) {
   const params = new URLSearchParams({ page: String(page) });
   if (language) params.set("language", language);

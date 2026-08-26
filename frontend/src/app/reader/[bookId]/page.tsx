@@ -2129,6 +2129,12 @@ export default function ReaderPage() {
                 const filteredNotes = notesView === "chapter"
                   ? annotations.filter((a) => a.chapter_index === chapterIndex)
                   : annotations;
+                const colorBadge: Record<string, string> = {
+                  yellow: "bg-yellow-100 border-yellow-300 text-yellow-800",
+                  blue: "bg-blue-100 border-blue-300 text-blue-800",
+                  green: "bg-green-100 border-green-300 text-green-800",
+                  pink: "bg-pink-100 border-pink-300 text-pink-800",
+                };
                 const renderCard = (ann: (typeof annotations)[0]) => (
                   <li key={ann.id}>
                   <div
@@ -2136,10 +2142,7 @@ export default function ReaderPage() {
                     tabIndex={0}
                     aria-label={`Jump to annotation: ${ann.sentence_text.slice(0, 60)}`}
                     title={ann.note_text ? `${ann.sentence_text} — ${ann.note_text}` : ann.sentence_text}
-                    /* Neutral cards — the full highlight-color background was too loud
-                       (owner feedback, 2026-08-26); the color still shows on the
-                       underline in the text itself. */
-                    className="rounded-lg border border-amber-200 bg-white text-ink px-3 py-2.5 cursor-pointer hover:bg-amber-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                    className={`rounded-lg border px-3 py-2.5 cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${colorBadge[ann.color] ?? colorBadge.yellow}`}
                     onClick={() => {
                       if (ann.chapter_index !== chapterIndex) {
                         goToChapter(ann.chapter_index);
@@ -2183,7 +2186,7 @@ export default function ReaderPage() {
                       </button>
                     </div>
                     {ann.note_text && (
-                      <p className="mt-1.5 text-xs font-medium text-stone-700 border-t border-amber-100 pt-1.5">
+                      <p className="mt-1.5 text-xs font-medium border-t border-current/20 pt-1.5">
                         {ann.note_text}
                       </p>
                     )}

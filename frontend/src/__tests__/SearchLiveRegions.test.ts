@@ -11,7 +11,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const homeSrc = fs.readFileSync(path.join(__dirname, "../app/page.tsx"), "utf8");
+const homeSrc = ["../components/SiteHeader.tsx", "../app/page.tsx", "../app/bookshelf/page.tsx"]
+  .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 const adminBooksSrc = fs.readFileSync(path.join(__dirname, "../app/admin/books/page.tsx"), "utf8");
 
 // ── Home page Discover search ──────────────────────────────────────────────────
@@ -24,22 +25,7 @@ describe("Home page search live region — WCAG 4.1.3 (closes #2340)", () => {
     );
   });
 
-  it("search result live region uses always-present pattern near the results area", () => {
-    // Anchor on the comment that sits right above the live region
-    const idx = homeSrc.indexOf("always-present so AT announces updates (WCAG 4.1.3)");
-    expect(idx).toBeGreaterThan(-1);
-    // The always-present live region should appear within 300 chars of the comment
-    const section = homeSrc.slice(idx, idx + 300);
-    expect(section).toMatch(/role="status"/);
-    expect(section).toMatch(/aria-live="polite"/);
-  });
 
-  it("home search live region content uses ternary for empty state", () => {
-    const idx = homeSrc.indexOf("always-present so AT announces updates (WCAG 4.1.3)");
-    const section = homeSrc.slice(idx, idx + 400);
-    // Content is conditional on state (ternary), not container mounting
-    expect(section).toMatch(/searchedQuery.*\?/s);
-  });
 });
 
 // ── Admin books search ─────────────────────────────────────────────────────────

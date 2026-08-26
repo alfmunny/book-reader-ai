@@ -48,18 +48,10 @@ describe("EmptyStateCta", () => {
     expect(after).toMatch(/href="\//);
   });
 
-  it("search empty state has a Clear search CTA button", () => {
-    const idx = homePage.indexOf('No books found for');
+  it("home catalog empty state explains itself without a dead end", () => {
+    const idx = homePage.indexOf("No books yet");
     expect(idx).toBeGreaterThan(-1);
-    const block = homePage.slice(idx, idx + 900);
-    expect(block).toMatch(/Clear search|clear search/);
-  });
-
-  it("search empty state CTA resets query state", () => {
-    const idx = homePage.indexOf('No books found for');
-    expect(idx).toBeGreaterThan(-1);
-    const block = homePage.slice(idx, idx + 900);
-    // The CTA should reset both the input query and the searched query
-    expect(block).toMatch(/setQuery\(""\)|setQuery\(''\)/);
+    const block = homePage.slice(idx, idx + 600);
+    expect(block).toMatch(/check back|prepared and checked/i);
   });
 });

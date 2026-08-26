@@ -620,3 +620,11 @@ WCAG 2.1.1 (Keyboard) and 4.1.2 (Name, Role, Value) fixes for keyboard-only and 
 | Date | Change | File(s) | PR |
 |------|--------|---------|----|
 | 2026-08-26 | The Export button on the book-notes and vocabulary pages went straight to the Obsidian vault flow, which does nothing without a configured vault. It now opens a menu offering a direct Markdown download (built client-side, no vault or network needed) alongside the unchanged Obsidian export. New `ExportMenu` popover pattern: Escape and outside-click close it, arrow keys move between items, focus returns to the trigger, 44px touch targets on mobile (P2) | components/ExportMenu.tsx, lib/download.ts, lib/vocabularyMarkdown.ts, app/notes/[bookId]/page.tsx, app/vocabulary/page.tsx | #2705 |
+
+## Wave 21 — Home / Bookshelf restructure (2026-08-26)
+
+| Date | Change | File(s) | PR |
+|------|--------|---------|----|
+| 2026-08-26 | Home shows the curated catalog directly. Readers no longer import books — an admin/architect session audits the chapter split and writes the freeze record — so the Gutenberg search and the Discover tab it lived in are removed, and Home absorbs Discover entirely. The catalog is keyed on `book_freeze` ("published"), not on ownership, so the coming user-upload flow stays additive (P2) | app/page.tsx, routers/books.py, services/db.py | #2711 |
+| 2026-08-26 | "Your Library" became "Your Bookshelf" on its own `/bookshelf` route, carrying the greeting, Continue Reading, stats strip and book grid. The two-tab strip became a real `<nav>` landmark with links and `aria-current="page"` — tabs promised in-page panels that no longer exist (P2) | app/bookshelf/page.tsx, components/SiteHeader.tsx | #2711 |
+| 2026-08-26 | Header and primary nav extracted to `SiteHeader` — it now has to render on two routes rather than living inline in the homepage (P2) | components/SiteHeader.tsx | #2711 |

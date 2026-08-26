@@ -13,6 +13,7 @@ from services.db import (
     save_book,
     save_book_epub,
     list_cached_books,
+    list_audited_books,
 )
 from services.splitter import build_chapters
 from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access, require_tier, require_book_quota, TIER_RANK
@@ -38,6 +39,16 @@ async def search(
         raise HTTPException(status_code=422, detail="q cannot be blank")
     language = language.strip()
     return await search_books(q, language, page)
+
+
+@router.get("/catalog")
+async def catalog_books():
+    """The published catalog — audited books only (#2711).
+
+    This is what the home page lists. Unaudited books stay out of it until a
+    session has reviewed the split and written the freeze record.
+    """
+    return await list_audited_books()
 
 
 @router.get("/cached")

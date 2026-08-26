@@ -5,13 +5,17 @@
 import fs from "fs";
 import path from "path";
 
-const homePage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/page.tsx"),
+const siteHeader = fs.readFileSync(
+  path.join(process.cwd(), "src/components/SiteHeader.tsx"),
   "utf8",
 );
 
-describe("Home page tab aria-current", () => {
-  it("tab buttons include aria-selected bound to active tab", () => {
-    expect(homePage).toMatch(/aria-selected=\{tab === key\}/);
+describe("Primary nav aria-current", () => {
+  it("Home link marks itself current when active", () => {
+    expect(siteHeader).toMatch(/aria-current=\{current === "home" \? "page" : undefined\}/);
+  });
+
+  it("Bookshelf link marks itself current when active", () => {
+    expect(siteHeader).toMatch(/aria-current=\{current === "bookshelf" \? "page" : undefined\}/);
   });
 });

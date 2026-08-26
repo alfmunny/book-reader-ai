@@ -26,10 +26,4 @@ describe("Reader page status live regions (closes #1241)", () => {
     expect(window).toContain('role="status"');
   });
 
-  it("translating-now span is inside the role=status container", () => {
-    const idx = src.indexOf("Translating now…");
-    expect(idx).toBeGreaterThan(-1);
-    const window = src.slice(Math.max(0, idx - 600), idx + 50);
-    expect(window).toContain('role="status"');
-  });
 });

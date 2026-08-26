@@ -13,14 +13,6 @@ function read(rel: string): string {
 describe("Reader enqueue-all alert → toast (#2617)", () => {
   const src = read("src/app/reader/[bookId]/page.tsx");
 
-  it("handleTranslateWholeBook does not call alert()", () => {
-    const fnStart = src.indexOf("async function handleTranslateWholeBook");
-    expect(fnStart).toBeGreaterThan(-1);
-    // Find the end of the function by locating the next top-level async function after it
-    const nextFn = src.indexOf("\n  async function ", fnStart + 1);
-    const fnBody = src.slice(fnStart, nextFn > 0 ? nextFn : fnStart + 3000);
-    expect(fnBody).not.toMatch(/\balert\s*\(/);
-  });
 
   it("declares an enqueueToast state variable for feedback", () => {
     expect(src).toMatch(/enqueueToast/);

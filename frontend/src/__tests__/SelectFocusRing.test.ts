@@ -36,7 +36,8 @@ describe("Select focus ring — word tooltip", () => {
 describe("Select focus ring — reader page", () => {
   const src = read("../app/reader/[bookId]/page.tsx");
   it("reader translation language select (desktop) has amber focus ring", () => {
-    assertSelectHasFocusRing(src, 'id="reader-trans-lang"');
+    // The select moved into the Editorial card (TranslationSessionPanel)
+    assertSelectHasFocusRing(read("../components/TranslationSessionPanel.tsx"), 'id="reader-trans-lang"');
   });
   it("reader translation language select (mobile) has amber focus ring", () => {
     // Mobile select uses aria-label="Translation language" in the slide-up panel

@@ -50,6 +50,12 @@ const mockEnqueueBookTranslation = jest.fn();
 const mockRetryChapterTranslation = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  getBookTranslationLanguages: jest.fn().mockResolvedValue({ book_id: 1, total_chapters: 0, languages: [] }),
+  listTranslationSessions: jest.fn().mockResolvedValue([]),
+  getSessionChapter: jest.fn().mockResolvedValue({ session_id: 1, chapter_index: 0, paragraph_count: 0, paragraphs: {} }),
+  translateSession: jest.fn(),
+  editSessionParagraph: jest.fn(),
+  deleteSessionParagraph: jest.fn(),
   getBookChapters: (...a: unknown[]) => mockGetBookChapters(...a),
   getMe: (...a: unknown[]) => mockGetMe(...a),
   getAnnotations: (...a: unknown[]) => mockGetAnnotations(...a),

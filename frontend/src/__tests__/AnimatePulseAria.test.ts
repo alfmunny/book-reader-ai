@@ -23,12 +23,6 @@ describe("Decorative animate-pulse dots in reader page", () => {
     );
   });
 
-  it("translation progress dot has aria-hidden=true", () => {
-    // The amber pulse dot beside 'X / Y chapters translated' text is decorative
-    expect(readerPage).toMatch(
-      /bg-amber-500[^>]*animate-pulse[^>]*aria-hidden="true"|animate-pulse[^>]*bg-amber-500[^>]*aria-hidden="true"|animate-pulse[^>]*shrink-0[^>]*aria-hidden="true"|aria-hidden="true"[^>]*animate-pulse[^>]*shrink-0/
-    );
-  });
 });
 
 describe("InsightChat typing indicator accessibility", () => {

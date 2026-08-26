@@ -62,6 +62,7 @@ export default function ProfilePage() {
     readerSidebarOpen: false,
     readerSidebarTab: "chat",
     translationProvider: "auto",
+    versionProviderDefault: "deepseek",
     fontSize: "base",
     theme: "light",
     lineHeight: "normal",
@@ -654,36 +655,44 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Translation provider */}
+          {/* Translation provider — default for new translation versions.
+              Options are gated on saved keys (owner request, 2026-08-27);
+              the old Gemini/Google editorial radio described the retired
+              queue flow and was read by nothing. */}
           <div role="radiogroup" aria-labelledby="translation-provider-label">
             <label id="translation-provider-label" className="block text-sm font-medium text-ink mb-1.5">
               Translation provider
             </label>
+            <p className="text-xs text-stone-600 mb-2">Preselected when you create a new translation version in the reader. Only providers with a saved API key can be chosen.</p>
             <div className="space-y-2">
               {([
-                { value: "auto", label: "Auto", hint: "Use Gemini if a key is set, otherwise Google Translate (free)." },
-                { value: "google", label: "Google Translate", hint: "Free, no API key required. Good enough for casual reading." },
-                { value: "gemini", label: "Gemini", hint: "Best quality for literary text — preserves style, tone, and poetic structure. Requires a Gemini API key." },
+                { value: "deepseek", label: "DeepSeek", model: "deepseek-v4-flash", hasKey: hasDeepseekKey, hint: "Fast and very cheap — fractions of a cent per chapter." },
+                { value: "claude", label: "Claude", model: "claude-sonnet-5", hasKey: hasClaudeKey, hint: "Strong literary quality — a few cents per chapter." },
               ] as const).map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    settings.translationProvider === opt.value
-                      ? "border-amber-400 bg-amber-50"
-                      : "border-amber-200 bg-white hover:bg-amber-50/50"
+                  className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                    !opt.hasKey
+                      ? "border-stone-200 bg-stone-50 opacity-60 cursor-not-allowed"
+                      : settings.versionProviderDefault === opt.value
+                      ? "border-amber-400 bg-amber-50 cursor-pointer"
+                      : "border-amber-200 bg-white hover:bg-amber-50/50 cursor-pointer"
                   }`}
                 >
                   <input
                     type="radio"
-                    name="translationProvider"
+                    name="versionProviderDefault"
                     value={opt.value}
-                    checked={settings.translationProvider === opt.value}
-                    onChange={() => updatePref("translationProvider", opt.value)}
+                    disabled={!opt.hasKey}
+                    checked={settings.versionProviderDefault === opt.value}
+                    onChange={() => updatePref("versionProviderDefault", opt.value)}
                     className="mt-0.5 accent-amber-700"
                   />
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-ink">{opt.label}</div>
-                    <div className="text-xs text-stone-600 mt-0.5">{opt.hint}</div>
+                    <div className="text-sm font-medium text-ink">{opt.label} · <span className="font-mono text-xs">{opt.model}</span></div>
+                    <div className="text-xs text-stone-600 mt-0.5">
+                      {opt.hasKey ? opt.hint : `Add your ${opt.label} API key above to enable this provider.`}
+                    </div>
                   </div>
                 </label>
               ))}

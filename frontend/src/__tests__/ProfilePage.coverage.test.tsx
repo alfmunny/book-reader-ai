@@ -53,6 +53,7 @@ jest.mock("@/lib/settings", () => ({
     ttsGender: "female",
     chatFontSize: "xs",
     translationProvider: "auto",
+    versionProviderDefault: "deepseek",
     fontSize: "base",
     theme: "light",
   }),
@@ -200,17 +201,17 @@ describe("ProfilePage — Preferences section rendering", () => {
     expect((femaleRadio as HTMLInputElement).checked).toBe(true);
   });
 
-  it("renders translation provider radio buttons", async () => {
+  it("renders key-gated version-provider radios (deepseek default)", async () => {
     render(<ProfilePage />);
     await act(async () => {});
-    // Use value-attribute selectors to avoid label-text collisions between options
-    const autoRadio = document.querySelector('input[name="translationProvider"][value="auto"]') as HTMLInputElement;
-    const googleRadio = document.querySelector('input[name="translationProvider"][value="google"]') as HTMLInputElement;
-    const geminiRadio = document.querySelector('input[name="translationProvider"][value="gemini"]') as HTMLInputElement;
-    expect(autoRadio).toBeInTheDocument();
-    expect(googleRadio).toBeInTheDocument();
-    expect(geminiRadio).toBeInTheDocument();
-    expect(autoRadio.checked).toBe(true);
+    const deepseek = document.querySelector('input[name="versionProviderDefault"][value="deepseek"]') as HTMLInputElement;
+    const claude = document.querySelector('input[name="versionProviderDefault"][value="claude"]') as HTMLInputElement;
+    expect(deepseek).toBeInTheDocument();
+    expect(claude).toBeInTheDocument();
+    expect(deepseek.checked).toBe(true);
+    // No keys in this fixture → both options disabled with an add-key hint
+    expect(deepseek.disabled).toBe(true);
+    expect(claude.disabled).toBe(true);
   });
 });
 
@@ -250,29 +251,31 @@ describe("ProfilePage — TTS gender radio change (line 375)", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // Line 408: translationProvider radio onChange
 // ─────────────────────────────────────────────────────────────────────────────
-describe("ProfilePage — translation provider radio change (line 408)", () => {
-  it("switches translation provider to 'google' when that radio is clicked", async () => {
+describe("ProfilePage — version provider default change", () => {
+  it("with keys saved, the provider can be switched and persists", async () => {
+    const { getMe } = require("@/lib/api");
+    getMe.mockResolvedValueOnce({ hasGeminiKey: false, hasClaudeKey: true, hasDeepseekKey: true, role: "user" });
     render(<ProfilePage />);
     await act(async () => {});
 
-    const googleRadio = document.querySelector(
-      'input[name="translationProvider"][value="google"]',
+    const claude = document.querySelector(
+      'input[name="versionProviderDefault"][value="claude"]',
     ) as HTMLInputElement;
-    expect(googleRadio.checked).toBe(false);
-
-    fireEvent.click(googleRadio);
-    expect(googleRadio.checked).toBe(true);
+    expect(claude.disabled).toBe(false);
+    fireEvent.click(claude);
+    expect(claude.checked).toBe(true);
   });
 
-  it("switches translation provider to 'gemini'", async () => {
+  it("a provider without a key cannot be selected", async () => {
+    const { getMe } = require("@/lib/api");
+    getMe.mockResolvedValueOnce({ hasGeminiKey: false, hasClaudeKey: false, hasDeepseekKey: true, role: "user" });
     render(<ProfilePage />);
     await act(async () => {});
 
-    const geminiRadio = document.querySelector(
-      'input[name="translationProvider"][value="gemini"]',
+    const claude = document.querySelector(
+      'input[name="versionProviderDefault"][value="claude"]',
     ) as HTMLInputElement;
-    fireEvent.click(geminiRadio);
-    expect(geminiRadio.checked).toBe(true);
+    expect(claude.disabled).toBe(true);
   });
 });
 

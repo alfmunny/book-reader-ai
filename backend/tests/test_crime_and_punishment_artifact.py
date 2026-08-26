@@ -1,6 +1,6 @@
 """CI guard for the fossilized Crime and Punishment: data/books/book_2554.json.
 
-This book is frozen at 10/42 coverage, deliberately. Freezing before the
+This book is frozen at 11/42 coverage, deliberately. Freezing before the
 remaining chapters are translated is the point: a translation made against a
 frozen anchor cannot orphan, which is the failure every repair in #2712,
 #2713, #2716, #2725 and #2733 existed to undo.
@@ -18,7 +18,7 @@ from scripts.ingest_book import load_artifact
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT = REPO_ROOT / "data" / "books" / "book_2554.json"
-TRANSLATED = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+TRANSLATED = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
 
 def test_artifact_loads_and_sha_verifies():
@@ -102,7 +102,9 @@ def test_chapters_translated_after_the_freeze_needed_no_realignment():
     by_index = {e["index"]: e for e in artifact["translations"]["zh"]["chapters"]}
     chapters = {c["index"]: c for c in artifact["chapters"]}
 
-    for index, expected_title in ((8, "第一部 第七章"), (10, "第二部 第二章")):
+    for index, expected_title in (
+        (8, "第一部 第七章"), (10, "第二部 第二章"), (11, "第二部 第三章"),
+    ):
         entry = by_index[index]
         assert entry["title_translation"] == expected_title
         assert entry["paragraphs"][0].strip() != expected_title

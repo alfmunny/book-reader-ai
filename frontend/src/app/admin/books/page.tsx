@@ -411,10 +411,31 @@ export default function BooksPage() {
                     {b.frozen && !b.published && (
                       <span
                         className="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800"
-                        title={`Frozen${b.frozen_at ? ` ${b.frozen_at}` : ""}${b.audited_by ? ` by ${b.audited_by}` : ""} — waiting to be published`}
+                        title={`Frozen${b.frozen_at ? ` ${b.frozen_at}` : ""}${b.audited_by ? ` by ${b.audited_by}` : ""} — waiting to be added to the library`}
                       >
                         awaiting review
                       </span>
+                    )}
+                    {/* The endpoint existed from the publish gate but nothing
+                        called it — a book could go into the library and never
+                        come back out without SQL. */}
+                    {b.published && (
+                      <button
+                        onClick={() => act(() => adminFetch(`/admin/books/${b.id}/unpublish`, { method: "POST" }))}
+                        title={`Take "${b.title}" out of the library — the split and every note stay untouched`}
+                        className="text-xs px-2 py-0.5 min-h-[44px] md:min-h-0 rounded-full border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                      >
+                        Remove from library
+                      </button>
+                    )}
+                    {b.frozen && !b.published && (
+                      <button
+                        onClick={() => act(() => adminFetch(`/admin/books/${b.id}/publish`, { method: "POST" }))}
+                        title={`Add "${b.title}" to the library`}
+                        className="text-xs px-2 py-0.5 min-h-[44px] md:min-h-0 rounded-full bg-amber-700 text-white hover:bg-amber-800 transition-colors inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
+                      >
+                        Add to library
+                      </button>
                     )}
                   </div>
                   <div className="text-xs text-stone-600">

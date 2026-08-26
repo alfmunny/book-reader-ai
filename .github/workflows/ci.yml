@@ -320,23 +320,17 @@ jobs:
               fe = JSON.parse(fs.readFileSync('frontend-summary/coverage-summary.json', 'utf8')).total;
             } catch { /* frontend tests skipped */ }
 
-            // ── E2E coverage (Istanbul via babel-plugin-istanbul) ───────────
+            // ── E2E coverage (V8, converted via v8-to-istanbul) ─────────────
+            // Reported on its own row, never merged into the Jest figure. It
+            // measures executed statements inside the *production bundles* the
+            // browser loaded, not src/ files: no source maps are applied, and
+            // only loaded chunks appear at all. That denominator makes it read
+            // near 100% — combining it as max(jest, e2e) pushed reported
+            // statements from 91% to 100% and hid real gaps.
             let e2eCov = null;
             try {
               e2eCov = JSON.parse(fs.readFileSync('e2e-coverage-summary/coverage-summary.json', 'utf8')).total;
             } catch { /* no E2E coverage data */ }
-
-            // ── Combined frontend coverage (max of Jest and E2E per metric) ─
-            const combine = (jestMetric, e2eMetric) => {
-              if (!e2eCov) return jestMetric.pct;
-              return Math.min(100, Math.max(jestMetric.pct, e2eMetric.pct)).toFixed(2);
-            };
-            const combined = (fe && e2eCov) ? {
-              statements: combine(fe.statements, e2eCov.statements),
-              branches: combine(fe.branches, e2eCov.branches),
-              functions: combine(fe.functions, e2eCov.functions),
-              lines: combine(fe.lines, e2eCov.lines),
-            } : null;
 
             // ── Unit coverage (pytest) — may be absent on frontend-only PRs ─
             let beLines = null, beBranches = null;
@@ -372,10 +366,7 @@ jobs:
               rows.push('| **Frontend (Jest)** | — (skipped) | — | — | — |');
             }
             if (e2eCov) {
-              rows.push(`| **Frontend (E2E)** | ${pct(e2eCov.statements.pct)} | ${pct(e2eCov.branches.pct)} | ${pct(e2eCov.functions.pct)} | ${pct(e2eCov.lines.pct)} |`);
-            }
-            if (combined) {
-              rows.push(`| **Frontend (combined)** | ${combined.statements}% | ${combined.branches}% | ${combined.functions}% | ${combined.lines}% |`);
+              rows.push(`| **Frontend (E2E, bundles)** | ${pct(e2eCov.statements.pct)} | ${pct(e2eCov.branches.pct)} | ${pct(e2eCov.functions.pct)} | ${pct(e2eCov.lines.pct)} |`);
             }
             if (beLines !== null) {
               rows.push(`| **Backend (pytest)** | — | ${beBranches}% | — | ${beLines}% |`);
@@ -391,6 +382,8 @@ jobs:
               '| | Statements | Branches | Functions | Lines |',
               '|---|---|---|---|---|',
               ...rows,
+              '',
+              '_E2E percentages cover the production bundles the browser loaded, not `src/` files — they are not comparable with the Jest row._',
               '',
               '### E2E user flows (Playwright)',
               '',

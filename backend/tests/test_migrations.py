@@ -2184,3 +2184,63 @@ async def test_migration_045_creates_the_recency_index(tmp_db):
             "SELECT name FROM sqlite_master WHERE type='index' AND name='ubc_draft_recent'"
         ) as cur:
             assert await cur.fetchone() is not None
+
+
+# ── 046: freezing no longer publishes ────────────────────────────────────────
+
+_M046 = "046_book_publish_gate"
+
+
+async def test_migration_046_adds_published_at(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT name FROM pragma_table_info('book_freeze')") as cur:
+            assert "published_at" in {r[0] for r in await cur.fetchall()}
+
+
+async def test_migration_046_backfills_existing_freezes_as_published(
+    tmp_db, tmp_migrations, monkeypatch
+):
+    """The cleanup step. Books frozen before this migration are already visible to
+    readers — without the backfill the library empties on deploy.
+
+    Applies 001-045 first so a freeze row can exist *before* 046 runs, which is the
+    only state where the backfill does anything.
+    """
+    real_dir = os.path.join(os.path.dirname(__file__), "..", "migrations")
+    files = sorted(f for f in os.listdir(real_dir) if f.endswith(".sql"))
+    for f in files:
+        if f.startswith("046"):
+            continue
+        shutil.copy(os.path.join(real_dir, f), os.path.join(tmp_migrations, f))
+    monkeypatch.setattr("services.migrations._MIGRATIONS_DIR", tmp_migrations)
+    await run_migrations(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute("INSERT INTO books (id, title, images) VALUES (1700, 'T', '[]')")
+        await db.execute(
+            "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
+            " audited_by, content_sha256) VALUES (1700, 's', 'epub', '2026-08-01', 'a', 'h')"
+        )
+        await db.commit()
+
+    shutil.copy(
+        os.path.join(real_dir, "046_book_publish_gate.sql"),
+        os.path.join(tmp_migrations, "046_book_publish_gate.sql"),
+    )
+    applied = await run_migrations(tmp_db)
+    assert "046_book_publish_gate" in applied
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT published_at FROM book_freeze WHERE book_id=1700") as cur:
+            assert (await cur.fetchone())[0] == "2026-08-01"
+
+
+async def test_migration_046_creates_the_published_index(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='book_freeze_published'"
+        ) as cur:
+            assert await cur.fetchone() is not None

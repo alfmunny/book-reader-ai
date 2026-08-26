@@ -8,6 +8,7 @@ books: id, title, authors (JSON), languages (JSON), subjects (JSON),
 """
 
 import json
+from datetime import datetime, timezone
 import os
 import aiosqlite
 
@@ -884,13 +885,16 @@ async def get_user_stats(user_id: int) -> dict:
 
 
 async def list_audited_books() -> list[dict]:
-    """Return the published catalog: cached books that have been audited (#2711).
+    """Return the published catalog.
 
-    A book is published once it carries a `book_freeze` row — written only after a
-    session has audited its chapter split and recorded `audited_by`. Keying the
-    public catalog on *published* rather than on ownership keeps the later
-    user-upload flow additive: an unaudited book is simply not in the catalog,
-    whoever put it there.
+    Two separate facts, deliberately (migration 046). A `book_freeze` row means the
+    chapter split is fixed — a technical, irreversible commitment an architect
+    session makes on its own. `published_at` means a human decided the book belongs
+    in the library — editorial, outward-facing, and reversible. Only the second
+    puts a book here.
+
+    Keying on *published* rather than on ownership keeps the user-upload flow
+    additive: an unpublished book is simply not in the catalog, whoever froze it.
     """
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -899,7 +903,8 @@ async def list_audited_books() -> list[dict]:
             " b.download_count, b.cover, b.cached_at, f.frozen_at"
             " FROM books b"
             " JOIN book_freeze f ON f.book_id = b.id"
-            " WHERE (b.source IS NULL OR b.source != 'upload')"
+            " WHERE f.published_at IS NOT NULL"
+            "   AND (b.source IS NULL OR b.source != 'upload')"
             " ORDER BY b.title COLLATE NOCASE"
         ) as cursor:
             rows = await cursor.fetchall()
@@ -914,6 +919,64 @@ async def list_audited_books() -> list[dict]:
                     d[field] = []
         result.append(d)
     return result
+
+
+async def list_frozen_unpublished() -> list[dict]:
+    """Books an architect session froze that no human has published yet.
+
+    This is the admin review queue: the split is fixed, the chapters are readable,
+    and the only thing standing between the book and the library is somebody
+    reading the chapter list.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT b.id, b.title, b.authors, b.languages, b.cover,"
+            "       f.frozen_at, f.audited_by, f.splitter, f.chapter_source,"
+            "       (SELECT COUNT(*) FROM book_chapters c WHERE c.book_id = b.id) AS chapter_count"
+            "  FROM books b"
+            "  JOIN book_freeze f ON f.book_id = b.id"
+            " WHERE f.published_at IS NULL"
+            "   AND (b.source IS NULL OR b.source != 'upload')"
+            " ORDER BY f.frozen_at DESC, b.id DESC"
+        ) as cursor:
+            rows = await cursor.fetchall()
+    result = []
+    for row in rows:
+        d = dict(row)
+        for field in ("authors", "languages"):
+            if isinstance(d.get(field), str):
+                try:
+                    d[field] = json.loads(d[field])
+                except (ValueError, TypeError):
+                    d[field] = []
+        result.append(d)
+    return result
+
+
+async def set_book_published(book_id: int, published: bool) -> bool:
+    """Put a frozen book into the library, or take it back out.
+
+    Returns False when the book has no freeze row — a split has to be fixed before
+    it can be published. Re-publishing an already-published book keeps its original
+    publish time rather than bumping it.
+    """
+    stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT published_at FROM book_freeze WHERE book_id = ?", (book_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is None:
+            return False
+        if published and row[0]:
+            return True
+        await db.execute(
+            "UPDATE book_freeze SET published_at = ? WHERE book_id = ?",
+            (stamp if published else None, book_id),
+        )
+        await db.commit()
+    return True
 
 
 async def list_cached_books() -> list[dict]:

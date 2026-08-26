@@ -68,8 +68,24 @@ export default function TranslationSessionPanel({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [confirmRetranslate, setConfirmRetranslate] = useState(false);
+  // Version-list filter (owner request, 2026-08-27): by name, language, model.
+  const [filterText, setFilterText] = useState("");
+  const [filterLang, setFilterLang] = useState("all");
+  const [filterProvider, setFilterProvider] = useState("all");
 
   const active = sessions.find((s) => s.id === activeSessionId) ?? null;
+
+  const showFilter = sessions.length > 3;
+  const sessionLangs = Array.from(new Set(sessions.map((s) => s.target_language)));
+  const visibleSessions = sessions.filter((s) => {
+    // The active version stays visible regardless of filters — hiding the
+    // thing currently rendered in the reader would be disorienting.
+    if (s.id === activeSessionId) return true;
+    if (filterText && !s.name.toLowerCase().includes(filterText.trim().toLowerCase())) return false;
+    if (filterLang !== "all" && s.target_language !== filterLang) return false;
+    if (filterProvider !== "all" && s.provider !== filterProvider) return false;
+    return true;
+  });
   const providerReady = provider === "deepseek" ? hasDeepseekKey : hasClaudeKey;
 
   async function handleCreate() {
@@ -178,6 +194,40 @@ export default function TranslationSessionPanel({
   return (
     <div className="mb-4" data-testid="translation-session-panel">
       <p className="block text-xs text-amber-700 mb-1">Translation versions</p>
+      {showFilter && (
+        <div className="mb-2 space-y-1.5" data-testid="version-filter">
+          <input
+            aria-label="Filter versions by name"
+            placeholder="Filter by name…"
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            className="w-full text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <div className="flex gap-1.5">
+            <select
+              aria-label="Filter versions by language"
+              value={filterLang}
+              onChange={(e) => setFilterLang(e.target.value)}
+              className="flex-1 min-w-0 text-xs border border-amber-200 rounded px-1.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="all">All languages</option>
+              {sessionLangs.map((l) => (
+                <option key={l} value={l}>{LANGUAGES.find((x) => x.code === l)?.label ?? l}</option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter versions by model"
+              value={filterProvider}
+              onChange={(e) => setFilterProvider(e.target.value)}
+              className="flex-1 min-w-0 text-xs border border-amber-200 rounded px-1.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="all">All models</option>
+              <option value="deepseek">deepseek-v4-flash</option>
+              <option value="claude">claude-sonnet-5</option>
+            </select>
+          </div>
+        </div>
+      )}
       <div className="space-y-1.5" role="radiogroup" aria-label="Translation versions">
         <button
           role="radio"
@@ -202,7 +252,10 @@ export default function TranslationSessionPanel({
           )}
         </button>
 
-        {sessions.map((s) => (
+        {showFilter && visibleSessions.length === 0 && (
+          <p className="text-xs text-stone-500 italic px-1" data-testid="no-version-match">No versions match the filter.</p>
+        )}
+        {visibleSessions.map((s) => (
           <div key={s.id} className={`rounded-lg border transition-colors ${
             activeSessionId === s.id ? "border-amber-600 ring-1 ring-amber-600 bg-white" : "border-amber-200 bg-white"
           }`}>

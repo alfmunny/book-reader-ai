@@ -168,6 +168,51 @@ test("a failed action shows a persistent, dismissible in-panel error", () => {
   expect(onDismissError).toHaveBeenCalled();
 });
 
+describe("version filter", () => {
+  const MANY: TranslationSession[] = [
+    SESSION, // 诗意版 zh deepseek
+    { ...SESSION, id: 6, name: "直译学习版", provider: "claude" },
+    { ...SESSION, id: 7, name: "English study", target_language: "en", provider: "claude" },
+    { ...SESSION, id: 8, name: "Essai français", target_language: "fr", provider: "deepseek" },
+  ];
+
+  it("appears only when there are enough versions", () => {
+    renderPanel({ sessions: [SESSION] });
+    expect(screen.queryByTestId("version-filter")).toBeNull();
+    renderPanel({ sessions: MANY });
+    expect(screen.getByTestId("version-filter")).toBeInTheDocument();
+  });
+
+  it("filters by name", () => {
+    renderPanel({ sessions: MANY });
+    fireEvent.change(screen.getByLabelText("Filter versions by name"), { target: { value: "直译" } });
+    expect(screen.getByRole("radio", { name: /直译学习版/ })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /诗意版/ })).toBeNull();
+    expect(screen.getByRole("radio", { name: /Editorial/ })).toBeInTheDocument(); // always visible
+  });
+
+  it("filters by language and model", () => {
+    renderPanel({ sessions: MANY });
+    fireEvent.change(screen.getByLabelText("Filter versions by language"), { target: { value: "zh" } });
+    expect(screen.queryByRole("radio", { name: /English study/ })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Filter versions by model"), { target: { value: "claude" } });
+    expect(screen.getByRole("radio", { name: /直译学习版/ })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /诗意版/ })).toBeNull();
+  });
+
+  it("the active version stays visible even when filtered out", () => {
+    renderPanel({ sessions: MANY, activeSessionId: 5 }); // 诗意版 active (deepseek)
+    fireEvent.change(screen.getByLabelText("Filter versions by model"), { target: { value: "claude" } });
+    expect(screen.getByRole("radio", { name: /诗意版/ })).toBeInTheDocument();
+  });
+
+  it("shows an explicit no-match note", () => {
+    renderPanel({ sessions: MANY });
+    fireEvent.change(screen.getByLabelText("Filter versions by name"), { target: { value: "zzzz" } });
+    expect(screen.getByTestId("no-version-match")).toBeInTheDocument();
+  });
+});
+
 test("deleting a session removes it and falls back to Editorial when active", async () => {
   (api.deleteTranslationSession as jest.Mock).mockResolvedValue({ ok: true });
   const { props } = renderPanel({ activeSessionId: 5 });

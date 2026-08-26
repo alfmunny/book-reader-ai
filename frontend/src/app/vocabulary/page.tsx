@@ -15,9 +15,10 @@ import {
   WordDefinition,
 } from "@/lib/api";
 import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon, DownloadIcon, ExportIcon } from "@/components/Icons";
-import { buildVocabularyMarkdown } from "@/lib/vocabularyMarkdown";
-import { downloadTextFile } from "@/lib/download";
+import { buildVocabularyMarkdown, VocabExportOptions } from "@/lib/vocabularyMarkdown";
+import { downloadTextFile, slugifyFilename } from "@/lib/download";
 import ExportMenu from "@/components/ExportMenu";
+import VocabExportDialog from "@/components/VocabExportDialog";
 import TagEditor from "@/components/TagEditor";
 import UndoToast from "@/components/UndoToast";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -270,6 +271,7 @@ function VocabularyPageContent() {
   const [fetchError, setFetchError] = useState(false);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
   const [exportOk, setExportOk] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletedWordToast, setDeletedWordToast] = useState<VocabularyWord | null>(null);
   const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
@@ -396,9 +398,20 @@ function VocabularyPageContent() {
     }
   }
 
-  function handleDownloadMarkdown() {
-    const filename = "vocabulary.md";
-    downloadTextFile(filename, buildVocabularyMarkdown(words));
+  function handleDownloadMarkdown(options: Required<VocabExportOptions>) {
+    setExportDialogOpen(false);
+    // Name the file after whatever narrowed it, so several exports stay apart.
+    const scope: string[] = [];
+    if (options.bookId !== null) {
+      const title = words
+        .flatMap((w) => w.occurrences)
+        .find((o) => o.book_id === options.bookId)?.book_title;
+      scope.push(slugifyFilename(title ?? "", "book"));
+    }
+    if (options.language !== null) scope.push(slugifyFilename(options.language, "lang"));
+    const filename = ["vocabulary", ...scope].join("-") + ".md";
+
+    downloadTextFile(filename, buildVocabularyMarkdown(words, options));
     setExportOk(true);
     setExportMsg(`Downloaded ${filename}`);
     setTimeout(() => setExportMsg(null), 8000);
@@ -565,7 +578,7 @@ function VocabularyPageContent() {
               label: "Download Markdown",
               description: "Save a .md file to this device",
               icon: <DownloadIcon className="w-4 h-4" />,
-              onSelect: handleDownloadMarkdown,
+              onSelect: () => setExportDialogOpen(true),
             },
             {
               key: "obsidian",
@@ -789,6 +802,14 @@ function VocabularyPageContent() {
           word={activeWord.word}
           lang={activeWord.lang}
           onClose={closeSheet}
+        />
+      )}
+
+      {exportDialogOpen && (
+        <VocabExportDialog
+          words={words}
+          onDownload={handleDownloadMarkdown}
+          onClose={() => setExportDialogOpen(false)}
         />
       )}
 

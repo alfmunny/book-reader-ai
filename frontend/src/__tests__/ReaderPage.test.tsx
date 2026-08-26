@@ -618,21 +618,6 @@ describe("ReaderPage — translation panel", () => {
     );
   });
 
-  it("shows 'Translate this chapter' button when translation is enabled and no translation cached", async () => {
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    expect(await screen.findByRole("button", { name: /translate this chapter/i })).toBeInTheDocument();
-  });
 
   it("shows language selector in translate tab", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
@@ -1451,24 +1436,6 @@ describe("ReaderPage — translation loaded from server cache", () => {
     });
   });
 
-  it("calls requestChapterTranslation when 'Translate this chapter' button is clicked", async () => {
-    mockGetBookChapters.mockResolvedValue({ meta: { ...SAMPLE_META, id: bookIdCounter }, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
 });
 
 describe("ReaderPage — admin-only features", () => {

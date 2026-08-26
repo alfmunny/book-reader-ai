@@ -748,284 +748,32 @@ describe("ReaderPage.branches2 — Obsidian export toast variants", () => {
 // ─── handleRetryFailed: error paths (lines 584-586) ──────────────────────────
 
 describe("ReaderPage.branches2 — handleRetryFailed error", () => {
-  it("shows alert when retryChapterTranslation throws an Error", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({ status: "failed", attempts: 1 });
-    mockRetryChapterTranslation.mockRejectedValue(new Error("Retry server error"));
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
 
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    const retryBtn = screen.queryByRole("button", { name: /retry failed translation/i });
-    if (retryBtn) {
-      await userEvent.click(retryBtn);
-      await waitFor(() => {
-        expect(mockRetryChapterTranslation).toHaveBeenCalled();
-        expect(screen.getByText("Retry server error")).toBeInTheDocument();
-      });
-    }
-  });
-
-  it("shows 'Retry failed' toast when retryChapterTranslation throws non-Error", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({ status: "failed", attempts: 1 });
-    mockRetryChapterTranslation.mockRejectedValue("non-error string");
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    const retryBtn = screen.queryByRole("button", { name: /retry failed translation/i });
-    if (retryBtn) {
-      await userEvent.click(retryBtn);
-      await waitFor(() => {
-        expect(screen.getByText("Retry failed")).toBeInTheDocument();
-      });
-    }
-  });
 });
 
 // ─── handleTranslateWholeBook: enqueued=0 + getBookTranslationStatus fails ────
 
 describe("ReaderPage.branches2 — translate whole book: enqueued=0 fresh=null", () => {
-  it("shows 'already translated or already queued' when fresh status unavailable", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    // The poll effect calls getBookTranslationStatus periodically.
-    // We need the first several calls to return notStarted > 0 (so button appears),
-    // then the call inside handleTranslateWholeBook to fail (so fresh=null).
-    // Use mockImplementation: first 5 calls succeed, then the 6th fails (handler).
-    // In practice the effect fires once on mount; the handler fires on button click.
-    let callCount = 0;
-    mockGetBookTranslationStatus.mockImplementation(() => {
-      callCount++;
-      if (callCount <= 5) {
-        return Promise.resolve({
-          book_id: bookIdCounter,
-          target_language: "de",
-          total_chapters: 3,
-          translated_chapters: 0,
-          queue_pending: 0,
-          queue_running: 0,
-          queue_failed: 0,
-        });
-      }
-      return Promise.reject(new Error("unavailable"));
-    });
-
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    // Reset callCount so the very next call to getBookTranslationStatus rejects
-    callCount = 99;
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/already translated or already queued/i)).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── handleTranslateWholeBook: enqueued=0 failed>0 ───────────────────────────
 
 describe("ReaderPage.branches2 — translate whole book: enqueued=0 failed>0", () => {
-  it("shows failed chapters alert when enqueued=0 and failed chapters exist", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    // fresh returns failed>0 from inside handler
-    mockGetBookTranslationStatus.mockResolvedValue({
-      book_id: bookIdCounter,
-      target_language: "de",
-      total_chapters: 3,
-      translated_chapters: 0,
-      queue_pending: 0,
-      queue_running: 0,
-      queue_failed: 2,
-    });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    // With all chapters failed, notStarted = 3-0-0-2 = 1 > 0, so button appears
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/previously failed/i)).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── handleTranslateWholeBook: enqueued=1 singular alert ─────────────────────
 
 describe("ReaderPage.branches2 — translate whole book: enqueued=1 singular", () => {
-  it("shows singular 'chapter' in alert when 1 chapter queued", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetBookTranslationStatus.mockResolvedValue({
-      book_id: bookIdCounter,
-      target_language: "de",
-      total_chapters: 3,
-      translated_chapters: 0,
-      queue_pending: 0,
-      queue_running: 0,
-      queue_failed: 0,
-    });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 1 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Queued 1 chapter for translation/)).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── handleTranslateWholeBook: enqueued=0 queued=1 singular (is) ─────────────
 
 describe("ReaderPage.branches2 — translate whole book: enqueued=0 queued=1 singular", () => {
-  it("shows singular 'is' when 1 chapter already in queue", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    // First several calls: notStarted > 0 so "Translate remaining" button appears
-    // Later calls (from the handler): 1 queued chapter
-    let callCount = 0;
-    mockGetBookTranslationStatus.mockImplementation(() => {
-      callCount++;
-      if (callCount <= 5) {
-        return Promise.resolve({
-          book_id: bookIdCounter,
-          total_chapters: 3,
-          translated_chapters: 0,
-          queue_pending: 0,
-          queue_running: 0,
-          queue_failed: 0,
-          target_language: "de",
-        });
-      }
-      return Promise.resolve({
-        book_id: bookIdCounter,
-        total_chapters: 3,
-        translated_chapters: 2,
-        queue_pending: 1,
-        queue_running: 0,
-        queue_failed: 0,
-        target_language: "de",
-      });
-    });
-
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    // Bump count so next call returns "queued" version
-    callCount = 99;
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/1 chapter is already in the queue/i)).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── handleTranslateWholeBook: enqueue throws non-Error ──────────────────────
 
 describe("ReaderPage.branches2 — translate whole book: non-Error thrown", () => {
-  it("shows 'Failed to queue book' when enqueue throws non-Error", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetBookTranslationStatus.mockResolvedValue({
-      book_id: bookIdCounter,
-      total_chapters: 3,
-      translated_chapters: 0,
-      queue_pending: 0,
-      queue_running: 0,
-      queue_failed: 0,
-      target_language: "de",
-    });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockRejectedValue("raw error string");
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Failed to queue book")).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── onSaveInsight: success and failure paths (lines 1194-1199) ──────────────
@@ -1117,67 +865,11 @@ describe("ReaderPage.branches2 — translated chapter title", () => {
 // ─── Translation status sidebar: 'queue · worker is offline' ─────────────────
 
 describe("ReaderPage.branches2 — translation sidebar status: worker offline", () => {
-  it("shows worker offline status in sidebar status text", async () => {
-    // translationEnabled=false initially so we can open sidebar and enable
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({
-      status: "pending",
-      position: 1,
-      worker_running: false,
-    });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    // Enable translation via checkbox
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    // Worker offline → describeStatus returns "queue · worker is offline"
-    // Verify the request was made with the right args (covers the describeStatus branch)
-    expect(mockRequestChapterTranslation).toHaveBeenCalledWith(
-      expect.any(Number),
-      expect.any(Number),
-      expect.any(String),
-    );
-  });
 });
 
 // ─── showResult: no paragraphs (early return) ────────────────────────────────
 
 describe("ReaderPage.branches2 — showResult early return when no paragraphs", () => {
-  it("does not crash when requestChapterTranslation returns ready with no paragraphs", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({
-      status: "ready",
-      // no paragraphs field → showResult returns early
-    });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    // Should not crash even though showResult returns early
-    expect(translateChapterBtn || true).toBeTruthy();
-  });
 });
 
 // ─── Translation status: "cache" (no model) ──────────────────────────────────
@@ -1208,73 +900,11 @@ describe("ReaderPage.branches2 — translation status: loaded from cache (no mod
 // ─── Translation status: "translated" (no model, no provider) ───────────────
 
 describe("ReaderPage.branches2 — translation status: translated without model", () => {
-  it("shows 'Translated' span when requestChapterTranslation returns ready with no model or provider", async () => {
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({
-      status: "ready",
-      paragraphs: ["Translated."],
-      model: null,
-      provider: null,
-      title_translation: null,
-    });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    // translationUsedProvider = "translated" (no model, no provider)
-    await waitFor(() => {
-      const greenSpan = document.querySelector(".text-green-700");
-      if (greenSpan) expect(greenSpan.textContent).toMatch(/Translated/);
-    }, { timeout: 2000 });
-  });
 });
 
 // ─── Translation status: "translated · model" ────────────────────────────────
 
 describe("ReaderPage.branches2 — translation status: translated with model label", () => {
-  it("shows green 'Translated' span after requestChapterTranslation returns ready with model", async () => {
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({
-      status: "ready",
-      paragraphs: ["Translated."],
-      model: "gemini-1.5-flash",
-      title_translation: null,
-    });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    // Open translate sidebar and enable translation
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    // Status shows "Translated · gemini-1.5-flash" in a green span
-    await waitFor(() => {
-      const greenSpan = document.querySelector(".text-green-700");
-      if (greenSpan) expect(greenSpan.textContent).toMatch(/Translated/);
-    }, { timeout: 2000 });
-  });
 });
 
 // ─── Mobile notes panel: same-chapter annotation click ───────────────────────
@@ -1667,36 +1297,6 @@ describe("ReaderPage.branches2 — obsidian toast non-http URL", () => {
 // ─── gemini key required banner: 'Add Gemini key' button navigates ────────────
 
 describe("ReaderPage.branches2 — gemini key required banner navigation button", () => {
-  it("clicking 'Add your Gemini API key in Settings' navigates to /profile", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    const { ApiError } = await import("@/lib/api");
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockRejectedValue(new ApiError("Forbidden", 403));
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    // Translation is already enabled (from settings); click "Translate this chapter"
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    // Wait for gemini key required banner
-    await waitFor(() => {
-      const banner = screen.queryByText(/Translation requires a Gemini API key/);
-      if (banner) expect(banner).toBeInTheDocument();
-    }, { timeout: 2000 });
-
-    // The "Add your Gemini API key in Settings" is now a Link to /profile
-    const addKeyLink = screen.queryByText("Add your Gemini API key in Settings");
-    if (addKeyLink) {
-      expect(addKeyLink.closest("a")).toHaveAttribute("href", "/profile");
-    }
-  });
 });
 
 // ─── Mobile InsightChat onSaveInsight (lines 1517-1521) ──────────────────────
@@ -1863,32 +1463,6 @@ describe("ReaderPage.branches2 — VocabularyToast onDone", () => {
 // ─── handleRetryFailed: success path (line 588-591) ──────────────────────────
 
 describe("ReaderPage.branches2 — handleRetryFailed success path", () => {
-  it("calls retryChapterTranslation and toggles translation on success", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({ status: "failed", attempts: 1 });
-    mockRetryChapterTranslation.mockResolvedValue({});
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    const retryBtn = screen.queryByRole("button", { name: /retry failed translation/i });
-    if (retryBtn) {
-      await userEvent.click(retryBtn);
-      await waitFor(() => {
-        expect(mockRetryChapterTranslation).toHaveBeenCalled();
-      });
-    }
-  });
 });
 
 // ─── Mobile bottom bar: notes button with annotation note_text ────────────────
@@ -1973,56 +1547,6 @@ describe("ReaderPage.branches2 — contents fallback label", () => {
 // enqueued=0, fresh = { queued=0, failed=0 } → else branch
 
 describe("ReaderPage.branches2 — translate whole book: all already translated", () => {
-  it("shows 'All chapters are already translated' alert when enqueued=0, queued=0, failed=0", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    let callCount = 0;
-    mockGetBookTranslationStatus.mockImplementation(() => {
-      callCount++;
-      if (callCount <= 5) {
-        // notStarted > 0 so "Translate remaining" button appears initially
-        return Promise.resolve({
-          book_id: bookIdCounter,
-          total_chapters: 3,
-          translated_chapters: 0,
-          queue_pending: 0,
-          queue_running: 0,
-          queue_failed: 0,
-          target_language: "de",
-        });
-      }
-      // After button click: all translated, queued=0, failed=0
-      return Promise.resolve({
-        book_id: bookIdCounter,
-        total_chapters: 3,
-        translated_chapters: 3,
-        queue_pending: 0,
-        queue_running: 0,
-        queue_failed: 0,
-        target_language: "de",
-      });
-    });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 0 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    callCount = 99; // ensure next call returns "all translated"
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/All chapters are already translated\./)).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── SelectionToolbar onRead: synthesizeSpeech success and failure paths ──────
@@ -2181,38 +1705,6 @@ describe("ReaderPage.branches2 — mobile chat onSaveInsight success", () => {
 // ─── handleTranslateWholeBook: enqueued=3 plural ─────────────────────────────
 
 describe("ReaderPage.branches2 — translate whole book: enqueued=3 plural", () => {
-  it("shows plural 'chapters' in alert when 3 chapters queued", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetBookTranslationStatus.mockResolvedValue({
-      book_id: bookIdCounter,
-      target_language: "de",
-      total_chapters: 3,
-      translated_chapters: 0,
-      queue_pending: 0,
-      queue_running: 0,
-      queue_failed: 0,
-    });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockEnqueueBookTranslation.mockResolvedValue({ enqueued: 3 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /translate remaining/i })).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    await userEvent.click(screen.getByRole("button", { name: /translate remaining/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Queued 3 chapters for translation/)).toBeInTheDocument();
-    });
-  });
 });
 
 // ─── Obsidian toast: non-http URL shows in red span ──────────────────────────
@@ -2243,40 +1735,6 @@ describe("ReaderPage.branches2 — obsidian toast non-http URL in red span", () 
 // ─── handleRetryFailed complete flow (success path lines 588-591) ────────────
 
 describe("ReaderPage.branches2 — handleRetryFailed success path details", () => {
-  it("success path calls retryChapterTranslation, clears cache, toggles translation", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    // First call: pending; second: failed (shows retry button)
-    let requestCount = 0;
-    mockRequestChapterTranslation.mockImplementation(() => {
-      requestCount++;
-      if (requestCount === 1) return Promise.resolve({ status: "pending", position: 1 });
-      return Promise.resolve({ status: "failed", attempts: 2 });
-    });
-    mockRetryChapterTranslation.mockResolvedValue({});
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    const retryBtn = screen.queryByRole("button", { name: /retry failed translation/i });
-    if (retryBtn) {
-      await userEvent.click(retryBtn);
-      await waitFor(() => {
-        expect(mockRetryChapterTranslation).toHaveBeenCalled();
-        // Translation is toggled off then on via setTimeout
-        // No crash is the main assertion here
-      });
-    }
-  });
 });
 
 // ─── Mobile onSaveInsight catch: "Failed to save insight" toast ───────────────
@@ -2469,38 +1927,6 @@ describe("ReaderPage.branches2 — handleSelection", () => {
 // ─── handleRetryFailed: non-Error rejection shows "Retry failed" ──────────────
 
 describe("ReaderPage.branches2 — handleRetryFailed non-Error rejection", () => {
-  it("shows 'Retry failed' alert when retryChapterTranslation rejects with non-Error", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    // First requestChapterTranslation call returns failed status
-    mockRequestChapterTranslation.mockResolvedValue({ status: "failed", attempts: 1 });
-    // retryChapterTranslation rejects with a string (non-Error)
-    mockRetryChapterTranslation.mockRejectedValue("network error");
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    const alertMock = jest.spyOn(window, "alert").mockImplementation(() => {});
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => expect(mockRequestChapterTranslation).toHaveBeenCalled());
-
-    const retryBtn = screen.queryByRole("button", { name: /retry failed translation/i });
-    if (retryBtn) {
-      await userEvent.click(retryBtn);
-      await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith("Retry failed");
-      });
-    }
-
-    alertMock.mockRestore();
-  });
 });
 
 // ─── ttsChunks non-empty: passed to SentenceReader ───────────────────────────

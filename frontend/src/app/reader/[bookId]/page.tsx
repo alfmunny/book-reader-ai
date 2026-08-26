@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, requestChapterTranslation, getChapterTranslation, getChapterQueueStatus, retryChapterTranslation, enqueueBookTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -28,18 +28,6 @@ const FLASH_COST_PER_M = 2.5; // USD per 1M output tokens
 const TOKENS_PER_WORD = 1.4;
 const WORDS_DEFAULT = 2000;
 
-function queueTotalCostLabel(text: string | undefined, chapterCount: number): string {
-  const words = text ? text.split(/\s+/).filter(Boolean).length : WORDS_DEFAULT;
-  const tokens = Math.round(words * TOKENS_PER_WORD) * chapterCount;
-  const usd = (tokens / 1_000_000) * FLASH_COST_PER_M;
-  const cost = usd < 0.005 ? "< $0.01" : `~$${usd.toFixed(2)}`;
-  const tok = tokens >= 1_000_000
-    ? `~${(tokens / 1_000_000).toFixed(1)}M`
-    : tokens >= 1000
-    ? `~${(tokens / 1000).toFixed(1)}K`
-    : `~${tokens}`;
-  return `${cost} · ${tok} tokens`;
-}
 
 // In-memory cache: bookId → chapters (survives client-side navigation)
 const chaptersCache = new Map<string, BookChapter[]>();
@@ -749,195 +737,30 @@ export default function ReaderPage() {
       } catch {
         // 404 = not cached yet; other errors fall through to show button
       }
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-
-      // Not cached — check if already queued so we can show the queue banner
-      try {
-        const queueStatus = await getChapterQueueStatus(bid, chapterIndex, translationLang);
-        if (cancelled || currentChapterKey.current !== cacheKey) return;
-        if (queueStatus.status === "pending" || queueStatus.status === "running") {
-          setTranslationLoading(false);
-          setTranslationUsedProvider(
-            queueStatus.status === "running"
-              ? "queue · translating now"
-              : `queue · position ${queueStatus.position ?? "?"}`
-          );
-          return;
-        }
-      } catch { /* ignore */ }
-
-      // Not translated and not queued — show "Translate this chapter" button
-      if (!cancelled && currentChapterKey.current === cacheKey) setTranslationLoading(false);
+      // Not cached: editorial translations are produced offline (local-first,
+      // #2624) — nothing to request online; the status line explains the gap.
+      if (!cancelled && currentChapterKey.current === cacheKey) {
+        setTranslationLoading(false);
+        setTranslationUsedProvider("none");
+      }
     })();
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, chapterIndex, bookId, chapters]);
 
-  async function handleTranslateThisChapter() {
-    const current = chapters[chapterIndex];
-    if (!current?.text) return;
-    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
-    currentChapterKey.current = cacheKey;
-
-    setTranslationLoading(true);
-    setTranslatedParagraphs([]);
-    setTranslationUsedProvider("");
-
-    const bid = Number(bookId);
-
-    function showResult(res: { paragraphs?: string[]; provider?: string; model?: string; title_translation?: string | null }) {
-      if (!res.paragraphs) return;
-      const label = res.model ? `translated · ${res.model}` : (res.provider ? `translated · ${res.provider}` : "translated");
-      translationCache.current.set(cacheKey, { paragraphs: res.paragraphs, label });
-      setTranslatedParagraphs(res.paragraphs);
-      setTranslatedTitle(res.title_translation ?? null);
-      setTranslationUsedProvider(label);
-      setTranslationLoading(false);
-    }
-
-    function describeStatus(r: { status: string; position?: number | null; worker_running?: boolean }): string {
-      if (r.status === "running") return "queue · translating now";
-      if (r.worker_running === false) return "queue · worker is offline";
-      return `queue · position ${r.position ?? "?"}`;
-    }
-
-    let res;
-    try {
-      res = await requestChapterTranslation(bid, chapterIndex, translationLang);
-    } catch (e) {
-      if (currentChapterKey.current === cacheKey) {
-        if (e instanceof ApiError && e.status === 401) setTranslationUsedProvider("login required");
-        else if (e instanceof ApiError && e.status === 403) setTranslationUsedProvider("gemini key required");
-        else setTranslationUsedProvider("error · check admin queue");
-        setTranslationLoading(false);
-      }
-      return;
-    }
-    if (currentChapterKey.current !== cacheKey) return;
-
-    if (res.status === "ready") { showResult(res); return; }
-
-    if (hasGeminiKey === false && !isAdmin) {
-      setTranslationUsedProvider("gemini key required");
-      setTranslationLoading(false);
-      return;
-    }
-
-    setTranslationUsedProvider(describeStatus(res));
-
-    (async () => {
-      try {
-        const status = await getBookTranslationStatus(bid, translationLang);
-        if (currentChapterKey.current === cacheKey) setBookTranslationStatus(status);
-      } catch { /* ignore */ }
-    })();
-
-    const POLL_MS = 3000;
-    let cancelled = false;
-    while (!cancelled && currentChapterKey.current === cacheKey) {
-      await new Promise((r) => setTimeout(r, POLL_MS));
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-      let tick;
-      try { tick = await requestChapterTranslation(bid, chapterIndex, translationLang); }
-      catch { continue; }
-      if (cancelled || currentChapterKey.current !== cacheKey) return;
-      if (tick.status === "ready") { showResult(tick); return; }
-      if (tick.status === "failed") {
-        setTranslationUsedProvider(`queue failed${tick.attempts ? ` · ${tick.attempts} attempts` : ""}`);
-        setTranslationLoading(false);
-        return;
-      }
-      setTranslationUsedProvider(describeStatus(tick));
-    }
-  }
-
-  // Poll book-level translation status when translation is enabled — shows
-  // the admin-level bulk-translate progress for this book ("42/60 chapters ready").
+  // Editorial coverage for the status display — a single fetch per
+  // (book, language); the queue-era 15s polling is gone with the queue UI.
   useEffect(() => {
-    if (!translationEnabled || !bookId) {
-      setBookTranslationStatus(null);
-      return;
-    }
+    if (!translationEnabled) { setBookTranslationStatus(null); return; }
     let cancelled = false;
-    async function fetchStatus() {
-      try {
-        const status = await getBookTranslationStatus(Number(bookId), translationLang);
-        if (!cancelled) setBookTranslationStatus(status);
-      } catch { /* ignore */ }
-    }
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
+    getBookTranslationStatus(Number(bookId), translationLang)
+      .then((status) => { if (!cancelled) setBookTranslationStatus(status); })
+      .catch(() => { if (!cancelled) setBookTranslationStatus(null); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [translationEnabled, translationLang, bookId]);
 
-  const [enqueueingBook, setEnqueueingBook] = useState(false);
-
-  async function handleTranslateWholeBook() {
-    const bid = Number(bookId);
-    setEnqueueingBook(true);
-    try {
-      const res = await enqueueBookTranslation(bid, translationLang);
-      // Refresh whole-book status immediately so the banner updates
-      // without waiting for the 15s poll tick — the banner may have
-      // been showing stale "not started" counts because a chapter
-      // was on-demand-queued by the reader between polls.
-      let fresh: TranslationStatus | null = null;
-      try {
-        fresh = await getBookTranslationStatus(bid, translationLang);
-        setBookTranslationStatus(fresh);
-      } catch { /* ignore */ }
-
-      // Distinguish "nothing to queue because everything's done" from
-      // "nothing to queue because everything's already queued" — the
-      // button disappearing + a vague 'already queued' message used
-      // to look like the click was a no-op even when the worker was
-      // actively translating.
-      let msg;
-      if (res.enqueued > 0) {
-        msg = `Queued ${res.enqueued} chapter${res.enqueued === 1 ? "" : "s"} for translation into ${translationLang}.`;
-      } else if (fresh) {
-        const queued = (fresh.queue_pending ?? 0) + (fresh.queue_running ?? 0);
-        const failed = fresh.queue_failed ?? 0;
-        if (queued > 0) {
-          msg = `Nothing new to queue — ${queued} chapter${queued === 1 ? " is" : "s are"} already in the queue and being processed.`;
-        } else if (failed > 0) {
-          msg = `Nothing new to queue — ${failed} chapter${failed === 1 ? "" : "s"} previously failed. Use the Retry button to revive them.`;
-        } else {
-          msg = `All chapters are already translated.`;
-        }
-      } else {
-        msg = `All chapters are already translated or already queued.`;
-      }
-      setEnqueueToast({ msg, ok: true });
-      setTimeout(() => setEnqueueToast(null), 5000);
-    } catch (e) {
-      setEnqueueToast({ msg: e instanceof Error ? e.message : "Failed to queue book", ok: false });
-      setTimeout(() => setEnqueueToast(null), 5000);
-    } finally {
-      setEnqueueingBook(false);
-    }
-  }
-
-  async function handleRetryFailed() {
-    // Unlike the removed queue-era retranslate: there is no cached translation to
-    // delete (the chapter failed), we just need to revive the failed queue
-    // row so the worker picks it up again. Clearing frontend state + the
-    // toggle dance re-starts polling once the row is pending.
-    const bid = Number(bookId);
-    const cacheKey = `${bookId}-${chapterIndex}-${translationLang}`;
-    try {
-      await retryChapterTranslation(bid, chapterIndex, translationLang);
-    } catch (e) {
-      setRetryToast(e instanceof Error ? e.message : "Retry failed");
-      setTimeout(() => setRetryToast(null), 5000);
-      return;
-    }
-    translationCache.current.delete(cacheKey);
-    setTranslatedParagraphs([]);
-    setTranslationEnabled(false);
-    setTimeout(() => setTranslationEnabled(true), 50);
-  }
 
   const handleSelection = useCallback(() => {
     const sel = window.getSelection()?.toString().trim() || "";
@@ -2622,6 +2445,13 @@ export default function ReaderPage() {
                         onTranslateChapter={handleSessionTranslateChapter}
                         chapterChars={chapters[chapterIndex]?.text?.length ?? 0}
                         translating={sessionTranslating || chapterRunActive}
+                        editorialStatus={bookTranslationStatus ? {
+                          lang: translationLang,
+                          done: bookTranslationStatus.translated_chapters,
+                          total: bookTranslationStatus.total_chapters,
+                          thisChapter: translatedParagraphs.length > 0,
+                          loading: translationLoading,
+                        } : null}
                         runProgress={sessionChapter?.run?.active ? { done: sessionChapter.run.done, total: sessionChapter.run.total } : null}
                         actionError={sessionActionError}
                         onDismissError={() => setSessionActionError(null)}
@@ -2673,105 +2503,33 @@ export default function ReaderPage() {
                       </div>
                     </div>
 
-                    {/* Translate this chapter button — explicit user action required */}
-                    {!activeSession && translationEnabled && !translationLoading && translatedParagraphs.length === 0 && translationUsedProvider === "" && (
-                      <div className="mb-4">
-                        {session?.backendToken ? (
-                          <>
-                            <button
-                              onClick={handleTranslateThisChapter}
-                              className="w-full px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-700"
-                            >
-                              Translate this chapter
-                            </button>
-                          </>
-                        ) : (
-                          <p className="text-xs text-amber-700">
-                            <a href="/api/auth/signin" className="underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded">Sign in</a> to translate this chapter.
-                          </p>
-                        )}
-                      </div>
-                    )}
-
                     {/* Status */}
                     {!activeSession && translationEnabled && (
                       <div role="status" className="text-xs">
                         {translationLoading && !translationUsedProvider && (
                           <span className="animate-pulse text-amber-700">Checking for translation…</span>
                         )}
-                        {translationLoading && translationUsedProvider.startsWith("queue") && (
-                          <span className="animate-pulse text-sky-600">
-                            {translationUsedProvider === "queue · translating now"
-                              ? "Translating now…"
-                              : translationUsedProvider === "queue · worker is offline"
-                              ? "Worker offline — translation queued"
-                              : `In queue · position ${translationUsedProvider.replace(/^queue · position /, "")}`}
-                          </span>
-                        )}
                         {!translationLoading && (
                           translationUsedProvider === "cache" ? (
-                            <span className="text-stone-600">Loaded from cache</span>
+                            <span className="text-stone-600">Editorial translation loaded</span>
                           ) : translationUsedProvider.startsWith("cache · ") ? (
-                            <span className="text-stone-600">From cache · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
-                          ) : translationUsedProvider === "translated" ? (
-                            <span className="text-green-700">Translated</span>
-                          ) : translationUsedProvider.startsWith("translated · ") ? (
-                            <span className="text-green-700">Translated · <span className="font-mono">{translationUsedProvider.slice(13)}</span></span>
-                          ) : translationUsedProvider.startsWith("queue failed") ? (
-                            <span className="text-red-600">{translationUsedProvider}</span>
-                          ) : translationUsedProvider.startsWith("error") ? (
-                            <span className="text-red-600">Translation failed — please try again</span>
+                            <span className="text-stone-600">Editorial translation · <span className="font-mono">{translationUsedProvider.slice(8)}</span></span>
+                          ) : translationUsedProvider === "none" ? (
+                            <span className="text-stone-600" data-testid="editorial-empty">
+                              No editorial translation for this chapter in {LANGUAGES.find((l) => l.code === translationLang)?.label ?? translationLang} yet — editorial translations are prepared offline. Your own translation versions above work anytime.
+                            </span>
                           ) : null
                         )}
                       </div>
                     )}
 
-                    {/* Book-level translation progress */}
-                    {translationEnabled && bookTranslationStatus && (() => {
-                      const s = bookTranslationStatus;
-                      const queued = (s.queue_pending ?? 0) + (s.queue_running ?? 0);
-                      const ready = s.translated_chapters;
-                      const total = s.total_chapters;
-                      const notStarted = Math.max(0, total - ready - queued - (s.queue_failed ?? 0));
-                      return (
-                        <div className="mt-3 pt-3 border-t border-amber-200">
-                          <div className="flex items-center gap-1.5 text-xs text-amber-700">
-                            {queued > 0 && <span className="inline-block w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse shrink-0" aria-hidden="true" />}
-                            <span>
-                              <strong>{ready} / {total}</strong> chapters translated
-                              {queued > 0 && (<> · <strong>{queued}</strong> processing</>)}
-                              {s.queue_failed ? (<> · <span className="text-red-600">{s.queue_failed} failed</span></>) : null}
-                            </span>
-                          </div>
-                          {notStarted > 0 && (
-                            <>
-                              <button
-                                onClick={handleTranslateWholeBook}
-                                disabled={enqueueingBook}
-                                className="mt-2 w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-                              >
-                                {enqueueingBook ? "Queueing…" : `Translate remaining ${notStarted}`}
-                              </button>
-                              {hasGeminiKey === true && !enqueueingBook && (
-                                <p className="mt-1 text-xs text-stone-600 text-center" aria-label="Rough cost estimate for queuing remaining chapters">
-                                  Rough estimate: {queueTotalCostLabel(current?.text, notStarted)}
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Retry failed */}
-                    {!translationLoading && translationUsedProvider.startsWith("queue failed") && (
-                      <button
-                        onClick={handleRetryFailed}
-                        className="mt-2 w-full text-xs px-3 py-2 min-h-[44px] md:min-h-0 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
-                      >
-                        Retry failed translation
-                      </button>
+                    {/* Editorial coverage (read-only; produced offline) */}
+                    {!activeSession && translationEnabled && bookTranslationStatus && (
+                      <div className="mt-3 pt-3 border-t border-amber-200 text-xs text-amber-700" data-testid="editorial-coverage">
+                        <strong>{bookTranslationStatus.translated_chapters} / {bookTranslationStatus.total_chapters}</strong> chapters have an editorial translation
+                      </div>
                     )}
+
                   </div>
                 </div>
               )}

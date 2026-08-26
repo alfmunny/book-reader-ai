@@ -395,73 +395,8 @@ describe("ReaderPage.branches — translation cache hit", () => {
 // ─── Translation error paths in handleTranslateThisChapter (lines 451-457) ───
 
 describe("ReaderPage.branches — translation chapter errors", () => {
-  it("shows 'login required' when requestChapterTranslation returns 401", async () => {
-    const { ApiError } = await import("@/lib/api");
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockRejectedValue(new ApiError("Unauthorized", 401));
-    render(<ReaderPage />);
-    await flushPromises();
 
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
 
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
-
-  it("shows 'gemini key required' when requestChapterTranslation returns 403", async () => {
-    const { ApiError } = await import("@/lib/api");
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockRejectedValue(new ApiError("Forbidden", 403));
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
-
-  it("shows generic error when requestChapterTranslation throws unknown error", async () => {
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockRejectedValue(new Error("Server error"));
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const checkbox = await screen.findByRole("checkbox");
-    await userEvent.click(checkbox);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
 });
 
 // ─── hasGeminiKey=false, not admin → gemini key required (lines 463-466) ──────
@@ -845,28 +780,6 @@ describe("ReaderPage.branches — loading skeleton shows when meta is null", () 
 // ─── Translation status "login required" banner (line 941) ───────────────────
 
 describe("ReaderPage.branches — translation login required banner", () => {
-  it("shows login required banner when translationUsedProvider is 'login required'", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    const { ApiError } = await import("@/lib/api");
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockRejectedValue(new ApiError("Unauthorized", 401));
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-
-    render(<ReaderPage />);
-    await flushPromises();
-
-    // Open translate sidebar and click translate chapter
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
 });
 
 // ─── Queue status "running" in translation sidebar ────────────────────────────
@@ -1325,32 +1238,6 @@ describe("ReaderPage.branches — mobile bottom bar translate toggle", () => {
 // ─── Translation status with 'queue failed' provider (lines 1411-1413) ───────
 
 describe("ReaderPage.branches — translation failed status in sidebar", () => {
-  it("shows queue failed status message in translate sidebar", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    mockRequestChapterTranslation.mockResolvedValue({ status: "failed", attempts: 3 });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-
-    // Check that either "queue failed" text or the Retry button appears
-    await waitFor(() => {
-      const retryBtn = screen.queryByRole("button", { name: /retry failed/i });
-      const failedText = screen.queryByText(/queue failed/i);
-      return retryBtn || failedText;
-    }, { timeout: 2000 });
-  });
 });
 
 // ─── Scroll progress bar (lines 249-251) ─────────────────────────────────────
@@ -1503,30 +1390,6 @@ describe("ReaderPage.branches — translated chapter title display", () => {
 // ─── Queue chapter translation with running status (describeStatus) ───────────
 
 describe("ReaderPage.branches — describeStatus variants", () => {
-  it("shows 'worker is offline' status in translate sidebar", async () => {
-    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, translationEnabled: true });
-    mockGetChapterTranslation.mockRejectedValue({ status: 404 });
-    mockGetChapterQueueStatus.mockRejectedValue({ status: 404 });
-    // Return a response with worker_running=false
-    mockRequestChapterTranslation.mockResolvedValue({
-      status: "pending",
-      position: 1,
-      worker_running: false,
-    });
-    mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
-    render(<ReaderPage />);
-    await flushPromises();
-
-    const translateBtn = await screen.findByTitle("Translation");
-    await userEvent.click(translateBtn);
-
-    const translateChapterBtn = await screen.findByRole("button", { name: /translate this chapter/i });
-    await userEvent.click(translateChapterBtn);
-
-    await waitFor(() => {
-      expect(mockRequestChapterTranslation).toHaveBeenCalled();
-    });
-  });
 });
 
 // ─── saveInsight callback in InsightChat (lines 1194-1199) ───────────────────

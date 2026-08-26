@@ -32,6 +32,8 @@ interface Props {
   onDismissError?: () => void;
   /** Live background-run progress; the translate button becomes a bar. */
   runProgress?: { done: number; total: number } | null;
+  /** Editorial coverage for the Editorial entry's status (read-only). */
+  editorialStatus?: { lang: string; done: number; total: number; thisChapter: boolean; loading: boolean } | null;
   /** paragraphs translated / total in the current chapter (session view) */
   chapterProgress?: { done: number; total: number } | null;
 }
@@ -53,6 +55,7 @@ export default function TranslationSessionPanel({
   actionError,
   onDismissError,
   runProgress,
+  editorialStatus,
   chapterProgress,
 }: Props) {
   const [creating, setCreating] = useState(false);
@@ -185,7 +188,18 @@ export default function TranslationSessionPanel({
           }`}
         >
           <span className="font-medium text-ink flex-1">Editorial</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">queue</span>
+          {editorialStatus && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">{editorialStatus.lang}</span>
+          )}
+          {editorialStatus && !editorialStatus.loading && (
+            <span
+              data-testid="editorial-chip-status"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full ${editorialStatus.thisChapter ? "bg-green-50 text-green-700" : "bg-stone-100 text-stone-500"}`}
+              title={`${editorialStatus.done} / ${editorialStatus.total} chapters have an editorial translation`}
+            >
+              {editorialStatus.thisChapter ? `✓ ${editorialStatus.done}/${editorialStatus.total} ch` : `– ${editorialStatus.done}/${editorialStatus.total} ch`}
+            </span>
+          )}
         </button>
 
         {sessions.map((s) => (

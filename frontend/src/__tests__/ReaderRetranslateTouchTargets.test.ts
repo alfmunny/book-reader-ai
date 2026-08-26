@@ -18,4 +18,21 @@ describe("queue-era admin retranslate is gone", () => {
     expect(readerSrc).not.toContain("handleRetranslate");
     expect(readerSrc).not.toContain("deleteTranslationCache");
   });
+
+  it("all queue-era translate controls are gone (owner decision, 2026-08-27)", () => {
+    // Editorial translations are produced offline; readers translate with
+    // their own versions. No enqueue, no retry, no queue polling.
+    expect(readerSrc).not.toContain("handleTranslateThisChapter");
+    expect(readerSrc).not.toContain("handleTranslateWholeBook");
+    expect(readerSrc).not.toContain("handleRetryFailed");
+    expect(readerSrc).not.toContain("requestChapterTranslation");
+    expect(readerSrc).not.toContain("enqueueBookTranslation");
+    expect(readerSrc).not.toContain("retryChapterTranslation");
+    expect(readerSrc).not.toContain("getChapterQueueStatus");
+  });
+
+  it("the editorial empty state is explicit instead of a dead toggle", () => {
+    expect(readerSrc).toContain("No editorial translation for this chapter");
+    expect(readerSrc).toContain("editorial-coverage");
+  });
 });

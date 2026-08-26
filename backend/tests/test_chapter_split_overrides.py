@@ -142,6 +142,57 @@ def test_multiple_merges_apply_highest_index_first(registry):
     assert [c.title for c in result] == ["ACT III", "PROLOGUE."]
 
 
+# ── retitle ──────────────────────────────────────────────────────────────────
+
+def test_retitle_replaces_a_title_without_moving_anything(registry):
+    registry({"retitle": [
+        {"index": 1, "expect_title": "SCENE II. A hall in the Castle.",
+         "title": "THE PLAY SCENE"},
+    ]})
+    before = _scene_split()
+
+    result = apply_overrides(999, before)
+
+    assert [c.title for c in result] == [
+        "ACT III", "THE PLAY SCENE", "PROLOGUE.",
+        "SCENE III. A room in the Castle.",
+    ]
+    # Paragraph content is untouched — translations key on it.
+    assert [c.text for c in result] == [c.text for c in before]
+
+
+def test_retitle_aborts_on_a_title_mismatch(registry):
+    registry({"retitle": [
+        {"index": 1, "expect_title": "SOMETHING ELSE", "title": "X"},
+    ]})
+
+    with pytest.raises(SystemExit, match="expected chapter 1"):
+        apply_overrides(999, _scene_split())
+
+
+def test_retitle_aborts_when_the_index_is_out_of_range(registry):
+    registry({"retitle": [{"index": 99, "expect_title": "X", "title": "Y"}]})
+
+    with pytest.raises(SystemExit, match="out of range"):
+        apply_overrides(999, _scene_split())
+
+
+def test_retitle_indices_refer_to_the_raw_split_not_the_merged_one(registry):
+    """Every index in the registry names a chapter in the splitter's raw
+    output, so retitles resolve before merges shift anything."""
+    registry({
+        "retitle": [{"index": 3, "expect_title": "SCENE III. A room in the Castle.",
+                     "title": "THE CLOSET SCENE"}],
+        "merge_into_previous": [{"index": 2, "expect_title": "PROLOGUE."}],
+    })
+
+    result = apply_overrides(999, _scene_split())
+
+    assert [c.title for c in result] == [
+        "ACT III", "SCENE II. A hall in the Castle.", "THE CLOSET SCENE",
+    ]
+
+
 # ── The committed Hamlet artifact (#1524) ────────────────────────────────────
 
 def test_hamlet_artifact_has_no_standalone_prologue_chapter():
@@ -168,3 +219,35 @@ def test_hamlet_play_scene_is_whole_and_keeps_the_prologue_cue():
     assert joined.startswith("Enter Hamlet and certain Players.")
     assert "Enter Prologue." in joined
     assert "Is this a prologue, or the posy of a ring?" in joined
+
+
+# ── The committed Dracula artifact (#345) ────────────────────────────────────
+
+DRACULA_ARTIFACT = REPO_ROOT / "data" / "books" / "book_345.json"
+
+
+def test_dracula_frontmatter_titles_are_meaningful():
+    """'Section 2' was a splitter-generated placeholder over Stoker's
+    prefatory note; the zh title_translation already read 前言."""
+    artifact = json.loads(DRACULA_ARTIFACT.read_text())
+
+    titles = [c["title"] for c in artifact["chapters"]]
+    assert "Section 2" not in titles
+    assert titles[0] == "TITLE PAGE"
+    assert titles[1] == "PREFACE"
+
+
+def test_dracula_keeps_all_thirty_chapters_and_translations_aligned():
+    """The retitle must not move a boundary: Dracula's 27 numbered chapters
+    plus front matter, preface and closing note all stay where they were,
+    with every zh entry still paragraph-aligned."""
+    artifact = json.loads(DRACULA_ARTIFACT.read_text())
+    chapters = artifact["chapters"]
+    entries = artifact["translations"]["zh"]["chapters"]
+
+    assert len(chapters) == 30
+    assert len(entries) == 30
+    numbered = [c["title"] for c in chapters if c["title"].startswith("CHAPTER ")]
+    assert len(numbered) == 27
+    for e in entries:
+        assert len(e["paragraphs"]) == len(chapters[e["index"]]["paragraphs"])

@@ -10,6 +10,9 @@ Books absent from the registry freeze exactly as the splitter emits them.
 
 Schema:
     OVERRIDES[book_id] = {
+        'retitle': [
+            {'index': int, 'expect_title': str, 'title': str, 'why': str},
+        ],
         'merge_into_previous': [
             {'index': int,
              'expect_title': str,
@@ -17,6 +20,14 @@ Schema:
              'why': str},
         ],
     }
+
+Every `index` names a chapter in the splitter's **raw** output: retitles are
+resolved before any merge shifts the list, so one registry entry never has to
+account for another.
+
+`retitle` replaces a heading the splitter invented or left as a placeholder
+("Section 2" over Dracula's prefatory note). It moves nothing — indices and
+paragraphs are untouched, so translations stay anchored exactly as they were.
 
 `merge_into_previous` appends chapter `index` to its predecessor and removes
 it, shifting later chapters down by one. `expect_title` is verified first: if
@@ -44,6 +55,31 @@ from __future__ import annotations
 from services.splitter import Chapter
 
 OVERRIDES: dict[int, dict] = {
+    345: {  # Dracula
+        # Front matter only. Dracula's split is otherwise sound: 27 numbered
+        # chapters with correct boundaries, and all 30 zh entries paragraph-
+        # aligned. Chapter 0 is the Grosset & Dunlap title page; chapter 1 is
+        # Stoker's prefatory note, which the splitter left under a generated
+        # placeholder. Both new titles match the title_translation the
+        # translator already recorded (题名 / 前言), so nothing is invented.
+        # Audited against Gutenberg #345, 2026-08-26.
+        "retitle": [
+            {
+                "index": 0,
+                # Non-breaking spaces, as the source sets the title page.
+                "expect_title": "D\xa0R\xa0A\xa0C\xa0U\xa0L\xa0A",
+                "title": "TITLE PAGE",
+                "why": "publisher's title page and copyright notice, not the novel",
+            },
+            {
+                "index": 1,
+                "expect_title": "Section 2",
+                "title": "PREFACE",
+                "why": "Stoker's prefatory note ('How these papers have been "
+                       "placed in sequence…'); 'Section 2' is a splitter placeholder",
+            },
+        ],
+    },
     1524: {  # Hamlet
         "merge_into_previous": [
             {
@@ -61,6 +97,30 @@ OVERRIDES: dict[int, dict] = {
 }
 
 
+def _check(
+    book_id: int, chapters: list[Chapter], index: int, expect_title: str,
+    *, allow_first: bool,
+) -> None:
+    """Verify `index` still names the chapter the registry was written against.
+
+    `allow_first=False` for a merge, which has no predecessor to fold into at
+    index 0."""
+    lowest = 0 if allow_first else 1
+    if not lowest <= index < len(chapters):
+        raise SystemExit(
+            f"book {book_id}: override index {index} is out of range for a "
+            f"{len(chapters)}-chapter split — re-audit "
+            f"scripts/chapter_split_overrides.py before freezing."
+        )
+    found = chapters[index].title
+    if found != expect_title:
+        raise SystemExit(
+            f"book {book_id}: expected chapter {index} to be {expect_title!r} "
+            f"but the splitter produced {found!r} — the split moved; re-audit "
+            f"scripts/chapter_split_overrides.py before freezing."
+        )
+
+
 def apply_overrides(book_id: int, chapters: list[Chapter]) -> list[Chapter]:
     """Return `chapters` with this book's registered corrections applied.
 
@@ -73,25 +133,22 @@ def apply_overrides(book_id: int, chapters: list[Chapter]) -> list[Chapter]:
         return chapters
 
     corrected = list(chapters)
+
+    # Retitles first: indices in this registry name the raw split, and a
+    # retitle moves nothing, so resolving them here keeps every recorded index
+    # referring to the same chapter regardless of the merges below.
+    for entry in spec.get("retitle", []):
+        index = entry["index"]
+        _check(book_id, corrected, index, entry["expect_title"], allow_first=True)
+        chapter = corrected[index]
+        corrected[index] = Chapter(title=entry["title"], text=chapter.text)
+
     # Highest index first, so the lower indices stay valid as entries are removed.
     for merge in sorted(
         spec.get("merge_into_previous", []), key=lambda m: m["index"], reverse=True
     ):
         index = merge["index"]
-        if not 0 < index < len(corrected):
-            raise SystemExit(
-                f"book {book_id}: merge_into_previous index {index} is out of "
-                f"range for a {len(corrected)}-chapter split — re-audit "
-                f"scripts/chapter_split_overrides.py before freezing."
-            )
-        found = corrected[index].title
-        if found != merge["expect_title"]:
-            raise SystemExit(
-                f"book {book_id}: expected chapter {index} to be "
-                f"{merge['expect_title']!r} but the splitter produced {found!r} "
-                f"— the split moved; re-audit "
-                f"scripts/chapter_split_overrides.py before freezing."
-            )
+        _check(book_id, corrected, index, merge["expect_title"], allow_first=False)
 
         absorbed = corrected.pop(index)
         text = absorbed.text

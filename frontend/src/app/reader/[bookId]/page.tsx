@@ -2100,15 +2100,31 @@ export default function ReaderPage() {
               variant="sentence"
               myNote={(() => {
                 const own = annotations.find(
-                  (a) => a.chapter_index === chapterIndex && a.note_text &&
+                  (a) => a.chapter_index === chapterIndex &&
                     (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
                 return own ? {
-                  text: own.note_text,
+                  text: own.note_text || "Highlight — no note yet.",
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
                 } : null;
+              })()}
+              onEditMyNote={(() => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                return own ? () => {
+                  setSharedNotesFor(null);
+                  setQuickHighlightPanel({
+                    sentenceText: own.sentence_text,
+                    chapterIndex: own.chapter_index,
+                    position: sharedNotesFor.position ?? { x: window.innerWidth / 2, y: 160 },
+                    existingAnnotation: own,
+                  });
+                } : undefined;
               })()}
               position={sharedNotesFor.position}
               currentUserId={session?.backendUser?.id}

@@ -131,3 +131,23 @@ test("a multi-sentence anchor underlines its whole contiguous section", () => {
   expect(seg(2).className).not.toContain("decoration-dashed"); // outside the anchor
   expect(seg(3).className).not.toContain("decoration-dashed"); // next paragraph
 });
+
+test("a sentence with BOTH own annotation and shared notes opens the notes panel", () => {
+  const onSharedNotesClick = jest.fn();
+  const onAnnotationClick = jest.fn();
+  renderReader({
+    sharedNotes: [{ sentenceText: "Die Sonne tönt, nach alter Weise.", count: 1 }],
+    onSharedNotesClick,
+    onAnnotationClick,
+    chapterIndex: 0,
+    annotations: [{
+      id: 7, book_id: 1, chapter_index: 0,
+      sentence_text: "Die Sonne tönt, nach alter Weise.",
+      note_text: "mine", color: "yellow",
+    } as never],
+  });
+  const seg = document.querySelector('[data-seg="0"]') as HTMLElement;
+  fireEvent.click(seg);
+  expect(onSharedNotesClick).toHaveBeenCalled();
+  expect(onAnnotationClick).not.toHaveBeenCalled();
+});

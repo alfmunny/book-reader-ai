@@ -143,3 +143,15 @@ test("sentence variant: my note pinned on top, no quote, no discussion UI", () =
   expect(screen.queryByText("Die Sonne tönt.")).toBeNull();
   expect(screen.queryByText(/Discussion/)).toBeNull();
 });
+
+test("pinned my-note card offers the highlight editor", () => {
+  const onEditMyNote = jest.fn();
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "mine", authorName: "Alfmunny", picture: null },
+    onEditMyNote,
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByLabelText("Edit my highlight and note"));
+  expect(onEditMyNote).toHaveBeenCalled();
+});

@@ -1113,10 +1113,11 @@ export default function SentenceReader({
           // Keyboard accessibility for annotated segments (WCAG 2.1.1 / #2553):
           // A span with an existing annotation is an interactive control — keyboard
           // users must be able to focus it and activate it to edit or delete it.
-          const isAnnotationInteractive = !!(showAnnotations && fullSegmentAnnotation && onAnnotationClick);
-          // A shared-note sentence without an own annotation is itself the
-          // tap target (no count dot — WeRead style, owner 2026-08-28).
-          const isSharedInteractive = !isAnnotationInteractive && segSharedCount > 0 && !!onSharedNotesClick;
+          // The shared-notes panel is the destination for a marked sentence,
+          // EVEN when the reader has their own annotation on it (owner,
+          // 2026-08-28) — the pinned "My note" card carries the edit action.
+          const isSharedInteractive = segSharedCount > 0 && !!onSharedNotesClick;
+          const isAnnotationInteractive = !isSharedInteractive && !!(showAnnotations && fullSegmentAnnotation && onAnnotationClick);
           return (
             <span
               key={seg.flatIdx}
@@ -1148,6 +1149,10 @@ export default function SentenceReader({
                 // event target to the nearest [data-ann-id]; a click that does
                 // not land on any annotation span falls through to the
                 // segment-click path so a fresh selection can begin.
+                if (isSharedInteractive) {
+                  onSharedNotesClick!(seg.text, { x: e.clientX, y: e.clientY });
+                  return;
+                }
                 if (showAnnotations && onAnnotationClick) {
                   const annHost = (e.target as HTMLElement | null)?.closest?.("[data-ann-id]") as HTMLElement | null;
                   if (annHost) {
@@ -1161,10 +1166,6 @@ export default function SentenceReader({
                     onAnnotationClick(fullSegmentAnnotation, { x: e.clientX, y: e.clientY });
                     return;
                   }
-                }
-                if (isSharedInteractive) {
-                  onSharedNotesClick!(seg.text, { x: e.clientX, y: e.clientY });
-                  return;
                 }
                 if (isPlaying || duration > 0) {
                   onSegmentClick(seg.startTime, seg.text);

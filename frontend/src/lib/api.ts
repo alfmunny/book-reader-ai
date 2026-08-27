@@ -306,6 +306,12 @@ export interface TranslationStatus {
   target_language: string;
   total_chapters: number;
   translated_chapters: number;
+  /**
+   * Which chapters are translated, not just how many — the reader's Contents
+   * panel marks each row (#2754). Optional so an older backend, or a failed
+   * fetch, leaves the panel silent rather than claiming nothing is translated.
+   */
+  translated_indices?: number[];
   bulk_active: boolean;
 }
 

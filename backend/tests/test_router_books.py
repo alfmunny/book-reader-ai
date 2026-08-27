@@ -8,7 +8,7 @@ import io
 import pytest
 from unittest.mock import AsyncMock, patch
 import services.db as db_module
-from services.db import save_book
+from services.db import save_book, save_translation
 
 
 async def _seed_book(book_id: int) -> None:
@@ -1951,3 +1951,40 @@ async def test_post_translation_cache_hit_reconciles_subtitle_shift(anon_client)
         f"Regression #1385: POST cache-hit must reconcile subtitle, got {data['paragraphs']}"
     )
     assert data["title_translation"] == "Untertitel."
+
+
+# ── Per-chapter translation coverage (#2754) ─────────────────────────────────
+
+async def test_translation_status_reports_which_chapters_are_translated(client):
+    """The Contents panel needs indices, not just a count (#2754)."""
+    book_id = 9950
+    await save_book(book_id, {**MOCK_META, "id": book_id}, "Ch I\n\nA.\n\nCh II\n\nB.")
+    await save_translation(book_id, 2, "de", ["Übersetzt"])
+    await save_translation(book_id, 0, "de", ["Übersetzt"])
+
+    data = (await client.get(f"/api/books/{book_id}/translation-status?target_language=de")).json()
+
+    assert data["translated_indices"] == [0, 2], "sorted, so the reader can trust the order"
+    assert data["translated_chapters"] == 2, "count stays consistent with the indices"
+
+
+async def test_translation_status_indices_are_empty_when_nothing_is_translated(client):
+    book_id = 9951
+    await save_book(book_id, {**MOCK_META, "id": book_id}, "Ch I\n\nA.")
+
+    data = (await client.get(f"/api/books/{book_id}/translation-status?target_language=de")).json()
+
+    assert data["translated_indices"] == []
+
+
+async def test_translation_status_indices_are_scoped_to_the_target_language(client):
+    """A German translation must not mark the chapter as translated for Chinese."""
+    book_id = 9952
+    await save_book(book_id, {**MOCK_META, "id": book_id}, "Ch I\n\nA.")
+    await save_translation(book_id, 0, "de", ["Übersetzt"])
+
+    de = (await client.get(f"/api/books/{book_id}/translation-status?target_language=de")).json()
+    zh = (await client.get(f"/api/books/{book_id}/translation-status?target_language=zh")).json()
+
+    assert de["translated_indices"] == [0]
+    assert zh["translated_indices"] == []

@@ -183,7 +183,8 @@ type View =
   | { mode: "story"; storyId: number }
   | { mode: "myVersion"; index: number }
   | { mode: "comments" }
-  | { mode: "comment"; commentId: number; anchor: CommentAnchor; from: "comments" | number };
+  | { mode: "myNoteDetail" }
+  | { mode: "comment"; commentId: number; anchor: CommentAnchor; from: "comments" | "myNote" | number };
 
 interface Props {
   stories: Story[];
@@ -198,7 +199,7 @@ interface Props {
   variant?: "sentence";
   /** The reader's own note on this sentence — pinned on top, "My note".
    *  text is the RAW note_text (may be empty for a bare highlight). */
-  myNote?: { text: string; authorName: string; picture?: string | null } | null;
+  myNote?: { text: string; authorName: string; picture?: string | null; storyId?: number } | null;
   /** Highlight colors merged from the popover — one dialog, not two. */
   annotationBar?: {
     existingColor?: string | null;
@@ -272,9 +273,11 @@ export default function StoryPanel({
       ? commentsTab?.anchor ?? null
       : view.mode === "story"
         ? { kind: "story", storyId: view.storyId }
-        : view.mode === "comment"
-          ? view.anchor
-          : null;
+        : view.mode === "myNoteDetail" && myNote?.storyId != null
+          ? { kind: "story", storyId: myNote.storyId }
+          : view.mode === "comment"
+            ? view.anchor
+            : null;
   const activeKey = activeAnchor ? anchorId(activeAnchor) : null;
   useEffect(() => {
     if (!activeKey || !activeAnchor || commentCache[activeKey]) return;
@@ -340,7 +343,7 @@ export default function StoryPanel({
     setError(null);
     try {
       await onSaveMyNote(noteDraft.trim());
-      setView({ mode: "list" });
+      setView(myNote ? { mode: "myNoteDetail" } : { mode: "list" });
     } catch {
       setError("Could not save your note.");
     } finally {
@@ -415,6 +418,8 @@ export default function StoryPanel({
   const headerTitle =
     view.mode === "editMine"
       ? (myNote ? "My note" : "Write a note")
+      : view.mode === "myNoteDetail"
+        ? "My note"
       : view.mode === "comment"
         ? "Comment"
         : view.mode === "story"
@@ -425,13 +430,58 @@ export default function StoryPanel({
 
   function goBack() {
     if (view.mode === "comment") {
-      setView(view.from === "comments" ? { mode: "comments" } : { mode: "story", storyId: view.from });
+      setView(
+        view.from === "comments"
+          ? { mode: "comments" }
+          : view.from === "myNote"
+            ? { mode: "myNoteDetail" }
+            : { mode: "story", storyId: view.from },
+      );
+    } else if (view.mode === "editMine" && myNote) {
+      setView({ mode: "myNoteDetail" });
     } else {
       setView({ mode: "list" });
     }
   }
 
-  const commentRow = (c: StoryComment, opts: { clickable?: boolean; indent?: boolean; from?: "comments" | number } = {}) => {
+  // ONE switcher strip for every translation detail — mine (private or
+  // posted) and others' — so no detail page is a dead end (owner report,
+  // 2026-08-30).
+  const renderVersionSwitcher = (opts: { storyId?: number; myIndex?: number }) => (
+    <div className="flex gap-1.5 overflow-x-auto pb-1" data-testid="version-switcher" role="tablist" aria-label="Translation versions">
+      {myVersions?.map((v, i) => {
+        const active = v.posted ? v.storyId === opts.storyId : i === opts.myIndex;
+        return (
+          <button
+            key={`chip-mine-${i}`}
+            role="tab"
+            aria-selected={active}
+            onClick={() => setView(v.posted && v.storyId ? { mode: "story", storyId: v.storyId } : { mode: "myVersion", index: i })}
+            className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              active ? "border-amber-600 bg-amber-700 text-white" : "border-amber-300 text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            {v.sessionName} · mine
+          </button>
+        );
+      })}
+      {stories.filter((st) => st.kind === "translation" && !myVersions?.some((v) => v.storyId === st.id)).map((st) => (
+        <button
+          key={`chip-${st.id}`}
+          role="tab"
+          aria-selected={st.id === opts.storyId}
+          onClick={() => setView({ mode: "story", storyId: st.id })}
+          className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+            st.id === opts.storyId ? "border-amber-600 bg-amber-700 text-white" : "border-amber-300 text-amber-700 hover:bg-amber-50"
+          }`}
+        >
+          {st.author_name}
+        </button>
+      ))}
+    </div>
+  );
+
+  const commentRow = (c: StoryComment, opts: { clickable?: boolean; indent?: boolean; from?: "comments" | "myNote" | number } = {}) => {
     const replies = repliesOf(c.id).length;
     const open = opts.clickable && activeAnchor
       ? () => setView({ mode: "comment", commentId: c.id, anchor: activeAnchor, from: opts.from ?? "comments" })
@@ -743,6 +793,50 @@ export default function StoryPanel({
           </div>
           {/* Likes join here with track B */}
         </div>
+      ) : view.mode === "myNoteDetail" && myNote ? (
+        <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="my-note-detail">
+          <div className="flex items-center gap-2">
+            <Avatar name={myNote.authorName} picture={myNote.picture} size="w-7 h-7" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink">{myNote.authorName}</p>
+              <p className="text-[11px] text-stone-400">My note</p>
+            </div>
+            {myNote.storyId != null ? (
+              <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px]">Posted</span>
+            ) : (
+              <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
+            )}
+            <button
+              onClick={() => { setNoteDraft(myNote.text); setView({ mode: "editMine" }); }}
+              aria-label="Edit my note"
+              className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+            >
+              <NoteIcon className="w-4 h-4" />
+            </button>
+            {onDeleteMyNote && (
+              <button
+                onClick={handleDeleteMyNote}
+                disabled={busy}
+                aria-label="Delete my note and highlight"
+                className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
+            {myNote.text || <span className="text-stone-400 italic">Highlight — no note text yet.</span>}
+          </p>
+          {myNote.storyId != null ? (
+            <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
+              <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
+              {topLevel.map((c) => commentRow(c, { clickable: true, from: "myNote" }))}
+              {commentComposer("Add a comment…")}
+            </div>
+          ) : (
+            <p className="text-[11px] text-stone-400">Private — post this note to receive comments.</p>
+          )}
+        </div>
       ) : view.mode === "editMine" ? (
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="my-note-editor">
           <textarea
@@ -778,6 +872,7 @@ export default function StoryPanel({
         </div>
       ) : view.mode === "myVersion" && detailVersion ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="my-version-detail">
+          {variant === "sentence" && renderVersionSwitcher({ myIndex: view.index })}
           <div className="flex items-center gap-2">
             <Avatar name={detailVersion.authorName} picture={detailVersion.picture} size="w-7 h-7" />
             <div className="flex-1">
@@ -790,43 +885,14 @@ export default function StoryPanel({
             <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
           </div>
           <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
-          {/* Private — nobody else can see it, so no comment anchor here. */}
+          <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
+            <p className="text-[11px] font-medium text-stone-500">Comments</p>
+            <p className="text-[11px] text-stone-400">Private — publish this version as a post to open the discussion.</p>
+          </div>
         </div>
       ) : view.mode === "story" && detailStory ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="story-detail">
-          {variant === "sentence" && detailStory.kind === "translation" && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1" data-testid="version-switcher" role="tablist" aria-label="Translation versions">
-              {myVersions?.map((v, i) => {
-                const active = v.posted ? v.storyId === detailStory.id : false;
-                return (
-                  <button
-                    key={`chip-mine-${i}`}
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setView(v.posted && v.storyId ? { mode: "story", storyId: v.storyId } : { mode: "myVersion", index: i })}
-                    className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                      active ? "border-amber-600 bg-amber-700 text-white" : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                    }`}
-                  >
-                    {v.sessionName} · mine
-                  </button>
-                );
-              })}
-              {stories.filter((st) => st.kind === "translation" && !myVersions?.some((v) => v.storyId === st.id)).map((st) => (
-                <button
-                  key={`chip-${st.id}`}
-                  role="tab"
-                  aria-selected={st.id === detailStory.id}
-                  onClick={() => setView({ mode: "story", storyId: st.id })}
-                  className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                    st.id === detailStory.id ? "border-amber-600 bg-amber-700 text-white" : "border-amber-300 text-amber-700 hover:bg-amber-50"
-                  }`}
-                >
-                  {st.author_name}
-                </button>
-              ))}
-            </div>
-          )}
+          {variant === "sentence" && detailStory.kind === "translation" && renderVersionSwitcher({ storyId: detailStory.id })}
           <div className="flex items-center gap-2">
             <Avatar name={detailStory.author_name} picture={detailStory.author_picture} size="w-7 h-7" />
             <div className="flex-1">
@@ -920,12 +986,11 @@ export default function StoryPanel({
               role={variant === "sentence" ? "button" : undefined}
               tabIndex={variant === "sentence" ? 0 : undefined}
               aria-label={variant === "sentence" ? "Open my note" : undefined}
-              onClick={variant === "sentence" ? () => { setNoteDraft(myNote.text); setView({ mode: "editMine" }); } : undefined}
+              onClick={variant === "sentence" ? () => setView({ mode: "myNoteDetail" }) : undefined}
               onKeyDown={variant === "sentence" ? (e) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 e.preventDefault();
-                setNoteDraft(myNote.text);
-                setView({ mode: "editMine" });
+                setView({ mode: "myNoteDetail" });
               } : undefined}
               className={`rounded-lg border border-amber-200 bg-amber-50/50 p-3 ${
                 variant === "sentence" ? "cursor-pointer hover:bg-amber-100/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
@@ -944,7 +1009,7 @@ export default function StoryPanel({
             </div>
           )}
           {stories
-            .filter((st) => !myVersions?.some((v) => v.storyId === st.id))
+            .filter((st) => st.id !== myNote?.storyId && !myVersions?.some((v) => v.storyId === st.id))
             .map(renderStoryCard)}
         </div>
       )}

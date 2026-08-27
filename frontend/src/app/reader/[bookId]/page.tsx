@@ -2110,6 +2110,10 @@ export default function ReaderPage() {
                   text: own.note_text,
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
+                  // Shared already? The detail page then carries its thread.
+                  storyId: sharedNotesStories.find(
+                    (st) => st.user_id === session?.backendUser?.id && st.annotation_id === own.id,
+                  )?.id,
                 } : null;
               })()}
               annotationBar={(() => {

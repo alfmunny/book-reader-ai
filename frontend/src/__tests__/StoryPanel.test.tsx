@@ -182,33 +182,55 @@ test("toolbar shows the merged color row; current color marked", () => {
   expect(bar.onColor).toHaveBeenCalledWith("blue");
 });
 
-test("tapping my note shifts to the edit sub-page; back returns to the list", async () => {
+test("my note opens a DETAIL page like others — edit and delete live there", async () => {
   const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
+  const onDeleteMyNote = jest.fn().mockResolvedValue(undefined);
   renderPanel({
     variant: "sentence",
     myNote: { text: "old thought", authorName: "Alfmunny", picture: null },
     annotationBar: { existingColor: "yellow", onColor: jest.fn() },
     onSaveMyNote,
+    onDeleteMyNote,
     stories: [NOTE_STORY],
   });
+  // Tap → detail (not the editor), Private badge, Edit + Delete controls
   fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
-  const editor = screen.getByTestId("my-note-editor");
-  expect(editor).toBeInTheDocument();
+  const detail = screen.getByTestId("my-note-detail");
+  expect(detail).toHaveTextContent("old thought");
+  expect(detail).toHaveTextContent("Private");
+  expect(detail).toHaveTextContent("post this note to receive comments");
+  // Edit → editor prefilled; save returns to the detail
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
   const textarea = screen.getByLabelText("My note text") as HTMLTextAreaElement;
   expect(textarea.value).toBe("old thought");
-  // Back returns without saving
-  fireEvent.click(screen.getByTestId("story-panel-back"));
-  expect(screen.queryByTestId("my-note-editor")).toBeNull();
-  expect(screen.getByTestId("my-note")).toBeInTheDocument();
-  // Edit again and save
-  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
-  fireEvent.change(screen.getByLabelText("My note text"), { target: { value: "new thought" } });
+  fireEvent.change(textarea, { target: { value: "new thought" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("new thought"));
-  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+  expect(screen.getByTestId("my-note-detail")).toBeInTheDocument();
+  // Back from detail → list
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.getByTestId("my-note")).toBeInTheDocument();
 });
 
-test("deleting my note lives in the edit sub-page", async () => {
+test("a SHARED my note's detail carries the same comment thread", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 61, story_id: 2, user_id: 3, body: "说得好", created_at: "", author_name: "Jonas" }],
+  });
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "mine", authorName: "Alfmunny", picture: null, storyId: 2 },
+    stories: [NOTE_STORY], // my own shared note story — represented by the pinned card
+  });
+  // Deduped: not shown twice in the list
+  expect(screen.queryByTestId("story-2")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  const detail = screen.getByTestId("my-note-detail");
+  expect(detail).toHaveTextContent("Posted");
+  expect(await screen.findByTestId("comment-61")).toBeInTheDocument();
+  expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+});
+
+test("deleting my note works from its detail page", async () => {
   const onDeleteMyNote = jest.fn().mockResolvedValue(undefined);
   renderPanel({
     variant: "sentence",
@@ -220,7 +242,7 @@ test("deleting my note lives in the edit sub-page", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
   fireEvent.click(screen.getByRole("button", { name: "Delete my note and highlight" }));
   await waitFor(() => expect(onDeleteMyNote).toHaveBeenCalled());
-  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+  expect(screen.queryByTestId("my-note-detail")).toBeNull();
 });
 
 test("Write note appears in the toolbar only without an existing note", () => {
@@ -443,4 +465,26 @@ test("note details carry the SAME discussion component as translations", async (
   expect(screen.getByTestId("detail-discussion")).toBeInTheDocument();
   expect(await screen.findByText("同感")).toBeInTheDocument();
   expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+});
+
+test("private version detail carries the switcher chips and a parallel Comments section", () => {
+  const second = { ...TRANSLATION_STORY, id: 5, author_name: "Jonas", session_name: "直译版" };
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY, second],
+    myVersions: [
+      { sessionName: "我的私有版", text: "私有译文", posted: false, authorName: "Alfmunny", picture: null },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my version 我的私有版" }));
+  const detail = screen.getByTestId("my-version-detail");
+  // Switcher present, my private chip active, others switchable
+  const switcher = screen.getByTestId("version-switcher");
+  expect(switcher).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "我的私有版 · mine" })).toHaveAttribute("aria-selected", "true");
+  // Parallel comments section explains instead of diverging layouts
+  expect(detail).toHaveTextContent("publish this version as a post to open the discussion");
+  // Switch straight to another version — no back-and-forth needed
+  fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
+  expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
 });

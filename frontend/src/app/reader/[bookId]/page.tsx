@@ -116,7 +116,7 @@ export default function ReaderPage() {
   const ttsIsPlayingRef = useRef(false);
 
   // Annotation display toggle (persisted; applied after mount — see below)
-  const [showAnnotations, setShowAnnotations] = useState(true);
+
 
   // Sidebar — hidden by default, resizable, tabbed
   // Remember the sidebar across visits (owner request, 2026-08-25). Stored
@@ -136,7 +136,6 @@ export default function ReaderPage() {
     const s = getSettings();
     if (window.innerWidth >= 768 && s.readerSidebarOpen) setSidebarOpen(true);
     setSidebarTab(s.readerSidebarTab);
-    setShowAnnotations(localStorage.getItem("reader-show-annotations") !== "false");
     setSettingsRestored(true);
   }, []);
   useEffect(() => {
@@ -1519,22 +1518,20 @@ export default function ReaderPage() {
           {session?.backendToken && (
             <button
               onClick={() => {
-                setShowAnnotations((v) => {
-                  const next = !v;
-                  localStorage.setItem("reader-show-annotations", String(next));
-                  return next;
-                });
+                const next = !showShares;
+                setShowShares(next);
+                saveSettings({ showOthersShares: next });
               }}
-              aria-pressed={showAnnotations}
-              title={showAnnotations ? "Hide marks (your highlights and community notes)" : "Show marks (your highlights and community notes)"}
+              aria-pressed={showShares}
+              title={showShares ? "Hide community notes" : "Show community notes"}
               className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-                showAnnotations
+                showShares
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-900"
               }`}
             >
               <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />
-              {showAnnotations ? "Marks on" : "Marks off"}
+              {showShares ? "Shares on" : "Shares off"}
             </button>
           )}
 
@@ -1879,7 +1876,7 @@ export default function ReaderPage() {
                   } : undefined}
                   storyCounts={showShares && translationEnabled ? storyCounts : undefined}
                   onOpenStories={showShares && translationEnabled ? setOpenStoriesPara : undefined}
-                  sharedNotes={showShares && showAnnotations && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
+                  sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
@@ -1891,7 +1888,6 @@ export default function ReaderPage() {
                       existingAnnotation: annotation,
                     });
                   } : undefined}
-                  showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
                   scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
                   vocabWords={vocabWordsSet}
@@ -2898,27 +2894,25 @@ export default function ReaderPage() {
           {/* Notes expand panel */}
           {session?.backendToken && notesExpanded && (
             <div id="reader-mobile-notes-panel" className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
-              {/* Annotation visibility toggle */}
+              {/* Community-notes visibility toggle — own marks always show */}
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-100">
-                <span className="text-xs text-stone-600">Highlight marks</span>
+                <span className="text-xs text-stone-600">Community notes</span>
                 <button
                   onClick={() => {
-                    setShowAnnotations((v) => {
-                      const next = !v;
-                      localStorage.setItem("reader-show-annotations", String(next));
-                      return next;
-                    });
+                    const next = !showShares;
+                    setShowShares(next);
+                    saveSettings({ showOthersShares: next });
                   }}
-                  aria-pressed={showAnnotations}
-                  aria-label={showAnnotations ? "Hide marks (your highlights and community notes)" : "Show marks (your highlights and community notes)"}
+                  aria-pressed={showShares}
+                  aria-label={showShares ? "Hide community notes" : "Show community notes"}
                   className={`flex items-center gap-1 px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-                    showAnnotations
+                    showShares
                       ? "bg-amber-100 text-amber-900 border-amber-400"
                       : "border-amber-300 text-amber-700 hover:bg-amber-50"
                   }`}
                 >
                   <BookmarkIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  {showAnnotations ? "On" : "Off"}
+                  {showShares ? "On" : "Off"}
                 </button>
               </div>
               {annotations.length === 0 ? (

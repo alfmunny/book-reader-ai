@@ -111,19 +111,28 @@ test("authors render with an avatar — picture when set, initial disc otherwise
   expect(screen.getByTestId("story-2")).toHaveTextContent("J"); // Jonas' initial
 });
 
-test("anchored position floats the dialog mid-screen with a bubble arrow (desktop)", () => {
+test("dialog sits beside the sentence in the central band, arrow at its height", () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
   renderPanel({ position: { x: 400, y: 200 } });
   const panel = screen.getByTestId("story-panel");
-  expect(panel.style.left).toBe("192px"); // x - width/2, clamped
-  expect(panel.style.top).toBe("176px"); // middle band: 22% of 800
-  // The sentence (y=200) sits below the panel top → arrow on the top edge
-  // would be wrong; it points from wherever the sentence actually is.
+  expect(panel.style.left).toBe("448px"); // beside the sentence (x + 48)
+  expect(panel.style.top).toBe("104px"); // near the sentence (y - 96)
+  // Arrow on the left edge at the sentence's height, pointing at it
   const arrow = screen.getByTestId("story-panel-arrow");
-  expect(arrow.style.left).toBe("202px"); // sentence x within the panel
-  // Dimmed page behind, click closes
+  expect(arrow.className).toContain("-left-[7px]");
+  expect(arrow.style.top).toBe("90px"); // (y - panelTop) - 6
+  // Dimmed page behind
   expect(screen.getByTestId("story-panel-backdrop")).toBeInTheDocument();
+});
+
+test("a sentence on the right half gets the panel on its left, arrow on the right edge", () => {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+  renderPanel({ position: { x: 1000, y: 300 } });
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.style.left).toBe("536px"); // x - W - 48
+  expect(screen.getByTestId("story-panel-arrow").className).toContain("-right-[7px]");
 });
 
 test("backdrop click closes the dialog", () => {

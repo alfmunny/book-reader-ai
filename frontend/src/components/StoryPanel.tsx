@@ -123,28 +123,37 @@ export default function StoryPanel({
     }
   }
 
-  // WeRead dialog treatment (owner, 2026-08-28): the panel floats in the
-  // middle band of the screen over a dimmed page, scroll-locked, with a
-  // speech-bubble arrow pointing at the clicked sentence. Mobile keeps the
-  // bottom sheet (also dimmed + locked). window is safe here — client
-  // component, computed on render after mount-time interactions.
+  // WeRead dialog treatment (owner, 2026-08-28, refined): the panel sits
+  // NEAR the clicked sentence — beside it, at its height — but clamped into
+  // the central band of the screen, over a dimmed scroll-locked page, with
+  // a speech-bubble arrow on its side edge pointing at the sentence.
+  // Mobile keeps the bottom sheet (also dimmed + locked). window is safe
+  // here — client component, computed after mount-time interactions.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true);
   useScrollLock(true);
   const anchored = !!position && typeof window !== "undefined" && window.innerWidth >= 768;
-  const PANEL_W = 416; // matches w-[26rem]
-  const panelLeft = anchored
-    ? Math.min(Math.max(16, position!.x - PANEL_W / 2), window.innerWidth - PANEL_W - 16)
-    : 0;
-  const panelTop = anchored ? Math.max(72, window.innerHeight * 0.22) : 0;
-  // Arrow points up at the sentence when it sits above the panel band,
-  // down at it otherwise; clamped inside the panel's rounded corners.
-  const arrowUp = anchored && position!.y <= panelTop;
-  const arrowX = anchored
-    ? Math.min(Math.max(24, position!.x - panelLeft), PANEL_W - 24)
-    : 0;
+  const W = 416; // matches w-[26rem]
+  const clampN = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+  let panelLeft = 0, panelTop = 0, panelH = 0, arrowY = 0, sentenceLeft = true;
+  if (anchored) {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    panelH = Math.min(Math.round(vh * 0.68), 560);
+    sentenceLeft = position!.x <= vw / 2;
+    const beside = sentenceLeft ? position!.x + 48 : position!.x - W - 48;
+    panelLeft = clampN(beside, Math.max(16, vw * 0.15), Math.min(vw - W - 16, vw * 0.85 - W));
+    panelTop = clampN(position!.y - 96, 72, vh - panelH - 40);
+    arrowY = clampN(position!.y - panelTop, 20, panelH - 40);
+  }
   const anchorStyle = anchored
-    ? { left: panelLeft, top: panelTop, boxShadow: "var(--shadow-card-hover)" }
+    ? {
+        left: panelLeft,
+        top: panelTop,
+        maxHeight: panelH,
+        minHeight: Math.min(arrowY + 56, panelH),
+        boxShadow: "var(--shadow-card-hover)",
+      }
     : { boxShadow: "var(--shadow-card-hover)" };
   return (
     <>
@@ -161,20 +170,21 @@ export default function StoryPanel({
       aria-label={title ?? `Shares on paragraph ${paragraphIndex + 1}`}
       className={
         anchored
-          ? "fixed z-50 w-[26rem] max-h-[56vh] flex flex-col rounded-xl border border-amber-200 bg-white animate-fade-in"
+          ? "fixed z-50 w-[26rem] flex flex-col rounded-xl border border-amber-200 bg-white animate-fade-in"
           : "fixed inset-x-0 bottom-0 md:inset-auto md:right-6 md:bottom-6 md:w-[26rem] z-50 max-h-[70vh] flex flex-col rounded-t-xl md:rounded-xl border border-amber-200 bg-white animate-slide-up"
       }
       style={anchorStyle}
       data-testid="story-panel"
+    >
     >
       {anchored && (
         <span
           aria-hidden="true"
           data-testid="story-panel-arrow"
           className={`absolute w-3 h-3 bg-white border-amber-200 rotate-45 ${
-            arrowUp ? "-top-[7px] border-l border-t" : "-bottom-[7px] border-r border-b"
+            sentenceLeft ? "-left-[7px] border-l border-b" : "-right-[7px] border-r border-t"
           }`}
-          style={{ left: arrowX - 6 }}
+          style={{ top: arrowY - 6 }}
         />
       )}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">

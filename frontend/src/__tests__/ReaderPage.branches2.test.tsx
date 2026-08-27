@@ -60,6 +60,7 @@ const mockSynthesizeSpeech = jest.fn();
 jest.mock("@/lib/api", () => ({
   getBookTranslationLanguages: jest.fn().mockResolvedValue({ book_id: 1, total_chapters: 0, languages: [] }),
   listTranslationSessions: jest.fn().mockResolvedValue([]),
+  listStories: jest.fn().mockResolvedValue({ stories: [] }),
   getSessionChapter: jest.fn().mockResolvedValue({ session_id: 1, chapter_index: 0, paragraph_count: 0, paragraphs: {} }),
   translateSession: jest.fn(),
   editSessionParagraph: jest.fn(),
@@ -1202,30 +1203,28 @@ describe("ReaderPage.branches2 — queue banner text when translating now", () =
 
 // ─── showAnnotations toggle persists to localStorage ─────────────────────────
 
-describe("ReaderPage.branches2 — showAnnotations toggle localStorage", () => {
-  it("sets reader-show-annotations to 'false' when marks toggled off", async () => {
+describe("ReaderPage.branches2 — community-notes toggle", () => {
+  it("turns community notes on and persists the setting", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    // Default is true; click to toggle off
-    const marksBtn = await screen.findByTitle(/hide marks/i);
-    await userEvent.click(marksBtn);
+    const notesBtn = await screen.findByTitle(/show community notes/i);
+    await userEvent.click(notesBtn);
 
-    expect(localStorage.getItem("reader-show-annotations")).toBe("false");
+    expect(mockSaveSettings).toHaveBeenCalledWith({ showOthersShares: true });
   });
 
-  it("sets reader-show-annotations to 'true' when toggled back on", async () => {
-    // Start with annotations hidden
-    localStorage.setItem("reader-show-annotations", "false");
+  it("turns community notes off again when enabled in settings", async () => {
+    mockGetSettings.mockReturnValue({ ...DEFAULT_SETTINGS, showOthersShares: true });
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    const marksBtn = await screen.findByTitle(/show marks/i);
-    await userEvent.click(marksBtn);
+    const notesBtn = await screen.findByTitle(/hide community notes/i);
+    await userEvent.click(notesBtn);
 
-    expect(localStorage.getItem("reader-show-annotations")).toBe("true");
+    expect(mockSaveSettings).toHaveBeenCalledWith({ showOthersShares: false });
   });
 });
 

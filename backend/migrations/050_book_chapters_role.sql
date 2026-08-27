@@ -1,0 +1,22 @@
+-- Per-chapter role, so front matter can leave the reading path (#2755).
+--
+-- 4 of 20 frozen books carry a printed contents page as a readable chapter — an
+-- accident of which Gutenberg edition was converted, not a property of the work.
+-- Others open with a title page or a translator's note. The reader's Contents
+-- panel can already collapse these behind a "Front matter" group (#2745); it has
+-- had nowhere to read the label from.
+--
+-- Deleting those chapters is not an option: Moby Dick's chapter 0 alone holds
+-- 140 translated paragraphs, and removing it would shift every index after it,
+-- re-anchoring annotations and translations that key on chapter_index.
+--
+-- NULL means body text, which is what every existing row becomes. The column is
+-- nullable and carries no constraint, so this needs no data-cleanup step under
+-- the migration policy — nothing can violate it.
+--
+-- `role` deliberately sits outside `content_sha256`, which covers only index,
+-- title and paragraphs. Labelling a chapter therefore moves no anchor and
+-- changes no hash, so all 20 frozen artifacts can be labelled without a reingest
+-- invalidating anything.
+
+ALTER TABLE book_chapters ADD COLUMN role TEXT;

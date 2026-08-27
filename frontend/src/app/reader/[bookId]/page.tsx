@@ -594,6 +594,18 @@ export default function ReaderPage() {
         : undefined,
     [bookTranslationStatus],
   );
+
+  // Front-matter labels for the Contents panel (#2755). undefined when no
+  // chapter carries one, so the panel renders no group at all rather than an
+  // empty header — an unfrozen book has no artifact to read labels from.
+  const chapterRoles = useMemo(() => {
+    const entries = chapters
+      .map((c, index) => [index, c.role] as const)
+      .filter(([, role]) => !!role);
+    return entries.length
+      ? Object.fromEntries(entries as ReadonlyArray<readonly [number, string]>)
+      : undefined;
+  }, [chapters]);
   // Which languages have editorial translations at all — shown as chips so
   // nobody has to cycle target languages to discover coverage (owner,
   // 2026-08-27).
@@ -2482,6 +2494,7 @@ export default function ReaderPage() {
                   chapters={chapters}
                   chapterIndex={chapterIndex}
                   translated={translatedChapters}
+                  roles={chapterRoles}
                   onSelect={(i) => {
                     goToChapter(i);
                     // On mobile the sidebar covers the page, so a pick should
@@ -2757,6 +2770,7 @@ export default function ReaderPage() {
                 chapters={chapters}
                 chapterIndex={chapterIndex}
                 translated={translatedChapters}
+                roles={chapterRoles}
                 onSelect={(i) => { goToChapter(i); setSidebarOpen(false); }}
               />
             ) : (

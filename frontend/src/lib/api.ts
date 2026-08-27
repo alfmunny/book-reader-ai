@@ -162,6 +162,12 @@ export function getBookChapters(id: number) {
 export interface BookChapter {
   title: string;
   text: string;
+  /**
+   * "frontmatter" for a printed contents page, title page or translator's
+   * note; null for body text (#2755). Only frozen books carry labels, so
+   * this is absent for anything split at runtime.
+   */
+  role?: string | null;
 }
 
 /** An event streamed from GET /books/:id/import-stream. */

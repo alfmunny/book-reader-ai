@@ -1213,3 +1213,105 @@ export function postChatMessage(bookId: string | number, role: "user" | "assista
 export function clearChatMessages(bookId: string | number) {
   return request<{ deleted: number }>(`/chat/${bookId}/messages`, { method: "DELETE" });
 }
+
+// ── Stories: the generic share pipeline (design: user-translations.md
+//    phase 2, #2752). One pipeline for every kind — no per-kind forks. ──────
+
+export type StoryKind = "translation" | "note";
+
+export interface StoryParagraph {
+  paragraph_index: number;
+  text: string;
+  model: string;
+}
+
+export interface Story {
+  id: number;
+  user_id: number;
+  kind: StoryKind;
+  book_id: number;
+  chapter_index: number;
+  session_id?: number | null;
+  paragraph_start?: number | null;
+  paragraph_end?: number | null;
+  annotation_id?: number | null;
+  caption?: string | null;
+  created_at: string;
+  author_name: string;
+  comment_count: number;
+  // kind='translation' (live references — never snapshots)
+  session_name?: string | null;
+  target_language?: string | null;
+  paragraphs?: StoryParagraph[];
+  // kind='note'
+  sentence_text?: string | null;
+  note_text?: string | null;
+  color?: string | null;
+  // feed only
+  book_title?: string;
+  following_author?: boolean;
+}
+
+export interface StoryComment {
+  id: number;
+  story_id: number;
+  user_id: number;
+  body: string;
+  created_at: string;
+  author_name: string;
+}
+
+export function createStory(data: {
+  kind: StoryKind;
+  book_id: number;
+  chapter_index: number;
+  session_id?: number;
+  paragraph_start?: number;
+  paragraph_end?: number;
+  annotation_id?: number;
+  caption?: string;
+}) {
+  return request<Story>(`/stories`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function listStories(bookId: number, chapterIndex?: number) {
+  const params = new URLSearchParams({ book_id: String(bookId) });
+  if (chapterIndex != null) params.set("chapter_index", String(chapterIndex));
+  return request<{ stories: Story[] }>(`/stories?${params}`);
+}
+
+export function getStoryFeed(scope: "all" | "following" = "all") {
+  return request<{ stories: Story[] }>(`/stories/feed?scope=${scope}`);
+}
+
+export function followUser(userId: number) {
+  return request<{ ok: boolean }>(`/stories/follow/${userId}`, { method: "POST" });
+}
+
+export function unfollowUser(userId: number) {
+  return request<{ ok: boolean }>(`/stories/follow/${userId}`, { method: "DELETE" });
+}
+
+export function deleteStory(storyId: number) {
+  return request<{ ok: boolean }>(`/stories/${storyId}`, { method: "DELETE" });
+}
+
+export function listStoryComments(storyId: number) {
+  return request<{ comments: StoryComment[] }>(`/stories/${storyId}/comments`);
+}
+
+export function addStoryComment(storyId: number, body: string) {
+  return request<StoryComment>(`/stories/${storyId}/comments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function deleteStoryComment(commentId: number) {
+  return request<{ ok: boolean }>(`/stories/comments/${commentId}`, { method: "DELETE" });
+}

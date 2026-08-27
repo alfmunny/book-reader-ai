@@ -18,6 +18,9 @@ export interface AppSettings {
   translationProvider: TranslationProvider;
   /** Default provider preselected when creating a new translation version. */
   versionProviderDefault: "deepseek" | "claude";
+  /** Show other readers' shares inline while reading (phase 2, #2752).
+   *  Off by default — reading stays calm unless the reader opts in. */
+  showOthersShares: boolean;
   fontSize: FontSize;
   chatFontSize: ChatFontSize;
   chatProvider: ChatProviderSetting;
@@ -40,6 +43,7 @@ const DEFAULTS: AppSettings = {
   ttsGender: "female",
   translationProvider: "auto",
   versionProviderDefault: "deepseek",
+  showOthersShares: false,
   fontSize: "base",
   chatFontSize: "xs",
   chatProvider: "auto",

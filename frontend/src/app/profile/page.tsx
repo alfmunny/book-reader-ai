@@ -63,6 +63,7 @@ export default function ProfilePage() {
     readerSidebarTab: "chat",
     translationProvider: "auto",
     versionProviderDefault: "deepseek",
+    showOthersShares: false,
     fontSize: "base",
     theme: "light",
     lineHeight: "normal",

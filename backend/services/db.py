@@ -1918,3 +1918,213 @@ async def delete_session_paragraph(session_id: int, chapter_index: int, paragrap
         )
         await db.commit()
         return cursor.rowcount > 0
+
+
+# ── Stories: the generic share pipeline (design: user-translations.md phase 2,
+#    issue #2752). One pipeline for every kind — no per-kind forks. ──────────
+
+async def create_story(user_id: int, fields: dict) -> dict:
+    """Insert a story row; anchor validation happens in the router."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO stories
+               (user_id, kind, book_id, chapter_index, session_id,
+                paragraph_start, paragraph_end, annotation_id, caption)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                user_id, fields["kind"], fields["book_id"], fields["chapter_index"],
+                fields.get("session_id"), fields.get("paragraph_start"),
+                fields.get("paragraph_end"), fields.get("annotation_id"),
+                fields.get("caption"),
+            ),
+        )
+        story_id = cursor.lastrowid
+        await db.commit()
+        async with db.execute("SELECT * FROM stories WHERE id = ?", (story_id,)) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def list_stories(book_id: int, chapter_index: int | None = None) -> list[dict]:
+    """Stories for a book (optionally one chapter) with live referenced data:
+    author name, session name/language and current paragraph texts for
+    kind='translation', the annotation for kind='note', plus comment counts.
+    Stories snapshot nothing — this JOIN is the 'live reference' contract."""
+    where = "s.book_id = ?"
+    params: tuple = (book_id,)
+    if chapter_index is not None:
+        where += " AND s.chapter_index = ?"
+        params = (book_id, chapter_index)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            f"""SELECT s.*, u.name AS author_name,
+                       ts.name AS session_name, ts.target_language,
+                       a.sentence_text, a.note_text, a.color,
+                       (SELECT COUNT(*) FROM story_comments sc WHERE sc.story_id = s.id) AS comment_count
+                FROM stories s
+                JOIN users u ON u.id = s.user_id
+                LEFT JOIN translation_sessions ts ON ts.id = s.session_id
+                LEFT JOIN annotations a ON a.id = s.annotation_id
+                WHERE {where}
+                ORDER BY s.created_at DESC, s.id DESC""",
+            params,
+        ) as c:
+            rows = [dict(r) for r in await c.fetchall()]
+        # Live paragraph texts for translation stories (current rendering)
+        for story in rows:
+            if story["kind"] == "translation" and story["session_id"] is not None:
+                async with db.execute(
+                    """SELECT paragraph_index, text, model
+                       FROM translation_session_paragraphs
+                       WHERE session_id = ? AND chapter_index = ?
+                         AND paragraph_index BETWEEN ? AND ?
+                       ORDER BY paragraph_index""",
+                    (story["session_id"], story["chapter_index"],
+                     story["paragraph_start"], story["paragraph_end"]),
+                ) as c:
+                    story["paragraphs"] = [dict(r) for r in await c.fetchall()]
+    return rows
+
+
+async def get_story(story_id: int) -> dict | None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM stories WHERE id = ?", (story_id,)) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
+
+
+async def delete_story(story_id: int, user_id: int, is_admin: bool = False) -> bool:
+    """Author deletes their own story; admin can unpublish anyone's."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        if is_admin:
+            cursor = await db.execute("DELETE FROM stories WHERE id = ?", (story_id,))
+        else:
+            cursor = await db.execute(
+                "DELETE FROM stories WHERE id = ? AND user_id = ?", (story_id, user_id)
+            )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def create_story_comment(story_id: int, user_id: int, body: str) -> dict:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
+            (story_id, user_id, body),
+        )
+        comment_id = cursor.lastrowid
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def list_story_comments(story_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id
+               WHERE sc.story_id = ? ORDER BY sc.created_at, sc.id""",
+            (story_id,),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def delete_story_comment(comment_id: int, user_id: int, is_admin: bool = False) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        if is_admin:
+            cursor = await db.execute("DELETE FROM story_comments WHERE id = ?", (comment_id,))
+        else:
+            cursor = await db.execute(
+                "DELETE FROM story_comments WHERE id = ? AND user_id = ?",
+                (comment_id, user_id),
+            )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def list_story_feed(limit: int = 50, follower_id: int | None = None) -> list[dict]:
+    """Cross-book recent stories for the Discover feed — same live-reference
+    JOIN as list_stories, plus the book title for the feed card. With
+    follower_id, only stories from users that reader follows (the
+    Following timeline)."""
+    follow_clause = (
+        "WHERE s.user_id IN (SELECT followee_id FROM follows WHERE follower_id = ?)"
+        if follower_id is not None else ""
+    )
+    params: tuple = (follower_id, limit) if follower_id is not None else (limit,)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            f"""SELECT s.*, u.name AS author_name,
+                      ts.name AS session_name, ts.target_language,
+                      a.sentence_text, a.note_text, a.color,
+                      b.title AS book_title,
+                      (SELECT COUNT(*) FROM story_comments sc WHERE sc.story_id = s.id) AS comment_count
+               FROM stories s
+               JOIN users u ON u.id = s.user_id
+               JOIN books b ON b.id = s.book_id
+               LEFT JOIN translation_sessions ts ON ts.id = s.session_id
+               LEFT JOIN annotations a ON a.id = s.annotation_id
+               {follow_clause}
+               ORDER BY s.created_at DESC, s.id DESC
+               LIMIT ?""",
+            params,
+        ) as c:
+            rows = [dict(r) for r in await c.fetchall()]
+        for story in rows:
+            if story["kind"] == "translation" and story["session_id"] is not None:
+                async with db.execute(
+                    """SELECT paragraph_index, text, model
+                       FROM translation_session_paragraphs
+                       WHERE session_id = ? AND chapter_index = ?
+                         AND paragraph_index BETWEEN ? AND ?
+                       ORDER BY paragraph_index""",
+                    (story["session_id"], story["chapter_index"],
+                     story["paragraph_start"], story["paragraph_end"]),
+                ) as c:
+                    story["paragraphs"] = [dict(r) for r in await c.fetchall()]
+    return rows
+
+
+# ── Follow graph (owner request 2026-08-27, #2752 extension) ────────────────
+
+async def follow_user(follower_id: int, followee_id: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR IGNORE INTO follows (follower_id, followee_id) VALUES (?, ?)",
+            (follower_id, followee_id),
+        )
+        await db.commit()
+
+
+async def unfollow_user(follower_id: int, followee_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute(
+            "DELETE FROM follows WHERE follower_id = ? AND followee_id = ?",
+            (follower_id, followee_id),
+        )
+        await db.commit()
+        return cursor.rowcount > 0
+
+
+async def list_following(follower_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT u.id, u.name FROM follows f JOIN users u ON u.id = f.followee_id
+               WHERE f.follower_id = ? ORDER BY f.created_at DESC""",
+            (follower_id,),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]

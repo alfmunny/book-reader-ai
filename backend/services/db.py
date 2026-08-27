@@ -2195,3 +2195,23 @@ async def list_following(follower_id: int) -> list[dict]:
         ) as c:
             rows = await c.fetchall()
     return [dict(r) for r in rows]
+
+
+async def get_posted_paragraph_indexes(session_id: int, chapter_index: int) -> set[int]:
+    """Paragraph indexes of this session/chapter that are referenced by a
+    published post — retranslation must not silently rewrite public content
+    (owner, 2026-08-31). Manual edits remain allowed: live references are
+    the design."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """SELECT paragraph_start, paragraph_end FROM stories
+               WHERE session_id = ? AND chapter_index = ? AND kind = 'translation'""",
+            (session_id, chapter_index),
+        ) as c:
+            rows = await c.fetchall()
+    posted: set[int] = set()
+    for start, end in rows:
+        if start is None or end is None:
+            continue
+        posted.update(range(start, end + 1))
+    return posted

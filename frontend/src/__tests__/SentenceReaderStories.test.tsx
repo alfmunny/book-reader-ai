@@ -157,3 +157,37 @@ test("a translation with community posts gets the dashed underline and opens the
   // The other translation stays plain — local/unpublished work never marks text
   expect(screen.queryByTestId("post-underline-1")).toBeNull();
 });
+
+// ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────
+
+test("a posted paragraph shows Posted instead of Share and locks retranslate/delete", () => {
+  const onShareParagraph = jest.fn();
+  renderReader({
+    sessionMode: true,
+    translationMeta: { 0: { model: "deepseek-v4-flash", edited: false } },
+    onShareParagraph,
+    onTranslateParagraph: jest.fn(),
+    onDeleteParagraph: jest.fn(),
+    postedParagraphs: new Set([0]),
+  });
+  // The Share button IS the posted indicator — and still opens the dialog
+  const postedBtn = screen.getByRole("button", { name: "Posted — open posts for paragraph 1" });
+  expect(postedBtn).toHaveTextContent("Posted");
+  fireEvent.click(postedBtn);
+  expect(onShareParagraph).toHaveBeenCalled();
+  // Machine retranslation and deletion lock; manual edit stays available
+  expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Delete translation of paragraph 1" })).toBeDisabled();
+});
+
+test("unposted paragraphs keep the plain Share and enabled actions", () => {
+  renderReader({
+    sessionMode: true,
+    translationMeta: { 0: { model: "m", edited: false } },
+    onShareParagraph: jest.fn(),
+    onTranslateParagraph: jest.fn(),
+    postedParagraphs: new Set([3]),
+  });
+  expect(screen.getByRole("button", { name: "Share translation of paragraph 1" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeEnabled();
+});

@@ -9,7 +9,9 @@ import services.db as db_module
 from services.db import save_book, upsert_session_paragraph, create_annotation
 
 _META = {"title": "Faust", "authors": ["Goethe"], "languages": ["de"], "subjects": [], "download_count": 0, "cover": ""}
-_TEXT = "Die Sonne tönt, nach alter Weise.\n\nEs schäumt das Meer in breiten Flüssen."
+# First block is multi-line — a lone short first line would be classified
+# as a heading by the chapter splitter and stripped from the body.
+_TEXT = "Die Sonne tönt, nach alter Weise.\nIn Brudersphären Wettgesang.\n\nEs schäumt das Meer in breiten Flüssen."
 
 
 @pytest.fixture(autouse=True)
@@ -308,3 +310,47 @@ async def test_editorial_comment_unknown_book_404(client):
         "book_id": 999, "target_language": "zh", "chapter_index": 0, "paragraph_index": 0, "body": "x",
     })
     assert resp.status_code == 404
+
+
+# ── Posted paragraphs are protected from retranslation (owner, 2026-08-31) ──
+
+async def test_paragraph_retranslate_refused_when_posted(client, test_user):
+    from services.auth import encrypt_api_key
+    from services.db import set_user_deepseek_key
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("k"))
+    sid = await _translated_session(client)
+    await _share_translation(client, sid, start=0, end=0)
+    resp = await client.post(f"/api/translation-sessions/{sid}/translate", json={
+        "book_id": 1, "chapter_index": 0, "scope": 0,
+    })
+    assert resp.status_code == 409
+    assert "make it private" in resp.json()["detail"]
+
+
+async def test_force_chapter_run_keeps_posted_paragraphs(client, test_user):
+    from unittest.mock import AsyncMock, patch
+    from services.auth import encrypt_api_key
+    from services.db import set_user_deepseek_key
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("k"))
+
+    sid = await _translated_session(client)
+    await _share_translation(client, sid, start=0, end=0)  # paragraph 0 posted
+    with patch("services.user_translate.translate_paragraph",
+               new=AsyncMock(return_value=("机器重译", "deepseek-v4-flash"))):
+        resp = await client.post(f"/api/translation-sessions/{sid}/translate", json={
+            "book_id": 1, "chapter_index": 0, "scope": "chapter", "force": True,
+        })
+        assert resp.status_code == 200
+        assert resp.json()["run"]["total"] == 1, resp.json()
+        # Wait for the background run to finish
+        run = None
+        for _ in range(100):
+            ch = (await client.get(f"/api/translation-sessions/{sid}/chapters/0")).json()
+            run = ch.get("run")
+            if not (run or {}).get("active"):
+                break
+            import asyncio as _a; await _a.sleep(0.05)
+    assert not (run or {}).get("error"), run
+    paras = (await client.get(f"/api/translation-sessions/{sid}/chapters/0")).json()["paragraphs"]
+    assert paras["0"]["text"] == "太阳依着古老的方式轰腾。" if False else paras["0"]["text"] == "太阳依着古老的方式轰鸣。"  # posted → untouched
+    assert paras["1"]["text"] == "机器重译"  # unposted machine paragraph → redone

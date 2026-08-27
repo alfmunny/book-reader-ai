@@ -363,20 +363,6 @@ export default function ReaderPage() {
     try { localStorage.setItem(`translation-lang:${bookId}`, lang); } catch { /* private mode */ }
   };
 
-  // Stories arrive in ONE call per chapter (design: no per-paragraph
-  // requests). Shared notes are a reading surface, so the fetch is gated on
-  // the opt-in alone — not on translation being enabled.
-  useEffect(() => {
-    if ((!showShares && !postsDialog) || !session?.backendToken) {
-      setChapterStories([]);
-      return;
-    }
-    let cancelled = false;
-    listStories(Number(bookId), chapterIndex)
-      .then((r) => { if (!cancelled) setChapterStories(r.stories); })
-      .catch(() => { /* markers simply don't render */ });
-    return () => { cancelled = true; };
-  }, [showShares, postsDialog, bookId, chapterIndex, session?.backendToken, storiesVersion]);
 
   // Translation stories anchor to paragraphs (margin count markers); note
   // stories anchor to their SENTENCE (WeRead pattern, owner 2026-08-27) and
@@ -459,6 +445,7 @@ export default function ReaderPage() {
     return () => { cancelled = true; };
   }, [postsDialog, translationSessions, chapterIndex, session?.backendToken]);
 
+
   const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
   const [sessionChapter, setSessionChapter] = useState<SessionChapter | null>(null);
   const [sessionTranslating, setSessionTranslating] = useState(false);
@@ -468,6 +455,33 @@ export default function ReaderPage() {
   // Persistent, in-panel error for session actions (owner report: a failed
   // translate showed nothing — the corner toast was too transient).
   const [sessionActionError, setSessionActionError] = useState<string | null>(null);
+  const myPostedParas = useMemo(() => {
+    const set = new Set<number>();
+    if (!activeSession) return set;
+    for (const st of chapterStories) {
+      if (st.kind !== "translation" || st.session_id !== activeSession.id) continue;
+      if (st.user_id !== session?.backendUser?.id) continue;
+      if (st.paragraph_start == null || st.paragraph_end == null) continue;
+      for (let i = st.paragraph_start; i <= st.paragraph_end; i++) set.add(i);
+    }
+    return set;
+  }, [chapterStories, activeSession, session?.backendUser?.id]);
+
+  // Stories arrive in ONE call per chapter (design: no per-paragraph
+  // requests). Shared notes are a reading surface, so the fetch is gated on
+  // the opt-in alone — not on translation being enabled.
+  useEffect(() => {
+    if ((!showShares && !postsDialog && !activeSession) || !session?.backendToken) {
+      setChapterStories([]);
+      return;
+    }
+    let cancelled = false;
+    listStories(Number(bookId), chapterIndex)
+      .then((r) => { if (!cancelled) setChapterStories(r.stories); })
+      .catch(() => { /* markers simply don't render */ });
+    return () => { cancelled = true; };
+  }, [showShares, postsDialog, activeSession, bookId, chapterIndex, session?.backendToken, storiesVersion]);
+
   const activeSessionRef = useRef<TranslationSession | null>(null);
   activeSessionRef.current = activeSession;
 
@@ -1886,6 +1900,7 @@ export default function ReaderPage() {
                   onShareParagraph={activeSession && session?.backendToken ? (idx, position) => {
                     setPostsDialog({ paraIdx: idx, position });
                   } : undefined}
+                  postedParagraphs={activeSession ? myPostedParas : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
                   onOpenPosts={showShares ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}

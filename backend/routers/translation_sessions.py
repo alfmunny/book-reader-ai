@@ -24,6 +24,7 @@ from services.db import (
     get_session_paragraphs,
     upsert_session_paragraph,
     delete_session_paragraph,
+    get_posted_paragraph_indexes,
 )
 from services import user_translate
 # Shared error vocabulary with the insight chat (#2683): actionable,
@@ -268,6 +269,11 @@ async def translate(
                 status_code=400,
                 detail=f"Paragraph index out of range (chapter has {len(paragraphs)} paragraph(s)).",
             )
+        if req.scope in await get_posted_paragraph_indexes(session_id, req.chapter_index):
+            raise HTTPException(
+                status_code=409,
+                detail="This paragraph is posted — make it private before retranslating.",
+            )
         try:
             await _translate_one(req.scope, asyncio.Semaphore(1))
         except Exception as exc:
@@ -290,10 +296,12 @@ async def translate(
     existing = await get_session_paragraphs(session_id, req.chapter_index)
     if req.force:
         # Explicit retranslate: redo everything machine-made; manual edits
-        # are kept (only a per-paragraph action touches those).
+        # AND posted paragraphs are kept — a public post must never be
+        # silently rewritten by a machine pass (owner, 2026-08-31).
+        posted = await get_posted_paragraph_indexes(session_id, req.chapter_index)
         targets = [
             i for i in range(len(paragraphs))
-            if not existing.get(i, {}).get("edited_by_user")
+            if not existing.get(i, {}).get("edited_by_user") and i not in posted
         ]
     else:
         # Default fill run: only paragraphs with no translation yet — a

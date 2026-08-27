@@ -475,7 +475,7 @@ export default function TranslationSessionPanel({
                 <p className="text-xs text-stone-600 leading-relaxed">
                   This re-runs {price.name} over the whole chapter and <b>costs real tokens</b>:
                   roughly {estTokens.toLocaleString()} tokens, {estCost} on your key (rough estimate).
-                  Manually edited paragraphs are kept.
+                  Manually edited and posted paragraphs are kept.
                 </p>
                 <div className="flex gap-2 justify-end">
                   <button

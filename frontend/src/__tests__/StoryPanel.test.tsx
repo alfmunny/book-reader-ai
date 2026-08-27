@@ -124,13 +124,15 @@ test("dialog opens BELOW the sentence, never covering it, arrow pointing up at i
   expect(screen.getByTestId("story-panel-backdrop")).toBeInTheDocument();
 });
 
-test("near the bottom the dialog flips ABOVE the sentence, arrow pointing down", () => {
+test("near the bottom the dialog flips ABOVE, its bottom edge hugging the sentence", () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
   renderPanel({ position: { x: 400, y: 700 } });
   const panel = screen.getByTestId("story-panel");
-  // 55vh of 800 = 440 → no room below y=700; opens above: 700 - 440 - 28
-  expect(panel.style.top).toBe("232px");
+  // Bottom-anchored so short content never floats away from the sentence:
+  // bottom = vh - y + 28 → the panel's bottom edge sits just above y=700.
+  expect(panel.style.bottom).toBe("128px");
+  expect(panel.style.top).toBe("");
   expect(screen.getByTestId("story-panel-arrow").className).toContain("-bottom-[7px]");
 });
 

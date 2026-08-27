@@ -182,19 +182,24 @@ export default function StoryPanel({
   const anchored = !!position && typeof window !== "undefined" && window.innerWidth >= 768;
   const W = 416; // matches w-[26rem]
   const clampN = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
-  let panelLeft = 0, panelTop = 0, panelH = 0, arrowX = 0, below = true;
+  let panelLeft = 0, arrowX = 0, below = true;
+  let anchorStyle: React.CSSProperties = { boxShadow: "var(--shadow-card-hover)" };
   if (anchored) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    panelH = Math.min(Math.round(vh * 0.55), 480);
-    below = position!.y + 24 + panelH <= vh - 16;
-    panelTop = below ? position!.y + 24 : Math.max(16, position!.y - panelH - 28);
+    const spaceBelow = vh - position!.y - 24 - 16;
+    const spaceAbove = position!.y - 28 - 16;
+    below = spaceBelow >= 280 || spaceBelow >= spaceAbove;
     panelLeft = clampN(position!.x - W / 2, 16, vw - W - 16);
     arrowX = clampN(position!.x - panelLeft, 24, W - 24);
+    // Content height varies — anchor the edge FACING the sentence so the
+    // dialog always hugs its anchor: top edge below it, or bottom edge
+    // above it (a top-anchored flip left a gap when content was short —
+    // owner report, 2026-08-28).
+    anchorStyle = below
+      ? { left: panelLeft, top: position!.y + 24, maxHeight: Math.min(480, spaceBelow), boxShadow: "var(--shadow-card-hover)" }
+      : { left: panelLeft, bottom: vh - position!.y + 28, maxHeight: Math.min(480, spaceAbove), boxShadow: "var(--shadow-card-hover)" };
   }
-  const anchorStyle = anchored
-    ? { left: panelLeft, top: panelTop, maxHeight: panelH, boxShadow: "var(--shadow-card-hover)" }
-    : { boxShadow: "var(--shadow-card-hover)" };
 
   const detailStory = view.mode === "story" ? stories.find((s) => s.id === view.storyId) : undefined;
   const headerTitle =

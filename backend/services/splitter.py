@@ -39,6 +39,10 @@ MIN_AVG_WORDS = 150
 class Chapter:
     title: str
     text: str
+    # "frontmatter" for a printed contents page, title page or
+    # translator's note; None for body text (#2755). Only frozen books
+    # carry labels — a runtime split has no artifact to read them from.
+    role: str | None = None
 
 
 # ── Keyword headings ─────────────────────────────────────────────────────

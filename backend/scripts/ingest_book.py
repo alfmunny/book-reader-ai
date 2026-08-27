@@ -124,9 +124,9 @@ async def ingest(artifact: dict, db_path: str, *, allow_shrink: bool = False) ->
 
             await db.execute("DELETE FROM book_chapters WHERE book_id=?", (book_id,))
             await db.executemany(
-                "INSERT INTO book_chapters (book_id, chapter_index, title, text) "
-                "VALUES (?, ?, ?, ?)",
-                [(book_id, c["index"], c["title"], "\n\n".join(c["paragraphs"]))
+                "INSERT INTO book_chapters (book_id, chapter_index, title, text, role) "
+                "VALUES (?, ?, ?, ?, ?)",
+                [(book_id, c["index"], c["title"], "\n\n".join(c["paragraphs"]), c.get("role"))
                  for c in chapters],
             )
             await db.execute(

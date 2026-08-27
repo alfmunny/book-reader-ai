@@ -36,14 +36,25 @@ export function medianLength(chapters: ChapterLike[]): number {
   return lengths[Math.floor(lengths.length / 2)];
 }
 
-/**
- * A paragraph long enough to be prose that hides an all-caps speaker cue after a
- * newline — the verse-collapse pattern from #820, where the EPUB path flattened
- * drama into one visual block. `epub_split_audit.py` uses the same signal at book
- * level; this is its per-chapter twin.
+/*
+ * There was a fourth flag here — a per-chapter attempt at the verse-collapse
+ * detector from #820, looking for an all-caps speaker cue buried in a long
+ * paragraph. Measured against 805 frozen chapters it fired 10 times and was
+ * wrong every time: all-caps chapter summaries in City of God, Hamlet's signed
+ * letters, a publisher's advertisement page in Dracula, and the phrase "I O U"
+ * in Crime and Punishment. Faust — the drama it was built for — never triggered
+ * it, because Faust's split is correct.
+ *
+ * It cannot be tuned, because it has no baseline. The book-level detector in
+ * epub_split_audit.py works by comparing the EPUB path's paragraph count against
+ * the plain-text path's; collapse shows up as a ratio. A single chapter has
+ * nothing to compare against, so it can only guess from surface features, and
+ * uppercase text is far commoner in public-domain editions than collapsed drama.
+ *
+ * The flags below are structural facts rather than inferences, which is why they
+ * do not have this problem. Run `python -m scripts.epub_split_audit` for the
+ * collapse check.
  */
-const SPEAKER_CUE = /\n\s*[A-ZÄÖÜÀ-Þ][A-ZÄÖÜÀ-Þ' ]{2,}\./;
-const STRUCTURAL_MIN_LEN = 300;
 
 export function flagsFor(chapter: ChapterLike, median: number): ChapterFlag[] {
   const flags: ChapterFlag[] = [];
@@ -62,12 +73,6 @@ export function flagsFor(chapter: ChapterLike, median: number): ChapterFlag[] {
     flags.push({
       key: "Oversized",
       detail: `More than ${OVERSIZED_FACTOR}× the median chapter. Two chapters may have failed to separate.`,
-    });
-  }
-  if (paras.some((p) => p.length > STRUCTURAL_MIN_LEN && SPEAKER_CUE.test(p))) {
-    flags.push({
-      key: "Shouting",
-      detail: "A long paragraph hides an all-caps speaker cue — verse or drama may have been collapsed into one block.",
     });
   }
   return flags;

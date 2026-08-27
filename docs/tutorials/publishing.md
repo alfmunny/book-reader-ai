@@ -39,7 +39,7 @@ Translation progress is shown, not enforced. A part-translated book can still be
 
 **Review split** opens the chapter audit panel on the frozen chapters.
 
-- Flags in the left rail mark chapters worth a look: very short, more than three times the median length, missing a title, or drama collapsed into one block.
+- Flags in the left rail mark chapters worth a look: very short, more than three times the median length, or missing a title.
 - Hover between two paragraphs and click **split here** to cut a merged chapter apart.
 - **Merge into previous** joins a chapter that was cut in the middle.
 - The title tools number chapters, fill empty titles from the first line, or strip leading numerals.

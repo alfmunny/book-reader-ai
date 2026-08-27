@@ -49,7 +49,9 @@ def no_wiktionary_http(monkeypatch):
     resolution monkeypatch this back — see test_vocabulary_base_form.py.
     """
     async def _identity(word, book_id, provided=None):
-        return ((provided or word).strip().lower(), "en", None)
+        # No .lower(): the real resolver preserves the dictionary's casing
+        # (#2748), and a stub that lowercases would hide that from callers.
+        return ((provided or word).strip(), "en", None)
     monkeypatch.setattr(db_module, "_resolve_base_form", _identity)
 
 

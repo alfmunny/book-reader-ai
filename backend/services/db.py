@@ -1184,12 +1184,14 @@ async def _resolve_base_form(
         lang = "en"
 
     if provided and provided.strip():
-        return provided.strip().lower(), lang, None
+        return provided.strip(), lang, None
 
     try:
         from services import wiktionary
         result = await wiktionary.lookup(word, lang)
-        base = (result.get("lemma") or "").strip().lower()
+        # Capitalisation is lexical in German — `Pracht` is a noun, `pracht`
+        # is a misspelling (#2748). The dictionary already knows which.
+        base = (result.get("lemma") or "").strip()
         # The caller reuses this payload to store the meaning, so resolving the
         # base form and capturing the definition cost one request, not two.
         return (base or word), (result.get("language") or lang), result
@@ -1299,7 +1301,7 @@ async def save_word(
     definition_url: str | None = None,
     definition_lang: str | None = None,
 ) -> dict:
-    word = word.strip().lower()
+    word = word.strip()
     base, language, looked_up = await _resolve_base_form(word, book_id, lemma)
 
     # The meaning is captured once, here, instead of being re-fetched on every
@@ -1322,7 +1324,8 @@ async def save_word(
         )
         # An entry saved before base-form storage landed can carry a stale lemma.
         await db.execute(
-            "UPDATE vocabulary SET lemma = ?, language = COALESCE(?, language) WHERE user_id = ? AND word = ?",
+            "UPDATE vocabulary SET lemma = ?, language = COALESCE(?, language) "
+            "WHERE user_id = ? AND LOWER(word) = LOWER(?)",
             (base, language, user_id, base),
         )
         # COALESCE so a save with nothing in hand (the mobile drawer, which can
@@ -1331,13 +1334,13 @@ async def save_word(
             await db.execute(
                 """UPDATE vocabulary
                       SET definitions = ?, form_of = ?, definition_url = ?, definition_lang = ?
-                    WHERE user_id = ? AND word = ?""",
+                    WHERE user_id = ? AND LOWER(word) = LOWER(?)""",
                 (defs_json, form_of, definition_url, definition_lang, user_id, base),
             )
         # SQLite makes uncommitted writes visible to subsequent reads on the
         # same connection, so no intermediate commit is needed before the SELECT.
         async with db.execute(
-            "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
+            "SELECT id FROM vocabulary WHERE user_id = ? AND LOWER(word) = LOWER(?)",
             (user_id, base),
         ) as cursor:
             vocab_row = await cursor.fetchone()
@@ -1414,7 +1417,7 @@ async def delete_word(user_id: int, word: str) -> bool:
         # FK enforcement (issue #748) cascades vocabulary → word_occurrences /
         # flashcard_reviews / vocabulary_tags / deck_members automatically.
         cursor = await db.execute(
-            "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
+            "DELETE FROM vocabulary WHERE user_id = ? AND LOWER(word) = LOWER(?)",
             (user_id, word),
         )
         await db.commit()

@@ -339,7 +339,7 @@ async def test_delete_annotation_wrong_user_returns_false():
 async def test_save_word_creates_entry():
     user = await get_or_create_user("g40", "vocab@example.com", "Vocab", "")
     result = await save_word(user["id"], "Schadenfreude", 1, 0, "He felt Schadenfreude.")
-    assert result["word"] == "schadenfreude"
+    assert result["word"] == "Schadenfreude"
     assert result["user_id"] == user["id"]
 
 
@@ -363,7 +363,7 @@ async def test_get_vocabulary_includes_occurrences():
     user = await get_or_create_user("g43", "vocab4@example.com", "V4", "")
     await save_word(user["id"], "Zeitgeist", 42, 3, "The Zeitgeist was clear.")
     vocab = await get_vocabulary(user["id"])
-    assert vocab[0]["word"] == "zeitgeist"
+    assert vocab[0]["word"] == "Zeitgeist"
     occ = vocab[0]["occurrences"][0]
     assert occ["book_id"] == 42
     assert occ["chapter_index"] == 3
@@ -605,14 +605,14 @@ async def test_get_vocabulary_multiple_words_multiple_occurrences(tmp_db):
     assert len(vocab) == 2, f"Expected 2 words, got {len(vocab)}"
 
     # Words must be sorted alphabetically (angst before zeitgeist)
-    assert vocab[0]["word"] == "angst", f"Expected 'angst' first, got '{vocab[0]['word']}'"
-    assert vocab[1]["word"] == "zeitgeist", f"Expected 'zeitgeist' second, got '{vocab[1]['word']}'"
+    assert vocab[0]["word"] == "Angst", f"Expected 'Angst' first, got '{vocab[0]['word']}'"
+    assert vocab[1]["word"] == "Zeitgeist", f"Expected 'Zeitgeist' second, got '{vocab[1]['word']}'"
 
     assert len(vocab[0]["occurrences"]) == 2, (
-        f"'angst' should have 2 occurrences, got {len(vocab[0]['occurrences'])}"
+        f"'Angst' should have 2 occurrences, got {len(vocab[0]['occurrences'])}"
     )
     assert len(vocab[1]["occurrences"]) == 2, (
-        f"'zeitgeist' should have 2 occurrences, got {len(vocab[1]['occurrences'])}"
+        f"'Zeitgeist' should have 2 occurrences, got {len(vocab[1]['occurrences'])}"
     )
 
     # Occurrence fields must all be present

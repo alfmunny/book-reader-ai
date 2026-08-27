@@ -586,7 +586,7 @@ describe("ReaderPage — showAnnotations toggle", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const marksBtn = await screen.findByTitle(/annotation marks/i);
+    const marksBtn = await screen.findByTitle(/marks \(your highlights/i);
     await userEvent.click(marksBtn);
 
     // localStorage should be updated
@@ -699,7 +699,7 @@ describe("ReaderPage — unauthenticated session", () => {
     expect(screen.getByTitle("Annotations & notes")).toBeInTheDocument();
     expect(screen.getByTitle("Vocabulary")).toBeInTheDocument();
     // Obsidian export and annotation marks toggle remain hidden (no auth)
-    expect(screen.queryByTitle(/annotation marks/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/marks \(your highlights/i)).not.toBeInTheDocument();
   });
 
   it("does not call saveReadingProgress when not authenticated", async () => {

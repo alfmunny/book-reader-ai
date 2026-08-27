@@ -8,7 +8,9 @@
  * For translators it doubles as a per-paragraph comparison view; for
  * readers it is the classic WeRead shared-notes margin.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useScrollLock } from "@/lib/useScrollLock";
 import {
   Story,
   StoryComment,
@@ -121,30 +123,60 @@ export default function StoryPanel({
     }
   }
 
-  // Desktop: pop up beside the anchor (clamped to stay on screen);
-  // mobile keeps the bottom sheet. window is safe here (client component,
-  // computed on render after mount-time interactions).
+  // WeRead dialog treatment (owner, 2026-08-28): the panel floats in the
+  // middle band of the screen over a dimmed page, scroll-locked, with a
+  // speech-bubble arrow pointing at the clicked sentence. Mobile keeps the
+  // bottom sheet (also dimmed + locked). window is safe here — client
+  // component, computed on render after mount-time interactions.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true);
+  useScrollLock(true);
   const anchored = !!position && typeof window !== "undefined" && window.innerWidth >= 768;
-  const PANEL_W = 384; // matches md:w-96
+  const PANEL_W = 416; // matches w-[26rem]
+  const panelLeft = anchored
+    ? Math.min(Math.max(16, position!.x - PANEL_W / 2), window.innerWidth - PANEL_W - 16)
+    : 0;
+  const panelTop = anchored ? Math.max(72, window.innerHeight * 0.22) : 0;
+  // Arrow points up at the sentence when it sits above the panel band,
+  // down at it otherwise; clamped inside the panel's rounded corners.
+  const arrowUp = anchored && position!.y <= panelTop;
+  const arrowX = anchored
+    ? Math.min(Math.max(24, position!.x - panelLeft), PANEL_W - 24)
+    : 0;
   const anchorStyle = anchored
-    ? {
-        left: Math.min(Math.max(8, position!.x - PANEL_W / 2), window.innerWidth - PANEL_W - 8),
-        top: Math.min(position!.y + 10, window.innerHeight - 240),
-        boxShadow: "var(--shadow-card-hover)",
-      }
+    ? { left: panelLeft, top: panelTop, boxShadow: "var(--shadow-card-hover)" }
     : { boxShadow: "var(--shadow-card-hover)" };
   return (
+    <>
     <div
+      className="fixed inset-0 z-40 bg-black/40 animate-fade-in"
+      data-testid="story-panel-backdrop"
+      onClick={onClose}
+      aria-hidden="true"
+    />
+    <div
+      ref={panelRef}
       role="dialog"
+      aria-modal="true"
       aria-label={title ?? `Shares on paragraph ${paragraphIndex + 1}`}
       className={
         anchored
-          ? "fixed z-40 w-96 max-h-[60vh] flex flex-col rounded-xl border border-amber-200 bg-white animate-fade-in"
-          : "fixed inset-x-0 bottom-0 md:inset-auto md:right-6 md:bottom-6 md:w-[26rem] z-40 max-h-[70vh] flex flex-col rounded-t-xl md:rounded-xl border border-amber-200 bg-white animate-slide-up"
+          ? "fixed z-50 w-[26rem] max-h-[56vh] flex flex-col rounded-xl border border-amber-200 bg-white animate-fade-in"
+          : "fixed inset-x-0 bottom-0 md:inset-auto md:right-6 md:bottom-6 md:w-[26rem] z-50 max-h-[70vh] flex flex-col rounded-t-xl md:rounded-xl border border-amber-200 bg-white animate-slide-up"
       }
       style={anchorStyle}
       data-testid="story-panel"
     >
+      {anchored && (
+        <span
+          aria-hidden="true"
+          data-testid="story-panel-arrow"
+          className={`absolute w-3 h-3 bg-white border-amber-200 rotate-45 ${
+            arrowUp ? "-top-[7px] border-l border-t" : "-bottom-[7px] border-r border-b"
+          }`}
+          style={{ left: arrowX - 6 }}
+        />
+      )}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
         <h3 className="font-serif font-semibold text-sm text-ink flex-1">
           {title ?? `Shares on paragraph ${paragraphIndex + 1}`}
@@ -283,5 +315,6 @@ export default function StoryPanel({
         ))}
       </div>
     </div>
+    </>
   );
 }

@@ -35,8 +35,9 @@ describe("reader desktop toolbar touch targets (closes #871)", () => {
   });
 
   it("Show/hide annotation marks button has min-h-[44px]", () => {
-    // setItem anchor is inside the button's onClick (only 1 occurrence)
-    checkForward('setItem("reader-show-annotations"', 400);
+    // setItem anchor is inside the button's onClick (only 1 occurrence).
+    // Window widened: the title now also names community notes.
+    checkForward('setItem("reader-show-annotations"', 600);
   });
 
   it("Vocabulary toggle has min-h-[44px]", () => {

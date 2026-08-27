@@ -1526,7 +1526,7 @@ export default function ReaderPage() {
                 });
               }}
               aria-pressed={showAnnotations}
-              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+              title={showAnnotations ? "Hide marks (your highlights and community notes)" : "Show marks (your highlights and community notes)"}
               className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showAnnotations
                   ? "bg-amber-100 text-amber-900 border-amber-400"
@@ -1879,7 +1879,7 @@ export default function ReaderPage() {
                   } : undefined}
                   storyCounts={showShares && translationEnabled ? storyCounts : undefined}
                   onOpenStories={showShares && translationEnabled ? setOpenStoriesPara : undefined}
-                  sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
+                  sharedNotes={showShares && showAnnotations && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
@@ -2910,7 +2910,7 @@ export default function ReaderPage() {
                     });
                   }}
                   aria-pressed={showAnnotations}
-                  aria-label={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+                  aria-label={showAnnotations ? "Hide marks (your highlights and community notes)" : "Show marks (your highlights and community notes)"}
                   className={`flex items-center gap-1 px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                     showAnnotations
                       ? "bg-amber-100 text-amber-900 border-amber-400"

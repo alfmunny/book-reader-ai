@@ -111,13 +111,25 @@ test("authors render with an avatar — picture when set, initial disc otherwise
   expect(screen.getByTestId("story-2")).toHaveTextContent("J"); // Jonas' initial
 });
 
-test("anchored position renders the popover at the anchor (desktop)", () => {
+test("anchored position floats the dialog mid-screen with a bubble arrow (desktop)", () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
   renderPanel({ position: { x: 400, y: 200 } });
   const panel = screen.getByTestId("story-panel");
-  expect(panel.style.left).toBe("208px"); // x - width/2
-  expect(panel.style.top).toBe("210px"); // y + 10
+  expect(panel.style.left).toBe("192px"); // x - width/2, clamped
+  expect(panel.style.top).toBe("176px"); // middle band: 22% of 800
+  // The sentence (y=200) sits below the panel top → arrow on the top edge
+  // would be wrong; it points from wherever the sentence actually is.
+  const arrow = screen.getByTestId("story-panel-arrow");
+  expect(arrow.style.left).toBe("202px"); // sentence x within the panel
+  // Dimmed page behind, click closes
+  expect(screen.getByTestId("story-panel-backdrop")).toBeInTheDocument();
+});
+
+test("backdrop click closes the dialog", () => {
+  const { props } = renderPanel({ position: { x: 400, y: 200 } });
+  fireEvent.click(screen.getByTestId("story-panel-backdrop"));
+  expect(props.onClose).toHaveBeenCalled();
 });
 
 test("without a position the panel keeps the corner/bottom-sheet layout", () => {

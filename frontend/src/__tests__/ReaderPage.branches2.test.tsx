@@ -1209,7 +1209,7 @@ describe("ReaderPage.branches2 — showAnnotations toggle localStorage", () => {
     await flushPromises();
 
     // Default is true; click to toggle off
-    const marksBtn = await screen.findByTitle(/hide annotation marks/i);
+    const marksBtn = await screen.findByTitle(/hide marks/i);
     await userEvent.click(marksBtn);
 
     expect(localStorage.getItem("reader-show-annotations")).toBe("false");
@@ -1222,7 +1222,7 @@ describe("ReaderPage.branches2 — showAnnotations toggle localStorage", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const marksBtn = await screen.findByTitle(/show annotation marks/i);
+    const marksBtn = await screen.findByTitle(/show marks/i);
     await userEvent.click(marksBtn);
 
     expect(localStorage.getItem("reader-show-annotations")).toBe("true");

@@ -2050,14 +2050,6 @@ export default function ReaderPage() {
                   chapterIndex: quickHighlightPanel.chapterIndex,
                 });
               }}
-              sharedCount={showShares ? poolNoteStories(chapterStories, quickHighlightPanel.sentenceText).length : 0}
-              onShowShared={() => {
-                setSharedNotesFor({
-                  sentenceText: quickHighlightPanel.sentenceText,
-                  position: quickHighlightPanel.position,
-                });
-                setQuickHighlightPanel(null);
-              }}
             />
           )}
 

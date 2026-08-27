@@ -700,6 +700,28 @@ async def get_book_freeze(book_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+async def split_dependents(book_id: int) -> dict[str, int]:
+    """Count rows that anchor to this book's chapter_index.
+
+    annotations, word_occurrences and translations each store a bare index, so
+    changing the split re-anchors them silently. Anything with no dependents is
+    safe to re-split — which covers both a book still in the review queue and a
+    reader's own upload that nobody has annotated.
+    """
+    counts: dict[str, int] = {}
+    async with aiosqlite.connect(DB_PATH) as db:
+        for label, sql in (
+            ("annotations", "SELECT COUNT(*) FROM annotations WHERE book_id = ?"),
+            ("vocabulary", "SELECT COUNT(*) FROM word_occurrences WHERE book_id = ?"),
+            ("translations", "SELECT COUNT(*) FROM translations WHERE book_id = ?"),
+        ):
+            async with db.execute(sql, (book_id,)) as cur:
+                n = (await cur.fetchone())[0]
+            if n:
+                counts[label] = n
+    return counts
+
+
 async def get_frozen_chapters(book_id: int) -> list[dict]:
     """Return stored chapters for a fossilized book, ordered by chapter_index."""
     async with aiosqlite.connect(DB_PATH) as db:

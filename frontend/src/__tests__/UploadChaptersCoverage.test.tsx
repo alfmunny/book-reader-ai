@@ -20,7 +20,13 @@ const mockConfirmChapters = jest.fn();
 const mockSaveMeta = jest.fn();
 const mockSaveStructure = jest.fn();
 
+const mockGetFrozenSplit = jest.fn();
+const mockSaveFrozenSplit = jest.fn();
+
 jest.mock("@/lib/api", () => ({
+  // A confirmed book has no drafts; the page reopens its frozen split instead.
+  getFrozenSplit: (...a: unknown[]) => mockGetFrozenSplit(...a),
+  saveFrozenSplit: (...a: unknown[]) => mockSaveFrozenSplit(...a),
   getDraftChapters: (...a: unknown[]) => mockGetDraftChapters(...a),
   confirmChapters: (...a: unknown[]) => mockConfirmChapters(...a),
   saveDraftChapterMeta: (...a: unknown[]) => mockSaveMeta(...a),
@@ -46,6 +52,8 @@ const DRAFT = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockGetFrozenSplit.mockRejectedValue(new Error("no frozen split"));
+  mockSaveFrozenSplit.mockResolvedValue({ ok: true });
   mockGetDraftChapters.mockResolvedValue(DRAFT);
   mockConfirmChapters.mockResolvedValue({});
   mockSaveMeta.mockResolvedValue({});
@@ -124,4 +132,56 @@ test("falls back to the preview when the server sends no full text", async () =>
   });
   render(<ChapterEditorPage />);
   expect(await screen.findByText("just a preview")).toBeInTheDocument();
+});
+
+// ── reopening a confirmed book ────────────────────────────────────────────────
+
+const FROZEN = {
+  chapters: [
+    { index: 0, title: "One", text: "alpha" },
+    { index: 1, title: "Two", text: "beta" },
+  ],
+  editable: true,
+  blocked_by: {},
+};
+
+test("reopens the frozen split when the book is already confirmed", async () => {
+  const { ApiError } = jest.requireMock("@/lib/api");
+  mockGetDraftChapters.mockRejectedValue(new ApiError(400, "Book already confirmed"));
+  mockGetFrozenSplit.mockResolvedValue(FROZEN);
+
+  render(<ChapterEditorPage />);
+
+  expect(await screen.findByText(/Correcting the split/i)).toBeInTheDocument();
+  expect(mockGetFrozenSplit).toHaveBeenCalledWith(42);
+});
+
+test("a confirmed book saves through the frozen path, not the draft one", async () => {
+  const { ApiError } = jest.requireMock("@/lib/api");
+  mockGetDraftChapters.mockRejectedValue(new ApiError(400, "Book already confirmed"));
+  mockGetFrozenSplit.mockResolvedValue(FROZEN);
+
+  const user = userEvent.setup();
+  render(<ChapterEditorPage />);
+  await screen.findByText(/Correcting the split/i);
+
+  await user.click(screen.getByRole("button", { name: /save and read/i }));
+
+  await waitFor(() => expect(mockSaveFrozenSplit).toHaveBeenCalled());
+  expect(mockConfirmChapters).not.toHaveBeenCalled();
+  await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/reader/42"));
+});
+
+test("says what would break when notes anchor to the split", async () => {
+  const { ApiError } = jest.requireMock("@/lib/api");
+  mockGetDraftChapters.mockRejectedValue(new ApiError(400, "Book already confirmed"));
+  mockGetFrozenSplit.mockResolvedValue({
+    ...FROZEN, editable: false, blocked_by: { annotations: 3 },
+  });
+
+  render(<ChapterEditorPage />);
+
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("3 annotations");
+  expect(alert).toHaveTextContent(/wrong chapters/);
 });

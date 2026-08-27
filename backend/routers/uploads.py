@@ -483,6 +483,110 @@ async def list_draft_audits(user: dict = Depends(get_current_user)):
     return out
 
 
+class FrozenChapterSpec(BaseModel):
+    title: str = Field(default="", max_length=500)
+    text: str = Field(default="")
+
+
+class FrozenChaptersBody(BaseModel):
+    chapters: list[FrozenChapterSpec] = Field(..., max_length=2000)
+
+
+async def _owned_upload(book_id: int, user: dict) -> None:
+    """Raise unless *user* owns this uploaded book (or is an admin)."""
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        async with db.execute(
+            "SELECT owner_user_id, source FROM books WHERE id=?", (book_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Book not found")
+    if row[1] != "upload" or (row[0] != user["id"] and user.get("role") != "admin"):
+        # Library books go through the admin review queue, not this route.
+        raise HTTPException(status_code=403, detail="Not your book")
+
+
+@router.get("/{book_id}/chapters/frozen")
+async def get_frozen_split(book_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
+    """The confirmed split of your own book, so it can be corrected.
+
+    Confirming freezes the book and the draft endpoints then refuse, which used to
+    make a mistake permanent. Nothing about freezing forbids deliberate
+    correction — it stops the splitter drifting, not the owner fixing.
+    """
+    await _owned_upload(book_id, user)
+    if await _db.get_book_freeze(book_id) is None:
+        raise HTTPException(status_code=404, detail="Book has no confirmed split yet")
+    rows = await _db.get_frozen_chapters(book_id)
+    blocked = await _db.split_dependents(book_id)
+    return {
+        "chapters": [
+            {"index": r["chapter_index"], "title": r["title"], "text": r["text"]} for r in rows
+        ],
+        "editable": not blocked,
+        "blocked_by": blocked,
+    }
+
+
+@router.put("/{book_id}/chapters/frozen")
+async def put_frozen_split(
+    body: FrozenChaptersBody,
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Re-split your own book.
+
+    Refused once anything anchors to the existing split — notes would move to the
+    wrong chapters. A book nobody has annotated is safe, which covers the case
+    this exists for: spotting a bad split shortly after confirming.
+    """
+    if not body.chapters:
+        raise HTTPException(status_code=400, detail="chapters list cannot be empty")
+    await _owned_upload(book_id, user)
+    if await _db.get_book_freeze(book_id) is None:
+        raise HTTPException(status_code=404, detail="Book has no confirmed split yet")
+
+    blocked = await _db.split_dependents(book_id)
+    if blocked:
+        detail = ", ".join(f"{n} {label}" for label, n in blocked.items())
+        raise HTTPException(
+            status_code=409,
+            detail=f"{detail} anchor to this split — changing it would move them to the wrong chapters",
+        )
+
+    digest = hashlib.sha256(
+        "\n\x00".join(f"{c.title}\x00{c.text}" for c in body.chapters).encode("utf-8")
+    ).hexdigest()
+
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        await db.execute("BEGIN IMMEDIATE")
+        await db.execute("DELETE FROM book_chapters WHERE book_id = ?", (book_id,))
+        await db.execute("DELETE FROM user_book_chapters WHERE book_id = ?", (book_id,))
+        rows = [(book_id, i, c.title.strip(), c.text) for i, c in enumerate(body.chapters)]
+        await db.executemany(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text) VALUES (?, ?, ?, ?)",
+            rows,
+        )
+        await db.executemany(
+            "INSERT INTO user_book_chapters (book_id, chapter_index, title, text, is_draft)"
+            " VALUES (?, ?, ?, ?, 0)",
+            rows,
+        )
+        # published_at is untouched and stays NULL: re-splitting is never a route
+        # into the catalog.
+        await db.execute(
+            "UPDATE book_freeze SET content_sha256 = ?, audited_by = ?, frozen_at = ?"
+            " WHERE book_id = ?",
+            (digest, str(user["id"]),
+             datetime.now(timezone.utc).isoformat(timespec="seconds"), book_id),
+        )
+        await db.execute("COMMIT")
+
+    from services.book_chapters import clear_cache as _clear
+    _clear(book_id)
+    return {"ok": True, "chapter_count": len(body.chapters)}
+
+
 @router.delete("/upload/{book_id}")
 async def delete_uploaded_book(book_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
     """Delete an uploaded book and all associated data."""

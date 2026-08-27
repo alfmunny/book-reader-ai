@@ -234,28 +234,6 @@ class AdminChaptersBody(BaseModel):
     chapters: list[AdminChapterSpec] = Field(..., max_length=2000)
 
 
-async def _split_dependents(book_id: int) -> dict:
-    """Count rows that anchor to this book's chapter_index.
-
-    annotations, word_occurrences and translations all store a bare index, so
-    changing the split re-anchors them silently. A book in the review queue has
-    none of these — nobody can read it before it is published — which is why
-    editing there is safe.
-    """
-    counts = {}
-    async with aiosqlite.connect(db_module.DB_PATH) as db:
-        for label, sql in (
-            ("annotations", "SELECT COUNT(*) FROM annotations WHERE book_id = ?"),
-            ("vocabulary", "SELECT COUNT(*) FROM word_occurrences WHERE book_id = ?"),
-            ("translations", "SELECT COUNT(*) FROM translations WHERE book_id = ?"),
-        ):
-            async with db.execute(sql, (book_id,)) as cur:
-                n = (await cur.fetchone())[0]
-            if n:
-                counts[label] = n
-    return counts
-
-
 @router.get("/books/{book_id}/chapters")
 async def admin_get_chapters(book_id: int = Path(..., ge=1), _admin: dict = Depends(_require_admin)):
     """The frozen split, for review or correction."""
@@ -263,7 +241,7 @@ async def admin_get_chapters(book_id: int = Path(..., ge=1), _admin: dict = Depe
     if freeze is None:
         raise HTTPException(status_code=404, detail="Book is not frozen — nothing to review")
     rows = await db_module.get_frozen_chapters(book_id)
-    blocked = await _split_dependents(book_id)
+    blocked = await db_module.split_dependents(book_id)
     return {
         "chapters": [
             {"index": r["chapter_index"], "title": r["title"], "text": r["text"]} for r in rows
@@ -292,7 +270,7 @@ async def admin_put_chapters(
     if freeze is None:
         raise HTTPException(status_code=404, detail="Book is not frozen — nothing to edit")
 
-    blocked = await _split_dependents(book_id)
+    blocked = await db_module.split_dependents(book_id)
     if blocked:
         detail = ", ".join(f"{n} {label}" for label, n in blocked.items())
         raise HTTPException(

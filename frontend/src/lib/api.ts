@@ -1116,6 +1116,28 @@ export interface DraftAudit {
   updated_at: string | null;
 }
 
+export interface FrozenSplit {
+  chapters: { index: number; title: string; text: string }[];
+  editable: boolean;
+  blocked_by: Record<string, number>;
+}
+
+/** The confirmed split of your own book, so a mistake can still be corrected. */
+export function getFrozenSplit(bookId: number): Promise<FrozenSplit> {
+  return request(`/books/${bookId}/chapters/frozen`);
+}
+
+export function saveFrozenSplit(
+  bookId: number,
+  chapters: { title: string; text: string }[],
+): Promise<{ ok: boolean; chapter_count: number }> {
+  return request(`/books/${bookId}/chapters/frozen`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chapters }),
+  });
+}
+
 /** Ids of books this reader uploaded themselves — the shelf badge source. */
 export function getMyUploads(): Promise<{ id: number; title: string }[]> {
   return request("/books/uploads/mine");

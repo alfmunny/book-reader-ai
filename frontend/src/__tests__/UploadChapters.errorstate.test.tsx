@@ -12,7 +12,13 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
+const mockGetFrozenSplit = jest.fn();
+const mockSaveFrozenSplit = jest.fn();
+
 jest.mock("@/lib/api", () => ({
+  // A confirmed book has no drafts; the page reopens its frozen split instead.
+  getFrozenSplit: (...a: unknown[]) => mockGetFrozenSplit(...a),
+  saveFrozenSplit: (...a: unknown[]) => mockSaveFrozenSplit(...a),
   getDraftChapters: jest.fn(),
   confirmChapters: jest.fn(),
   ApiError: class ApiError extends Error {
@@ -34,6 +40,8 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockGetFrozenSplit.mockRejectedValue(new Error("no frozen split"));
+  mockSaveFrozenSplit.mockResolvedValue({ ok: true });
 });
 
 const CHAPTERS = {

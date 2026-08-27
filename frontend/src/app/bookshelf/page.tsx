@@ -309,6 +309,7 @@ export default function Bookshelf() {
         <BookDetailModal
           book={selectedBook}
           recentBook={recentBooks.find((rb) => rb.id === selectedBook.id)}
+          ownedByUser={uploadIds.has(selectedBook.id)}
           onClose={() => setSelectedBook(null)}
           onRead={() => {
             setSelectedBook(null);

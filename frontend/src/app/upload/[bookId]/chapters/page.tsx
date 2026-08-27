@@ -7,6 +7,8 @@ import {
   confirmChapters,
   saveDraftChapterMeta,
   saveDraftChapterStructure,
+  getFrozenSplit,
+  saveFrozenSplit,
   DraftChapter,
   ApiError,
 } from "@/lib/api";
@@ -28,6 +30,9 @@ export default function ChapterEditorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
+  // A confirmed book has no drafts left; its split is corrected in place instead.
+  const [confirmed, setConfirmed] = useState(false);
+  const [blocked, setBlocked] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Review chapters — Book Reader AI";
@@ -39,6 +44,7 @@ export default function ChapterEditorPage() {
     setLoading(true);
     getDraftChapters(Number(bookId))
       .then((data) => {
+        setConfirmed(false);
         setChapters(
           data.chapters.map((ch: DraftChapter) => ({
             title: ch.title,
@@ -47,11 +53,42 @@ export default function ChapterEditorPage() {
           })),
         );
       })
-      .catch((e: unknown) => setError(e instanceof ApiError ? e.message : "Failed to load chapters."))
+      .catch((draftError: unknown) =>
+        // No drafts means the book was already confirmed — reopen its split
+        // rather than dead-ending, which is what used to happen.
+        getFrozenSplit(Number(bookId))
+          .then((data) => {
+            setConfirmed(true);
+            if (!data.editable) {
+              const why = Object.entries(data.blocked_by || {})
+                .map(([k, n]) => `${n} ${k}`)
+                .join(", ");
+              setBlocked(`${why} anchor to this split — changing it would move them to the wrong chapters.`);
+            }
+            setChapters(
+              data.chapters.map((c) => ({ title: c.title, text: c.text, reviewed: true })),
+            );
+          })
+          .catch(() =>
+            // Both paths failed: report the draft failure, which is the primary
+            // attempt. Reporting the fallback's error would mask the real cause.
+            setError(
+              draftError instanceof ApiError
+                ? draftError.message
+                : "Failed to load chapters.",
+            ),
+          ),
+      )
       .finally(() => setLoading(false));
   }, [bookId]);
 
   useEffect(load, [load]);
+
+  const saveFrozen = useCallback(
+    (next: AuditChapter[]) =>
+      saveFrozenSplit(Number(bookId), next.map((c) => ({ title: c.title, text: c.text }))),
+    [bookId],
+  );
 
   const saveMeta = useCallback(
     (next: AuditChapter[]) =>
@@ -75,6 +112,11 @@ export default function ChapterEditorPage() {
     setError(null);
     setFinishing(true);
     try {
+      if (confirmed) {
+        await saveFrozen(next);
+        router.push(`/reader/${bookId}`);
+        return;
+      }
       // Persist the final structure first — confirm reads the draft rows, so an
       // unsaved split would be dropped on the way through.
       await saveStructure(next);
@@ -142,12 +184,21 @@ export default function ChapterEditorPage() {
             <h1 className="font-serif text-lg font-semibold text-ink">Review chapters</h1>
           </div>
           <p className="text-xs text-stone-600 m-0">
-            Saved as you go — you can stop and come back.
+            {confirmed
+              ? "Correcting the split of a book already on your shelf."
+              : "Saved as you go — you can stop and come back."}
           </p>
         </div>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-5 space-y-4">
+        {blocked && (
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+            <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+            {blocked}
+          </div>
+        )}
+
         {error && chapters && (
           <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
             <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -158,9 +209,10 @@ export default function ChapterEditorPage() {
         {chapters && (
           <ChapterAuditPanel
             chapters={chapters}
-            onSaveMeta={saveMeta}
-            onSaveStructure={saveStructure}
+            onSaveMeta={confirmed ? saveFrozen : saveMeta}
+            onSaveStructure={confirmed ? saveFrozen : saveStructure}
             onFinish={finish}
+            finishLabel={confirmed ? "Save and read" : "Add to shelf"}
             busy={finishing}
           />
         )}

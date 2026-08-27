@@ -111,6 +111,7 @@ async def test_list_returns_live_paragraphs_and_author(client, test_user):
     assert len(data["stories"]) == 1
     story = data["stories"][0]
     assert story["author_name"] == test_user["name"]
+    assert "author_picture" in story
     assert story["session_name"] == "诗意版"
     assert story["target_language"] == "zh"
     assert [p["paragraph_index"] for p in story["paragraphs"]] == [0, 1]

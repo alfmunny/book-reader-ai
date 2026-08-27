@@ -98,3 +98,31 @@ test("close button fires onClose", () => {
   fireEvent.click(screen.getByLabelText("Close shares panel"));
   expect(props.onClose).toHaveBeenCalled();
 });
+
+test("authors render with an avatar — picture when set, initial disc otherwise", () => {
+  renderPanel({
+    stories: [
+      { ...TRANSLATION_STORY, author_picture: "https://example.com/mira.png" },
+      NOTE_STORY, // no picture → initial disc
+    ],
+  });
+  const withPic = screen.getByTestId("story-1").querySelector("img") as HTMLImageElement;
+  expect(withPic.src).toBe("https://example.com/mira.png");
+  expect(screen.getByTestId("story-2")).toHaveTextContent("J"); // Jonas' initial
+});
+
+test("anchored position renders the popover at the anchor (desktop)", () => {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+  renderPanel({ position: { x: 400, y: 200 } });
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.style.left).toBe("208px"); // x - width/2
+  expect(panel.style.top).toBe("210px"); // y + 10
+});
+
+test("without a position the panel keeps the corner/bottom-sheet layout", () => {
+  renderPanel();
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.style.left).toBe("");
+  expect(panel.className).toContain("bottom-0");
+});

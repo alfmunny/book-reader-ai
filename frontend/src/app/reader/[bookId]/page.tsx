@@ -399,7 +399,7 @@ export default function ReaderPage() {
         .map((st) => ({ sentenceText: st.sentence_text!.trim(), count: 1 })),
     [chapterStories],
   );
-  const [sharedNotesFor, setSharedNotesFor] = useState<string | null>(null);
+  const [sharedNotesFor, setSharedNotesFor] = useState<{ sentenceText: string; position: { x: number; y: number } | null } | null>(null);
   const sharedNotesStories = useMemo(
     () =>
       sharedNotesFor == null
@@ -407,7 +407,8 @@ export default function ReaderPage() {
         : chapterStories.filter(
             (st) =>
               st.kind === "note" && st.sentence_text &&
-              (sharedNotesFor.includes(st.sentence_text.trim()) || st.sentence_text.trim().includes(sharedNotesFor)),
+              (sharedNotesFor.sentenceText.includes(st.sentence_text.trim()) ||
+                st.sentence_text.trim().includes(sharedNotesFor.sentenceText)),
           ),
     [chapterStories, sharedNotesFor],
   );
@@ -1883,7 +1884,7 @@ export default function ReaderPage() {
                   storyCounts={showShares && translationEnabled ? storyCounts : undefined}
                   onOpenStories={showShares && translationEnabled ? setOpenStoriesPara : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
-                  onSharedNotesClick={showShares ? (sentenceText) => setSharedNotesFor(sentenceText) : undefined}
+                  onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
                   onAnnotationClick={session?.backendToken ? (annotation, position) => {
@@ -2059,7 +2060,10 @@ export default function ReaderPage() {
                    st.sentence_text.trim().includes(quickHighlightPanel.sentenceText)),
               ).length : 0}
               onShowShared={() => {
-                setSharedNotesFor(quickHighlightPanel.sentenceText);
+                setSharedNotesFor({
+                  sentenceText: quickHighlightPanel.sentenceText,
+                  position: quickHighlightPanel.position,
+                });
                 setQuickHighlightPanel(null);
               }}
             />
@@ -2109,6 +2113,7 @@ export default function ReaderPage() {
               stories={sharedNotesStories}
               paragraphIndex={0}
               title="Shared notes on this sentence"
+              position={sharedNotesFor.position}
               currentUserId={session?.backendUser?.id}
               onClose={() => setSharedNotesFor(null)}
               onChanged={() => setStoriesVersion((v) => v + 1)}

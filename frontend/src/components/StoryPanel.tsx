@@ -19,12 +19,29 @@ import {
 } from "@/lib/api";
 import { CloseIcon, TrashIcon } from "@/components/Icons";
 
+/** Small round author avatar: picture when the account has one, an
+ *  initial-letter disc otherwise. */
+function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: string | null; size?: string }) {
+  if (picture) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={picture} alt="" aria-hidden="true" className={`${size} rounded-full shrink-0 object-cover`} />;
+  }
+  return (
+    <span aria-hidden="true" className={`${size} rounded-full shrink-0 bg-amber-200 text-amber-900 inline-flex items-center justify-center text-[10px] font-semibold`}>
+      {(name || "?").charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
 interface Props {
   stories: Story[];
   /** Paragraph the panel is anchored to (1-based in the title). */
   paragraphIndex: number;
   /** Overrides the default "Shares on paragraph N" title (sentence anchors). */
   title?: string;
+  /** Anchor point (viewport coords). On desktop the panel pops up beside it,
+   *  WeRead-style; small screens keep the bottom sheet. */
+  position?: { x: number; y: number } | null;
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -36,6 +53,7 @@ export default function StoryPanel({
   stories,
   paragraphIndex,
   title,
+  position,
   currentUserId,
   isAdmin,
   onClose,
@@ -93,12 +111,28 @@ export default function StoryPanel({
     }
   }
 
+  // Desktop: pop up beside the anchor (clamped to stay on screen);
+  // mobile keeps the bottom sheet. window is safe here (client component,
+  // computed on render after mount-time interactions).
+  const anchored = !!position && typeof window !== "undefined" && window.innerWidth >= 768;
+  const PANEL_W = 384; // matches md:w-96
+  const anchorStyle = anchored
+    ? {
+        left: Math.min(Math.max(8, position!.x - PANEL_W / 2), window.innerWidth - PANEL_W - 8),
+        top: Math.min(position!.y + 10, window.innerHeight - 240),
+        boxShadow: "var(--shadow-card-hover)",
+      }
+    : { boxShadow: "var(--shadow-card-hover)" };
   return (
     <div
       role="dialog"
       aria-label={title ?? `Shares on paragraph ${paragraphIndex + 1}`}
-      className="fixed inset-x-0 bottom-0 md:inset-auto md:right-6 md:bottom-6 md:w-[26rem] z-40 max-h-[70vh] flex flex-col rounded-t-xl md:rounded-xl border border-amber-200 bg-white animate-slide-up"
-      style={{ boxShadow: "var(--shadow-card-hover)" }}
+      className={
+        anchored
+          ? "fixed z-40 w-96 max-h-[60vh] flex flex-col rounded-xl border border-amber-200 bg-white animate-fade-in"
+          : "fixed inset-x-0 bottom-0 md:inset-auto md:right-6 md:bottom-6 md:w-[26rem] z-40 max-h-[70vh] flex flex-col rounded-t-xl md:rounded-xl border border-amber-200 bg-white animate-slide-up"
+      }
+      style={anchorStyle}
       data-testid="story-panel"
     >
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
@@ -122,6 +156,7 @@ export default function StoryPanel({
         {stories.map((story) => (
           <div key={story.id} className="rounded-lg border border-amber-100 p-3" data-testid={`story-${story.id}`}>
             <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-stone-500">
+              <Avatar name={story.author_name} picture={story.author_picture} />
               <span className="font-medium text-ink">{story.author_name}</span>
               {story.kind === "translation" ? (
                 <>
@@ -176,7 +211,8 @@ export default function StoryPanel({
             {openThread === story.id && (
               <div className="mt-2 space-y-2" data-testid={`story-thread-${story.id}`}>
                 {(comments[story.id] ?? []).map((c) => (
-                  <div key={c.id} className="text-xs">
+                  <div key={c.id} className="text-xs flex items-start gap-1.5">
+                    <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
                     <span className="font-medium text-ink">{c.author_name}</span>{" "}
                     <span className="text-stone-600">{c.body}</span>
                     {(c.user_id === currentUserId || isAdmin) && (

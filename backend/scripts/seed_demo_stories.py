@@ -31,8 +31,8 @@ import services.db as db_module
 from services.book_chapters import get_chapters
 
 DEMO_USERS = [
-    ("demo-mira", "Mira", "mira@example.invalid"),
-    ("demo-jonas", "Jonas", "jonas@example.invalid"),
+    ("demo-mira", "Mira", "mira@example.invalid", "https://api.dicebear.com/9.x/thumbs/svg?seed=Mira"),
+    ("demo-jonas", "Jonas", "jonas@example.invalid", "https://api.dicebear.com/9.x/thumbs/svg?seed=Jonas"),
 ]
 
 RENDERINGS = [
@@ -87,11 +87,11 @@ async def _upsert_annotation(db, user_id: int, book_id: int, chapter_index: int,
     return cur.lastrowid
 
 
-async def _upsert_user(db, google_id: str, name: str, email: str) -> int:
+async def _upsert_user(db, google_id: str, name: str, email: str, picture: str) -> int:
     await db.execute(
-        """INSERT INTO users (google_id, name, email) VALUES (?, ?, ?)
-           ON CONFLICT(google_id) DO UPDATE SET name = excluded.name""",
-        (google_id, name, email),
+        """INSERT INTO users (google_id, name, email, picture) VALUES (?, ?, ?, ?)
+           ON CONFLICT(google_id) DO UPDATE SET name = excluded.name, picture = excluded.picture""",
+        (google_id, name, email, picture),
     )
     async with db.execute("SELECT id FROM users WHERE google_id = ?", (google_id,)) as c:
         return (await c.fetchone())[0]

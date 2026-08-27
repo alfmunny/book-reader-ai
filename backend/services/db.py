@@ -1984,7 +1984,7 @@ async def list_stories(book_id: int, chapter_index: int | None = None) -> list[d
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            f"""SELECT s.*, u.name AS author_name,
+            f"""SELECT s.*, u.name AS author_name, u.picture AS author_picture,
                        ts.name AS session_name, ts.target_language,
                        a.sentence_text, a.note_text, a.color,
                        (SELECT COUNT(*) FROM story_comments sc WHERE sc.story_id = s.id) AS comment_count
@@ -2044,7 +2044,7 @@ async def create_story_comment(story_id: int, user_id: int, body: str) -> dict:
         comment_id = cursor.lastrowid
         await db.commit()
         async with db.execute(
-            """SELECT sc.*, u.name AS author_name FROM story_comments sc
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
                JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
             (comment_id,),
         ) as c:
@@ -2056,7 +2056,7 @@ async def list_story_comments(story_id: int) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT sc.*, u.name AS author_name FROM story_comments sc
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
                JOIN users u ON u.id = sc.user_id
                WHERE sc.story_id = ? ORDER BY sc.created_at, sc.id""",
             (story_id,),
@@ -2091,7 +2091,7 @@ async def list_story_feed(limit: int = 50, follower_id: int | None = None) -> li
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            f"""SELECT s.*, u.name AS author_name,
+            f"""SELECT s.*, u.name AS author_name, u.picture AS author_picture,
                       ts.name AS session_name, ts.target_language,
                       a.sentence_text, a.note_text, a.color,
                       b.title AS book_title,

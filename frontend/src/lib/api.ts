@@ -1266,6 +1266,7 @@ export interface Story {
   caption?: string | null;
   created_at: string;
   author_name: string;
+  author_picture?: string | null;
   comment_count: number;
   // kind='translation' (live references — never snapshots)
   session_name?: string | null;
@@ -1287,6 +1288,7 @@ export interface StoryComment {
   body: string;
   created_at: string;
   author_name: string;
+  author_picture?: string | null;
 }
 
 export function createStory(data: {

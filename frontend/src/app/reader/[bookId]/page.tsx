@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -2106,15 +2106,27 @@ export default function ReaderPage() {
                     (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
-                return own ? {
+                if (!own) return null;
+                const myNoteStory = sharedNotesStories.find(
+                  (st) => st.user_id === session?.backendUser?.id && st.annotation_id === own.id,
+                );
+                return {
                   text: own.note_text,
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
-                  // Shared already? The detail page then carries its thread.
-                  storyId: sharedNotesStories.find(
-                    (st) => st.user_id === session?.backendUser?.id && st.annotation_id === own.id,
-                  )?.id,
-                } : null;
+                  storyId: myNoteStory?.id,
+                  onPost: async () => {
+                    await createStory({
+                      kind: "note", book_id: Number(bookId),
+                      chapter_index: own.chapter_index, annotation_id: own.id,
+                    });
+                    setStoriesVersion((v) => v + 1);
+                  },
+                  onUnpost: myNoteStory ? async () => {
+                    await deleteStory(myNoteStory.id);
+                    setStoriesVersion((v) => v + 1);
+                  } : undefined,
+                };
               })()}
               annotationBar={(() => {
                 const own = annotations.find(
@@ -2196,6 +2208,14 @@ export default function ReaderPage() {
                   posted: !!post, storyId: post?.id,
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
+                  onPost: post ? undefined : async () => {
+                    await createStory({
+                      kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
+                      session_id: v.sessionId,
+                      paragraph_start: postsDialog.paraIdx, paragraph_end: postsDialog.paraIdx,
+                    });
+                    setStoriesVersion((v2) => v2 + 1);
+                  },
                 };
               })}
               composer={activeSession ? {

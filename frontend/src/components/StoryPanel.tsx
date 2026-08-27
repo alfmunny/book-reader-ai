@@ -199,7 +199,16 @@ interface Props {
   variant?: "sentence";
   /** The reader's own note on this sentence — pinned on top, "My note".
    *  text is the RAW note_text (may be empty for a bare highlight). */
-  myNote?: { text: string; authorName: string; picture?: string | null; storyId?: number } | null;
+  myNote?: {
+    text: string;
+    authorName: string;
+    picture?: string | null;
+    storyId?: number;
+    /** Publish this note as a post / take it private again (deletes only
+     *  the post row — the note itself is never touched). */
+    onPost?: () => Promise<void>;
+    onUnpost?: () => Promise<void>;
+  } | null;
   /** Highlight colors merged from the popover — one dialog, not two. */
   annotationBar?: {
     existingColor?: string | null;
@@ -218,6 +227,8 @@ interface Props {
     storyId?: number;
     authorName: string;
     picture?: string | null;
+    /** Publish this version's rendering of the paragraph as a post. */
+    onPost?: () => Promise<void>;
   }>;
   /** Bottom publish box (paragraph posts): caption in, one tap to post. */
   composer?: {
@@ -361,6 +372,20 @@ export default function StoryPanel({
       setView({ mode: "list" });
     } catch {
       setError("Could not delete your note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runAction(action: () => Promise<void>, failText: string) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      onChanged();
+    } catch {
+      setError(failText);
     } finally {
       setBusy(false);
     }
@@ -828,13 +853,35 @@ export default function StoryPanel({
             {myNote.text || <span className="text-stone-400 italic">Highlight — no note text yet.</span>}
           </p>
           {myNote.storyId != null ? (
-            <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
-              <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
-              {topLevel.map((c) => commentRow(c, { clickable: true, from: "myNote" }))}
-              {commentComposer("Add a comment…")}
-            </div>
+            <>
+              {myNote.onUnpost && (
+                <button
+                  onClick={() => runAction(myNote.onUnpost!, "Could not take the note private.")}
+                  disabled={busy}
+                  className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  Make private
+                </button>
+              )}
+              <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
+                <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
+                {topLevel.map((c) => commentRow(c, { clickable: true, from: "myNote" }))}
+                {commentComposer("Add a comment…")}
+              </div>
+            </>
           ) : (
-            <p className="text-[11px] text-stone-400">Private — post this note to receive comments.</p>
+            <div className="space-y-2">
+              {myNote.onPost && (
+                <button
+                  onClick={() => runAction(myNote.onPost!, "Could not post the note.")}
+                  disabled={busy}
+                  className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  {busy ? "Posting…" : "Post this note"}
+                </button>
+              )}
+              <p className="text-[11px] text-stone-400">Private — post this note to receive comments.</p>
+            </div>
           )}
         </div>
       ) : view.mode === "editMine" ? (
@@ -885,6 +932,15 @@ export default function StoryPanel({
             <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
           </div>
           <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
+          {detailVersion.onPost && (
+            <button
+              onClick={() => runAction(detailVersion.onPost!, "Could not publish the post.")}
+              disabled={busy}
+              className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              {busy ? "Publishing…" : "Publish as post"}
+            </button>
+          )}
           <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
             <p className="text-[11px] font-medium text-stone-500">Comments</p>
             <p className="text-[11px] text-stone-400">Private — publish this version as a post to open the discussion.</p>
@@ -901,7 +957,16 @@ export default function StoryPanel({
                 <p className="text-[11px] text-stone-400">{detailStory.created_at.slice(0, 10)}</p>
               )}
             </div>
-            {(detailStory.user_id === currentUserId || isAdmin) && (
+            {detailStory.user_id === currentUserId && (
+              <button
+                onClick={() => handleDeleteStory(detailStory.id)}
+                disabled={busy}
+                className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Make private
+              </button>
+            )}
+            {detailStory.user_id !== currentUserId && isAdmin && (
               <button
                 onClick={() => handleDeleteStory(detailStory.id)}
                 disabled={busy}

@@ -488,3 +488,55 @@ test("private version detail carries the switcher chips and a parallel Comments 
   fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
   expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
 });
+
+test("private note detail offers Post; posted note detail offers Make private", async () => {
+  const onPost = jest.fn().mockResolvedValue(undefined);
+  const { rerender, props } = renderPanel({
+    variant: "sentence",
+    stories: [],
+    myNote: { text: "mine", authorName: "A", picture: null, onPost },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Post this note" }));
+  await waitFor(() => expect(onPost).toHaveBeenCalled());
+  expect(props.onChanged).toHaveBeenCalled();
+
+  const onUnpost = jest.fn().mockResolvedValue(undefined);
+  (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
+  rerender(
+    <StoryPanel
+      {...props}
+      myNote={{ text: "mine", authorName: "A", picture: null, storyId: 2, onUnpost }}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Make private" }));
+  await waitFor(() => expect(onUnpost).toHaveBeenCalled());
+});
+
+test("private version detail offers Publish as post", async () => {
+  const onPost = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "V", text: "t", posted: false, authorName: "A", picture: null, onPost },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my version V" }));
+  fireEvent.click(screen.getByRole("button", { name: "Publish as post" }));
+  await waitFor(() => expect(onPost).toHaveBeenCalled());
+});
+
+test("my posted translation's detail says Make private, not a trash icon", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [{ ...TRANSLATION_STORY, user_id: 9 }],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "" },
+  });
+  // Reach my post's detail via the version list
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open translation by Mira" }));
+  expect(screen.getByRole("button", { name: "Make private" })).toBeInTheDocument();
+  expect(screen.queryByLabelText("Delete this share")).toBeNull();
+});

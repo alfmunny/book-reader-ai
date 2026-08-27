@@ -390,6 +390,10 @@ export default function ReaderPage() {
     }
     return map;
   }, [chapterStories]);
+  const postParagraphs = useMemo(
+    () => new Set(Object.keys(storiesByPara).map(Number)),
+    [storiesByPara],
+  );
   const sharedNoteAnchors = useMemo(
     () =>
       chapterStories
@@ -1857,6 +1861,8 @@ export default function ReaderPage() {
                   onShareParagraph={activeSession && session?.backendToken ? (idx, position) => {
                     setPostsDialog({ paraIdx: idx, position });
                   } : undefined}
+                  postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
+                  onOpenPosts={showShares ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
@@ -2152,12 +2158,11 @@ export default function ReaderPage() {
               title="Posts on this paragraph"
               variant="sentence"
               position={postsDialog.position}
-              composer={{
+              composer={activeSession ? {
                 placeholder: "Say something about your rendering (optional)…",
                 submitLabel: "Publish my translation as a post",
                 emptyText: "No posts on this paragraph yet — publish yours below.",
                 onSubmit: async (caption) => {
-                  if (!activeSession) throw new Error("Select one of your versions first.");
                   await createStory({
                     kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
                     session_id: activeSession.id,
@@ -2166,7 +2171,7 @@ export default function ReaderPage() {
                   });
                   setStoriesVersion((v) => v + 1);
                 },
-              }}
+              } : undefined}
               currentUserId={session?.backendUser?.id}
               onClose={() => setPostsDialog(null)}
               onChanged={() => setStoriesVersion((v) => v + 1)}

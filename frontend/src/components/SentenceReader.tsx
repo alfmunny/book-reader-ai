@@ -327,9 +327,14 @@ interface Props {
   onEditParagraph?: (paragraphIdx: number) => void;
   onDeleteParagraph?: (paragraphIdx: number) => void;
   /** Opens the paragraph's posts dialog: browse other readers' shared
-   *  renderings AND publish your own (owner, 2026-08-29 — the share
-   *  button is the single surface; no separate margin marker). */
+   *  renderings AND publish your own (session mode's Share button). */
   onShareParagraph?: (paragraphIdx: number, position: { x: number; y: number }) => void;
+  /** Paragraphs that have community translation posts. Their TRANSLATION
+   *  text gets the dashed underline (same sign language as shared notes)
+   *  and becomes the tap target opening the posts dialog — the entry
+   *  point that works in Editorial mode too (owner, 2026-08-29). */
+  postParagraphs?: Set<number>;
+  onOpenPosts?: (paragraphIdx: number, position: { x: number; y: number }) => void;
   /** Shared NOTE anchors (sentence-level, WeRead pattern). Marked with a
    *  dashed amber underline — deliberately distinct from the dotted vocab
    *  underline — plus a small superscript count dot that opens the panel,
@@ -600,6 +605,8 @@ export default function SentenceReader({
   onEditParagraph,
   onDeleteParagraph,
   onShareParagraph,
+  postParagraphs,
+  onOpenPosts,
   sharedNotes,
   onSharedNotesClick,
   onAnnotationClick,
@@ -986,6 +993,30 @@ export default function SentenceReader({
         textParaIdx++;
         const translationText = translations?.[textParaIdx];
 
+        // Translation paragraphs with community posts: dashed underline +
+        // click-to-open, mirroring the shared-notes sign language.
+        // textParaIdx is a mutable loop counter — freeze it for the handlers.
+        const postParaIdx = textParaIdx;
+        const hasPosts = !!postParagraphs?.has(postParaIdx) && !!onOpenPosts;
+        const postProps = hasPosts
+          ? {
+              role: "button" as const,
+              tabIndex: 0,
+              "data-testid": `post-underline-${postParaIdx}`,
+              "aria-label": `Shared translations of paragraph ${postParaIdx + 1}. Press Enter to view.`,
+              onClick: (e: React.MouseEvent) => onOpenPosts!(postParaIdx, { x: e.clientX, y: e.clientY }),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                onOpenPosts!(postParaIdx, { x: rect.left + rect.width / 2, y: rect.bottom });
+              },
+            }
+          : {};
+        const postClass = hasPosts
+          ? " underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          : "";
+
         // Helper: pick the className for a segment span
         const segClass = (seg: { flatIdx: number; chunkIdx: number }): string => {
           const active = seg.flatIdx === currentIdx;
@@ -1224,7 +1255,7 @@ export default function SentenceReader({
                 <div className={`border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6${translationSelectClass}`} data-translation="true">
                   {translationText ? (
                     <>
-                      <p lang={translationLang} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
+                      <p lang={translationLang} {...postProps} className={`font-serif text-base text-amber-800 italic whitespace-pre-wrap${postClass}`}>
                         {translationText}
                       </p>
                       {renderSessionExtras(textParaIdx, true)}
@@ -1263,7 +1294,7 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p lang={translationLang} data-translation="true" className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}`}>
+              <p lang={translationLang} data-translation="true" {...postProps} className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}${postClass}`}>
                 {translationText}
               </p>
             )}

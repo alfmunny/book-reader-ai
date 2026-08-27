@@ -139,3 +139,21 @@ test("a sentence with BOTH own annotation and shared notes opens the notes panel
   expect(onSharedNotesClick).toHaveBeenCalled();
   expect(onAnnotationClick).not.toHaveBeenCalled();
 });
+
+test("a translation with community posts gets the dashed underline and opens the dialog", () => {
+  const onOpenPosts = jest.fn();
+  renderReader({
+    postParagraphs: new Set([0]),
+    onOpenPosts,
+  });
+  const t = screen.getByTestId("post-underline-0");
+  expect(t.className).toContain("decoration-dashed");
+  expect(t).toHaveAttribute("role", "button");
+  fireEvent.click(t);
+  expect(onOpenPosts).toHaveBeenCalledWith(
+    0,
+    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+  );
+  // The other translation stays plain — local/unpublished work never marks text
+  expect(screen.queryByTestId("post-underline-1")).toBeNull();
+});

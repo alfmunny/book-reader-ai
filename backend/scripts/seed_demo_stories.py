@@ -234,6 +234,82 @@ async def main() -> None:
             mirrored += 1
         if mirrored:
             print(f"  (mirroring {mirrored} of the owner's chapter-5 sentences with demo notes)")
+
+        # Chapter-4 translation POSTS (~11, owner request 2026-08-29): Mira's
+        # poetic version and Jonas's literal version publish overlapping
+        # paragraphs so the dashed underline + posts dialog show comparison.
+        posts_made = 0
+        if len(chapters) > 4:
+            ch4_paras = [p for p in chapters[4].text.split("\n\n") if p.strip()]
+            n = min(6, len(ch4_paras))
+            await db.execute(
+                """INSERT INTO translation_sessions
+                   (user_id, book_id, name, target_language, provider)
+                   VALUES (?, ?, '直译版 (demo)', 'zh', 'deepseek')
+                   ON CONFLICT(user_id, book_id, name) DO NOTHING""",
+                (jonas_id, book_id),
+            )
+            async with db.execute(
+                "SELECT id FROM translation_sessions WHERE user_id = ? AND book_id = ? AND name = '直译版 (demo)'",
+                (jonas_id, book_id),
+            ) as c:
+                jonas_session = (await c.fetchone())[0]
+            for i in range(n):
+                await db.execute(
+                    """INSERT INTO translation_session_paragraphs
+                       (session_id, chapter_index, paragraph_index, text, provider, model)
+                       VALUES (?, 4, ?, ?, 'deepseek', 'deepseek-v4-flash')
+                       ON CONFLICT(session_id, chapter_index, paragraph_index)
+                       DO UPDATE SET text = excluded.text""",
+                    (session_id, i, f"【诗意版·演示】第{i + 1}段，以诗意笔法重译——此为本地测试用的示例译文。"),
+                )
+                await db.execute(
+                    """INSERT INTO translation_session_paragraphs
+                       (session_id, chapter_index, paragraph_index, text, provider, model)
+                       VALUES (?, 4, ?, ?, 'deepseek', 'deepseek-v4-flash')
+                       ON CONFLICT(session_id, chapter_index, paragraph_index)
+                       DO UPDATE SET text = excluded.text""",
+                    (jonas_session, i, f"【直译版·演示】第{i + 1}段，逐句直译不加修饰——此为本地测试用的示例译文。"),
+                )
+            mira_captions = [
+                "这一段试着押了韵，读读看。(demo)",
+                "意象比字面更重要——我的取舍。(demo)",
+                None,
+                "犹豫了很久的一句。(demo)",
+                None,
+                "欢迎拍砖。(demo)",
+            ]
+            jonas_captions = [
+                "Wörtlich, ohne Schmuck. (demo)",
+                None,
+                "对照原文逐行看最有意思。(demo)",
+                None,
+                "第三行我不确定。(demo)",
+            ]
+            first_post_id = None
+            for i in range(n):
+                cur = await db.execute(
+                    """INSERT INTO stories (user_id, kind, book_id, chapter_index, session_id,
+                                            paragraph_start, paragraph_end, caption)
+                       VALUES (?, 'translation', ?, 4, ?, ?, ?, ?)""",
+                    (mira_id, book_id, session_id, i, i, mira_captions[i % len(mira_captions)]),
+                )
+                if first_post_id is None:
+                    first_post_id = cur.lastrowid
+                posts_made += 1
+            for i in range(min(5, n)):
+                await db.execute(
+                    """INSERT INTO stories (user_id, kind, book_id, chapter_index, session_id,
+                                            paragraph_start, paragraph_end, caption)
+                       VALUES (?, 'translation', ?, 4, ?, ?, ?, ?)""",
+                    (jonas_id, book_id, jonas_session, i, i, jonas_captions[i % len(jonas_captions)]),
+                )
+                posts_made += 1
+            if first_post_id is not None:
+                await db.execute(
+                    "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
+                    (first_post_id, jonas_id, "比我的直译有味道多了。(demo)"),
+                )
         await db.commit()
 
     print(f"Seeded demo stories on book {book_id} ({title}):")
@@ -241,6 +317,7 @@ async def main() -> None:
     print(f"  - Mira's note story #{note_story_id}")
     print("  - Jonas commented on both")
     print("  - 3 sentence-anchored shared notes on chapter 5 (index 4) with cross-comments")
+    print(f"  - {posts_made} translation posts on chapter 5 (index 4): Mira 诗意版 + Jonas 直译版")
     print("Open the book, enable translation, and tick 'Show others' shares' — or visit /discover.")
 
 

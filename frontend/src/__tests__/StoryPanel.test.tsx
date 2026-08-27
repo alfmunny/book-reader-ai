@@ -111,28 +111,27 @@ test("authors render with an avatar — picture when set, initial disc otherwise
   expect(screen.getByTestId("story-2")).toHaveTextContent("J"); // Jonas' initial
 });
 
-test("dialog sits beside the sentence in the central band, arrow at its height", () => {
+test("dialog opens BELOW the sentence, never covering it, arrow pointing up at it", () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
   renderPanel({ position: { x: 400, y: 200 } });
   const panel = screen.getByTestId("story-panel");
-  expect(panel.style.left).toBe("448px"); // beside the sentence (x + 48)
-  expect(panel.style.top).toBe("104px"); // near the sentence (y - 96)
-  // Arrow on the left edge at the sentence's height, pointing at it
+  expect(panel.style.top).toBe("224px"); // below the clicked line (y + 24)
+  expect(panel.style.left).toBe("192px"); // centered on x, clamped
   const arrow = screen.getByTestId("story-panel-arrow");
-  expect(arrow.className).toContain("-left-[7px]");
-  expect(arrow.style.top).toBe("90px"); // (y - panelTop) - 6
-  // Dimmed page behind
+  expect(arrow.className).toContain("-top-[7px]"); // on the top edge, pointing up
+  expect(arrow.style.left).toBe("202px"); // at the sentence's x
   expect(screen.getByTestId("story-panel-backdrop")).toBeInTheDocument();
 });
 
-test("a sentence on the right half gets the panel on its left, arrow on the right edge", () => {
+test("near the bottom the dialog flips ABOVE the sentence, arrow pointing down", () => {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
-  renderPanel({ position: { x: 1000, y: 300 } });
+  renderPanel({ position: { x: 400, y: 700 } });
   const panel = screen.getByTestId("story-panel");
-  expect(panel.style.left).toBe("536px"); // x - W - 48
-  expect(screen.getByTestId("story-panel-arrow").className).toContain("-right-[7px]");
+  // 55vh of 800 = 440 → no room below y=700; opens above: 700 - 440 - 28
+  expect(panel.style.top).toBe("232px");
+  expect(screen.getByTestId("story-panel-arrow").className).toContain("-bottom-[7px]");
 });
 
 test("backdrop click closes the dialog", () => {

@@ -135,25 +135,19 @@ export default function StoryPanel({
   const anchored = !!position && typeof window !== "undefined" && window.innerWidth >= 768;
   const W = 416; // matches w-[26rem]
   const clampN = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
-  let panelLeft = 0, panelTop = 0, panelH = 0, arrowY = 0, sentenceLeft = true;
+  let panelLeft = 0, panelTop = 0, panelH = 0, arrowX = 0, below = true;
   if (anchored) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    panelH = Math.min(Math.round(vh * 0.68), 560);
-    sentenceLeft = position!.x <= vw / 2;
-    const beside = sentenceLeft ? position!.x + 48 : position!.x - W - 48;
-    panelLeft = clampN(beside, Math.max(16, vw * 0.15), Math.min(vw - W - 16, vw * 0.85 - W));
-    panelTop = clampN(position!.y - 96, 72, vh - panelH - 40);
-    arrowY = clampN(position!.y - panelTop, 20, panelH - 40);
+    panelH = Math.min(Math.round(vh * 0.55), 480);
+    // Below the sentence when it fits, above otherwise — never on top of it.
+    below = position!.y + 24 + panelH <= vh - 16;
+    panelTop = below ? position!.y + 24 : Math.max(16, position!.y - panelH - 28);
+    panelLeft = clampN(position!.x - W / 2, 16, vw - W - 16);
+    arrowX = clampN(position!.x - panelLeft, 24, W - 24);
   }
   const anchorStyle = anchored
-    ? {
-        left: panelLeft,
-        top: panelTop,
-        maxHeight: panelH,
-        minHeight: Math.min(arrowY + 56, panelH),
-        boxShadow: "var(--shadow-card-hover)",
-      }
+    ? { left: panelLeft, top: panelTop, maxHeight: panelH, boxShadow: "var(--shadow-card-hover)" }
     : { boxShadow: "var(--shadow-card-hover)" };
   return (
     <>
@@ -176,15 +170,14 @@ export default function StoryPanel({
       style={anchorStyle}
       data-testid="story-panel"
     >
-    >
       {anchored && (
         <span
           aria-hidden="true"
           data-testid="story-panel-arrow"
           className={`absolute w-3 h-3 bg-white border-amber-200 rotate-45 ${
-            sentenceLeft ? "-left-[7px] border-l border-b" : "-right-[7px] border-r border-t"
+            below ? "-top-[7px] border-l border-t" : "-bottom-[7px] border-r border-b"
           }`}
-          style={{ top: arrowY - 6 }}
+          style={{ left: arrowX - 6 }}
         />
       )}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">

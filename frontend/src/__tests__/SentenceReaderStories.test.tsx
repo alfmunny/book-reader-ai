@@ -24,22 +24,7 @@ function renderReader(overrides: Partial<React.ComponentProps<typeof SentenceRea
   return { ...render(<SentenceReader {...props} />), props };
 }
 
-test("story marker shows the count and opens the panel", () => {
-  const onOpenStories = jest.fn();
-  renderReader({ storyCounts: { 0: 2 }, onOpenStories });
-  const marker = screen.getByTestId("story-marker-0");
-  expect(marker).toHaveTextContent("2");
-  expect(marker).toHaveAccessibleName("2 shares on paragraph 1");
-  fireEvent.click(marker);
-  expect(onOpenStories).toHaveBeenCalledWith(0);
-});
-
-test("no marker without a count for that paragraph", () => {
-  renderReader({ storyCounts: { 0: 1 }, onOpenStories: jest.fn() });
-  expect(screen.queryByTestId("story-marker-1")).toBeNull();
-});
-
-test("Share appears in the session action row and reports the paragraph", () => {
+test("Share opens the paragraph's posts dialog with the click position", () => {
   const onShareParagraph = jest.fn();
   renderReader({
     sessionMode: true,
@@ -47,10 +32,13 @@ test("Share appears in the session action row and reports the paragraph", () => 
     onShareParagraph,
   });
   fireEvent.click(screen.getByRole("button", { name: "Share translation of paragraph 1" }));
-  expect(onShareParagraph).toHaveBeenCalledWith(0);
+  expect(onShareParagraph).toHaveBeenCalledWith(
+    0,
+    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+  );
 });
 
-test("without storyCounts nothing story-related renders", () => {
+test("no margin marker renders for translation posts (browsing lives in Share)", () => {
   renderReader();
   expect(screen.queryByTestId("story-marker-0")).toBeNull();
 });

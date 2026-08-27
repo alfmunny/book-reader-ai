@@ -352,11 +352,9 @@ export default function ReaderPage() {
   // Off by default — reading stays calm unless the reader opts in.
   const [showShares, setShowShares] = useState(false);
   const [chapterStories, setChapterStories] = useState<Story[]>([]);
-  const [openStoriesPara, setOpenStoriesPara] = useState<number | null>(null);
+  const [postsDialog, setPostsDialog] = useState<{ paraIdx: number; position: { x: number; y: number } } | null>(null);
   const [storiesVersion, setStoriesVersion] = useState(0);
-  const [shareDialog, setShareDialog] = useState<
-    { kind: "translation"; paraIdx: number } | { kind: "note"; annotationId: number } | null
-  >(null);
+  const [shareDialog, setShareDialog] = useState<{ kind: "note"; annotationId: number } | null>(null);
   const [shareCaption, setShareCaption] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
 
@@ -369,7 +367,7 @@ export default function ReaderPage() {
   // requests). Shared notes are a reading surface, so the fetch is gated on
   // the opt-in alone — not on translation being enabled.
   useEffect(() => {
-    if (!showShares || !session?.backendToken) {
+    if ((!showShares && !postsDialog) || !session?.backendToken) {
       setChapterStories([]);
       return;
     }
@@ -378,7 +376,7 @@ export default function ReaderPage() {
       .then((r) => { if (!cancelled) setChapterStories(r.stories); })
       .catch(() => { /* markers simply don't render */ });
     return () => { cancelled = true; };
-  }, [showShares, bookId, chapterIndex, session?.backendToken, storiesVersion]);
+  }, [showShares, postsDialog, bookId, chapterIndex, session?.backendToken, storiesVersion]);
 
   // Translation stories anchor to paragraphs (margin count markers); note
   // stories anchor to their SENTENCE (WeRead pattern, owner 2026-08-27) and
@@ -407,30 +405,16 @@ export default function ReaderPage() {
         : poolNoteStories(chapterStories, sharedNotesFor.sentenceText),
     [chapterStories, sharedNotesFor],
   );
-  const storyCounts = useMemo(
-    () => Object.fromEntries(Object.entries(storiesByPara).map(([k, v]) => [k, v.length])),
-    [storiesByPara],
-  );
 
   async function handleShare() {
     if (!shareDialog || shareBusy) return;
     setShareBusy(true);
     try {
-      const caption = shareCaption.trim() ? { caption: shareCaption.trim() } : {};
-      if (shareDialog.kind === "translation") {
-        if (!activeSession) return;
-        await createStory({
-          kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
-          session_id: activeSession.id,
-          paragraph_start: shareDialog.paraIdx, paragraph_end: shareDialog.paraIdx,
-          ...caption,
-        });
-      } else {
-        await createStory({
-          kind: "note", book_id: Number(bookId), chapter_index: chapterIndex,
-          annotation_id: shareDialog.annotationId, ...caption,
-        });
-      }
+      await createStory({
+        kind: "note", book_id: Number(bookId), chapter_index: chapterIndex,
+        annotation_id: shareDialog.annotationId,
+        ...(shareCaption.trim() ? { caption: shareCaption.trim() } : {}),
+      });
       setShareDialog(null);
       setShareCaption("");
       setStoriesVersion((v) => v + 1);
@@ -1870,12 +1854,9 @@ export default function ReaderPage() {
                     setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
                   } : undefined}
                   onDeleteParagraph={activeSession ? handleSessionDeleteParagraph : undefined}
-                  onShareParagraph={activeSession && session?.backendToken ? (idx) => {
-                    setShareCaption("");
-                    setShareDialog({ kind: "translation", paraIdx: idx });
+                  onShareParagraph={activeSession && session?.backendToken ? (idx, position) => {
+                    setPostsDialog({ paraIdx: idx, position });
                   } : undefined}
-                  storyCounts={showShares && translationEnabled ? storyCounts : undefined}
-                  onOpenStories={showShares && translationEnabled ? setOpenStoriesPara : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
@@ -2053,14 +2034,8 @@ export default function ReaderPage() {
           {shareDialog && (
             <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Share">
               <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
-                <p className="text-sm font-medium text-ink">
-                  {shareDialog.kind === "translation"
-                    ? `Share your rendering of paragraph ${shareDialog.paraIdx + 1}`
-                    : "Share this note"}
-                </p>
-                <p className="text-xs text-stone-500">
-                  Other readers of this book will see it{shareDialog.kind === "translation" ? " — and future edits to your translation update the share." : "."}
-                </p>
+                <p className="text-sm font-medium text-ink">Post this note</p>
+                <p className="text-xs text-stone-500">Other readers of this book will see it.</p>
                 <textarea
                   value={shareCaption}
                   onChange={(e) => setShareCaption(e.target.value)}
@@ -2081,7 +2056,7 @@ export default function ReaderPage() {
                     disabled={shareBusy}
                     className="text-sm px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   >
-                    {shareBusy ? "Sharing…" : "Share"}
+                    {shareBusy ? "Posting…" : "Post"}
                   </button>
                 </div>
               </div>
@@ -2170,12 +2145,30 @@ export default function ReaderPage() {
             />
           )}
 
-          {openStoriesPara != null && (storiesByPara[openStoriesPara]?.length ?? 0) > 0 && (
+          {postsDialog != null && (
             <StoryPanel
-              stories={storiesByPara[openStoriesPara]}
-              paragraphIndex={openStoriesPara}
+              stories={storiesByPara[postsDialog.paraIdx] ?? []}
+              paragraphIndex={postsDialog.paraIdx}
+              title="Posts on this paragraph"
+              variant="sentence"
+              position={postsDialog.position}
+              composer={{
+                placeholder: "Say something about your rendering (optional)…",
+                submitLabel: "Publish my translation as a post",
+                emptyText: "No posts on this paragraph yet — publish yours below.",
+                onSubmit: async (caption) => {
+                  if (!activeSession) throw new Error("Select one of your versions first.");
+                  await createStory({
+                    kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
+                    session_id: activeSession.id,
+                    paragraph_start: postsDialog.paraIdx, paragraph_end: postsDialog.paraIdx,
+                    ...(caption ? { caption } : {}),
+                  });
+                  setStoriesVersion((v) => v + 1);
+                },
+              }}
               currentUserId={session?.backendUser?.id}
-              onClose={() => setOpenStoriesPara(null)}
+              onClose={() => setPostsDialog(null)}
               onChanged={() => setStoriesVersion((v) => v + 1)}
             />
           )}

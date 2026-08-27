@@ -249,3 +249,35 @@ test("tapping a community note opens its detail page with author and delete for 
   // Returns to the list after deleting
   expect(screen.queryByTestId("story-detail")).toBeNull();
 });
+
+test("posts dialog: empty state plus publish composer, kept open after posting", async () => {
+  const onSubmit = jest.fn().mockResolvedValue(undefined);
+  const { props } = renderPanel({
+    variant: "sentence",
+    stories: [],
+    composer: {
+      placeholder: "Say something…",
+      submitLabel: "Publish my translation as a post",
+      emptyText: "No posts on this paragraph yet — publish yours below.",
+      onSubmit,
+    },
+  });
+  expect(screen.getByTestId("posts-empty")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Post caption"), { target: { value: "my take" } });
+  fireEvent.click(screen.getByRole("button", { name: "Publish my translation as a post" }));
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("my take"));
+  expect(props.onChanged).toHaveBeenCalled();
+  expect(screen.getByTestId("post-composer")).toBeInTheDocument();
+});
+
+test("tapping a translation post opens its detail with the rendering", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open translation by Mira" }));
+  const detail = screen.getByTestId("story-detail");
+  expect(detail).toHaveTextContent("太阳依着古老的方式轰鸣。");
+  expect(detail).toHaveTextContent("诗意版");
+  expect(detail).toHaveTextContent("deepseek-v4-flash");
+});

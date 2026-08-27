@@ -65,6 +65,13 @@ interface Props {
   onSaveMyNote?: (text: string) => Promise<void>;
   /** Remove the reader's highlight + note on this sentence. */
   onDeleteMyNote?: () => Promise<void>;
+  /** Bottom publish box (paragraph posts): caption in, one tap to post. */
+  composer?: {
+    placeholder: string;
+    submitLabel: string;
+    emptyText: string;
+    onSubmit: (caption: string) => Promise<void>;
+  };
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -82,6 +89,7 @@ export default function StoryPanel({
   annotationBar,
   onSaveMyNote,
   onDeleteMyNote,
+  composer,
   currentUserId,
   isAdmin,
   onClose,
@@ -139,6 +147,22 @@ export default function StoryPanel({
       onChanged();
     } catch {
       setError("Could not delete the comment.");
+    }
+  }
+
+  const [composerDraft, setComposerDraft] = useState("");
+  async function handleComposerSubmit() {
+    if (!composer || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await composer.onSubmit(composerDraft.trim());
+      setComposerDraft("");
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not publish the post.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -206,7 +230,7 @@ export default function StoryPanel({
     view.mode === "editMine"
       ? (myNote ? "My note" : "Write a note")
       : view.mode === "story"
-        ? "Reader's note"
+        ? (detailStory?.kind === "translation" ? "Reader's translation" : "Reader's note")
         : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
 
   const renderStoryCard = (story: Story) => (
@@ -214,7 +238,7 @@ export default function StoryPanel({
       <div
         role={variant === "sentence" ? "button" : undefined}
         tabIndex={variant === "sentence" ? 0 : undefined}
-        aria-label={variant === "sentence" ? `Open note by ${story.author_name}` : undefined}
+        aria-label={variant === "sentence" ? `Open ${story.kind === "translation" ? "translation" : "note"} by ${story.author_name}` : undefined}
         onClick={variant === "sentence" ? () => setView({ mode: "story", storyId: story.id }) : undefined}
         onKeyDown={variant === "sentence" ? (e) => {
           if (e.key !== "Enter" && e.key !== " ") return;
@@ -472,6 +496,21 @@ export default function StoryPanel({
               </button>
             )}
           </div>
+          {detailStory.kind === "translation" && (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">{detailStory.session_name}</span>
+                {detailStory.paragraphs?.[0]?.model && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{detailStory.paragraphs[0].model}</span>
+                )}
+              </div>
+              {detailStory.paragraphs?.map((p) => (
+                <p key={p.paragraph_index} lang={detailStory.target_language ?? undefined} className="text-sm font-serif text-ink leading-relaxed">
+                  {p.text}
+                </p>
+              ))}
+            </div>
+          )}
           {detailStory.note_text && (
             <p className="text-sm font-serif text-ink leading-relaxed">{detailStory.note_text}</p>
           )}
@@ -482,6 +521,9 @@ export default function StoryPanel({
         </div>
       ) : (
         <div className="overflow-y-auto px-4 py-3 space-y-4">
+          {stories.length === 0 && composer && (
+            <p className="text-xs text-stone-500 italic" data-testid="posts-empty">{composer.emptyText}</p>
+          )}
           {myNote && (
             <div
               role={variant === "sentence" ? "button" : undefined}
@@ -511,6 +553,26 @@ export default function StoryPanel({
             </div>
           )}
           {stories.map(renderStoryCard)}
+        </div>
+      )}
+
+      {view.mode === "list" && composer && (
+        <div className="px-4 py-3 border-t border-amber-100 space-y-2" data-testid="post-composer">
+          <textarea
+            value={composerDraft}
+            onChange={(e) => setComposerDraft(e.target.value)}
+            rows={2}
+            placeholder={composer.placeholder}
+            aria-label="Post caption"
+            className="w-full text-xs border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <button
+            onClick={handleComposerSubmit}
+            disabled={busy}
+            className="w-full text-sm px-4 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            {busy ? "Publishing…" : composer.submitLabel}
+          </button>
         </div>
       )}
     </div>

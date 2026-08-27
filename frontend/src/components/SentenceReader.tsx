@@ -326,12 +326,10 @@ interface Props {
   onTranslateParagraph?: (paragraphIdx: number) => void;
   onEditParagraph?: (paragraphIdx: number) => void;
   onDeleteParagraph?: (paragraphIdx: number) => void;
-  /** Share this paragraph's rendering as a story (session mode, #2752). */
-  onShareParagraph?: (paragraphIdx: number) => void;
-  /** paragraph index → number of shares anchored there. Markers render only
-   *  when the reader opted in via "Show others' shares" (parent gates this). */
-  storyCounts?: Record<number, number>;
-  onOpenStories?: (paragraphIdx: number) => void;
+  /** Opens the paragraph's posts dialog: browse other readers' shared
+   *  renderings AND publish your own (owner, 2026-08-29 — the share
+   *  button is the single surface; no separate margin marker). */
+  onShareParagraph?: (paragraphIdx: number, position: { x: number; y: number }) => void;
   /** Shared NOTE anchors (sentence-level, WeRead pattern). Marked with a
    *  dashed amber underline — deliberately distinct from the dotted vocab
    *  underline — plus a small superscript count dot that opens the panel,
@@ -602,8 +600,6 @@ export default function SentenceReader({
   onEditParagraph,
   onDeleteParagraph,
   onShareParagraph,
-  storyCounts,
-  onOpenStories,
   sharedNotes,
   onSharedNotesClick,
   onAnnotationClick,
@@ -902,26 +898,6 @@ export default function SentenceReader({
 
   // Session-mode chrome for one paragraph's translation cell: provenance
   // chips + actions when translated, an explicit placeholder when not.
-  // WeRead-style margin marker: a muted count at the paragraph's end that
-  // expands the inline story panel (design: user-translations.md phase 2).
-  const renderStoryMarker = (paraIdx: number) => {
-    const count = storyCounts?.[paraIdx] ?? 0;
-    if (!count || !onOpenStories) return null;
-    return (
-      <button
-        onClick={() => onOpenStories(paraIdx)}
-        data-testid={`story-marker-${paraIdx}`}
-        aria-label={`${count} share${count === 1 ? "" : "s"} on paragraph ${paraIdx + 1}`}
-        className="mt-1 inline-flex items-center gap-1 text-[11px] text-stone-400 hover:text-amber-700 min-h-[44px] md:min-h-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-      >
-        <svg viewBox="0 0 16 16" className="w-3 h-3" fill="currentColor" aria-hidden="true">
-          <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8.4L5 13.8a.5.5 0 0 1-.8-.4V11H3a1 1 0 0 1-1-1V3Z" />
-        </svg>
-        {count}
-      </button>
-    );
-  };
-
   const renderSessionExtras = (paraIdx: number, hasText: boolean) => {
     if (!sessionMode) return null;
     const meta = translationMeta?.[paraIdx];
@@ -982,7 +958,7 @@ export default function SentenceReader({
         )}
         {onShareParagraph && (
           <button
-            onClick={() => onShareParagraph(paraIdx)}
+            onClick={(e) => onShareParagraph(paraIdx, { x: e.clientX, y: e.clientY })}
             disabled={actionsDisabled}
             aria-label={`Share translation of paragraph ${paraIdx + 1}`}
             className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
@@ -1252,10 +1228,9 @@ export default function SentenceReader({
                         {translationText}
                       </p>
                       {renderSessionExtras(textParaIdx, true)}
-                      {renderStoryMarker(textParaIdx)}
                     </>
                   ) : sessionMode ? (
-                    <>{renderSessionExtras(textParaIdx, false)}{renderStoryMarker(textParaIdx)}</>
+                    renderSessionExtras(textParaIdx, false)
                   ) : translationLoading ? (
                     <div role="status" aria-label="Loading translation">
                       <span className="sr-only">Loading translation...</span>
@@ -1293,7 +1268,7 @@ export default function SentenceReader({
               </p>
             )}
             {sessionMode && (
-              <div className="mt-1">{renderSessionExtras(textParaIdx, !!translationText)}{renderStoryMarker(textParaIdx)}</div>
+              <div className="mt-1">{renderSessionExtras(textParaIdx, !!translationText)}</div>
             )}
           </div>
         );

@@ -74,6 +74,8 @@ interface Props {
     text: string;
     posted: boolean;
     storyId?: number;
+    authorName: string;
+    picture?: string | null;
   }>;
   /** Bottom publish box (paragraph posts): caption in, one tap to post. */
   composer?: {
@@ -107,6 +109,7 @@ export default function StoryPanel({
   onChanged,
 }: Props) {
   const [view, setView] = useState<View>({ mode: "list" });
+  const [expandedMine, setExpandedMine] = useState<Set<number>>(new Set());
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, StoryComment[]>>({});
@@ -286,9 +289,9 @@ export default function StoryPanel({
         </div>
 
         {story.kind === "translation" ? (
-          <div className="mt-1.5 space-y-1.5">
+          <div className={`mt-1.5 space-y-1.5 ${variant === "sentence" ? "line-clamp-3" : ""}`}>
             {story.paragraphs?.map((p) => (
-              <p key={p.paragraph_index} lang={story.target_language ?? undefined} className="text-sm font-serif text-ink">
+              <p key={p.paragraph_index} lang={story.target_language ?? undefined} className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
                 {p.text}
               </p>
             ))}
@@ -535,24 +538,33 @@ export default function StoryPanel({
           {stories.length === 0 && (myVersions?.length ?? 0) === 0 && composer && (
             <p className="text-xs text-stone-500 italic" data-testid="posts-empty">{composer.emptyText}</p>
           )}
-          {myVersions?.map((v, i) => (
+          {myVersions?.map((v, i) => {
+            const open = v.posted && v.storyId
+              ? () => setView({ mode: "story", storyId: v.storyId! })
+              : () => setExpandedMine((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(i)) next.delete(i); else next.add(i);
+                  return next;
+                });
+            const expanded = expandedMine.has(i);
+            return (
             <div
               key={`mine-${i}`}
-              role={v.posted && v.storyId ? "button" : undefined}
-              tabIndex={v.posted && v.storyId ? 0 : undefined}
-              aria-label={v.posted && v.storyId ? `Open my post from ${v.sessionName}` : undefined}
-              onClick={v.posted && v.storyId ? () => setView({ mode: "story", storyId: v.storyId! }) : undefined}
-              onKeyDown={v.posted && v.storyId ? (e) => {
+              role="button"
+              tabIndex={0}
+              aria-label={v.posted && v.storyId ? `Open my post from ${v.sessionName}` : `${expanded ? "Collapse" : "Expand"} my version ${v.sessionName}`}
+              aria-expanded={v.posted ? undefined : expanded}
+              onClick={open}
+              onKeyDown={(e) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 e.preventDefault();
-                setView({ mode: "story", storyId: v.storyId! });
-              } : undefined}
-              className={`rounded-lg border border-amber-200 bg-amber-50/50 p-3 ${
-                v.posted && v.storyId ? "cursor-pointer hover:bg-amber-100/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
-              }`}
+                open();
+              }}
+              className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 cursor-pointer hover:bg-amber-100/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               data-testid={`my-version-${i}`}
             >
               <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-stone-500">
+                <Avatar name={v.authorName} picture={v.picture} />
                 <span className="px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-900">My version</span>
                 <span className="font-medium text-ink">{v.sessionName}</span>
                 {v.model && (
@@ -565,9 +577,10 @@ export default function StoryPanel({
                   <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500">Private</span>
                 )}
               </div>
-              <p className="mt-1.5 text-sm font-serif text-ink">{v.text}</p>
+              <p className={`mt-1.5 text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap ${expanded ? "" : "line-clamp-3"}`}>{v.text}</p>
             </div>
-          ))}
+            );
+          })}
           {myNote && (
             <div
               role={variant === "sentence" ? "button" : undefined}

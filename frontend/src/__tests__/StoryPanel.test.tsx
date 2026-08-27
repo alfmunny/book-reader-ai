@@ -282,23 +282,47 @@ test("tapping a translation post opens its detail with the rendering", () => {
   expect(detail).toHaveTextContent("deepseek-v4-flash");
 });
 
-test("my versions pin first with Private/Posted badges; posted opens its post, duplicate filtered", () => {
+test("my versions pin first with avatar and Private/Posted badges; posted opens its post", () => {
   renderPanel({
     variant: "sentence",
     stories: [{ ...TRANSLATION_STORY, user_id: 9 }], // my own published post
     myVersions: [
-      { sessionName: "诗意版", model: "deepseek-v4-flash", text: "太阳依着古老的方式轰鸣。", posted: true, storyId: 1 },
-      { sessionName: "直译版", model: "deepseek-v4-flash", text: "太阳轰鸣如常。", posted: false },
+      { sessionName: "诗意版", model: "deepseek-v4-flash", text: "太阳依着古老的方式轰鸣。", posted: true, storyId: 1, authorName: "Alfmunny", picture: null },
+      { sessionName: "直译版", model: "deepseek-v4-flash", text: "太阳轰鸣如常。", posted: false, authorName: "Alfmunny", picture: null },
     ],
   });
   const posted = screen.getByTestId("my-version-0");
   expect(posted).toHaveTextContent("Posted");
+  expect(posted).toHaveTextContent("A"); // avatar initial disc
   const priv = screen.getByTestId("my-version-1");
   expect(priv).toHaveTextContent("Private");
-  expect(priv).not.toHaveAttribute("role");
   // My published post is represented by the pinned card, not duplicated below
   expect(screen.queryByTestId("story-1")).toBeNull();
   // Tapping the posted card opens the post's detail
   fireEvent.click(screen.getByRole("button", { name: "Open my post from 诗意版" }));
   expect(screen.getByTestId("story-detail")).toBeInTheDocument();
+});
+
+test("private versions collapse by default and toggle open on tap (long verse)", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    composer: { placeholder: "p", submitLabel: "Post", emptyText: "none", onSubmit: jest.fn() },
+    myVersions: [
+      { sessionName: "直译版", text: "很长的诗行\n第二行\n第三行\n第四行", posted: false, authorName: "Alfmunny", picture: null },
+    ],
+  });
+  const card = screen.getByTestId("my-version-0");
+  const text = card.querySelector("p.font-serif") as HTMLElement;
+  expect(text.className).toContain("line-clamp-3");
+  expect(card).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(card);
+  expect(card).toHaveAttribute("aria-expanded", "true");
+  expect((card.querySelector("p.font-serif") as HTMLElement).className).not.toContain("line-clamp-3");
+});
+
+test("community translation cards clamp in the list — full text lives in detail", () => {
+  renderPanel({ variant: "sentence", stories: [TRANSLATION_STORY] });
+  const card = screen.getByTestId(`story-${TRANSLATION_STORY.id}`);
+  expect(card.innerHTML).toContain("line-clamp-3");
 });

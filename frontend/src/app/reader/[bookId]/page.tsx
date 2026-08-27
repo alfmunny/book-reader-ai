@@ -2187,7 +2187,12 @@ export default function ReaderPage() {
                 const post = (storiesByPara[postsDialog.paraIdx] ?? []).find(
                   (st) => st.user_id === session?.backendUser?.id && st.session_id === v.sessionId,
                 );
-                return { sessionName: v.sessionName, model: v.model, text: v.text, posted: !!post, storyId: post?.id };
+                return {
+                  sessionName: v.sessionName, model: v.model, text: v.text,
+                  posted: !!post, storyId: post?.id,
+                  authorName: session?.backendUser?.name ?? "You",
+                  picture: session?.backendUser?.picture,
+                };
               })}
               composer={activeSession ? {
                 placeholder: "Say something about your rendering (optional)…",

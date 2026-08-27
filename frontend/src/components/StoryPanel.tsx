@@ -40,7 +40,7 @@ function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: s
   );
 }
 
-type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number };
+type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number } | { mode: "myVersion"; index: number };
 
 interface Props {
   stories: Story[];
@@ -109,7 +109,6 @@ export default function StoryPanel({
   onChanged,
 }: Props) {
   const [view, setView] = useState<View>({ mode: "list" });
-  const [expandedMine, setExpandedMine] = useState<Set<number>>(new Set());
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, StoryComment[]>>({});
@@ -240,12 +239,15 @@ export default function StoryPanel({
   }
 
   const detailStory = view.mode === "story" ? stories.find((s) => s.id === view.storyId) : undefined;
+  const detailVersion = view.mode === "myVersion" ? myVersions?.[view.index] : undefined;
   const headerTitle =
     view.mode === "editMine"
       ? (myNote ? "My note" : "Write a note")
       : view.mode === "story"
         ? (detailStory?.kind === "translation" ? "Reader's translation" : "Reader's note")
-        : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
+        : view.mode === "myVersion"
+          ? "My translation"
+          : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
 
   const renderStoryCard = (story: Story) => (
     <div key={story.id} data-testid={`story-${story.id}`}>
@@ -489,6 +491,22 @@ export default function StoryPanel({
             </button>
           </div>
         </div>
+      ) : view.mode === "myVersion" && detailVersion ? (
+        <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="my-version-detail">
+          <div className="flex items-center gap-2">
+            <Avatar name={detailVersion.authorName} picture={detailVersion.picture} size="w-7 h-7" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink">{detailVersion.authorName}</p>
+              <p className="text-[11px] text-stone-400">{detailVersion.sessionName}</p>
+            </div>
+            {detailVersion.model && (
+              <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{detailVersion.model}</span>
+            )}
+            <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
+          </div>
+          <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
+          {/* Publish lives in the composer below the list; comments join with track B */}
+        </div>
       ) : view.mode === "story" && detailStory ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="story-detail">
           <div className="flex items-center gap-2">
@@ -539,21 +557,17 @@ export default function StoryPanel({
             <p className="text-xs text-stone-500 italic" data-testid="posts-empty">{composer.emptyText}</p>
           )}
           {myVersions?.map((v, i) => {
+            // Universal flow (owner, 2026-08-29): EVERY translation card —
+            // mine private, mine posted, others' — opens a detail sub-page.
             const open = v.posted && v.storyId
               ? () => setView({ mode: "story", storyId: v.storyId! })
-              : () => setExpandedMine((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(i)) next.delete(i); else next.add(i);
-                  return next;
-                });
-            const expanded = expandedMine.has(i);
+              : () => setView({ mode: "myVersion", index: i });
             return (
             <div
               key={`mine-${i}`}
               role="button"
               tabIndex={0}
-              aria-label={v.posted && v.storyId ? `Open my post from ${v.sessionName}` : `${expanded ? "Collapse" : "Expand"} my version ${v.sessionName}`}
-              aria-expanded={v.posted ? undefined : expanded}
+              aria-label={v.posted && v.storyId ? `Open my post from ${v.sessionName}` : `Open my version ${v.sessionName}`}
               onClick={open}
               onKeyDown={(e) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
@@ -577,7 +591,7 @@ export default function StoryPanel({
                   <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500">Private</span>
                 )}
               </div>
-              <p className={`mt-1.5 text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap ${expanded ? "" : "line-clamp-3"}`}>{v.text}</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap line-clamp-3">{v.text}</p>
             </div>
             );
           })}

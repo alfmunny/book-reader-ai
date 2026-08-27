@@ -303,22 +303,27 @@ test("my versions pin first with avatar and Private/Posted badges; posted opens 
   expect(screen.getByTestId("story-detail")).toBeInTheDocument();
 });
 
-test("private versions collapse by default and toggle open on tap (long verse)", () => {
+test("a private version opens its own detail sub-page — the universal flow", () => {
   renderPanel({
     variant: "sentence",
     stories: [],
     composer: { placeholder: "p", submitLabel: "Post", emptyText: "none", onSubmit: jest.fn() },
     myVersions: [
-      { sessionName: "直译版", text: "很长的诗行\n第二行\n第三行\n第四行", posted: false, authorName: "Alfmunny", picture: null },
+      { sessionName: "直译版", model: "deepseek-v4-flash", text: "很长的诗行\n第二行\n第三行\n第四行", posted: false, authorName: "Alfmunny", picture: null },
     ],
   });
+  // List card clamps its preview
   const card = screen.getByTestId("my-version-0");
-  const text = card.querySelector("p.font-serif") as HTMLElement;
-  expect(text.className).toContain("line-clamp-3");
-  expect(card).toHaveAttribute("aria-expanded", "false");
-  fireEvent.click(card);
-  expect(card).toHaveAttribute("aria-expanded", "true");
-  expect((card.querySelector("p.font-serif") as HTMLElement).className).not.toContain("line-clamp-3");
+  expect((card.querySelector("p.font-serif") as HTMLElement).className).toContain("line-clamp-3");
+  // Tap → detail with full text, Private badge, back returns
+  fireEvent.click(screen.getByRole("button", { name: "Open my version 直译版" }));
+  const detail = screen.getByTestId("my-version-detail");
+  expect(detail).toHaveTextContent("Private");
+  expect(detail).toHaveTextContent("直译版");
+  expect((detail.querySelector("p.font-serif") as HTMLElement).className).not.toContain("line-clamp-3");
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.queryByTestId("my-version-detail")).toBeNull();
+  expect(screen.getByTestId("my-version-0")).toBeInTheDocument();
 });
 
 test("community translation cards clamp in the list — full text lives in detail", () => {

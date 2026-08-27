@@ -23,6 +23,8 @@ interface Props {
   stories: Story[];
   /** Paragraph the panel is anchored to (1-based in the title). */
   paragraphIndex: number;
+  /** Overrides the default "Shares on paragraph N" title (sentence anchors). */
+  title?: string;
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -33,6 +35,7 @@ interface Props {
 export default function StoryPanel({
   stories,
   paragraphIndex,
+  title,
   currentUserId,
   isAdmin,
   onClose,
@@ -93,14 +96,14 @@ export default function StoryPanel({
   return (
     <div
       role="dialog"
-      aria-label={`Shares on paragraph ${paragraphIndex + 1}`}
+      aria-label={title ?? `Shares on paragraph ${paragraphIndex + 1}`}
       className="fixed inset-x-0 bottom-0 md:inset-auto md:right-6 md:bottom-6 md:w-[26rem] z-40 max-h-[70vh] flex flex-col rounded-t-xl md:rounded-xl border border-amber-200 bg-white animate-slide-up"
       style={{ boxShadow: "var(--shadow-card-hover)" }}
       data-testid="story-panel"
     >
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
         <h3 className="font-serif font-semibold text-sm text-ink flex-1">
-          Shares on paragraph {paragraphIndex + 1}
+          {title ?? `Shares on paragraph ${paragraphIndex + 1}`}
         </h3>
         <button
           onClick={onClose}

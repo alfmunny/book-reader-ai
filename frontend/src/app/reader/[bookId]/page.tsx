@@ -365,9 +365,11 @@ export default function ReaderPage() {
     try { localStorage.setItem(`translation-lang:${bookId}`, lang); } catch { /* private mode */ }
   };
 
-  // Stories arrive in ONE call per chapter (design: no per-paragraph requests)
+  // Stories arrive in ONE call per chapter (design: no per-paragraph
+  // requests). Shared notes are a reading surface, so the fetch is gated on
+  // the opt-in alone — not on translation being enabled.
   useEffect(() => {
-    if (!translationEnabled || !showShares || !session?.backendToken) {
+    if (!showShares || !session?.backendToken) {
       setChapterStories([]);
       return;
     }
@@ -376,25 +378,39 @@ export default function ReaderPage() {
       .then((r) => { if (!cancelled) setChapterStories(r.stories); })
       .catch(() => { /* markers simply don't render */ });
     return () => { cancelled = true; };
-  }, [translationEnabled, showShares, bookId, chapterIndex, session?.backendToken, storiesVersion]);
+  }, [showShares, bookId, chapterIndex, session?.backendToken, storiesVersion]);
 
-  // Anchor stories to paragraphs: translation kind by its range, note kind by
-  // locating the annotation's sentence in the chapter's paragraph split.
+  // Translation stories anchor to paragraphs (margin count markers); note
+  // stories anchor to their SENTENCE (WeRead pattern, owner 2026-08-27) and
+  // render as dashed underlines + a superscript dot in the text itself.
   const storiesByPara = useMemo(() => {
     const map: Record<number, Story[]> = {};
-    if (chapterStories.length === 0) return map;
-    const paras = (chapters[chapterIndex]?.text ?? "").split("\n\n").filter((p) => p.trim());
-    const add = (i: number, st: Story) => { (map[i] ??= []).push(st); };
     for (const st of chapterStories) {
       if (st.kind === "translation" && st.paragraph_start != null && st.paragraph_end != null) {
-        for (let i = st.paragraph_start; i <= st.paragraph_end; i++) add(i, st);
-      } else if (st.kind === "note" && st.sentence_text) {
-        const idx = paras.findIndex((p) => p.includes(st.sentence_text!.trim()));
-        if (idx >= 0) add(idx, st);
+        for (let i = st.paragraph_start; i <= st.paragraph_end; i++) (map[i] ??= []).push(st);
       }
     }
     return map;
-  }, [chapterStories, chapters, chapterIndex]);
+  }, [chapterStories]);
+  const sharedNoteAnchors = useMemo(
+    () =>
+      chapterStories
+        .filter((st) => st.kind === "note" && st.sentence_text)
+        .map((st) => ({ sentenceText: st.sentence_text!.trim(), count: 1 })),
+    [chapterStories],
+  );
+  const [sharedNotesFor, setSharedNotesFor] = useState<string | null>(null);
+  const sharedNotesStories = useMemo(
+    () =>
+      sharedNotesFor == null
+        ? []
+        : chapterStories.filter(
+            (st) =>
+              st.kind === "note" && st.sentence_text &&
+              (sharedNotesFor.includes(st.sentence_text.trim()) || st.sentence_text.trim().includes(sharedNotesFor)),
+          ),
+    [chapterStories, sharedNotesFor],
+  );
   const storyCounts = useMemo(
     () => Object.fromEntries(Object.entries(storiesByPara).map(([k, v]) => [k, v.length])),
     [storiesByPara],
@@ -1864,8 +1880,10 @@ export default function ReaderPage() {
                     setShareCaption("");
                     setShareDialog({ kind: "translation", paraIdx: idx });
                   } : undefined}
-                  storyCounts={showShares ? storyCounts : undefined}
-                  onOpenStories={showShares ? setOpenStoriesPara : undefined}
+                  storyCounts={showShares && translationEnabled ? storyCounts : undefined}
+                  onOpenStories={showShares && translationEnabled ? setOpenStoriesPara : undefined}
+                  sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
+                  onSharedNotesClick={showShares ? (sentenceText) => setSharedNotesFor(sentenceText) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
                   onAnnotationClick={session?.backendToken ? (annotation, position) => {
@@ -2035,6 +2053,15 @@ export default function ReaderPage() {
                   chapterIndex: quickHighlightPanel.chapterIndex,
                 });
               }}
+              sharedCount={showShares ? chapterStories.filter(
+                (st) => st.kind === "note" && st.sentence_text &&
+                  (quickHighlightPanel.sentenceText.includes(st.sentence_text.trim()) ||
+                   st.sentence_text.trim().includes(quickHighlightPanel.sentenceText)),
+              ).length : 0}
+              onShowShared={() => {
+                setSharedNotesFor(quickHighlightPanel.sentenceText);
+                setQuickHighlightPanel(null);
+              }}
             />
           )}
 
@@ -2075,6 +2102,17 @@ export default function ReaderPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {sharedNotesFor != null && sharedNotesStories.length > 0 && (
+            <StoryPanel
+              stories={sharedNotesStories}
+              paragraphIndex={0}
+              title="Shared notes on this sentence"
+              currentUserId={session?.backendUser?.id}
+              onClose={() => setSharedNotesFor(null)}
+              onChanged={() => setStoriesVersion((v) => v + 1)}
+            />
           )}
 
           {openStoriesPara != null && (storiesByPara[openStoriesPara]?.length ?? 0) > 0 && (

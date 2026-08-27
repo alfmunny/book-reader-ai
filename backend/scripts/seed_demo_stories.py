@@ -3,9 +3,11 @@
 What it does: creates two demo users (Mira, Jonas), gives Mira a Chinese
 translation version on the target book with the first three paragraphs of
 chapter 0 "translated" (clearly-marked demo renderings), shares one of them
-as a translation story with a caption, shares one of Mira's annotations as
-a note story, and has Jonas comment on both. Idempotent — rerunning updates
-the same demo rows instead of duplicating them.
+as a translation story with a caption, shares annotations as note stories
+(chapter 0, and three sentence-anchored notes on chapter 4 for the WeRead
+shared-notes surface), and has the demo users comment on each other's
+shares. Idempotent — rerunning updates the same demo rows instead of
+duplicating them.
 
 When to use it: local testing of phase 2 (#2752) — the "Show others'
 shares" toggle, paragraph markers, inline story panel, and the Discover
@@ -54,6 +56,35 @@ async def _find_book(db, book_id: int | None) -> tuple[int, str]:
     if not row:
         raise SystemExit("No book titled like %Faust% — pass --book-id")
     return row[0], row[1]
+
+
+def _first_sentence(paragraph: str, max_len: int = 80) -> str:
+    """A single-sentence anchor: sentence markers keep it inside one reader
+    segment, so the dashed underline matches by containment."""
+    text = paragraph.strip()
+    cut = len(text)
+    for mark in (". ", "! ", "? ", ".\n"):
+        i = text.find(mark)
+        if 0 < i < cut:
+            cut = i + 1
+    return text[: min(cut, max_len)].strip()
+
+
+async def _upsert_annotation(db, user_id: int, book_id: int, chapter_index: int,
+                             sentence: str, note: str, color: str) -> int:
+    async with db.execute(
+        "SELECT id FROM annotations WHERE user_id = ? AND book_id = ? AND sentence_text = ?",
+        (user_id, book_id, sentence),
+    ) as c:
+        row = await c.fetchone()
+    if row:
+        return row[0]
+    cur = await db.execute(
+        "INSERT INTO annotations (user_id, book_id, chapter_index, sentence_text, note_text, color) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (user_id, book_id, chapter_index, sentence, note, color),
+    )
+    return cur.lastrowid
 
 
 async def _upsert_user(db, google_id: str, name: str, email: str) -> int:
@@ -123,7 +154,9 @@ async def main() -> None:
             annotation_id = cur.lastrowid
 
         # Wipe previous demo stories (rerun-safe), then share one of each kind
-        await db.execute("DELETE FROM stories WHERE user_id = ?", (mira_id,))
+        await db.execute(
+            "DELETE FROM stories WHERE user_id IN (?, ?)", (mira_id, jonas_id)
+        )
         cur = await db.execute(
             """INSERT INTO stories (user_id, kind, book_id, chapter_index, session_id,
                                     paragraph_start, paragraph_end, caption)
@@ -146,12 +179,37 @@ async def main() -> None:
                 "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
                 (story_id, jonas_id, body),
             )
+
+        # Chapter-4 sentence-anchored shared notes (WeRead surface)
+        if len(chapters) > 4:
+            ch4_paras = [p for p in chapters[4].text.split("\n\n") if p.strip()]
+            notes = [
+                (mira_id, "这一句读得人心里一颤 — 停下来抄在了本子上。(demo)", "yellow"),
+                (jonas_id, "Hier wird der Ton plötzlich dunkler — großartiger Übergang. (demo)", "blue"),
+                (mira_id, "反复读了三遍，还是觉得妙。(demo)", "green"),
+            ]
+            for para, (uid, note, color) in zip(ch4_paras, notes):
+                sentence = _first_sentence(para)
+                if not sentence:
+                    continue
+                ann_id = await _upsert_annotation(db, uid, book_id, 4, sentence, note, color)
+                cur = await db.execute(
+                    "INSERT INTO stories (user_id, kind, book_id, chapter_index, annotation_id, caption) "
+                    "VALUES (?, 'note', ?, 4, ?, NULL)",
+                    (uid, book_id, ann_id),
+                )
+                other = jonas_id if uid == mira_id else mira_id
+                await db.execute(
+                    "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
+                    (cur.lastrowid, other, "说到点子上了。(demo)" if other == mira_id else "完全同意！(demo)"),
+                )
         await db.commit()
 
     print(f"Seeded demo stories on book {book_id} ({title}):")
     print(f"  - Mira's translation story #{translation_story_id} (paragraph 1, session '诗意版 (demo)')")
     print(f"  - Mira's note story #{note_story_id}")
     print("  - Jonas commented on both")
+    print("  - 3 sentence-anchored shared notes on chapter 5 (index 4) with cross-comments")
     print("Open the book, enable translation, and tick 'Show others' shares' — or visit /discover.")
 
 

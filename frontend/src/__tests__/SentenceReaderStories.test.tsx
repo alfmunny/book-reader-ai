@@ -54,3 +54,43 @@ test("without storyCounts nothing story-related renders", () => {
   renderReader();
   expect(screen.queryByTestId("story-marker-0")).toBeNull();
 });
+
+// ── Sentence-anchored shared notes (WeRead pattern, owner 2026-08-27) ──────
+
+test("shared-note sentence gets the dashed underline and a count dot", () => {
+  const onSharedNotesClick = jest.fn();
+  renderReader({
+    sharedNotes: [{ sentenceText: "Die Sonne tönt, nach alter Weise.", count: 1 }],
+    onSharedNotesClick,
+  });
+  const dot = screen.getByTestId("shared-notes-dot-0");
+  expect(dot).toHaveTextContent("1");
+  expect(dot).toHaveAccessibleName("1 shared note on this sentence");
+  // Dashed (not the vocab dotted) decoration on the sentence span
+  const seg = document.querySelector('[data-seg="0"]') as HTMLElement;
+  expect(seg.className).toContain("decoration-dashed");
+  expect(seg.className).not.toContain("decoration-dotted");
+  fireEvent.click(dot);
+  expect(onSharedNotesClick).toHaveBeenCalledWith(
+    "Die Sonne tönt, nach alter Weise.",
+    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+  );
+});
+
+test("a fragment anchor still marks its containing sentence", () => {
+  renderReader({
+    sharedNotes: [{ sentenceText: "nach alter Weise", count: 2 }],
+    onSharedNotesClick: jest.fn(),
+  });
+  expect(screen.getByTestId("shared-notes-dot-0")).toHaveTextContent("2");
+});
+
+test("sentences without shared notes stay undecorated", () => {
+  renderReader({
+    sharedNotes: [{ sentenceText: "Die Sonne tönt, nach alter Weise.", count: 1 }],
+    onSharedNotesClick: jest.fn(),
+  });
+  expect(screen.queryByTestId("shared-notes-dot-1")).toBeNull();
+  const seg1 = document.querySelector('[data-seg="1"]') as HTMLElement;
+  expect(seg1.className).not.toContain("decoration-dashed");
+});

@@ -54,6 +54,7 @@ jest.mock("@/lib/settings", () => ({
     chatFontSize: "xs",
     translationProvider: "auto",
     versionProviderDefault: "deepseek",
+    showOthersShares: false,
     fontSize: "base",
     theme: "light",
   }),
@@ -365,4 +366,13 @@ describe("ProfilePage — user with picture (line ~149)", () => {
     expect(img.src).toContain("bob.jpg");
     expect(img.alt).toBe("Bob");
   });
+});
+
+test("Community shares toggle persists the profile-level opt-in", async () => {
+  const { saveSettings } = require("@/lib/settings");
+  render(<ProfilePage />);
+  const toggle = await screen.findByRole("checkbox", { name: /Community shares/ });
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  expect(saveSettings).toHaveBeenCalledWith({ showOthersShares: true });
 });

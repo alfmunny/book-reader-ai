@@ -332,6 +332,12 @@ interface Props {
    *  when the reader opted in via "Show others' shares" (parent gates this). */
   storyCounts?: Record<number, number>;
   onOpenStories?: (paragraphIdx: number) => void;
+  /** Shared NOTE anchors (sentence-level, WeRead pattern). Marked with a
+   *  dashed amber underline — deliberately distinct from the dotted vocab
+   *  underline — plus a small superscript count dot that opens the panel,
+   *  so plain sentence clicks keep driving TTS seek. */
+  sharedNotes?: Array<{ sentenceText: string; count: number }>;
+  onSharedNotesClick?: (sentenceText: string, position: { x: number; y: number }) => void;
   /** Sentence text to scroll to and briefly highlight. */
   scrollTargetSentence?: string;
   /**
@@ -598,6 +604,8 @@ export default function SentenceReader({
   onShareParagraph,
   storyCounts,
   onOpenStories,
+  sharedNotes,
+  onSharedNotesClick,
   onAnnotationClick,
   chapterIndex = 0,
   annotations,
@@ -1055,6 +1063,19 @@ export default function SentenceReader({
           // with a note" — multi-note rendering is a separate follow-up.
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           const selectedClass = selectedSentenceFlatIdx === seg.flatIdx ? "ring-2 ring-blue-500 bg-blue-50 rounded" : "";
+          // Shared notes anchored on this sentence (other readers' thoughts).
+          // An anchor is the sharer's selection — may be the whole sentence
+          // or a fragment of it — so containment in either direction matches.
+          const segSharedCount = sharedNotes?.reduce(
+            (n, sn) =>
+              seg.text.includes(sn.sentenceText) || sn.sentenceText.includes(seg.text)
+                ? n + sn.count
+                : n,
+            0,
+          ) ?? 0;
+          const sharedClass = segSharedCount > 0
+            ? "underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4"
+            : "";
           // Keyboard accessibility for annotated segments (WCAG 2.1.1 / #2553):
           // A span with an existing annotation is an interactive control — keyboard
           // users must be able to focus it and activate it to edit or delete it.
@@ -1107,7 +1128,7 @@ export default function SentenceReader({
               onPointerUp={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
               onPointerCancel={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
               onPointerMove={(onWordTap || onAnnotate) ? handlePointerMove : undefined}
-              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${selectedClass} ${extraClass}`}
+              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${selectedClass} ${sharedClass} ${extraClass}`}
             >
               {wordSelectMode && seg.flatIdx === selectedSentenceFlatIdx
                 ? buildWordSelectContent(seg.text, selectedWordIdx)
@@ -1126,6 +1147,28 @@ export default function SentenceReader({
                       onVocabWordClick(word, seg.text, target.getBoundingClientRect());
                     } : undefined,
                   )}
+              {segSharedCount > 0 && onSharedNotesClick && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  data-testid={`shared-notes-dot-${seg.flatIdx}`}
+                  aria-label={`${segSharedCount} shared note${segSharedCount === 1 ? "" : "s"} on this sentence`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSharedNotesClick(seg.text, { x: e.clientX, y: e.clientY });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
+                    onSharedNotesClick(seg.text, { x: rect.left, y: rect.bottom });
+                  }}
+                  className="inline-flex items-center justify-center align-super text-[9px] font-medium text-amber-700 bg-amber-100 rounded-full px-1 ml-0.5 cursor-pointer hover:bg-amber-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  {segSharedCount}
+                </span>
+              )}
               {trailingSpace ? " " : ""}
             </span>
           );

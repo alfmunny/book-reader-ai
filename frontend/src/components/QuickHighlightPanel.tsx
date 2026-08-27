@@ -22,6 +22,10 @@ interface Props {
   onSaved: (annotation: Annotation) => void;
   onDeleted: (id: number) => void;
   onOpenNote?: () => void;
+  /** Other readers' shared notes on this sentence (WeRead beside-your-note
+   *  pattern, #2752). Rendered as a row that opens the shared-notes panel. */
+  sharedCount?: number;
+  onShowShared?: () => void;
 }
 
 export default function QuickHighlightPanel({
@@ -34,6 +38,8 @@ export default function QuickHighlightPanel({
   onSaved,
   onDeleted,
   onOpenNote,
+  sharedCount,
+  onShowShared,
 }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +211,15 @@ export default function QuickHighlightPanel({
       <p role="alert" className="text-xs text-red-600 bg-white border border-red-200 rounded-lg px-2.5 py-1.5 shadow-sm">
         {error}
       </p>
+    )}
+    {!!sharedCount && onShowShared && (
+      <button
+        onClick={onShowShared}
+        data-testid="quick-panel-shared-notes"
+        className="text-xs text-amber-700 bg-white border border-amber-200 rounded-lg px-2.5 py-1.5 shadow-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+      >
+        {sharedCount} shared note{sharedCount === 1 ? "" : "s"} from other readers →
+      </button>
     )}
     </div>
   );

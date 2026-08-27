@@ -65,6 +65,16 @@ interface Props {
   onSaveMyNote?: (text: string) => Promise<void>;
   /** Remove the reader's highlight + note on this sentence. */
   onDeleteMyNote?: () => Promise<void>;
+  /** The reader's OWN renderings of this paragraph, pinned first — every
+   *  local version, badged Private or Posted (owner, 2026-08-29). A posted
+   *  card opens its post's detail; private ones are managed in the sidebar. */
+  myVersions?: Array<{
+    sessionName: string;
+    model?: string | null;
+    text: string;
+    posted: boolean;
+    storyId?: number;
+  }>;
   /** Bottom publish box (paragraph posts): caption in, one tap to post. */
   composer?: {
     placeholder: string;
@@ -89,6 +99,7 @@ export default function StoryPanel({
   annotationBar,
   onSaveMyNote,
   onDeleteMyNote,
+  myVersions,
   composer,
   currentUserId,
   isAdmin,
@@ -521,9 +532,42 @@ export default function StoryPanel({
         </div>
       ) : (
         <div className="overflow-y-auto px-4 py-3 space-y-4">
-          {stories.length === 0 && composer && (
+          {stories.length === 0 && (myVersions?.length ?? 0) === 0 && composer && (
             <p className="text-xs text-stone-500 italic" data-testid="posts-empty">{composer.emptyText}</p>
           )}
+          {myVersions?.map((v, i) => (
+            <div
+              key={`mine-${i}`}
+              role={v.posted && v.storyId ? "button" : undefined}
+              tabIndex={v.posted && v.storyId ? 0 : undefined}
+              aria-label={v.posted && v.storyId ? `Open my post from ${v.sessionName}` : undefined}
+              onClick={v.posted && v.storyId ? () => setView({ mode: "story", storyId: v.storyId! }) : undefined}
+              onKeyDown={v.posted && v.storyId ? (e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                setView({ mode: "story", storyId: v.storyId! });
+              } : undefined}
+              className={`rounded-lg border border-amber-200 bg-amber-50/50 p-3 ${
+                v.posted && v.storyId ? "cursor-pointer hover:bg-amber-100/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
+              }`}
+              data-testid={`my-version-${i}`}
+            >
+              <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-stone-500">
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-900">My version</span>
+                <span className="font-medium text-ink">{v.sessionName}</span>
+                {v.model && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{v.model}</span>
+                )}
+                <span className="flex-1" />
+                {v.posted ? (
+                  <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">Posted</span>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500">Private</span>
+                )}
+              </div>
+              <p className="mt-1.5 text-sm font-serif text-ink">{v.text}</p>
+            </div>
+          ))}
           {myNote && (
             <div
               role={variant === "sentence" ? "button" : undefined}
@@ -552,7 +596,9 @@ export default function StoryPanel({
               </p>
             </div>
           )}
-          {stories.map(renderStoryCard)}
+          {stories
+            .filter((st) => !myVersions?.some((v) => v.storyId === st.id))
+            .map(renderStoryCard)}
         </div>
       )}
 

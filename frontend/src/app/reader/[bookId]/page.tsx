@@ -390,6 +390,7 @@ export default function ReaderPage() {
     }
     return map;
   }, [chapterStories]);
+
   const postParagraphs = useMemo(
     () => new Set(Object.keys(storiesByPara).map(Number)),
     [storiesByPara],
@@ -434,6 +435,30 @@ export default function ReaderPage() {
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   // ── Translation sessions (design: docs/design/user-translations.md) ──
   const [translationSessions, setTranslationSessions] = useState<TranslationSession[]>([]);
+  const [myParaVersions, setMyParaVersions] = useState<Array<{
+    sessionId: number; sessionName: string; model?: string | null; text: string;
+  }>>([]);
+  useEffect(() => {
+    if (!postsDialog || !session?.backendToken) {
+      setMyParaVersions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const mine: Array<{ sessionId: number; sessionName: string; model?: string | null; text: string }> = [];
+      for (const ts of translationSessions) {
+        if (!ts.coverage?.[String(chapterIndex)]) continue;
+        try {
+          const ch = await getSessionChapter(ts.id, chapterIndex);
+          const para = ch.paragraphs[String(postsDialog.paraIdx)];
+          if (para?.text) mine.push({ sessionId: ts.id, sessionName: ts.name, model: para.model, text: para.text });
+        } catch { /* skip this version */ }
+      }
+      if (!cancelled) setMyParaVersions(mine);
+    })();
+    return () => { cancelled = true; };
+  }, [postsDialog, translationSessions, chapterIndex, session?.backendToken]);
+
   const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
   const [sessionChapter, setSessionChapter] = useState<SessionChapter | null>(null);
   const [sessionTranslating, setSessionTranslating] = useState(false);
@@ -2158,6 +2183,12 @@ export default function ReaderPage() {
               title="Posts on this paragraph"
               variant="sentence"
               position={postsDialog.position}
+              myVersions={myParaVersions.map((v) => {
+                const post = (storiesByPara[postsDialog.paraIdx] ?? []).find(
+                  (st) => st.user_id === session?.backendUser?.id && st.session_id === v.sessionId,
+                );
+                return { sessionName: v.sessionName, model: v.model, text: v.text, posted: !!post, storyId: post?.id };
+              })}
               composer={activeSession ? {
                 placeholder: "Say something about your rendering (optional)…",
                 submitLabel: "Publish my translation as a post",

@@ -281,3 +281,24 @@ test("tapping a translation post opens its detail with the rendering", () => {
   expect(detail).toHaveTextContent("诗意版");
   expect(detail).toHaveTextContent("deepseek-v4-flash");
 });
+
+test("my versions pin first with Private/Posted badges; posted opens its post, duplicate filtered", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [{ ...TRANSLATION_STORY, user_id: 9 }], // my own published post
+    myVersions: [
+      { sessionName: "诗意版", model: "deepseek-v4-flash", text: "太阳依着古老的方式轰鸣。", posted: true, storyId: 1 },
+      { sessionName: "直译版", model: "deepseek-v4-flash", text: "太阳轰鸣如常。", posted: false },
+    ],
+  });
+  const posted = screen.getByTestId("my-version-0");
+  expect(posted).toHaveTextContent("Posted");
+  const priv = screen.getByTestId("my-version-1");
+  expect(priv).toHaveTextContent("Private");
+  expect(priv).not.toHaveAttribute("role");
+  // My published post is represented by the pinned card, not duplicated below
+  expect(screen.queryByTestId("story-1")).toBeNull();
+  // Tapping the posted card opens the post's detail
+  fireEvent.click(screen.getByRole("button", { name: "Open my post from 诗意版" }));
+  expect(screen.getByTestId("story-detail")).toBeInTheDocument();
+});

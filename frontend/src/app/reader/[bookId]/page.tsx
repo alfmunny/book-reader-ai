@@ -2112,7 +2112,20 @@ export default function ReaderPage() {
             <StoryPanel
               stories={sharedNotesStories}
               paragraphIndex={0}
-              title="Shared notes on this sentence"
+              title="Notes on this sentence"
+              variant="sentence"
+              myNote={(() => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex && a.note_text &&
+                    (sharedNotesFor.sentenceText.includes(a.sentence_text.trim()) ||
+                     a.sentence_text.trim().includes(sharedNotesFor.sentenceText)),
+                );
+                return own ? {
+                  text: own.note_text,
+                  authorName: session?.backendUser?.name ?? "You",
+                  picture: session?.backendUser?.picture,
+                } : null;
+              })()}
               position={sharedNotesFor.position}
               currentUserId={session?.backendUser?.id}
               onClose={() => setSharedNotesFor(null)}

@@ -42,6 +42,11 @@ interface Props {
   /** Anchor point (viewport coords). On desktop the panel pops up beside it,
    *  WeRead-style; small screens keep the bottom sheet. */
   position?: { x: number; y: number } | null;
+  /** "sentence" = the WeRead notes list: no quote (the sentence is right
+   *  there), no discussion UI (likes/comments come with track B). */
+  variant?: "sentence";
+  /** The reader's own note on this sentence — pinned on top, "My note". */
+  myNote?: { text: string; authorName: string; picture?: string | null } | null;
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -54,6 +59,8 @@ export default function StoryPanel({
   paragraphIndex,
   title,
   position,
+  variant,
+  myNote,
   currentUserId,
   isAdmin,
   onClose,
@@ -153,6 +160,17 @@ export default function StoryPanel({
       )}
 
       <div className="overflow-y-auto px-4 py-3 space-y-4">
+        {myNote && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3" data-testid="my-note">
+            <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
+              <Avatar name={myNote.authorName} picture={myNote.picture} />
+              <span className="font-medium text-ink">{myNote.authorName}</span>
+              <span className="flex-1" />
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-900">My note</span>
+            </div>
+            <p className="mt-1.5 text-sm font-serif text-ink">{myNote.text}</p>
+          </div>
+        )}
         {stories.map((story) => (
           <div key={story.id} className="rounded-lg border border-amber-100 p-3" data-testid={`story-${story.id}`}>
             <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-stone-500">
@@ -190,9 +208,11 @@ export default function StoryPanel({
               </div>
             ) : (
               <div className="mt-1.5">
-                <blockquote className="text-xs text-stone-500 border-l-2 border-amber-200 pl-2 italic">
-                  {story.sentence_text}
-                </blockquote>
+                {variant !== "sentence" && (
+                  <blockquote className="text-xs text-stone-500 border-l-2 border-amber-200 pl-2 italic">
+                    {story.sentence_text}
+                  </blockquote>
+                )}
                 {story.note_text && <p className="mt-1 text-sm font-serif text-ink">{story.note_text}</p>}
               </div>
             )}
@@ -201,12 +221,14 @@ export default function StoryPanel({
               <p className="mt-1.5 text-xs text-stone-600">{story.caption}</p>
             )}
 
-            <button
-              onClick={() => setOpenThread(openThread === story.id ? null : story.id)}
-              className="mt-2 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-            >
-              {openThread === story.id ? "Hide discussion" : `Discussion (${story.comment_count})`}
-            </button>
+            {variant !== "sentence" && (
+              <button
+                onClick={() => setOpenThread(openThread === story.id ? null : story.id)}
+                className="mt-2 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                {openThread === story.id ? "Hide discussion" : `Discussion (${story.comment_count})`}
+              </button>
+            )}
 
             {openThread === story.id && (
               <div className="mt-2 space-y-2" data-testid={`story-thread-${story.id}`}>

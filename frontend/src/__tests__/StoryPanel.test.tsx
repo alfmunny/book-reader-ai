@@ -126,3 +126,20 @@ test("without a position the panel keeps the corner/bottom-sheet layout", () => 
   expect(panel.style.left).toBe("");
   expect(panel.className).toContain("bottom-0");
 });
+
+test("sentence variant: my note pinned on top, no quote, no discussion UI", () => {
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "my own thought", authorName: "Alfmunny", picture: null },
+    stories: [NOTE_STORY],
+  });
+  const mine = screen.getByTestId("my-note");
+  expect(mine).toHaveTextContent("My note");
+  expect(mine).toHaveTextContent("my own thought");
+  // Pinned card renders before the others in the list
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.innerHTML.indexOf("my own thought")).toBeLessThan(panel.innerHTML.indexOf("wonderful opening"));
+  // No quote (the sentence is visible in the text) and no discussion yet
+  expect(screen.queryByText("Die Sonne tönt.")).toBeNull();
+  expect(screen.queryByText(/Discussion/)).toBeNull();
+});

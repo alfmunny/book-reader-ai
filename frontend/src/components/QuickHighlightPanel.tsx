@@ -218,7 +218,7 @@ export default function QuickHighlightPanel({
         data-testid="quick-panel-shared-notes"
         className="text-xs text-amber-700 bg-white border border-amber-200 rounded-lg px-2.5 py-1.5 shadow-sm hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
       >
-        {sharedCount} shared note{sharedCount === 1 ? "" : "s"} from other readers →
+        Shared notes from other readers →
       </button>
     )}
     </div>

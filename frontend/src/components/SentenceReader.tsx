@@ -1092,15 +1092,18 @@ export default function SentenceReader({
           // A span with an existing annotation is an interactive control — keyboard
           // users must be able to focus it and activate it to edit or delete it.
           const isAnnotationInteractive = !!(showAnnotations && fullSegmentAnnotation && onAnnotationClick);
+          // A shared-note sentence without an own annotation is itself the
+          // tap target (no count dot — WeRead style, owner 2026-08-28).
+          const isSharedInteractive = !isAnnotationInteractive && segSharedCount > 0 && !!onSharedNotesClick;
           return (
             <span
               key={seg.flatIdx}
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
-              role={isAnnotationInteractive ? "button" : undefined}
-              tabIndex={isAnnotationInteractive ? 0 : undefined}
-              aria-label={isAnnotationInteractive ? (segAnns.length > 1 ? `${segAnns.length} annotations on: ${seg.text.slice(0, 80)}. Press Enter to edit first annotation.` : `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.`) : undefined}
+              role={isAnnotationInteractive || isSharedInteractive ? "button" : undefined}
+              tabIndex={isAnnotationInteractive || isSharedInteractive ? 0 : undefined}
+              aria-label={isAnnotationInteractive ? (segAnns.length > 1 ? `${segAnns.length} annotations on: ${seg.text.slice(0, 80)}. Press Enter to edit first annotation.` : `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.`) : isSharedInteractive ? `Shared notes on: ${seg.text.slice(0, 80)}. Press Enter to view.` : undefined}
               onKeyDown={isAnnotationInteractive ? (e: React.KeyboardEvent<HTMLSpanElement>) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 e.preventDefault();
@@ -1109,6 +1112,11 @@ export default function SentenceReader({
                   x: rect.left + rect.width / 2,
                   y: rect.bottom,
                 });
+              } : isSharedInteractive ? (e: React.KeyboardEvent<HTMLSpanElement>) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
+                onSharedNotesClick!(seg.text, { x: rect.left + rect.width / 2, y: rect.bottom });
               } : undefined}
               onClick={(e) => {
                 if (disabled || !isSegmentLoaded(seg)) return;
@@ -1131,6 +1139,10 @@ export default function SentenceReader({
                     onAnnotationClick(fullSegmentAnnotation, { x: e.clientX, y: e.clientY });
                     return;
                   }
+                }
+                if (isSharedInteractive) {
+                  onSharedNotesClick!(seg.text, { x: e.clientX, y: e.clientY });
+                  return;
                 }
                 if (isPlaying || duration > 0) {
                   onSegmentClick(seg.startTime, seg.text);
@@ -1159,28 +1171,6 @@ export default function SentenceReader({
                       onVocabWordClick(word, seg.text, target.getBoundingClientRect());
                     } : undefined,
                   )}
-              {segSharedCount > 0 && onSharedNotesClick && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  data-testid={`shared-notes-dot-${seg.flatIdx}`}
-                  aria-label={`${segSharedCount} shared note${segSharedCount === 1 ? "" : "s"} on this sentence`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSharedNotesClick(seg.text, { x: e.clientX, y: e.clientY });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== "Enter" && e.key !== " ") return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
-                    onSharedNotesClick(seg.text, { x: rect.left, y: rect.bottom });
-                  }}
-                  className="inline-flex items-center justify-center align-super text-[9px] font-medium text-amber-700 bg-amber-100 rounded-full px-1 ml-0.5 cursor-pointer hover:bg-amber-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  {segSharedCount}
-                </span>
-              )}
               {trailingSpace ? " " : ""}
             </span>
           );

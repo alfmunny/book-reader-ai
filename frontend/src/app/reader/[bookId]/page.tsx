@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, Story, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -2106,21 +2106,46 @@ export default function ReaderPage() {
                   picture: session?.backendUser?.picture,
                 } : null;
               })()}
-              onEditMyNote={(() => {
+              annotationBar={(() => {
                 const own = annotations.find(
                   (a) => a.chapter_index === chapterIndex &&
                     (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
-                return own ? () => {
-                  // Straight to the note editor — not the highlight popover
-                  // (owner, 2026-08-28: the popover here was redundant).
-                  setSharedNotesFor(null);
-                  setAnnotationPanel({
-                    sentenceText: own.sentence_text,
-                    chapterIndex: own.chapter_index,
-                  });
-                } : undefined;
+                return {
+                  hasAnnotation: !!own,
+                  existingColor: own?.color ?? null,
+                  onColor: async (color: "yellow" | "blue" | "green" | "pink") => {
+                    try {
+                      if (own) {
+                        const saved = await updateAnnotation(own.id, { color, note_text: own.note_text });
+                        setAnnotations((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+                      } else {
+                        const saved = await createAnnotation({
+                          book_id: Number(bookId),
+                          chapter_index: chapterIndex,
+                          sentence_text: sharedNotesFor.sentenceText,
+                          note_text: "",
+                          color,
+                        });
+                        setAnnotations((prev) => [...prev, saved]);
+                      }
+                    } catch { /* transient — next tap retries */ }
+                  },
+                  onNote: () => {
+                    setSharedNotesFor(null);
+                    setAnnotationPanel({
+                      sentenceText: own?.sentence_text ?? sharedNotesFor.sentenceText,
+                      chapterIndex: own?.chapter_index ?? chapterIndex,
+                    });
+                  },
+                  onDelete: own ? async () => {
+                    try {
+                      await deleteAnnotation(own.id);
+                      setAnnotations((prev) => prev.filter((a) => a.id !== own.id));
+                    } catch { /* transient — next tap retries */ }
+                  } : undefined,
+                };
               })()}
               position={sharedNotesFor.position}
               currentUserId={session?.backendUser?.id}

@@ -19,7 +19,8 @@ import {
   deleteStory,
   deleteStoryComment,
 } from "@/lib/api";
-import { CloseIcon, TrashIcon, EditIcon } from "@/components/Icons";
+import { CloseIcon, TrashIcon, NoteIcon } from "@/components/Icons";
+import { COLORS } from "@/components/QuickHighlightPanel";
 
 /** Small round author avatar: picture when the account has one, an
  *  initial-letter disc otherwise. */
@@ -49,8 +50,15 @@ interface Props {
   variant?: "sentence";
   /** The reader's own note on this sentence — pinned on top, "My note". */
   myNote?: { text: string; authorName: string; picture?: string | null } | null;
-  /** Opens the reader's highlight editor (color / note / delete). */
-  onEditMyNote?: () => void;
+  /** WeRead-style action row merged from the highlight popover (owner,
+   *  2026-08-28): colors, write note, delete — one dialog, not two. */
+  annotationBar?: {
+    hasAnnotation: boolean;
+    existingColor?: string | null;
+    onColor: (color: "yellow" | "blue" | "green" | "pink") => void;
+    onNote: () => void;
+    onDelete?: () => void;
+  };
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -65,7 +73,7 @@ export default function StoryPanel({
   position,
   variant,
   myNote,
-  onEditMyNote,
+  annotationBar,
   currentUserId,
   isAdmin,
   onClose,
@@ -193,6 +201,50 @@ export default function StoryPanel({
         </button>
       </div>
 
+      {annotationBar && (
+        <div
+          role="toolbar"
+          aria-label="Highlight options"
+          data-testid="story-panel-toolbar"
+          className="flex items-center gap-2.5 px-4 py-2.5 border-b border-amber-100"
+        >
+          {COLORS.map((c) => (
+            <button
+              key={c.key}
+              title={c.label}
+              aria-label={c.label}
+              aria-pressed={annotationBar.existingColor === c.key}
+              onClick={() => annotationBar.onColor(c.key)}
+              className="min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+            >
+              <span
+                className={`w-6 h-6 rounded-full ${c.bg} border-2 transition-all hover:scale-110 ${
+                  annotationBar.existingColor === c.key ? `${c.border} scale-110` : "border-transparent"
+                }`}
+              />
+            </button>
+          ))}
+          <span className="w-px h-5 bg-amber-100" aria-hidden="true" />
+          <button
+            onClick={annotationBar.onNote}
+            aria-label={myNote ? "Edit note" : "Write note"}
+            className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+          >
+            <NoteIcon className="w-4 h-4" aria-hidden="true" />
+            {myNote ? "Edit note" : "Write note"}
+          </button>
+          {annotationBar.hasAnnotation && annotationBar.onDelete && (
+            <button
+              onClick={annotationBar.onDelete}
+              aria-label="Delete highlight"
+              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+            >
+              <TrashIcon className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      )}
+
       {error && (
         <p className="px-4 py-2 text-xs text-red-700 bg-red-50 border-b border-red-100" role="alert">{error}</p>
       )}
@@ -205,15 +257,6 @@ export default function StoryPanel({
               <span className="font-medium text-ink">{myNote.authorName}</span>
               <span className="flex-1" />
               <span className="px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-900">My note</span>
-              {onEditMyNote && (
-                <button
-                  onClick={onEditMyNote}
-                  aria-label="Edit my highlight and note"
-                  className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-                >
-                  <EditIcon className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
             <p className="mt-1.5 text-sm font-serif text-ink">{myNote.text}</p>
           </div>

@@ -164,14 +164,39 @@ test("sentence variant: my note pinned on top, no quote, no discussion UI", () =
   expect(screen.queryByText(/Discussion/)).toBeNull();
 });
 
-test("pinned my-note card offers the highlight editor", () => {
-  const onEditMyNote = jest.fn();
+test("annotation toolbar merges highlight actions into the dialog", () => {
+  const bar = {
+    hasAnnotation: true,
+    existingColor: "yellow",
+    onColor: jest.fn(),
+    onNote: jest.fn(),
+    onDelete: jest.fn(),
+  };
   renderPanel({
     variant: "sentence",
     myNote: { text: "mine", authorName: "Alfmunny", picture: null },
-    onEditMyNote,
+    annotationBar: bar,
     stories: [NOTE_STORY],
   });
-  fireEvent.click(screen.getByLabelText("Edit my highlight and note"));
-  expect(onEditMyNote).toHaveBeenCalled();
+  const toolbar = screen.getByTestId("story-panel-toolbar");
+  expect(toolbar).toBeInTheDocument();
+  // Current color is marked, picking another reports it
+  expect(screen.getByRole("button", { name: "Yellow" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Blue" }));
+  expect(bar.onColor).toHaveBeenCalledWith("blue");
+  // Note editing and highlight deletion live here too
+  fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+  expect(bar.onNote).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Delete highlight" }));
+  expect(bar.onDelete).toHaveBeenCalled();
+});
+
+test("toolbar without an annotation offers Write note and no delete", () => {
+  renderPanel({
+    variant: "sentence",
+    annotationBar: { hasAnnotation: false, onColor: jest.fn(), onNote: jest.fn() },
+    stories: [NOTE_STORY],
+  });
+  expect(screen.getByRole("button", { name: "Write note" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Delete highlight" })).toBeNull();
 });

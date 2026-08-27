@@ -198,7 +198,7 @@ test("my note opens a DETAIL page like others — edit and delete live there", a
   const detail = screen.getByTestId("my-note-detail");
   expect(detail).toHaveTextContent("old thought");
   expect(detail).toHaveTextContent("Private");
-  expect(detail).toHaveTextContent("post this note to receive comments");
+  expect(detail).toHaveTextContent("tap the badge to post it");
   // Edit → editor prefilled; save returns to the detail
   fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
   const textarea = screen.getByLabelText("My note text") as HTMLTextAreaElement;
@@ -483,37 +483,48 @@ test("private version detail carries the switcher chips and a parallel Comments 
   expect(switcher).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "我的私有版 · mine" })).toHaveAttribute("aria-selected", "true");
   // Parallel comments section explains instead of diverging layouts
-  expect(detail).toHaveTextContent("publish this version as a post to open the discussion");
+  expect(detail).toHaveTextContent("tap the badge to publish");
   // Switch straight to another version — no back-and-forth needed
   fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
   expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
 });
 
-test("private note detail offers Post; posted note detail offers Make private", async () => {
+test("the Private chip is the switch: confirm dialog, then post", async () => {
   const onPost = jest.fn().mockResolvedValue(undefined);
-  const { rerender, props } = renderPanel({
+  const { props } = renderPanel({
     variant: "sentence",
     stories: [],
     myNote: { text: "mine", authorName: "A", picture: null, onPost },
   });
   fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
-  fireEvent.click(screen.getByRole("button", { name: "Post this note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make public" }));
+  // Confirm dialog appears; Cancel aborts without posting
+  expect(screen.getByTestId("visibility-confirm")).toHaveTextContent("Post this note publicly?");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(onPost).not.toHaveBeenCalled();
+  // Confirm flips it
+  fireEvent.click(screen.getByRole("button", { name: "Make public" }));
+  fireEvent.click(screen.getByTestId("visibility-confirm").querySelector("button:last-child") as HTMLElement);
   await waitFor(() => expect(onPost).toHaveBeenCalled());
   expect(props.onChanged).toHaveBeenCalled();
+});
 
+test("the Posted chip flips back to private with confirmation", async () => {
   const onUnpost = jest.fn().mockResolvedValue(undefined);
   (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
-  rerender(
-    <StoryPanel
-      {...props}
-      myNote={{ text: "mine", authorName: "A", picture: null, storyId: 2, onUnpost }}
-    />,
-  );
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myNote: { text: "mine", authorName: "A", picture: null, storyId: 2, onUnpost },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
   fireEvent.click(screen.getByRole("button", { name: "Make private" }));
+  expect(screen.getByTestId("visibility-confirm")).toHaveTextContent("Comments on it will be removed");
+  fireEvent.click(screen.getByTestId("visibility-confirm").querySelector("button:last-child") as HTMLElement);
   await waitFor(() => expect(onUnpost).toHaveBeenCalled());
 });
 
-test("private version detail offers Publish as post", async () => {
+test("private version detail publishes via its chip + confirmation", async () => {
   const onPost = jest.fn().mockResolvedValue(undefined);
   renderPanel({
     variant: "sentence",
@@ -523,18 +534,18 @@ test("private version detail offers Publish as post", async () => {
     ],
   });
   fireEvent.click(screen.getByRole("button", { name: "Open my version V" }));
-  fireEvent.click(screen.getByRole("button", { name: "Publish as post" }));
+  fireEvent.click(screen.getByRole("button", { name: "Make public" }));
+  fireEvent.click(screen.getByTestId("visibility-confirm").querySelector("button:last-child") as HTMLElement);
   await waitFor(() => expect(onPost).toHaveBeenCalled());
 });
 
-test("my posted translation's detail says Make private, not a trash icon", () => {
+test("my posted translation's detail carries the Posted chip switch, no trash", () => {
   renderPanel({
     variant: "sentence",
     stories: [{ ...TRANSLATION_STORY, user_id: 9 }],
     currentUserId: 9,
     commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "" },
   });
-  // Reach my post's detail via the version list
   fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
   fireEvent.click(screen.getByRole("button", { name: "Open translation by Mira" }));
   expect(screen.getByRole("button", { name: "Make private" })).toBeInTheDocument();

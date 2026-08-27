@@ -377,6 +377,10 @@ export default function StoryPanel({
     }
   }
 
+  // The Private/Posted chip IS the visibility switch (owner, 2026-08-31):
+  // tapping it asks for confirmation, then flips.
+  const [confirm, setConfirm] = useState<{ message: string; action: () => Promise<void>; failText: string; label: string } | null>(null);
+
   async function runAction(action: () => Promise<void>, failText: string) {
     if (busy) return;
     setBusy(true);
@@ -544,6 +548,37 @@ export default function StoryPanel({
           </button>
         )}
       </div>
+    );
+  };
+
+  const visibilityChip = (
+    posted: boolean,
+    flip: (() => Promise<void>) | undefined,
+    messages: { toPublic: string; toPrivate: string },
+  ) => {
+    const label = posted ? "Posted" : "Private";
+    const cls = posted
+      ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+      : "bg-stone-100 text-stone-500 border border-stone-200 hover:bg-stone-200";
+    if (!flip) {
+      return <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${cls}`}>{label}</span>;
+    }
+    return (
+      <button
+        onClick={() =>
+          setConfirm({
+            message: posted ? messages.toPrivate : messages.toPublic,
+            action: flip,
+            failText: posted ? "Could not make it private." : "Could not post it.",
+            label: posted ? "Make private" : "Make public",
+          })
+        }
+        aria-label={posted ? "Make private" : "Make public"}
+        title={posted ? "Tap to make private" : "Tap to post publicly"}
+        className={`px-1.5 py-0.5 rounded-full text-[11px] cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${cls}`}
+      >
+        {label}
+      </button>
     );
   };
 
@@ -826,11 +861,10 @@ export default function StoryPanel({
               <p className="text-sm font-medium text-ink">{myNote.authorName}</p>
               <p className="text-[11px] text-stone-400">My note</p>
             </div>
-            {myNote.storyId != null ? (
-              <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 text-[11px]">Posted</span>
-            ) : (
-              <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
-            )}
+            {visibilityChip(myNote.storyId != null, myNote.storyId != null ? myNote.onUnpost : myNote.onPost, {
+              toPublic: "Post this note publicly? Other readers of this book will see it.",
+              toPrivate: "Make this note private again? Comments on it will be removed.",
+            })}
             <button
               onClick={() => { setNoteDraft(myNote.text); setView({ mode: "editMine" }); }}
               aria-label="Edit my note"
@@ -853,35 +887,13 @@ export default function StoryPanel({
             {myNote.text || <span className="text-stone-400 italic">Highlight — no note text yet.</span>}
           </p>
           {myNote.storyId != null ? (
-            <>
-              {myNote.onUnpost && (
-                <button
-                  onClick={() => runAction(myNote.onUnpost!, "Could not take the note private.")}
-                  disabled={busy}
-                  className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  Make private
-                </button>
-              )}
-              <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
-                <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
-                {topLevel.map((c) => commentRow(c, { clickable: true, from: "myNote" }))}
-                {commentComposer("Add a comment…")}
-              </div>
-            </>
-          ) : (
-            <div className="space-y-2">
-              {myNote.onPost && (
-                <button
-                  onClick={() => runAction(myNote.onPost!, "Could not post the note.")}
-                  disabled={busy}
-                  className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  {busy ? "Posting…" : "Post this note"}
-                </button>
-              )}
-              <p className="text-[11px] text-stone-400">Private — post this note to receive comments.</p>
+            <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
+              <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
+              {topLevel.map((c) => commentRow(c, { clickable: true, from: "myNote" }))}
+              {commentComposer("Add a comment…")}
             </div>
+          ) : (
+            <p className="text-[11px] text-stone-400">Private — tap the badge to post it and receive comments.</p>
           )}
         </div>
       ) : view.mode === "editMine" ? (
@@ -929,21 +941,15 @@ export default function StoryPanel({
             {detailVersion.model && (
               <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{detailVersion.model}</span>
             )}
-            <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
+            {visibilityChip(false, detailVersion.onPost, {
+              toPublic: "Publish this rendering publicly? Other readers of this book will see it.",
+              toPrivate: "",
+            })}
           </div>
           <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
-          {detailVersion.onPost && (
-            <button
-              onClick={() => runAction(detailVersion.onPost!, "Could not publish the post.")}
-              disabled={busy}
-              className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              {busy ? "Publishing…" : "Publish as post"}
-            </button>
-          )}
           <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
             <p className="text-[11px] font-medium text-stone-500">Comments</p>
-            <p className="text-[11px] text-stone-400">Private — publish this version as a post to open the discussion.</p>
+            <p className="text-[11px] text-stone-400">Private — tap the badge to publish and open the discussion.</p>
           </div>
         </div>
       ) : view.mode === "story" && detailStory ? (
@@ -957,15 +963,10 @@ export default function StoryPanel({
                 <p className="text-[11px] text-stone-400">{detailStory.created_at.slice(0, 10)}</p>
               )}
             </div>
-            {detailStory.user_id === currentUserId && (
-              <button
-                onClick={() => handleDeleteStory(detailStory.id)}
-                disabled={busy}
-                className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                Make private
-              </button>
-            )}
+            {detailStory.user_id === currentUserId && visibilityChip(true, async () => handleDeleteStory(detailStory.id), {
+              toPublic: "",
+              toPrivate: "Make this post private again? Comments on it will be removed.",
+            })}
             {detailStory.user_id !== currentUserId && isAdmin && (
               <button
                 onClick={() => handleDeleteStory(detailStory.id)}
@@ -1076,6 +1077,33 @@ export default function StoryPanel({
           {stories
             .filter((st) => st.id !== myNote?.storyId && !myVersions?.some((v) => v.storyId === st.id))
             .map(renderStoryCard)}
+        </div>
+      )}
+
+      {confirm && (
+        <div className="absolute inset-0 z-[60] bg-black/30 flex items-center justify-center p-4 rounded-xl" role="dialog" aria-label="Confirm" data-testid="visibility-confirm">
+          <div className="bg-white rounded-lg border border-amber-200 p-4 w-full max-w-[20rem] space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
+            <p className="text-sm text-ink">{confirm.message}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirm(null)}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const c = confirm;
+                  setConfirm(null);
+                  await runAction(c.action, c.failText);
+                }}
+                disabled={busy}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                {confirm.label}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

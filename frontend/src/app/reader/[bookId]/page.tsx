@@ -2209,23 +2209,33 @@ export default function ReaderPage() {
                 },
               } : undefined}
               commentsTab={(() => {
-                // Comments is the DEFAULT tab (owner design review,
-                // 2026-08-29): the thread of the rendering being read.
-                const paraPosts = storiesByPara[postsDialog.paraIdx] ?? [];
-                const myPost = activeSession
-                  ? paraPosts.find(
-                      (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
-                    )
-                  : undefined;
-                // Fall back to the paragraph's top public post so the tab
-                // always lands on a real thread when any post exists
-                // (owner report, 2026-08-30: all-private versions left the
-                // tab with nothing to comment on).
+                // The Comments tab is the CURRENT rendering's comment list
+                // (owner design, 2026-08-30): editorial paragraphs are
+                // anchors of their own; a posted version anchors on its
+                // post; a private version has no public anchor yet.
+                const langLabel = LANGUAGES.find((l) => l.code === translationLang)?.label ?? translationLang;
+                if (!activeSession) {
+                  return {
+                    label: `Editorial · ${langLabel} · this paragraph`,
+                    anchor: {
+                      kind: "editorial" as const,
+                      editorial: {
+                        book_id: Number(bookId),
+                        target_language: translationLang,
+                        chapter_index: chapterIndex,
+                        paragraph_index: postsDialog.paraIdx,
+                      },
+                    },
+                    emptyText: "",
+                  };
+                }
+                const myPost = (storiesByPara[postsDialog.paraIdx] ?? []).find(
+                  (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
+                );
                 return {
-                  storyId: (myPost ?? paraPosts[0])?.id,
-                  emptyText: activeSession
-                    ? "No posts on this paragraph yet — publish your rendering under Other translations to open a discussion."
-                    : "No posts on this paragraph yet.",
+                  label: `${activeSession.name} · this paragraph`,
+                  anchor: myPost ? { kind: "story" as const, storyId: myPost.id } : undefined,
+                  emptyText: "Your rendering isn't posted yet — publish it under Other translations to receive comments.",
                 };
               })()}
               currentUserId={session?.backendUser?.id}

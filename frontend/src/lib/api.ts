@@ -1283,12 +1283,21 @@ export interface Story {
 
 export interface StoryComment {
   id: number;
-  story_id: number;
+  story_id?: number | null;
   user_id: number;
   body: string;
   created_at: string;
   author_name: string;
   author_picture?: string | null;
+  parent_comment_id?: number | null;
+}
+
+/** Anchor for comments on an EDITORIAL paragraph (no story row exists). */
+export interface EditorialCommentAnchor {
+  book_id: number;
+  target_language: string;
+  chapter_index: number;
+  paragraph_index: number;
 }
 
 export function createStory(data: {
@@ -1334,11 +1343,26 @@ export function listStoryComments(storyId: number) {
   return request<{ comments: StoryComment[] }>(`/stories/${storyId}/comments`);
 }
 
-export function addStoryComment(storyId: number, body: string) {
+export function addStoryComment(storyId: number, body: string, parentId?: number) {
   return request<StoryComment>(`/stories/${storyId}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, ...(parentId != null ? { parent_id: parentId } : {}) }),
+  });
+}
+
+export function listEditorialComments(anchor: EditorialCommentAnchor) {
+  const params = new URLSearchParams(
+    Object.fromEntries(Object.entries(anchor).map(([k, v]) => [k, String(v)])),
+  );
+  return request<{ comments: StoryComment[] }>(`/stories/comments/editorial?${params}`);
+}
+
+export function addEditorialComment(anchor: EditorialCommentAnchor, body: string, parentId?: number) {
+  return request<StoryComment>(`/stories/comments/editorial`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}) }),
   });
 }
 

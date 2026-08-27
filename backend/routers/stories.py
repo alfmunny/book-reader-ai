@@ -25,6 +25,8 @@ from services.db import (
     create_story_comment,
     list_story_comments,
     delete_story_comment,
+    create_editorial_comment,
+    list_editorial_comments,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -50,6 +52,16 @@ class StoryCreate(BaseModel):
 
 class CommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+
+
+class EditorialCommentCreate(BaseModel):
+    book_id: int = Field(ge=1)
+    target_language: str = Field(min_length=2, max_length=8)
+    chapter_index: int = Field(ge=0)
+    paragraph_index: int = Field(ge=0)
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
 
 
 async def _require_book(book_id: int, user: dict) -> dict:
@@ -151,6 +163,29 @@ async def unfollow(user_id: int = Path(ge=1), user: dict = Depends(get_current_u
     return {"ok": True}
 
 
+@router.get("/comments/editorial")
+async def editorial_comments(
+    book_id: int = Query(ge=1),
+    target_language: str = Query(min_length=2, max_length=8),
+    chapter_index: int = Query(ge=0),
+    paragraph_index: int = Query(ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Comments anchored on an editorial paragraph (owner design,
+    2026-08-30: every displayed translation paragraph is an anchor)."""
+    await _require_book(book_id, user)
+    return {"comments": await list_editorial_comments(book_id, target_language, chapter_index, paragraph_index)}
+
+
+@router.post("/comments/editorial")
+async def add_editorial_comment(req: EditorialCommentCreate, user: dict = Depends(get_current_user)):
+    await _require_book(req.book_id, user)
+    return await create_editorial_comment(
+        req.book_id, req.target_language, req.chapter_index, req.paragraph_index,
+        user["id"], req.body.strip(), req.parent_id,
+    )
+
+
 @router.delete("/comments/{comment_id}")
 async def remove_comment(comment_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
     if not await delete_story_comment(comment_id, user["id"], is_admin=user.get("role") == "admin"):
@@ -175,7 +210,7 @@ async def add_comment(
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     await _require_book(story["book_id"], user)
-    return await create_story_comment(story_id, user["id"], req.body.strip())
+    return await create_story_comment(story_id, user["id"], req.body.strip(), req.parent_id)
 
 
 @router.get("/{story_id}/comments")

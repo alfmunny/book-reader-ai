@@ -8,6 +8,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 jest.mock("@/lib/api", () => ({
   listStoryComments: jest.fn(),
   addStoryComment: jest.fn(),
+  listEditorialComments: jest.fn(),
+  addEditorialComment: jest.fn(),
   deleteStory: jest.fn(),
   deleteStoryComment: jest.fn(),
 }));
@@ -332,44 +334,77 @@ test("community translation cards clamp in the list — full text lives in detai
   expect(card.innerHTML).toContain("line-clamp-3");
 });
 
-test("post detail carries the comment thread: read, write, and switch versions", async () => {
+test("Comments tab lists the current rendering's comments; tap one for its thread", async () => {
   (api.listStoryComments as jest.Mock).mockResolvedValue({
-    comments: [{ id: 31, story_id: 1, user_id: 3, body: "有味道", created_at: "", author_name: "Jonas" }],
+    comments: [
+      { id: 31, story_id: 1, user_id: 3, body: "有味道", created_at: "", author_name: "Jonas" },
+      { id: 32, story_id: 1, user_id: 2, body: "谢谢！", created_at: "", author_name: "Mira", parent_comment_id: 31 },
+    ],
   });
   (api.addStoryComment as jest.Mock).mockResolvedValue({
-    id: 32, story_id: 1, user_id: 9, body: "谢谢！", created_at: "", author_name: "Me",
+    id: 33, story_id: 1, user_id: 9, body: "我也来一句", created_at: "", author_name: "Me",
   });
-  const second = { ...TRANSLATION_STORY, id: 5, author_name: "Jonas", session_name: "直译版" };
   renderPanel({
     variant: "sentence",
-    stories: [TRANSLATION_STORY, second],
-    commentsTab: { storyId: 1, emptyText: "none" }, // Comments is the default tab
+    stories: [TRANSLATION_STORY],
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "诗意版 · this paragraph", emptyText: "none" },
     currentUserId: 9,
   });
-  // Landed on the Comments tab with the thread loaded
-  expect(screen.getByRole("tab", { name: "Comments" })).toHaveAttribute("aria-selected", "true");
-  expect(screen.getByTestId("story-detail")).toBeInTheDocument();
-  expect(await screen.findByText("有味道")).toBeInTheDocument();
-  // Write a comment in place
-  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "谢谢！" } });
+  // Landing: the comment LIST of the current rendering (not a version detail)
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+  expect(screen.getByText("诗意版 · this paragraph")).toBeInTheDocument();
+  const row = await screen.findByTestId("comment-31");
+  expect(row).toHaveTextContent("有味道");
+  expect(row).toHaveTextContent("1 reply"); // replies fold into the detail
+  // Post a top-level comment right here
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我也来一句" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "谢谢！"));
-  // Switch to another version via the chip strip
-  fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
-  expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "我也来一句", undefined));
+  // One level deeper: the comment's own thread with replies + reply box
+  fireEvent.click(screen.getByRole("button", { name: "Open comment by Jonas" }));
+  const detail = screen.getByTestId("comment-detail");
+  expect(detail).toHaveTextContent("有味道");
+  expect(detail).toHaveTextContent("Replies (1)");
+  expect(detail).toHaveTextContent("谢谢！");
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回一句" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "回一句", 31));
+  // Back pops one level, to the comment list
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+});
+
+test("editorial anchor: comments load and post against the editorial paragraph", async () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.addEditorialComment as jest.Mock).mockResolvedValue({
+    id: 51, user_id: 9, body: "编辑版这段不错", created_at: "", author_name: "Me",
+  });
+  const editorial = { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: { anchor: { kind: "editorial", editorial }, label: "Editorial · 中文 · this paragraph", emptyText: "" },
+    currentUserId: 9,
+  });
+  await waitFor(() => expect(api.listEditorialComments).toHaveBeenCalledWith(editorial));
+  expect(screen.getByText("No comments yet — be the first.")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "编辑版这段不错" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "编辑版这段不错", undefined));
+  expect(await screen.findByTestId("comment-51")).toBeInTheDocument();
 });
 
 test("Other translations tab swaps to the version list and back", () => {
   renderPanel({
     variant: "sentence",
     stories: [TRANSLATION_STORY],
-    commentsTab: { storyId: 1, emptyText: "none" },
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "none" },
   });
   fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
   expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Other translations" })).toHaveAttribute("aria-selected", "true");
   fireEvent.click(screen.getByRole("tab", { name: "Comments" }));
-  expect(screen.getByTestId("story-detail")).toBeInTheDocument();
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
 });
 
 test("Comments view has no back arrow; list-opened details keep it under Other translations", () => {
@@ -377,7 +412,7 @@ test("Comments view has no back arrow; list-opened details keep it under Other t
   renderPanel({
     variant: "sentence",
     stories: [TRANSLATION_STORY, second],
-    commentsTab: { storyId: 1, emptyText: "none" },
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "none" },
   });
   // Comments landing: tabs are the navigation — no arrow
   expect(screen.queryByTestId("story-panel-back")).toBeNull();
@@ -392,7 +427,7 @@ test("unposted rendering: Comments tab explains and points to the list", () => {
   renderPanel({
     variant: "sentence",
     stories: [TRANSLATION_STORY],
-    commentsTab: { storyId: undefined, emptyText: "Publish first to discuss." },
+    commentsTab: { anchor: undefined, label: "L", emptyText: "Publish first to discuss." },
   });
   expect(screen.getByTestId("comments-empty")).toHaveTextContent("Publish first to discuss.");
   fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));

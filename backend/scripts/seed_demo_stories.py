@@ -340,6 +340,36 @@ async def main() -> None:
                         (post_id, other if k == 0 else author_id, banter[bi % len(banter)]),
                     )
                     bi += 1
+        # Editorial-anchored comments (owner design, 2026-08-30): the
+        # Comments tab lands here when reading the editorial translation.
+        await db.execute(
+            "DELETE FROM story_comments WHERE book_id = ? AND user_id IN (?, ?)",
+            (book_id, mira_id, jonas_id),
+        )
+        editorial_threads = [
+            (0, mira_id, "编辑版这句很稳，但我总觉得少了点韵律。(demo)",
+                [(jonas_id, "稳就是编辑版的职责所在。(demo)")]),
+            (0, jonas_id, "对照原文，这里的信息一点没丢。(demo)", []),
+            (1, mira_id, "这段编辑版处理得比我预想的好。(demo)",
+                [(jonas_id, "同感，几乎无可挑剔。(demo)"), (mira_id, "所以我的版本才要另辟蹊径。(demo)")]),
+            (2, jonas_id, "Hier hätte ich ein anderes Wort gewählt. (demo)",
+                [(mira_id, "哪一个？展开说说。(demo)")]),
+        ]
+        for para_idx, uid, body, replies in editorial_threads:
+            cur = await db.execute(
+                """INSERT INTO story_comments
+                   (book_id, target_language, chapter_index, paragraph_index, user_id, body)
+                   VALUES (?, 'zh', 4, ?, ?, ?)""",
+                (book_id, para_idx, uid, body),
+            )
+            parent = cur.lastrowid
+            for r_uid, r_body in replies:
+                await db.execute(
+                    """INSERT INTO story_comments
+                       (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id)
+                       VALUES (?, 'zh', 4, ?, ?, ?, ?)""",
+                    (book_id, para_idx, r_uid, r_body, parent),
+                )
         await db.commit()
 
     print(f"Seeded demo stories on book {book_id} ({title}):")
@@ -348,6 +378,7 @@ async def main() -> None:
     print("  - Jonas commented on both")
     print("  - 3 sentence-anchored shared notes on chapter 5 (index 4) with cross-comments")
     print(f"  - {posts_made} translation posts on chapter 5 (index 4): Mira 诗意版 + Jonas 直译版")
+    print("  - editorial-anchored comment threads (zh) on chapter-5 paragraphs 1-3, with replies")
     print("Open the book, enable translation, and tick 'Show others' shares' — or visit /discover.")
 
 

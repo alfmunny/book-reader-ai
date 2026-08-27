@@ -4,13 +4,20 @@
  *
  * ONE panel for every share kind — translation renderings and shared notes.
  *
- * The "sentence" variant is a WeRead-style two-view dialog (owner,
- * 2026-08-28): the LIST view shows the highlight-color toolbar, the
- * reader's own note pinned on top, and community notes; tapping a note
- * shifts the window in place to its DETAIL sub-page — back arrow in the
- * corner returns to the list. Editing/deleting your note lives in your
- * note's detail page; comments and likes join the detail page with
- * track B.
+ * The "sentence" variant is a WeRead-style dialog. For paragraph posts it
+ * carries two tabs (owner design, 2026-08-30):
+ *
+ *   Comments            — the comment LIST anchored on the CURRENT
+ *                         rendering's paragraph (editorial included — every
+ *                         displayed translation paragraph is an anchor).
+ *                         Tap a comment → its detail, one level deeper,
+ *                         where the discussion (replies) happens.
+ *   Other translations  — the version list. Tap a version → its detail
+ *                         (rendering + ITS comment list) → tap a comment →
+ *                         detail. Same depth everywhere.
+ *
+ * Editing/deleting your note lives in your note's detail page; likes join
+ * the comment machinery with track B.
  */
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -18,8 +25,11 @@ import { useScrollLock } from "@/lib/useScrollLock";
 import {
   Story,
   StoryComment,
+  EditorialCommentAnchor,
   listStoryComments,
   addStoryComment,
+  listEditorialComments,
+  addEditorialComment,
   deleteStory,
   deleteStoryComment,
 } from "@/lib/api";
@@ -40,11 +50,28 @@ function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: s
   );
 }
 
-type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number } | { mode: "myVersion"; index: number } | { mode: "commentsEmpty" };
+type CommentAnchor =
+  | { kind: "story"; storyId: number }
+  | { kind: "editorial"; editorial: EditorialCommentAnchor };
 
-/** THE discussion thread — one implementation for every surface a thread
- *  appears on (note details, translation details, paragraph-panel cards).
- *  Likes join here once, with track B (owner, 2026-08-29). */
+function anchorId(a: CommentAnchor): string {
+  return a.kind === "story"
+    ? `s:${a.storyId}`
+    : `e:${a.editorial.book_id}:${a.editorial.target_language}:${a.editorial.chapter_index}:${a.editorial.paragraph_index}`;
+}
+
+function loadAnchor(a: CommentAnchor) {
+  return a.kind === "story" ? listStoryComments(a.storyId) : listEditorialComments(a.editorial);
+}
+
+function postToAnchor(a: CommentAnchor, body: string, parentId?: number) {
+  return a.kind === "story"
+    ? addStoryComment(a.storyId, body, parentId)
+    : addEditorialComment(a.editorial, body, parentId);
+}
+
+/** Flat self-loading thread for the paragraph-panel cards (non-sentence
+ *  variant): top-level comments with replies indented, composer below. */
 function StoryDiscussion({
   storyId,
   initialCount,
@@ -92,31 +119,40 @@ function StoryDiscussion({
   async function remove(commentId: number) {
     try {
       await deleteStoryComment(commentId);
-      setComments((c) => (c ?? []).filter((x) => x.id !== commentId));
+      setComments((c) => (c ?? []).filter((x) => x.id !== commentId && x.parent_comment_id !== commentId));
       onChanged();
     } catch {
       setError("Could not delete the comment.");
     }
   }
 
+  const top = (comments ?? []).filter((c) => !c.parent_comment_id);
+  const repliesOf = (id: number) => (comments ?? []).filter((c) => c.parent_comment_id === id);
+  const row = (c: StoryComment, indent: boolean) => (
+    <div key={c.id} className={`text-xs flex items-start gap-1.5 ${indent ? "pl-5" : ""}`}>
+      <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+      <span className="font-medium text-ink">{c.author_name}</span>{" "}
+      <span className="text-stone-600 flex-1">{c.body}</span>
+      {(c.user_id === currentUserId || isAdmin) && (
+        <button
+          onClick={() => remove(c.id)}
+          aria-label="Delete comment"
+          className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="pt-2 border-t border-amber-100 space-y-2" data-testid={testId}>
       <p className="text-[11px] font-medium text-stone-500">Comments ({comments?.length ?? initialCount})</p>
       {error && <p className="text-xs text-red-700" role="alert">{error}</p>}
-      {(comments ?? []).map((c) => (
-        <div key={c.id} className="text-xs flex items-start gap-1.5">
-          <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-          <span className="font-medium text-ink">{c.author_name}</span>{" "}
-          <span className="text-stone-600 flex-1">{c.body}</span>
-          {(c.user_id === currentUserId || isAdmin) && (
-            <button
-              onClick={() => remove(c.id)}
-              aria-label="Delete comment"
-              className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-            >
-              ×
-            </button>
-          )}
+      {top.map((c) => (
+        <div key={c.id} className="space-y-1.5">
+          {row(c, false)}
+          {repliesOf(c.id).map((r) => row(r, true))}
         </div>
       ))}
       <div className="flex gap-1.5">
@@ -141,6 +177,14 @@ function StoryDiscussion({
   );
 }
 
+type View =
+  | { mode: "list" }
+  | { mode: "editMine" }
+  | { mode: "story"; storyId: number }
+  | { mode: "myVersion"; index: number }
+  | { mode: "comments" }
+  | { mode: "comment"; commentId: number; anchor: CommentAnchor; from: "comments" | number };
+
 interface Props {
   stories: Story[];
   /** Paragraph the panel is anchored to (1-based in the title). */
@@ -150,7 +194,7 @@ interface Props {
   /** Anchor point (viewport coords). On desktop the panel pops up near it,
    *  WeRead-style; small screens keep the bottom sheet. */
   position?: { x: number; y: number } | null;
-  /** "sentence" = the WeRead two-view notes dialog described above. */
+  /** "sentence" = the WeRead dialog described above. */
   variant?: "sentence";
   /** The reader's own note on this sentence — pinned on top, "My note".
    *  text is the RAW note_text (may be empty for a bare highlight). */
@@ -164,9 +208,7 @@ interface Props {
   onSaveMyNote?: (text: string) => Promise<void>;
   /** Remove the reader's highlight + note on this sentence. */
   onDeleteMyNote?: () => Promise<void>;
-  /** The reader's OWN renderings of this paragraph, pinned first — every
-   *  local version, badged Private or Posted (owner, 2026-08-29). A posted
-   *  card opens its post's detail; private ones are managed in the sidebar. */
+  /** The reader's OWN renderings of this paragraph, pinned first. */
   myVersions?: Array<{
     sessionName: string;
     model?: string | null;
@@ -183,10 +225,14 @@ interface Props {
     emptyText: string;
     onSubmit: (caption: string) => Promise<void>;
   };
-  /** Two-view posts dialog (owner design review, 2026-08-29): a Comments
-   *  tab (default — the thread of the rendering being READ, when posted)
-   *  and an "Other translations" tab holding the version list. */
-  commentsTab?: { storyId?: number; emptyText: string };
+  /** Two-view posts dialog: the Comments tab's anchor is the CURRENT
+   *  rendering's paragraph — a story post, or the editorial anchor. No
+   *  anchor (private, unposted) shows emptyText instead. */
+  commentsTab?: {
+    anchor?: CommentAnchor;
+    label: string;
+    emptyText: string;
+  };
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -212,15 +258,67 @@ export default function StoryPanel({
   onClose,
   onChanged,
 }: Props) {
-  const [view, setView] = useState<View>(
-    commentsTab
-      ? (commentsTab.storyId != null ? { mode: "story", storyId: commentsTab.storyId } : { mode: "commentsEmpty" })
-      : { mode: "list" },
-  );
+  const [view, setView] = useState<View>(commentsTab ? { mode: "comments" } : { mode: "list" });
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Anchored comments: one cache, loaded per active anchor ──────────────
+  const [commentCache, setCommentCache] = useState<Record<string, StoryComment[]>>({});
+  const [draft, setDraft] = useState("");
+  const activeAnchor: CommentAnchor | null =
+    view.mode === "comments"
+      ? commentsTab?.anchor ?? null
+      : view.mode === "story"
+        ? { kind: "story", storyId: view.storyId }
+        : view.mode === "comment"
+          ? view.anchor
+          : null;
+  const activeKey = activeAnchor ? anchorId(activeAnchor) : null;
+  useEffect(() => {
+    if (!activeKey || !activeAnchor || commentCache[activeKey]) return;
+    let cancelled = false;
+    loadAnchor(activeAnchor)
+      .then((r) => { if (!cancelled) setCommentCache((c) => ({ ...c, [activeKey]: r.comments })); })
+      .catch(() => { if (!cancelled) setError("Could not load the comments."); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
+
+  const anchorComments = activeKey ? commentCache[activeKey] ?? [] : [];
+  const topLevel = anchorComments.filter((c) => !c.parent_comment_id);
+  const repliesOf = (id: number) => anchorComments.filter((c) => c.parent_comment_id === id);
+
+  async function addComment(parentId?: number) {
+    if (!activeAnchor || !activeKey || !draft.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await postToAnchor(activeAnchor, draft.trim(), parentId);
+      setCommentCache((c) => ({ ...c, [activeKey]: [...(c[activeKey] ?? []), created] }));
+      setDraft("");
+      onChanged();
+    } catch {
+      setError("Could not post the comment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeComment(commentId: number) {
+    if (!activeKey) return;
+    try {
+      await deleteStoryComment(commentId);
+      setCommentCache((c) => ({
+        ...c,
+        [activeKey]: (c[activeKey] ?? []).filter((x) => x.id !== commentId && x.parent_comment_id !== commentId),
+      }));
+      onChanged();
+    } catch {
+      setError("Could not delete the comment.");
+    }
+  }
 
   async function handleDeleteStory(storyId: number) {
     if (busy) return;
@@ -228,25 +326,9 @@ export default function StoryPanel({
     try {
       await deleteStory(storyId);
       onChanged();
-      setView({ mode: "list" });
+      setView(commentsTab ? { mode: "comments" } : { mode: "list" });
     } catch {
       setError("Could not delete the share.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const [composerDraft, setComposerDraft] = useState("");
-  async function handleComposerSubmit() {
-    if (!composer || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await composer.onSubmit(composerDraft.trim());
-      setComposerDraft("");
-      onChanged();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not publish the post.");
     } finally {
       setBusy(false);
     }
@@ -281,11 +363,27 @@ export default function StoryPanel({
     }
   }
 
+  const [composerDraft, setComposerDraft] = useState("");
+  async function handleComposerSubmit() {
+    if (!composer || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await composer.onSubmit(composerDraft.trim());
+      setComposerDraft("");
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not publish the post.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // WeRead dialog treatment: near the clicked sentence but never covering
-  // it — below when it fits, flipped above otherwise — over a dimmed
-  // scroll-locked page, bubble arrow pointing at the sentence. Mobile
-  // keeps the bottom sheet. window is safe here — client component,
-  // computed after mount-time interactions.
+  // it — below when it fits, flipped above (bottom-anchored) otherwise —
+  // over a dimmed scroll-locked page, bubble arrow pointing at the
+  // sentence. Mobile keeps the bottom sheet. window is safe here — client
+  // component, computed after mount-time interactions.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true);
   useScrollLock(true);
@@ -302,31 +400,97 @@ export default function StoryPanel({
     below = spaceBelow >= 280 || spaceBelow >= spaceAbove;
     panelLeft = clampN(position!.x - W / 2, 16, vw - W - 16);
     arrowX = clampN(position!.x - panelLeft, 24, W - 24);
-    // Content height varies — anchor the edge FACING the sentence so the
-    // dialog always hugs its anchor: top edge below it, or bottom edge
-    // above it (a top-anchored flip left a gap when content was short —
-    // owner report, 2026-08-28).
     anchorStyle = below
       ? { left: panelLeft, top: position!.y + 24, maxHeight: Math.min(480, spaceBelow), boxShadow: "var(--shadow-card-hover)" }
       : { left: panelLeft, bottom: vh - position!.y + 28, maxHeight: Math.min(480, spaceAbove), boxShadow: "var(--shadow-card-hover)" };
   }
 
   const detailStory = view.mode === "story" ? stories.find((s) => s.id === view.storyId) : undefined;
-  // The Comments tab means THE paragraph thread (commentsTab.storyId);
-  // details reached from the list stay under Other translations, keeping
-  // their back arrow — the Comments view itself needs none (owner,
-  // 2026-08-30: the arrow there duplicated the tab).
-  const activeCommentsView = !!commentsTab &&
-    (view.mode === "commentsEmpty" || (view.mode === "story" && view.storyId === commentsTab.storyId));
   const detailVersion = view.mode === "myVersion" ? myVersions?.[view.index] : undefined;
+  const detailComment = view.mode === "comment" ? anchorComments.find((c) => c.id === view.commentId) : undefined;
+  // The Comments tab means the CURRENT rendering's thread; details reached
+  // from the list stay under Other translations with their back arrow.
+  const activeCommentsView = !!commentsTab &&
+    (view.mode === "comments" || (view.mode === "comment" && view.from === "comments"));
   const headerTitle =
     view.mode === "editMine"
       ? (myNote ? "My note" : "Write a note")
-      : view.mode === "story"
-        ? (detailStory?.kind === "translation" ? "Reader's translation" : "Reader's note")
-        : view.mode === "myVersion"
-          ? "My translation"
-          : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
+      : view.mode === "comment"
+        ? "Comment"
+        : view.mode === "story"
+          ? (detailStory?.kind === "translation" ? "Reader's translation" : "Reader's note")
+          : view.mode === "myVersion"
+            ? "My translation"
+            : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
+
+  function goBack() {
+    if (view.mode === "comment") {
+      setView(view.from === "comments" ? { mode: "comments" } : { mode: "story", storyId: view.from });
+    } else {
+      setView({ mode: "list" });
+    }
+  }
+
+  const commentRow = (c: StoryComment, opts: { clickable?: boolean; indent?: boolean; from?: "comments" | number } = {}) => {
+    const replies = repliesOf(c.id).length;
+    const open = opts.clickable && activeAnchor
+      ? () => setView({ mode: "comment", commentId: c.id, anchor: activeAnchor, from: opts.from ?? "comments" })
+      : undefined;
+    return (
+      <div
+        key={c.id}
+        role={open ? "button" : undefined}
+        tabIndex={open ? 0 : undefined}
+        aria-label={open ? `Open comment by ${c.author_name}` : undefined}
+        onClick={open}
+        onKeyDown={open ? (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          open();
+        } : undefined}
+        data-testid={`comment-${c.id}`}
+        className={`text-xs flex items-start gap-1.5 ${opts.indent ? "pl-5" : ""} ${
+          open ? "cursor-pointer rounded p-1.5 -m-1.5 hover:bg-amber-50/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
+        }`}
+      >
+        <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+        <span className="font-medium text-ink">{c.author_name}</span>{" "}
+        <span className={`text-stone-600 flex-1 ${open ? "line-clamp-2" : ""}`}>{c.body}</span>
+        {open && replies > 0 && (
+          <span className="text-[10px] text-amber-700 shrink-0">{replies} repl{replies === 1 ? "y" : "ies"}</span>
+        )}
+        {!open && (c.user_id === currentUserId || isAdmin) && (
+          <button
+            onClick={() => removeComment(c.id)}
+            aria-label="Delete comment"
+            className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+          >
+            ×
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const commentComposer = (placeholder: string, parentId?: number) => (
+    <div className="flex gap-1.5">
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") addComment(parentId); }}
+        placeholder={placeholder}
+        aria-label="Comment text"
+        className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+      />
+      <button
+        onClick={() => addComment(parentId)}
+        disabled={busy || !draft.trim()}
+        className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+      >
+        Post
+      </button>
+    </div>
+  );
 
   const renderStoryCard = (story: Story) => (
     <div key={story.id} data-testid={`story-${story.id}`}>
@@ -449,10 +613,10 @@ export default function StoryPanel({
         />
       )}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
-        {view.mode !== "list" && !activeCommentsView && (
+        {view.mode !== "list" && view.mode !== "comments" && (
           <button
-            onClick={() => setView({ mode: "list" })}
-            aria-label="Back to notes"
+            onClick={goBack}
+            aria-label="Back"
             data-testid="story-panel-back"
             className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 inline-flex items-center justify-center text-stone-500 hover:text-ink rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
@@ -469,7 +633,7 @@ export default function StoryPanel({
         </button>
       </div>
 
-      {commentsTab && (view.mode === "list" || view.mode === "story" || view.mode === "commentsEmpty" || view.mode === "myVersion") && (
+      {commentsTab && view.mode !== "editMine" && (
         <div role="tablist" aria-label="Paragraph views" data-testid="dialog-tabs" className="flex border-b border-amber-100">
           {([
             { key: "comments", label: "Comments" },
@@ -481,13 +645,7 @@ export default function StoryPanel({
                 key={t.key}
                 role="tab"
                 aria-selected={active}
-                onClick={() => {
-                  if (t.key === "comments") {
-                    setView(commentsTab.storyId != null ? { mode: "story", storyId: commentsTab.storyId } : { mode: "commentsEmpty" });
-                  } else {
-                    setView({ mode: "list" });
-                  }
-                }}
+                onClick={() => setView(t.key === "comments" ? { mode: "comments" } : { mode: "list" })}
                 className={`flex-1 text-xs py-2 min-h-[44px] md:min-h-0 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                   active ? "text-amber-800 border-b-2 border-amber-600 -mb-px" : "text-stone-500 hover:text-ink"
                 }`}
@@ -542,9 +700,48 @@ export default function StoryPanel({
         <p className="px-4 py-2 text-xs text-red-700 bg-red-50 border-b border-red-100" role="alert">{error}</p>
       )}
 
-      {view.mode === "commentsEmpty" ? (
-        <div className="px-4 py-6 text-center" data-testid="comments-empty">
-          <p className="text-xs text-stone-500 max-w-[18rem] mx-auto">{commentsTab?.emptyText}</p>
+      {view.mode === "comments" ? (
+        <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="comments-view">
+          <p className="text-[11px] text-stone-500">{commentsTab?.label}</p>
+          {!commentsTab?.anchor ? (
+            <p className="text-xs text-stone-500 italic py-3 text-center" data-testid="comments-empty">{commentsTab?.emptyText}</p>
+          ) : (
+            <>
+              {topLevel.length === 0 && (
+                <p className="text-xs text-stone-500 italic">No comments yet — be the first.</p>
+              )}
+              {topLevel.map((c) => commentRow(c, { clickable: true, from: "comments" }))}
+              {commentComposer("Add a comment…")}
+            </>
+          )}
+        </div>
+      ) : view.mode === "comment" && detailComment ? (
+        <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="comment-detail">
+          <div className="flex items-start gap-2">
+            <Avatar name={detailComment.author_name} picture={detailComment.author_picture} size="w-7 h-7" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink">{detailComment.author_name}</p>
+              {detailComment.created_at && (
+                <p className="text-[11px] text-stone-400">{detailComment.created_at.slice(0, 10)}</p>
+              )}
+            </div>
+            {(detailComment.user_id === currentUserId || isAdmin) && (
+              <button
+                onClick={async () => { await removeComment(detailComment.id); goBack(); }}
+                aria-label="Delete comment"
+                className="text-stone-400 hover:text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <p className="text-[13px] leading-relaxed text-ink whitespace-pre-wrap">{detailComment.body}</p>
+          <div className="pt-2 border-t border-amber-100 space-y-2">
+            <p className="text-[11px] font-medium text-stone-500">Replies ({repliesOf(detailComment.id).length})</p>
+            {repliesOf(detailComment.id).map((r) => commentRow(r, { indent: true }))}
+            {commentComposer("Reply…", detailComment.id)}
+          </div>
+          {/* Likes join here with track B */}
         </div>
       ) : view.mode === "editMine" ? (
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="my-note-editor">
@@ -593,7 +790,7 @@ export default function StoryPanel({
             <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]">Private</span>
           </div>
           <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
-          {/* Publish lives in the composer below the list; comments join with track B */}
+          {/* Private — nobody else can see it, so no comment anchor here. */}
         </div>
       ) : view.mode === "story" && detailStory ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="story-detail">
@@ -658,7 +855,7 @@ export default function StoryPanel({
                 )}
               </div>
               {detailStory.paragraphs?.map((p) => (
-                <p key={p.paragraph_index} lang={detailStory.target_language ?? undefined} className="text-sm font-serif text-ink leading-relaxed">
+                <p key={p.paragraph_index} lang={detailStory.target_language ?? undefined} className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
                   {p.text}
                 </p>
               ))}
@@ -670,13 +867,11 @@ export default function StoryPanel({
           {detailStory.caption && (
             <p className="text-xs text-stone-600">{detailStory.caption}</p>
           )}
-          <StoryDiscussion
-            storyId={detailStory.id}
-            initialCount={detailStory.comment_count}
-            currentUserId={currentUserId}
-            isAdmin={isAdmin}
-            onChanged={onChanged}
-          />
+          <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
+            <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length || detailStory.comment_count})</p>
+            {topLevel.map((c) => commentRow(c, { clickable: true, from: detailStory.id }))}
+            {commentComposer("Add a comment…")}
+          </div>
         </div>
       ) : (
         <div className="overflow-y-auto px-4 py-3 space-y-4">
@@ -684,8 +879,6 @@ export default function StoryPanel({
             <p className="text-xs text-stone-500 italic" data-testid="posts-empty">{composer.emptyText}</p>
           )}
           {myVersions?.map((v, i) => {
-            // Universal flow (owner, 2026-08-29): EVERY translation card —
-            // mine private, mine posted, others' — opens a detail sub-page.
             const open = v.posted && v.storyId
               ? () => setView({ mode: "story", storyId: v.storyId! })
               : () => setView({ mode: "myVersion", index: i });

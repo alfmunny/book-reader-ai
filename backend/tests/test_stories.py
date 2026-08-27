@@ -270,3 +270,41 @@ async def test_unfollow_empties_the_timeline(client, test_user):
 async def test_cannot_follow_yourself_or_ghosts(client, test_user):
     assert (await client.post(f"/api/stories/follow/{test_user['id']}")).status_code == 422
     assert (await client.post("/api/stories/follow/9999")).status_code == 404
+
+
+# ── Editorial comment anchors + replies (migration 050) ─────────────────────
+
+async def test_editorial_comment_roundtrip_and_replies(client, test_user):
+    anchor = {"book_id": 1, "target_language": "zh", "chapter_index": 0, "paragraph_index": 1}
+    resp = await client.post("/api/stories/comments/editorial", json={**anchor, "body": "编辑版这段译得稳。"})
+    assert resp.status_code == 200
+    top = resp.json()
+    assert top["author_name"] == test_user["name"]
+
+    reply = (await client.post("/api/stories/comments/editorial", json={
+        **anchor, "body": "同意。", "parent_id": top["id"],
+    })).json()
+    assert reply["parent_comment_id"] == top["id"]
+
+    listed = (await client.get("/api/stories/comments/editorial", params=anchor)).json()["comments"]
+    assert [c["body"] for c in listed] == ["编辑版这段译得稳。", "同意。"]
+    # A different paragraph is a different anchor
+    other = (await client.get("/api/stories/comments/editorial", params={**anchor, "paragraph_index": 2})).json()
+    assert other["comments"] == []
+
+
+async def test_story_comment_replies(client, test_user):
+    sid = await _translated_session(client)
+    story_id = (await _share_translation(client, sid)).json()["id"]
+    top = (await client.post(f"/api/stories/{story_id}/comments", json={"body": "top"})).json()
+    reply = (await client.post(f"/api/stories/{story_id}/comments", json={"body": "reply", "parent_id": top["id"]})).json()
+    assert reply["parent_comment_id"] == top["id"]
+    listed = (await client.get(f"/api/stories/{story_id}/comments")).json()["comments"]
+    assert len(listed) == 2
+
+
+async def test_editorial_comment_unknown_book_404(client):
+    resp = await client.post("/api/stories/comments/editorial", json={
+        "book_id": 999, "target_language": "zh", "chapter_index": 0, "paragraph_index": 0, "body": "x",
+    })
+    assert resp.status_code == 404

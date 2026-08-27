@@ -343,10 +343,11 @@ test("post detail carries the comment thread: read, write, and switch versions",
   renderPanel({
     variant: "sentence",
     stories: [TRANSLATION_STORY, second],
-    initialStoryId: 1, // smart landing: straight into the read rendering's thread
+    commentsTab: { storyId: 1, emptyText: "none" }, // Comments is the default tab
     currentUserId: 9,
   });
-  // Landed directly on detail with the thread loaded
+  // Landed on the Comments tab with the thread loaded
+  expect(screen.getByRole("tab", { name: "Comments" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByTestId("story-detail")).toBeInTheDocument();
   expect(await screen.findByText("有味道")).toBeInTheDocument();
   // Write a comment in place
@@ -356,4 +357,28 @@ test("post detail carries the comment thread: read, write, and switch versions",
   // Switch to another version via the chip strip
   fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
   expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
+});
+
+test("Other translations tab swaps to the version list and back", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+    commentsTab: { storyId: 1, emptyText: "none" },
+  });
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Other translations" })).toHaveAttribute("aria-selected", "true");
+  fireEvent.click(screen.getByRole("tab", { name: "Comments" }));
+  expect(screen.getByTestId("story-detail")).toBeInTheDocument();
+});
+
+test("unposted rendering: Comments tab explains and points to the list", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+    commentsTab: { storyId: undefined, emptyText: "Publish first to discuss." },
+  });
+  expect(screen.getByTestId("comments-empty")).toHaveTextContent("Publish first to discuss.");
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
 });

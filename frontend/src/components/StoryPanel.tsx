@@ -40,7 +40,7 @@ function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: s
   );
 }
 
-type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number } | { mode: "myVersion"; index: number };
+type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number } | { mode: "myVersion"; index: number } | { mode: "commentsEmpty" };
 
 interface Props {
   stories: Story[];
@@ -84,8 +84,10 @@ interface Props {
     emptyText: string;
     onSubmit: (caption: string) => Promise<void>;
   };
-  /** Open directly on this post's detail (the rendering being read). */
-  initialStoryId?: number;
+  /** Two-view posts dialog (owner design review, 2026-08-29): a Comments
+   *  tab (default — the thread of the rendering being READ, when posted)
+   *  and an "Other translations" tab holding the version list. */
+  commentsTab?: { storyId?: number; emptyText: string };
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -105,13 +107,17 @@ export default function StoryPanel({
   onDeleteMyNote,
   myVersions,
   composer,
-  initialStoryId,
+  commentsTab,
   currentUserId,
   isAdmin,
   onClose,
   onChanged,
 }: Props) {
-  const [view, setView] = useState<View>(initialStoryId != null ? { mode: "story", storyId: initialStoryId } : { mode: "list" });
+  const [view, setView] = useState<View>(
+    commentsTab
+      ? (commentsTab.storyId != null ? { mode: "story", storyId: commentsTab.storyId } : { mode: "commentsEmpty" })
+      : { mode: "list" },
+  );
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, StoryComment[]>>({});
@@ -422,6 +428,38 @@ export default function StoryPanel({
         </button>
       </div>
 
+      {commentsTab && (view.mode === "list" || view.mode === "story" || view.mode === "commentsEmpty" || view.mode === "myVersion") && (
+        <div role="tablist" aria-label="Paragraph views" data-testid="dialog-tabs" className="flex border-b border-amber-100">
+          {([
+            { key: "comments", label: "Comments" },
+            { key: "translations", label: "Other translations" },
+          ] as const).map((t) => {
+            const active = t.key === "comments"
+              ? view.mode === "story" || view.mode === "commentsEmpty" || view.mode === "myVersion"
+              : view.mode === "list";
+            return (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  if (t.key === "comments") {
+                    setView(commentsTab.storyId != null ? { mode: "story", storyId: commentsTab.storyId } : { mode: "commentsEmpty" });
+                  } else {
+                    setView({ mode: "list" });
+                  }
+                }}
+                className={`flex-1 text-xs py-2 min-h-[44px] md:min-h-0 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                  active ? "text-amber-800 border-b-2 border-amber-600 -mb-px" : "text-stone-500 hover:text-ink"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {view.mode === "list" && annotationBar && (
         <div
           role="toolbar"
@@ -465,7 +503,11 @@ export default function StoryPanel({
         <p className="px-4 py-2 text-xs text-red-700 bg-red-50 border-b border-red-100" role="alert">{error}</p>
       )}
 
-      {view.mode === "editMine" ? (
+      {view.mode === "commentsEmpty" ? (
+        <div className="px-4 py-6 text-center" data-testid="comments-empty">
+          <p className="text-xs text-stone-500 max-w-[18rem] mx-auto">{commentsTab?.emptyText}</p>
+        </div>
+      ) : view.mode === "editMine" ? (
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="my-note-editor">
           <textarea
             value={noteDraft}

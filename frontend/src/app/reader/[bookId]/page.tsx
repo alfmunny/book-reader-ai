@@ -2208,13 +2208,20 @@ export default function ReaderPage() {
                   setStoriesVersion((v) => v + 1);
                 },
               } : undefined}
-              initialStoryId={(() => {
-                // Smart landing (owner design, 2026-08-29): if the rendering
-                // being READ is posted, open straight into its comments.
-                if (!activeSession) return undefined;
-                return (storiesByPara[postsDialog.paraIdx] ?? []).find(
-                  (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
-                )?.id;
+              commentsTab={(() => {
+                // Comments is the DEFAULT tab (owner design review,
+                // 2026-08-29): the thread of the rendering being read.
+                const myPost = activeSession
+                  ? (storiesByPara[postsDialog.paraIdx] ?? []).find(
+                      (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
+                    )
+                  : undefined;
+                return {
+                  storyId: myPost?.id,
+                  emptyText: activeSession
+                    ? "Your rendering isn't posted yet — publish it under Other translations to open a discussion."
+                    : "Discussions on the editorial translation are coming soon. Browse Other translations meanwhile.",
+                };
               })()}
               currentUserId={session?.backendUser?.id}
               onClose={() => setPostsDialog(null)}

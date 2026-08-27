@@ -112,3 +112,22 @@ test("repeated identical sentences: only the first occurrence carries the note",
   expect(seg0.className).toContain("decoration-dashed");
   expect(seg1.className).not.toContain("decoration-dashed");
 });
+
+test("a multi-sentence anchor underlines its whole contiguous section", () => {
+  render(
+    <SentenceReader
+      text={"Erster Satz hier. Zweiter Satz folgt. Dritter Satz endet.\n\nAnderer Absatz."}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={noop}
+      sharedNotes={[{ sentenceText: "Erster Satz hier. Zweiter Satz folgt.", count: 1 }]}
+      onSharedNotesClick={jest.fn()}
+    />,
+  );
+  const seg = (n: number) => document.querySelector(`[data-seg="${n}"]`) as HTMLElement;
+  expect(seg(0).className).toContain("decoration-dashed");
+  expect(seg(1).className).toContain("decoration-dashed");
+  expect(seg(2).className).not.toContain("decoration-dashed"); // outside the anchor
+  expect(seg(3).className).not.toContain("decoration-dashed"); // next paragraph
+});

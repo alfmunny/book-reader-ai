@@ -849,15 +849,37 @@ export default function SentenceReader({
   const sharedNotesByFlatIdx = useMemo(() => {
     const map = new Map<number, number>();
     if (!sharedNotes?.length) return map;
-    const anchor = (text: string) =>
+    const ladder = (text: string) =>
       allSegments.find((s) => s.text === text)
       ?? allSegments.find((s) => wordBoundaryIndexOf(s.text, text) >= 0)
       ?? allSegments.find((s) => s.text.includes(text))
       ?? allSegments.find((s) => text.includes(s.text));
     for (const sn of sharedNotes) {
-      const piece = sn.sentenceText.split(/\n+/).map((t) => t.trim()).find(Boolean);
-      const seg = piece ? anchor(piece) : undefined;
-      if (seg) map.set(seg.flatIdx, (map.get(seg.flatIdx) ?? 0) + sn.count);
+      // A multi-sentence anchor marks its WHOLE contiguous section (owner,
+      // 2026-08-28): resolve the span start by the ladder, then extend
+      // forward while following segments still sit inside the anchor text.
+      // Contiguous extension only — distant identical sentences stay clean.
+      const covered = new Set<number>();
+      for (const piece of sn.sentenceText.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
+        const start = ladder(piece);
+        if (!start) continue;
+        covered.add(start.flatIdx);
+        // Consume the anchor text sequentially: extend only while its
+        // REMAINING text continues with the next segment — an adjacent
+        // identical sentence outside the anchor never gets swallowed.
+        const startText = start.text.trim();
+        const pos = piece.indexOf(startText);
+        let rest = pos >= 0 ? piece.slice(pos + startText.length).trim() : "";
+        let i = allSegments.indexOf(start) + 1;
+        while (rest && i < allSegments.length) {
+          const t = allSegments[i].text.trim();
+          if (!t || !rest.startsWith(t)) break;
+          covered.add(allSegments[i].flatIdx);
+          rest = rest.slice(t.length).trim();
+          i++;
+        }
+      }
+      for (const f of covered) map.set(f, (map.get(f) ?? 0) + sn.count);
     }
     return map;
   }, [sharedNotes, allSegments]);

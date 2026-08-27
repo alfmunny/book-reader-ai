@@ -13,6 +13,7 @@ import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
 import SentenceReader from "@/components/SentenceReader";
 import StoryPanel from "@/components/StoryPanel";
+import { anchorsOverlap, poolNoteStories } from "@/lib/storyPooling";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import QuickHighlightPanel from "@/components/QuickHighlightPanel";
@@ -404,12 +405,7 @@ export default function ReaderPage() {
     () =>
       sharedNotesFor == null
         ? []
-        : chapterStories.filter(
-            (st) =>
-              st.kind === "note" && st.sentence_text &&
-              (sharedNotesFor.sentenceText.includes(st.sentence_text.trim()) ||
-                st.sentence_text.trim().includes(sharedNotesFor.sentenceText)),
-          ),
+        : poolNoteStories(chapterStories, sharedNotesFor.sentenceText),
     [chapterStories, sharedNotesFor],
   );
   const storyCounts = useMemo(
@@ -2054,11 +2050,7 @@ export default function ReaderPage() {
                   chapterIndex: quickHighlightPanel.chapterIndex,
                 });
               }}
-              sharedCount={showShares ? chapterStories.filter(
-                (st) => st.kind === "note" && st.sentence_text &&
-                  (quickHighlightPanel.sentenceText.includes(st.sentence_text.trim()) ||
-                   st.sentence_text.trim().includes(quickHighlightPanel.sentenceText)),
-              ).length : 0}
+              sharedCount={showShares ? poolNoteStories(chapterStories, quickHighlightPanel.sentenceText).length : 0}
               onShowShared={() => {
                 setSharedNotesFor({
                   sentenceText: quickHighlightPanel.sentenceText,
@@ -2117,8 +2109,8 @@ export default function ReaderPage() {
               myNote={(() => {
                 const own = annotations.find(
                   (a) => a.chapter_index === chapterIndex && a.note_text &&
-                    (sharedNotesFor.sentenceText.includes(a.sentence_text.trim()) ||
-                     a.sentence_text.trim().includes(sharedNotesFor.sentenceText)),
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
                 return own ? {
                   text: own.note_text,

@@ -382,3 +382,14 @@ test("unposted rendering: Comments tab explains and points to the list", () => {
   fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
   expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
 });
+
+test("note details carry the SAME discussion component as translations", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 41, story_id: 2, user_id: 3, body: "同感", created_at: "", author_name: "Jonas" }],
+  });
+  renderPanel({ variant: "sentence", stories: [NOTE_STORY] });
+  fireEvent.click(screen.getByRole("button", { name: "Open note by Jonas" }));
+  expect(screen.getByTestId("detail-discussion")).toBeInTheDocument();
+  expect(await screen.findByText("同感")).toBeInTheDocument();
+  expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+});

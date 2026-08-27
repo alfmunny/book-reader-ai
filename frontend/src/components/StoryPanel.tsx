@@ -42,6 +42,105 @@ function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: s
 
 type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number } | { mode: "myVersion"; index: number } | { mode: "commentsEmpty" };
 
+/** THE discussion thread — one implementation for every surface a thread
+ *  appears on (note details, translation details, paragraph-panel cards).
+ *  Likes join here once, with track B (owner, 2026-08-29). */
+function StoryDiscussion({
+  storyId,
+  initialCount,
+  currentUserId,
+  isAdmin,
+  onChanged,
+  testId = "detail-discussion",
+}: {
+  storyId: number;
+  initialCount: number;
+  currentUserId?: number;
+  isAdmin?: boolean;
+  onChanged: () => void;
+  testId?: string;
+}) {
+  const [comments, setComments] = useState<StoryComment[] | null>(null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listStoryComments(storyId)
+      .then((r) => { if (!cancelled) setComments(r.comments); })
+      .catch(() => { if (!cancelled) setError("Could not load the discussion."); });
+    return () => { cancelled = true; };
+  }, [storyId]);
+
+  async function add() {
+    if (!draft.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await addStoryComment(storyId, draft.trim());
+      setComments((c) => [...(c ?? []), created]);
+      setDraft("");
+      onChanged();
+    } catch {
+      setError("Could not post the comment.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(commentId: number) {
+    try {
+      await deleteStoryComment(commentId);
+      setComments((c) => (c ?? []).filter((x) => x.id !== commentId));
+      onChanged();
+    } catch {
+      setError("Could not delete the comment.");
+    }
+  }
+
+  return (
+    <div className="pt-2 border-t border-amber-100 space-y-2" data-testid={testId}>
+      <p className="text-[11px] font-medium text-stone-500">Comments ({comments?.length ?? initialCount})</p>
+      {error && <p className="text-xs text-red-700" role="alert">{error}</p>}
+      {(comments ?? []).map((c) => (
+        <div key={c.id} className="text-xs flex items-start gap-1.5">
+          <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+          <span className="font-medium text-ink">{c.author_name}</span>{" "}
+          <span className="text-stone-600 flex-1">{c.body}</span>
+          {(c.user_id === currentUserId || isAdmin) && (
+            <button
+              onClick={() => remove(c.id)}
+              aria-label="Delete comment"
+              className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+      <div className="flex gap-1.5">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") add(); }}
+          placeholder="Add a comment…"
+          aria-label="Comment text"
+          className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <button
+          onClick={add}
+          disabled={busy || !draft.trim()}
+          className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          Post
+        </button>
+      </div>
+      {/* Likes land here with track B — once, for every surface. */}
+    </div>
+  );
+}
+
 interface Props {
   stories: Story[];
   /** Paragraph the panel is anchored to (1-based in the title). */
@@ -120,37 +219,8 @@ export default function StoryPanel({
   );
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
-  const [comments, setComments] = useState<Record<number, StoryComment[]>>({});
-  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (view.mode === "story") setOpenThread(view.storyId);
-  }, [view]);
-
-  useEffect(() => {
-    if (openThread == null) return;
-    listStoryComments(openThread)
-      .then((r) => setComments((c) => ({ ...c, [openThread]: r.comments })))
-      .catch(() => setError("Could not load the discussion."));
-  }, [openThread]);
-
-  async function handleComment(storyId: number) {
-    if (!draft.trim() || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const created = await addStoryComment(storyId, draft.trim());
-      setComments((c) => ({ ...c, [storyId]: [...(c[storyId] ?? []), created] }));
-      setDraft("");
-      onChanged();
-    } catch {
-      setError("Could not post the comment.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleDeleteStory(storyId: number) {
     if (busy) return;
@@ -163,16 +233,6 @@ export default function StoryPanel({
       setError("Could not delete the share.");
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function handleDeleteComment(storyId: number, commentId: number) {
-    try {
-      await deleteStoryComment(commentId);
-      setComments((c) => ({ ...c, [storyId]: (c[storyId] ?? []).filter((x) => x.id !== commentId) }));
-      onChanged();
-    } catch {
-      setError("Could not delete the comment.");
     }
   }
 
@@ -336,40 +396,15 @@ export default function StoryPanel({
         )}
 
         {openThread === story.id && (
-          <div className="mt-2 space-y-2" data-testid={`story-thread-${story.id}`}>
-            {(comments[story.id] ?? []).map((c) => (
-              <div key={c.id} className="text-xs flex items-start gap-1.5">
-                <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-                <span className="font-medium text-ink">{c.author_name}</span>{" "}
-                <span className="text-stone-600">{c.body}</span>
-                {(c.user_id === currentUserId || isAdmin) && (
-                  <button
-                    onClick={() => handleDeleteComment(story.id, c.id)}
-                    aria-label="Delete comment"
-                    className="ml-1.5 text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
-            <div className="flex gap-1.5">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleComment(story.id); }}
-                placeholder="Add to the discussion…"
-                aria-label="Comment text"
-                className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
-              <button
-                onClick={() => handleComment(story.id)}
-                disabled={busy || !draft.trim()}
-                className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                Post
-              </button>
-            </div>
+          <div className="mt-2" data-testid={`story-thread-${story.id}`}>
+            <StoryDiscussion
+              storyId={story.id}
+              initialCount={story.comment_count}
+              currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              onChanged={onChanged}
+              testId={`story-discussion-${story.id}`}
+            />
           </div>
         )}
       </div>
@@ -631,43 +666,13 @@ export default function StoryPanel({
           {detailStory.caption && (
             <p className="text-xs text-stone-600">{detailStory.caption}</p>
           )}
-          <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
-            <p className="text-[11px] font-medium text-stone-500">Comments ({comments[detailStory.id]?.length ?? detailStory.comment_count})</p>
-            {(comments[detailStory.id] ?? []).map((c) => (
-              <div key={c.id} className="text-xs flex items-start gap-1.5">
-                <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-                <span className="font-medium text-ink">{c.author_name}</span>{" "}
-                <span className="text-stone-600 flex-1">{c.body}</span>
-                {(c.user_id === currentUserId || isAdmin) && (
-                  <button
-                    onClick={() => handleDeleteComment(detailStory.id, c.id)}
-                    aria-label="Delete comment"
-                    className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
-            <div className="flex gap-1.5">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleComment(detailStory.id); }}
-                placeholder="Add a comment…"
-                aria-label="Comment text"
-                className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
-              <button
-                onClick={() => handleComment(detailStory.id)}
-                disabled={busy || !draft.trim()}
-                className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                Post
-              </button>
-            </div>
-          </div>
-          {/* Likes join here with track B */}
+          <StoryDiscussion
+            storyId={detailStory.id}
+            initialCount={detailStory.comment_count}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
+            onChanged={onChanged}
+          />
         </div>
       ) : (
         <div className="overflow-y-auto px-4 py-3 space-y-4">

@@ -94,3 +94,19 @@ test("sentences without shared notes stay undecorated", () => {
   const seg1 = document.querySelector('[data-seg="1"]') as HTMLElement;
   expect(seg1.className).not.toContain("decoration-dashed");
 });
+
+test("repeated identical sentences: only the first occurrence carries the note", () => {
+  render(
+    <SentenceReader
+      text={"Die Sonne tönt.\n\nDie Sonne tönt."}
+      duration={0}
+      currentTime={0}
+      isPlaying={false}
+      onSegmentClick={noop}
+      sharedNotes={[{ sentenceText: "Die Sonne tönt.", count: 1 }]}
+      onSharedNotesClick={jest.fn()}
+    />,
+  );
+  expect(screen.getByTestId("shared-notes-dot-0")).toBeInTheDocument();
+  expect(screen.queryByTestId("shared-notes-dot-1")).toBeNull();
+});

@@ -842,6 +842,26 @@ export default function SentenceReader({
     return map;
   }, [annotations, allSegments]);
 
+  // Shared-note anchors resolve to ONE segment each — the first match, with
+  // the same priority ladder annotations use (exact > word-boundary >
+  // substring). Pure text containment marked every repeated verse line with
+  // the same note (owner bug report, 2026-08-27).
+  const sharedNotesByFlatIdx = useMemo(() => {
+    const map = new Map<number, number>();
+    if (!sharedNotes?.length) return map;
+    const anchor = (text: string) =>
+      allSegments.find((s) => s.text === text)
+      ?? allSegments.find((s) => wordBoundaryIndexOf(s.text, text) >= 0)
+      ?? allSegments.find((s) => s.text.includes(text))
+      ?? allSegments.find((s) => text.includes(s.text));
+    for (const sn of sharedNotes) {
+      const piece = sn.sentenceText.split(/\n+/).map((t) => t.trim()).find(Boolean);
+      const seg = piece ? anchor(piece) : undefined;
+      if (seg) map.set(seg.flatIdx, (map.get(seg.flatIdx) ?? 0) + sn.count);
+    }
+    return map;
+  }, [sharedNotes, allSegments]);
+
   // Long-press cancel (shared across segments)
   function cancelLongPress() {
     if (longPressTimer.current) {
@@ -1063,16 +1083,8 @@ export default function SentenceReader({
           // with a note" — multi-note rendering is a separate follow-up.
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           const selectedClass = selectedSentenceFlatIdx === seg.flatIdx ? "ring-2 ring-blue-500 bg-blue-50 rounded" : "";
-          // Shared notes anchored on this sentence (other readers' thoughts).
-          // An anchor is the sharer's selection — may be the whole sentence
-          // or a fragment of it — so containment in either direction matches.
-          const segSharedCount = sharedNotes?.reduce(
-            (n, sn) =>
-              seg.text.includes(sn.sentenceText) || sn.sentenceText.includes(seg.text)
-                ? n + sn.count
-                : n,
-            0,
-          ) ?? 0;
+          // Shared notes anchored on exactly this segment (position-resolved).
+          const segSharedCount = sharedNotesByFlatIdx.get(seg.flatIdx) ?? 0;
           const sharedClass = segSharedCount > 0
             ? "underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4"
             : "";

@@ -203,6 +203,37 @@ async def main() -> None:
                     "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
                     (cur.lastrowid, other, "说到点子上了。(demo)" if other == mira_id else "完全同意！(demo)"),
                 )
+
+        # Mirror the OWNER's chapter-4 annotations with demo notes on the very
+        # same sentences, so the beside-your-note row has something to show
+        # (owner request, 2026-08-27).
+        async with db.execute(
+            """SELECT DISTINCT sentence_text FROM annotations
+               WHERE book_id = ? AND chapter_index = 4
+                 AND user_id NOT IN (?, ?) LIMIT 5""",
+            (book_id, mira_id, jonas_id),
+        ) as c:
+            owner_sentences = [r[0] for r in await c.fetchall()]
+        echo_notes = [
+            (mira_id, "我也在这句停住了 — 你怎么理解它？(demo)", "blue"),
+            (jonas_id, "Genau diese Stelle habe ich auch markiert! (demo)", "green"),
+        ]
+        mirrored = 0
+        for i, sentence in enumerate(owner_sentences):
+            uid, note, color = echo_notes[i % len(echo_notes)]
+            ann_id = await _upsert_annotation(db, uid, book_id, 4, sentence, note, color)
+            cur = await db.execute(
+                "INSERT INTO stories (user_id, kind, book_id, chapter_index, annotation_id, caption) "
+                "VALUES (?, 'note', ?, 4, ?, NULL)",
+                (uid, book_id, ann_id),
+            )
+            await db.execute(
+                "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
+                (cur.lastrowid, jonas_id if uid == mira_id else mira_id, "有意思的角度。(demo)"),
+            )
+            mirrored += 1
+        if mirrored:
+            print(f"  (mirroring {mirrored} of the owner's chapter-5 sentences with demo notes)")
         await db.commit()
 
     print(f"Seeded demo stories on book {book_id} ({title}):")

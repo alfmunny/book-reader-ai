@@ -2113,12 +2113,12 @@ export default function ReaderPage() {
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
                 return own ? () => {
+                  // Straight to the note editor — not the highlight popover
+                  // (owner, 2026-08-28: the popover here was redundant).
                   setSharedNotesFor(null);
-                  setQuickHighlightPanel({
+                  setAnnotationPanel({
                     sentenceText: own.sentence_text,
                     chapterIndex: own.chapter_index,
-                    position: sharedNotesFor.position ?? { x: window.innerWidth / 2, y: 160 },
-                    existingAnnotation: own,
                   });
                 } : undefined;
               })()}

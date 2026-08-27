@@ -63,21 +63,22 @@ it("does not flag oversized when there is no median to compare against", () => {
   expect(keys({ title: "Huge", text: prose(20) }, 0)).not.toContain("Oversized");
 });
 
-it("flags collapsed drama — an all-caps cue buried in a long paragraph", () => {
+it("does not try to detect collapsed drama — that needs a baseline", () => {
+  // A per-chapter version of the #820 verse-collapse detector fired on 10 of 805
+  // real chapters and was wrong every time: all-caps chapter summaries, a signed
+  // letter, an advertisement page, and the phrase "I O U". epub_split_audit.py
+  // does it properly by comparing two renderings of the same book.
   const collapsed =
-    "Zeche lustiger Gesellen in Auerbachs Keller, and the scene runs on at length here. " +
-    "x".repeat(260) +
-    "\n  FROSCH. Will keiner trinken?";
-  expect(keys({ title: "Auerbachs Keller", text: collapsed + "\n\n" + prose(3) })).toContain("Shouting");
+    "Zeche lustiger Gesellen in Auerbachs Keller, and the scene runs on at length. " +
+    "x".repeat(260) + "\n  FROSCH. Will keiner trinken?";
+  expect(keys({ title: "Auerbachs Keller", text: collapsed + "\n\n" + prose(3) }, 1200)).toEqual([]);
 });
 
-it("leaves properly split drama alone", () => {
-  const split = "FROSCH. Will keiner trinken?\n\nBRANDER. Das liegt an dir.\n\n" + prose(3);
-  expect(keys({ title: "Auerbachs Keller", text: split })).not.toContain("Shouting");
-});
-
-it("does not mistake a short all-caps line for a collapse", () => {
-  expect(keys({ title: "T", text: "short\n  ANNA.\n\n" + prose(3) })).not.toContain("Shouting");
+it("leaves an all-caps chapter summary alone", () => {
+  // City of God's Gutenberg edition sets its summaries in caps — six chapters
+  // were flagged for this and every one was correctly split.
+  const summary = "OF THE ADVERSARIES OF THE NAME OF CHRIST\n      WHOM THE BARBARIANS SPARED.\n      " + "Y".repeat(300);
+  expect(keys({ title: "Book I", text: summary + "\n\n" + prose(3) }, 1200)).toEqual([]);
 });
 
 it("carries a reason with every flag", () => {

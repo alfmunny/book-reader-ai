@@ -41,7 +41,6 @@ The left rail marks chapters worth looking at:
 | **Runt** | Under 400 characters or a single paragraph — often a stray heading that became its own chapter |
 | **Oversized** | More than 3× the median chapter — usually two chapters that failed to separate |
 | **No title** | The splitter found no heading |
-| **Shouting** | An all-caps speaker cue buried in a long paragraph — verse or drama collapsed into one block |
 
 Flags are hints, not verdicts. A flagged chapter can be perfectly correct, and an unflagged one can be wrong.
 

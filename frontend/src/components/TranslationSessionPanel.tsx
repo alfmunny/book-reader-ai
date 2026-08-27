@@ -213,7 +213,7 @@ export default function TranslationSessionPanel({
           role="radio"
           aria-checked={activeSessionId === null}
           onClick={() => onSelect(null)}
-          className="w-full flex items-center gap-2 px-3 py-2 min-h-[44px] md:min-h-0 text-sm text-left transition-colors hover:bg-amber-50/50 rounded-t-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="w-full flex items-center gap-2 px-3 py-2 min-h-[44px] md:min-h-0 text-sm text-left transition-colors hover:bg-amber-50/50 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <span className="font-medium text-ink flex-1">Editorial</span>
           {editorialStatus && !editorialStatus.loading && (
@@ -226,30 +226,31 @@ export default function TranslationSessionPanel({
             </span>
           )}
         </button>
-        <div className="px-3 pb-2.5" data-testid="editorial-languages">
-          {/* Coverage lives IN the options (owner, 2026-08-27): every language
-              is pickable, and "0/28 ch" right in the dropdown explains an
-              empty editorial view before it happens. */}
-          <label htmlFor="reader-trans-lang" className="block text-[11px] text-stone-500 mb-1">Target language</label>
-          <select
-            id="reader-trans-lang"
-            className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-            value={translationLang}
-            onChange={(e) => onChangeLanguage?.(e.target.value)}
-          >
-            {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => {
-              const covered = editorialLanguages?.languages.find((x) => x.code === l.code)?.chapters ?? 0;
-              const suffix = editorialLanguages ? ` — ${covered}/${editorialLanguages.total} ch` : "";
-              return (
-                <option key={l.code} value={l.code}>{l.label}{suffix}</option>
-              );
-            })}
-          </select>
-          <p className="mt-1 text-[11px] text-stone-500">For this book only — numbers show chapters with an editorial translation.</p>
-          {editorialLanguages && editorialLanguages.languages.length === 0 && (
-            <p className="mt-1 text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
-          )}
-        </div>
+      </div>
+
+      <div className="mb-3" data-testid="editorial-languages">
+        {/* Coverage lives IN the options (owner, 2026-08-27): every language
+            is pickable, and "0/28 ch" right in the dropdown explains an
+            empty editorial view before it happens. */}
+        <label htmlFor="reader-trans-lang" className="block text-[11px] text-stone-500 mb-1">Target language</label>
+        <select
+          id="reader-trans-lang"
+          className="w-full text-sm rounded-lg border border-amber-300 px-3 py-2 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+          value={translationLang}
+          onChange={(e) => onChangeLanguage?.(e.target.value)}
+        >
+          {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => {
+            const covered = editorialLanguages?.languages.find((x) => x.code === l.code)?.chapters ?? 0;
+            const suffix = editorialLanguages ? ` — ${covered}/${editorialLanguages.total} ch` : "";
+            return (
+              <option key={l.code} value={l.code}>{l.label}{suffix}</option>
+            );
+          })}
+        </select>
+        <p className="mt-1 text-[11px] text-stone-500">For this book only — numbers show chapters with an editorial translation.</p>
+        {editorialLanguages && editorialLanguages.languages.length === 0 && (
+          <p className="mt-1 text-[11px] text-stone-500 italic">None yet — editorial translations are prepared offline.</p>
+        )}
       </div>
 
       <p className="block text-xs text-amber-700 mb-1">Other translation versions</p>

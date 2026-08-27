@@ -2,11 +2,15 @@
 /**
  * Inline story panel (design: user-translations.md phase 2, #2752).
  *
- * ONE panel for every share kind on a paragraph — translation renderings
- * (author, session name, model tag, caption) and shared notes (highlight
- * quote + the reader's thought) — with the discussion thread right there.
- * For translators it doubles as a per-paragraph comparison view; for
- * readers it is the classic WeRead shared-notes margin.
+ * ONE panel for every share kind — translation renderings and shared notes.
+ *
+ * The "sentence" variant is a WeRead-style two-view dialog (owner,
+ * 2026-08-28): the LIST view shows the highlight-color toolbar, the
+ * reader's own note pinned on top, and community notes; tapping a note
+ * shifts the window in place to its DETAIL sub-page — back arrow in the
+ * corner returns to the list. Editing/deleting your note lives in your
+ * note's detail page; comments and likes join the detail page with
+ * track B.
  */
 import { useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/useFocusTrap";
@@ -19,7 +23,7 @@ import {
   deleteStory,
   deleteStoryComment,
 } from "@/lib/api";
-import { CloseIcon, TrashIcon, NoteIcon } from "@/components/Icons";
+import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon } from "@/components/Icons";
 import { COLORS } from "@/components/QuickHighlightPanel";
 
 /** Small round author avatar: picture when the account has one, an
@@ -36,29 +40,31 @@ function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: s
   );
 }
 
+type View = { mode: "list" } | { mode: "editMine" } | { mode: "story"; storyId: number };
+
 interface Props {
   stories: Story[];
   /** Paragraph the panel is anchored to (1-based in the title). */
   paragraphIndex: number;
   /** Overrides the default "Shares on paragraph N" title (sentence anchors). */
   title?: string;
-  /** Anchor point (viewport coords). On desktop the panel pops up beside it,
+  /** Anchor point (viewport coords). On desktop the panel pops up near it,
    *  WeRead-style; small screens keep the bottom sheet. */
   position?: { x: number; y: number } | null;
-  /** "sentence" = the WeRead notes list: no quote (the sentence is right
-   *  there), no discussion UI (likes/comments come with track B). */
+  /** "sentence" = the WeRead two-view notes dialog described above. */
   variant?: "sentence";
-  /** The reader's own note on this sentence — pinned on top, "My note". */
+  /** The reader's own note on this sentence — pinned on top, "My note".
+   *  text is the RAW note_text (may be empty for a bare highlight). */
   myNote?: { text: string; authorName: string; picture?: string | null } | null;
-  /** WeRead-style action row merged from the highlight popover (owner,
-   *  2026-08-28): colors, write note, delete — one dialog, not two. */
+  /** Highlight colors merged from the popover — one dialog, not two. */
   annotationBar?: {
-    hasAnnotation: boolean;
     existingColor?: string | null;
     onColor: (color: "yellow" | "blue" | "green" | "pink") => void;
-    onNote: () => void;
-    onDelete?: () => void;
   };
+  /** Persist the reader's note text (creates the highlight if needed). */
+  onSaveMyNote?: (text: string) => Promise<void>;
+  /** Remove the reader's highlight + note on this sentence. */
+  onDeleteMyNote?: () => Promise<void>;
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -74,11 +80,15 @@ export default function StoryPanel({
   variant,
   myNote,
   annotationBar,
+  onSaveMyNote,
+  onDeleteMyNote,
   currentUserId,
   isAdmin,
   onClose,
   onChanged,
 }: Props) {
+  const [view, setView] = useState<View>({ mode: "list" });
+  const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, StoryComment[]>>({});
   const [draft, setDraft] = useState("");
@@ -114,6 +124,7 @@ export default function StoryPanel({
     try {
       await deleteStory(storyId);
       onChanged();
+      setView({ mode: "list" });
     } catch {
       setError("Could not delete the share.");
     } finally {
@@ -131,12 +142,40 @@ export default function StoryPanel({
     }
   }
 
-  // WeRead dialog treatment (owner, 2026-08-28, refined): the panel sits
-  // NEAR the clicked sentence — beside it, at its height — but clamped into
-  // the central band of the screen, over a dimmed scroll-locked page, with
-  // a speech-bubble arrow on its side edge pointing at the sentence.
-  // Mobile keeps the bottom sheet (also dimmed + locked). window is safe
-  // here — client component, computed after mount-time interactions.
+  async function handleSaveMyNote() {
+    if (!onSaveMyNote || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onSaveMyNote(noteDraft.trim());
+      setView({ mode: "list" });
+    } catch {
+      setError("Could not save your note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteMyNote() {
+    if (!onDeleteMyNote || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onDeleteMyNote();
+      setNoteDraft("");
+      setView({ mode: "list" });
+    } catch {
+      setError("Could not delete your note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // WeRead dialog treatment: near the clicked sentence but never covering
+  // it — below when it fits, flipped above otherwise — over a dimmed
+  // scroll-locked page, bubble arrow pointing at the sentence. Mobile
+  // keeps the bottom sheet. window is safe here — client component,
+  // computed after mount-time interactions.
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true);
   useScrollLock(true);
@@ -148,7 +187,6 @@ export default function StoryPanel({
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     panelH = Math.min(Math.round(vh * 0.55), 480);
-    // Below the sentence when it fits, above otherwise — never on top of it.
     below = position!.y + 24 + panelH <= vh - 16;
     panelTop = below ? position!.y + 24 : Math.max(16, position!.y - panelH - 28);
     panelLeft = clampN(position!.x - W / 2, 16, vw - W - 16);
@@ -157,6 +195,129 @@ export default function StoryPanel({
   const anchorStyle = anchored
     ? { left: panelLeft, top: panelTop, maxHeight: panelH, boxShadow: "var(--shadow-card-hover)" }
     : { boxShadow: "var(--shadow-card-hover)" };
+
+  const detailStory = view.mode === "story" ? stories.find((s) => s.id === view.storyId) : undefined;
+  const headerTitle =
+    view.mode === "editMine"
+      ? (myNote ? "My note" : "Write a note")
+      : view.mode === "story"
+        ? "Reader's note"
+        : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
+
+  const renderStoryCard = (story: Story) => (
+    <div key={story.id} data-testid={`story-${story.id}`}>
+      <div
+        role={variant === "sentence" ? "button" : undefined}
+        tabIndex={variant === "sentence" ? 0 : undefined}
+        aria-label={variant === "sentence" ? `Open note by ${story.author_name}` : undefined}
+        onClick={variant === "sentence" ? () => setView({ mode: "story", storyId: story.id }) : undefined}
+        onKeyDown={variant === "sentence" ? (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          setView({ mode: "story", storyId: story.id });
+        } : undefined}
+        className={`rounded-lg border border-amber-100 p-3 ${
+          variant === "sentence" ? "cursor-pointer hover:bg-amber-50/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
+        }`}
+      >
+        <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-stone-500">
+          <Avatar name={story.author_name} picture={story.author_picture} />
+          <span className="font-medium text-ink">{story.author_name}</span>
+          {story.kind === "translation" ? (
+            <>
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">{story.session_name}</span>
+              {story.paragraphs?.[0]?.model && (
+                <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{story.paragraphs[0].model}</span>
+              )}
+            </>
+          ) : (
+            variant !== "sentence" && <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">note</span>
+          )}
+          <span className="flex-1" />
+          {variant !== "sentence" && (story.user_id === currentUserId || isAdmin) && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDeleteStory(story.id); }}
+              aria-label="Delete this share"
+              className="text-stone-400 hover:text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+            >
+              <TrashIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {story.kind === "translation" ? (
+          <div className="mt-1.5 space-y-1.5">
+            {story.paragraphs?.map((p) => (
+              <p key={p.paragraph_index} lang={story.target_language ?? undefined} className="text-sm font-serif text-ink">
+                {p.text}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-1.5">
+            {variant !== "sentence" && (
+              <blockquote className="text-xs text-stone-500 border-l-2 border-amber-200 pl-2 italic">
+                {story.sentence_text}
+              </blockquote>
+            )}
+            {story.note_text && <p className="mt-1 text-sm font-serif text-ink">{story.note_text}</p>}
+          </div>
+        )}
+
+        {story.caption && (
+          <p className="mt-1.5 text-xs text-stone-600">{story.caption}</p>
+        )}
+
+        {variant !== "sentence" && (
+          <button
+            onClick={() => setOpenThread(openThread === story.id ? null : story.id)}
+            className="mt-2 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+          >
+            {openThread === story.id ? "Hide discussion" : `Discussion (${story.comment_count})`}
+          </button>
+        )}
+
+        {openThread === story.id && (
+          <div className="mt-2 space-y-2" data-testid={`story-thread-${story.id}`}>
+            {(comments[story.id] ?? []).map((c) => (
+              <div key={c.id} className="text-xs flex items-start gap-1.5">
+                <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+                <span className="font-medium text-ink">{c.author_name}</span>{" "}
+                <span className="text-stone-600">{c.body}</span>
+                {(c.user_id === currentUserId || isAdmin) && (
+                  <button
+                    onClick={() => handleDeleteComment(story.id, c.id)}
+                    aria-label="Delete comment"
+                    className="ml-1.5 text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            <div className="flex gap-1.5">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleComment(story.id); }}
+                placeholder="Add to the discussion…"
+                aria-label="Comment text"
+                className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <button
+                onClick={() => handleComment(story.id)}
+                disabled={busy || !draft.trim()}
+                className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <>
     <div
@@ -169,7 +330,7 @@ export default function StoryPanel({
       ref={panelRef}
       role="dialog"
       aria-modal="true"
-      aria-label={title ?? `Shares on paragraph ${paragraphIndex + 1}`}
+      aria-label={headerTitle}
       className={
         anchored
           ? "fixed z-50 w-[26rem] flex flex-col rounded-xl border border-amber-200 bg-white animate-fade-in"
@@ -189,9 +350,17 @@ export default function StoryPanel({
         />
       )}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
-        <h3 className="font-serif font-semibold text-sm text-ink flex-1">
-          {title ?? `Shares on paragraph ${paragraphIndex + 1}`}
-        </h3>
+        {view.mode !== "list" && (
+          <button
+            onClick={() => setView({ mode: "list" })}
+            aria-label="Back to notes"
+            data-testid="story-panel-back"
+            className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 inline-flex items-center justify-center text-stone-500 hover:text-ink rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+          </button>
+        )}
+        <h3 className="font-serif font-semibold text-sm text-ink flex-1">{headerTitle}</h3>
         <button
           onClick={onClose}
           aria-label="Close shares panel"
@@ -201,7 +370,7 @@ export default function StoryPanel({
         </button>
       </div>
 
-      {annotationBar && (
+      {view.mode === "list" && annotationBar && (
         <div
           role="toolbar"
           aria-label="Highlight options"
@@ -224,23 +393,18 @@ export default function StoryPanel({
               />
             </button>
           ))}
-          <span className="w-px h-5 bg-amber-100" aria-hidden="true" />
-          <button
-            onClick={annotationBar.onNote}
-            aria-label={myNote ? "Edit note" : "Write note"}
-            className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-          >
-            <NoteIcon className="w-4 h-4" aria-hidden="true" />
-            {myNote ? "Edit note" : "Write note"}
-          </button>
-          {annotationBar.hasAnnotation && annotationBar.onDelete && (
-            <button
-              onClick={annotationBar.onDelete}
-              aria-label="Delete highlight"
-              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-            >
-              <TrashIcon className="w-4 h-4" aria-hidden="true" />
-            </button>
+          {onSaveMyNote && !myNote && (
+            <>
+              <span className="w-px h-5 bg-amber-100" aria-hidden="true" />
+              <button
+                onClick={() => { setNoteDraft(""); setView({ mode: "editMine" }); }}
+                aria-label="Write note"
+                className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                <NoteIcon className="w-4 h-4" aria-hidden="true" />
+                Write note
+              </button>
+            </>
           )}
         </div>
       )}
@@ -249,117 +413,101 @@ export default function StoryPanel({
         <p className="px-4 py-2 text-xs text-red-700 bg-red-50 border-b border-red-100" role="alert">{error}</p>
       )}
 
-      <div className="overflow-y-auto px-4 py-3 space-y-4">
-        {myNote && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3" data-testid="my-note">
-            <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
-              <Avatar name={myNote.authorName} picture={myNote.picture} />
-              <span className="font-medium text-ink">{myNote.authorName}</span>
-              <span className="flex-1" />
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-900">My note</span>
-            </div>
-            <p className="mt-1.5 text-sm font-serif text-ink">{myNote.text}</p>
-          </div>
-        )}
-        {stories.map((story) => (
-          <div key={story.id} className="rounded-lg border border-amber-100 p-3" data-testid={`story-${story.id}`}>
-            <div className="flex items-center gap-1.5 flex-wrap text-[11px] text-stone-500">
-              <Avatar name={story.author_name} picture={story.author_picture} />
-              <span className="font-medium text-ink">{story.author_name}</span>
-              {story.kind === "translation" ? (
-                <>
-                  <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">{story.session_name}</span>
-                  {story.paragraphs?.[0]?.model && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{story.paragraphs[0].model}</span>
-                  )}
-                </>
-              ) : (
-                <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">note</span>
-              )}
-              <span className="flex-1" />
-              {(story.user_id === currentUserId || isAdmin) && (
-                <button
-                  onClick={() => handleDeleteStory(story.id)}
-                  aria-label="Delete this share"
-                  className="text-stone-400 hover:text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-                >
-                  <TrashIcon className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {story.kind === "translation" ? (
-              <div className="mt-1.5 space-y-1.5">
-                {story.paragraphs?.map((p) => (
-                  <p key={p.paragraph_index} lang={story.target_language ?? undefined} className="text-sm font-serif text-ink">
-                    {p.text}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-1.5">
-                {variant !== "sentence" && (
-                  <blockquote className="text-xs text-stone-500 border-l-2 border-amber-200 pl-2 italic">
-                    {story.sentence_text}
-                  </blockquote>
-                )}
-                {story.note_text && <p className="mt-1 text-sm font-serif text-ink">{story.note_text}</p>}
-              </div>
-            )}
-
-            {story.caption && (
-              <p className="mt-1.5 text-xs text-stone-600">{story.caption}</p>
-            )}
-
-            {variant !== "sentence" && (
+      {view.mode === "editMine" ? (
+        <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="my-note-editor">
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            rows={5}
+            autoFocus
+            placeholder="Your thought on this sentence…"
+            aria-label="My note text"
+            className="w-full text-sm font-serif border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <div className="flex items-center gap-2">
+            {myNote && onDeleteMyNote && (
               <button
-                onClick={() => setOpenThread(openThread === story.id ? null : story.id)}
-                className="mt-2 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                onClick={handleDeleteMyNote}
+                disabled={busy}
+                aria-label="Delete my note and highlight"
+                className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
               >
-                {openThread === story.id ? "Hide discussion" : `Discussion (${story.comment_count})`}
+                <TrashIcon className="w-4 h-4" aria-hidden="true" />
+                Delete
               </button>
             )}
-
-            {openThread === story.id && (
-              <div className="mt-2 space-y-2" data-testid={`story-thread-${story.id}`}>
-                {(comments[story.id] ?? []).map((c) => (
-                  <div key={c.id} className="text-xs flex items-start gap-1.5">
-                    <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-                    <span className="font-medium text-ink">{c.author_name}</span>{" "}
-                    <span className="text-stone-600">{c.body}</span>
-                    {(c.user_id === currentUserId || isAdmin) && (
-                      <button
-                        onClick={() => handleDeleteComment(story.id, c.id)}
-                        aria-label="Delete comment"
-                        className="ml-1.5 text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <div className="flex gap-1.5">
-                  <input
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleComment(story.id); }}
-                    placeholder="Add to the discussion…"
-                    aria-label="Comment text"
-                    className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  />
-                  <button
-                    onClick={() => handleComment(story.id)}
-                    disabled={busy || !draft.trim()}
-                    className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  >
-                    Post
-                  </button>
-                </div>
-              </div>
+            <span className="flex-1" />
+            <button
+              onClick={handleSaveMyNote}
+              disabled={busy}
+              className="text-sm px-4 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              {busy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+      ) : view.mode === "story" && detailStory ? (
+        <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="story-detail">
+          <div className="flex items-center gap-2">
+            <Avatar name={detailStory.author_name} picture={detailStory.author_picture} size="w-7 h-7" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-ink">{detailStory.author_name}</p>
+              {detailStory.created_at && (
+                <p className="text-[11px] text-stone-400">{detailStory.created_at.slice(0, 10)}</p>
+              )}
+            </div>
+            {(detailStory.user_id === currentUserId || isAdmin) && (
+              <button
+                onClick={() => handleDeleteStory(detailStory.id)}
+                disabled={busy}
+                aria-label="Delete this share"
+                className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
             )}
           </div>
-        ))}
-      </div>
+          {detailStory.note_text && (
+            <p className="text-sm font-serif text-ink leading-relaxed">{detailStory.note_text}</p>
+          )}
+          {detailStory.caption && (
+            <p className="text-xs text-stone-600">{detailStory.caption}</p>
+          )}
+          {/* Comments and likes land here with track B */}
+        </div>
+      ) : (
+        <div className="overflow-y-auto px-4 py-3 space-y-4">
+          {myNote && (
+            <div
+              role={variant === "sentence" ? "button" : undefined}
+              tabIndex={variant === "sentence" ? 0 : undefined}
+              aria-label={variant === "sentence" ? "Open my note" : undefined}
+              onClick={variant === "sentence" ? () => { setNoteDraft(myNote.text); setView({ mode: "editMine" }); } : undefined}
+              onKeyDown={variant === "sentence" ? (e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                setNoteDraft(myNote.text);
+                setView({ mode: "editMine" });
+              } : undefined}
+              className={`rounded-lg border border-amber-200 bg-amber-50/50 p-3 ${
+                variant === "sentence" ? "cursor-pointer hover:bg-amber-100/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
+              }`}
+              data-testid="my-note"
+            >
+              <div className="flex items-center gap-1.5 text-[11px] text-stone-500">
+                <Avatar name={myNote.authorName} picture={myNote.picture} />
+                <span className="font-medium text-ink">{myNote.authorName}</span>
+                <span className="flex-1" />
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-200/70 text-amber-900">My note</span>
+              </div>
+              <p className="mt-1.5 text-sm font-serif text-ink">
+                {myNote.text || <span className="text-stone-400 italic">Highlight — tap to add a note.</span>}
+              </p>
+            </div>
+          )}
+          {stories.map(renderStoryCard)}
+        </div>
+      )}
     </div>
     </>
   );

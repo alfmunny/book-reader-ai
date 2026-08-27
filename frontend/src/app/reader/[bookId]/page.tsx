@@ -2101,7 +2101,7 @@ export default function ReaderPage() {
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
                 return own ? {
-                  text: own.note_text || "Highlight — no note yet.",
+                  text: own.note_text,
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
                 } : null;
@@ -2113,7 +2113,6 @@ export default function ReaderPage() {
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
                 return {
-                  hasAnnotation: !!own,
                   existingColor: own?.color ?? null,
                   onColor: async (color: "yellow" | "blue" | "green" | "pink") => {
                     try {
@@ -2132,21 +2131,38 @@ export default function ReaderPage() {
                       }
                     } catch { /* transient — next tap retries */ }
                   },
-                  onNote: () => {
-                    setSharedNotesFor(null);
-                    setAnnotationPanel({
-                      sentenceText: own?.sentence_text ?? sharedNotesFor.sentenceText,
-                      chapterIndex: own?.chapter_index ?? chapterIndex,
-                    });
-                  },
-                  onDelete: own ? async () => {
-                    try {
-                      await deleteAnnotation(own.id);
-                      setAnnotations((prev) => prev.filter((a) => a.id !== own.id));
-                    } catch { /* transient — next tap retries */ }
-                  } : undefined,
                 };
               })()}
+              onSaveMyNote={async (text) => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                if (own) {
+                  const saved = await updateAnnotation(own.id, { color: own.color, note_text: text });
+                  setAnnotations((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+                } else {
+                  const saved = await createAnnotation({
+                    book_id: Number(bookId),
+                    chapter_index: chapterIndex,
+                    sentence_text: sharedNotesFor.sentenceText,
+                    note_text: text,
+                    color: "yellow",
+                  });
+                  setAnnotations((prev) => [...prev, saved]);
+                }
+              }}
+              onDeleteMyNote={async () => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                if (!own) return;
+                await deleteAnnotation(own.id);
+                setAnnotations((prev) => prev.filter((a) => a.id !== own.id));
+              }}
               position={sharedNotesFor.position}
               currentUserId={session?.backendUser?.id}
               onClose={() => setSharedNotesFor(null)}

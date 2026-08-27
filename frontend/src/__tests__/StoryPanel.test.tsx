@@ -164,39 +164,86 @@ test("sentence variant: my note pinned on top, no quote, no discussion UI", () =
   expect(screen.queryByText(/Discussion/)).toBeNull();
 });
 
-test("annotation toolbar merges highlight actions into the dialog", () => {
-  const bar = {
-    hasAnnotation: true,
-    existingColor: "yellow",
-    onColor: jest.fn(),
-    onNote: jest.fn(),
-    onDelete: jest.fn(),
-  };
+test("toolbar shows the merged color row; current color marked", () => {
+  const bar = { existingColor: "yellow", onColor: jest.fn() };
   renderPanel({
     variant: "sentence",
     myNote: { text: "mine", authorName: "Alfmunny", picture: null },
     annotationBar: bar,
     stories: [NOTE_STORY],
   });
-  const toolbar = screen.getByTestId("story-panel-toolbar");
-  expect(toolbar).toBeInTheDocument();
-  // Current color is marked, picking another reports it
+  expect(screen.getByTestId("story-panel-toolbar")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Yellow" })).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(screen.getByRole("button", { name: "Blue" }));
   expect(bar.onColor).toHaveBeenCalledWith("blue");
-  // Note editing and highlight deletion live here too
-  fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
-  expect(bar.onNote).toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Delete highlight" }));
-  expect(bar.onDelete).toHaveBeenCalled();
 });
 
-test("toolbar without an annotation offers Write note and no delete", () => {
+test("tapping my note shifts to the edit sub-page; back returns to the list", async () => {
+  const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
   renderPanel({
     variant: "sentence",
-    annotationBar: { hasAnnotation: false, onColor: jest.fn(), onNote: jest.fn() },
+    myNote: { text: "old thought", authorName: "Alfmunny", picture: null },
+    annotationBar: { existingColor: "yellow", onColor: jest.fn() },
+    onSaveMyNote,
     stories: [NOTE_STORY],
   });
-  expect(screen.getByRole("button", { name: "Write note" })).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Delete highlight" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  const editor = screen.getByTestId("my-note-editor");
+  expect(editor).toBeInTheDocument();
+  const textarea = screen.getByLabelText("My note text") as HTMLTextAreaElement;
+  expect(textarea.value).toBe("old thought");
+  // Back returns without saving
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+  expect(screen.getByTestId("my-note")).toBeInTheDocument();
+  // Edit again and save
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.change(screen.getByLabelText("My note text"), { target: { value: "new thought" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("new thought"));
+  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+});
+
+test("deleting my note lives in the edit sub-page", async () => {
+  const onDeleteMyNote = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "mine", authorName: "Alfmunny", picture: null },
+    onSaveMyNote: jest.fn(),
+    onDeleteMyNote,
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete my note and highlight" }));
+  await waitFor(() => expect(onDeleteMyNote).toHaveBeenCalled());
+  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+});
+
+test("Write note appears in the toolbar only without an existing note", () => {
+  renderPanel({
+    variant: "sentence",
+    annotationBar: { onColor: jest.fn() },
+    onSaveMyNote: jest.fn(),
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Write note" }));
+  expect((screen.getByLabelText("My note text") as HTMLTextAreaElement).value).toBe("");
+});
+
+test("tapping a community note opens its detail page with author and delete for admins", async () => {
+  (api.deleteStory as jest.Mock).mockResolvedValue({ ok: true });
+  const { props } = renderPanel({
+    variant: "sentence",
+    isAdmin: true,
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open note by Jonas" }));
+  const detail = screen.getByTestId("story-detail");
+  expect(detail).toHaveTextContent("Jonas");
+  expect(detail).toHaveTextContent("wonderful opening");
+  fireEvent.click(screen.getByRole("button", { name: "Delete this share" }));
+  await waitFor(() => expect(api.deleteStory).toHaveBeenCalledWith(2));
+  expect(props.onChanged).toHaveBeenCalled();
+  // Returns to the list after deleting
+  expect(screen.queryByTestId("story-detail")).toBeNull();
 });

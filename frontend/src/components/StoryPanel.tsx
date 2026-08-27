@@ -312,6 +312,12 @@ export default function StoryPanel({
   }
 
   const detailStory = view.mode === "story" ? stories.find((s) => s.id === view.storyId) : undefined;
+  // The Comments tab means THE paragraph thread (commentsTab.storyId);
+  // details reached from the list stay under Other translations, keeping
+  // their back arrow — the Comments view itself needs none (owner,
+  // 2026-08-30: the arrow there duplicated the tab).
+  const activeCommentsView = !!commentsTab &&
+    (view.mode === "commentsEmpty" || (view.mode === "story" && view.storyId === commentsTab.storyId));
   const detailVersion = view.mode === "myVersion" ? myVersions?.[view.index] : undefined;
   const headerTitle =
     view.mode === "editMine"
@@ -443,7 +449,7 @@ export default function StoryPanel({
         />
       )}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100">
-        {view.mode !== "list" && (
+        {view.mode !== "list" && !activeCommentsView && (
           <button
             onClick={() => setView({ mode: "list" })}
             aria-label="Back to notes"
@@ -469,9 +475,7 @@ export default function StoryPanel({
             { key: "comments", label: "Comments" },
             { key: "translations", label: "Other translations" },
           ] as const).map((t) => {
-            const active = t.key === "comments"
-              ? view.mode === "story" || view.mode === "commentsEmpty" || view.mode === "myVersion"
-              : view.mode === "list";
+            const active = t.key === "comments" ? activeCommentsView : !activeCommentsView;
             return (
               <button
                 key={t.key}

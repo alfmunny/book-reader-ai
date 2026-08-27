@@ -305,11 +305,41 @@ async def main() -> None:
                     (jonas_id, book_id, jonas_session, i, i, jonas_captions[i % len(jonas_captions)]),
                 )
                 posts_made += 1
-            if first_post_id is not None:
-                await db.execute(
-                    "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
-                    (first_post_id, jonas_id, "比我的直译有味道多了。(demo)"),
-                )
+            # ~16 comments spread over the chapter-4 posts (owner request,
+            # 2026-08-30) so threads have something to read.
+            async with db.execute(
+                "SELECT id, user_id FROM stories WHERE book_id = ? AND chapter_index = 4 AND kind = 'translation' ORDER BY id",
+                (book_id,),
+            ) as c:
+                ch4_posts = await c.fetchall()
+            banter = [
+                "比我的直译有味道多了。(demo)",
+                "这里的节奏感处理得真好。(demo)",
+                "Ich hätte das nüchterner übersetzt — aber es funktioniert. (demo)",
+                "「纷纷」这个叠词用得妙。(demo)",
+                "读起来像原文的呼吸。(demo)",
+                "Der Reim ist geschmuggelt, aber charmant. (demo)",
+                "我投这个版本一票。(demo)",
+                "第二行稍微有点过译？(demo)",
+                "对照原文看，取舍很大胆。(demo)",
+                "学到了，回头改我自己的版本。(demo)",
+                "Präzise. Vielleicht zu präzise. (demo)",
+                "这个「演示」也太谦虚了。(demo)",
+                "能不能把这句的处理讲讲思路？(demo)",
+                "同一段两种性格，有意思。(demo)",
+                "直译派与诗意派之争，永恒话题。(demo)",
+                "下一段也求更新！(demo)",
+            ]
+            bi = 0
+            for pi, (post_id, author_id) in enumerate(ch4_posts):
+                other = jonas_id if author_id == mira_id else mira_id
+                # 1-2 comments per post, alternating commenter first
+                for k in range((pi % 2) + 1):
+                    await db.execute(
+                        "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
+                        (post_id, other if k == 0 else author_id, banter[bi % len(banter)]),
+                    )
+                    bi += 1
         await db.commit()
 
     print(f"Seeded demo stories on book {book_id} ({title}):")

@@ -2211,16 +2211,21 @@ export default function ReaderPage() {
               commentsTab={(() => {
                 // Comments is the DEFAULT tab (owner design review,
                 // 2026-08-29): the thread of the rendering being read.
+                const paraPosts = storiesByPara[postsDialog.paraIdx] ?? [];
                 const myPost = activeSession
-                  ? (storiesByPara[postsDialog.paraIdx] ?? []).find(
+                  ? paraPosts.find(
                       (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
                     )
                   : undefined;
+                // Fall back to the paragraph's top public post so the tab
+                // always lands on a real thread when any post exists
+                // (owner report, 2026-08-30: all-private versions left the
+                // tab with nothing to comment on).
                 return {
-                  storyId: myPost?.id,
+                  storyId: (myPost ?? paraPosts[0])?.id,
                   emptyText: activeSession
-                    ? "Your rendering isn't posted yet — publish it under Other translations to open a discussion."
-                    : "Discussions on the editorial translation are coming soon. Browse Other translations meanwhile.",
+                    ? "No posts on this paragraph yet — publish your rendering under Other translations to open a discussion."
+                    : "No posts on this paragraph yet.",
                 };
               })()}
               currentUserId={session?.backendUser?.id}

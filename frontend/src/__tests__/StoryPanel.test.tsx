@@ -372,6 +372,22 @@ test("Other translations tab swaps to the version list and back", () => {
   expect(screen.getByTestId("story-detail")).toBeInTheDocument();
 });
 
+test("Comments view has no back arrow; list-opened details keep it under Other translations", () => {
+  const second = { ...TRANSLATION_STORY, id: 5, author_name: "Jonas", session_name: "直译版" };
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY, second],
+    commentsTab: { storyId: 1, emptyText: "none" },
+  });
+  // Comments landing: tabs are the navigation — no arrow
+  expect(screen.queryByTestId("story-panel-back")).toBeNull();
+  // A detail opened from the list keeps Other translations active + the arrow
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open translation by Jonas" }));
+  expect(screen.getByRole("tab", { name: "Other translations" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByTestId("story-panel-back")).toBeInTheDocument();
+});
+
 test("unposted rendering: Comments tab explains and points to the list", () => {
   renderPanel({
     variant: "sentence",

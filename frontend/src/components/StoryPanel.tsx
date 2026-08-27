@@ -84,6 +84,8 @@ interface Props {
     emptyText: string;
     onSubmit: (caption: string) => Promise<void>;
   };
+  /** Open directly on this post's detail (the rendering being read). */
+  initialStoryId?: number;
   currentUserId?: number;
   isAdmin?: boolean;
   onClose: () => void;
@@ -103,18 +105,23 @@ export default function StoryPanel({
   onDeleteMyNote,
   myVersions,
   composer,
+  initialStoryId,
   currentUserId,
   isAdmin,
   onClose,
   onChanged,
 }: Props) {
-  const [view, setView] = useState<View>({ mode: "list" });
+  const [view, setView] = useState<View>(initialStoryId != null ? { mode: "story", storyId: initialStoryId } : { mode: "list" });
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [comments, setComments] = useState<Record<number, StoryComment[]>>({});
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (view.mode === "story") setOpenThread(view.storyId);
+  }, [view]);
 
   useEffect(() => {
     if (openThread == null) return;
@@ -509,6 +516,39 @@ export default function StoryPanel({
         </div>
       ) : view.mode === "story" && detailStory ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="story-detail">
+          {variant === "sentence" && detailStory.kind === "translation" && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1" data-testid="version-switcher" role="tablist" aria-label="Translation versions">
+              {myVersions?.map((v, i) => {
+                const active = v.posted ? v.storyId === detailStory.id : false;
+                return (
+                  <button
+                    key={`chip-mine-${i}`}
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setView(v.posted && v.storyId ? { mode: "story", storyId: v.storyId } : { mode: "myVersion", index: i })}
+                    className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                      active ? "border-amber-600 bg-amber-700 text-white" : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                    }`}
+                  >
+                    {v.sessionName} · mine
+                  </button>
+                );
+              })}
+              {stories.filter((st) => st.kind === "translation" && !myVersions?.some((v) => v.storyId === st.id)).map((st) => (
+                <button
+                  key={`chip-${st.id}`}
+                  role="tab"
+                  aria-selected={st.id === detailStory.id}
+                  onClick={() => setView({ mode: "story", storyId: st.id })}
+                  className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                    st.id === detailStory.id ? "border-amber-600 bg-amber-700 text-white" : "border-amber-300 text-amber-700 hover:bg-amber-50"
+                  }`}
+                >
+                  {st.author_name}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Avatar name={detailStory.author_name} picture={detailStory.author_picture} size="w-7 h-7" />
             <div className="flex-1">
@@ -549,7 +589,43 @@ export default function StoryPanel({
           {detailStory.caption && (
             <p className="text-xs text-stone-600">{detailStory.caption}</p>
           )}
-          {/* Comments and likes land here with track B */}
+          <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
+            <p className="text-[11px] font-medium text-stone-500">Comments ({comments[detailStory.id]?.length ?? detailStory.comment_count})</p>
+            {(comments[detailStory.id] ?? []).map((c) => (
+              <div key={c.id} className="text-xs flex items-start gap-1.5">
+                <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+                <span className="font-medium text-ink">{c.author_name}</span>{" "}
+                <span className="text-stone-600 flex-1">{c.body}</span>
+                {(c.user_id === currentUserId || isAdmin) && (
+                  <button
+                    onClick={() => handleDeleteComment(detailStory.id, c.id)}
+                    aria-label="Delete comment"
+                    className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            <div className="flex gap-1.5">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleComment(detailStory.id); }}
+                placeholder="Add a comment…"
+                aria-label="Comment text"
+                className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <button
+                onClick={() => handleComment(detailStory.id)}
+                disabled={busy || !draft.trim()}
+                className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+          {/* Likes join here with track B */}
         </div>
       ) : (
         <div className="overflow-y-auto px-4 py-3 space-y-4">

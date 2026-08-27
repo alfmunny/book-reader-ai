@@ -331,3 +331,29 @@ test("community translation cards clamp in the list — full text lives in detai
   const card = screen.getByTestId(`story-${TRANSLATION_STORY.id}`);
   expect(card.innerHTML).toContain("line-clamp-3");
 });
+
+test("post detail carries the comment thread: read, write, and switch versions", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 31, story_id: 1, user_id: 3, body: "有味道", created_at: "", author_name: "Jonas" }],
+  });
+  (api.addStoryComment as jest.Mock).mockResolvedValue({
+    id: 32, story_id: 1, user_id: 9, body: "谢谢！", created_at: "", author_name: "Me",
+  });
+  const second = { ...TRANSLATION_STORY, id: 5, author_name: "Jonas", session_name: "直译版" };
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY, second],
+    initialStoryId: 1, // smart landing: straight into the read rendering's thread
+    currentUserId: 9,
+  });
+  // Landed directly on detail with the thread loaded
+  expect(screen.getByTestId("story-detail")).toBeInTheDocument();
+  expect(await screen.findByText("有味道")).toBeInTheDocument();
+  // Write a comment in place
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "谢谢！" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "谢谢！"));
+  // Switch to another version via the chip strip
+  fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
+  expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
+});

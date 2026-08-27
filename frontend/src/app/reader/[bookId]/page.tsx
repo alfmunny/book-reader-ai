@@ -2208,6 +2208,14 @@ export default function ReaderPage() {
                   setStoriesVersion((v) => v + 1);
                 },
               } : undefined}
+              initialStoryId={(() => {
+                // Smart landing (owner design, 2026-08-29): if the rendering
+                // being READ is posted, open straight into its comments.
+                if (!activeSession) return undefined;
+                return (storiesByPara[postsDialog.paraIdx] ?? []).find(
+                  (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
+                )?.id;
+              })()}
               currentUserId={session?.backendUser?.id}
               onClose={() => setPostsDialog(null)}
               onChanged={() => setStoriesVersion((v) => v + 1)}

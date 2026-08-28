@@ -238,6 +238,9 @@ interface Props {
     onShare?: () => void;
     /** Machine-retranslate this paragraph (private renderings only). */
     onRetranslate?: () => Promise<void>;
+    /** The rendering shown on the Current-translation tab — excluded from
+     *  the Other-translations list (owner, 2026-08-28: it's not 'other'). */
+    isCurrent?: boolean;
   }>;
   /** Bottom publish box (paragraph posts): caption in, one tap to post. */
   composer?: {
@@ -873,20 +876,19 @@ export default function StoryPanel({
           {commentsTab?.content && (() => {
             const c = commentsTab.content;
             const needsClamp = c.text.split("\n").length > 10 || c.text.length > 600;
-            const editable = c.myVersionIndex != null && myVersions?.[c.myVersionIndex]?.onSave;
-            const openEdit = editable
-              ? () => {
-                  const entry = myVersions![c.myVersionIndex!];
-                  setVersionDraft(entry.text);
-                  setVisDraft(entry.posted ? "public" : "private");
-                  setView({ mode: "editVersion", index: c.myVersionIndex!, back: { mode: "comments" } });
-                }
+            const entry = c.myVersionIndex != null ? myVersions?.[c.myVersionIndex] : undefined;
+            const openEdit = entry
+              ? () => setView(
+                  entry.posted && entry.storyId
+                    ? { mode: "story", storyId: entry.storyId }
+                    : { mode: "myVersion", index: c.myVersionIndex! },
+                )
               : undefined;
             return (
               <div
                 role={openEdit ? "button" : undefined}
                 tabIndex={openEdit ? 0 : undefined}
-                aria-label={openEdit ? "Edit my translation" : undefined}
+                aria-label={openEdit ? "Open my translation" : undefined}
                 onClick={openEdit}
                 onKeyDown={openEdit ? (e) => {
                   if (e.key !== "Enter" && e.key !== " ") return;
@@ -1221,6 +1223,7 @@ export default function StoryPanel({
             <p className="text-xs text-stone-500 italic" data-testid="posts-empty">{composer.emptyText}</p>
           )}
           {myVersions?.map((v, i) => {
+            if (v.isCurrent) return null; // lives on the Current-translation tab
             const open = v.posted && v.storyId
               ? () => setView({ mode: "story", storyId: v.storyId! })
               : () => setView({ mode: "myVersion", index: i });
@@ -1287,6 +1290,8 @@ export default function StoryPanel({
           {stories
             .filter((st) => st.id !== myNote?.storyId && !myVersions?.some((v) => v.storyId === st.id))
             .map(renderStoryCard)}
+          {/* (my posted entries are represented by pinned cards; the current
+              rendering by the Current-translation tab) */}
         </div>
       )}
 

@@ -2270,6 +2270,7 @@ export default function ReaderPage() {
                 return {
                   sessionName: v.sessionName, model: v.model, text: v.text,
                   posted: !!post, storyId: post?.id,
+                  isCurrent: v.sessionId === activeSession?.id,
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
                   onSave: async (text: string, makePublic: boolean) => {

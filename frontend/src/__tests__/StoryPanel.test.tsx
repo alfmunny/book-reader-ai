@@ -639,12 +639,30 @@ test("Current translation tab: context card opens my editor; Comments heads the 
   });
   expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
   expect(await screen.findByText(/Comments \(0\)/)).toBeInTheDocument();
-  // Tapping the context card goes straight to the editor…
+  // Tapping the context card opens the translation's DETAIL — Edit lives there
+  fireEvent.click(screen.getByRole("button", { name: "Open my translation" }));
+  expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
   expect(screen.getByTestId("my-version-editor")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(onSave).toHaveBeenCalled());
-  // …and saving returns to Current translation, not the version list
-  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+});
+
+test("the current rendering never repeats inside Other translations", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "当前版", text: "当前", posted: false, authorName: "Me", picture: null, isCurrent: true },
+      { sessionName: "另一版", text: "另一", posted: false, authorName: "Me", picture: null },
+    ],
+    commentsTab: {
+      anchor: undefined, label: "L", emptyText: "e",
+      content: { text: "当前", sessionName: "当前版", myVersionIndex: 0 },
+    },
+  });
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  expect(screen.queryByRole("button", { name: "Open my version 当前版" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Open my version 另一版" })).toBeInTheDocument();
 });

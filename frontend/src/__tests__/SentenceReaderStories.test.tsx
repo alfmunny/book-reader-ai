@@ -146,27 +146,7 @@ test("a translation with community posts gets the dashed underline and opens the
 
 // ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────
 
-test("a posted paragraph shows the Posted chip and locks machine retranslation", () => {
-  renderReader({
-    sessionMode: true,
-    translationMeta: { 0: { model: "deepseek-v4-flash", edited: false } },
-    onTranslateParagraph: jest.fn(),
-    postedParagraphs: new Set([0]),
-  });
-  expect(screen.getByTestId("posted-chip-0")).toHaveTextContent("Posted");
-  expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeDisabled();
-});
 
-test("unposted paragraphs have no Posted chip and enabled retranslate", () => {
-  renderReader({
-    sessionMode: true,
-    translationMeta: { 0: { model: "m", edited: false } },
-    onTranslateParagraph: jest.fn(),
-    postedParagraphs: new Set([3]),
-  });
-  expect(screen.queryByTestId("posted-chip-0")).toBeNull();
-  expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeEnabled();
-});
 
 test("a translation with community posts gets the dashed underline and opens the dialog", () => {
   const onOpenPosts = jest.fn();

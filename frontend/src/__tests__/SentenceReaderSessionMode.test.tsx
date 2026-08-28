@@ -24,7 +24,6 @@ function renderSession(overrides: Partial<React.ComponentProps<typeof SentenceRe
     sessionMode: true,
     translationMeta: { 0: { model: "deepseek-v4-flash", edited: false } },
     onTranslateParagraph: jest.fn(),
-    onEditParagraph: jest.fn(),
     ...overrides,
   };
   return { ...render(<SentenceReader {...props} />), props };
@@ -50,13 +49,11 @@ test("untranslated paragraphs show the explicit placeholder with Translate", () 
   expect(props.onTranslateParagraph).toHaveBeenCalledWith(1);
 });
 
-test("action callbacks carry the paragraph index (row = Retranslate + Edit only)", () => {
+test("the row keeps only Retranslate — Edit/Share/Delete live in the dialog", () => {
   const { props } = renderSession();
   fireEvent.click(screen.getByRole("button", { name: "Retranslate paragraph 1" }));
   expect(props.onTranslateParagraph).toHaveBeenCalledWith(0);
-  fireEvent.click(screen.getByRole("button", { name: "Edit translation of paragraph 1" }));
-  expect(props.onEditParagraph).toHaveBeenCalledWith(0);
-  // Share and Delete moved into the posts dialog's detail panel (owner, 2026-08-28)
+  expect(screen.queryByRole("button", { name: /Edit translation/ })).toBeNull();
   expect(screen.queryByRole("button", { name: /Delete translation/ })).toBeNull();
   expect(screen.queryByRole("button", { name: /Share/ })).toBeNull();
 });
@@ -75,7 +72,6 @@ test("actionsDisabled locks every per-paragraph action during a chapter run", ()
   expect(screen.getByTestId("session-gap-1").querySelector("button")).toBeNull();
   // Existing paragraph's actions disabled
   expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Edit translation of paragraph 1" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Retranslate paragraph 1" }));
   expect(props.onTranslateParagraph).not.toHaveBeenCalled();
 });

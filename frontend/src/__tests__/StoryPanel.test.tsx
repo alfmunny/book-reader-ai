@@ -583,3 +583,39 @@ test("my posted translation's detail offers Edit + Share, no trash for others", 
   expect(screen.getByRole("button", { name: "Share this translation" })).toBeInTheDocument();
   expect(screen.queryByLabelText("Delete this share")).toBeNull();
 });
+test("Comments view shows the rendering as context, clamped with a More toggle", () => {
+  const longText = Array.from({ length: 14 }, (_, i) => `诗行 ${i + 1}`).join("\n");
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: undefined,
+      label: "Editorial · 中文 · this paragraph",
+      emptyText: "none",
+      content: { text: longText, lang: "zh", sessionName: "Editorial" },
+    },
+  });
+  const ctx = screen.getByTestId("comments-context");
+  expect(ctx).toHaveTextContent("诗行 1");
+  const para = ctx.querySelector("p.font-serif") as HTMLElement;
+  expect(para.className).toContain("line-clamp-[10]");
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  expect((ctx.querySelector("p.font-serif") as HTMLElement).className).not.toContain("line-clamp");
+  fireEvent.click(screen.getByRole("button", { name: "Less" }));
+  expect((ctx.querySelector("p.font-serif") as HTMLElement).className).toContain("line-clamp-[10]");
+});
+
+test("short context renders without a More toggle", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "story", storyId: 1 },
+      label: "L",
+      emptyText: "",
+      content: { text: "短句。", lang: "zh" },
+    },
+  });
+  expect(screen.getByTestId("comments-context")).toHaveTextContent("短句。");
+  expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+});

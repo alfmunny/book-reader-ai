@@ -361,6 +361,9 @@ export default function ReaderPage() {
   >(null);
   const [shareCaption, setShareCaption] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
+  // Per-paragraph retranslate asks first — it costs tokens and replaces
+  // the current rendering (owner, 2026-08-28).
+  const [confirmRetransPara, setConfirmRetransPara] = useState<number | null>(null);
 
   const setBookTranslationLang = (lang: string) => {
     setTranslationLang(lang);
@@ -479,22 +482,6 @@ export default function ReaderPage() {
   // Persistent, in-panel error for session actions (owner report: a failed
   // translate showed nothing — the corner toast was too transient).
   const [sessionActionError, setSessionActionError] = useState<string | null>(null);
-  const myPostedParas = useMemo(() => {
-    const set = new Set<number>();
-    const at: Record<number, string> = {};
-    if (!activeSession) return { set, at };
-    for (const st of chapterStories) {
-      if (st.kind !== "translation" || st.session_id !== activeSession.id) continue;
-      if (st.user_id !== session?.backendUser?.id) continue;
-      if (st.paragraph_start == null || st.paragraph_end == null) continue;
-      for (let i = st.paragraph_start; i <= st.paragraph_end; i++) {
-        set.add(i);
-        // Latest share wins for the "shared … ago" line
-        if (!at[i] || st.created_at > at[i]) at[i] = st.created_at;
-      }
-    }
-    return { set, at };
-  }, [chapterStories, activeSession, session?.backendUser?.id]);
 
   // Stories arrive in ONE call per chapter (design: no per-paragraph
   // requests). Shared notes are a reading surface, so the fetch is gated on
@@ -1920,12 +1907,7 @@ export default function ReaderPage() {
                   translationMeta={sessionMeta}
                   translatingParagraphs={translatingParas}
                   actionsDisabled={sessionTranslating || chapterRunActive}
-                  onTranslateParagraph={activeSession ? handleSessionTranslateParagraph : undefined}
-                  onEditParagraph={activeSession ? (idx) => {
-                    setParagraphEditorError(false);
-                    setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
-                  } : undefined}
-                  postedParagraphs={activeSession ? myPostedParas.set : undefined}
+                  onTranslateParagraph={activeSession ? (idx) => setConfirmRetransPara(idx) : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
                   onOpenPosts={showShares ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
@@ -2102,6 +2084,35 @@ export default function ReaderPage() {
           )}
 
           {/* Session paragraph editor (design: docs/design/user-translations.md) */}
+          {confirmRetransPara != null && activeSession && (
+            <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Confirm retranslate">
+              <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-sm space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
+                <p className="text-sm font-medium text-ink">Retranslate paragraph {confirmRetransPara + 1}?</p>
+                <p className="text-xs text-stone-500">
+                  The current rendering will be replaced and this costs tokens on your {activeSession.provider === "claude" ? "Claude" : "DeepSeek"} key.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setConfirmRetransPara(null)}
+                    className="text-sm px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const idx = confirmRetransPara;
+                      setConfirmRetransPara(null);
+                      handleSessionTranslateParagraph(idx);
+                    }}
+                    className="text-sm px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Retranslate
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {shareDialog && (
             <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Share">
               <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
@@ -2303,6 +2314,9 @@ export default function ReaderPage() {
                 if (!activeSession) {
                   return {
                     label: `Editorial · ${langLabel} · this paragraph`,
+                    content: translatedParagraphs[postsDialog.paraIdx]
+                      ? { text: translatedParagraphs[postsDialog.paraIdx], lang: translationLang, sessionName: "Editorial" }
+                      : undefined,
                     anchor: {
                       kind: "editorial" as const,
                       editorial: {
@@ -2318,8 +2332,12 @@ export default function ReaderPage() {
                 const myPost = (storiesByPara[postsDialog.paraIdx] ?? []).find(
                   (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
                 );
+                const myPara = sessionChapter?.paragraphs[String(postsDialog.paraIdx)];
                 return {
                   label: `${activeSession.name} · this paragraph`,
+                  content: myPara?.text
+                    ? { text: myPara.text, lang: activeSession.target_language, sessionName: activeSession.name, model: myPara.model }
+                    : undefined,
                   anchor: myPost ? { kind: "story" as const, storyId: myPost.id } : undefined,
                   emptyText: "Your rendering isn't posted yet — publish it under Other translations to receive comments.",
                 };

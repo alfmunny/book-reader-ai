@@ -82,6 +82,10 @@ export default function TranslationSessionPanel({
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [confirmRetranslate, setConfirmRetranslate] = useState(false);
+  // Style prompt edits are explicit (owner, 2026-08-28): read view + Edit,
+  // then Save/Cancel — a bare always-live textarea invited accidental edits.
+  const [styleEditing, setStyleEditing] = useState(false);
+  const [styleDraft, setStyleDraft] = useState("");
   // Version-list filter (owner request, 2026-08-27): by name, language, model.
   const [filterText, setFilterText] = useState("");
   const [filterLang, setFilterLang] = useState("all");
@@ -418,14 +422,48 @@ export default function TranslationSessionPanel({
               <option key={l.code} value={l.code}>{l.label}</option>
             ))}
           </select>
-          <label htmlFor="session-style" className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide">Style &amp; requirements</label>
-          <textarea
-            id="session-style"
-            defaultValue={active.style_prompt ?? ""}
-            onBlur={(e) => { if (e.target.value !== (active.style_prompt ?? "")) handleStyleSave(e.target.value); }}
-            rows={3}
-            className="w-full text-sm border border-amber-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
+          <div className="flex items-center justify-between">
+            <label htmlFor="session-style" className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide">Style &amp; requirements</label>
+            {!styleEditing && (
+              <button
+                onClick={() => { setStyleDraft(active.style_prompt ?? ""); setStyleEditing(true); }}
+                aria-label="Edit style and requirements"
+                className="text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+          {styleEditing ? (
+            <>
+              <textarea
+                id="session-style"
+                value={styleDraft}
+                onChange={(e) => setStyleDraft(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setStyleEditing(false)}
+                  className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => { await handleStyleSave(styleDraft); setStyleEditing(false); }}
+                  className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  Save
+                </button>
+              </div>
+            </>
+          ) : (
+            <p data-testid="style-readout" className="text-sm text-stone-600 whitespace-pre-wrap border border-transparent px-2 py-1.5 min-h-[2rem]">
+              {active.style_prompt?.trim() || <span className="italic text-stone-400">No style requirements yet — tap Edit.</span>}
+            </p>
+          )}
           <select
             aria-label="Version provider"
             value={active.provider}

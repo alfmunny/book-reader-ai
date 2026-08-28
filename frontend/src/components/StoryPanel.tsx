@@ -253,6 +253,9 @@ interface Props {
     anchor?: CommentAnchor;
     label: string;
     emptyText: string;
+    /** The rendering being discussed — shown above the thread for context,
+     *  clamped to ~10 lines with a More toggle (owner, 2026-08-28). */
+    content?: { text: string; lang?: string; sessionName?: string; model?: string };
   };
   currentUserId?: number;
   isAdmin?: boolean;
@@ -433,6 +436,7 @@ export default function StoryPanel({
   // Visibility is set EXPLICITLY in the editors via a Public/Private
   // dropdown (owner, 2026-08-28) — the chips are display-only.
   const [visDraft, setVisDraft] = useState<"public" | "private">("private");
+  const [contentExpanded, setContentExpanded] = useState(false);
   const [versionDraft, setVersionDraft] = useState("");
 
   const [composerDraft, setComposerDraft] = useState("");
@@ -857,6 +861,37 @@ export default function StoryPanel({
       {view.mode === "comments" ? (
         <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="comments-view">
           <p className="text-[11px] text-stone-500">{commentsTab?.label}</p>
+          {commentsTab?.content && (() => {
+            const c = commentsTab.content;
+            const needsClamp = c.text.split("\n").length > 10 || c.text.length > 600;
+            return (
+              <div className="rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2" data-testid="comments-context">
+                {(c.sessionName || c.model) && (
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                    {c.sessionName && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{c.sessionName}</span>}
+                    {c.model && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono">{c.model}</span>}
+                  </div>
+                )}
+                <p
+                  lang={c.lang}
+                  className={`text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap ${
+                    needsClamp && !contentExpanded ? "line-clamp-[10]" : ""
+                  }`}
+                >
+                  {c.text}
+                </p>
+                {needsClamp && (
+                  <button
+                    onClick={() => setContentExpanded((v) => !v)}
+                    aria-expanded={contentExpanded}
+                    className="mt-1 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                  >
+                    {contentExpanded ? "Less" : "More"}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {!commentsTab?.anchor ? (
             <p className="text-xs text-stone-500 italic py-3 text-center" data-testid="comments-empty">{commentsTab?.emptyText}</p>
           ) : (

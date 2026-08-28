@@ -324,12 +324,7 @@ interface Props {
   /** Locks all per-paragraph actions (e.g. while a chapter run is active). */
   actionsDisabled?: boolean;
   onTranslateParagraph?: (paragraphIdx: number) => void;
-  onEditParagraph?: (paragraphIdx: number) => void;
-  /** Paragraphs whose rendering in the ACTIVE session is published. The
-   *  Share button becomes a green Posted state, and machine retranslation
-   *  + deletion lock — a public post is never silently rewritten (owner,
-   *  2026-08-31). Manual edits stay allowed: live references by design. */
-  postedParagraphs?: Set<number>;
+
   /** Paragraphs that have community translation posts. Their TRANSLATION
    *  text gets the dashed underline (same sign language as shared notes)
    *  and becomes the tap target opening the posts dialog — the entry
@@ -603,8 +598,6 @@ export default function SentenceReader({
   translatingParagraphs,
   actionsDisabled = false,
   onTranslateParagraph,
-  onEditParagraph,
-  postedParagraphs,
   postParagraphs,
   onOpenPosts,
   sharedNotes,
@@ -909,7 +902,6 @@ export default function SentenceReader({
     if (!sessionMode) return null;
     const meta = translationMeta?.[paraIdx];
     const busy = (translatingParagraphs?.has(paraIdx) ?? false) || actionsDisabled;
-    const posted = postedParagraphs?.has(paraIdx) ?? false;
     if (!hasText) {
       return (
         <div className="border border-dashed border-amber-300 rounded-lg px-3 py-2.5 text-xs text-stone-500 flex items-center justify-between gap-2" data-testid={`session-gap-${paraIdx}`}>
@@ -933,29 +925,15 @@ export default function SentenceReader({
         {meta?.edited && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">edited</span>
         )}
-        {posted && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200" data-testid={`posted-chip-${paraIdx}`}>Posted</span>
-        )}
         <span className="flex-1" />
         {onTranslateParagraph && (
           <button
             onClick={() => onTranslateParagraph(paraIdx)}
-            disabled={busy || posted}
-            title={posted ? "Posted — make it private before retranslating" : undefined}
+            disabled={busy}
             aria-label={`Retranslate paragraph ${paraIdx + 1}`}
             className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
             {busy ? "Translating…" : "Retranslate"}
-          </button>
-        )}
-        {onEditParagraph && (
-          <button
-            onClick={() => onEditParagraph(paraIdx)}
-            disabled={actionsDisabled}
-            aria-label={`Edit translation of paragraph ${paraIdx + 1}`}
-            className="text-[11px] text-stone-600 hover:text-stone-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-          >
-            Edit
           </button>
         )}
       </div>

@@ -25,7 +25,6 @@ function renderSession(overrides: Partial<React.ComponentProps<typeof SentenceRe
     translationMeta: { 0: { model: "deepseek-v4-flash", edited: false } },
     onTranslateParagraph: jest.fn(),
     onEditParagraph: jest.fn(),
-    onDeleteParagraph: jest.fn(),
     ...overrides,
   };
   return { ...render(<SentenceReader {...props} />), props };
@@ -51,14 +50,15 @@ test("untranslated paragraphs show the explicit placeholder with Translate", () 
   expect(props.onTranslateParagraph).toHaveBeenCalledWith(1);
 });
 
-test("action callbacks carry the paragraph index", () => {
+test("action callbacks carry the paragraph index (row = Retranslate + Edit only)", () => {
   const { props } = renderSession();
   fireEvent.click(screen.getByRole("button", { name: "Retranslate paragraph 1" }));
   expect(props.onTranslateParagraph).toHaveBeenCalledWith(0);
   fireEvent.click(screen.getByRole("button", { name: "Edit translation of paragraph 1" }));
   expect(props.onEditParagraph).toHaveBeenCalledWith(0);
-  fireEvent.click(screen.getByRole("button", { name: "Delete translation of paragraph 1" }));
-  expect(props.onDeleteParagraph).toHaveBeenCalledWith(0);
+  // Share and Delete moved into the posts dialog's detail panel (owner, 2026-08-28)
+  expect(screen.queryByRole("button", { name: /Delete translation/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Share/ })).toBeNull();
 });
 
 test("a translating paragraph shows progress instead of the button", () => {
@@ -76,7 +76,6 @@ test("actionsDisabled locks every per-paragraph action during a chapter run", ()
   // Existing paragraph's actions disabled
   expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Edit translation of paragraph 1" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Delete translation of paragraph 1" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Retranslate paragraph 1" }));
   expect(props.onTranslateParagraph).not.toHaveBeenCalled();
 });

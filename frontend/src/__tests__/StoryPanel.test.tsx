@@ -198,14 +198,14 @@ test("my note opens a DETAIL page like others — edit and delete live there", a
   const detail = screen.getByTestId("my-note-detail");
   expect(detail).toHaveTextContent("old thought");
   expect(detail).toHaveTextContent("Private");
-  expect(detail).toHaveTextContent("tap the badge to post it");
+  expect(detail).toHaveTextContent("set it Public while editing");
   // Edit → editor prefilled; save returns to the detail
   fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
   const textarea = screen.getByLabelText("My note text") as HTMLTextAreaElement;
   expect(textarea.value).toBe("old thought");
   fireEvent.change(textarea, { target: { value: "new thought" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("new thought"));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("new thought", false));
   expect(screen.getByTestId("my-note-detail")).toBeInTheDocument();
   // Back from detail → list
   fireEvent.click(screen.getByTestId("story-panel-back"));
@@ -483,71 +483,103 @@ test("private version detail carries the switcher chips and a parallel Comments 
   expect(switcher).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "我的私有版 · mine" })).toHaveAttribute("aria-selected", "true");
   // Parallel comments section explains instead of diverging layouts
-  expect(detail).toHaveTextContent("tap the badge to publish");
+  expect(detail).toHaveTextContent("set it Public while editing");
   // Switch straight to another version — no back-and-forth needed
   fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
   expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
 });
 
-test("the Private chip is the switch: confirm dialog, then post", async () => {
-  const onPost = jest.fn().mockResolvedValue(undefined);
-  const { props } = renderPanel({
+test("note editor carries the Public/Private dropdown; Save applies both", async () => {
+  const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
     variant: "sentence",
     stories: [],
-    myNote: { text: "mine", authorName: "A", picture: null, onPost },
+    myNote: { text: "mine", authorName: "A", picture: null },
+    onSaveMyNote,
   });
   fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
-  fireEvent.click(screen.getByRole("button", { name: "Make public" }));
-  // Confirm dialog appears; Cancel aborts without posting
-  expect(screen.getByTestId("visibility-confirm")).toHaveTextContent("Post this note publicly?");
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(onPost).not.toHaveBeenCalled();
-  // Confirm flips it
-  fireEvent.click(screen.getByRole("button", { name: "Make public" }));
-  fireEvent.click(screen.getByTestId("visibility-confirm").querySelector("button:last-child") as HTMLElement);
-  await waitFor(() => expect(onPost).toHaveBeenCalled());
-  expect(props.onChanged).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  // Dropdown defaults to the current visibility (private here)
+  const select = screen.getByLabelText("Visibility") as HTMLSelectElement;
+  expect(select.value).toBe("private");
+  fireEvent.change(select, { target: { value: "public" } });
+  fireEvent.change(screen.getByLabelText("My note text"), { target: { value: "mine v2" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("mine v2", true));
 });
 
-test("the Posted chip flips back to private with confirmation", async () => {
-  const onUnpost = jest.fn().mockResolvedValue(undefined);
+test("posted note's editor defaults the dropdown to Public; private saves unpost", async () => {
+  const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
   (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
   renderPanel({
     variant: "sentence",
     stories: [],
-    myNote: { text: "mine", authorName: "A", picture: null, storyId: 2, onUnpost },
+    myNote: { text: "mine", authorName: "A", picture: null, storyId: 2 },
+    onSaveMyNote,
   });
   fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
-  fireEvent.click(screen.getByRole("button", { name: "Make private" }));
-  expect(screen.getByTestId("visibility-confirm")).toHaveTextContent("Comments on it will be removed");
-  fireEvent.click(screen.getByTestId("visibility-confirm").querySelector("button:last-child") as HTMLElement);
-  await waitFor(() => expect(onUnpost).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  const select = screen.getByLabelText("Visibility") as HTMLSelectElement;
+  expect(select.value).toBe("public");
+  fireEvent.change(select, { target: { value: "private" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("mine", false));
 });
 
-test("private version detail publishes via its chip + confirmation", async () => {
-  const onPost = jest.fn().mockResolvedValue(undefined);
+test("version detail: Edit opens the rendering editor with the dropdown", async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
   renderPanel({
     variant: "sentence",
     stories: [],
     myVersions: [
-      { sessionName: "V", text: "t", posted: false, authorName: "A", picture: null, onPost },
+      { sessionName: "V", text: "原译", posted: false, authorName: "A", picture: null, onSave },
     ],
   });
   fireEvent.click(screen.getByRole("button", { name: "Open my version V" }));
-  fireEvent.click(screen.getByRole("button", { name: "Make public" }));
-  fireEvent.click(screen.getByTestId("visibility-confirm").querySelector("button:last-child") as HTMLElement);
-  await waitFor(() => expect(onPost).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
+  const editor = screen.getByTestId("my-version-editor");
+  expect((screen.getByLabelText("My translation text") as HTMLTextAreaElement).value).toBe("原译");
+  fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改译" } });
+  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "public" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith("改译", true));
 });
 
-test("my posted translation's detail carries the Posted chip switch, no trash", () => {
+test("version detail packs Share, Retranslate, and Delete; chips are display-only", async () => {
+  const onShare = jest.fn();
+  const onRetranslate = jest.fn().mockResolvedValue(undefined);
+  const onDelete = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "V", text: "t", posted: false, authorName: "A", picture: null, onShare, onRetranslate, onDelete },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my version V" }));
+  // Chip is not a button anymore — explicit visibility lives in Edit
+  expect(screen.queryByRole("button", { name: "Make public" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Share this translation" }));
+  expect(onShare).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Retranslate this paragraph" }));
+  await waitFor(() => expect(onRetranslate).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "Delete my translation" }));
+  await waitFor(() => expect(onDelete).toHaveBeenCalled());
+});
+
+test("my posted translation's detail offers Edit + Share, no trash for others", () => {
   renderPanel({
     variant: "sentence",
     stories: [{ ...TRANSLATION_STORY, user_id: 9 }],
     currentUserId: 9,
+    myVersions: [
+      { sessionName: "诗意版", text: "太阳依着古老的方式轰鸣。", posted: true, storyId: 1, authorName: "Me", picture: null, onSave: jest.fn(), onShare: jest.fn() },
+    ],
     commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "" },
   });
   fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
-  fireEvent.click(screen.getByRole("button", { name: "Open translation by Mira" }));
-  expect(screen.getByRole("button", { name: "Make private" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Open my post from 诗意版" }));
+  expect(screen.getByRole("button", { name: "Edit my translation" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Share this translation" })).toBeInTheDocument();
   expect(screen.queryByLabelText("Delete this share")).toBeNull();
 });

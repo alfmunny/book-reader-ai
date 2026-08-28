@@ -355,7 +355,9 @@ export default function ReaderPage() {
   const [postsDialog, setPostsDialog] = useState<{ paraIdx: number; position: { x: number; y: number } } | null>(null);
   const [storiesVersion, setStoriesVersion] = useState(0);
   const [shareDialog, setShareDialog] = useState<
-    { kind: "note"; annotationId: number } | { kind: "translation"; paraIdx: number } | null
+    | { kind: "note"; annotationId: number }
+    | { kind: "translation"; paraIdx: number; sessionId: number; sessionName: string; text: string; lang?: string }
+    | null
   >(null);
   const [shareCaption, setShareCaption] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
@@ -405,10 +407,9 @@ export default function ReaderPage() {
     try {
       const caption = shareCaption.trim() ? { caption: shareCaption.trim() } : {};
       if (shareDialog.kind === "translation") {
-        if (!activeSession) return;
         await createStory({
           kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
-          session_id: activeSession.id,
+          session_id: shareDialog.sessionId,
           paragraph_start: shareDialog.paraIdx, paragraph_end: shareDialog.paraIdx,
           ...caption,
         });
@@ -432,6 +433,18 @@ export default function ReaderPage() {
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   // ── Translation sessions (design: docs/design/user-translations.md) ──
   const [translationSessions, setTranslationSessions] = useState<TranslationSession[]>([]);
+  // After any mutation of a version's rendering, refresh stories, the
+  // dialog's version texts, and (when it's the active session) the page.
+  async function refreshVersionData(sessionId: number) {
+    setStoriesVersion((v) => v + 1);
+    if (activeSession?.id === sessionId) {
+      try {
+        const data = await getSessionChapter(sessionId, chapterIndex);
+        setSessionChapter(data);
+      } catch { /* next poll corrects */ }
+    }
+  }
+
   const [myParaVersions, setMyParaVersions] = useState<Array<{
     sessionId: number; sessionName: string; model?: string | null; text: string;
   }>>([]);
@@ -454,7 +467,7 @@ export default function ReaderPage() {
       if (!cancelled) setMyParaVersions(mine);
     })();
     return () => { cancelled = true; };
-  }, [postsDialog, translationSessions, chapterIndex, session?.backendToken]);
+  }, [postsDialog, translationSessions, chapterIndex, session?.backendToken, storiesVersion]);
 
 
   const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
@@ -1912,13 +1925,7 @@ export default function ReaderPage() {
                     setParagraphEditorError(false);
                     setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
                   } : undefined}
-                  onDeleteParagraph={activeSession ? handleSessionDeleteParagraph : undefined}
-                  onShareParagraph={activeSession && session?.backendToken ? (idx) => {
-                    setShareCaption("");
-                    setShareDialog({ kind: "translation", paraIdx: idx });
-                  } : undefined}
                   postedParagraphs={activeSession ? myPostedParas.set : undefined}
-                  postedAt={activeSession ? myPostedParas.at : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
                   onOpenPosts={showShares ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
@@ -2104,9 +2111,9 @@ export default function ReaderPage() {
                 <p className="text-xs text-stone-500">Other readers of this book will see it.</p>
                 {shareDialog.kind === "translation" && (
                   <blockquote className="border-l-2 border-amber-300 bg-amber-50/60 rounded-r-lg px-3 py-2 space-y-1" data-testid="share-quote">
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{activeSession?.name}</span>
-                    <p lang={activeSession?.target_language} className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
-                      {sessionChapter?.paragraphs[String(shareDialog.paraIdx)]?.text}
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{shareDialog.sessionName}</span>
+                    <p lang={shareDialog.lang} className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
+                      {shareDialog.text}
                     </p>
                   </blockquote>
                 )}
@@ -2158,17 +2165,6 @@ export default function ReaderPage() {
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
                   storyId: myNoteStory?.id,
-                  onPost: async () => {
-                    await createStory({
-                      kind: "note", book_id: Number(bookId),
-                      chapter_index: own.chapter_index, annotation_id: own.id,
-                    });
-                    setStoriesVersion((v) => v + 1);
-                  },
-                  onUnpost: myNoteStory ? async () => {
-                    await deleteStory(myNoteStory.id);
-                    setStoriesVersion((v) => v + 1);
-                  } : undefined,
                 };
               })()}
               annotationBar={(() => {
@@ -2198,25 +2194,39 @@ export default function ReaderPage() {
                   },
                 };
               })()}
-              onSaveMyNote={async (text) => {
+              onSaveMyNote={async (text, makePublic) => {
                 const own = annotations.find(
                   (a) => a.chapter_index === chapterIndex &&
                     (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
                       sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
                 );
+                let anno = own;
                 if (own) {
                   const saved = await updateAnnotation(own.id, { color: own.color, note_text: text });
                   setAnnotations((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
                 } else {
-                  const saved = await createAnnotation({
+                  anno = await createAnnotation({
                     book_id: Number(bookId),
                     chapter_index: chapterIndex,
                     sentence_text: sharedNotesFor.sentenceText,
                     note_text: text,
                     color: "yellow",
                   });
-                  setAnnotations((prev) => [...prev, saved]);
+                  setAnnotations((prev) => [...prev, anno!]);
                 }
+                // Visibility from the editor's dropdown (owner, 2026-08-28)
+                const notePost = anno ? chapterStories.find(
+                  (st) => st.kind === "note" && st.user_id === session?.backendUser?.id && st.annotation_id === anno!.id,
+                ) : undefined;
+                if (makePublic && anno && !notePost) {
+                  await createStory({
+                    kind: "note", book_id: Number(bookId),
+                    chapter_index: anno.chapter_index, annotation_id: anno.id,
+                  });
+                } else if (!makePublic && notePost) {
+                  await deleteStory(notePost.id);
+                }
+                setStoriesVersion((v) => v + 1);
               }}
               onDeleteMyNote={async () => {
                 const own = annotations.find(
@@ -2251,13 +2261,36 @@ export default function ReaderPage() {
                   posted: !!post, storyId: post?.id,
                   authorName: session?.backendUser?.name ?? "You",
                   picture: session?.backendUser?.picture,
-                  onPost: post ? undefined : async () => {
-                    await createStory({
-                      kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
-                      session_id: v.sessionId,
-                      paragraph_start: postsDialog.paraIdx, paragraph_end: postsDialog.paraIdx,
+                  onSave: async (text: string, makePublic: boolean) => {
+                    await editSessionParagraph(v.sessionId, chapterIndex, postsDialog.paraIdx, text);
+                    if (makePublic && !post) {
+                      await createStory({
+                        kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
+                        session_id: v.sessionId,
+                        paragraph_start: postsDialog.paraIdx, paragraph_end: postsDialog.paraIdx,
+                      });
+                    } else if (!makePublic && post) {
+                      await deleteStory(post.id);
+                    }
+                    await refreshVersionData(v.sessionId);
+                  },
+                  onDelete: async () => {
+                    if (post) await deleteStory(post.id);
+                    await deleteSessionParagraph(v.sessionId, chapterIndex, postsDialog.paraIdx);
+                    await refreshVersionData(v.sessionId);
+                  },
+                  onShare: () => {
+                    setPostsDialog(null);
+                    setShareCaption("");
+                    setShareDialog({
+                      kind: "translation", paraIdx: postsDialog.paraIdx,
+                      sessionId: v.sessionId, sessionName: v.sessionName, text: v.text,
+                      lang: translationSessions.find((ts) => ts.id === v.sessionId)?.target_language,
                     });
-                    setStoriesVersion((v2) => v2 + 1);
+                  },
+                  onRetranslate: post ? undefined : async () => {
+                    await translateSession(v.sessionId, { chapter_index: chapterIndex, scope: postsDialog.paraIdx });
+                    await refreshVersionData(v.sessionId);
                   },
                 };
               })}

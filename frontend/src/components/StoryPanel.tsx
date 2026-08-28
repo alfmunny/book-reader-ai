@@ -188,6 +188,7 @@ type View =
   | { mode: "myVersion"; index: number }
   | { mode: "comments" }
   | { mode: "myNoteDetail" }
+  | { mode: "editVersion"; index: number }
   | { mode: "comment"; commentId: number; anchor: CommentAnchor; from: "comments" | "myNote" | number };
 
 interface Props {
@@ -208,18 +209,16 @@ interface Props {
     authorName: string;
     picture?: string | null;
     storyId?: number;
-    /** Publish this note as a post / take it private again (deletes only
-     *  the post row — the note itself is never touched). */
-    onPost?: () => Promise<void>;
-    onUnpost?: () => Promise<void>;
   } | null;
   /** Highlight colors merged from the popover — one dialog, not two. */
   annotationBar?: {
     existingColor?: string | null;
     onColor: (color: "yellow" | "blue" | "green" | "pink") => void;
   };
-  /** Persist the reader's note text (creates the highlight if needed). */
-  onSaveMyNote?: (text: string) => Promise<void>;
+  /** Persist the reader's note text AND its visibility — the Public/Private
+   *  dropdown lives in the editor (owner, 2026-08-28: explicit, WeChat
+   *  style, replacing the implicit chip toggle). */
+  onSaveMyNote?: (text: string, makePublic: boolean) => Promise<void>;
   /** Remove the reader's highlight + note on this sentence. */
   onDeleteMyNote?: () => Promise<void>;
   /** The reader's OWN renderings of this paragraph, pinned first. */
@@ -231,8 +230,14 @@ interface Props {
     storyId?: number;
     authorName: string;
     picture?: string | null;
-    /** Publish this version's rendering of the paragraph as a post. */
-    onPost?: () => Promise<void>;
+    /** Save an edited rendering + its visibility (Public/Private). */
+    onSave?: (text: string, makePublic: boolean) => Promise<void>;
+    /** Delete this rendering (unposts first when needed). */
+    onDelete?: () => Promise<void>;
+    /** Open the quoted-compose share dialog for this rendering. */
+    onShare?: () => void;
+    /** Machine-retranslate this paragraph (private renderings only). */
+    onRetranslate?: () => Promise<void>;
   }>;
   /** Bottom publish box (paragraph posts): caption in, one tap to post. */
   composer?: {
@@ -357,10 +362,54 @@ export default function StoryPanel({
     setBusy(true);
     setError(null);
     try {
-      await onSaveMyNote(noteDraft.trim());
+      await onSaveMyNote(noteDraft.trim(), visDraft === "public");
       setView(myNote ? { mode: "myNoteDetail" } : { mode: "list" });
     } catch {
       setError("Could not save your note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveVersion() {
+    const entry = view.mode === "editVersion" ? myVersions?.[view.index] : undefined;
+    if (!entry?.onSave || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await entry.onSave(versionDraft, visDraft === "public");
+      setView({ mode: "list" });
+    } catch {
+      setError("Could not save the rendering.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRetranslateVersion(index: number) {
+    const entry = myVersions?.[index];
+    if (!entry?.onRetranslate || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await entry.onRetranslate();
+    } catch {
+      setError("Could not retranslate — try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteVersion(index: number) {
+    const entry = myVersions?.[index];
+    if (!entry?.onDelete || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await entry.onDelete();
+      setView({ mode: "list" });
+    } catch {
+      setError("Could not delete the rendering.");
     } finally {
       setBusy(false);
     }
@@ -381,23 +430,10 @@ export default function StoryPanel({
     }
   }
 
-  // The Private/Posted chip IS the visibility switch (owner, 2026-08-31):
-  // tapping it asks for confirmation, then flips.
-  const [confirm, setConfirm] = useState<{ message: string; action: () => Promise<void>; failText: string; label: string } | null>(null);
-
-  async function runAction(action: () => Promise<void>, failText: string) {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await action();
-      onChanged();
-    } catch {
-      setError(failText);
-    } finally {
-      setBusy(false);
-    }
-  }
+  // Visibility is set EXPLICITLY in the editors via a Public/Private
+  // dropdown (owner, 2026-08-28) — the chips are display-only.
+  const [visDraft, setVisDraft] = useState<"public" | "private">("private");
+  const [versionDraft, setVersionDraft] = useState("");
 
   const [composerDraft, setComposerDraft] = useState("");
   async function handleComposerSubmit() {
@@ -453,6 +489,8 @@ export default function StoryPanel({
       ? (myNote ? "My note" : "Write a note")
       : view.mode === "myNoteDetail"
         ? "My note"
+      : view.mode === "editVersion"
+        ? "Edit my translation"
       : view.mode === "comment"
         ? "Comment"
         : view.mode === "story"
@@ -558,36 +596,32 @@ export default function StoryPanel({
     );
   };
 
-  const visibilityChip = (
-    posted: boolean,
-    flip: (() => Promise<void>) | undefined,
-    messages: { toPublic: string; toPrivate: string },
-  ) => {
-    const label = posted ? "Posted" : "Private";
-    const cls = posted
-      ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
-      : "bg-stone-100 text-stone-500 border border-stone-200 hover:bg-stone-200";
-    if (!flip) {
-      return <span className={`px-1.5 py-0.5 rounded-full text-[11px] ${cls}`}>{label}</span>;
-    }
-    return (
-      <button
-        onClick={() =>
-          setConfirm({
-            message: posted ? messages.toPrivate : messages.toPublic,
-            action: flip,
-            failText: posted ? "Could not make it private." : "Could not post it.",
-            label: posted ? "Make private" : "Make public",
-          })
-        }
-        aria-label={posted ? "Make private" : "Make public"}
-        title={posted ? "Tap to make private" : "Tap to post publicly"}
-        className={`px-1.5 py-0.5 rounded-full text-[11px] cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${cls}`}
+  const visibilityChip = (posted: boolean) => (
+    <span
+      className={`px-1.5 py-0.5 rounded-full text-[11px] ${
+        posted
+          ? "bg-green-50 text-green-700 border border-green-200"
+          : "bg-stone-100 text-stone-500 border border-stone-200"
+      }`}
+    >
+      {posted ? "Posted" : "Private"}
+    </span>
+  );
+
+  const visibilitySelect = (
+    <div className="flex items-center gap-2">
+      <label htmlFor="visibility-select" className="text-xs text-stone-500">Visibility</label>
+      <select
+        id="visibility-select"
+        value={visDraft}
+        onChange={(e) => setVisDraft(e.target.value as "public" | "private")}
+        className="text-xs rounded-lg border border-amber-300 px-2 py-1.5 text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
       >
-        {label}
-      </button>
-    );
-  };
+        <option value="public">Public</option>
+        <option value="private">Private</option>
+      </select>
+    </div>
+  );
 
   const commentComposer = (placeholder: string, parentId?: number) => (
     <div className="flex gap-1.5">
@@ -804,7 +838,7 @@ export default function StoryPanel({
             <>
               <span className="w-px h-5 bg-amber-100" aria-hidden="true" />
               <button
-                onClick={() => { setNoteDraft(""); setView({ mode: "editMine" }); }}
+                onClick={() => { setNoteDraft(""); setVisDraft("private"); setView({ mode: "editMine" }); }}
                 aria-label="Write note"
                 className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
@@ -871,12 +905,9 @@ export default function StoryPanel({
               <p className="text-sm font-medium text-ink">{myNote.authorName}</p>
               <p className="text-[11px] text-stone-400">My note</p>
             </div>
-            {visibilityChip(myNote.storyId != null, myNote.storyId != null ? myNote.onUnpost : myNote.onPost, {
-              toPublic: "Post this note publicly? Other readers of this book will see it.",
-              toPrivate: "Make this note private again? Comments on it will be removed.",
-            })}
+            {visibilityChip(myNote.storyId != null)}
             <button
-              onClick={() => { setNoteDraft(myNote.text); setView({ mode: "editMine" }); }}
+              onClick={() => { setNoteDraft(myNote.text); setVisDraft(myNote.storyId != null ? "public" : "private"); setView({ mode: "editMine" }); }}
               aria-label="Edit my note"
               className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
             >
@@ -903,7 +934,7 @@ export default function StoryPanel({
               {commentComposer("Add a comment…")}
             </div>
           ) : (
-            <p className="text-[11px] text-stone-400">Private — tap the badge to post it and receive comments.</p>
+            <p className="text-[11px] text-stone-400">Private — set it Public while editing to receive comments.</p>
           )}
         </div>
       ) : view.mode === "editMine" ? (
@@ -917,6 +948,7 @@ export default function StoryPanel({
             aria-label="My note text"
             className="w-full text-sm font-serif border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
+          {visibilitySelect}
           <div className="flex items-center gap-2">
             {myNote && onDeleteMyNote && (
               <button
@@ -939,6 +971,28 @@ export default function StoryPanel({
             </button>
           </div>
         </div>
+      ) : view.mode === "editVersion" && myVersions?.[view.index] ? (
+        <div className="px-4 py-3 space-y-2.5 overflow-y-auto" data-testid="my-version-editor">
+          <textarea
+            value={versionDraft}
+            onChange={(e) => setVersionDraft(e.target.value)}
+            rows={6}
+            autoFocus
+            aria-label="My translation text"
+            className="w-full text-[13px] leading-relaxed font-serif border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          {visibilitySelect}
+          <div className="flex items-center gap-2">
+            <span className="flex-1" />
+            <button
+              onClick={handleSaveVersion}
+              disabled={busy}
+              className="text-sm px-4 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              {busy ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
       ) : view.mode === "myVersion" && detailVersion ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="my-version-detail">
           {variant === "sentence" && renderVersionSwitcher({ myIndex: view.index })}
@@ -951,15 +1005,54 @@ export default function StoryPanel({
             {detailVersion.model && (
               <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{detailVersion.model}</span>
             )}
-            {visibilityChip(false, detailVersion.onPost, {
-              toPublic: "Publish this rendering publicly? Other readers of this book will see it.",
-              toPrivate: "",
-            })}
+            {visibilityChip(false)}
+            {detailVersion.onSave && (
+              <button
+                onClick={() => {
+                  setVersionDraft(detailVersion.text);
+                  setVisDraft("private");
+                  setView({ mode: "editVersion", index: view.index });
+                }}
+                aria-label="Edit my translation"
+                className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                <NoteIcon className="w-4 h-4" />
+              </button>
+            )}
+            {detailVersion.onShare && (
+              <button
+                onClick={detailVersion.onShare}
+                aria-label="Share this translation"
+                className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                Share
+              </button>
+            )}
+            {detailVersion.onRetranslate && (
+              <button
+                onClick={() => handleRetranslateVersion(view.index)}
+                disabled={busy}
+                aria-label="Retranslate this paragraph"
+                className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                {busy ? "Translating…" : "Retranslate"}
+              </button>
+            )}
+            {detailVersion.onDelete && (
+              <button
+                onClick={() => handleDeleteVersion(view.index)}
+                disabled={busy}
+                aria-label="Delete my translation"
+                className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
           <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
             <p className="text-[11px] font-medium text-stone-500">Comments</p>
-            <p className="text-[11px] text-stone-400">Private — tap the badge to publish and open the discussion.</p>
+            <p className="text-[11px] text-stone-400">Private — set it Public while editing to open the discussion.</p>
           </div>
         </div>
       ) : view.mode === "story" && detailStory ? (
@@ -973,10 +1066,48 @@ export default function StoryPanel({
                 <time title={exactTime(detailStory.created_at)} className="text-[11px] text-stone-400">{timeAgo(detailStory.created_at)}</time>
               )}
             </div>
-            {detailStory.user_id === currentUserId && visibilityChip(true, async () => handleDeleteStory(detailStory.id), {
-              toPublic: "",
-              toPrivate: "Make this post private again? Comments on it will be removed.",
-            })}
+            {detailStory.user_id === currentUserId && visibilityChip(true)}
+            {(() => {
+              const vIdx = myVersions?.findIndex((v) => v.storyId === detailStory.id) ?? -1;
+              const entry = vIdx >= 0 ? myVersions![vIdx] : undefined;
+              if (!entry) return null;
+              return (
+                <>
+                  {entry.onShare && (
+                    <button
+                      onClick={entry.onShare}
+                      aria-label="Share this translation"
+                      className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                    >
+                      Share
+                    </button>
+                  )}
+                  {entry.onSave && (
+                    <button
+                      onClick={() => {
+                        setVersionDraft(entry.text);
+                        setVisDraft("public");
+                        setView({ mode: "editVersion", index: vIdx });
+                      }}
+                      aria-label="Edit my translation"
+                      className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                    >
+                      <NoteIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                  {entry.onDelete && (
+                    <button
+                      onClick={() => handleDeleteVersion(vIdx)}
+                      disabled={busy}
+                      aria-label="Delete my translation"
+                      className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
+              );
+            })()}
             {detailStory.user_id !== currentUserId && isAdmin && (
               <button
                 onClick={() => handleDeleteStory(detailStory.id)}
@@ -1087,33 +1218,6 @@ export default function StoryPanel({
           {stories
             .filter((st) => st.id !== myNote?.storyId && !myVersions?.some((v) => v.storyId === st.id))
             .map(renderStoryCard)}
-        </div>
-      )}
-
-      {confirm && (
-        <div className="absolute inset-0 z-[60] bg-black/30 flex items-center justify-center p-4 rounded-xl" role="dialog" aria-label="Confirm" data-testid="visibility-confirm">
-          <div className="bg-white rounded-lg border border-amber-200 p-4 w-full max-w-[20rem] space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
-            <p className="text-sm text-ink">{confirm.message}</p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirm(null)}
-                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  const c = confirm;
-                  setConfirm(null);
-                  await runAction(c.action, c.failText);
-                }}
-                disabled={busy}
-                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                {confirm.label}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

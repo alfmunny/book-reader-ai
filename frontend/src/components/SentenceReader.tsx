@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation, WordBoundary } from "@/lib/api";
-import { timeAgo, exactTime } from "@/lib/timeAgo";
 
 // ── Text parsing ────────────────────────────────────────────────────────────
 
@@ -326,17 +325,11 @@ interface Props {
   actionsDisabled?: boolean;
   onTranslateParagraph?: (paragraphIdx: number) => void;
   onEditParagraph?: (paragraphIdx: number) => void;
-  onDeleteParagraph?: (paragraphIdx: number) => void;
-  /** Opens the paragraph's posts dialog: browse other readers' shared
-   *  renderings AND publish your own (session mode's Share button). */
-  onShareParagraph?: (paragraphIdx: number, position: { x: number; y: number }) => void;
   /** Paragraphs whose rendering in the ACTIVE session is published. The
    *  Share button becomes a green Posted state, and machine retranslation
    *  + deletion lock — a public post is never silently rewritten (owner,
    *  2026-08-31). Manual edits stay allowed: live references by design. */
   postedParagraphs?: Set<number>;
-  /** paragraph index → latest post time (ISO/DB) for the share row line. */
-  postedAt?: Record<number, string>;
   /** Paragraphs that have community translation posts. Their TRANSLATION
    *  text gets the dashed underline (same sign language as shared notes)
    *  and becomes the tap target opening the posts dialog — the entry
@@ -611,10 +604,7 @@ export default function SentenceReader({
   actionsDisabled = false,
   onTranslateParagraph,
   onEditParagraph,
-  onDeleteParagraph,
-  onShareParagraph,
   postedParagraphs,
-  postedAt,
   postParagraphs,
   onOpenPosts,
   sharedNotes,
@@ -943,6 +933,9 @@ export default function SentenceReader({
         {meta?.edited && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">edited</span>
         )}
+        {posted && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200" data-testid={`posted-chip-${paraIdx}`}>Posted</span>
+        )}
         <span className="flex-1" />
         {onTranslateParagraph && (
           <button
@@ -964,41 +957,6 @@ export default function SentenceReader({
           >
             Edit
           </button>
-        )}
-        {onDeleteParagraph && (
-          <button
-            onClick={() => onDeleteParagraph(paraIdx)}
-            disabled={actionsDisabled || posted}
-            title={posted ? "Posted — make it private before deleting" : undefined}
-            aria-label={`Delete translation of paragraph ${paraIdx + 1}`}
-            className="text-[11px] text-red-600 hover:text-red-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-          >
-            Delete
-          </button>
-        )}
-        {onShareParagraph && (
-          <button
-            onClick={(e) => onShareParagraph(paraIdx, { x: e.clientX, y: e.clientY })}
-            disabled={actionsDisabled}
-            aria-label={`Share translation of paragraph ${paraIdx + 1}`}
-            title={posted ? "Already posted — sharing again creates another post" : undefined}
-            className={`text-[11px] disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded ${
-              posted
-                ? "text-green-700 hover:text-green-800 hover:underline"
-                : "text-amber-700 hover:text-amber-800 hover:underline"
-            }`}
-          >
-            {posted ? "Share ✓" : "Share"}
-          </button>
-        )}
-        {posted && postedAt?.[paraIdx] && (
-          <time
-            title={exactTime(postedAt[paraIdx])}
-            data-testid={`shared-at-${paraIdx}`}
-            className="text-[10px] text-stone-400"
-          >
-            shared {timeAgo(postedAt[paraIdx])}
-          </time>
         )}
       </div>
     );

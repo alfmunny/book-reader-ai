@@ -24,20 +24,6 @@ function renderReader(overrides: Partial<React.ComponentProps<typeof SentenceRea
   return { ...render(<SentenceReader {...props} />), props };
 }
 
-test("Share opens the paragraph's posts dialog with the click position", () => {
-  const onShareParagraph = jest.fn();
-  renderReader({
-    sessionMode: true,
-    translationMeta: { 0: { model: "deepseek-v4-flash", edited: false } },
-    onShareParagraph,
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Share translation of paragraph 1" }));
-  expect(onShareParagraph).toHaveBeenCalledWith(
-    0,
-    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-  );
-});
-
 test("no margin marker renders for translation posts (browsing lives in Share)", () => {
   renderReader();
   expect(screen.queryByTestId("story-marker-0")).toBeNull();
@@ -160,50 +146,44 @@ test("a translation with community posts gets the dashed underline and opens the
 
 // ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────
 
-test("a posted paragraph keeps Share (marked public) and locks retranslate/delete", () => {
-  const onShareParagraph = jest.fn();
+test("a posted paragraph shows the Posted chip and locks machine retranslation", () => {
   renderReader({
     sessionMode: true,
     translationMeta: { 0: { model: "deepseek-v4-flash", edited: false } },
-    onShareParagraph,
     onTranslateParagraph: jest.fn(),
-    onDeleteParagraph: jest.fn(),
     postedParagraphs: new Set([0]),
   });
-  // Share remains (multiple posts allowed) but wears the public mark
-  const postedBtn = screen.getByRole("button", { name: "Share translation of paragraph 1" });
-  expect(postedBtn).toHaveTextContent("Share ✓");
-  expect(postedBtn.className).toContain("text-green-700");
-  fireEvent.click(postedBtn);
-  expect(onShareParagraph).toHaveBeenCalled();
-  // Machine retranslation and deletion lock; manual edit stays available
+  expect(screen.getByTestId("posted-chip-0")).toHaveTextContent("Posted");
   expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Delete translation of paragraph 1" })).toBeDisabled();
 });
 
-test("unposted paragraphs keep the plain Share and enabled actions", () => {
+test("unposted paragraphs have no Posted chip and enabled retranslate", () => {
   renderReader({
     sessionMode: true,
     translationMeta: { 0: { model: "m", edited: false } },
-    onShareParagraph: jest.fn(),
     onTranslateParagraph: jest.fn(),
     postedParagraphs: new Set([3]),
   });
-  expect(screen.getByRole("button", { name: "Share translation of paragraph 1" })).toBeInTheDocument();
+  expect(screen.queryByTestId("posted-chip-0")).toBeNull();
   expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeEnabled();
 });
 
-test("a posted paragraph shows when it was last shared, exact time on hover", () => {
+test("a translation with community posts gets the dashed underline and opens the dialog", () => {
+  const onOpenPosts = jest.fn();
   renderReader({
-    sessionMode: true,
-    translationMeta: { 0: { model: "m", edited: false } },
-    onShareParagraph: jest.fn(),
-    postedParagraphs: new Set([0]),
-    postedAt: { 0: "2026-08-27 10:00:00" },
+    postParagraphs: new Set([0]),
+    onOpenPosts,
   });
-  const t = screen.getByTestId("shared-at-0");
-  expect(t.textContent).toMatch(/^shared /);
-  expect(t.textContent).toMatch(/ago|Aug/);
-  expect(t).toHaveAttribute("title");
-  expect(t.getAttribute("title")).not.toBe("");
+  const t = screen.getByTestId("post-underline-0");
+  expect(t.className).toContain("decoration-dashed");
+  expect(t).toHaveAttribute("role", "button");
+  fireEvent.click(t);
+  expect(onOpenPosts).toHaveBeenCalledWith(
+    0,
+    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+  );
+  // The other translation stays plain — local/unpublished work never marks text
+  expect(screen.queryByTestId("post-underline-1")).toBeNull();
 });
+
+// ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────

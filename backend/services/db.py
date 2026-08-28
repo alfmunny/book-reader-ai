@@ -1801,17 +1801,20 @@ async def get_flashcard_stats(
 
 async def create_translation_session(
     user_id: int, book_id: int, name: str, target_language: str,
-    provider: str, style_prompt: str | None = None,
+    provider: str, style_prompt: str | None = None, status: str = "private",
 ) -> dict | None:
-    """Create a named session; returns the row, or None on a duplicate name."""
+    """Create a named session; returns the row, or None on a duplicate name.
+    status 'public' = renderings auto-post as they are made (owner,
+    2026-08-28: the session's visibility is explicit, not per-paragraph
+    ceremony). 'published' stays reserved for track B whole-book review."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         try:
             cursor = await db.execute(
                 """INSERT INTO translation_sessions
-                   (user_id, book_id, name, target_language, provider, style_prompt)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (user_id, book_id, name, target_language, provider, style_prompt),
+                   (user_id, book_id, name, target_language, provider, style_prompt, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (user_id, book_id, name, target_language, provider, style_prompt, status),
             )
         except aiosqlite.IntegrityError:
             return None
@@ -1858,7 +1861,7 @@ async def get_translation_session(session_id: int, user_id: int) -> dict | None:
 async def update_translation_session(session_id: int, user_id: int, fields: dict) -> dict | None:
     """Update name / style_prompt / provider; returns the row, None if not
     owned, or raises IntegrityError → caller maps to 409 on duplicate name."""
-    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider", "target_language")}
+    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider", "target_language", "status")}
     if not allowed:
         return await get_translation_session(session_id, user_id)
     sets = ", ".join(f"{k} = ?" for k in allowed)

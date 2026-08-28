@@ -952,6 +952,7 @@ export function listTranslationSessions(bookId: number) {
 export function createTranslationSession(data: {
   book_id: number;
   name: string;
+  status?: "private" | "public";
   target_language: string;
   provider: SessionProvider;
   style_prompt?: string;

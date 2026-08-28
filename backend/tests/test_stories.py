@@ -354,3 +354,45 @@ async def test_force_chapter_run_keeps_posted_paragraphs(client, test_user):
     paras = (await client.get(f"/api/translation-sessions/{sid}/chapters/0")).json()["paragraphs"]
     assert paras["0"]["text"] == "太阳依着古老的方式轰腾。" if False else paras["0"]["text"] == "太阳依着古老的方式轰鸣。"  # posted → untouched
     assert paras["1"]["text"] == "机器重译"  # unposted machine paragraph → redone
+
+
+# ── Public sessions auto-post their renderings (owner, 2026-08-28) ──────────
+
+async def test_public_session_autoposts_translations(client, test_user):
+    from unittest.mock import AsyncMock, patch
+    from services.auth import encrypt_api_key
+    from services.db import set_user_deepseek_key
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("k"))
+
+    resp = await client.post("/api/translation-sessions", json={
+        "book_id": 1, "name": "公开版", "target_language": "zh",
+        "provider": "deepseek", "status": "public",
+    })
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "public"
+    sid = resp.json()["id"]
+
+    with patch("services.user_translate.translate_paragraph",
+               new=AsyncMock(return_value=("公开译文", "deepseek-v4-flash"))):
+        await client.post(f"/api/translation-sessions/{sid}/translate", json={
+            "book_id": 1, "chapter_index": 0, "scope": 0,
+        })
+    stories = (await client.get("/api/stories", params={"book_id": 1, "chapter_index": 0})).json()["stories"]
+    mine = [s for s in stories if s["session_id"] == sid]
+    assert len(mine) == 1
+    assert mine[0]["paragraphs"][0]["text"] == "公开译文"
+
+
+async def test_private_session_does_not_autopost(client, test_user):
+    from unittest.mock import AsyncMock, patch
+    from services.auth import encrypt_api_key
+    from services.db import set_user_deepseek_key
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("k"))
+    sid = await _make_session(client, name="私有版")
+    with patch("services.user_translate.translate_paragraph",
+               new=AsyncMock(return_value=("私有译文", "deepseek-v4-flash"))):
+        await client.post(f"/api/translation-sessions/{sid}/translate", json={
+            "book_id": 1, "chapter_index": 0, "scope": 0,
+        })
+    stories = (await client.get("/api/stories", params={"book_id": 1, "chapter_index": 0})).json()["stories"]
+    assert [s for s in stories if s["session_id"] == sid] == []

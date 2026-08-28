@@ -77,6 +77,7 @@ export default function TranslationSessionPanel({
     return hasDeepseekKey || !hasClaudeKey ? "deepseek" : "claude";
   });
   const [style, setStyle] = useState("");
+  const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [renamingId, setRenamingId] = useState<number | null>(null);
@@ -116,6 +117,7 @@ export default function TranslationSessionPanel({
         name: name.trim(),
         target_language: lang,
         provider,
+        status: visibility,
         ...(style.trim() ? { style_prompt: style.trim() } : {}),
       });
       onSessionsChanged([...sessions, created]);
@@ -326,6 +328,9 @@ export default function TranslationSessionPanel({
                   <span lang={s.target_language} className="font-medium text-ink text-sm truncate">{s.name}</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 shrink-0">{s.target_language}</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 shrink-0 font-mono">{s.provider}</span>
+                  {s.status === "public" && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">public</span>
+                  )}
                 </button>
                 <button
                   onClick={() => { setRenamingId(s.id); setRenameValue(s.name); }}
@@ -353,8 +358,11 @@ export default function TranslationSessionPanel({
           >
             ＋ Add your own version
           </button>
-        ) : (
-          <div className="rounded-lg border border-amber-300 bg-white p-3 space-y-2" data-testid="new-session-form">
+        ) : null}
+        {creating && (
+          <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="New translation version">
+          <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-2.5" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="new-session-form">
+            <p className="text-sm font-medium text-ink">New translation version</p>
             <input
               aria-label="Version name"
               placeholder="Version name (e.g. 诗意版)"
@@ -382,6 +390,15 @@ export default function TranslationSessionPanel({
               <option value="deepseek" disabled={!hasDeepseekKey}>DeepSeek · deepseek-v4-flash{hasDeepseekKey ? "" : " (no key)"}</option>
               <option value="claude" disabled={!hasClaudeKey}>Claude · claude-sonnet-5{hasClaudeKey ? "" : " (no key)"}</option>
             </select>
+            <select
+              aria-label="Version visibility"
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as "private" | "public")}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="private">Private — only you see this version</option>
+              <option value="public">Public — renderings are posted as you translate</option>
+            </select>
             <textarea
               aria-label="Style and requirements"
               placeholder="Style & requirements (optional) — e.g. 优雅的书面语，保留诗行结构"
@@ -390,7 +407,8 @@ export default function TranslationSessionPanel({
               rows={2}
               className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setCreating(false); setError(null); }} className="text-xs px-2 py-1.5 min-h-[44px] md:min-h-0 text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Cancel</button>
               <button
                 onClick={handleCreate}
                 disabled={busy || !name.trim() || !providerReady}
@@ -398,11 +416,11 @@ export default function TranslationSessionPanel({
               >
                 Create version
               </button>
-              <button onClick={() => { setCreating(false); setError(null); }} className="text-xs px-2 py-1.5 min-h-[44px] md:min-h-0 text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Cancel</button>
             </div>
             {!providerReady && (
               <p className="text-[11px] text-amber-700">Add a {provider === "deepseek" ? "DeepSeek" : "Claude"} API key in your profile to use this provider.</p>
             )}
+          </div>
           </div>
         )}
       </div>

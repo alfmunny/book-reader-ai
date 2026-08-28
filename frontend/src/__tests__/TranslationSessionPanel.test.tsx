@@ -69,7 +69,7 @@ test("creating a session posts and selects it", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Create version" }));
 
   await waitFor(() => expect(api.createTranslationSession).toHaveBeenCalledWith(
-    expect.objectContaining({ book_id: 2229, name: "直译版", provider: "claude" }),
+    expect.objectContaining({ book_id: 2229, name: "直译版", provider: "claude", status: "private" }),
   ));
   expect(props.onSelect).toHaveBeenCalledWith(created);
   expect(props.onSessionsChanged).toHaveBeenCalledWith([SESSION, created]);
@@ -262,4 +262,19 @@ test("no editorial languages at all: options show 0/N and the empty-state note a
   const select = screen.getByLabelText("Target language") as HTMLSelectElement;
   expect(Array.from(select.options).map((o) => o.text)).toContain("Français — 0/28 ch");
   expect(screen.getByText(/None yet — editorial translations are prepared offline/)).toBeInTheDocument();
+});
+
+test("the create dialog offers explicit visibility; public is sent through", async () => {
+  const created = { ...SESSION, id: 11, name: "公开版", status: "public", coverage: {} };
+  (api.createTranslationSession as jest.Mock).mockResolvedValue(created);
+  renderPanel();
+  fireEvent.click(screen.getByText("＋ Add your own version"));
+  // It is a dialog now, not an inline field cluster
+  expect(screen.getByRole("dialog", { name: "New translation version" })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Version name"), { target: { value: "公开版" } });
+  fireEvent.change(screen.getByLabelText("Version visibility"), { target: { value: "public" } });
+  fireEvent.click(screen.getByRole("button", { name: "Create version" }));
+  await waitFor(() => expect(api.createTranslationSession).toHaveBeenCalledWith(
+    expect.objectContaining({ name: "公开版", status: "public" }),
+  ));
 });

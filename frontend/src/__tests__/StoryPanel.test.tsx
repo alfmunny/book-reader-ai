@@ -425,7 +425,7 @@ test("Other translations tab swaps to the version list and back", () => {
   fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
   expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: "Other translations" })).toHaveAttribute("aria-selected", "true");
-  fireEvent.click(screen.getByRole("tab", { name: "Comments" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Current translation" }));
   expect(screen.getByTestId("comments-view")).toBeInTheDocument();
 });
 
@@ -540,9 +540,10 @@ test("version detail: Edit opens the rendering editor with the dropdown", async 
   const editor = screen.getByTestId("my-version-editor");
   expect((screen.getByLabelText("My translation text") as HTMLTextAreaElement).value).toBe("原译");
   fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改译" } });
-  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "public" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  await waitFor(() => expect(onSave).toHaveBeenCalledWith("改译", true));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith("改译", false));
+  // Saving privately returns to the detail you came from — not the list
+  expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
 });
 
 test("version detail packs Share, Retranslate, and Delete; chips are display-only", async () => {
@@ -618,4 +619,32 @@ test("short context renders without a More toggle", () => {
   });
   expect(screen.getByTestId("comments-context")).toHaveTextContent("短句。");
   expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+});
+
+test("Current translation tab: context card opens my editor; Comments heads the thread", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "诗意版", text: "我的译文", posted: false, authorName: "Me", picture: null, onSave },
+    ],
+    commentsTab: {
+      anchor: { kind: "story", storyId: 1 },
+      label: "诗意版 · this paragraph",
+      emptyText: "",
+      content: { text: "我的译文", lang: "zh", sessionName: "诗意版", myVersionIndex: 0 },
+    },
+  });
+  expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
+  expect(await screen.findByText(/Comments \(0\)/)).toBeInTheDocument();
+  // Tapping the context card goes straight to the editor…
+  fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
+  expect(screen.getByTestId("my-version-editor")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSave).toHaveBeenCalled());
+  // …and saving returns to Current translation, not the version list
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
 });

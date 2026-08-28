@@ -956,17 +956,20 @@ export default function SentenceReader({
         textParaIdx++;
         const translationText = translations?.[textParaIdx];
 
-        // Translation paragraphs with community posts: dashed underline +
-        // click-to-open, mirroring the shared-notes sign language.
+        // EVERY translation paragraph opens the paragraph dialog (owner,
+        // 2026-08-28: it's the edit/comment entrance now that the row is
+        // minimal). The dashed underline stays a COMMUNITY marker only.
         // textParaIdx is a mutable loop counter — freeze it for the handlers.
         const postParaIdx = textParaIdx;
-        const hasPosts = !!postParagraphs?.has(postParaIdx) && !!onOpenPosts;
-        const postProps = hasPosts
+        const hasPosts = !!postParagraphs?.has(postParaIdx);
+        const postProps = onOpenPosts
           ? {
               role: "button" as const,
               tabIndex: 0,
               "data-testid": `post-underline-${postParaIdx}`,
-              "aria-label": `Shared translations of paragraph ${postParaIdx + 1}. Press Enter to view.`,
+              "aria-label": hasPosts
+                ? `Shared translations of paragraph ${postParaIdx + 1}. Press Enter to view.`
+                : `Translation of paragraph ${postParaIdx + 1} — comments and editing. Press Enter to open.`,
               onClick: (e: React.MouseEvent) => onOpenPosts!(postParaIdx, { x: e.clientX, y: e.clientY }),
               onKeyDown: (e: React.KeyboardEvent) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
@@ -976,8 +979,10 @@ export default function SentenceReader({
               },
             }
           : {};
-        const postClass = hasPosts
-          ? " underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        const postClass = onOpenPosts
+          ? hasPosts
+            ? " underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            : " cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           : "";
 
         // Helper: pick the className for a segment span

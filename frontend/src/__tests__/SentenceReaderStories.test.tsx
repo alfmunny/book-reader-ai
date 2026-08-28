@@ -126,44 +126,13 @@ test("a sentence with BOTH own annotation and shared notes opens the notes panel
   expect(onAnnotationClick).not.toHaveBeenCalled();
 });
 
-test("a translation with community posts gets the dashed underline and opens the dialog", () => {
+test("every translation is clickable; only posted ones get the dashed marker", () => {
   const onOpenPosts = jest.fn();
-  renderReader({
-    postParagraphs: new Set([0]),
-    onOpenPosts,
-  });
-  const t = screen.getByTestId("post-underline-0");
-  expect(t.className).toContain("decoration-dashed");
-  expect(t).toHaveAttribute("role", "button");
-  fireEvent.click(t);
-  expect(onOpenPosts).toHaveBeenCalledWith(
-    0,
-    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-  );
-  // The other translation stays plain — local/unpublished work never marks text
-  expect(screen.queryByTestId("post-underline-1")).toBeNull();
+  renderReader({ postParagraphs: new Set([0]), onOpenPosts });
+  const dashed = screen.getByTestId("post-underline-0");
+  expect(dashed.className).toContain("decoration-dashed");
+  const plain = screen.getByTestId("post-underline-1");
+  expect(plain.className).not.toContain("decoration-dashed");
+  fireEvent.click(plain);
+  expect(onOpenPosts).toHaveBeenCalledWith(1, expect.anything());
 });
-
-// ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────
-
-
-
-test("a translation with community posts gets the dashed underline and opens the dialog", () => {
-  const onOpenPosts = jest.fn();
-  renderReader({
-    postParagraphs: new Set([0]),
-    onOpenPosts,
-  });
-  const t = screen.getByTestId("post-underline-0");
-  expect(t.className).toContain("decoration-dashed");
-  expect(t).toHaveAttribute("role", "button");
-  fireEvent.click(t);
-  expect(onOpenPosts).toHaveBeenCalledWith(
-    0,
-    expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
-  );
-  // The other translation stays plain — local/unpublished work never marks text
-  expect(screen.queryByTestId("post-underline-1")).toBeNull();
-});
-
-// ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────

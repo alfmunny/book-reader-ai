@@ -188,7 +188,7 @@ type View =
   | { mode: "myVersion"; index: number }
   | { mode: "comments" }
   | { mode: "myNoteDetail" }
-  | { mode: "editVersion"; index: number }
+  | { mode: "editVersion"; index: number; back: View }
   | { mode: "comment"; commentId: number; anchor: CommentAnchor; from: "comments" | "myNote" | number };
 
 interface Props {
@@ -255,7 +255,7 @@ interface Props {
     emptyText: string;
     /** The rendering being discussed — shown above the thread for context,
      *  clamped to ~10 lines with a More toggle (owner, 2026-08-28). */
-    content?: { text: string; lang?: string; sessionName?: string; model?: string };
+    content?: { text: string; lang?: string; sessionName?: string; model?: string; myVersionIndex?: number };
   };
   currentUserId?: number;
   isAdmin?: boolean;
@@ -375,13 +375,18 @@ export default function StoryPanel({
   }
 
   async function handleSaveVersion() {
-    const entry = view.mode === "editVersion" ? myVersions?.[view.index] : undefined;
+    if (view.mode !== "editVersion") return;
+    const entry = myVersions?.[view.index];
     if (!entry?.onSave || busy) return;
+    const back = view.back;
     setBusy(true);
     setError(null);
     try {
       await entry.onSave(versionDraft, visDraft === "public");
-      setView({ mode: "list" });
+      // Return where you came from (owner report, 2026-08-28: landing in
+      // the version list after saving was disorienting). A private detail
+      // that just went public reads best from Current translation.
+      setView(visDraft === "public" && back.mode === "myVersion" ? { mode: "comments" } : back);
     } catch {
       setError("Could not save the rendering.");
     } finally {
@@ -504,6 +509,10 @@ export default function StoryPanel({
             : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
 
   function goBack() {
+    if (view.mode === "editVersion") {
+      setView(view.back);
+      return;
+    }
     if (view.mode === "comment") {
       setView(
         view.from === "comments"
@@ -794,7 +803,7 @@ export default function StoryPanel({
       {commentsTab && view.mode !== "editMine" && (
         <div role="tablist" aria-label="Paragraph views" data-testid="dialog-tabs" className="flex border-b border-amber-100">
           {([
-            { key: "comments", label: "Comments" },
+            { key: "comments", label: "Current translation" },
             { key: "translations", label: "Other translations" },
           ] as const).map((t) => {
             const active = t.key === "comments" ? activeCommentsView : !activeCommentsView;
@@ -864,8 +873,30 @@ export default function StoryPanel({
           {commentsTab?.content && (() => {
             const c = commentsTab.content;
             const needsClamp = c.text.split("\n").length > 10 || c.text.length > 600;
+            const editable = c.myVersionIndex != null && myVersions?.[c.myVersionIndex]?.onSave;
+            const openEdit = editable
+              ? () => {
+                  const entry = myVersions![c.myVersionIndex!];
+                  setVersionDraft(entry.text);
+                  setVisDraft(entry.posted ? "public" : "private");
+                  setView({ mode: "editVersion", index: c.myVersionIndex!, back: { mode: "comments" } });
+                }
+              : undefined;
             return (
-              <div className="rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2" data-testid="comments-context">
+              <div
+                role={openEdit ? "button" : undefined}
+                tabIndex={openEdit ? 0 : undefined}
+                aria-label={openEdit ? "Edit my translation" : undefined}
+                onClick={openEdit}
+                onKeyDown={openEdit ? (e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  openEdit();
+                } : undefined}
+                className={`rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2 ${
+                  openEdit ? "cursor-pointer hover:bg-amber-100/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
+                }`}
+                data-testid="comments-context">
                 {(c.sessionName || c.model) && (
                   <div className="flex items-center gap-1.5 flex-wrap mb-1">
                     {c.sessionName && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{c.sessionName}</span>}
@@ -882,7 +913,7 @@ export default function StoryPanel({
                 </p>
                 {needsClamp && (
                   <button
-                    onClick={() => setContentExpanded((v) => !v)}
+                    onClick={(e) => { e.stopPropagation(); setContentExpanded((v) => !v); }}
                     aria-expanded={contentExpanded}
                     className="mt-1 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
                   >
@@ -896,11 +927,14 @@ export default function StoryPanel({
             <p className="text-xs text-stone-500 italic py-3 text-center" data-testid="comments-empty">{commentsTab?.emptyText}</p>
           ) : (
             <>
-              {topLevel.length === 0 && (
-                <p className="text-xs text-stone-500 italic">No comments yet — be the first.</p>
-              )}
-              {topLevel.map((c) => commentRow(c, { clickable: true, from: "comments" }))}
-              {commentComposer("Add a comment…")}
+              <div className="pt-2 border-t border-amber-100 space-y-2">
+                <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
+                {topLevel.length === 0 && (
+                  <p className="text-xs text-stone-500 italic">No comments yet — be the first.</p>
+                )}
+                {topLevel.map((c) => commentRow(c, { clickable: true, from: "comments" }))}
+                {commentComposer("Add a comment…")}
+              </div>
             </>
           )}
         </div>
@@ -1046,7 +1080,7 @@ export default function StoryPanel({
                 onClick={() => {
                   setVersionDraft(detailVersion.text);
                   setVisDraft("private");
-                  setView({ mode: "editVersion", index: view.index });
+                  setView({ mode: "editVersion", index: view.index, back: view });
                 }}
                 aria-label="Edit my translation"
                 className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
@@ -1122,7 +1156,7 @@ export default function StoryPanel({
                       onClick={() => {
                         setVersionDraft(entry.text);
                         setVisDraft("public");
-                        setView({ mode: "editVersion", index: vIdx });
+                        setView({ mode: "editVersion", index: vIdx, back: view });
                       }}
                       aria-label="Edit my translation"
                       className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"

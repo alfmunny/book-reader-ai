@@ -1909,7 +1909,7 @@ export default function ReaderPage() {
                   actionsDisabled={sessionTranslating || chapterRunActive}
                   onTranslateParagraph={activeSession ? (idx) => setConfirmRetransPara(idx) : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
-                  onOpenPosts={showShares ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
+                  onOpenPosts={session?.backendToken ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
@@ -2333,10 +2333,15 @@ export default function ReaderPage() {
                   (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
                 );
                 const myPara = sessionChapter?.paragraphs[String(postsDialog.paraIdx)];
+                const myIdx = myParaVersions.findIndex((v) => v.sessionId === activeSession.id);
                 return {
                   label: `${activeSession.name} · this paragraph`,
                   content: myPara?.text
-                    ? { text: myPara.text, lang: activeSession.target_language, sessionName: activeSession.name, model: myPara.model }
+                    ? {
+                        text: myPara.text, lang: activeSession.target_language,
+                        sessionName: activeSession.name, model: myPara.model,
+                        myVersionIndex: myIdx >= 0 ? myIdx : undefined,
+                      }
                     : undefined,
                   anchor: myPost ? { kind: "story" as const, storyId: myPost.id } : undefined,
                   emptyText: "Your rendering isn't posted yet — publish it under Other translations to receive comments.",

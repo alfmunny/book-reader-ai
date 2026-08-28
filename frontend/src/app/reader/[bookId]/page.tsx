@@ -443,7 +443,7 @@ export default function ReaderPage() {
     if (activeSession?.id === sessionId) {
       try {
         const data = await getSessionChapter(sessionId, chapterIndex);
-        setSessionChapter(data);
+        applySessionChapter(data);
       } catch { /* next poll corrects */ }
     }
   }
@@ -520,12 +520,23 @@ export default function ReaderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId, session?.backendToken]);
 
+  // Every sessionChapter write goes through this guard: a slow response
+  // from a PREVIOUS version (poll tick, translate call) must never
+  // overwrite the one now on screen (owner bug report, 2026-08-28:
+  // switching to an empty version kept showing the old rendering).
+  const applySessionChapter = useCallback((data: SessionChapter) => {
+    if (activeSessionRef.current?.id !== data.session_id) return;
+    setSessionChapter(data);
+  }, []);
+
   // Fetch the active session's paragraphs for the current chapter.
   useEffect(() => {
-    if (!activeSession) { setSessionChapter(null); return; }
+    // Clear immediately — placeholders beat another version's stale text
+    setSessionChapter(null);
+    if (!activeSession) return;
     let cancelled = false;
     getSessionChapter(activeSession.id, chapterIndex)
-      .then((data) => { if (!cancelled) setSessionChapter(data); })
+      .then((data) => { if (!cancelled) applySessionChapter(data); })
       .catch(() => { if (!cancelled) setSessionChapter(null); });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -540,7 +551,7 @@ export default function ReaderPage() {
     const timer = setInterval(() => {
       getSessionChapter(activeSession.id, chapterIndex)
         .then((data) => {
-          setSessionChapter(data);
+          applySessionChapter(data);
           if (data.run && !data.run.active) {
             if (data.run.error) setSessionActionError(data.run.error);
             listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
@@ -568,10 +579,10 @@ export default function ReaderPage() {
       // Starts a background run; the polling effect renders paragraphs as
       // they finish and surfaces run errors.
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter", force });
-      setSessionChapter(data);
+      applySessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
-      getSessionChapter(activeSession.id, chapterIndex).then(setSessionChapter).catch(() => {});
+      getSessionChapter(activeSession.id, chapterIndex).then(applySessionChapter).catch(() => {});
     } finally {
       setSessionTranslating(false);
     }
@@ -583,7 +594,7 @@ export default function ReaderPage() {
     setSessionActionError(null);
     try {
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: paraIdx });
-      setSessionChapter(data);
+      applySessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
     } finally {
@@ -597,7 +608,7 @@ export default function ReaderPage() {
     try {
       await editSessionParagraph(activeSession.id, chapterIndex, paragraphEditor.paraIdx, paragraphEditor.text);
       const data = await getSessionChapter(activeSession.id, chapterIndex);
-      setSessionChapter(data);
+      applySessionChapter(data);
       setParagraphEditor(null);
     } catch {
       setParagraphEditorError(true);
@@ -609,7 +620,7 @@ export default function ReaderPage() {
     try {
       await deleteSessionParagraph(activeSession.id, chapterIndex, paraIdx);
       const data = await getSessionChapter(activeSession.id, chapterIndex);
-      setSessionChapter(data);
+      applySessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Delete failed — try again.");
     }

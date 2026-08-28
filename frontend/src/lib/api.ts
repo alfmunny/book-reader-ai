@@ -966,7 +966,7 @@ export function createTranslationSession(data: {
 
 export function updateTranslationSession(
   id: number,
-  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string },
+  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string; status?: "private" | "public" },
 ) {
   return request<TranslationSession>(`/translation-sessions/${id}`, {
     method: "PATCH",

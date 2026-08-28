@@ -80,13 +80,15 @@ export default function TranslationSessionPanel({
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [renamingId, setRenamingId] = useState<number | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+  // The row's pencil opens a full Edit dialog (owner, 2026-08-28) —
+  // name, language, provider, style, visibility — mirroring Create;
+  // the active-panel inline fields are gone.
+  const [editDialog, setEditDialog] = useState<TranslationSession | null>(null);
+  const [editDraft, setEditDraft] = useState({
+    name: "", target_language: "en", provider: "deepseek" as SessionProvider,
+    style_prompt: "", status: "private" as "private" | "public",
+  });
   const [confirmRetranslate, setConfirmRetranslate] = useState(false);
-  // Style prompt edits are explicit (owner, 2026-08-28): read view + Edit,
-  // then Save/Cancel — a bare always-live textarea invited accidental edits.
-  const [styleEditing, setStyleEditing] = useState(false);
-  const [styleDraft, setStyleDraft] = useState("");
   // Version-list filter (owner request, 2026-08-27): by name, language, model.
   const [filterText, setFilterText] = useState("");
   const [filterLang, setFilterLang] = useState("all");
@@ -132,16 +134,25 @@ export default function TranslationSessionPanel({
     }
   }
 
-  async function handleRename(session: TranslationSession) {
-    if (busy || !renameValue.trim()) return;
+  async function handleEditSave() {
+    if (!editDialog || busy || !editDraft.name.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      const updated = await updateTranslationSession(session.id, { name: renameValue.trim() });
-      onSessionsChanged(sessions.map((s) => (s.id === session.id ? { ...s, ...updated, coverage: s.coverage } : s)));
-      setRenamingId(null);
+      const updated = await updateTranslationSession(editDialog.id, {
+        name: editDraft.name.trim(),
+        target_language: editDraft.target_language,
+        provider: editDraft.provider,
+        style_prompt: editDraft.style_prompt,
+        status: editDraft.status,
+      });
+      const merged = { ...editDialog, ...updated, coverage: editDialog.coverage };
+      onSessionsChanged(sessions.map((s) => (s.id === editDialog.id ? merged : s)));
+      // Reselect so the reader picks up changes (e.g. language) immediately
+      if (activeSessionId === editDialog.id) onSelect(merged);
+      setEditDialog(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not rename the version.");
+      setError(e instanceof Error ? e.message : "Could not save the version.");
     } finally {
       setBusy(false);
     }
@@ -162,38 +173,8 @@ export default function TranslationSessionPanel({
     }
   }
 
-  async function handleStyleSave(value: string) {
-    if (!active) return;
-    try {
-      const updated = await updateTranslationSession(active.id, { style_prompt: value });
-      onSessionsChanged(sessions.map((s) => (s.id === active.id ? { ...s, ...updated, coverage: s.coverage } : s)));
-    } catch {
-      setError("Could not save the style prompt.");
-    }
-  }
 
-  async function handleLanguageSave(value: string) {
-    if (!active) return;
-    try {
-      const updated = await updateTranslationSession(active.id, { target_language: value });
-      const merged = { ...active, ...updated, coverage: active.coverage };
-      onSessionsChanged(sessions.map((s) => (s.id === active.id ? merged : s)));
-      // Reselect so the reader picks up the new language immediately
-      onSelect(merged);
-    } catch {
-      setError("Could not change the language.");
-    }
-  }
 
-  async function handleProviderSave(value: SessionProvider) {
-    if (!active) return;
-    try {
-      const updated = await updateTranslationSession(active.id, { provider: value });
-      onSessionsChanged(sessions.map((s) => (s.id === active.id ? { ...s, ...updated, coverage: s.coverage } : s)));
-    } catch {
-      setError("Could not change the provider.");
-    }
-  }
 
   const chaptersCovered = active
     ? Object.keys(active.coverage ?? {}).length
@@ -303,21 +284,8 @@ export default function TranslationSessionPanel({
           <div key={s.id} className={`rounded-lg border transition-colors ${
             activeSessionId === s.id ? "border-amber-600 ring-1 ring-amber-600 bg-white" : "border-amber-200 bg-white"
           }`}>
-            {renamingId === s.id ? (
-              <div className="p-2 space-y-1.5">
-                <input
-                  aria-label="Version name"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button onClick={() => handleRename(s)} className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white hover:bg-amber-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Save</button>
-                  <button onClick={() => setRenamingId(null)} className="text-xs px-2 py-1 min-h-[44px] md:min-h-0 text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Cancel</button>
-                </div>
-              </div>
-            ) : (
+            {(
+
               <div className="flex items-center gap-1.5 px-3 py-2">
                 <button
                   role="radio"
@@ -333,8 +301,17 @@ export default function TranslationSessionPanel({
                   )}
                 </button>
                 <button
-                  onClick={() => { setRenamingId(s.id); setRenameValue(s.name); }}
-                  aria-label={`Rename version ${s.name}`}
+                  onClick={() => {
+                    setEditDialog(s);
+                    setEditDraft({
+                      name: s.name,
+                      target_language: s.target_language,
+                      provider: s.provider,
+                      style_prompt: s.style_prompt ?? "",
+                      status: s.status === "public" ? "public" : "private",
+                    });
+                  }}
+                  aria-label={`Edit version ${s.name}`}
                   className="shrink-0 p-1 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
                   <EditIcon className="w-3.5 h-3.5" />
@@ -359,6 +336,66 @@ export default function TranslationSessionPanel({
             ＋ Add your own version
           </button>
         ) : null}
+        {editDialog && (
+          <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Edit translation version">
+          <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-2.5" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="edit-session-form">
+            <p className="text-sm font-medium text-ink">Edit version</p>
+            <input
+              aria-label="Version name"
+              value={editDraft.name}
+              onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              autoFocus
+            />
+            <select
+              aria-label="Version target language"
+              value={editDraft.target_language}
+              onChange={(e) => setEditDraft((d) => ({ ...d, target_language: e.target.value }))}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+            <select
+              aria-label="Version provider"
+              value={editDraft.provider}
+              onChange={(e) => setEditDraft((d) => ({ ...d, provider: e.target.value as SessionProvider }))}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="deepseek" disabled={!hasDeepseekKey}>DeepSeek · deepseek-v4-flash{hasDeepseekKey ? "" : " (no key)"}</option>
+              <option value="claude" disabled={!hasClaudeKey}>Claude · claude-sonnet-5{hasClaudeKey ? "" : " (no key)"}</option>
+            </select>
+            <select
+              aria-label="Version visibility"
+              value={editDraft.status}
+              onChange={(e) => setEditDraft((d) => ({ ...d, status: e.target.value as "private" | "public" }))}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="private">Private — only you see this version</option>
+              <option value="public">Public — renderings are posted as you translate</option>
+            </select>
+            <textarea
+              aria-label="Style and requirements"
+              placeholder="Style & requirements (optional)"
+              value={editDraft.style_prompt}
+              onChange={(e) => setEditDraft((d) => ({ ...d, style_prompt: e.target.value }))}
+              rows={3}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setEditDialog(null); setError(null); }} className="text-xs px-2 py-1.5 min-h-[44px] md:min-h-0 text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Cancel</button>
+              <button
+                onClick={handleEditSave}
+                disabled={busy || !editDraft.name.trim()}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+          </div>
+        )}
         {creating && (
           <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="New translation version">
           <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-2.5" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="new-session-form">
@@ -428,69 +465,6 @@ export default function TranslationSessionPanel({
       {/* Active session: style panel + chapter translate */}
       {active && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-white p-3 space-y-2" data-testid="session-style-panel">
-          <label className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide" htmlFor="version-lang">Version target language</label>
-          <select
-            id="version-lang"
-            aria-label="Version target language"
-            value={active.target_language}
-            onChange={(e) => handleLanguageSave(e.target.value)}
-            className="w-full text-sm border border-amber-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            {LANGUAGES.filter((l) => l.code !== bookLanguage).map((l) => (
-              <option key={l.code} value={l.code}>{l.label}</option>
-            ))}
-          </select>
-          <div className="flex items-center justify-between">
-            <label htmlFor="session-style" className="block text-[11px] font-medium text-amber-700 uppercase tracking-wide">Style &amp; requirements</label>
-            {!styleEditing && (
-              <button
-                onClick={() => { setStyleDraft(active.style_prompt ?? ""); setStyleEditing(true); }}
-                aria-label="Edit style and requirements"
-                className="text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-          {styleEditing ? (
-            <>
-              <textarea
-                id="session-style"
-                value={styleDraft}
-                onChange={(e) => setStyleDraft(e.target.value)}
-                rows={3}
-                autoFocus
-                className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setStyleEditing(false)}
-                  className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => { await handleStyleSave(styleDraft); setStyleEditing(false); }}
-                  className="text-xs px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  Save
-                </button>
-              </div>
-            </>
-          ) : (
-            <p data-testid="style-readout" className="text-sm text-stone-600 whitespace-pre-wrap border border-transparent px-2 py-1.5 min-h-[2rem]">
-              {active.style_prompt?.trim() || <span className="italic text-stone-400">No style requirements yet — tap Edit.</span>}
-            </p>
-          )}
-          <select
-            aria-label="Version provider"
-            value={active.provider}
-            onChange={(e) => handleProviderSave(e.target.value as SessionProvider)}
-            className="w-full text-sm border border-amber-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            <option value="deepseek" disabled={!hasDeepseekKey}>DeepSeek · deepseek-v4-flash{hasDeepseekKey ? "" : " (no key)"}</option>
-            <option value="claude" disabled={!hasClaudeKey}>Claude · claude-sonnet-5{hasClaudeKey ? "" : " (no key)"}</option>
-          </select>
           {actionError && (
             <div role="alert" data-testid="session-action-error" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 flex items-start justify-between gap-2">
               <span className="flex-1">{actionError}</span>

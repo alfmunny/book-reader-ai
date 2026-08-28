@@ -84,31 +84,30 @@ test("duplicate-name error from the API is shown", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(/already have a session/);
 });
 
-test("active session shows the style panel and translate-chapter button", () => {
+test("active session panel is lean: translate button + coverage, no inline fields", () => {
   const { props } = renderPanel({ activeSessionId: 5, chapterProgress: { done: 3, total: 29 } });
   expect(screen.getByTestId("session-style-panel")).toBeInTheDocument();
-  // Style is read-only until Edit — explicit Save flow (owner, 2026-08-28)
-  expect(screen.getByTestId("style-readout")).toHaveTextContent("优雅的书面语");
-  fireEvent.click(screen.getByRole("button", { name: "Edit style and requirements" }));
-  expect(screen.getByLabelText("Style & requirements")).toHaveValue("优雅的书面语");
-  fireEvent.change(screen.getByLabelText("Style & requirements"), { target: { value: "更直白" } });
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  // Cancel discards — the stored prompt is untouched
-  expect(screen.getByTestId("style-readout")).toHaveTextContent("优雅的书面语");
-  expect(api.updateTranslationSession).not.toHaveBeenCalled();
+  // Per-version settings live in the Edit dialog now (owner, 2026-08-28)
+  expect(screen.queryByLabelText("Version target language")).toBeNull();
+  expect(screen.queryByLabelText("Style & requirements")).toBeNull();
   expect(screen.getByTestId("session-coverage")).toHaveTextContent("3 / 29 paragraphs");
-  expect(screen.getByTestId("session-coverage")).toHaveTextContent("1 / 28 chapters started");
-  // 3/29 done → the button offers the remaining fill run
   fireEvent.click(screen.getByRole("button", { name: "Translate remaining (26)" }));
   expect(props.onTranslateChapter).toHaveBeenCalledWith(false);
 });
-
-test("the language is changeable on an existing version", async () => {
-  (api.updateTranslationSession as jest.Mock).mockResolvedValue({ ...SESSION, target_language: "en" });
+test("the row pencil opens the Edit dialog; saving updates all fields", async () => {
+  (api.updateTranslationSession as jest.Mock).mockResolvedValue({ ...SESSION, target_language: "en", status: "public" });
   const { props } = renderPanel({ activeSessionId: 5 });
+  fireEvent.click(screen.getByRole("button", { name: "Edit version 诗意版" }));
+  const dialog = screen.getByRole("dialog", { name: "Edit translation version" });
+  expect(dialog).toBeInTheDocument();
+  expect((screen.getByLabelText("Version name") as HTMLInputElement).value).toBe("诗意版");
   fireEvent.change(screen.getByLabelText("Version target language"), { target: { value: "en" } });
-  await waitFor(() => expect(api.updateTranslationSession).toHaveBeenCalledWith(5, { target_language: "en" }));
-  // Reselected so the reader picks up the new language immediately
+  fireEvent.change(screen.getByLabelText("Version visibility"), { target: { value: "public" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(api.updateTranslationSession).toHaveBeenCalledWith(5, expect.objectContaining({
+    name: "诗意版", target_language: "en", status: "public",
+  })));
+  // Active version reselected so the reader picks the changes up immediately
   expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ target_language: "en" }));
 });
 

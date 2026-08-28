@@ -976,14 +976,15 @@ export default function SentenceReader({
           <button
             onClick={(e) => onShareParagraph(paraIdx, { x: e.clientX, y: e.clientY })}
             disabled={actionsDisabled}
-            aria-label={posted ? `Posted — open posts for paragraph ${paraIdx + 1}` : `Share translation of paragraph ${paraIdx + 1}`}
+            aria-label={`Share translation of paragraph ${paraIdx + 1}`}
+            title={posted ? "Already posted — sharing again creates another post" : undefined}
             className={`text-[11px] disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded ${
               posted
-                ? "px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                ? "text-green-700 hover:text-green-800 hover:underline"
                 : "text-amber-700 hover:text-amber-800 hover:underline"
             }`}
           >
-            {posted ? "Posted" : "Share"}
+            {posted ? "Share ✓" : "Share"}
           </button>
         )}
       </div>

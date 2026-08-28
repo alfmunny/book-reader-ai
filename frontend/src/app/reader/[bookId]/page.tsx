@@ -354,7 +354,9 @@ export default function ReaderPage() {
   const [chapterStories, setChapterStories] = useState<Story[]>([]);
   const [postsDialog, setPostsDialog] = useState<{ paraIdx: number; position: { x: number; y: number } } | null>(null);
   const [storiesVersion, setStoriesVersion] = useState(0);
-  const [shareDialog, setShareDialog] = useState<{ kind: "note"; annotationId: number } | null>(null);
+  const [shareDialog, setShareDialog] = useState<
+    { kind: "note"; annotationId: number } | { kind: "translation"; paraIdx: number } | null
+  >(null);
   const [shareCaption, setShareCaption] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
 
@@ -401,10 +403,19 @@ export default function ReaderPage() {
     if (!shareDialog || shareBusy) return;
     setShareBusy(true);
     try {
-      await createStory({
+      const caption = shareCaption.trim() ? { caption: shareCaption.trim() } : {};
+      if (shareDialog.kind === "translation") {
+        if (!activeSession) return;
+        await createStory({
+          kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
+          session_id: activeSession.id,
+          paragraph_start: shareDialog.paraIdx, paragraph_end: shareDialog.paraIdx,
+          ...caption,
+        });
+      } else await createStory({
         kind: "note", book_id: Number(bookId), chapter_index: chapterIndex,
         annotation_id: shareDialog.annotationId,
-        ...(shareCaption.trim() ? { caption: shareCaption.trim() } : {}),
+        ...caption,
       });
       setShareDialog(null);
       setShareCaption("");
@@ -1897,8 +1908,9 @@ export default function ReaderPage() {
                     setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
                   } : undefined}
                   onDeleteParagraph={activeSession ? handleSessionDeleteParagraph : undefined}
-                  onShareParagraph={activeSession && session?.backendToken ? (idx, position) => {
-                    setPostsDialog({ paraIdx: idx, position });
+                  onShareParagraph={activeSession && session?.backendToken ? (idx) => {
+                    setShareCaption("");
+                    setShareDialog({ kind: "translation", paraIdx: idx });
                   } : undefined}
                   postedParagraphs={activeSession ? myPostedParas : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
@@ -2080,12 +2092,22 @@ export default function ReaderPage() {
           {shareDialog && (
             <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Share">
               <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
-                <p className="text-sm font-medium text-ink">Post this note</p>
+                <p className="text-sm font-medium text-ink">
+                  {shareDialog.kind === "translation" ? "Share this translation" : "Post this note"}
+                </p>
                 <p className="text-xs text-stone-500">Other readers of this book will see it.</p>
+                {shareDialog.kind === "translation" && (
+                  <blockquote className="border-l-2 border-amber-300 bg-amber-50/60 rounded-r-lg px-3 py-2 space-y-1" data-testid="share-quote">
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{activeSession?.name}</span>
+                    <p lang={activeSession?.target_language} className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
+                      {sessionChapter?.paragraphs[String(shareDialog.paraIdx)]?.text}
+                    </p>
+                  </blockquote>
+                )}
                 <textarea
                   value={shareCaption}
                   onChange={(e) => setShareCaption(e.target.value)}
-                  placeholder="Say something about it (optional)…"
+                  placeholder="Say something under the quote (optional)…"
                   aria-label="Share caption"
                   rows={2}
                   className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -2233,20 +2255,6 @@ export default function ReaderPage() {
                   },
                 };
               })}
-              composer={activeSession ? {
-                placeholder: "Say something about your rendering (optional)…",
-                submitLabel: "Publish my translation as a post",
-                emptyText: "No posts on this paragraph yet — publish yours below.",
-                onSubmit: async (caption) => {
-                  await createStory({
-                    kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
-                    session_id: activeSession.id,
-                    paragraph_start: postsDialog.paraIdx, paragraph_end: postsDialog.paraIdx,
-                    ...(caption ? { caption } : {}),
-                  });
-                  setStoriesVersion((v) => v + 1);
-                },
-              } : undefined}
               commentsTab={(() => {
                 // The Comments tab is the CURRENT rendering's comment list
                 // (owner design, 2026-08-30): editorial paragraphs are

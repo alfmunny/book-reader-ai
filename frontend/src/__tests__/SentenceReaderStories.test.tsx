@@ -160,7 +160,7 @@ test("a translation with community posts gets the dashed underline and opens the
 
 // ── Posted-paragraph sync in the reading view (owner, 2026-08-31) ──────────
 
-test("a posted paragraph shows Posted instead of Share and locks retranslate/delete", () => {
+test("a posted paragraph keeps Share (marked public) and locks retranslate/delete", () => {
   const onShareParagraph = jest.fn();
   renderReader({
     sessionMode: true,
@@ -170,9 +170,10 @@ test("a posted paragraph shows Posted instead of Share and locks retranslate/del
     onDeleteParagraph: jest.fn(),
     postedParagraphs: new Set([0]),
   });
-  // The Share button IS the posted indicator — and still opens the dialog
-  const postedBtn = screen.getByRole("button", { name: "Posted — open posts for paragraph 1" });
-  expect(postedBtn).toHaveTextContent("Posted");
+  // Share remains (multiple posts allowed) but wears the public mark
+  const postedBtn = screen.getByRole("button", { name: "Share translation of paragraph 1" });
+  expect(postedBtn).toHaveTextContent("Share ✓");
+  expect(postedBtn.className).toContain("text-green-700");
   fireEvent.click(postedBtn);
   expect(onShareParagraph).toHaveBeenCalled();
   // Machine retranslation and deletion lock; manual edit stays available

@@ -34,6 +34,7 @@ import {
   deleteStoryComment,
 } from "@/lib/api";
 import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon } from "@/components/Icons";
+import { timeAgo, exactTime } from "@/lib/timeAgo";
 import { COLORS } from "@/components/QuickHighlightPanel";
 
 /** Small round author avatar: picture when the account has one, an
@@ -131,7 +132,10 @@ function StoryDiscussion({
   const row = (c: StoryComment, indent: boolean) => (
     <div key={c.id} className={`text-xs flex items-start gap-1.5 ${indent ? "pl-5" : ""}`}>
       <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-      <span className="font-medium text-ink">{c.author_name}</span>{" "}
+      <span className="font-medium text-ink">{c.author_name}</span>
+      {c.created_at && (
+        <time title={exactTime(c.created_at)} className="text-[10px] text-stone-400 shrink-0">{timeAgo(c.created_at)}</time>
+      )}{" "}
       <span className="text-stone-600 flex-1">{c.body}</span>
       {(c.user_id === currentUserId || isAdmin) && (
         <button
@@ -533,7 +537,10 @@ export default function StoryPanel({
         }`}
       >
         <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-        <span className="font-medium text-ink">{c.author_name}</span>{" "}
+        <span className="font-medium text-ink">{c.author_name}</span>
+        {c.created_at && (
+          <time title={exactTime(c.created_at)} className="text-[10px] text-stone-400 shrink-0">{timeAgo(c.created_at)}</time>
+        )}{" "}
         <span className={`text-stone-600 flex-1 ${open ? "line-clamp-2" : ""}`}>{c.body}</span>
         {open && replies > 0 && (
           <span className="text-[10px] text-amber-700 shrink-0">{replies} repl{replies === 1 ? "y" : "ies"}</span>
@@ -632,6 +639,9 @@ export default function StoryPanel({
             variant !== "sentence" && <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700">note</span>
           )}
           <span className="flex-1" />
+          {story.created_at && (
+            <time title={exactTime(story.created_at)} className="text-[10px] text-stone-400">{timeAgo(story.created_at)}</time>
+          )}
           {variant !== "sentence" && (story.user_id === currentUserId || isAdmin) && (
             <button
               onClick={(e) => { e.stopPropagation(); handleDeleteStory(story.id); }}
@@ -832,7 +842,7 @@ export default function StoryPanel({
             <div className="flex-1">
               <p className="text-sm font-medium text-ink">{detailComment.author_name}</p>
               {detailComment.created_at && (
-                <p className="text-[11px] text-stone-400">{detailComment.created_at.slice(0, 10)}</p>
+                <time title={exactTime(detailComment.created_at)} className="text-[11px] text-stone-400">{timeAgo(detailComment.created_at)}</time>
               )}
             </div>
             {(detailComment.user_id === currentUserId || isAdmin) && (
@@ -960,7 +970,7 @@ export default function StoryPanel({
             <div className="flex-1">
               <p className="text-sm font-medium text-ink">{detailStory.author_name}</p>
               {detailStory.created_at && (
-                <p className="text-[11px] text-stone-400">{detailStory.created_at.slice(0, 10)}</p>
+                <time title={exactTime(detailStory.created_at)} className="text-[11px] text-stone-400">{timeAgo(detailStory.created_at)}</time>
               )}
             </div>
             {detailStory.user_id === currentUserId && visibilityChip(true, async () => handleDeleteStory(detailStory.id), {

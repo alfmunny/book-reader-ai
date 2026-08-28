@@ -468,14 +468,19 @@ export default function ReaderPage() {
   const [sessionActionError, setSessionActionError] = useState<string | null>(null);
   const myPostedParas = useMemo(() => {
     const set = new Set<number>();
-    if (!activeSession) return set;
+    const at: Record<number, string> = {};
+    if (!activeSession) return { set, at };
     for (const st of chapterStories) {
       if (st.kind !== "translation" || st.session_id !== activeSession.id) continue;
       if (st.user_id !== session?.backendUser?.id) continue;
       if (st.paragraph_start == null || st.paragraph_end == null) continue;
-      for (let i = st.paragraph_start; i <= st.paragraph_end; i++) set.add(i);
+      for (let i = st.paragraph_start; i <= st.paragraph_end; i++) {
+        set.add(i);
+        // Latest share wins for the "shared … ago" line
+        if (!at[i] || st.created_at > at[i]) at[i] = st.created_at;
+      }
     }
-    return set;
+    return { set, at };
   }, [chapterStories, activeSession, session?.backendUser?.id]);
 
   // Stories arrive in ONE call per chapter (design: no per-paragraph
@@ -1912,7 +1917,8 @@ export default function ReaderPage() {
                     setShareCaption("");
                     setShareDialog({ kind: "translation", paraIdx: idx });
                   } : undefined}
-                  postedParagraphs={activeSession ? myPostedParas : undefined}
+                  postedParagraphs={activeSession ? myPostedParas.set : undefined}
+                  postedAt={activeSession ? myPostedParas.at : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
                   onOpenPosts={showShares ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}

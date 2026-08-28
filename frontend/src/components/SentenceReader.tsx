@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation, WordBoundary } from "@/lib/api";
+import { timeAgo, exactTime } from "@/lib/timeAgo";
 
 // ── Text parsing ────────────────────────────────────────────────────────────
 
@@ -334,6 +335,8 @@ interface Props {
    *  + deletion lock — a public post is never silently rewritten (owner,
    *  2026-08-31). Manual edits stay allowed: live references by design. */
   postedParagraphs?: Set<number>;
+  /** paragraph index → latest post time (ISO/DB) for the share row line. */
+  postedAt?: Record<number, string>;
   /** Paragraphs that have community translation posts. Their TRANSLATION
    *  text gets the dashed underline (same sign language as shared notes)
    *  and becomes the tap target opening the posts dialog — the entry
@@ -611,6 +614,7 @@ export default function SentenceReader({
   onDeleteParagraph,
   onShareParagraph,
   postedParagraphs,
+  postedAt,
   postParagraphs,
   onOpenPosts,
   sharedNotes,
@@ -986,6 +990,15 @@ export default function SentenceReader({
           >
             {posted ? "Share ✓" : "Share"}
           </button>
+        )}
+        {posted && postedAt?.[paraIdx] && (
+          <time
+            title={exactTime(postedAt[paraIdx])}
+            data-testid={`shared-at-${paraIdx}`}
+            className="text-[10px] text-stone-400"
+          >
+            shared {timeAgo(postedAt[paraIdx])}
+          </time>
         )}
       </div>
     );

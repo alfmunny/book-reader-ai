@@ -192,3 +192,18 @@ test("unposted paragraphs keep the plain Share and enabled actions", () => {
   expect(screen.getByRole("button", { name: "Share translation of paragraph 1" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Retranslate paragraph 1" })).toBeEnabled();
 });
+
+test("a posted paragraph shows when it was last shared, exact time on hover", () => {
+  renderReader({
+    sessionMode: true,
+    translationMeta: { 0: { model: "m", edited: false } },
+    onShareParagraph: jest.fn(),
+    postedParagraphs: new Set([0]),
+    postedAt: { 0: "2026-08-27 10:00:00" },
+  });
+  const t = screen.getByTestId("shared-at-0");
+  expect(t.textContent).toMatch(/^shared /);
+  expect(t.textContent).toMatch(/ago|Aug/);
+  expect(t).toHaveAttribute("title");
+  expect(t.getAttribute("title")).not.toBe("");
+});

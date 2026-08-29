@@ -865,7 +865,7 @@ export default function StoryPanel({
             <>
               <span className="w-px h-5 bg-amber-100" aria-hidden="true" />
               <button
-                onClick={() => { setNoteDraft(""); setVisDraft("private"); setView({ mode: "editMine" }); }}
+                onClick={() => { setNoteDraft(""); setVisDraft("public"); setView({ mode: "editMine" }); }}
                 aria-label="Write note"
                 className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >

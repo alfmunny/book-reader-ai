@@ -254,6 +254,8 @@ test("Write note appears in the toolbar only without an existing note", () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Write note" }));
   expect((screen.getByLabelText("My note text") as HTMLTextAreaElement).value).toBe("");
+  // New notes default to Public (owner, 2026-08-29)
+  expect((screen.getByLabelText("Visibility") as HTMLSelectElement).value).toBe("public");
 });
 
 test("tapping a community note opens its detail page with author and delete for admins", async () => {

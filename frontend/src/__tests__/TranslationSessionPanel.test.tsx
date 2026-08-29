@@ -69,7 +69,7 @@ test("creating a session posts and selects it", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Create version" }));
 
   await waitFor(() => expect(api.createTranslationSession).toHaveBeenCalledWith(
-    expect.objectContaining({ book_id: 2229, name: "直译版", provider: "claude", status: "private" }),
+    expect.objectContaining({ book_id: 2229, name: "直译版", provider: "claude", status: "public" }),
   ));
   expect(props.onSelect).toHaveBeenCalledWith(created);
   expect(props.onSessionsChanged).toHaveBeenCalledWith([SESSION, created]);

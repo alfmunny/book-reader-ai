@@ -77,7 +77,8 @@ export default function TranslationSessionPanel({
     return hasDeepseekKey || !hasClaudeKey ? "deepseek" : "claude";
   });
   const [style, setStyle] = useState("");
-  const [visibility, setVisibility] = useState<"private" | "public">("private");
+  // Public by default (owner, 2026-08-29) — sharing is the norm here
+  const [visibility, setVisibility] = useState<"private" | "public">("public");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // The row's pencil opens a full Edit dialog (owner, 2026-08-28) —

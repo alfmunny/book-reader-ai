@@ -100,7 +100,7 @@ class SessionCreate(BaseModel):
     target_language: str = Field(..., min_length=1, max_length=20)
     provider: Literal["deepseek", "claude"]
     style_prompt: str | None = Field(default=None, max_length=2000)
-    status: Literal["private", "public"] = "private"
+    status: Literal["private", "public"] = "public"
 
     @field_validator("name")
     @classmethod

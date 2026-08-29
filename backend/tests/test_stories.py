@@ -19,9 +19,10 @@ async def _seed_book(client):
     await save_book(1, _META, _TEXT)
 
 
-async def _make_session(client, name="诗意版"):
+async def _make_session(client, name="诗意版", status="private"):
     resp = await client.post("/api/translation-sessions", json={
         "book_id": 1, "name": name, "target_language": "zh", "provider": "deepseek",
+        "status": status,
     })
     assert resp.status_code == 201
     return resp.json()["id"]
@@ -396,3 +397,11 @@ async def test_private_session_does_not_autopost(client, test_user):
         })
     stories = (await client.get("/api/stories", params={"book_id": 1, "chapter_index": 0})).json()["stories"]
     assert [s for s in stories if s["session_id"] == sid] == []
+
+
+async def test_new_sessions_default_to_public(client, test_user):
+    resp = await client.post("/api/translation-sessions", json={
+        "book_id": 1, "name": "默认版", "target_language": "zh", "provider": "deepseek",
+    })
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "public"  # owner, 2026-08-29

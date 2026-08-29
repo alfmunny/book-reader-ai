@@ -1291,6 +1291,7 @@ export interface StoryComment {
   author_name: string;
   author_picture?: string | null;
   parent_comment_id?: number | null;
+  visibility?: "public" | "private";
 }
 
 /** Anchor for comments on an EDITORIAL paragraph (no story row exists). */
@@ -1352,11 +1353,11 @@ export function listStoryComments(storyId: number) {
   return request<{ comments: StoryComment[] }>(`/stories/${storyId}/comments`);
 }
 
-export function addStoryComment(storyId: number, body: string, parentId?: number) {
+export function addStoryComment(storyId: number, body: string, parentId?: number, visibility?: "public" | "private") {
   return request<StoryComment>(`/stories/${storyId}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body, ...(parentId != null ? { parent_id: parentId } : {}) }),
+    body: JSON.stringify({ body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}) }),
   });
 }
 
@@ -1367,11 +1368,11 @@ export function listSessionParagraphComments(anchor: SessionParagraphAnchor) {
   return request<{ comments: StoryComment[] }>(`/stories/comments/session?${params}`);
 }
 
-export function addSessionParagraphComment(anchor: SessionParagraphAnchor, body: string, parentId?: number) {
+export function addSessionParagraphComment(anchor: SessionParagraphAnchor, body: string, parentId?: number, visibility?: "public" | "private") {
   return request<StoryComment>(`/stories/comments/session`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}) }),
+    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}) }),
   });
 }
 
@@ -1382,11 +1383,11 @@ export function listEditorialComments(anchor: EditorialCommentAnchor) {
   return request<{ comments: StoryComment[] }>(`/stories/comments/editorial?${params}`);
 }
 
-export function addEditorialComment(anchor: EditorialCommentAnchor, body: string, parentId?: number) {
+export function addEditorialComment(anchor: EditorialCommentAnchor, body: string, parentId?: number, visibility?: "public" | "private") {
   return request<StoryComment>(`/stories/comments/editorial`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}) }),
+    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}) }),
   });
 }
 

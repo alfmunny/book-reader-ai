@@ -2037,12 +2037,13 @@ async def delete_story(story_id: int, user_id: int, is_admin: bool = False) -> b
         return cursor.rowcount > 0
 
 
-async def create_story_comment(story_id: int, user_id: int, body: str, parent_id: int | None = None) -> dict:
+async def create_story_comment(story_id: int, user_id: int, body: str, parent_id: int | None = None,
+                               visibility: str = "public") -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "INSERT INTO story_comments (story_id, user_id, body, parent_comment_id) VALUES (?, ?, ?, ?)",
-            (story_id, user_id, body, parent_id),
+            "INSERT INTO story_comments (story_id, user_id, body, parent_comment_id, visibility) VALUES (?, ?, ?, ?, ?)",
+            (story_id, user_id, body, parent_id, visibility),
         )
         comment_id = cursor.lastrowid
         await db.commit()
@@ -2055,14 +2056,15 @@ async def create_story_comment(story_id: int, user_id: int, body: str, parent_id
     return dict(row)
 
 
-async def list_story_comments(story_id: int) -> list[dict]:
+async def list_story_comments(story_id: int, viewer_id: int | None = None) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
                JOIN users u ON u.id = sc.user_id
-               WHERE sc.story_id = ? ORDER BY sc.created_at, sc.id""",
-            (story_id,),
+               WHERE sc.story_id = ? AND (sc.visibility = 'public' OR sc.user_id = ?)
+               ORDER BY sc.created_at, sc.id""",
+            (story_id, viewer_id),
         ) as c:
             rows = await c.fetchall()
     return [dict(r) for r in rows]
@@ -2071,6 +2073,7 @@ async def list_story_comments(story_id: int) -> list[dict]:
 async def create_editorial_comment(
     book_id: int, target_language: str, chapter_index: int, paragraph_index: int,
     user_id: int, body: str, parent_id: int | None = None,
+    visibility: str = "public",
 ) -> dict:
     """Comment anchored on an EDITORIAL paragraph — no story/session row
     exists for editorial, so the anchor is (book, language, chapter, para)."""
@@ -2078,9 +2081,9 @@ async def create_editorial_comment(
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """INSERT INTO story_comments
-               (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_id),
+               (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_id, visibility),
         )
         comment_id = cursor.lastrowid
         await db.commit()
@@ -2095,6 +2098,7 @@ async def create_editorial_comment(
 
 async def list_editorial_comments(
     book_id: int, target_language: str, chapter_index: int, paragraph_index: int,
+    viewer_id: int | None = None,
 ) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -2103,8 +2107,9 @@ async def list_editorial_comments(
                JOIN users u ON u.id = sc.user_id
                WHERE sc.book_id = ? AND sc.target_language = ?
                  AND sc.chapter_index = ? AND sc.paragraph_index = ?
+                 AND (sc.visibility = 'public' OR sc.user_id = ?)
                ORDER BY sc.created_at, sc.id""",
-            (book_id, target_language, chapter_index, paragraph_index),
+            (book_id, target_language, chapter_index, paragraph_index, viewer_id),
         ) as c:
             rows = await c.fetchall()
     return [dict(r) for r in rows]
@@ -2113,6 +2118,7 @@ async def list_editorial_comments(
 async def create_session_paragraph_comment(
     session_id: int, chapter_index: int, paragraph_index: int,
     user_id: int, body: str, parent_id: int | None = None,
+    visibility: str = "public",
 ) -> dict:
     """Note on ONE version's rendering of a paragraph (owner, 2026-08-30:
     notes belong to the version you are reading, not to the language)."""
@@ -2120,9 +2126,9 @@ async def create_session_paragraph_comment(
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """INSERT INTO story_comments
-               (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (session_id, chapter_index, paragraph_index, user_id, body, parent_id),
+               (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, chapter_index, paragraph_index, user_id, body, parent_id, visibility),
         )
         comment_id = cursor.lastrowid
         await db.commit()
@@ -2136,7 +2142,7 @@ async def create_session_paragraph_comment(
 
 
 async def list_session_paragraph_comments(
-    session_id: int, chapter_index: int, paragraph_index: int,
+    session_id: int, chapter_index: int, paragraph_index: int, viewer_id: int | None = None,
 ) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -2145,8 +2151,9 @@ async def list_session_paragraph_comments(
                JOIN users u ON u.id = sc.user_id
                WHERE sc.session_id = ? AND sc.story_id IS NULL
                  AND sc.chapter_index = ? AND sc.paragraph_index = ?
+                 AND (sc.visibility = 'public' OR sc.user_id = ?)
                ORDER BY sc.created_at, sc.id""",
-            (session_id, chapter_index, paragraph_index),
+            (session_id, chapter_index, paragraph_index, viewer_id),
         ) as c:
             rows = await c.fetchall()
     return [dict(r) for r in rows]

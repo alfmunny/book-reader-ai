@@ -450,3 +450,30 @@ async def test_private_version_notes_are_not_readable_by_others(client, test_use
         "session_id": public["id"], "chapter_index": 0, "paragraph_index": 0,
     })
     assert ok.status_code == 200
+
+
+# ── Per-note visibility (owner, 2026-08-30) ────────────────────────────────
+
+async def test_private_notes_are_hidden_from_other_readers(client, test_user):
+    from services.db import get_or_create_user, create_translation_session, create_session_paragraph_comment
+    sid = await _make_session(client, name="公开笔记版")
+    await client.patch(f"/api/translation-sessions/{sid}", json={"status": "public"})
+    anchor = {"session_id": sid, "chapter_index": 0, "paragraph_index": 0}
+
+    await client.post("/api/stories/comments/session", json={**anchor, "body": "公开的笔记"})
+    await client.post("/api/stories/comments/session", json={**anchor, "body": "只给自己看", "visibility": "private"})
+
+    # The author sees both
+    mine = (await client.get("/api/stories/comments/session", params=anchor)).json()["comments"]
+    assert [c["body"] for c in mine] == ["公开的笔记", "只给自己看"]
+    assert mine[1]["visibility"] == "private"
+
+    # Another reader sees only the public one
+    other = await get_or_create_user(google_id="g-reader", email="r@e.com", name="Reader", picture="")
+    visible = await list_visible_for(sid, other["id"])
+    assert [c["body"] for c in visible] == ["公开的笔记"]
+
+
+async def list_visible_for(session_id: int, viewer_id: int):
+    from services.db import list_session_paragraph_comments
+    return await list_session_paragraph_comments(session_id, 0, 0, viewer_id)

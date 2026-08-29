@@ -71,10 +71,10 @@ function loadAnchor(a: CommentAnchor) {
   return listEditorialComments(a.editorial);
 }
 
-function postToAnchor(a: CommentAnchor, body: string, parentId?: number) {
-  if (a.kind === "story") return addStoryComment(a.storyId, body, parentId);
-  if (a.kind === "version") return addSessionParagraphComment(a.version, body, parentId);
-  return addEditorialComment(a.editorial, body, parentId);
+function postToAnchor(a: CommentAnchor, body: string, parentId?: number, visibility?: "public" | "private") {
+  if (a.kind === "story") return addStoryComment(a.storyId, body, parentId, visibility);
+  if (a.kind === "version") return addSessionParagraphComment(a.version, body, parentId, visibility);
+  return addEditorialComment(a.editorial, body, parentId, visibility);
 }
 
 /** Flat self-loading thread for the paragraph-panel cards (non-sentence
@@ -348,7 +348,7 @@ export default function StoryPanel({
     setBusy(true);
     setError(null);
     try {
-      const created = await postToAnchor(activeAnchor, draft.trim(), parentId);
+      const created = await postToAnchor(activeAnchor, draft.trim(), parentId, noteVisibility);
       setCommentCache((c) => ({ ...c, [activeKey]: [...(c[activeKey] ?? []), created] }));
       setDraft("");
       onChanged();
@@ -469,6 +469,7 @@ export default function StoryPanel({
   // dropdown (owner, 2026-08-28) — the chips are display-only.
   const [visDraft, setVisDraft] = useState<"public" | "private">("private");
   const [contentExpanded, setContentExpanded] = useState(false);
+  const [noteVisibility, setNoteVisibility] = useState<"public" | "private">("public");
   // Detail-panel retranslate asks first, like the row (owner, 2026-08-29)
   const [confirmRetrans, setConfirmRetrans] = useState<number | null>(null);
   const [versionDraft, setVersionDraft] = useState("");
@@ -607,28 +608,37 @@ export default function StoryPanel({
           open();
         } : undefined}
         data-testid={`comment-${c.id}`}
-        className={`text-xs flex items-start gap-1.5 ${opts.indent ? "pl-5" : ""} ${
-          open ? "cursor-pointer rounded p-1.5 -m-1.5 hover:bg-amber-50/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
+        className={`text-xs ${opts.indent ? "pl-5" : ""} ${
+          open ? "cursor-pointer rounded-lg p-2 -mx-1 hover:bg-amber-50/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : "py-1"
         }`}
       >
-        <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
-        <span className="font-medium text-ink">{c.author_name}</span>
-        {c.created_at && (
-          <time title={exactTime(c.created_at)} className="text-[10px] text-stone-400 shrink-0">{timeAgo(c.created_at)}</time>
-        )}{" "}
-        <span className={`text-stone-600 flex-1 ${open ? "line-clamp-2" : ""}`}>{c.body}</span>
-        {open && replies > 0 && (
-          <span className="text-[10px] text-amber-700 shrink-0">{replies} repl{replies === 1 ? "y" : "ies"}</span>
-        )}
-        {!open && (c.user_id === currentUserId || isAdmin) && (
-          <button
-            onClick={() => removeComment(c.id)}
-            aria-label="Delete comment"
-            className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-          >
-            ×
-          </button>
-        )}
+        {/* Identity line, then the note itself on its own line */}
+        <div className="flex items-center gap-1.5">
+          <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+          <span className="font-medium text-ink">{c.author_name}</span>
+          {c.created_at && (
+            <time title={exactTime(c.created_at)} className="text-[10px] text-stone-400">{timeAgo(c.created_at)}</time>
+          )}
+          {c.visibility === "private" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500">private</span>
+          )}
+          <span className="flex-1" />
+          {open && replies > 0 && (
+            <span className="text-[10px] text-amber-700 shrink-0">{replies} repl{replies === 1 ? "y" : "ies"}</span>
+          )}
+          {!open && (c.user_id === currentUserId || isAdmin) && (
+            <button
+              onClick={() => removeComment(c.id)}
+              aria-label="Delete comment"
+              className="text-stone-400 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        <p className={`mt-1 pl-[1.375rem] text-[13px] leading-relaxed text-stone-700 whitespace-pre-wrap ${open ? "line-clamp-3" : ""}`}>
+          {c.body}
+        </p>
       </div>
     );
   };
@@ -724,22 +734,37 @@ export default function StoryPanel({
   );
 
   const commentComposer = (placeholder: string, parentId?: number) => (
-    <div className="flex gap-1.5">
-      <input
+    <div className="space-y-1.5" data-testid={parentId ? "reply-composer" : "note-composer"}>
+      <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") addComment(parentId); }}
+        onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addComment(parentId); }}
         placeholder={placeholder}
         aria-label="Comment text"
-        className="flex-1 text-xs border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        rows={parentId ? 2 : 4}
+        className="w-full text-[13px] leading-relaxed border border-amber-200 rounded-lg px-2.5 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-amber-400"
       />
-      <button
-        onClick={() => addComment(parentId)}
-        disabled={busy || !draft.trim()}
-        className="text-xs px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-      >
-        Post
-      </button>
+      <div className="flex items-center gap-2">
+        <label htmlFor={`note-visibility-${parentId ?? "top"}`} className="sr-only">Note visibility</label>
+        <select
+          id={`note-visibility-${parentId ?? "top"}`}
+          aria-label="Note visibility"
+          value={noteVisibility}
+          onChange={(e) => setNoteVisibility(e.target.value as "public" | "private")}
+          className="text-[11px] rounded-lg border border-amber-200 px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          <option value="public">Public — others can read it</option>
+          <option value="private">Private — only you</option>
+        </select>
+        <span className="flex-1" />
+        <button
+          onClick={() => addComment(parentId)}
+          disabled={busy || !draft.trim()}
+          className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          Post
+        </button>
+      </div>
     </div>
   );
 

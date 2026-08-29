@@ -56,6 +56,7 @@ class StoryCreate(BaseModel):
 class CommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
+    visibility: Literal["public", "private"] = "public"
 
 
 class SessionParagraphCommentCreate(BaseModel):
@@ -64,6 +65,7 @@ class SessionParagraphCommentCreate(BaseModel):
     paragraph_index: int = Field(ge=0)
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
+    visibility: Literal["public", "private"] = "public"
 
 
 class EditorialCommentCreate(BaseModel):
@@ -73,6 +75,7 @@ class EditorialCommentCreate(BaseModel):
     paragraph_index: int = Field(ge=0)
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
+    visibility: Literal["public", "private"] = "public"
 
 
 async def _require_book(book_id: int, user: dict) -> dict:
@@ -193,7 +196,7 @@ async def session_paragraph_comments(
 ):
     """Notes on ONE version's rendering of a paragraph (owner, 2026-08-30)."""
     await _readable_session(session_id, user)
-    return {"comments": await list_session_paragraph_comments(session_id, chapter_index, paragraph_index)}
+    return {"comments": await list_session_paragraph_comments(session_id, chapter_index, paragraph_index, user["id"])}
 
 
 @router.post("/comments/session")
@@ -203,7 +206,7 @@ async def add_session_paragraph_comment(
     await _readable_session(req.session_id, user)
     return await create_session_paragraph_comment(
         req.session_id, req.chapter_index, req.paragraph_index,
-        user["id"], req.body.strip(), req.parent_id,
+        user["id"], req.body.strip(), req.parent_id, req.visibility,
     )
 
 
@@ -218,7 +221,7 @@ async def editorial_comments(
     """Comments anchored on an editorial paragraph (owner design,
     2026-08-30: every displayed translation paragraph is an anchor)."""
     await _require_book(book_id, user)
-    return {"comments": await list_editorial_comments(book_id, target_language, chapter_index, paragraph_index)}
+    return {"comments": await list_editorial_comments(book_id, target_language, chapter_index, paragraph_index, user["id"])}
 
 
 @router.post("/comments/editorial")
@@ -226,7 +229,7 @@ async def add_editorial_comment(req: EditorialCommentCreate, user: dict = Depend
     await _require_book(req.book_id, user)
     return await create_editorial_comment(
         req.book_id, req.target_language, req.chapter_index, req.paragraph_index,
-        user["id"], req.body.strip(), req.parent_id,
+        user["id"], req.body.strip(), req.parent_id, req.visibility,
     )
 
 
@@ -254,7 +257,7 @@ async def add_comment(
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     await _require_book(story["book_id"], user)
-    return await create_story_comment(story_id, user["id"], req.body.strip(), req.parent_id)
+    return await create_story_comment(story_id, user["id"], req.body.strip(), req.parent_id, req.visibility)
 
 
 @router.get("/{story_id}/comments")
@@ -263,4 +266,4 @@ async def get_comments(story_id: int = Path(ge=1), user: dict = Depends(get_curr
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     await _require_book(story["book_id"], user)
-    return {"comments": await list_story_comments(story_id)}
+    return {"comments": await list_story_comments(story_id, user["id"])}

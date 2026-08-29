@@ -2964,21 +2964,6 @@ export default function ReaderPage() {
                       </div>
                     </div>
 
-                    {/* Others' shares: explicit opt-in (phase 2, #2752) */}
-                    {translationEnabled && session?.backendToken && (
-                      <label className="flex items-center gap-2 mb-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showShares}
-                          onChange={(e) => {
-                            setShowShares(e.target.checked);
-                            saveSettings({ showOthersShares: e.target.checked });
-                          }}
-                          className="accent-amber-700"
-                        />
-                        <span className="text-sm text-ink">Show others&rsquo; shares</span>
-                      </label>
-                    )}
 
                     {/* Status */}
                     {!activeSession && translationEnabled && (

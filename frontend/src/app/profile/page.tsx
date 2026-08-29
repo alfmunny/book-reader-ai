@@ -700,8 +700,9 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Community shares (phase 2, #2752): profile-level opt-in, same
-              setting as the reader's "Show others' shares" toggle. */}
+          {/* Community shares (phase 2, #2752): profile-level opt-in; the
+              reader's toolbar 'Shares on/off' button flips the same
+              setting in-session. */}
           <div className="mt-5">
             <label className="flex items-start gap-2 cursor-pointer">
               <input

@@ -281,7 +281,14 @@ interface Props {
     emptyText: string;
     /** The rendering being discussed — shown above the thread for context,
      *  clamped to ~10 lines with a More toggle (owner, 2026-08-28). */
-    content?: { text: string; lang?: string; sessionName?: string; model?: string; myVersionIndex?: number };
+    content?: {
+      text: string; lang?: string; sessionName?: string; model?: string;
+      myVersionIndex?: number;
+      /** The reader's selection — marked in the context and scrolled into
+       *  view, so a long paragraph never hides what they picked (owner,
+       *  2026-08-30). */
+      highlight?: string;
+    };
   };
   currentUserId?: number;
   isAdmin?: boolean;
@@ -468,7 +475,12 @@ export default function StoryPanel({
   // Visibility is set EXPLICITLY in the editors via a Public/Private
   // dropdown (owner, 2026-08-28) — the chips are display-only.
   const [visDraft, setVisDraft] = useState<"public" | "private">("private");
-  const [contentExpanded, setContentExpanded] = useState(false);
+  const [contentExpanded, setContentExpanded] = useState(!!commentsTab?.content?.highlight);
+  const highlightRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // Bring the selection into view inside the (scrollable) context card
+    highlightRef.current?.scrollIntoView({ block: "center" });
+  }, [commentsTab?.content?.highlight, contentExpanded]);
   const [noteVisibility, setNoteVisibility] = useState<"public" | "private">("public");
   // Detail-panel retranslate asks first, like the row (owner, 2026-08-29)
   const [confirmRetrans, setConfirmRetrans] = useState<number | null>(null);
@@ -1006,10 +1018,23 @@ export default function StoryPanel({
                 <p
                   lang={c.lang}
                   className={`text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap ${
-                    needsClamp && !contentExpanded ? "line-clamp-[10]" : ""
+                    needsClamp && !contentExpanded ? "line-clamp-[10]" : "max-h-56 overflow-y-auto"
                   }`}
                 >
-                  {c.text}
+                  {(() => {
+                    const sel = c.highlight?.trim();
+                    const at = sel ? c.text.indexOf(sel) : -1;
+                    if (!sel || at < 0) return c.text;
+                    return (
+                      <>
+                        {c.text.slice(0, at)}
+                        <mark ref={highlightRef} className="bg-amber-200/70 text-ink rounded px-0.5" data-testid="context-highlight">
+                          {c.text.slice(at, at + sel.length)}
+                        </mark>
+                        {c.text.slice(at + sel.length)}
+                      </>
+                    );
+                  })()}
                 </p>
                 {needsClamp && (
                   <button

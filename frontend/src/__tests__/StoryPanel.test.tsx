@@ -781,3 +781,43 @@ test("the note composer is multi-line with a visibility choice; rows are two-lin
   await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "只给自己看", undefined, "private"));
   expect(await screen.findByText("private")).toBeInTheDocument();
 });
+
+test("a selection is highlighted in the context and shown expanded", () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  const long = Array.from({ length: 16 }, (_, i) => `诗行 ${i + 1}`).join("\n");
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial: { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 } },
+      label: "Editorial",
+      emptyText: "",
+      content: { text: long, lang: "zh", sessionName: "Editorial", highlight: "诗行 14" },
+    },
+  });
+  const mark = screen.getByTestId("context-highlight");
+  expect(mark).toHaveTextContent("诗行 14");
+  // Long text is NOT clamped when a selection has to be visible
+  const para = screen.getByTestId("comments-context").querySelector("p.font-serif") as HTMLElement;
+  expect(para.className).not.toContain("line-clamp");
+  expect(para.className).toContain("overflow-y-auto");
+});
+
+test("without a selection long context stays clamped behind More", () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  const long = Array.from({ length: 16 }, (_, i) => `诗行 ${i + 1}`).join("\n");
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial: { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 } },
+      label: "Editorial",
+      emptyText: "",
+      content: { text: long, lang: "zh", sessionName: "Editorial" },
+    },
+  });
+  expect(screen.queryByTestId("context-highlight")).toBeNull();
+  const para = screen.getByTestId("comments-context").querySelector("p.font-serif") as HTMLElement;
+  expect(para.className).toContain("line-clamp-[10]");
+  expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+});

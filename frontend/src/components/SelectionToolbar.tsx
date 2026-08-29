@@ -20,7 +20,7 @@ interface Props {
   onVocab?: (word: string, context: string, rect: DOMRect) => void;
   /** Opens the paragraph dialog (Current translation / Other translations)
    *  where notes on the rendering are written, read and discussed. */
-  onTranslationNote?: (paragraphIdx: number, rect: DOMRect) => void;
+  onTranslationNote?: (paragraphIdx: number, rect: DOMRect, selectedText: string) => void;
   /** BCP-47 tag used when reading a translation selection aloud. */
   translationLang?: string;
 }
@@ -290,7 +290,7 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
             onFocus={() => setFocusedToolbarIdx(1)}
             onClick={() => {
               if (!selection || selection.translationParaIdx === undefined) return;
-              onTranslationNote?.(selection.translationParaIdx, selection.rect);
+              onTranslationNote?.(selection.translationParaIdx, selection.rect, selection.text);
               window.getSelection()?.removeAllRanges();
               setSelection(null);
             }}

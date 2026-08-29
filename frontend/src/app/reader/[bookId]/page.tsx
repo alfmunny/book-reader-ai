@@ -352,7 +352,9 @@ export default function ReaderPage() {
   // Off by default — reading stays calm unless the reader opts in.
   const [showShares, setShowShares] = useState(false);
   const [chapterStories, setChapterStories] = useState<Story[]>([]);
-  const [postsDialog, setPostsDialog] = useState<{ paraIdx: number; position: { x: number; y: number } } | null>(null);
+  const [postsDialog, setPostsDialog] = useState<
+    { paraIdx: number; position: { x: number; y: number }; selectedText?: string } | null
+  >(null);
   const [storiesVersion, setStoriesVersion] = useState(0);
   const [shareDialog, setShareDialog] = useState<
     | { kind: "note"; annotationId: number }
@@ -1978,10 +1980,11 @@ export default function ReaderPage() {
           {/* Selection toolbar — appears when user selects text */}
           <SelectionToolbar
             translationLang={translationEnabled ? (activeSession?.target_language ?? translationLang) : undefined}
-            onTranslationNote={session?.backendToken ? (paraIdx, rect) => {
+            onTranslationNote={session?.backendToken ? (paraIdx, rect, selectedText) => {
               setPostsDialog({
                 paraIdx,
                 position: { x: rect.left + rect.width / 2, y: rect.bottom },
+                selectedText,
               });
             } : undefined}
             onRead={(text, lang) => {
@@ -2386,6 +2389,7 @@ export default function ReaderPage() {
                         sessionName: activeSession?.name ?? "Editorial",
                         model: activeSession ? myPara?.model : undefined,
                         myVersionIndex: myIdx >= 0 ? myIdx : undefined,
+                        highlight: postsDialog.selectedText,
                       }
                     : undefined,
                   // Notes belong to the VERSION you are reading; Editorial

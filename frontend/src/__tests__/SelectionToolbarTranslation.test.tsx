@@ -55,7 +55,8 @@ test("translation selection shows only Read + Note, and Note reports the paragra
   expect(screen.queryByRole("button", { name: "Ask AI" })).toBeNull();
 
   fireEvent.click(screen.getByTestId("translation-note-action"));
-  expect(onTranslationNote).toHaveBeenCalledWith(3, expect.anything());
+  // The selected text travels with it, so the dialog can highlight it
+  expect(onTranslationNote).toHaveBeenCalledWith(3, expect.anything(), "太阳依着古老的方式");
 });
 
 test("Read on a translation selection uses the translation language", () => {

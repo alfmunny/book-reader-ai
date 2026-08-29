@@ -1301,6 +1301,14 @@ export interface EditorialCommentAnchor {
   paragraph_index: number;
 }
 
+/** Anchor for notes on ONE version's rendering of a paragraph — notes
+ *  belong to the version you are reading (owner, 2026-08-30). */
+export interface SessionParagraphAnchor {
+  session_id: number;
+  chapter_index: number;
+  paragraph_index: number;
+}
+
 export function createStory(data: {
   kind: StoryKind;
   book_id: number;
@@ -1349,6 +1357,21 @@ export function addStoryComment(storyId: number, body: string, parentId?: number
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ body, ...(parentId != null ? { parent_id: parentId } : {}) }),
+  });
+}
+
+export function listSessionParagraphComments(anchor: SessionParagraphAnchor) {
+  const params = new URLSearchParams(
+    Object.fromEntries(Object.entries(anchor).map(([k, v]) => [k, String(v)])),
+  );
+  return request<{ comments: StoryComment[] }>(`/stories/comments/session?${params}`);
+}
+
+export function addSessionParagraphComment(anchor: SessionParagraphAnchor, body: string, parentId?: number) {
+  return request<StoryComment>(`/stories/comments/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}) }),
   });
 }
 

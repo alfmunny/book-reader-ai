@@ -10,6 +10,8 @@ jest.mock("@/lib/api", () => ({
   addStoryComment: jest.fn(),
   listEditorialComments: jest.fn(),
   addEditorialComment: jest.fn(),
+  listSessionParagraphComments: jest.fn(),
+  addSessionParagraphComment: jest.fn(),
   deleteStory: jest.fn(),
   deleteStoryComment: jest.fn(),
 }));
@@ -722,4 +724,26 @@ test("an unposted rendering can still be noted — no dead end", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
   await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "先记一笔", undefined));
   expect(await screen.findByTestId("comment-71")).toBeInTheDocument();
+});
+
+test("version anchor: notes load and post against THAT version's paragraph", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 81, user_id: 2, body: "诗意版的笔记", created_at: "", author_name: "Mira" }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 82, user_id: 9, body: "我的笔记", created_at: "", author_name: "Me",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版 · this paragraph", emptyText: "" },
+  });
+  await waitFor(() => expect(api.listSessionParagraphComments).toHaveBeenCalledWith(version));
+  expect(await screen.findByText("诗意版的笔记")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我的笔记" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "我的笔记", undefined));
+  // The language-scoped editorial endpoint is NOT used for a version
+  expect(api.listEditorialComments).not.toHaveBeenCalled();
 });

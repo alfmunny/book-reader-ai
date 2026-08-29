@@ -26,10 +26,13 @@ import {
   Story,
   StoryComment,
   EditorialCommentAnchor,
+  SessionParagraphAnchor,
   listStoryComments,
   addStoryComment,
   listEditorialComments,
   addEditorialComment,
+  listSessionParagraphComments,
+  addSessionParagraphComment,
   deleteStory,
   deleteStoryComment,
 } from "@/lib/api";
@@ -53,22 +56,25 @@ function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: s
 
 type CommentAnchor =
   | { kind: "story"; storyId: number }
-  | { kind: "editorial"; editorial: EditorialCommentAnchor };
+  | { kind: "editorial"; editorial: EditorialCommentAnchor }
+  | { kind: "version"; version: SessionParagraphAnchor };
 
 function anchorId(a: CommentAnchor): string {
-  return a.kind === "story"
-    ? `s:${a.storyId}`
-    : `e:${a.editorial.book_id}:${a.editorial.target_language}:${a.editorial.chapter_index}:${a.editorial.paragraph_index}`;
+  if (a.kind === "story") return `s:${a.storyId}`;
+  if (a.kind === "version") return `v:${a.version.session_id}:${a.version.chapter_index}:${a.version.paragraph_index}`;
+  return `e:${a.editorial.book_id}:${a.editorial.target_language}:${a.editorial.chapter_index}:${a.editorial.paragraph_index}`;
 }
 
 function loadAnchor(a: CommentAnchor) {
-  return a.kind === "story" ? listStoryComments(a.storyId) : listEditorialComments(a.editorial);
+  if (a.kind === "story") return listStoryComments(a.storyId);
+  if (a.kind === "version") return listSessionParagraphComments(a.version);
+  return listEditorialComments(a.editorial);
 }
 
 function postToAnchor(a: CommentAnchor, body: string, parentId?: number) {
-  return a.kind === "story"
-    ? addStoryComment(a.storyId, body, parentId)
-    : addEditorialComment(a.editorial, body, parentId);
+  if (a.kind === "story") return addStoryComment(a.storyId, body, parentId);
+  if (a.kind === "version") return addSessionParagraphComment(a.version, body, parentId);
+  return addEditorialComment(a.editorial, body, parentId);
 }
 
 /** Flat self-loading thread for the paragraph-panel cards (non-sentence

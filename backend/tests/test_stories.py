@@ -405,3 +405,48 @@ async def test_new_sessions_default_to_public(client, test_user):
     })
     assert resp.status_code == 201
     assert resp.json()["status"] == "public"  # owner, 2026-08-29
+
+
+# ── Notes anchor to the VERSION, not the language (owner, 2026-08-30) ───────
+
+async def test_session_paragraph_notes_are_per_version(client, test_user):
+    a = await _make_session(client, name="甲版")
+    b = await _make_session(client, name="乙版")
+    anchor_a = {"session_id": a, "chapter_index": 0, "paragraph_index": 0}
+    anchor_b = {"session_id": b, "chapter_index": 0, "paragraph_index": 0}
+
+    assert (await client.post("/api/stories/comments/session", json={**anchor_a, "body": "甲版的笔记"})).status_code == 200
+    listed_a = (await client.get("/api/stories/comments/session", params=anchor_a)).json()["comments"]
+    assert [c["body"] for c in listed_a] == ["甲版的笔记"]
+    # The other version does NOT inherit it
+    assert (await client.get("/api/stories/comments/session", params=anchor_b)).json()["comments"] == []
+    # …nor does another paragraph of the same version
+    other_para = (await client.get("/api/stories/comments/session",
+                                   params={**anchor_a, "paragraph_index": 1})).json()
+    assert other_para["comments"] == []
+
+
+async def test_session_notes_support_replies(client, test_user):
+    sid = await _make_session(client, name="回复版")
+    anchor = {"session_id": sid, "chapter_index": 0, "paragraph_index": 0}
+    top = (await client.post("/api/stories/comments/session", json={**anchor, "body": "顶层"})).json()
+    reply = (await client.post("/api/stories/comments/session",
+                               json={**anchor, "body": "回复", "parent_id": top["id"]})).json()
+    assert reply["parent_comment_id"] == top["id"]
+    assert len((await client.get("/api/stories/comments/session", params=anchor)).json()["comments"]) == 2
+
+
+async def test_private_version_notes_are_not_readable_by_others(client, test_user):
+    from services.db import get_or_create_user, create_translation_session
+    other = await get_or_create_user(google_id="g-other", email="o@e.com", name="Other", picture="")
+    private = await create_translation_session(other["id"], 1, "别人的私有版", "zh", "deepseek")
+    resp = await client.get("/api/stories/comments/session", params={
+        "session_id": private["id"], "chapter_index": 0, "paragraph_index": 0,
+    })
+    assert resp.status_code == 404
+    # A PUBLIC version of another reader is readable
+    public = await create_translation_session(other["id"], 1, "别人的公开版", "zh", "deepseek", status="public")
+    ok = await client.get("/api/stories/comments/session", params={
+        "session_id": public["id"], "chapter_index": 0, "paragraph_index": 0,
+    })
+    assert ok.status_code == 200

@@ -2388,15 +2388,26 @@ export default function ReaderPage() {
                         myVersionIndex: myIdx >= 0 ? myIdx : undefined,
                       }
                     : undefined,
-                  anchor: {
-                    kind: "editorial" as const,
-                    editorial: {
-                      book_id: Number(bookId),
-                      target_language: lang,
-                      chapter_index: chapterIndex,
-                      paragraph_index: postsDialog.paraIdx,
-                    },
-                  },
+                  // Notes belong to the VERSION you are reading; Editorial
+                  // keeps its own language-scoped anchor (owner, 2026-08-30).
+                  anchor: activeSession
+                    ? {
+                        kind: "version" as const,
+                        version: {
+                          session_id: activeSession.id,
+                          chapter_index: chapterIndex,
+                          paragraph_index: postsDialog.paraIdx,
+                        },
+                      }
+                    : {
+                        kind: "editorial" as const,
+                        editorial: {
+                          book_id: Number(bookId),
+                          target_language: lang,
+                          chapter_index: chapterIndex,
+                          paragraph_index: postsDialog.paraIdx,
+                        },
+                      },
                   emptyText: "",
                 };
               })()}

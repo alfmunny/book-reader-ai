@@ -359,24 +359,52 @@ async def main() -> None:
                 (book_id, owner_id),
             )
 
-        note_threads = [
-            (0, mira_id, "这一句的节奏我斟酌了很久，最后选择了短句。(demo)",
-                [(jonas_id, "短句确实更接近原文的顿挫。(demo)")]),
-            (0, jonas_id, "我的直译版在这里保留了语序，可以对照看。(demo)", []),
-            (0, owner_id, "记一笔：这段的「轰鸣」很关键，别的版本都弱了。(demo)",
-                [(mira_id, "同意，这个词撑起了整段。(demo)")]),
-            (1, mira_id, "这里的意象比字面更重要 — 我做了取舍。(demo)",
-                [(jonas_id, "取舍得当。(demo)"), (owner_id, "学到了。(demo)")]),
-            (1, owner_id, "我自己的笔记：回头把这段再润一遍。(demo)", []),
-            (2, jonas_id, "Zwei Lesarten möglich — ich bin bei der wörtlichen geblieben. (demo)",
-                [(mira_id, "另一种读法也说得通。(demo)")]),
-            (2, mira_id, "第三行押了个内韵，读出来才明显。(demo)", []),
-            (3, owner_id, "这段编辑版比我的版本更稳。(demo)", []),
-            (3, mira_id, "编辑版稳，但少了点味道。(demo)",
-                [(owner_id, "哈哈，各有所长。(demo)")]),
-            (4, jonas_id, "这一段几乎没有歧义，直译足够。(demo)", []),
-        ]
         notes_made = 0
+        # Per-version notes (owner, 2026-08-30): each version's rendering
+        # carries its own discussion — switching versions must switch notes.
+        version_notes = [
+            (session_id, 0, mira_id, "诗意版：这一句的节奏我斟酌了很久，最后选择了短句。(demo)",
+                [(jonas_id, "短句确实更接近原文的顿挫。(demo)")]),
+            (session_id, 0, owner_id, "记一笔：诗意版这里的「轰鸣」很关键。(demo)", []),
+            (session_id, 1, mira_id, "诗意版：意象比字面更重要 — 我做了取舍。(demo)",
+                [(owner_id, "学到了。(demo)")]),
+            (session_id, 2, mira_id, "诗意版：第三行押了个内韵，读出来才明显。(demo)", []),
+            (jonas_session, 0, jonas_id, "直译版：保留了原文语序，可以和诗意版对照。(demo)",
+                [(mira_id, "对照着读最有意思。(demo)")]),
+            (jonas_session, 0, owner_id, "直译版这里更清楚，但少了点味道。(demo)", []),
+            (jonas_session, 1, jonas_id, "直译版：Zwei Lesarten möglich — ich blieb wörtlich. (demo)", []),
+            (jonas_session, 2, owner_id, "这一段直译版几乎无可挑剔。(demo)",
+                [(jonas_id, "谢谢！(demo)")]),
+        ]
+        for sess, para_idx, uid, body, replies in version_notes:
+            if uid is None:
+                continue
+            cur = await db.execute(
+                """INSERT INTO story_comments
+                   (session_id, chapter_index, paragraph_index, user_id, body)
+                   VALUES (?, 4, ?, ?, ?)""",
+                (sess, para_idx, uid, body),
+            )
+            parent = cur.lastrowid
+            notes_made += 1
+            for r_uid, r_body in replies:
+                if r_uid is None:
+                    continue
+                await db.execute(
+                    """INSERT INTO story_comments
+                       (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id)
+                       VALUES (?, 4, ?, ?, ?, ?)""",
+                    (sess, para_idx, r_uid, r_body, parent),
+                )
+
+        note_threads = [
+            (0, mira_id, "编辑版：这句很稳，但我总觉得少了点韵律。(demo)",
+                [(jonas_id, "稳就是编辑版的职责所在。(demo)")]),
+            (0, owner_id, "编辑版记一笔：这段读来最顺。(demo)", []),
+            (1, jonas_id, "编辑版：信息一点没丢。(demo)", []),
+            (2, mira_id, "编辑版这里的处理比我预想的好。(demo)",
+                [(owner_id, "同感。(demo)")]),
+        ]
         for para_idx, uid, body, replies in note_threads:
             if uid is None:
                 continue

@@ -2110,6 +2110,59 @@ async def list_editorial_comments(
     return [dict(r) for r in rows]
 
 
+async def create_session_paragraph_comment(
+    session_id: int, chapter_index: int, paragraph_index: int,
+    user_id: int, body: str, parent_id: int | None = None,
+) -> dict:
+    """Note on ONE version's rendering of a paragraph (owner, 2026-08-30:
+    notes belong to the version you are reading, not to the language)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO story_comments
+               (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (session_id, chapter_index, paragraph_index, user_id, body, parent_id),
+        )
+        comment_id = cursor.lastrowid
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def list_session_paragraph_comments(
+    session_id: int, chapter_index: int, paragraph_index: int,
+) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id
+               WHERE sc.session_id = ? AND sc.story_id IS NULL
+                 AND sc.chapter_index = ? AND sc.paragraph_index = ?
+               ORDER BY sc.created_at, sc.id""",
+            (session_id, chapter_index, paragraph_index),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def get_translation_session_any(session_id: int) -> dict | None:
+    """The session row regardless of owner — callers check visibility."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE id = ?", (session_id,)
+        ) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
+
+
 async def delete_story_comment(comment_id: int, user_id: int, is_admin: bool = False) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         if is_admin:

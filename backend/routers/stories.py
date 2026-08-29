@@ -27,6 +27,9 @@ from services.db import (
     delete_story_comment,
     create_editorial_comment,
     list_editorial_comments,
+    create_session_paragraph_comment,
+    list_session_paragraph_comments,
+    get_translation_session_any,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -51,6 +54,14 @@ class StoryCreate(BaseModel):
 
 
 class CommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+
+
+class SessionParagraphCommentCreate(BaseModel):
+    session_id: int = Field(ge=1)
+    chapter_index: int = Field(ge=0)
+    paragraph_index: int = Field(ge=0)
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
 
@@ -161,6 +172,39 @@ async def unfollow(user_id: int = Path(ge=1), user: dict = Depends(get_current_u
     if not await unfollow_user(user["id"], user_id):
         raise HTTPException(status_code=404, detail="Not following this user")
     return {"ok": True}
+
+
+async def _readable_session(session_id: int, user: dict) -> dict:
+    """A version's notes are visible to its owner, and to everyone once the
+    version is public."""
+    session = await get_translation_session_any(session_id)
+    if not session or (session["user_id"] != user["id"] and session.get("status") != "public"):
+        raise HTTPException(status_code=404, detail="Version not found")
+    await _require_book(session["book_id"], user)
+    return session
+
+
+@router.get("/comments/session")
+async def session_paragraph_comments(
+    session_id: int = Query(ge=1),
+    chapter_index: int = Query(ge=0),
+    paragraph_index: int = Query(ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Notes on ONE version's rendering of a paragraph (owner, 2026-08-30)."""
+    await _readable_session(session_id, user)
+    return {"comments": await list_session_paragraph_comments(session_id, chapter_index, paragraph_index)}
+
+
+@router.post("/comments/session")
+async def add_session_paragraph_comment(
+    req: SessionParagraphCommentCreate, user: dict = Depends(get_current_user),
+):
+    await _readable_session(req.session_id, user)
+    return await create_session_paragraph_comment(
+        req.session_id, req.chapter_index, req.paragraph_index,
+        user["id"], req.body.strip(), req.parent_id,
+    )
 
 
 @router.get("/comments/editorial")

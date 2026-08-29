@@ -950,12 +950,12 @@ export default function StoryPanel({
           ) : (
             <>
               <div className="pt-2 border-t border-amber-100 space-y-2">
-                <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
+                <p className="text-[11px] font-medium text-stone-500">Notes ({topLevel.length})</p>
                 {topLevel.length === 0 && (
-                  <p className="text-xs text-stone-500 italic">No comments yet — be the first.</p>
+                  <p className="text-xs text-stone-500 italic">No notes on this translation yet — write the first.</p>
                 )}
                 {topLevel.map((c) => commentRow(c, { clickable: true, back: { mode: "comments" } }))}
-                {commentComposer("Add a comment…")}
+                {commentComposer("Write a note on this translation…")}
               </div>
             </>
           )}

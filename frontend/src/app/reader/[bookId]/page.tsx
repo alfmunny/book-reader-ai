@@ -2362,45 +2362,42 @@ export default function ReaderPage() {
                 };
               })}
               commentsTab={(() => {
-                // The Comments tab is the CURRENT rendering's comment list
-                // (owner design, 2026-08-30): editorial paragraphs are
-                // anchors of their own; a posted version anchors on its
-                // post; a private version has no public anchor yet.
-                const langLabel = LANGUAGES.find((l) => l.code === translationLang)?.label ?? translationLang;
-                if (!activeSession) {
-                  return {
-                    label: `Editorial · ${langLabel} · this paragraph`,
-                    content: translatedParagraphs[postsDialog.paraIdx]
-                      ? { text: translatedParagraphs[postsDialog.paraIdx], lang: translationLang, sessionName: "Editorial" }
-                      : undefined,
-                    anchor: {
-                      kind: "editorial" as const,
-                      editorial: {
-                        book_id: Number(bookId),
-                        target_language: translationLang,
-                        chapter_index: chapterIndex,
-                        paragraph_index: postsDialog.paraIdx,
-                      },
-                    },
-                    emptyText: "",
-                  };
-                }
-                const myPost = (storiesByPara[postsDialog.paraIdx] ?? []).find(
-                  (st) => st.user_id === session?.backendUser?.id && st.session_id === activeSession.id,
-                );
-                const myPara = sessionChapter?.paragraphs[String(postsDialog.paraIdx)];
-                const myIdx = myParaVersions.findIndex((v) => v.sessionId === activeSession.id);
+                // Notes on a translated paragraph anchor to the PARAGRAPH
+                // (book + language + chapter + index), never to a post —
+                // so writing one always works, posted or not, exactly like
+                // the sentence-note panel (owner, 2026-08-30).
+                const lang = activeSession?.target_language ?? translationLang;
+                const langLabel = LANGUAGES.find((l) => l.code === lang)?.label ?? lang;
+                const myPara = activeSession
+                  ? sessionChapter?.paragraphs[String(postsDialog.paraIdx)]
+                  : undefined;
+                const editorialText = translatedParagraphs[postsDialog.paraIdx];
+                const myIdx = activeSession
+                  ? myParaVersions.findIndex((v) => v.sessionId === activeSession.id)
+                  : -1;
                 return {
-                  label: `${activeSession.name} · this paragraph`,
-                  content: myPara?.text
+                  label: activeSession
+                    ? `${activeSession.name} · this paragraph`
+                    : `Editorial · ${langLabel} · this paragraph`,
+                  content: (activeSession ? myPara?.text : editorialText)
                     ? {
-                        text: myPara.text, lang: activeSession.target_language,
-                        sessionName: activeSession.name, model: myPara.model,
+                        text: (activeSession ? myPara!.text : editorialText)!,
+                        lang,
+                        sessionName: activeSession?.name ?? "Editorial",
+                        model: activeSession ? myPara?.model : undefined,
                         myVersionIndex: myIdx >= 0 ? myIdx : undefined,
                       }
                     : undefined,
-                  anchor: myPost ? { kind: "story" as const, storyId: myPost.id } : undefined,
-                  emptyText: "Your rendering isn't posted yet — publish it under Other translations to receive comments.",
+                  anchor: {
+                    kind: "editorial" as const,
+                    editorial: {
+                      book_id: Number(bookId),
+                      target_language: lang,
+                      chapter_index: chapterIndex,
+                      paragraph_index: postsDialog.paraIdx,
+                    },
+                  },
+                  emptyText: "",
                 };
               })()}
               currentUserId={session?.backendUser?.id}

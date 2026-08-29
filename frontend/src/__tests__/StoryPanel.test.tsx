@@ -411,7 +411,7 @@ test("editorial anchor: comments load and post against the editorial paragraph",
     currentUserId: 9,
   });
   await waitFor(() => expect(api.listEditorialComments).toHaveBeenCalledWith(editorial));
-  expect(screen.getByText("No comments yet — be the first.")).toBeInTheDocument();
+  expect(screen.getByText("No notes on this translation yet — write the first.")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "编辑版这段不错" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
   await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "编辑版这段不错", undefined));
@@ -645,7 +645,7 @@ test("Current translation tab: context card opens my editor; Comments heads the 
     },
   });
   expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
-  expect(await screen.findByText(/Comments \(0\)/)).toBeInTheDocument();
+  expect(await screen.findByText(/Notes \(0\)/)).toBeInTheDocument();
   // Tapping the context card opens the translation's DETAIL — Edit lives there
   fireEvent.click(screen.getByRole("button", { name: "Open my translation" }));
   expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
@@ -696,4 +696,31 @@ test("note editing delegates to the app-wide dialog when the host provides it", 
   // The inline editor never opens — one note dialog everywhere
   expect(onEditMyNoteExternally).toHaveBeenCalled();
   expect(screen.queryByTestId("my-note-editor")).toBeNull();
+});
+
+test("an unposted rendering can still be noted — no dead end", async () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.addEditorialComment as jest.Mock).mockResolvedValue({
+    id: 71, user_id: 9, body: "先记一笔", created_at: "", author_name: "Me",
+  });
+  const editorial = { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 2 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "私有版", text: "我的译文", posted: false, authorName: "Me", picture: null },
+    ],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial },
+      label: "私有版 · this paragraph",
+      emptyText: "",
+      content: { text: "我的译文", lang: "zh", sessionName: "私有版", myVersionIndex: 0 },
+    },
+  });
+  // The old "publish first" dead end is gone — writing works right away
+  expect(screen.queryByText(/isn't posted yet/)).toBeNull();
+  fireEvent.change(await screen.findByLabelText("Comment text"), { target: { value: "先记一笔" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "先记一笔", undefined));
+  expect(await screen.findByTestId("comment-71")).toBeInTheDocument();
 });

@@ -628,40 +628,39 @@ test("short context renders without a More toggle", () => {
   expect(screen.queryByRole("button", { name: "More" })).toBeNull();
 });
 
-test("Current translation tab: context card opens my editor; Comments heads the thread", async () => {
+test("Current translation tab shows the rendering's detail inline, then its notes", async () => {
   (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
   const onSave = jest.fn().mockResolvedValue(undefined);
+  const onShare = jest.fn();
   renderPanel({
     variant: "sentence",
     stories: [],
     myVersions: [
-      { sessionName: "诗意版", text: "我的译文", posted: false, authorName: "Me", picture: null, onSave },
+      { sessionName: "诗意版", text: "我的译文", posted: false, authorName: "Me", picture: null, onSave, onShare, onDelete: jest.fn() },
     ],
     commentsTab: {
-      anchor: { kind: "story", storyId: 1 },
+      anchor: { kind: "editorial", editorial: { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 } },
       label: "诗意版 · this paragraph",
       emptyText: "",
       content: { text: "我的译文", lang: "zh", sessionName: "诗意版", myVersionIndex: 0 },
     },
   });
+  // The detail is right here — no extra hop (owner, 2026-08-30)
   expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("button", { name: "Edit my translation" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Share this translation" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Delete my translation" })).toBeInTheDocument();
+  expect(screen.getByText("我的译文")).toBeInTheDocument();
+  // …and the notes section sits underneath, ready to write
   expect(await screen.findByText(/Notes \(0\)/)).toBeInTheDocument();
-  // Tapping the context card opens the translation's DETAIL — Edit lives there
-  fireEvent.click(screen.getByRole("button", { name: "Open my translation" }));
-  expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
-  // …and it stays on the Current-translation side (owner, 2026-08-29)
-  expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
-  // No version switcher here — that instrument belongs to Other translations
-  expect(screen.queryByTestId("version-switcher")).toBeNull();
-  // Back returns to Current translation, not the version list
-  fireEvent.click(screen.getByTestId("story-panel-back"));
-  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Open my translation" }));
+  expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+  // Edit opens the editor and returns here on save
   fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
-  expect(screen.getByTestId("my-version-editor")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  await waitFor(() => expect(onSave).toHaveBeenCalled());
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith("改", false));
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
 });
 
 test("the current rendering never repeats inside Other translations", () => {

@@ -654,6 +654,69 @@ export default function StoryPanel({
     </div>
   );
 
+  const myVersionHeader = (
+    v: NonNullable<Props["myVersions"]>[number],
+    index: number,
+  ) => (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Avatar name={v.authorName} picture={v.picture} size="w-7 h-7" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-ink truncate">{v.authorName}</p>
+        <p className="text-[11px] text-stone-400 truncate">{v.sessionName}</p>
+      </div>
+      {v.model && (
+        <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{v.model}</span>
+      )}
+      {visibilityChip(v.posted)}
+      {v.onShare && (
+        <button
+          onClick={v.onShare}
+          aria-label="Share this translation"
+          title="Share"
+          className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+        >
+          <ShareIcon className="w-4 h-4" />
+        </button>
+      )}
+      {v.onRetranslate && (
+        <button
+          onClick={() => setConfirmRetrans(index)}
+          disabled={busy}
+          aria-label="Retranslate this paragraph"
+          title="Retranslate"
+          className="text-stone-400 hover:text-amber-800 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+        >
+          <RetryIcon className="w-4 h-4" />
+        </button>
+      )}
+      {v.onSave && (
+        <button
+          onClick={() => {
+            setVersionDraft(v.text);
+            setVisDraft(v.posted ? "public" : "private");
+            setView({ mode: "editVersion", index, back: view });
+          }}
+          aria-label="Edit my translation"
+          title="Edit"
+          className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+        >
+          <NoteIcon className="w-4 h-4" />
+        </button>
+      )}
+      {v.onDelete && (
+        <button
+          onClick={() => handleDeleteVersion(index)}
+          disabled={busy}
+          aria-label="Delete my translation"
+          title="Delete"
+          className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+        >
+          <TrashIcon className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+
   const commentComposer = (placeholder: string, parentId?: number) => (
     <div className="flex gap-1.5">
       <input
@@ -897,32 +960,16 @@ export default function StoryPanel({
             const c = commentsTab.content;
             const needsClamp = c.text.split("\n").length > 10 || c.text.length > 600;
             const entry = c.myVersionIndex != null ? myVersions?.[c.myVersionIndex] : undefined;
-            const openEdit = entry
-              ? () => setView(
-                  entry.posted && entry.storyId
-                    ? { mode: "story", storyId: entry.storyId, from: "comments" }
-                    : { mode: "myVersion", index: c.myVersionIndex!, from: "comments" },
-                )
-              : undefined;
             return (
-              <div
-                role={openEdit ? "button" : undefined}
-                tabIndex={openEdit ? 0 : undefined}
-                aria-label={openEdit ? "Open my translation" : undefined}
-                onClick={openEdit}
-                onKeyDown={openEdit ? (e) => {
-                  if (e.key !== "Enter" && e.key !== " ") return;
-                  e.preventDefault();
-                  openEdit();
-                } : undefined}
-                className={`rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2 ${
-                  openEdit ? "cursor-pointer hover:bg-amber-100/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400" : ""
-                }`}
-                data-testid="comments-context">
-                {(c.sessionName || c.model) && (
-                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                    {c.sessionName && <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{c.sessionName}</span>}
-                    {c.model && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono">{c.model}</span>}
+              <div className="space-y-2" data-testid="comments-context">
+                {/* The rendering's own detail — header, actions, text —
+                    right here (owner, 2026-08-30: one layer less). */}
+                {entry ? myVersionHeader(entry, c.myVersionIndex!) : (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{c.sessionName ?? "Editorial"}</span>
+                    {c.model && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono">{c.model}</span>
+                    )}
                   </div>
                 )}
                 <p
@@ -935,9 +982,9 @@ export default function StoryPanel({
                 </p>
                 {needsClamp && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); setContentExpanded((v) => !v); }}
+                    onClick={() => setContentExpanded((v) => !v)}
                     aria-expanded={contentExpanded}
-                    className="mt-1 text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                    className="text-[11px] text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
                   >
                     {contentExpanded ? "Less" : "More"}
                   </button>
@@ -1097,63 +1144,7 @@ export default function StoryPanel({
               translation detail must not teleport across tabs (owner,
               2026-08-29). */}
           {variant === "sentence" && view.from !== "comments" && renderVersionSwitcher({ myIndex: view.index })}
-          <div className="flex items-center gap-2">
-            <Avatar name={detailVersion.authorName} picture={detailVersion.picture} size="w-7 h-7" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-ink">{detailVersion.authorName}</p>
-              <p className="text-[11px] text-stone-400">{detailVersion.sessionName}</p>
-            </div>
-            {detailVersion.model && (
-              <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono text-[10px]">{detailVersion.model}</span>
-            )}
-            {visibilityChip(false)}
-            {detailVersion.onSave && (
-              <button
-                onClick={() => {
-                  setVersionDraft(detailVersion.text);
-                  setVisDraft("private");
-                  setView({ mode: "editVersion", index: view.index, back: view });
-                }}
-                aria-label="Edit my translation"
-                title="Edit"
-                className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-              >
-                <NoteIcon className="w-4 h-4" />
-              </button>
-            )}
-            {detailVersion.onShare && (
-              <button
-                onClick={detailVersion.onShare}
-                aria-label="Share this translation"
-                title="Share"
-                className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-              >
-                <ShareIcon className="w-4 h-4" />
-              </button>
-            )}
-            {detailVersion.onRetranslate && (
-              <button
-                onClick={() => setConfirmRetrans(view.index)}
-                disabled={busy}
-                aria-label="Retranslate this paragraph"
-                title="Retranslate"
-                className="text-stone-400 hover:text-amber-800 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-              >
-                <RetryIcon className="w-4 h-4" />
-              </button>
-            )}
-            {detailVersion.onDelete && (
-              <button
-                onClick={() => handleDeleteVersion(view.index)}
-                disabled={busy}
-                aria-label="Delete my translation"
-                title="Delete"
-                className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-              >
-                <TrashIcon className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          {myVersionHeader(detailVersion, view.index)}
           <p className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">{detailVersion.text}</p>
           <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
             <p className="text-[11px] font-medium text-stone-500">Comments</p>

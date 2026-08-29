@@ -340,22 +340,46 @@ async def main() -> None:
                         (post_id, other if k == 0 else author_id, banter[bi % len(banter)]),
                     )
                     bi += 1
-        # Editorial-anchored comments (owner design, 2026-08-30): the
-        # Comments tab lands here when reading the editorial translation.
+        # Paragraph-anchored translation NOTES (owner design, 2026-08-30):
+        # these render in the Current-translation tab for any reader of the
+        # same language — demo users AND the owner, so the panel is
+        # populated for local testing.
         await db.execute(
             "DELETE FROM story_comments WHERE book_id = ? AND user_id IN (?, ?)",
             (book_id, mira_id, jonas_id),
         )
-        editorial_threads = [
-            (0, mira_id, "编辑版这句很稳，但我总觉得少了点韵律。(demo)",
-                [(jonas_id, "稳就是编辑版的职责所在。(demo)")]),
-            (0, jonas_id, "对照原文，这里的信息一点没丢。(demo)", []),
-            (1, mira_id, "这段编辑版处理得比我预想的好。(demo)",
-                [(jonas_id, "同感，几乎无可挑剔。(demo)"), (mira_id, "所以我的版本才要另辟蹊径。(demo)")]),
-            (2, jonas_id, "Hier hätte ich ein anderes Wort gewählt. (demo)",
-                [(mira_id, "哪一个？展开说说。(demo)")]),
+        async with db.execute(
+            "SELECT id FROM users WHERE google_id NOT IN ('demo-mira', 'demo-jonas') ORDER BY id LIMIT 1"
+        ) as c:
+            owner_row = await c.fetchone()
+        owner_id = owner_row[0] if owner_row else None
+        if owner_id:
+            await db.execute(
+                "DELETE FROM story_comments WHERE book_id = ? AND user_id = ? AND body LIKE '%(demo)'",
+                (book_id, owner_id),
+            )
+
+        note_threads = [
+            (0, mira_id, "这一句的节奏我斟酌了很久，最后选择了短句。(demo)",
+                [(jonas_id, "短句确实更接近原文的顿挫。(demo)")]),
+            (0, jonas_id, "我的直译版在这里保留了语序，可以对照看。(demo)", []),
+            (0, owner_id, "记一笔：这段的「轰鸣」很关键，别的版本都弱了。(demo)",
+                [(mira_id, "同意，这个词撑起了整段。(demo)")]),
+            (1, mira_id, "这里的意象比字面更重要 — 我做了取舍。(demo)",
+                [(jonas_id, "取舍得当。(demo)"), (owner_id, "学到了。(demo)")]),
+            (1, owner_id, "我自己的笔记：回头把这段再润一遍。(demo)", []),
+            (2, jonas_id, "Zwei Lesarten möglich — ich bin bei der wörtlichen geblieben. (demo)",
+                [(mira_id, "另一种读法也说得通。(demo)")]),
+            (2, mira_id, "第三行押了个内韵，读出来才明显。(demo)", []),
+            (3, owner_id, "这段编辑版比我的版本更稳。(demo)", []),
+            (3, mira_id, "编辑版稳，但少了点味道。(demo)",
+                [(owner_id, "哈哈，各有所长。(demo)")]),
+            (4, jonas_id, "这一段几乎没有歧义，直译足够。(demo)", []),
         ]
-        for para_idx, uid, body, replies in editorial_threads:
+        notes_made = 0
+        for para_idx, uid, body, replies in note_threads:
+            if uid is None:
+                continue
             cur = await db.execute(
                 """INSERT INTO story_comments
                    (book_id, target_language, chapter_index, paragraph_index, user_id, body)
@@ -363,7 +387,10 @@ async def main() -> None:
                 (book_id, para_idx, uid, body),
             )
             parent = cur.lastrowid
+            notes_made += 1
             for r_uid, r_body in replies:
+                if r_uid is None:
+                    continue
                 await db.execute(
                     """INSERT INTO story_comments
                        (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id)
@@ -378,7 +405,7 @@ async def main() -> None:
     print("  - Jonas commented on both")
     print("  - 3 sentence-anchored shared notes on chapter 5 (index 4) with cross-comments")
     print(f"  - {posts_made} translation posts on chapter 5 (index 4): Mira 诗意版 + Jonas 直译版")
-    print("  - editorial-anchored comment threads (zh) on chapter-5 paragraphs 1-3, with replies")
+    print(f"  - {notes_made} translation notes (zh) on chapter-5 paragraphs 1-5, with replies — demo users + you")
     print("Open the book, enable translation, and tick 'Show others' shares' — or visit /discover.")
 
 

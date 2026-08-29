@@ -562,7 +562,12 @@ test("version detail packs Share, Retranslate, and Delete; chips are display-onl
   expect(screen.queryByRole("button", { name: "Make public" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Share this translation" }));
   expect(onShare).toHaveBeenCalled();
+  // Retranslate asks first (owner, 2026-08-29)
   fireEvent.click(screen.getByRole("button", { name: "Retranslate this paragraph" }));
+  expect(onRetranslate).not.toHaveBeenCalled();
+  const confirm = screen.getByTestId("retranslate-confirm-detail");
+  expect(confirm).toHaveTextContent(/costs tokens/);
+  fireEvent.click(screen.getByRole("button", { name: "Retranslate" }));
   await waitFor(() => expect(onRetranslate).toHaveBeenCalled());
   fireEvent.click(screen.getByRole("button", { name: "Delete my translation" }));
   await waitFor(() => expect(onDelete).toHaveBeenCalled());

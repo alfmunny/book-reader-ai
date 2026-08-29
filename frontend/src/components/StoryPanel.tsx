@@ -33,7 +33,7 @@ import {
   deleteStory,
   deleteStoryComment,
 } from "@/lib/api";
-import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon } from "@/components/Icons";
+import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon, ShareIcon, RetryIcon } from "@/components/Icons";
 import { timeAgo, exactTime } from "@/lib/timeAgo";
 import { COLORS } from "@/components/QuickHighlightPanel";
 
@@ -459,6 +459,8 @@ export default function StoryPanel({
   // dropdown (owner, 2026-08-28) — the chips are display-only.
   const [visDraft, setVisDraft] = useState<"public" | "private">("private");
   const [contentExpanded, setContentExpanded] = useState(false);
+  // Detail-panel retranslate asks first, like the row (owner, 2026-08-29)
+  const [confirmRetrans, setConfirmRetrans] = useState<number | null>(null);
   const [versionDraft, setVersionDraft] = useState("");
 
   const [composerDraft, setComposerDraft] = useState("");
@@ -989,6 +991,7 @@ export default function StoryPanel({
             <button
               onClick={() => { setNoteDraft(myNote.text); setVisDraft(myNote.storyId != null ? "public" : "private"); setView({ mode: "editMine" }); }}
               aria-label="Edit my note"
+              title="Edit"
               className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
             >
               <NoteIcon className="w-4 h-4" />
@@ -1035,6 +1038,7 @@ export default function StoryPanel({
                 onClick={handleDeleteMyNote}
                 disabled={busy}
                 aria-label="Delete my note and highlight"
+                title="Delete"
                 className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
               >
                 <TrashIcon className="w-4 h-4" aria-hidden="true" />
@@ -1097,6 +1101,7 @@ export default function StoryPanel({
                   setView({ mode: "editVersion", index: view.index, back: view });
                 }}
                 aria-label="Edit my translation"
+                title="Edit"
                 className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
                 <NoteIcon className="w-4 h-4" />
@@ -1106,19 +1111,21 @@ export default function StoryPanel({
               <button
                 onClick={detailVersion.onShare}
                 aria-label="Share this translation"
-                className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                title="Share"
+                className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
-                Share
+                <ShareIcon className="w-4 h-4" />
               </button>
             )}
             {detailVersion.onRetranslate && (
               <button
-                onClick={() => handleRetranslateVersion(view.index)}
+                onClick={() => setConfirmRetrans(view.index)}
                 disabled={busy}
                 aria-label="Retranslate this paragraph"
-                className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                title="Retranslate"
+                className="text-stone-400 hover:text-amber-800 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
-                {busy ? "Translating…" : "Retranslate"}
+                <RetryIcon className="w-4 h-4" />
               </button>
             )}
             {detailVersion.onDelete && (
@@ -1126,6 +1133,7 @@ export default function StoryPanel({
                 onClick={() => handleDeleteVersion(view.index)}
                 disabled={busy}
                 aria-label="Delete my translation"
+                title="Delete"
                 className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
               >
                 <TrashIcon className="w-4 h-4" />
@@ -1160,9 +1168,10 @@ export default function StoryPanel({
                     <button
                       onClick={entry.onShare}
                       aria-label="Share this translation"
-                      className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                      title="Share"
+                      className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
                     >
-                      Share
+                      <ShareIcon className="w-4 h-4" />
                     </button>
                   )}
                   {entry.onSave && (
@@ -1173,6 +1182,7 @@ export default function StoryPanel({
                         setView({ mode: "editVersion", index: vIdx, back: view });
                       }}
                       aria-label="Edit my translation"
+                      title="Edit"
                       className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
                     >
                       <NoteIcon className="w-4 h-4" />
@@ -1183,6 +1193,7 @@ export default function StoryPanel({
                       onClick={() => handleDeleteVersion(vIdx)}
                       disabled={busy}
                       aria-label="Delete my translation"
+                      title="Delete"
                       className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
                     >
                       <TrashIcon className="w-4 h-4" />
@@ -1304,6 +1315,32 @@ export default function StoryPanel({
             .map(renderStoryCard)}
           {/* (my posted entries are represented by pinned cards; the current
               rendering by the Current-translation tab) */}
+        </div>
+      )}
+
+      {confirmRetrans != null && (
+        <div className="absolute inset-0 z-[60] bg-black/30 flex items-center justify-center p-4 rounded-xl" role="dialog" aria-label="Confirm retranslate" data-testid="retranslate-confirm-detail">
+          <div className="bg-white rounded-lg border border-amber-200 p-4 w-full max-w-[20rem] space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
+            <p className="text-sm text-ink">Retranslate this paragraph? The current rendering will be replaced — this costs tokens on your key.</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmRetrans(null)}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const idx = confirmRetrans;
+                  setConfirmRetrans(null);
+                  handleRetranslateVersion(idx);
+                }}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Retranslate
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

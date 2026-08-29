@@ -330,7 +330,6 @@ interface Props {
    *  and becomes the tap target opening the posts dialog — the entry
    *  point that works in Editorial mode too (owner, 2026-08-29). */
   postParagraphs?: Set<number>;
-  onOpenPosts?: (paragraphIdx: number, position: { x: number; y: number }) => void;
   /** Shared NOTE anchors (sentence-level, WeRead pattern). Marked with a
    *  dashed amber underline — deliberately distinct from the dotted vocab
    *  underline — plus a small superscript count dot that opens the panel,
@@ -599,7 +598,6 @@ export default function SentenceReader({
   actionsDisabled = false,
   onTranslateParagraph,
   postParagraphs,
-  onOpenPosts,
   sharedNotes,
   onSharedNotesClick,
   onAnnotationClick,
@@ -956,33 +954,19 @@ export default function SentenceReader({
         textParaIdx++;
         const translationText = translations?.[textParaIdx];
 
-        // EVERY translation paragraph opens the paragraph dialog (owner,
-        // 2026-08-28: it's the edit/comment entrance now that the row is
-        // minimal). The dashed underline stays a COMMUNITY marker only.
-        // textParaIdx is a mutable loop counter — freeze it for the handlers.
+        // Translation paragraphs are SELECTED, not clicked (owner,
+        // 2026-08-30: clicking the whole section was far too broad) — the
+        // selection toolbar reads data-translation-para and offers
+        // Read + Note. The dashed underline stays a community marker.
+        // textParaIdx is a mutable loop counter — freeze it per paragraph.
         const postParaIdx = textParaIdx;
         const hasPosts = !!postParagraphs?.has(postParaIdx);
-        const postProps = onOpenPosts
-          ? {
-              role: "button" as const,
-              tabIndex: 0,
-              "data-testid": `post-underline-${postParaIdx}`,
-              "aria-label": hasPosts
-                ? `Shared translations of paragraph ${postParaIdx + 1}. Press Enter to view.`
-                : `Translation of paragraph ${postParaIdx + 1} — comments and editing. Press Enter to open.`,
-              onClick: (e: React.MouseEvent) => onOpenPosts!(postParaIdx, { x: e.clientX, y: e.clientY }),
-              onKeyDown: (e: React.KeyboardEvent) => {
-                if (e.key !== "Enter" && e.key !== " ") return;
-                e.preventDefault();
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                onOpenPosts!(postParaIdx, { x: rect.left + rect.width / 2, y: rect.bottom });
-              },
-            }
-          : {};
-        const postClass = onOpenPosts
-          ? hasPosts
-            ? " underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            : " cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        const postProps = {
+          "data-translation-para": postParaIdx,
+          "data-testid": `post-underline-${postParaIdx}`,
+        };
+        const postClass = hasPosts
+          ? " underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4"
           : "";
 
         // Helper: pick the className for a segment span

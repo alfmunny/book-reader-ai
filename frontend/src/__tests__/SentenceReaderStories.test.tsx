@@ -126,13 +126,16 @@ test("a sentence with BOTH own annotation and shared notes opens the notes panel
   expect(onAnnotationClick).not.toHaveBeenCalled();
 });
 
-test("every translation is clickable; only posted ones get the dashed marker", () => {
-  const onOpenPosts = jest.fn();
-  renderReader({ postParagraphs: new Set([0]), onOpenPosts });
+test("translations carry their paragraph tag; only posted ones get the dashed marker", () => {
+  // Selection — not clicking — opens the dialog now (owner, 2026-08-30):
+  // the tag is what the selection toolbar reads.
+  renderReader({ postParagraphs: new Set([0]) });
   const dashed = screen.getByTestId("post-underline-0");
   expect(dashed.className).toContain("decoration-dashed");
+  expect(dashed).toHaveAttribute("data-translation-para", "0");
   const plain = screen.getByTestId("post-underline-1");
   expect(plain.className).not.toContain("decoration-dashed");
-  fireEvent.click(plain);
-  expect(onOpenPosts).toHaveBeenCalledWith(1, expect.anything());
+  expect(plain).toHaveAttribute("data-translation-para", "1");
+  // No click affordance on the paragraph itself
+  expect(dashed).not.toHaveAttribute("role");
 });

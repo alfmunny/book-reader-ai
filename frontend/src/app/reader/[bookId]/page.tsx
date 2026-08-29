@@ -1920,7 +1920,6 @@ export default function ReaderPage() {
                   actionsDisabled={sessionTranslating || chapterRunActive}
                   onTranslateParagraph={activeSession ? (idx) => setConfirmRetransPara(idx) : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
-                  onOpenPosts={session?.backendToken ? (idx, position) => setPostsDialog({ paraIdx: idx, position }) : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
@@ -1978,10 +1977,17 @@ export default function ReaderPage() {
 
           {/* Selection toolbar — appears when user selects text */}
           <SelectionToolbar
-            onRead={(text) => {
+            translationLang={translationEnabled ? (activeSession?.target_language ?? translationLang) : undefined}
+            onTranslationNote={session?.backendToken ? (paraIdx, rect) => {
+              setPostsDialog({
+                paraIdx,
+                position: { x: rect.left + rect.width / 2, y: rect.bottom },
+              });
+            } : undefined}
+            onRead={(text, lang) => {
               const wasPlaying = ttsIsPlayingRef.current;
               if (wasPlaying) ttsControlsRef.current?.pause();
-              synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
+              synthesizeSpeech(text, lang ?? bookLanguage, 1.0, getSettings().ttsGender)
                 .then(({ url }) => {
                   const audio = new Audio(url);
                   const resume = () => {
@@ -1995,7 +2001,7 @@ export default function ReaderPage() {
                 .catch(() => {
                   window.speechSynthesis.cancel();
                   const utter = new SpeechSynthesisUtterance(text);
-                  utter.lang = bookLanguage;
+                  utter.lang = lang ?? bookLanguage;
                   utter.onend = () => { if (wasPlaying) ttsControlsRef.current?.play(); };
                   window.speechSynthesis.speak(utter);
                 });

@@ -644,6 +644,8 @@ test("Current translation tab: context card opens my editor; Comments heads the 
   expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
   // …and it stays on the Current-translation side (owner, 2026-08-29)
   expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
+  // No version switcher here — that instrument belongs to Other translations
+  expect(screen.queryByTestId("version-switcher")).toBeNull();
   // Back returns to Current translation, not the version list
   fireEvent.click(screen.getByTestId("story-panel-back"));
   expect(screen.getByTestId("comments-view")).toBeInTheDocument();

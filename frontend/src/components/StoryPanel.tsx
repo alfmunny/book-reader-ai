@@ -1075,7 +1075,10 @@ export default function StoryPanel({
         </div>
       ) : view.mode === "myVersion" && detailVersion ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="my-version-detail">
-          {variant === "sentence" && renderVersionSwitcher({ myIndex: view.index })}
+          {/* The switcher belongs to Other translations — a Current-
+              translation detail must not teleport across tabs (owner,
+              2026-08-29). */}
+          {variant === "sentence" && view.from !== "comments" && renderVersionSwitcher({ myIndex: view.index })}
           <div className="flex items-center gap-2">
             <Avatar name={detailVersion.authorName} picture={detailVersion.picture} size="w-7 h-7" />
             <div className="flex-1">
@@ -1137,7 +1140,7 @@ export default function StoryPanel({
         </div>
       ) : view.mode === "story" && detailStory ? (
         <div className="px-4 py-3 space-y-3 overflow-y-auto" data-testid="story-detail">
-          {variant === "sentence" && detailStory.kind === "translation" && renderVersionSwitcher({ storyId: detailStory.id })}
+          {variant === "sentence" && detailStory.kind === "translation" && view.from !== "comments" && renderVersionSwitcher({ storyId: detailStory.id })}
           <div className="flex items-center gap-2">
             <Avatar name={detailStory.author_name} picture={detailStory.author_picture} size="w-7 h-7" />
             <div className="flex-1">

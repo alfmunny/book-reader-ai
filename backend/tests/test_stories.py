@@ -495,3 +495,17 @@ async def test_paragraph_note_counts_drive_the_marker(client, test_user):
         "session_id": sid, "chapter_index": 1,
     })).json()["counts"]
     assert other == {}
+
+
+async def test_notes_carry_the_selected_passage(client, test_user):
+    sid = await _make_session(client, name="引用版")
+    anchor = {"session_id": sid, "chapter_index": 0, "paragraph_index": 0}
+    created = (await client.post("/api/stories/comments/session", json={
+        **anchor, "body": "这一句译得妙", "quote": "太阳依着古老的方式轰鸣。",
+    })).json()
+    assert created["quote"] == "太阳依着古老的方式轰鸣。"
+    listed = (await client.get("/api/stories/comments/session", params=anchor)).json()["comments"]
+    assert listed[0]["quote"] == "太阳依着古老的方式轰鸣。"
+    # A note written without a selection simply has none
+    plain = (await client.post("/api/stories/comments/session", json={**anchor, "body": "泛泛而谈"})).json()
+    assert plain["quote"] is None

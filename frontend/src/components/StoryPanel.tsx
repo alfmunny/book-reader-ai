@@ -71,10 +71,13 @@ function loadAnchor(a: CommentAnchor) {
   return listEditorialComments(a.editorial);
 }
 
-function postToAnchor(a: CommentAnchor, body: string, parentId?: number, visibility?: "public" | "private") {
-  if (a.kind === "story") return addStoryComment(a.storyId, body, parentId, visibility);
-  if (a.kind === "version") return addSessionParagraphComment(a.version, body, parentId, visibility);
-  return addEditorialComment(a.editorial, body, parentId, visibility);
+function postToAnchor(
+  a: CommentAnchor, body: string, parentId?: number,
+  visibility?: "public" | "private", quote?: string,
+) {
+  if (a.kind === "story") return addStoryComment(a.storyId, body, parentId, visibility, quote);
+  if (a.kind === "version") return addSessionParagraphComment(a.version, body, parentId, visibility, quote);
+  return addEditorialComment(a.editorial, body, parentId, visibility, quote);
 }
 
 /** Flat self-loading thread for the paragraph-panel cards (non-sentence
@@ -361,7 +364,10 @@ export default function StoryPanel({
     setBusy(true);
     setError(null);
     try {
-      const created = await postToAnchor(activeAnchor, draft.trim(), parentId, noteVisibility);
+      const created = await postToAnchor(
+        activeAnchor, draft.trim(), parentId, noteVisibility,
+        parentId ? undefined : commentsTab?.content?.highlight?.trim() || undefined,
+      );
       setCommentCache((c) => ({ ...c, [activeKey]: [...(c[activeKey] ?? []), created] }));
       setDraft("");
       onChanged();
@@ -654,6 +660,14 @@ export default function StoryPanel({
             </button>
           )}
         </div>
+        {c.quote && (
+          <blockquote
+            data-testid={`comment-quote-${c.id}`}
+            className={`mt-1 ml-[1.375rem] border-l-2 border-amber-200 pl-2 text-[11px] italic text-stone-500 ${open ? "line-clamp-1" : "line-clamp-3"}`}
+          >
+            {c.quote}
+          </blockquote>
+        )}
         <p className={`mt-1 pl-[1.375rem] text-[13px] leading-relaxed text-stone-700 whitespace-pre-wrap ${open ? "line-clamp-3" : ""}`}>
           {c.body}
         </p>
@@ -753,6 +767,14 @@ export default function StoryPanel({
 
   const commentComposer = (placeholder: string, parentId?: number) => (
     <div className="space-y-1.5" data-testid={parentId ? "reply-composer" : "note-composer"}>
+      {!parentId && commentsTab?.content?.highlight?.trim() && (
+        <blockquote
+          data-testid="composer-quote"
+          className="border-l-2 border-amber-300 bg-amber-50/60 rounded-r px-2 py-1 text-[11px] text-stone-600 line-clamp-2"
+        >
+          {commentsTab.content.highlight.trim()}
+        </blockquote>
+      )}
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -1089,6 +1111,14 @@ export default function StoryPanel({
               </button>
             )}
           </div>
+          {detailComment.quote && (
+            <blockquote
+              data-testid="comment-detail-quote"
+              className="border-l-2 border-amber-300 bg-amber-50/60 rounded-r px-2.5 py-1.5 text-xs italic text-stone-600 max-h-32 overflow-y-auto whitespace-pre-wrap"
+            >
+              {detailComment.quote}
+            </blockquote>
+          )}
           <p className="text-[13px] leading-relaxed text-ink whitespace-pre-wrap">{detailComment.body}</p>
           <div className="pt-2 border-t border-amber-100 space-y-2">
             <p className="text-[11px] font-medium text-stone-500">Replies ({repliesOf(detailComment.id).length})</p>

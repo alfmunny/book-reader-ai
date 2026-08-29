@@ -2038,12 +2038,12 @@ async def delete_story(story_id: int, user_id: int, is_admin: bool = False) -> b
 
 
 async def create_story_comment(story_id: int, user_id: int, body: str, parent_id: int | None = None,
-                               visibility: str = "public") -> dict:
+                               visibility: str = "public", quote: str | None = None) -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "INSERT INTO story_comments (story_id, user_id, body, parent_comment_id, visibility) VALUES (?, ?, ?, ?, ?)",
-            (story_id, user_id, body, parent_id, visibility),
+            "INSERT INTO story_comments (story_id, user_id, body, parent_comment_id, visibility, quote) VALUES (?, ?, ?, ?, ?, ?)",
+            (story_id, user_id, body, parent_id, visibility, quote),
         )
         comment_id = cursor.lastrowid
         await db.commit()
@@ -2073,7 +2073,7 @@ async def list_story_comments(story_id: int, viewer_id: int | None = None) -> li
 async def create_editorial_comment(
     book_id: int, target_language: str, chapter_index: int, paragraph_index: int,
     user_id: int, body: str, parent_id: int | None = None,
-    visibility: str = "public",
+    visibility: str = "public", quote: str | None = None,
 ) -> dict:
     """Comment anchored on an EDITORIAL paragraph — no story/session row
     exists for editorial, so the anchor is (book, language, chapter, para)."""
@@ -2081,9 +2081,9 @@ async def create_editorial_comment(
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """INSERT INTO story_comments
-               (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_id, visibility),
+               (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility, quote)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_id, visibility, quote),
         )
         comment_id = cursor.lastrowid
         await db.commit()
@@ -2118,7 +2118,7 @@ async def list_editorial_comments(
 async def create_session_paragraph_comment(
     session_id: int, chapter_index: int, paragraph_index: int,
     user_id: int, body: str, parent_id: int | None = None,
-    visibility: str = "public",
+    visibility: str = "public", quote: str | None = None,
 ) -> dict:
     """Note on ONE version's rendering of a paragraph (owner, 2026-08-30:
     notes belong to the version you are reading, not to the language)."""
@@ -2126,9 +2126,9 @@ async def create_session_paragraph_comment(
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
             """INSERT INTO story_comments
-               (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (session_id, chapter_index, paragraph_index, user_id, body, parent_id, visibility),
+               (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility, quote)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, chapter_index, paragraph_index, user_id, body, parent_id, visibility, quote),
         )
         comment_id = cursor.lastrowid
         await db.commit()

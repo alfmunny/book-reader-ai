@@ -58,6 +58,7 @@ class CommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
     visibility: Literal["public", "private"] = "public"
+    quote: str | None = Field(default=None, max_length=1000)
 
 
 class SessionParagraphCommentCreate(BaseModel):
@@ -67,6 +68,7 @@ class SessionParagraphCommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
     visibility: Literal["public", "private"] = "public"
+    quote: str | None = Field(default=None, max_length=1000)
 
 
 class EditorialCommentCreate(BaseModel):
@@ -77,6 +79,7 @@ class EditorialCommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
     parent_id: int | None = Field(default=None, ge=1)
     visibility: Literal["public", "private"] = "public"
+    quote: str | None = Field(default=None, max_length=1000)
 
 
 async def _require_book(book_id: int, user: dict) -> dict:
@@ -231,6 +234,7 @@ async def add_session_paragraph_comment(
     return await create_session_paragraph_comment(
         req.session_id, req.chapter_index, req.paragraph_index,
         user["id"], req.body.strip(), req.parent_id, req.visibility,
+        (req.quote or "").strip() or None,
     )
 
 
@@ -254,6 +258,7 @@ async def add_editorial_comment(req: EditorialCommentCreate, user: dict = Depend
     return await create_editorial_comment(
         req.book_id, req.target_language, req.chapter_index, req.paragraph_index,
         user["id"], req.body.strip(), req.parent_id, req.visibility,
+        (req.quote or "").strip() or None,
     )
 
 
@@ -281,7 +286,10 @@ async def add_comment(
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     await _require_book(story["book_id"], user)
-    return await create_story_comment(story_id, user["id"], req.body.strip(), req.parent_id, req.visibility)
+    return await create_story_comment(
+        story_id, user["id"], req.body.strip(), req.parent_id, req.visibility,
+        (req.quote or "").strip() or None,
+    )
 
 
 @router.get("/{story_id}/comments")

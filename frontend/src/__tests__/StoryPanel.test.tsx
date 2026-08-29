@@ -385,7 +385,7 @@ test("Comments tab lists the current rendering's comments; tap one for its threa
   // Post a top-level comment right here
   fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我也来一句" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "我也来一句", undefined, "public"));
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "我也来一句", undefined, "public", undefined));
   // One level deeper: the comment's own thread with replies + reply box
   fireEvent.click(screen.getByRole("button", { name: "Open comment by Jonas" }));
   const detail = screen.getByTestId("comment-detail");
@@ -394,7 +394,7 @@ test("Comments tab lists the current rendering's comments; tap one for its threa
   expect(detail).toHaveTextContent("谢谢！");
   fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回一句" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "回一句", 31, "public"));
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "回一句", 31, "public", undefined));
   // Back pops one level, to the comment list
   fireEvent.click(screen.getByTestId("story-panel-back"));
   expect(screen.getByTestId("comments-view")).toBeInTheDocument();
@@ -416,7 +416,7 @@ test("editorial anchor: comments load and post against the editorial paragraph",
   expect(screen.getByText("No notes on this translation yet — write the first.")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "编辑版这段不错" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "编辑版这段不错", undefined, "public"));
+  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "编辑版这段不错", undefined, "public", undefined));
   expect(await screen.findByTestId("comment-51")).toBeInTheDocument();
 });
 
@@ -722,7 +722,7 @@ test("an unposted rendering can still be noted — no dead end", async () => {
   expect(screen.queryByText(/isn't posted yet/)).toBeNull();
   fireEvent.change(await screen.findByLabelText("Comment text"), { target: { value: "先记一笔" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "先记一笔", undefined, "public"));
+  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "先记一笔", undefined, "public", undefined));
   expect(await screen.findByTestId("comment-71")).toBeInTheDocument();
 });
 
@@ -743,7 +743,7 @@ test("version anchor: notes load and post against THAT version's paragraph", asy
   expect(await screen.findByText("诗意版的笔记")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我的笔记" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "我的笔记", undefined, "public"));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "我的笔记", undefined, "public", undefined));
   // The language-scoped editorial endpoint is NOT used for a version
   expect(api.listEditorialComments).not.toHaveBeenCalled();
 });
@@ -778,7 +778,7 @@ test("the note composer is multi-line with a visibility choice; rows are two-lin
   fireEvent.change(screen.getByLabelText("Note visibility"), { target: { value: "private" } });
   fireEvent.change(box, { target: { value: "只给自己看" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
-  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "只给自己看", undefined, "private"));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "只给自己看", undefined, "private", undefined));
   expect(await screen.findByText("private")).toBeInTheDocument();
 });
 
@@ -820,4 +820,64 @@ test("without a selection long context stays clamped behind More", () => {
   const para = screen.getByTestId("comments-context").querySelector("p.font-serif") as HTMLElement;
   expect(para.className).toContain("line-clamp-[10]");
   expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+});
+
+test("a note carries the selected passage as its quote, shown clamped", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{
+      id: 101, user_id: 2, body: "这一句译得妙", quote: "太阳依着古老的方式轰鸣。",
+      created_at: "2026-08-29 10:00:00", author_name: "Mira", visibility: "public",
+    }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 102, user_id: 9, body: "我也这么想", quote: "大海在宽阔的河流中翻腾。",
+    created_at: "", author_name: "Me",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "version", version },
+      label: "诗意版",
+      emptyText: "",
+      content: { text: "太阳依着古老的方式轰鸣。大海在宽阔的河流中翻腾。", lang: "zh", highlight: "大海在宽阔的河流中翻腾。" },
+    },
+  });
+  // Existing notes show their quote above the body
+  expect(await screen.findByTestId("comment-quote-101")).toHaveTextContent("太阳依着古老的方式轰鸣。");
+  // The composer previews what will be quoted, and posts it
+  expect(screen.getByTestId("composer-quote")).toHaveTextContent("大海在宽阔的河流中翻腾。");
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我也这么想" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
+    version, "我也这么想", undefined, "public", "大海在宽阔的河流中翻腾。",
+  ));
+  // The comment detail shows the full quote
+  fireEvent.click(screen.getByRole("button", { name: "Open comment by Mira" }));
+  expect(screen.getByTestId("comment-detail-quote")).toHaveTextContent("太阳依着古老的方式轰鸣。");
+});
+
+test("replies carry no quote of their own", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 111, user_id: 2, body: "顶层", created_at: "", author_name: "Mira" }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 112, user_id: 9, body: "回复", created_at: "", author_name: "Me",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "version", version }, label: "诗意版", emptyText: "",
+      content: { text: "上下文", lang: "zh", highlight: "上下文" },
+    },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Mira" }));
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回复" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
+    version, "回复", 111, "public", undefined,
+  ));
 });

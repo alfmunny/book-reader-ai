@@ -642,6 +642,12 @@ test("Current translation tab: context card opens my editor; Comments heads the 
   // Tapping the context card opens the translation's DETAIL — Edit lives there
   fireEvent.click(screen.getByRole("button", { name: "Open my translation" }));
   expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
+  // …and it stays on the Current-translation side (owner, 2026-08-29)
+  expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
+  // Back returns to Current translation, not the version list
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Open my translation" }));
   fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
   expect(screen.getByTestId("my-version-editor")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改" } });

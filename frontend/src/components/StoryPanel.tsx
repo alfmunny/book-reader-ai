@@ -184,12 +184,26 @@ function StoryDiscussion({
 type View =
   | { mode: "list" }
   | { mode: "editMine" }
-  | { mode: "story"; storyId: number }
-  | { mode: "myVersion"; index: number }
+  | { mode: "story"; storyId: number; from?: "comments" }
+  | { mode: "myVersion"; index: number; from?: "comments" }
   | { mode: "comments" }
   | { mode: "myNoteDetail" }
   | { mode: "editVersion"; index: number; back: View }
-  | { mode: "comment"; commentId: number; anchor: CommentAnchor; from: "comments" | "myNote" | number };
+  | { mode: "comment"; commentId: number; anchor: CommentAnchor; back: View };
+
+/** Which tab a view belongs to: details opened FROM the Current-translation
+ *  tab stay on that side, including their comment/editor sub-pages (owner
+ *  bug report, 2026-08-29). */
+function onCommentsSide(v: View): boolean {
+  switch (v.mode) {
+    case "comments": return true;
+    case "story":
+    case "myVersion": return v.from === "comments";
+    case "comment":
+    case "editVersion": return onCommentsSide(v.back);
+    default: return false;
+  }
+}
 
 interface Props {
   stories: Story[];
@@ -494,8 +508,7 @@ export default function StoryPanel({
   const detailComment = view.mode === "comment" ? anchorComments.find((c) => c.id === view.commentId) : undefined;
   // The Comments tab means the CURRENT rendering's thread; details reached
   // from the list stay under Other translations with their back arrow.
-  const activeCommentsView = !!commentsTab &&
-    (view.mode === "comments" || (view.mode === "comment" && view.from === "comments"));
+  const activeCommentsView = !!commentsTab && onCommentsSide(view);
   const headerTitle =
     view.mode === "editMine"
       ? (myNote ? "My note" : "Write a note")
@@ -512,23 +525,19 @@ export default function StoryPanel({
             : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
 
   function goBack() {
-    if (view.mode === "editVersion") {
+    if (view.mode === "editVersion" || view.mode === "comment") {
       setView(view.back);
       return;
     }
-    if (view.mode === "comment") {
-      setView(
-        view.from === "comments"
-          ? { mode: "comments" }
-          : view.from === "myNote"
-            ? { mode: "myNoteDetail" }
-            : { mode: "story", storyId: view.from },
-      );
-    } else if (view.mode === "editMine" && myNote) {
-      setView({ mode: "myNoteDetail" });
-    } else {
-      setView({ mode: "list" });
+    if ((view.mode === "story" || view.mode === "myVersion") && view.from === "comments") {
+      setView({ mode: "comments" });
+      return;
     }
+    if (view.mode === "editMine" && myNote) {
+      setView({ mode: "myNoteDetail" });
+      return;
+    }
+    setView({ mode: "list" });
   }
 
   // ONE switcher strip for every translation detail — mine (private or
@@ -568,10 +577,10 @@ export default function StoryPanel({
     </div>
   );
 
-  const commentRow = (c: StoryComment, opts: { clickable?: boolean; indent?: boolean; from?: "comments" | "myNote" | number } = {}) => {
+  const commentRow = (c: StoryComment, opts: { clickable?: boolean; indent?: boolean; back?: View } = {}) => {
     const replies = repliesOf(c.id).length;
     const open = opts.clickable && activeAnchor
-      ? () => setView({ mode: "comment", commentId: c.id, anchor: activeAnchor, from: opts.from ?? "comments" })
+      ? () => setView({ mode: "comment", commentId: c.id, anchor: activeAnchor, back: opts.back ?? { mode: "comments" } })
       : undefined;
     return (
       <div
@@ -880,8 +889,8 @@ export default function StoryPanel({
             const openEdit = entry
               ? () => setView(
                   entry.posted && entry.storyId
-                    ? { mode: "story", storyId: entry.storyId }
-                    : { mode: "myVersion", index: c.myVersionIndex! },
+                    ? { mode: "story", storyId: entry.storyId, from: "comments" }
+                    : { mode: "myVersion", index: c.myVersionIndex!, from: "comments" },
                 )
               : undefined;
             return (
@@ -934,7 +943,7 @@ export default function StoryPanel({
                 {topLevel.length === 0 && (
                   <p className="text-xs text-stone-500 italic">No comments yet — be the first.</p>
                 )}
-                {topLevel.map((c) => commentRow(c, { clickable: true, from: "comments" }))}
+                {topLevel.map((c) => commentRow(c, { clickable: true, back: { mode: "comments" } }))}
                 {commentComposer("Add a comment…")}
               </div>
             </>
@@ -1001,7 +1010,7 @@ export default function StoryPanel({
           {myNote.storyId != null ? (
             <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
               <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length})</p>
-              {topLevel.map((c) => commentRow(c, { clickable: true, from: "myNote" }))}
+              {topLevel.map((c) => commentRow(c, { clickable: true, back: { mode: "myNoteDetail" } }))}
               {commentComposer("Add a comment…")}
             </div>
           ) : (
@@ -1213,7 +1222,7 @@ export default function StoryPanel({
           )}
           <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
             <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length || detailStory.comment_count})</p>
-            {topLevel.map((c) => commentRow(c, { clickable: true, from: detailStory.id }))}
+            {topLevel.map((c) => commentRow(c, { clickable: true, back: view }))}
             {commentComposer("Add a comment…")}
           </div>
         </div>

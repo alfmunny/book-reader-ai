@@ -30,6 +30,7 @@ from services.db import (
     create_session_paragraph_comment,
     list_session_paragraph_comments,
     get_translation_session_any,
+    count_paragraph_notes,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -185,6 +186,29 @@ async def _readable_session(session_id: int, user: dict) -> dict:
         raise HTTPException(status_code=404, detail="Version not found")
     await _require_book(session["book_id"], user)
     return session
+
+
+@router.get("/comments/counts")
+async def paragraph_note_counts(
+    chapter_index: int = Query(ge=0),
+    session_id: int | None = Query(default=None, ge=1),
+    book_id: int | None = Query(default=None, ge=1),
+    target_language: str | None = Query(default=None, min_length=2, max_length=8),
+    user: dict = Depends(get_current_user),
+):
+    """Per-paragraph note counts for a chapter — one call, drives the
+    reading-view note marker."""
+    if session_id is not None:
+        await _readable_session(session_id, user)
+        counts = await count_paragraph_notes(chapter_index, user["id"], session_id=session_id)
+    else:
+        if book_id is None or not target_language:
+            raise HTTPException(status_code=422, detail="book_id and target_language are required without session_id.")
+        await _require_book(book_id, user)
+        counts = await count_paragraph_notes(
+            chapter_index, user["id"], book_id=book_id, target_language=target_language,
+        )
+    return {"counts": {str(k): v for k, v in counts.items()}}
 
 
 @router.get("/comments/session")

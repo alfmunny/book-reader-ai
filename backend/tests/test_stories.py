@@ -477,3 +477,21 @@ async def test_private_notes_are_hidden_from_other_readers(client, test_user):
 async def list_visible_for(session_id: int, viewer_id: int):
     from services.db import list_session_paragraph_comments
     return await list_session_paragraph_comments(session_id, 0, 0, viewer_id)
+
+
+async def test_paragraph_note_counts_drive_the_marker(client, test_user):
+    sid = await _make_session(client, name="标记版")
+    for para, n in ((0, 2), (3, 1)):
+        for i in range(n):
+            await client.post("/api/stories/comments/session", json={
+                "session_id": sid, "chapter_index": 0, "paragraph_index": para, "body": f"n{i}",
+            })
+    counts = (await client.get("/api/stories/comments/counts", params={
+        "session_id": sid, "chapter_index": 0,
+    })).json()["counts"]
+    assert counts == {"0": 2, "3": 1}
+    # A different chapter is empty
+    other = (await client.get("/api/stories/comments/counts", params={
+        "session_id": sid, "chapter_index": 1,
+    })).json()["counts"]
+    assert other == {}

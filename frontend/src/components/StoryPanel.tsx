@@ -275,6 +275,9 @@ interface Props {
   /** Two-view posts dialog: the Comments tab's anchor is the CURRENT
    *  rendering's paragraph — a story post, or the editorial anchor. No
    *  anchor (private, unposted) shows emptyText instead. */
+  /** Which tab the dialog opens on (owner, 2026-08-30: a dashed marker
+   *  means other translations, so land there). */
+  initialTab?: "notes" | "translations";
   commentsTab?: {
     anchor?: CommentAnchor;
     label: string;
@@ -311,12 +314,15 @@ export default function StoryPanel({
   myVersions,
   composer,
   commentsTab,
+  initialTab,
   currentUserId,
   isAdmin,
   onClose,
   onChanged,
 }: Props) {
-  const [view, setView] = useState<View>(commentsTab ? { mode: "comments" } : { mode: "list" });
+  const [view, setView] = useState<View>(
+    commentsTab && initialTab !== "translations" ? { mode: "comments" } : { mode: "list" },
+  );
   const [noteDraft, setNoteDraft] = useState(myNote?.text ?? "");
   const [openThread, setOpenThread] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);

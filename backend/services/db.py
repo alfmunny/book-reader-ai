@@ -2159,6 +2159,31 @@ async def list_session_paragraph_comments(
     return [dict(r) for r in rows]
 
 
+async def count_paragraph_notes(
+    chapter_index: int, viewer_id: int,
+    session_id: int | None = None,
+    book_id: int | None = None, target_language: str | None = None,
+) -> dict[int, int]:
+    """Note counts per paragraph for one chapter — drives the reading-view
+    marker (owner, 2026-08-30). Private notes count only for their author."""
+    if session_id is not None:
+        where = "sc.session_id = ? AND sc.story_id IS NULL AND sc.chapter_index = ?"
+        params: tuple = (session_id, chapter_index, viewer_id)
+    else:
+        where = "sc.book_id = ? AND sc.target_language = ? AND sc.chapter_index = ?"
+        params = (book_id, target_language, chapter_index, viewer_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            f"""SELECT sc.paragraph_index, COUNT(*) FROM story_comments sc
+                WHERE {where} AND sc.paragraph_index IS NOT NULL
+                  AND (sc.visibility = 'public' OR sc.user_id = ?)
+                GROUP BY sc.paragraph_index""",
+            params,
+        ) as c:
+            rows = await c.fetchall()
+    return {int(r[0]): int(r[1]) for r in rows}
+
+
 async def get_translation_session_any(session_id: int) -> dict | None:
     """The session row regardless of owner — callers check visibility."""
     async with aiosqlite.connect(DB_PATH) as db:

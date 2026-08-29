@@ -139,3 +139,44 @@ test("translations carry their paragraph tag; only posted ones get the dashed ma
   // No click affordance on the paragraph itself
   expect(dashed).not.toHaveAttribute("role");
 });
+
+// ── Consolidated markers (owner, 2026-08-30) ──────────────────────────────
+
+test("underline style encodes what exists: notes, translations, or both", () => {
+  const onOpenPosts = jest.fn();
+  render(
+    <SentenceReader
+      text={"Erster Absatz.\n\nZweiter Absatz.\n\nDritter Absatz.\n\nVierter Absatz."}
+      duration={0} currentTime={0} isPlaying={false} onSegmentClick={noop}
+      translations={["译一", "译二", "译三", "译四"]}
+      translationDisplayMode="parallel"
+      notedParagraphs={new Set([0, 2])}
+      postParagraphs={new Set([1, 2])}
+      onOpenPosts={onOpenPosts}
+    />,
+  );
+  const cls = (n: number) => (screen.getByTestId(`post-underline-${n}`) as HTMLElement).className;
+  expect(cls(0)).toContain("decoration-solid");   // notes only
+  expect(cls(1)).toContain("decoration-dashed");  // other translations only
+  expect(cls(2)).toContain("decoration-double");  // both
+  expect(cls(3)).not.toContain("underline");      // nothing to show
+});
+
+test("clicking a marked translation opens the matching tab", () => {
+  const onOpenPosts = jest.fn();
+  render(
+    <SentenceReader
+      text={"Erster Absatz.\n\nZweiter Absatz."}
+      duration={0} currentTime={0} isPlaying={false} onSegmentClick={noop}
+      translations={["译一", "译二"]}
+      translationDisplayMode="parallel"
+      notedParagraphs={new Set([0])}
+      postParagraphs={new Set([1])}
+      onOpenPosts={onOpenPosts}
+    />,
+  );
+  fireEvent.click(screen.getByTestId("post-underline-0"));
+  expect(onOpenPosts).toHaveBeenLastCalledWith(0, expect.anything(), "notes");
+  fireEvent.click(screen.getByTestId("post-underline-1"));
+  expect(onOpenPosts).toHaveBeenLastCalledWith(1, expect.anything(), "translations");
+});

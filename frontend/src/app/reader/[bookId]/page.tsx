@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, getParagraphNoteCounts, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -353,8 +353,11 @@ export default function ReaderPage() {
   const [showShares, setShowShares] = useState(false);
   const [chapterStories, setChapterStories] = useState<Story[]>([]);
   const [postsDialog, setPostsDialog] = useState<
-    { paraIdx: number; position: { x: number; y: number }; selectedText?: string } | null
+    { paraIdx: number; position: { x: number; y: number }; selectedText?: string; tab?: "notes" | "translations" } | null
   >(null);
+  // Which paragraphs carry notes on the rendering being read — drives the
+  // solid/double underline marker (owner, 2026-08-30).
+  const [notedParas, setNotedParas] = useState<Set<number>>(new Set());
   const [storiesVersion, setStoriesVersion] = useState(0);
   const [shareDialog, setShareDialog] = useState<
     | { kind: "note"; annotationId: number }
@@ -385,6 +388,7 @@ export default function ReaderPage() {
     }
     return map;
   }, [chapterStories]);
+
 
   const postParagraphs = useMemo(
     () => new Set(Object.keys(storiesByPara).map(Number)),
@@ -476,6 +480,18 @@ export default function ReaderPage() {
 
 
   const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
+
+  useEffect(() => {
+    if (!translationEnabled || !session?.backendToken) { setNotedParas(new Set()); return; }
+    let cancelled = false;
+    const params = activeSession
+      ? { chapter_index: chapterIndex, session_id: activeSession.id }
+      : { chapter_index: chapterIndex, book_id: Number(bookId), target_language: translationLang };
+    getParagraphNoteCounts(params)
+      .then((r) => { if (!cancelled) setNotedParas(new Set(Object.keys(r.counts).map(Number))); })
+      .catch(() => { if (!cancelled) setNotedParas(new Set()); });
+    return () => { cancelled = true; };
+  }, [translationEnabled, activeSession, chapterIndex, bookId, translationLang, session?.backendToken, storiesVersion]);
   const [sessionChapter, setSessionChapter] = useState<SessionChapter | null>(null);
   const [sessionTranslating, setSessionTranslating] = useState(false);
   const [translatingParas, setTranslatingParas] = useState<Set<number>>(new Set());
@@ -1922,6 +1938,10 @@ export default function ReaderPage() {
                   actionsDisabled={sessionTranslating || chapterRunActive}
                   onTranslateParagraph={activeSession ? (idx) => setConfirmRetransPara(idx) : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
+                  notedParagraphs={notedParas.size > 0 ? notedParas : undefined}
+                  onOpenPosts={session?.backendToken ? (idx, position, tab) => {
+                    setPostsDialog({ paraIdx: idx, position, tab });
+                  } : undefined}
                   sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
                   onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
@@ -2415,6 +2435,7 @@ export default function ReaderPage() {
                   emptyText: "",
                 };
               })()}
+              initialTab={postsDialog.tab}
               currentUserId={session?.backendUser?.id}
               onClose={() => setPostsDialog(null)}
               onChanged={() => setStoriesVersion((v) => v + 1)}

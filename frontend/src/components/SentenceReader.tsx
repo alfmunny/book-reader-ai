@@ -330,6 +330,11 @@ interface Props {
    *  and becomes the tap target opening the posts dialog — the entry
    *  point that works in Editorial mode too (owner, 2026-08-29). */
   postParagraphs?: Set<number>;
+  /** Paragraphs carrying notes on the rendering being read. Marker styles
+   *  consolidate (owner, 2026-08-30): solid = notes, dashed = other
+   *  translations, double = both. Clicking opens the matching tab. */
+  notedParagraphs?: Set<number>;
+  onOpenPosts?: (paragraphIdx: number, position: { x: number; y: number }, tab: "notes" | "translations") => void;
   /** Shared NOTE anchors (sentence-level, WeRead pattern). Marked with a
    *  dashed amber underline — deliberately distinct from the dotted vocab
    *  underline — plus a small superscript count dot that opens the panel,
@@ -598,6 +603,8 @@ export default function SentenceReader({
   actionsDisabled = false,
   onTranslateParagraph,
   postParagraphs,
+  notedParagraphs,
+  onOpenPosts,
   sharedNotes,
   onSharedNotesClick,
   onAnnotationClick,
@@ -961,12 +968,39 @@ export default function SentenceReader({
         // textParaIdx is a mutable loop counter — freeze it per paragraph.
         const postParaIdx = textParaIdx;
         const hasPosts = !!postParagraphs?.has(postParaIdx);
+        const hasNotes = !!notedParagraphs?.has(postParaIdx);
+        const openTab: "notes" | "translations" = hasNotes ? "notes" : "translations";
+        const marked = hasPosts || hasNotes;
         const postProps = {
           "data-translation-para": postParaIdx,
           "data-testid": `post-underline-${postParaIdx}`,
+          ...(marked && onOpenPosts
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                "aria-label": `${hasNotes ? "Notes" : "Shared translations"} on paragraph ${postParaIdx + 1}. Press Enter to open.`,
+                title: hasNotes && hasPosts
+                  ? "Notes and other translations"
+                  : hasNotes ? "Notes on this translation" : "Other translations of this paragraph",
+                onClick: (e: React.MouseEvent) => {
+                  // A click that ends a text selection must not hijack it
+                  if (window.getSelection()?.toString().length) return;
+                  onOpenPosts!(postParaIdx, { x: e.clientX, y: e.clientY }, openTab);
+                },
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  onOpenPosts!(postParaIdx, { x: rect.left + rect.width / 2, y: rect.bottom }, openTab);
+                },
+              }
+            : {}),
         };
-        const postClass = hasPosts
-          ? " underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4"
+        // One underline, three states — notes, other translations, or both
+        const postClass = marked
+          ? ` underline decoration-amber-300 decoration-1 underline-offset-4 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400${
+              hasNotes && hasPosts ? " decoration-double" : hasNotes ? " decoration-solid" : " decoration-dashed"
+            }`
           : "";
 
         // Helper: pick the className for a segment span

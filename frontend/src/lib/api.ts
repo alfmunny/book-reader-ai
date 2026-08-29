@@ -1376,6 +1376,17 @@ export function addSessionParagraphComment(anchor: SessionParagraphAnchor, body:
   });
 }
 
+export function getParagraphNoteCounts(params: {
+  chapter_index: number;
+  session_id?: number;
+  book_id?: number;
+  target_language?: string;
+}) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v != null) q.set(k, String(v)); });
+  return request<{ counts: Record<string, number> }>(`/stories/comments/counts?${q}`);
+}
+
 export function listEditorialComments(anchor: EditorialCommentAnchor) {
   const params = new URLSearchParams(
     Object.fromEntries(Object.entries(anchor).map(([k, v]) => [k, String(v)])),

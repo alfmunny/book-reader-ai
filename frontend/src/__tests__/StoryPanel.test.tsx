@@ -681,3 +681,19 @@ test("the current rendering never repeats inside Other translations", () => {
   expect(screen.queryByRole("button", { name: "Open my version 当前版" })).toBeNull();
   expect(screen.getByRole("button", { name: "Open my version 另一版" })).toBeInTheDocument();
 });
+
+test("note editing delegates to the app-wide dialog when the host provides it", () => {
+  const onEditMyNoteExternally = jest.fn();
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myNote: { text: "mine", authorName: "A", picture: null },
+    onSaveMyNote: jest.fn(),
+    onEditMyNoteExternally,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  // The inline editor never opens — one note dialog everywhere
+  expect(onEditMyNoteExternally).toHaveBeenCalled();
+  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+});

@@ -487,7 +487,7 @@ export default function ReaderPage() {
   // requests). Shared notes are a reading surface, so the fetch is gated on
   // the opt-in alone — not on translation being enabled.
   useEffect(() => {
-    if ((!showShares && !postsDialog && !activeSession) || !session?.backendToken) {
+    if ((!showShares && !postsDialog && !activeSession && !annotationPanel) || !session?.backendToken) {
       setChapterStories([]);
       return;
     }
@@ -496,7 +496,7 @@ export default function ReaderPage() {
       .then((r) => { if (!cancelled) setChapterStories(r.stories); })
       .catch(() => { /* markers simply don't render */ });
     return () => { cancelled = true; };
-  }, [showShares, postsDialog, activeSession, bookId, chapterIndex, session?.backendToken, storiesVersion]);
+  }, [showShares, postsDialog, activeSession, annotationPanel, bookId, chapterIndex, session?.backendToken, storiesVersion]);
 
   const activeSessionRef = useRef<TranslationSession | null>(null);
   activeSessionRef.current = activeSession;
@@ -2054,6 +2054,32 @@ export default function ReaderPage() {
                 setAnnotations((prev) => prev.filter((a) => a.id !== id));
                 if (ann) setDeletedAnnotationToast(ann);
               }}
+              initialVisibility={(() => {
+                const existing = annotations.find(
+                  (a) => a.sentence_text === annotationPanel.sentenceText &&
+                    a.chapter_index === annotationPanel.chapterIndex,
+                );
+                if (!existing) return "public"; // new notes default public
+                return chapterStories.some(
+                  (st) => st.kind === "note" && st.user_id === session?.backendUser?.id &&
+                    st.annotation_id === existing.id,
+                ) ? "public" : "private";
+              })()}
+              onVisibilityChange={session?.backendToken ? async (annotation, makePublic) => {
+                const post = chapterStories.find(
+                  (st) => st.kind === "note" && st.user_id === session?.backendUser?.id &&
+                    st.annotation_id === annotation.id,
+                );
+                if (makePublic && !post) {
+                  await createStory({
+                    kind: "note", book_id: Number(bookId),
+                    chapter_index: annotation.chapter_index, annotation_id: annotation.id,
+                  });
+                } else if (!makePublic && post) {
+                  await deleteStory(post.id);
+                }
+                setStoriesVersion((v) => v + 1);
+              } : undefined}
             />
           )}
 
@@ -2216,6 +2242,18 @@ export default function ReaderPage() {
                   },
                 };
               })()}
+              onEditMyNoteExternally={() => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                setSharedNotesFor(null);
+                setAnnotationPanel({
+                  sentenceText: own?.sentence_text ?? sharedNotesFor.sentenceText,
+                  chapterIndex: own?.chapter_index ?? chapterIndex,
+                });
+              }}
               onSaveMyNote={async (text, makePublic) => {
                 const own = annotations.find(
                   (a) => a.chapter_index === chapterIndex &&

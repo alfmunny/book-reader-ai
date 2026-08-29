@@ -235,6 +235,9 @@ interface Props {
   onSaveMyNote?: (text: string, makePublic: boolean) => Promise<void>;
   /** Remove the reader's highlight + note on this sentence. */
   onDeleteMyNote?: () => Promise<void>;
+  /** Open the app-wide note dialog instead of the inline editor, so every
+   *  note-writing path is the same UI (owner, 2026-08-29). */
+  onEditMyNoteExternally?: () => void;
   /** The reader's OWN renderings of this paragraph, pinned first. */
   myVersions?: Array<{
     sessionName: string;
@@ -291,6 +294,7 @@ export default function StoryPanel({
   annotationBar,
   onSaveMyNote,
   onDeleteMyNote,
+  onEditMyNoteExternally,
   myVersions,
   composer,
   commentsTab,
@@ -865,7 +869,12 @@ export default function StoryPanel({
             <>
               <span className="w-px h-5 bg-amber-100" aria-hidden="true" />
               <button
-                onClick={() => { setNoteDraft(""); setVisDraft("public"); setView({ mode: "editMine" }); }}
+                onClick={() => {
+                  if (onEditMyNoteExternally) { onEditMyNoteExternally(); return; }
+                  setNoteDraft("");
+                  setVisDraft("public");
+                  setView({ mode: "editMine" });
+                }}
                 aria-label="Write note"
                 className="flex items-center gap-1.5 text-xs text-stone-600 hover:text-ink min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
@@ -989,7 +998,12 @@ export default function StoryPanel({
             </div>
             {visibilityChip(myNote.storyId != null)}
             <button
-              onClick={() => { setNoteDraft(myNote.text); setVisDraft(myNote.storyId != null ? "public" : "private"); setView({ mode: "editMine" }); }}
+              onClick={() => {
+                if (onEditMyNoteExternally) { onEditMyNoteExternally(); return; }
+                setNoteDraft(myNote.text);
+                setVisDraft(myNote.storyId != null ? "public" : "private");
+                setView({ mode: "editMine" });
+              }}
               aria-label="Edit my note"
               title="Edit"
               className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"

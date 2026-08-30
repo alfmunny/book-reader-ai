@@ -69,15 +69,6 @@ beforeEach(() => {
 // ── Library back link ─────────────────────────────────────────────────────────
 
 describe("VocabularyPage — Library back button (line 72)", () => {
-  it("← Library link has href='/'", async () => {
-    mockGetVocabulary.mockResolvedValue(MANY_WORDS);
-    render(<VocabularyPage />);
-    await flushPromises();
-
-    await screen.findByText("apple");
-    const link = screen.getByRole("link", { name: /Library/i });
-    expect(link).toHaveAttribute("href", "/");
-  });
 });
 
 // ── Line 113: search onChange (words.length > 5) ──────────────────────────────

@@ -11,7 +11,7 @@ function read(rel: string): string {
 
 describe("Admin nav aria-current", () => {
   it("active tab Link sets aria-current=page", () => {
-    const src = read("src/app/admin/layout.tsx");
+    const src = read("src/app/(shell)/admin/layout.tsx");
     expect(src).toMatch(/aria-current=\{current === key \? ["']page["'] : undefined\}/);
   });
 });

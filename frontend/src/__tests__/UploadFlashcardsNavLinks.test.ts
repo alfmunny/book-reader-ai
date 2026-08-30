@@ -16,10 +16,6 @@ const uploadChaptersSrc = readSrc("(shell)/upload/[bookId]/chapters/page.tsx");
 const readerSrc = readSrc("reader/[bookId]/page.tsx");
 
 describe("flashcards page nav links (closes #2453)", () => {
-  it("back button uses href=/vocabulary not router.push", () => {
-    expect(flashcardsSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/vocabulary["']\)/);
-    expect(flashcardsSrc).toMatch(/href=["']\/vocabulary["']/);
-  });
 
   it("Back to Vocabulary CTA uses href=/vocabulary not router.push", () => {
     expect(flashcardsSrc).not.toMatch(/onClick[^>]*router\.push\(["']\/vocabulary["']\)[\s\S]{0,200}Back to Vocabulary/);
@@ -33,10 +29,6 @@ describe("upload page nav links (closes #2453)", () => {
     expect(uploadSrc).toMatch(/href=["']\/login["']/);
   });
 
-  it("Back button uses href=/ not router.push", () => {
-    expect(uploadSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/["']\)/);
-    expect(uploadSrc).toMatch(/href=["']\/["']/);
-  });
 });
 
 describe("upload chapters page nav links (closes #2453)", () => {

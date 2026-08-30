@@ -17,7 +17,7 @@ const readerSrc = fs.readFileSync(
 );
 
 const adminBooksSrc = fs.readFileSync(
-  path.join(__dirname, "../app/admin/books/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/books/page.tsx"),
   "utf8",
 );
 

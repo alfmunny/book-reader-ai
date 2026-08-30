@@ -106,13 +106,6 @@ describe("NotesPage overview — book card sources", () => {
     expect(link).toHaveAttribute("href", "/notes/55");
   });
 
-  it("← Library link navigates to /", async () => {
-    mockUseSession.mockReturnValue({ data: { backendToken: "tok" }, status: "authenticated" });
-    render(<NotesPage />);
-    await flushPromises();
-    const link = screen.getByRole("link", { name: /Library/i });
-    expect(link).toHaveAttribute("href", "/");
-  });
 });
 
 // ── Search and filter states ──────────────────────────────────────────────────

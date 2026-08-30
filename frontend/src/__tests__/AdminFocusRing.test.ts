@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const adminLayout = fs.readFileSync(
-  path.resolve(__dirname, "../app/admin/layout.tsx"),
+  path.resolve(__dirname, "../app/(shell)/admin/layout.tsx"),
   "utf8",
 );
 
@@ -24,9 +24,12 @@ describe("admin layout button focus rings (closes #2164)", () => {
     expect(adminLayout).toMatch(/TABS\.map[\s\S]*?focus-visible:ring-2/);
   });
 
-  it("all three admin focusable controls have focus-visible:ring-2 (count ≥ 3)", () => {
+  it("every admin focusable control has focus-visible:ring-2 (count ≥ 2)", () => {
+    // Was ≥ 3 while the layout also rendered a "← Library" back link. That link
+    // moved into the global nav when /admin joined the (shell) group, leaving
+    // the Refresh button and the section tabs — both still ringed.
     const matches = adminLayout.match(/focus-visible:ring-2/g) ?? [];
-    expect(matches.length).toBeGreaterThanOrEqual(3);
+    expect(matches.length).toBeGreaterThanOrEqual(2);
   });
 });
 

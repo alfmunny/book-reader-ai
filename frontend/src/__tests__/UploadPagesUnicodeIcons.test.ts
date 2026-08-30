@@ -13,7 +13,7 @@ const chaptersSrc = fs.readFileSync(
   "utf-8"
 );
 const adminUploadsSrc = fs.readFileSync(
-  path.join(__dirname, "../app/admin/uploads/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/uploads/page.tsx"),
   "utf-8"
 );
 
@@ -22,13 +22,7 @@ describe("Upload page Unicode icon replacements", () => {
     expect(uploadSrc).not.toMatch(/>\s*←\s*Back/);
   });
 
-  it("upload page imports ArrowLeftIcon", () => {
-    expect(uploadSrc).toMatch(/ArrowLeftIcon/);
-  });
 
-  it("upload page Back button uses ArrowLeftIcon", () => {
-    expect(uploadSrc).toMatch(/ArrowLeftIcon[\s\S]{0,80}(Back|Bookshelf)/);
-  });
 });
 
 describe("Upload chapters page Unicode icon replacements", () => {

@@ -7,7 +7,7 @@ import * as path from "path";
 // BookCoverPlaceholderIcon). Closes #1682.
 
 const uploadsSrc = fs.readFileSync(
-  path.join(__dirname, "../app/admin/uploads/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/uploads/page.tsx"),
   "utf8",
 );
 const iconsSrc = fs.readFileSync(
@@ -16,7 +16,7 @@ const iconsSrc = fs.readFileSync(
 );
 
 describe("admin uploads empty-state icon refactor (closes #1682)", () => {
-  it("admin/uploads/page.tsx no longer contains a raw <svg opening tag", () => {
+  it("(shell)/admin/uploads/page.tsx no longer contains a raw <svg opening tag", () => {
     expect(uploadsSrc).not.toMatch(/<svg\b/);
   });
 

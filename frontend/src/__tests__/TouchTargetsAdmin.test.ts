@@ -37,9 +37,9 @@ function checkFile(rel: string, label: string) {
   });
 }
 
-checkFile("app/admin/books/page.tsx", "AdminBooksPage");
-checkFile("app/admin/uploads/page.tsx", "AdminUploadsPage");
-checkFile("app/admin/layout.tsx", "AdminLayout");
-checkFile("app/admin/audio/page.tsx", "AdminAudioPage");
-checkFile("app/admin/users/page.tsx", "AdminUsersPage");
+checkFile("app/(shell)/admin/books/page.tsx", "AdminBooksPage");
+checkFile("app/(shell)/admin/uploads/page.tsx", "AdminUploadsPage");
+checkFile("app/(shell)/admin/layout.tsx", "AdminLayout");
+checkFile("app/(shell)/admin/audio/page.tsx", "AdminAudioPage");
+checkFile("app/(shell)/admin/users/page.tsx", "AdminUsersPage");
 checkFile("components/SelectionToolbar.tsx", "SelectionToolbar");

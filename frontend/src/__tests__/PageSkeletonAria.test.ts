@@ -8,10 +8,10 @@ const vocabSrc = fs.readFileSync(path.join(appDir, "(shell)/vocabulary/page.tsx"
 const notesSrc = fs.readFileSync(path.join(appDir, "(shell)/notes/page.tsx"), "utf8");
 const decksSrc = fs.readFileSync(path.join(appDir, "(shell)/decks/page.tsx"), "utf8");
 const uploadSrc = fs.readFileSync(path.join(appDir, "(shell)/upload/page.tsx"), "utf8");
-const adminLayoutSrc = fs.readFileSync(path.join(appDir, "admin/layout.tsx"), "utf8");
-const adminUploadsSrc = fs.readFileSync(path.join(appDir, "admin/uploads/page.tsx"), "utf8");
-const adminBooksSrc = fs.readFileSync(path.join(appDir, "admin/books/page.tsx"), "utf8");
-const adminAudioSrc = fs.readFileSync(path.join(appDir, "admin/audio/page.tsx"), "utf8");
+const adminLayoutSrc = fs.readFileSync(path.join(appDir, "(shell)/admin/layout.tsx"), "utf8");
+const adminUploadsSrc = fs.readFileSync(path.join(appDir, "(shell)/admin/uploads/page.tsx"), "utf8");
+const adminBooksSrc = fs.readFileSync(path.join(appDir, "(shell)/admin/books/page.tsx"), "utf8");
+const adminAudioSrc = fs.readFileSync(path.join(appDir, "(shell)/admin/audio/page.tsx"), "utf8");
 
 describe("Page-level loading states have accessible role=\"status\" (closes #1066)", () => {
   it("home page (page.tsx) has role=\"status\" on loading states", () => {
@@ -38,15 +38,15 @@ describe("Page-level loading states have accessible role=\"status\" (closes #106
     expect(adminLayoutSrc).toMatch(/role="status"/);
   });
 
-  it("admin/uploads page has role=\"status\" on loading spinner", () => {
+  it("(shell)/admin/uploads page has role=\"status\" on loading spinner", () => {
     expect(adminUploadsSrc).toMatch(/role="status"/);
   });
 
-  it("admin/books page has role=\"status\" on loading spinner", () => {
+  it("(shell)/admin/books page has role=\"status\" on loading spinner", () => {
     expect(adminBooksSrc).toMatch(/role="status"/);
   });
 
-  it("admin/audio page has role=\"status\" on loading spinner", () => {
+  it("(shell)/admin/audio page has role=\"status\" on loading spinner", () => {
     expect(adminAudioSrc).toMatch(/role="status"/);
   });
 });

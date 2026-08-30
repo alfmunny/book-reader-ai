@@ -18,7 +18,7 @@ jest.mock("@/lib/api", () => ({
 
 let UsersPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/users/page");
+  const mod = await import("@/app/(shell)/admin/users/page");
   UsersPage = mod.default;
 });
 

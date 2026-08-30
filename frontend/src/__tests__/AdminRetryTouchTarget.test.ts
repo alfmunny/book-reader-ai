@@ -10,8 +10,8 @@ function src(file: string) {
 }
 
 describe("Admin Retry button touch targets", () => {
-  it("admin/uploads/page.tsx error Retry button uses min-h-[44px], not min-h-[36px]", () => {
-    const content = src("admin/uploads/page.tsx");
+  it("(shell)/admin/uploads/page.tsx error Retry button uses min-h-[44px], not min-h-[36px]", () => {
+    const content = src("(shell)/admin/uploads/page.tsx");
     // Anchor on the border-red-300 class which appears only on the Retry button
     const idx = content.indexOf("border-red-300 text-red-700");
     expect(idx).toBeGreaterThan(-1);
@@ -20,15 +20,15 @@ describe("Admin Retry button touch targets", () => {
     expect(window).toContain("min-h-[44px]");
   });
 
-  it("admin/uploads/page.tsx error Retry button uses md:min-h-0", () => {
-    const content = src("admin/uploads/page.tsx");
+  it("(shell)/admin/uploads/page.tsx error Retry button uses md:min-h-0", () => {
+    const content = src("(shell)/admin/uploads/page.tsx");
     const idx = content.indexOf("border-red-300 text-red-700");
     const window = content.slice(Math.max(0, idx - 50), idx + 200);
     expect(window).toContain("md:min-h-0");
   });
 
-  it("admin/books/page.tsx has no bare min-h-[36px] touch targets", () => {
-    const content = src("admin/books/page.tsx");
+  it("(shell)/admin/books/page.tsx has no bare min-h-[36px] touch targets", () => {
+    const content = src("(shell)/admin/books/page.tsx");
     expect(content).not.toContain("min-h-[36px]");
   });
 });

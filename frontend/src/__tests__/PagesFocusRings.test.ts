@@ -44,13 +44,6 @@ describe("upload/page.tsx button focus rings (closes #2185)", () => {
     expect(window).toContain("ring-offset-amber-700");
   });
 
-  it("Back button has focus ring", () => {
-    // Back is now a Link — find it by href
-    const idx = uploadPage.indexOf('href="/"');
-    expect(idx).toBeGreaterThan(-1);
-    const window = uploadPage.slice(idx, idx + 300);
-    expect(window).toContain("focus-visible:ring-amber-400");
-  });
 });
 
 describe("upload/[bookId]/chapters/page.tsx button focus rings (closes #2185)", () => {

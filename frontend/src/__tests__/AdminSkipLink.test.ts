@@ -11,8 +11,8 @@ function read(rel: string): string {
 }
 
 describe("Admin layout skip-link target", () => {
-  it("admin/layout.tsx <main> has id=main-content", () => {
-    const src = read("src/app/admin/layout.tsx");
+  it("(shell)/admin/layout.tsx <main> has id=main-content", () => {
+    const src = read("src/app/(shell)/admin/layout.tsx");
     expect(src).toContain('id="main-content"');
     expect(src).toMatch(/<main\b[^>]*id=["']main-content["']/);
   });

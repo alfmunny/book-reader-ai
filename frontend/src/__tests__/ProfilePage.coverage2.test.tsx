@@ -53,15 +53,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ── Line 136: "← Library" back link ─────────────────────────────────────────
 
-test("← Library link navigates to /", async () => {
-  render(<ProfilePage />);
-  await act(async () => await flushPromises());
-
-  const link = screen.getByRole("link", { name: /Library/i });
-  expect(link).toHaveAttribute("href", "/");
-});
 
 // ── Line 164: "Sign out" button ───────────────────────────────────────────────
 

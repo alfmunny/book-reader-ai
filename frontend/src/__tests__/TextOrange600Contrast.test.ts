@@ -5,7 +5,7 @@ import * as path from "path";
 // WCAG 1.4.3 AA (4.5:1 needed). Closes #1572.
 
 const usersSrc = fs.readFileSync(
-  path.join(__dirname, "../app/admin/users/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/users/page.tsx"),
   "utf8",
 );
 
@@ -15,7 +15,7 @@ const queueSrc = fs.readFileSync(
 );
 
 describe("text-orange-600 removed at small sizes (closes #1572)", () => {
-  it("admin/users does not use text-orange-600", () => {
+  it("(shell)/admin/users does not use text-orange-600", () => {
     expect(usersSrc).not.toMatch(/text-orange-600/);
   });
 

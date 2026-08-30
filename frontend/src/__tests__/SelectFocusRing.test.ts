@@ -20,7 +20,7 @@ function assertSelectHasFocusRing(src: string, anchorText: string) {
 }
 
 describe("Select focus ring — admin/books", () => {
-  const src = read("../app/admin/books/page.tsx");
+  const src = read("../app/(shell)/admin/books/page.tsx");
   it("translation language select has amber focus ring", () => {
     assertSelectHasFocusRing(src, 'aria-label="Translation language"');
   });

@@ -48,7 +48,7 @@ function hasMinW44(el: Element): boolean {
 }
 
 // --- admin/users: dismiss error button ---
-import UsersPage from "@/app/admin/users/page";
+import UsersPage from "@/app/(shell)/admin/users/page";
 
 const USER = {
   id: 2,
@@ -80,7 +80,7 @@ test("users page: dismiss error button has min-h-[44px] and min-w-[44px]", async
 });
 
 // --- admin/books: dismiss error button ---
-import BooksPage from "@/app/admin/books/page";
+import BooksPage from "@/app/(shell)/admin/books/page";
 
 const BOOK_STATS = { total_books: 0, total_translations: 0, failed_translations: 0 };
 

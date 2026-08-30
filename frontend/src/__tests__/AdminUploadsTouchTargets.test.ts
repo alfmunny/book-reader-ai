@@ -2,11 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 const src = fs.readFileSync(
-  path.join(__dirname, "../app/admin/uploads/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/uploads/page.tsx"),
   "utf8"
 );
 
-describe("admin/uploads page touch targets (closes #861)", () => {
+describe("(shell)/admin/uploads page touch targets (closes #861)", () => {
   it("Filter button has min-h-[44px]", () => {
     const idx = src.indexOf("handleFilter}");
     expect(idx).toBeGreaterThan(-1);

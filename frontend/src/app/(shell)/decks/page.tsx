@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { DeckSummary, deleteDeck, listDecks } from "@/lib/api";
 import DeckCard from "@/components/DeckCard";
 import UndoToast from "@/components/UndoToast";
-import { ArrowLeftIcon, DeckIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
+import { DeckIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 
 export default function DecksPage() {
   const { data: session } = useSession();
@@ -64,12 +64,6 @@ export default function DecksPage() {
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <Link
-          href="/"
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-        >
-          <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
-        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Decks</h1>
           {!loading && !fetchError && (

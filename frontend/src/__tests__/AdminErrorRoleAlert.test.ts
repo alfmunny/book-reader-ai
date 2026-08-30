@@ -12,8 +12,8 @@ function hasRoleAlertNearError(src: string): boolean {
 }
 
 describe("Admin page error messages have role=\"alert\" (closes #1040)", () => {
-  it("admin/books error div has role=\"alert\"", () => {
-    const src = readPage("../app/admin/books/page.tsx");
+  it("(shell)/admin/books error div has role=\"alert\"", () => {
+    const src = readPage("../app/(shell)/admin/books/page.tsx");
     // Find the dynamic error render: {error && <div ...>
     const idx = src.indexOf("{error &&");
     expect(idx).toBeGreaterThan(-1);
@@ -21,16 +21,16 @@ describe("Admin page error messages have role=\"alert\" (closes #1040)", () => {
     expect(window).toMatch(/role="alert"/);
   });
 
-  it("admin/uploads error div has role=\"alert\"", () => {
-    const src = readPage("../app/admin/uploads/page.tsx");
+  it("(shell)/admin/uploads error div has role=\"alert\"", () => {
+    const src = readPage("../app/(shell)/admin/uploads/page.tsx");
     const idx = src.indexOf("{error &&");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(idx, idx + 200);
     expect(window).toMatch(/role="alert"/);
   });
 
-  it("admin/users error div has role=\"alert\"", () => {
-    const src = readPage("../app/admin/users/page.tsx");
+  it("(shell)/admin/users error div has role=\"alert\"", () => {
+    const src = readPage("../app/(shell)/admin/users/page.tsx");
     // This one returns early: return <div>error</div>
     const idx = src.indexOf("bg-red-50");
     expect(idx).toBeGreaterThan(-1);
@@ -38,8 +38,8 @@ describe("Admin page error messages have role=\"alert\" (closes #1040)", () => {
     expect(window).toMatch(/role="alert"/);
   });
 
-  it("admin/audio error div has role=\"alert\"", () => {
-    const src = readPage("../app/admin/audio/page.tsx");
+  it("(shell)/admin/audio error div has role=\"alert\"", () => {
+    const src = readPage("../app/(shell)/admin/audio/page.tsx");
     const idx = src.indexOf("bg-red-50");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 100), idx + 100);

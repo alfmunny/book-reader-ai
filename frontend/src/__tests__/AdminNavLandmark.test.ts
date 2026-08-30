@@ -11,8 +11,8 @@ function read(rel: string): string {
 }
 
 describe("Admin tab strip landmark", () => {
-  it("admin/layout.tsx wraps tabs in <nav aria-label=...>", () => {
-    const src = read("src/app/admin/layout.tsx");
+  it("(shell)/admin/layout.tsx wraps tabs in <nav aria-label=...>", () => {
+    const src = read("src/app/(shell)/admin/layout.tsx");
     expect(src).toMatch(/<nav\b[^>]*aria-label=["']Admin sections["']/);
   });
 });

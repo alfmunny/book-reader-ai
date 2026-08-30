@@ -19,9 +19,6 @@ const flashcardsPage = fs.readFileSync(
 );
 
 describe("decks page button focus rings (closes #2172)", () => {
-  it("Library back button has focus-visible:ring-2 for WCAG 2.4.7", () => {
-    expect(decksPage).toMatch(/Library[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?Library/);
-  });
 
   it("New Deck button has focus-visible:ring-2 for WCAG 2.4.7", () => {
     expect(decksPage).toMatch(/New deck[\s\S]{0,300}?focus-visible:ring-2|focus-visible:ring-2[\s\S]{0,300}?New deck/);

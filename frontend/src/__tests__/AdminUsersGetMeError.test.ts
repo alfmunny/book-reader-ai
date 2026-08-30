@@ -5,7 +5,7 @@ import fs from "fs";
 import path from "path";
 
 const SOURCE = fs.readFileSync(
-  path.resolve(__dirname, "../app/admin/users/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/admin/users/page.tsx"),
   "utf8"
 );
 

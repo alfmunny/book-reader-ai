@@ -11,8 +11,8 @@ const decksNewSrc = readFileSync(join(__dirname, "../app/(shell)/decks/new/page.
 const profileSrc = readFileSync(join(__dirname, "../app/(shell)/profile/page.tsx"), "utf-8");
 const tagEditorSrc = readFileSync(join(__dirname, "../components/TagEditor.tsx"), "utf-8");
 const queueTabSrc = readFileSync(join(__dirname, "../components/QueueTab.tsx"), "utf-8");
-const adminUploadsSrc = readFileSync(join(__dirname, "../app/admin/uploads/page.tsx"), "utf-8");
-const adminBooksSrc = readFileSync(join(__dirname, "../app/admin/books/page.tsx"), "utf-8");
+const adminUploadsSrc = readFileSync(join(__dirname, "../app/(shell)/admin/uploads/page.tsx"), "utf-8");
+const adminBooksSrc = readFileSync(join(__dirname, "../app/(shell)/admin/books/page.tsx"), "utf-8");
 
 function countOccurrences(src: string, pattern: RegExp): number {
   return (src.match(pattern) ?? []).length;
@@ -66,11 +66,11 @@ describe("Placeholder text contrast — WCAG 1.4.3", () => {
     expect(countOccurrences(queueTabSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(3);
   });
 
-  it("admin/uploads/page.tsx filter input must use placeholder:text-stone-600", () => {
+  it("(shell)/admin/uploads/page.tsx filter input must use placeholder:text-stone-600", () => {
     expect(countOccurrences(adminUploadsSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(1);
   });
 
-  it("admin/books/page.tsx must use placeholder:text-stone-600 on all 3 inputs", () => {
+  it("(shell)/admin/books/page.tsx must use placeholder:text-stone-600 on all 3 inputs", () => {
     expect(countOccurrences(adminBooksSrc, /placeholder:text-stone-600/g)).toBeGreaterThanOrEqual(3);
   });
 });

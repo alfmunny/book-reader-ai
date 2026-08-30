@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { uploadBook, getUploadQuota, UploadQuota, ApiError } from "@/lib/api";
-import { AlertCircleIcon, UploadIcon, ArrowLeftIcon } from "@/components/Icons";
+import { AlertCircleIcon, UploadIcon } from "@/components/Icons";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -107,12 +107,6 @@ export default function UploadPage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <Link
-            href="/"
-            className="text-sm text-amber-700 hover:text-amber-800 transition-colors min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-          >
-            <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Back
-          </Link>
           <h1 className="font-serif text-lg font-semibold text-ink">Upload a Book</h1>
         </div>
       </header>

@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 
 const ADMIN_LAYOUT = fs.readFileSync(
-  path.resolve(__dirname, "../app/admin/layout.tsx"),
+  path.resolve(__dirname, "../app/(shell)/admin/layout.tsx"),
   "utf8"
 );
 
@@ -26,9 +26,6 @@ describe("Admin layout — Library back button must be a Link (issue #2449)", ()
     expect(ADMIN_LAYOUT).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["'`]\/["'`]\)/);
   });
 
-  it("has href=/ for the Library back link", () => {
-    expect(ADMIN_LAYOUT).toMatch(/href=["'`]\/["'`]/);
-  });
 });
 
 describe("Reader page — Library back button must be a Link (issue #2449)", () => {

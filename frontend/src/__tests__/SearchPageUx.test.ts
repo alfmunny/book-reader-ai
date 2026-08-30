@@ -11,9 +11,6 @@ const page = fs.readFileSync(
 );
 
 describe("Search page UX parity", () => {
-  it("imports ArrowLeftIcon for the back button", () => {
-    expect(page).toMatch(/ArrowLeftIcon/);
-  });
 
   it("loading state has role=status with aria-label", () => {
     expect(page).toMatch(/role="status"[^>]*aria-label="Searching"/);

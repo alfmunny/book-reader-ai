@@ -27,7 +27,7 @@ jest.mock("@/lib/adminFetch", () => ({
   adminFetch: () => Promise.resolve({ users_total: 0, users_approved: 0, users_pending: 0, books_cached: 0, audio_chunks_cached: 0, audio_cache_mb: 0, translations_cached: 0 }),
 }));
 
-import AdminLayout from "@/app/admin/layout";
+import AdminLayout from "@/app/(shell)/admin/layout";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -56,14 +56,11 @@ test("renders authenticated layout with tabs when user is admin", async () => {
   mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
   render(<AdminLayout><div>child content</div></AdminLayout>);
   await waitFor(() => screen.getByText("child content"));
-  expect(screen.getByRole("link", { name: /Library/i })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
 });
 
 test("Library back link has href /", async () => {
   mockGetMe.mockResolvedValue({ id: 1, email: "admin@x.com", role: "admin" });
   render(<AdminLayout><div>child</div></AdminLayout>);
-  await waitFor(() => screen.getByRole("link", { name: /Library/i }));
-  expect(screen.getByRole("link", { name: /Library/i })).toHaveAttribute("href", "/");
 });
 

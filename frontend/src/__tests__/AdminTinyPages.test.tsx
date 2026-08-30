@@ -1,7 +1,7 @@
 /**
  * Tests for small admin pages that are currently at 0% coverage.
- *   - src/app/admin/page.tsx       — redirects to /admin/users
- *   - src/app/admin/queue/page.tsx — renders QueueTab
+ *   - src/app/(shell)/admin/page.tsx       — redirects to /admin/users
+ *   - src/app/(shell)/admin/queue/page.tsx — renders QueueTab
  */
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -31,7 +31,7 @@ describe("Admin index page (admin/page.tsx)", () => {
   let AdminIndex: React.ComponentType;
 
   beforeAll(async () => {
-    const mod = await import("@/app/admin/page");
+    const mod = await import("@/app/(shell)/admin/page");
     AdminIndex = mod.default;
   });
 
@@ -61,7 +61,7 @@ describe("Admin queue page (admin/queue/page.tsx)", () => {
   let QueuePage: React.ComponentType;
 
   beforeAll(async () => {
-    const mod = await import("@/app/admin/queue/page");
+    const mod = await import("@/app/(shell)/admin/queue/page");
     QueuePage = mod.default;
   });
 
@@ -79,7 +79,7 @@ describe("Admin bulk redirect page (admin/bulk/page.tsx)", () => {
   let BulkRedirect: React.ComponentType;
 
   beforeAll(async () => {
-    const mod = await import("@/app/admin/bulk/page");
+    const mod = await import("@/app/(shell)/admin/bulk/page");
     BulkRedirect = mod.default;
   });
 

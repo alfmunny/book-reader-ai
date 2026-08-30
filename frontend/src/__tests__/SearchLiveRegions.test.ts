@@ -13,7 +13,7 @@ import * as path from "path";
 
 const homeSrc = ["../components/SiteHeader.tsx", "../app/(shell)/page.tsx", "../app/(shell)/bookshelf/page.tsx"]
   .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
-const adminBooksSrc = fs.readFileSync(path.join(__dirname, "../app/admin/books/page.tsx"), "utf8");
+const adminBooksSrc = fs.readFileSync(path.join(__dirname, "../app/(shell)/admin/books/page.tsx"), "utf8");
 
 // ── Home page Discover search ──────────────────────────────────────────────────
 

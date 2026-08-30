@@ -6,11 +6,11 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const src = readFileSync(
-  join(__dirname, "../app/admin/users/page.tsx"),
+  join(__dirname, "../app/(shell)/admin/users/page.tsx"),
   "utf8",
 );
 
-describe("admin/users — no blocking dialogs (#1895)", () => {
+describe("(shell)/admin/users — no blocking dialogs (#1895)", () => {
   it("does not call alert()", () => {
     expect(src).not.toMatch(/\balert\s*\(/);
   });

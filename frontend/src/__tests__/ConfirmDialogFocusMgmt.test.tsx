@@ -45,14 +45,14 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let AdminBooksPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/books/page");
+  const mod = await import("@/app/(shell)/admin/books/page");
   AdminBooksPage = mod.default;
 });
 
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
 
-test("admin/books: opening confirm dialog moves focus into dialog container (#2001)", async () => {
+test("(shell)/admin/books: opening confirm dialog moves focus into dialog container (#2001)", async () => {
   mockAdminFetch.mockResolvedValue([BOOK]);
 
   render(<AdminBooksPage />);
@@ -67,7 +67,7 @@ test("admin/books: opening confirm dialog moves focus into dialog container (#20
   expect(dialog).toHaveFocus();
 });
 
-test("admin/books: cancelling confirm dialog restores focus to trigger (#2001)", async () => {
+test("(shell)/admin/books: cancelling confirm dialog restores focus to trigger (#2001)", async () => {
   mockAdminFetch.mockResolvedValue([BOOK]);
 
   render(<AdminBooksPage />);

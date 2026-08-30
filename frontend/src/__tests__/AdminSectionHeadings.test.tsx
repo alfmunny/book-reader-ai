@@ -41,10 +41,10 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 const BOOK_STATS = { total_books: 0, total_translations: 0, failed_translations: 0 };
 
-import AudioPage from "@/app/admin/audio/page";
-import UsersPage from "@/app/admin/users/page";
-import BooksPage from "@/app/admin/books/page";
-import UploadsPage from "@/app/admin/uploads/page";
+import AudioPage from "@/app/(shell)/admin/audio/page";
+import UsersPage from "@/app/(shell)/admin/users/page";
+import BooksPage from "@/app/(shell)/admin/books/page";
+import UploadsPage from "@/app/(shell)/admin/uploads/page";
 
 test("audio page: has h2 heading for the section", async () => {
   mockAdminFetch.mockResolvedValueOnce([]);

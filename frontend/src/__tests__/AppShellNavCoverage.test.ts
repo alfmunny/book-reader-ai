@@ -30,7 +30,6 @@ const STANDALONE_ROUTES: Record<string, string> = {
   "/login": "pre-auth; no session yet, so no nav to render",
   "/reader/[bookId]": "immersive reading view — owns its chrome and sidebar",
   "/vocabulary/flashcards": "immersive study mode — owns its own back control",
-  "/admin": "admin section renders its own header + section tabs",
 };
 
 /** Walk src/app and return every route that has a page.tsx. */

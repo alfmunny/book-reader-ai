@@ -6,7 +6,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const audioSrc = readFileSync(
-  join(__dirname, "../app/admin/audio/page.tsx"),
+  join(__dirname, "../app/(shell)/admin/audio/page.tsx"),
   "utf8",
 );
 
@@ -16,7 +16,7 @@ const seedSrc = readFileSync(
 );
 
 const booksSrc = readFileSync(
-  join(__dirname, "../app/admin/books/page.tsx"),
+  join(__dirname, "../app/(shell)/admin/books/page.tsx"),
   "utf8",
 );
 
@@ -25,7 +25,7 @@ const queueSrc = readFileSync(
   "utf8",
 );
 
-describe("admin/audio — no blocking dialogs (#1897)", () => {
+describe("(shell)/admin/audio — no blocking dialogs (#1897)", () => {
   it("does not call alert()", () => {
     expect(audioSrc).not.toMatch(/\balert\s*\(/);
   });
@@ -53,7 +53,7 @@ describe("SeedPopularButton — no blocking dialogs (#1897)", () => {
   });
 });
 
-describe("admin/books — no blocking dialogs (#1897)", () => {
+describe("(shell)/admin/books — no blocking dialogs (#1897)", () => {
   it("does not call alert()", () => {
     expect(booksSrc).not.toMatch(/\balert\s*\(/);
   });

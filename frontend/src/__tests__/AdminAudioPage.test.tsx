@@ -12,7 +12,7 @@ jest.mock("@/lib/adminFetch", () => ({
 
 let AudioPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/audio/page");
+  const mod = await import("@/app/(shell)/admin/audio/page");
   AudioPage = mod.default;
 });
 

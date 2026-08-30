@@ -26,7 +26,7 @@ jest.mock("@/components/SeedPopularButton", () => {
 
 let BooksPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/books/page");
+  const mod = await import("@/app/(shell)/admin/books/page");
   BooksPage = mod.default;
 });
 

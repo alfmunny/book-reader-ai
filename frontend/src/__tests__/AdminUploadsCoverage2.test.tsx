@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/admin/uploads/page.tsx — closes #2027.
+ * Coverage tests for app/(shell)/admin/uploads/page.tsx — closes #2027.
  *
  * Covers:
  *  - line 52: non-Error thrown value falls back to "Failed to load uploads"
@@ -28,7 +28,7 @@ jest.mock("@/lib/api", () => ({
   awaitSession: () => Promise.resolve(),
 }));
 
-import UploadsPage from "@/app/admin/uploads/page";
+import UploadsPage from "@/app/(shell)/admin/uploads/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

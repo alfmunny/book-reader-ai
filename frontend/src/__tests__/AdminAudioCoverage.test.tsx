@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/admin/audio/page.tsx — functions not covered by existing tests.
+ * Coverage tests for app/(shell)/admin/audio/page.tsx — functions not covered by existing tests.
  * Closes #1989 — targets: Dismiss error onClick (line 84).
  */
 import React from "react";
@@ -27,7 +27,7 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let AudioPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/audio/page");
+  const mod = await import("@/app/(shell)/admin/audio/page");
   AudioPage = mod.default;
 });
 

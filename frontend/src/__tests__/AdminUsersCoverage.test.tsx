@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/admin/users/page.tsx — functions not covered by existing tests.
+ * Coverage tests for app/(shell)/admin/users/page.tsx — functions not covered by existing tests.
  * Closes #1987 — targets: Dismiss error onClick (line 86), getMe .catch (line 46).
  */
 import React from "react";
@@ -18,7 +18,7 @@ jest.mock("@/lib/api", () => ({
 
 let UsersPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/users/page");
+  const mod = await import("@/app/(shell)/admin/users/page");
   UsersPage = mod.default;
 });
 

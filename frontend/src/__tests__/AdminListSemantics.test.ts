@@ -1,12 +1,12 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const users = readFileSync(join(__dirname, "../app/admin/users/page.tsx"), "utf-8");
-const audio = readFileSync(join(__dirname, "../app/admin/audio/page.tsx"), "utf-8");
-const books = readFileSync(join(__dirname, "../app/admin/books/page.tsx"), "utf-8");
+const users = readFileSync(join(__dirname, "../app/(shell)/admin/users/page.tsx"), "utf-8");
+const audio = readFileSync(join(__dirname, "../app/(shell)/admin/audio/page.tsx"), "utf-8");
+const books = readFileSync(join(__dirname, "../app/(shell)/admin/books/page.tsx"), "utf-8");
 
 describe("admin page list semantics (WCAG 1.3.1)", () => {
-  describe("admin/users/page.tsx", () => {
+  describe("(shell)/admin/users/page.tsx", () => {
     it("users list uses <ul role=\"list\">", () => {
       expect(users).toMatch(/<ul role="list" aria-label="Users"/);
     });
@@ -15,7 +15,7 @@ describe("admin page list semantics (WCAG 1.3.1)", () => {
     });
   });
 
-  describe("admin/audio/page.tsx", () => {
+  describe("(shell)/admin/audio/page.tsx", () => {
     it("audio list uses <ul role=\"list\">", () => {
       expect(audio).toMatch(/<ul role="list" aria-label="Audio files"/);
     });
@@ -24,7 +24,7 @@ describe("admin page list semantics (WCAG 1.3.1)", () => {
     });
   });
 
-  describe("admin/books/page.tsx", () => {
+  describe("(shell)/admin/books/page.tsx", () => {
     it("books list uses <ul role=\"list\">", () => {
       expect(books).toMatch(/<ul role="list" aria-label="Books"/);
     });

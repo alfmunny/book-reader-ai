@@ -10,13 +10,13 @@ const pages: Array<[string, string, RegExp]> = [
   ["(shell)/upload/page.tsx", "Upload", /upload/i],
   ["(shell)/upload/[bookId]/chapters/page.tsx", "Upload chapters", /upload|chapter/i],
   ["(shell)/decks/new/page.tsx", "New Deck", /deck/i],
-  ["admin/page.tsx", "Admin", /admin/i],
-  ["admin/books/page.tsx", "Admin: Books", /admin|book/i],
-  ["admin/audio/page.tsx", "Admin: Audio", /admin|audio/i],
-  ["admin/users/page.tsx", "Admin: Users", /admin|user/i],
-  ["admin/bulk/page.tsx", "Admin: Bulk", /admin|bulk/i],
-  ["admin/queue/page.tsx", "Admin: Queue", /admin|queue/i],
-  ["admin/uploads/page.tsx", "Admin: Uploads", /admin|upload/i],
+  ["(shell)/admin/page.tsx", "Admin", /admin/i],
+  ["(shell)/admin/books/page.tsx", "Admin: Books", /admin|book/i],
+  ["(shell)/admin/audio/page.tsx", "Admin: Audio", /admin|audio/i],
+  ["(shell)/admin/users/page.tsx", "Admin: Users", /admin|user/i],
+  ["(shell)/admin/bulk/page.tsx", "Admin: Bulk", /admin|bulk/i],
+  ["(shell)/admin/queue/page.tsx", "Admin: Queue", /admin|queue/i],
+  ["(shell)/admin/uploads/page.tsx", "Admin: Uploads", /admin|upload/i],
 ];
 
 describe("Missing page titles — document.title (WCAG 2.4.2, #1893)", () => {

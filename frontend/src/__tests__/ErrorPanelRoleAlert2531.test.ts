@@ -26,7 +26,7 @@ describe("Error panels use role=alert not role=status (closes #2531)", () => {
   });
 
   it("admin users identity error uses role=alert", () => {
-    const src = readSrc("app/admin/users/page.tsx");
+    const src = readSrc("app/(shell)/admin/users/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t verify your identity");
     expect(role).toBe("alert");
   });

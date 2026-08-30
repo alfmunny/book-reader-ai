@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { getAllAnnotations, getAllInsights, getVocabulary, AnnotationWithBook, BookInsightWithBook, VocabularyWord } from "@/lib/api";
-import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowLeftIcon, ArrowRightIcon, WordIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
+import { NoteIcon, InsightIcon, VocabIcon, EmptyNotesIcon, ArrowRightIcon, WordIcon, AlertCircleIcon, RetryIcon } from "@/components/Icons";
 
 interface BookSummary {
   bookId: number;
@@ -112,12 +112,6 @@ export default function NotesOverviewPage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-amber-700 hover:text-amber-900 text-sm font-medium shrink-0 min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-          >
-            <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
-          </Link>
           <div className="flex-1">
             <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>
           </div>

@@ -11,9 +11,9 @@ function read(rel: string) {
 }
 
 const queueTab = read("../components/QueueTab.tsx");
-const adminUsers = read("../app/admin/users/page.tsx");
-const adminBooks = read("../app/admin/books/page.tsx");
-const adminAudio = read("../app/admin/audio/page.tsx");
+const adminUsers = read("../app/(shell)/admin/users/page.tsx");
+const adminBooks = read("../app/(shell)/admin/books/page.tsx");
+const adminAudio = read("../app/(shell)/admin/audio/page.tsx");
 
 /**
  * Extract the text content of each dismiss button by finding
@@ -40,7 +40,7 @@ describe("CloseIcon replaces × dismiss buttons (closes #1921)", () => {
     }
   });
 
-  it("admin/users dismiss button uses CloseIcon, not ×", () => {
+  it("(shell)/admin/users dismiss button uses CloseIcon, not ×", () => {
     const btns = dismissButtonBodies(adminUsers);
     expect(btns.length).toBeGreaterThan(0);
     for (const btn of btns) {
@@ -49,7 +49,7 @@ describe("CloseIcon replaces × dismiss buttons (closes #1921)", () => {
     }
   });
 
-  it("admin/books dismiss buttons use CloseIcon, not ×", () => {
+  it("(shell)/admin/books dismiss buttons use CloseIcon, not ×", () => {
     const btns = dismissButtonBodies(adminBooks);
     expect(btns.length).toBeGreaterThan(0);
     for (const btn of btns) {
@@ -58,7 +58,7 @@ describe("CloseIcon replaces × dismiss buttons (closes #1921)", () => {
     }
   });
 
-  it("admin/audio dismiss button uses CloseIcon, not ×", () => {
+  it("(shell)/admin/audio dismiss button uses CloseIcon, not ×", () => {
     const btns = dismissButtonBodies(adminAudio);
     expect(btns.length).toBeGreaterThan(0);
     for (const btn of btns) {

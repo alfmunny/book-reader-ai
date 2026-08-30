@@ -53,8 +53,8 @@ describe("loading='lazy' on remote images", () => {
     expect(content).toContain('loading="lazy"');
   });
 
-  it("admin/users page avatar img has loading=lazy", () => {
-    const content = src("app/admin/users/page.tsx");
+  it("(shell)/admin/users page avatar img has loading=lazy", () => {
+    const content = src("app/(shell)/admin/users/page.tsx");
     const idx = content.indexOf("src={u.picture}");
     expect(idx).toBeGreaterThan(-1);
     const window = content.slice(idx, idx + 200);

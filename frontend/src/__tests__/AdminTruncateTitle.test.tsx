@@ -40,7 +40,7 @@ beforeEach(() => {
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 // --- admin/uploads ---
-import UploadsPage from "@/app/admin/uploads/page";
+import UploadsPage from "@/app/(shell)/admin/uploads/page";
 
 const UPLOAD = {
   book_id: 1,
@@ -70,7 +70,7 @@ test("uploads table: truncated title and filename have title attributes", async 
 });
 
 // --- admin/users ---
-import UsersPage from "@/app/admin/users/page";
+import UsersPage from "@/app/(shell)/admin/users/page";
 
 const USER = {
   id: 1,
@@ -97,7 +97,7 @@ test("users list: truncated name and email have title attributes", async () => {
 });
 
 // --- admin/books ---
-import BooksPage from "@/app/admin/books/page";
+import BooksPage from "@/app/(shell)/admin/books/page";
 
 const BOOK_STATS = { total_books: 1, total_translations: 0, failed_translations: 0 };
 const BOOK = {

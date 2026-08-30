@@ -36,12 +36,6 @@ describe("Login, Notes, and Upload page touch targets (closes #836)", () => {
     expect(window).toContain("min-h-[44px]");
   });
 
-  it("Notes Library back button has min-h-[44px]", () => {
-    const idx = notes.indexOf("Library");
-    expect(idx).toBeGreaterThan(-1);
-    const window = notes.slice(Math.max(0, idx - 300), idx + 20);
-    expect(window).toContain("min-h-[44px]");
-  });
 
   it("Upload sign-in CTA button has min-h-[44px]", () => {
     const idx = upload.indexOf("Sign in to upload");

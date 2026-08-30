@@ -8,13 +8,13 @@ function readSrc(rel: string) {
 }
 
 describe("Secondary skeleton/spinner role=status aria accessibility (WCAG 4.1.3)", () => {
-  it("admin/users SpinnerRow has role=status", () => {
-    const src = readSrc("app/admin/users/page.tsx");
+  it("(shell)/admin/users SpinnerRow has role=status", () => {
+    const src = readSrc("app/(shell)/admin/users/page.tsx");
     expect(src).toMatch(/role="status"/);
   });
 
-  it("admin/users SpinnerRow has aria-label for loading", () => {
-    const src = readSrc("app/admin/users/page.tsx");
+  it("(shell)/admin/users SpinnerRow has aria-label for loading", () => {
+    const src = readSrc("app/(shell)/admin/users/page.tsx");
     expect(src).toMatch(/aria-label="[^"]*[Ll]oad[^"]*"/);
   });
 

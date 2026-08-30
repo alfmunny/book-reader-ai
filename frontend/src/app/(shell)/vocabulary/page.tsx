@@ -14,7 +14,7 @@ import {
   VocabularyWord,
   WordDefinition,
 } from "@/lib/api";
-import { EmptyVocabIcon, ArrowLeftIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon, DownloadIcon, ExportIcon } from "@/components/Icons";
+import { EmptyVocabIcon, ArrowRightIcon, FlashcardIcon, ArrowUpRightIcon, AlertCircleIcon, RetryIcon, CloseIcon, DownloadIcon, ExportIcon } from "@/components/Icons";
 import { buildVocabularyMarkdown, VocabExportOptions } from "@/lib/vocabularyMarkdown";
 import { downloadTextFile, slugifyFilename } from "@/lib/download";
 import ExportMenu from "@/components/ExportMenu";
@@ -515,7 +515,7 @@ function VocabularyPageContent() {
                 {" — "}
                 {occ.book_title ? (
                   /* Jump to the sentence and pulse the exact form met in the
-                     text (owner request, 2026-08-26) */
+                    text (owner request, 2026-08-26) */
                   <a
                     href={`/reader/${occ.book_id}?chapter=${occ.chapter_index}&sentence=${encodeURIComponent(occ.sentence_text)}&word=${encodeURIComponent(occ.surface_form ?? f.word)}`}
                     className="italic text-stone-600 hover:text-amber-700 hover:underline transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 rounded"
@@ -543,12 +543,6 @@ function VocabularyPageContent() {
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
-        <Link
-          href="/"
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-        >
-          <ArrowLeftIcon className="w-4 h-4 shrink-0" /> Library
-        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (

@@ -5,9 +5,9 @@ import * as path from "path";
 // WCAG 1.4.3 AA. Closes #1575.
 
 const FILES = [
-  "app/admin/books/page.tsx",
-  "app/admin/audio/page.tsx",
-  "app/admin/users/page.tsx",
+  "app/(shell)/admin/books/page.tsx",
+  "app/(shell)/admin/audio/page.tsx",
+  "app/(shell)/admin/users/page.tsx",
   "app/(shell)/profile/page.tsx",
   "components/QueueTab.tsx",
 ];

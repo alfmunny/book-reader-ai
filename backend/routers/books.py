@@ -621,7 +621,8 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
             "meta": meta,
             "chapter_source": "upload",
             # Uploads are not frozen artifacts, so they carry no role.
-            "chapters": [{"title": r["title"], "text": r["text"], "role": None} for r in chapters_rows],
+            "chapters": [{"title": r["title"], "text": r["text"], "role": None, "part": None}
+                for r in chapters_rows],
         }
 
     if cached and cached.get("text"):
@@ -640,7 +641,8 @@ async def book_chapters(book_id: int = Path(..., ge=1), user: dict | None = Depe
         "book_id": book_id,
         "meta": meta,
         "chapter_source": await get_chapter_source(book_id),
-        "chapters": [{"title": c.title, "text": c.text, "role": c.role} for c in chapters],
+        "chapters": [{"title": c.title, "text": c.text, "role": c.role, "part": c.part}
+            for c in chapters],
     }
 
 

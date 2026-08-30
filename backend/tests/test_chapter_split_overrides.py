@@ -16,6 +16,7 @@ import pytest
 
 import scripts.chapter_split_overrides as overrides_module
 from scripts.chapter_split_overrides import (
+    part_labels,
     apply_overrides,
     forced_source,
     frontmatter_roles,
@@ -269,13 +270,17 @@ def test_hamlet_play_scene_is_whole_and_keeps_the_prologue_cue():
     assert "Is this a prologue, or the posy of a ring?" in joined
 
 
-def test_hamlet_every_act_names_the_scene_it_actually_contains():
+def test_hamlet_every_act_opens_on_a_nameable_scene_one():
     """Regression: the chapter titled 'ACT I' *is* Act I Scene I.
 
     The splitter cut at the 'ACT n' heading, so each act's Scene I was swallowed
-    into a chapter named only for the act. The Contents panel then listed
+    into a chapter named only for the act. The Contents panel listed
     ACT I / SCENE II / SCENE III …, and Scene I appeared nowhere in the play —
     five scenes unreachable by name in a 20-row table of contents.
+
+    #2769 fixed this by putting the act in the title; grouping moved the act to
+    the header. Either way the invariant is the same: the first chapter of every
+    act is named for the scene it holds, and no chapter is left bare.
     """
     artifact = json.loads(HAMLET_ARTIFACT.read_text())
 
@@ -283,23 +288,27 @@ def test_hamlet_every_act_names_the_scene_it_actually_contains():
                  if re.fullmatch(r"ACT [IVX]+", c["title"])]
     assert not bare_acts, f"act chapters still unnamed for their scene: {bare_acts}"
 
-    # Each act opens on its own Scene I, and the title now says so.
+    first_of_act = {}
     for chapter in artifact["chapters"]:
-        if chapter["title"].startswith("ACT "):
-            assert ", SCENE I." in chapter["title"], chapter["title"]
-            heading = next(p for p in chapter["paragraphs"] if p.startswith("SCENE I."))
-            # The title carries the scene's own location, not an invented one.
-            assert chapter["title"].endswith(heading[len("SCENE I. "):]), chapter["title"]
+        first_of_act.setdefault(chapter["part"], chapter)
+    assert len(first_of_act) == 5
+
+    for act, chapter in first_of_act.items():
+        assert chapter["title"].startswith("SCENE I."), f"{act}: {chapter['title']}"
+        heading = next(p for p in chapter["paragraphs"] if p.startswith("SCENE I."))
+        # The title is the scene's own location line, not an invented one.
+        assert chapter["title"] == heading, f"{act}: {chapter['title']!r} vs {heading!r}"
 
 
 def test_hamlet_keeps_all_five_acts_and_twenty_scenes():
-    """The retitle renames; it must not add, drop or reorder a chapter."""
+    """Retitling and grouping rename and label; neither may add, drop or
+    reorder a chapter."""
     artifact = json.loads(HAMLET_ARTIFACT.read_text())
 
     titles = [c["title"] for c in artifact["chapters"]]
     assert len(titles) == 20
     assert [c["index"] for c in artifact["chapters"]] == list(range(20))
-    assert sum(t.startswith("ACT ") for t in titles) == 5
+    assert len({c["part"] for c in artifact["chapters"]}) == 5
 
 
 def test_hamlet_retitles_match_the_declared_overrides():
@@ -476,3 +485,95 @@ def test_moby_dick_etymology_chapter_is_not_marked_apparatus():
     chapters = _artifact(2701)["chapters"]
     assert "role" not in chapters[1]
     assert len(chapters[1]["paragraphs"]) > 50
+
+
+# ── parts (#2745 Phase 2) ────────────────────────────────────────────────────
+
+def test_parts_labels_every_chapter_in_the_declared_range(registry):
+    registry({"parts": [
+        {"label": "ACT I", "from": 0, "to": 1, "expect_first_title": "One"},
+    ]})
+    chapters = [Chapter(title="One", text="a"), Chapter(title="Two", text="b"),
+                Chapter(title="Three", text="c")]
+    assert part_labels(999, chapters) == {0: "ACT I", 1: "ACT I"}
+
+
+def test_parts_leaves_an_undeclared_chapter_ungrouped(registry):
+    """Crime and Punishment's epilogue belongs to no part; absent is the answer,
+    not an invented one-chapter group."""
+    registry({"parts": [
+        {"label": "PART I", "from": 0, "to": 0, "expect_first_title": "One"},
+    ]})
+    chapters = [Chapter(title="One", text="a"), Chapter(title="EPILOGUE", text="b")]
+    assert 1 not in part_labels(999, chapters)
+
+
+def test_parts_abort_when_the_boundary_title_moved(registry):
+    """A shifted split must group nothing rather than group the wrong scenes."""
+    registry({"parts": [
+        {"label": "ACT I", "from": 0, "to": 1, "expect_first_title": "One"},
+    ]})
+    chapters = [Chapter(title="Something else", text="a"), Chapter(title="Two", text="b")]
+    with pytest.raises(SystemExit):
+        part_labels(999, chapters)
+
+
+def test_parts_abort_when_the_range_runs_past_the_split(registry):
+    registry({"parts": [
+        {"label": "ACT I", "from": 0, "to": 9, "expect_first_title": "One"},
+    ]})
+    with pytest.raises(SystemExit):
+        part_labels(999, [Chapter(title="One", text="a")])
+
+
+def test_parts_abort_on_an_inverted_range(registry):
+    registry({"parts": [
+        {"label": "ACT I", "from": 1, "to": 0, "expect_first_title": "Two"},
+    ]})
+    chapters = [Chapter(title="One", text="a"), Chapter(title="Two", text="b")]
+    with pytest.raises(SystemExit):
+        part_labels(999, chapters)
+
+
+def test_parts_abort_when_two_ranges_claim_one_chapter(registry):
+    registry({"parts": [
+        {"label": "ACT I", "from": 0, "to": 1, "expect_first_title": "One"},
+        {"label": "ACT II", "from": 1, "to": 1, "expect_first_title": "Two"},
+    ]})
+    chapters = [Chapter(title="One", text="a"), Chapter(title="Two", text="b")]
+    with pytest.raises(SystemExit):
+        part_labels(999, chapters)
+
+
+def test_unregistered_book_has_no_parts():
+    assert part_labels(424242, [Chapter(title="One", text="a")]) == {}
+
+
+# ── The committed Hamlet artifact carries its acts ───────────────────────────
+
+def test_hamlet_artifact_groups_every_scene_under_an_act():
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+    parts = [c.get("part") for c in artifact["chapters"]]
+    assert all(parts), "every scene belongs to an act"
+    assert parts == (["ACT I"] * 5 + ["ACT II"] * 2 + ["ACT III"] * 4
+                     + ["ACT IV"] * 7 + ["ACT V"] * 2)
+
+
+def test_hamlet_leaf_titles_no_longer_repeat_the_act():
+    """#2769 put the act in the title because the panel was flat. The group
+    header carries it now, so a leaf saying 'ACT I' would say it twice."""
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+    for chapter in artifact["chapters"]:
+        assert not chapter["title"].startswith("ACT "), chapter["title"]
+    # The audited scene location from #2769 survives; only the prefix moved.
+    assert artifact["chapters"][0]["title"] == "SCENE I. Elsinore. A platform before the Castle."
+
+
+def test_hamlet_grouping_moved_no_paragraph():
+    """`part` sits outside content_sha256 and the retitles touch titles only, so
+    every paragraph must be byte-identical to what the zh translation anchored
+    against."""
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+    counts = [len(c["paragraphs"]) for c in artifact["chapters"]]
+    assert len(counts) == 20
+    assert counts[0] == 74, "chapter 0 is what the zh translation anchors to"

@@ -691,6 +691,16 @@ export default function ReaderPage() {
       ? Object.fromEntries(entries as ReadonlyArray<readonly [number, string]>)
       : undefined;
   }, [chapters]);
+  // Part/act grouping (#2745 Phase 2). Same shape and same absent-means-flat
+  // contract as chapterRoles: sixteen of the twenty frozen books have no parts.
+  const chapterParts = useMemo(() => {
+    const entries = chapters
+      .map((c, index) => [index, c.part] as const)
+      .filter(([, part]) => !!part);
+    return entries.length
+      ? Object.fromEntries(entries as ReadonlyArray<readonly [number, string]>)
+      : undefined;
+  }, [chapters]);
   // Which languages have editorial translations at all — shown as chips so
   // nobody has to cycle target languages to discover coverage (owner,
   // 2026-08-27).
@@ -2851,6 +2861,7 @@ export default function ReaderPage() {
                   chapterIndex={chapterIndex}
                   translated={translatedChapters}
                   roles={chapterRoles}
+                  parts={chapterParts}
                   onSelect={(i) => {
                     goToChapter(i);
                     // On mobile the sidebar covers the page, so a pick should
@@ -3112,6 +3123,7 @@ export default function ReaderPage() {
                 chapterIndex={chapterIndex}
                 translated={translatedChapters}
                 roles={chapterRoles}
+                parts={chapterParts}
                 onSelect={(i) => { goToChapter(i); setSidebarOpen(false); }}
               />
             ) : (

@@ -15,6 +15,10 @@ Schema:
         'frontmatter': [
             {'index': int, 'expect_title': str, 'why': str},
         ],
+        'parts': [
+            {'label': str, 'from': int, 'to': int,
+             'expect_first_title': str, 'why': str},
+        ],
         'retitle': [
             {'index': int, 'expect_title': str, 'title': str, 'why': str},
         ],
@@ -51,6 +55,28 @@ by their heading are not: The Great Gatsby's chapter 0 is titled "Table of
 Contents" but holds Fitzgerald's epigraph, and Moby Dick's chapter 1 opens
 with one transcriber's line and then runs 93 paragraphs of the real Etymology
 and Extracts. Marking either would hide the book's own text.
+
+`parts` groups a contiguous run of chapters under a part, act or book, so the
+reader's Contents panel can show the structure the work is built on (#2745
+Phase 2). `label` is shown verbatim from the source — `ACT I`, `PREMIÈRE
+PARTIE`, `PART ONE` — never normalised to English, on the same principle that
+keeps `MOBY-DICK; or, THE WHALE.` untidied. `from` and `to` are inclusive and
+name the corrected split, like `frontmatter`. Chapters in no range are
+ungrouped and render at top level; Crime and Punishment's epilogue belongs to
+no part and gets no entry.
+
+Ranges rather than per-chapter entries because the boundaries *are* the
+declaration: 38 of Crime and Punishment's 42 chapters carry a part, and
+enumerating them one by one would bury the six facts that matter.
+
+`expect_first_title` is verified against the range's first chapter before
+anything is labelled, so a shifted split groups nothing rather than grouping
+the wrong chapters. Like `role`, `part` sits outside `content_sha256` — no
+index moves and no frozen artifact changes identity.
+
+Declare, never derive. Every boundary here is *visible* — Hamlet's `ACT n`
+headings, the numbering resets in Crime and Punishment — and deriving them is
+exactly the mistake this registry exists to prevent.
 
 `retitle` replaces a heading the splitter invented or left as a placeholder
 ("Section 2" over Dracula's prefatory note). It moves nothing — indices and
@@ -202,38 +228,63 @@ OVERRIDES: dict[int, dict] = {
         # index would move the anchors of the zh translation already recorded
         # against chapter 0. Each title takes the scene's own location line
         # verbatim from the chapter's text — nothing is invented.
+        #
+        # #2769 first shipped these as "ACT I, SCENE I. …" because the panel was
+        # flat and the act had nowhere else to live. With `parts` below the act
+        # rides on the group header, so the prefix would read twice; the leaf
+        # keeps the audited scene location and drops it.
         # Audited against Gutenberg #1524, 2026-08-30.
         "retitle": [
             {
                 "index": 0,
                 "expect_title": "ACT I",
-                "title": "ACT I, SCENE I. Elsinore. A platform before the Castle.",
-                "why": "holds Act I Scene I; the bare act heading hid it",
+                "title": "SCENE I. Elsinore. A platform before the Castle.",
+                "why": "holds Act I Scene I; the act now rides on the group header",
             },
             {
                 "index": 5,
                 "expect_title": "ACT II",
-                "title": "ACT II, SCENE I. A room in Polonius’s house.",
-                "why": "holds Act II Scene I; the bare act heading hid it",
+                "title": "SCENE I. A room in Polonius’s house.",
+                "why": "holds Act II Scene I; the act now rides on the group header",
             },
             {
                 "index": 7,
                 "expect_title": "ACT III",
-                "title": "ACT III, SCENE I. A room in the Castle.",
-                "why": "holds Act III Scene I; the bare act heading hid it",
+                "title": "SCENE I. A room in the Castle.",
+                "why": "holds Act III Scene I; the act now rides on the group header",
             },
             {
                 "index": 12,
                 "expect_title": "ACT IV",
-                "title": "ACT IV, SCENE I. A room in the Castle.",
-                "why": "holds Act IV Scene I; the bare act heading hid it",
+                "title": "SCENE I. A room in the Castle.",
+                "why": "holds Act IV Scene I; the act now rides on the group header",
             },
             {
                 "index": 19,
                 "expect_title": "ACT V",
-                "title": "ACT V, SCENE I. A churchyard.",
-                "why": "holds Act V Scene I; the bare act heading hid it",
+                "title": "SCENE I. A churchyard.",
+                "why": "holds Act V Scene I; the act now rides on the group header",
             },
+        ],
+        # Five acts over the 20-chapter corrected split. Boundaries are the
+        # chapters the act headings produced; each act runs to the chapter
+        # before the next act's.
+        "parts": [
+            {"label": "ACT I", "from": 0, "to": 4,
+             "expect_first_title": "SCENE I. Elsinore. A platform before the Castle.",
+             "why": "Act I, five scenes"},
+            {"label": "ACT II", "from": 5, "to": 6,
+             "expect_first_title": "SCENE I. A room in Polonius’s house.",
+             "why": "Act II, two scenes"},
+            {"label": "ACT III", "from": 7, "to": 10,
+             "expect_first_title": "SCENE I. A room in the Castle.",
+             "why": "Act III, four scenes"},
+            {"label": "ACT IV", "from": 11, "to": 17,
+             "expect_first_title": "SCENE I. A room in the Castle.",
+             "why": "Act IV, seven scenes"},
+            {"label": "ACT V", "from": 18, "to": 19,
+             "expect_first_title": "SCENE I. A churchyard.",
+             "why": "Act V, two scenes"},
         ],
         "merge_into_previous": [
             {
@@ -299,6 +350,41 @@ def frontmatter_roles(book_id: int, chapters: list[Chapter]) -> dict[int, str]:
         _check(book_id, chapters, index, entry["expect_title"], allow_first=True)
         roles[index] = "frontmatter"
     return roles
+
+
+def part_labels(book_id: int, chapters: list[Chapter]) -> dict[int, str]:
+    """Return {index: part label} for this book's declared part ranges.
+
+    Indices name the corrected split, after retitles and merges — the same
+    position `frontmatter_roles` occupies. A chapter in no declared range is
+    absent from the result and renders ungrouped.
+    """
+    spec = OVERRIDES.get(book_id)
+    if not spec:
+        return {}
+    parts: dict[int, str] = {}
+    for entry in spec.get("parts", []):
+        first, last, label = entry["from"], entry["to"], entry["label"]
+        if last < first:
+            raise SystemExit(
+                f"book {book_id}: part {label!r} has from={first} after "
+                f"to={last} — re-audit scripts/chapter_split_overrides.py."
+            )
+        _check(book_id, chapters, first, entry["expect_first_title"], allow_first=True)
+        if last >= len(chapters):
+            raise SystemExit(
+                f"book {book_id}: part {label!r} ends at {last} but the split "
+                f"has {len(chapters)} chapters — the split moved; re-audit "
+                f"scripts/chapter_split_overrides.py before freezing."
+            )
+        for index in range(first, last + 1):
+            if index in parts:
+                raise SystemExit(
+                    f"book {book_id}: chapter {index} is claimed by both "
+                    f"{parts[index]!r} and {label!r} — parts may not overlap."
+                )
+            parts[index] = label
+    return parts
 
 
 def _merges(spec: dict) -> list[dict]:

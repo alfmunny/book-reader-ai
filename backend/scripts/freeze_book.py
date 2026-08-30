@@ -56,6 +56,7 @@ sys.path.insert(0, str(__file__).rsplit("/backend/", 1)[0] + "/backend")
 
 from scripts.chapter_split_overrides import (  # noqa: E402
     apply_overrides,
+    part_labels,
     forced_source,
     frontmatter_roles,
     translation_index_map,
@@ -343,9 +344,13 @@ async def freeze(book_id: int, audited_by: str, *, force: bool = False,
     # It sits outside content_sha256 by design, so marking a chapter moves no
     # anchor and leaves the frozen split's identity unchanged.
     roles = frontmatter_roles(book_id, raw_chapters)
+    # Part/act grouping, declared per book (#2745 Phase 2). Outside
+    # content_sha256 for the same reason as `role`.
+    parts = part_labels(book_id, raw_chapters)
     chapters = [
         {"index": i, "title": ch.title, "paragraphs": paragraphs_of(ch.text),
-         **({"role": roles[i]} if i in roles else {})}
+         **({"role": roles[i]} if i in roles else {}),
+         **({"part": parts[i]} if i in parts else {})}
         for i, ch in enumerate(raw_chapters)
     ]
 

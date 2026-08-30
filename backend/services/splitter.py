@@ -43,6 +43,12 @@ class Chapter:
     # translator's note; None for body text (#2755). Only frozen books
     # carry labels — a runtime split has no artifact to read them from.
     role: str | None = None
+    # The part, act or book this chapter belongs to, shown verbatim from the
+    # source ("ACT I", "PREMIÈRE PARTIE"). None for a chapter that belongs to
+    # no part — Crime and Punishment's epilogue, or any book without parts
+    # (#2745 Phase 2). Declared per book, never inferred; like `role` it sits
+    # outside content_sha256, so labelling moves no anchor.
+    part: str | None = None
 
 
 # ── Keyword headings ─────────────────────────────────────────────────────

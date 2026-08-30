@@ -82,19 +82,20 @@ export default function TableOfContents({
     chapters.forEach((_, index) => {
       if (frontMatter.has(index)) return;
       const label = parts?.[index];
-      const kind = label ? "part" : "loose";
+      // Compared against a literal in each arm so the union narrows — testing
+      // `current.kind === kind` against a variable does not.
       const continues =
         current !== null &&
-        current.kind === kind &&
-        (kind === "loose" || current.label === label);
+        (label
+          ? current.kind === "part" && current.label === label
+          : current.kind === "loose");
       if (!continues) {
-        current =
-          kind === "part"
-            ? { kind: "part", label: label as string, indices: [] }
-            : { kind: "loose", indices: [] };
+        current = label
+          ? { kind: "part", label, indices: [] }
+          : { kind: "loose", indices: [] };
         out.push(current);
       }
-      current!.indices.push(index);
+      (current as Section).indices.push(index);
     });
     return out;
   }, [chapters, frontMatter, parts]);

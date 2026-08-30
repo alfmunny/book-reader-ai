@@ -1136,6 +1136,17 @@ export default function StoryPanel({
                 <time title={exactTime(detailComment.created_at)} className="text-[11px] text-stone-400">{timeAgo(detailComment.created_at)}</time>
               )}
             </div>
+            {/* The list row badges private notes — the detail must too
+                (owner, 2026-08-30). */}
+            {detailComment.visibility === "private" && (
+              <span
+                data-testid="comment-detail-private"
+                title="Only you can see this note"
+                className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500 text-[11px]"
+              >
+                private
+              </span>
+            )}
             {detailComment.user_id === currentUserId && !editingComment && (
               <button
                 onClick={() => {

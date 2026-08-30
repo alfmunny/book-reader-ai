@@ -957,3 +957,26 @@ test("the reply box has no visibility choice — it inherits the note's", async 
     version, "回复", 141, "private", undefined,
   ));
 });
+
+test("a private note is badged in its detail too, and the badge follows an edit", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 151, user_id: 9, body: "只给自己看", created_at: "", author_name: "Me", visibility: "private" }],
+  });
+  (api.updateStoryComment as jest.Mock).mockResolvedValue({
+    id: 151, user_id: 9, body: "只给自己看", created_at: "", author_name: "Me", visibility: "public",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Me" }));
+  expect(screen.getByTestId("comment-detail-private")).toHaveTextContent("private");
+  // Making it public in place drops the badge
+  fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+  fireEvent.change(screen.getByLabelText("Edit note visibility"), { target: { value: "public" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(screen.queryByTestId("comment-detail-private")).toBeNull());
+});

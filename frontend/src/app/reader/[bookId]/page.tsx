@@ -925,6 +925,41 @@ export default function ReaderPage() {
     setPageIndex(next);
   }, [pageIndex, pageCount, perView, chapterIndex, chapters.length]);
 
+  // Bring an element into view. Scrolling does nothing against a translated
+  // column, so in page mode "into view" means turning to the page whose
+  // column holds it (collision 2).
+  const revealElement = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    if (readerMode !== "page") {
+      el.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    const flow = flowRef.current;
+    const step = colStep.current;
+    if (!flow || !step) return;
+    // The flow's own rect moves with the transform, so the difference between
+    // the two rects is already in untranslated flow coordinates — adding the
+    // current page offset here would double-count it.
+    const x = el.getBoundingClientRect().left - flow.getBoundingClientRect().left;
+    const column = Math.floor(x / step);
+    const leaf = perView * Math.floor(column / perView);
+    const target = Math.max(0, Math.min(leaf, pageCount - 1));
+    if (target !== pageIndex) setPageIndex(target);
+  }, [readerMode, pageIndex, perView, pageCount]);
+
+  const revealSegment = useCallback((seg: number) => {
+    revealElement(document.querySelector<HTMLElement>(`[data-seg="${seg}"]`));
+  }, [revealElement]);
+
+  // How far through the current chapter the reader is, 0–1. Scroll mode reads
+  // it off the scrollbar; page mode off the page position, because a column
+  // layout never scrolls and would otherwise freeze the bar (collision 1).
+  const chapterFraction = useMemo(() => {
+    if (readerMode !== "page") return scrollProgress / 100;
+    if (pageCount <= perView) return 1;
+    return Math.min(1, (pageIndex + perView) / pageCount);
+  }, [readerMode, scrollProgress, pageIndex, pageCount, perView]);
+
   // Track scroll progress
   useEffect(() => {
     const el = document.getElementById("reader-scroll");
@@ -1214,7 +1249,7 @@ export default function ReaderPage() {
           const cur = segs.indexOf(selectedSentenceFlatIdx ?? segs[0]);
           const next = segs[Math.max(0, cur - 1)];
           setSelectedSentenceFlatIdx(next);
-          document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          revealSegment(next);
           return;
         }
         if (e.key === "ArrowDown" || e.key === "j" || e.key === "J") {
@@ -1225,7 +1260,7 @@ export default function ReaderPage() {
           const cur = segs.indexOf(selectedSentenceFlatIdx ?? -1);
           const next = segs[Math.min(segs.length - 1, cur + 1)];
           setSelectedSentenceFlatIdx(next);
-          document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          revealSegment(next);
           return;
         }
         if (e.key === "w" || e.key === "W") {
@@ -1277,7 +1312,7 @@ export default function ReaderPage() {
           if (segs.length > 0) {
             setSentenceSelectMode(true);
             setSelectedSentenceFlatIdx(segs[0]);
-            document.querySelector(`[data-seg="${segs[0]}"]`)?.scrollIntoView({ block: "nearest" });
+            revealSegment(segs[0]);
           }
         }
       } else if (e.key === "ArrowLeft" && readerMode === "page") {
@@ -1329,7 +1364,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session, readerMode, turnPage]);
+  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session, readerMode, turnPage, revealSegment]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);
@@ -2011,13 +2046,13 @@ export default function ReaderPage() {
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}
+          aria-valuenow={Math.round(((chapterIndex + chapterFraction) / chapters.length) * 100)}
           aria-label="Reading progress"
-          title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}
+          title={`${Math.round(((chapterIndex + chapterFraction) / chapters.length) * 100)}% through book`}
         >
           <div
             className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
-            style={{ width: `${((chapterIndex + scrollProgress / 100) / chapters.length) * 100}%` }}
+            style={{ width: `${((chapterIndex + chapterFraction) / chapters.length) * 100}%` }}
           />
         </div>
       )}
@@ -2195,6 +2230,8 @@ export default function ReaderPage() {
                   onParagraphVisible={handleParagraphVisible}
                   onActiveParagraphChange={handleActiveParagraphChange}
                   onParagraphTimingsUpdate={setParagraphTimings}
+                  paginated={readerMode === "page"}
+                  onFollowSegment={revealElement}
                 />
                 </div>
                 </div>

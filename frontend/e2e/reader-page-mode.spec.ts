@@ -232,3 +232,34 @@ test("entering a chapter cuts to the page — it does not sweep across the chapt
   const between = offsets.filter((x) => x < 0 && x > dest);
   expect(between).toHaveLength(0);
 });
+
+test("the book progress bar advances as pages turn", async ({ page }) => {
+  await enterPageMode(page);
+  const bar = page.getByRole("progressbar").first();
+  const read = async () => Number(await bar.getAttribute("aria-valuenow"));
+
+  const start = await read();
+  await page.getByRole("button", { name: "Next page" }).click();
+  await page.getByRole("button", { name: "Next page" }).click();
+  expect(await read()).toBeGreaterThan(start);
+
+  // …and reaches the end of the chapter on its last leaf
+  await toLastLeaf(page);
+  const { total } = await readPos(page);
+  const per = await perView(page);
+  if (total > per) expect(await read()).toBeGreaterThan(start);
+});
+
+test("keyboard sentence navigation turns the page to reach its sentence", async ({ page }) => {
+  await enterPageMode(page);
+  // Jump to the far end of the chapter, then start sentence-select mode: the
+  // first sentence lives on page 1, so the reader must turn back to it.
+  await toLastLeaf(page);
+  expect((await readPos(page)).first).toBeGreaterThan(1);
+
+  // Focus the container rather than clicking the flow, which is mid-turn and
+  // therefore never "stable" for Playwright.
+  await page.evaluate(() => document.getElementById("reader-scroll")?.focus());
+  await page.keyboard.press("n");
+  await expect.poll(async () => (await readPos(page)).first).toBe(1);
+});

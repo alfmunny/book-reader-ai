@@ -299,6 +299,10 @@ interface Props {
    * in-flight chapter generation.
    */
   disabled?: boolean;
+  /** Page mode: scrolling cannot reveal a segment in a translated column, so
+   *  the reader turns the page instead (collision 2, reading-modes.md). */
+  paginated?: boolean;
+  onFollowSegment?: (el: HTMLElement) => void;
   /**
    * When provided, translations are rendered alongside the original text.
    * Each entry corresponds to a paragraph in the chapter (same indices as
@@ -625,6 +629,8 @@ export default function SentenceReader({
   onParagraphVisible,
   onActiveParagraphChange,
   onParagraphTimingsUpdate,
+  paginated = false,
+  onFollowSegment,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -718,6 +724,10 @@ export default function SentenceReader({
   useEffect(() => {
     if (currentIdx < 0 || !isPlaying || !activeRef.current) return;
     const el = activeRef.current;
+    if (paginated && onFollowSegment) {
+      onFollowSegment(el);
+      return;
+    }
     const container = document.getElementById("reader-scroll");
     if (!container) {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -733,7 +743,7 @@ export default function SentenceReader({
         behavior: "smooth",
       });
     }
-  }, [currentIdx, isPlaying]);
+  }, [currentIdx, isPlaying, paginated, onFollowSegment]);
 
   // Expose paragraph timings to parent whenever paragraphs recompute (chunks load)
   useEffect(() => {
@@ -803,11 +813,13 @@ export default function SentenceReader({
     const scroll = setTimeout(() => {
       // Only scroll if this effect's target is still the current flash target
       const el = containerRef.current?.querySelector("[data-jump-target]") as HTMLElement | null;
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (!el) return;
+      if (paginated && onFollowSegment) onFollowSegment(el);
+      else el.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
     const clear = setTimeout(() => setFlashTarget((cur) => cur === target ? null : cur), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
-  }, [scrollTargetSentence]);
+  }, [scrollTargetSentence, paginated, onFollowSegment]);
 
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";

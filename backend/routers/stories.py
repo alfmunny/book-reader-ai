@@ -25,6 +25,13 @@ from services.db import (
     create_story_comment,
     list_story_comments,
     delete_story_comment,
+    update_story_comment,
+    create_editorial_comment,
+    list_editorial_comments,
+    create_session_paragraph_comment,
+    list_session_paragraph_comments,
+    get_translation_session_any,
+    count_paragraph_notes,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -50,6 +57,35 @@ class StoryCreate(BaseModel):
 
 class CommentCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+    visibility: Literal["public", "private"] = "public"
+    quote: str | None = Field(default=None, max_length=1000)
+
+
+class SessionParagraphCommentCreate(BaseModel):
+    session_id: int = Field(ge=1)
+    chapter_index: int = Field(ge=0)
+    paragraph_index: int = Field(ge=0)
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+    visibility: Literal["public", "private"] = "public"
+    quote: str | None = Field(default=None, max_length=1000)
+
+
+class CommentUpdate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    visibility: Literal["public", "private"] | None = None
+
+
+class EditorialCommentCreate(BaseModel):
+    book_id: int = Field(ge=1)
+    target_language: str = Field(min_length=2, max_length=8)
+    chapter_index: int = Field(ge=0)
+    paragraph_index: int = Field(ge=0)
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+    visibility: Literal["public", "private"] = "public"
+    quote: str | None = Field(default=None, max_length=1000)
 
 
 async def _require_book(book_id: int, user: dict) -> dict:
@@ -151,6 +187,100 @@ async def unfollow(user_id: int = Path(ge=1), user: dict = Depends(get_current_u
     return {"ok": True}
 
 
+async def _readable_session(session_id: int, user: dict) -> dict:
+    """A version's notes are visible to its owner, and to everyone once the
+    version is public."""
+    session = await get_translation_session_any(session_id)
+    if not session or (session["user_id"] != user["id"] and session.get("status") != "public"):
+        raise HTTPException(status_code=404, detail="Version not found")
+    await _require_book(session["book_id"], user)
+    return session
+
+
+@router.get("/comments/counts")
+async def paragraph_note_counts(
+    chapter_index: int = Query(ge=0),
+    session_id: int | None = Query(default=None, ge=1),
+    book_id: int | None = Query(default=None, ge=1),
+    target_language: str | None = Query(default=None, min_length=2, max_length=8),
+    user: dict = Depends(get_current_user),
+):
+    """Per-paragraph note counts for a chapter — one call, drives the
+    reading-view note marker."""
+    if session_id is not None:
+        await _readable_session(session_id, user)
+        counts = await count_paragraph_notes(chapter_index, user["id"], session_id=session_id)
+    else:
+        if book_id is None or not target_language:
+            raise HTTPException(status_code=422, detail="book_id and target_language are required without session_id.")
+        await _require_book(book_id, user)
+        counts = await count_paragraph_notes(
+            chapter_index, user["id"], book_id=book_id, target_language=target_language,
+        )
+    return {"counts": {str(k): v for k, v in counts.items()}}
+
+
+@router.get("/comments/session")
+async def session_paragraph_comments(
+    session_id: int = Query(ge=1),
+    chapter_index: int = Query(ge=0),
+    paragraph_index: int = Query(ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Notes on ONE version's rendering of a paragraph (owner, 2026-08-30)."""
+    await _readable_session(session_id, user)
+    return {"comments": await list_session_paragraph_comments(session_id, chapter_index, paragraph_index, user["id"])}
+
+
+@router.post("/comments/session")
+async def add_session_paragraph_comment(
+    req: SessionParagraphCommentCreate, user: dict = Depends(get_current_user),
+):
+    await _readable_session(req.session_id, user)
+    return await create_session_paragraph_comment(
+        req.session_id, req.chapter_index, req.paragraph_index,
+        user["id"], req.body.strip(), req.parent_id, req.visibility,
+        (req.quote or "").strip() or None,
+    )
+
+
+@router.get("/comments/editorial")
+async def editorial_comments(
+    book_id: int = Query(ge=1),
+    target_language: str = Query(min_length=2, max_length=8),
+    chapter_index: int = Query(ge=0),
+    paragraph_index: int = Query(ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Comments anchored on an editorial paragraph (owner design,
+    2026-08-30: every displayed translation paragraph is an anchor)."""
+    await _require_book(book_id, user)
+    return {"comments": await list_editorial_comments(book_id, target_language, chapter_index, paragraph_index, user["id"])}
+
+
+@router.post("/comments/editorial")
+async def add_editorial_comment(req: EditorialCommentCreate, user: dict = Depends(get_current_user)):
+    await _require_book(req.book_id, user)
+    return await create_editorial_comment(
+        req.book_id, req.target_language, req.chapter_index, req.paragraph_index,
+        user["id"], req.body.strip(), req.parent_id, req.visibility,
+        (req.quote or "").strip() or None,
+    )
+
+
+@router.patch("/comments/{comment_id}")
+async def edit_comment(
+    req: CommentUpdate,
+    comment_id: int = Path(ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Edit your own note or reply (owner, 2026-08-30)."""
+    updated = await update_story_comment(comment_id, user["id"], req.body.strip(), req.visibility)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return updated
+
+
 @router.delete("/comments/{comment_id}")
 async def remove_comment(comment_id: int = Path(ge=1), user: dict = Depends(get_current_user)):
     if not await delete_story_comment(comment_id, user["id"], is_admin=user.get("role") == "admin"):
@@ -175,7 +305,10 @@ async def add_comment(
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     await _require_book(story["book_id"], user)
-    return await create_story_comment(story_id, user["id"], req.body.strip())
+    return await create_story_comment(
+        story_id, user["id"], req.body.strip(), req.parent_id, req.visibility,
+        (req.quote or "").strip() or None,
+    )
 
 
 @router.get("/{story_id}/comments")
@@ -184,4 +317,4 @@ async def get_comments(story_id: int = Path(ge=1), user: dict = Depends(get_curr
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
     await _require_book(story["book_id"], user)
-    return {"comments": await list_story_comments(story_id)}
+    return {"comments": await list_story_comments(story_id, user["id"])}

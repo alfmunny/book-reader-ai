@@ -324,14 +324,23 @@ interface Props {
   /** Locks all per-paragraph actions (e.g. while a chapter run is active). */
   actionsDisabled?: boolean;
   onTranslateParagraph?: (paragraphIdx: number) => void;
-  onEditParagraph?: (paragraphIdx: number) => void;
-  onDeleteParagraph?: (paragraphIdx: number) => void;
-  /** Share this paragraph's rendering as a story (session mode, #2752). */
-  onShareParagraph?: (paragraphIdx: number) => void;
-  /** paragraph index → number of shares anchored there. Markers render only
-   *  when the reader opted in via "Show others' shares" (parent gates this). */
-  storyCounts?: Record<number, number>;
-  onOpenStories?: (paragraphIdx: number) => void;
+
+  /** Paragraphs that have community translation posts. Their TRANSLATION
+   *  text gets the dashed underline (same sign language as shared notes)
+   *  and becomes the tap target opening the posts dialog — the entry
+   *  point that works in Editorial mode too (owner, 2026-08-29). */
+  postParagraphs?: Set<number>;
+  /** Paragraphs carrying notes on the rendering being read. Marker styles
+   *  consolidate (owner, 2026-08-30): solid = notes, dashed = other
+   *  translations, double = both. Clicking opens the matching tab. */
+  notedParagraphs?: Set<number>;
+  onOpenPosts?: (paragraphIdx: number, position: { x: number; y: number }, tab: "notes" | "translations") => void;
+  /** Shared NOTE anchors (sentence-level, WeRead pattern). Marked with a
+   *  dashed amber underline — deliberately distinct from the dotted vocab
+   *  underline — plus a small superscript count dot that opens the panel,
+   *  so plain sentence clicks keep driving TTS seek. */
+  sharedNotes?: Array<{ sentenceText: string; count: number }>;
+  onSharedNotesClick?: (sentenceText: string, position: { x: number; y: number }) => void;
   /** Sentence text to scroll to and briefly highlight. */
   scrollTargetSentence?: string;
   /**
@@ -593,11 +602,11 @@ export default function SentenceReader({
   translatingParagraphs,
   actionsDisabled = false,
   onTranslateParagraph,
-  onEditParagraph,
-  onDeleteParagraph,
-  onShareParagraph,
-  storyCounts,
-  onOpenStories,
+  postParagraphs,
+  notedParagraphs,
+  onOpenPosts,
+  sharedNotes,
+  onSharedNotesClick,
   onAnnotationClick,
   chapterIndex = 0,
   annotations,
@@ -834,6 +843,48 @@ export default function SentenceReader({
     return map;
   }, [annotations, allSegments]);
 
+  // Shared-note anchors resolve to ONE segment each — the first match, with
+  // the same priority ladder annotations use (exact > word-boundary >
+  // substring). Pure text containment marked every repeated verse line with
+  // the same note (owner bug report, 2026-08-27).
+  const sharedNotesByFlatIdx = useMemo(() => {
+    const map = new Map<number, number>();
+    if (!sharedNotes?.length) return map;
+    const ladder = (text: string) =>
+      allSegments.find((s) => s.text === text)
+      ?? allSegments.find((s) => wordBoundaryIndexOf(s.text, text) >= 0)
+      ?? allSegments.find((s) => s.text.includes(text))
+      ?? allSegments.find((s) => text.includes(s.text));
+    for (const sn of sharedNotes) {
+      // A multi-sentence anchor marks its WHOLE contiguous section (owner,
+      // 2026-08-28): resolve the span start by the ladder, then extend
+      // forward while following segments still sit inside the anchor text.
+      // Contiguous extension only — distant identical sentences stay clean.
+      const covered = new Set<number>();
+      for (const piece of sn.sentenceText.split(/\n+/).map((t) => t.trim()).filter(Boolean)) {
+        const start = ladder(piece);
+        if (!start) continue;
+        covered.add(start.flatIdx);
+        // Consume the anchor text sequentially: extend only while its
+        // REMAINING text continues with the next segment — an adjacent
+        // identical sentence outside the anchor never gets swallowed.
+        const startText = start.text.trim();
+        const pos = piece.indexOf(startText);
+        let rest = pos >= 0 ? piece.slice(pos + startText.length).trim() : "";
+        let i = allSegments.indexOf(start) + 1;
+        while (rest && i < allSegments.length) {
+          const t = allSegments[i].text.trim();
+          if (!t || !rest.startsWith(t)) break;
+          covered.add(allSegments[i].flatIdx);
+          rest = rest.slice(t.length).trim();
+          i++;
+        }
+      }
+      for (const f of covered) map.set(f, (map.get(f) ?? 0) + sn.count);
+    }
+    return map;
+  }, [sharedNotes, allSegments]);
+
   // Long-press cancel (shared across segments)
   function cancelLongPress() {
     if (longPressTimer.current) {
@@ -852,26 +903,6 @@ export default function SentenceReader({
 
   // Session-mode chrome for one paragraph's translation cell: provenance
   // chips + actions when translated, an explicit placeholder when not.
-  // WeRead-style margin marker: a muted count at the paragraph's end that
-  // expands the inline story panel (design: user-translations.md phase 2).
-  const renderStoryMarker = (paraIdx: number) => {
-    const count = storyCounts?.[paraIdx] ?? 0;
-    if (!count || !onOpenStories) return null;
-    return (
-      <button
-        onClick={() => onOpenStories(paraIdx)}
-        data-testid={`story-marker-${paraIdx}`}
-        aria-label={`${count} share${count === 1 ? "" : "s"} on paragraph ${paraIdx + 1}`}
-        className="mt-1 inline-flex items-center gap-1 text-[11px] text-stone-400 hover:text-amber-700 min-h-[44px] md:min-h-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-      >
-        <svg viewBox="0 0 16 16" className="w-3 h-3" fill="currentColor" aria-hidden="true">
-          <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8.4L5 13.8a.5.5 0 0 1-.8-.4V11H3a1 1 0 0 1-1-1V3Z" />
-        </svg>
-        {count}
-      </button>
-    );
-  };
-
   const renderSessionExtras = (paraIdx: number, hasText: boolean) => {
     if (!sessionMode) return null;
     const meta = translationMeta?.[paraIdx];
@@ -910,36 +941,6 @@ export default function SentenceReader({
             {busy ? "Translating…" : "Retranslate"}
           </button>
         )}
-        {onEditParagraph && (
-          <button
-            onClick={() => onEditParagraph(paraIdx)}
-            disabled={actionsDisabled}
-            aria-label={`Edit translation of paragraph ${paraIdx + 1}`}
-            className="text-[11px] text-stone-600 hover:text-stone-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-          >
-            Edit
-          </button>
-        )}
-        {onDeleteParagraph && (
-          <button
-            onClick={() => onDeleteParagraph(paraIdx)}
-            disabled={actionsDisabled}
-            aria-label={`Delete translation of paragraph ${paraIdx + 1}`}
-            className="text-[11px] text-red-600 hover:text-red-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
-          >
-            Delete
-          </button>
-        )}
-        {onShareParagraph && (
-          <button
-            onClick={() => onShareParagraph(paraIdx)}
-            disabled={actionsDisabled}
-            aria-label={`Share translation of paragraph ${paraIdx + 1}`}
-            className="text-[11px] text-amber-700 hover:text-amber-800 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-          >
-            Share
-          </button>
-        )}
       </div>
     );
   };
@@ -959,6 +960,52 @@ export default function SentenceReader({
         // can pair with the right entry in translations[].
         textParaIdx++;
         const translationText = translations?.[textParaIdx];
+
+        // Translation paragraphs are SELECTED, not clicked (owner,
+        // 2026-08-30: clicking the whole section was far too broad) — the
+        // selection toolbar reads data-translation-para and offers
+        // Read + Note. The dashed underline stays a community marker.
+        // textParaIdx is a mutable loop counter — freeze it per paragraph.
+        const postParaIdx = textParaIdx;
+        const hasPosts = !!postParagraphs?.has(postParaIdx);
+        const hasNotes = !!notedParagraphs?.has(postParaIdx);
+        const openTab: "notes" | "translations" = hasNotes ? "notes" : "translations";
+        const marked = hasPosts || hasNotes;
+        // The paragraph tag lives on the <p> (the selection toolbar walks
+        // ancestors); the marker + click live on an INLINE span so the hit
+        // area hugs the words instead of the whole line box (owner,
+        // 2026-08-30: the pointer showed up beside the sentence).
+        const paraProps = { "data-translation-para": postParaIdx };
+        const postProps = {
+          "data-testid": `post-underline-${postParaIdx}`,
+          ...(marked && onOpenPosts
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                "aria-label": `${hasNotes ? "Notes" : "Shared translations"} on paragraph ${postParaIdx + 1}. Press Enter to open.`,
+                title: hasNotes && hasPosts
+                  ? "Notes and other translations"
+                  : hasNotes ? "Notes on this translation" : "Other translations of this paragraph",
+                onClick: (e: React.MouseEvent) => {
+                  // A click that ends a text selection must not hijack it
+                  if (window.getSelection()?.toString().length) return;
+                  onOpenPosts!(postParaIdx, { x: e.clientX, y: e.clientY }, openTab);
+                },
+                onKeyDown: (e: React.KeyboardEvent) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  onOpenPosts!(postParaIdx, { x: rect.left + rect.width / 2, y: rect.bottom }, openTab);
+                },
+              }
+            : {}),
+        };
+        // One underline, three states — notes, other translations, or both
+        const postClass = marked
+          ? ` underline decoration-amber-300 decoration-1 underline-offset-4 cursor-pointer rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400${
+              hasNotes && hasPosts ? " decoration-double" : hasNotes ? " decoration-solid" : " decoration-dashed"
+            }`
+          : "";
 
         // Helper: pick the className for a segment span
         const segClass = (seg: { flatIdx: number; chunkIdx: number }): string => {
@@ -1055,19 +1102,28 @@ export default function SentenceReader({
           // with a note" — multi-note rendering is a separate follow-up.
           const flashClass = isJumpTarget ? "ring-2 ring-amber-400 bg-amber-50" : "";
           const selectedClass = selectedSentenceFlatIdx === seg.flatIdx ? "ring-2 ring-blue-500 bg-blue-50 rounded" : "";
+          // Shared notes anchored on exactly this segment (position-resolved).
+          const segSharedCount = sharedNotesByFlatIdx.get(seg.flatIdx) ?? 0;
+          const sharedClass = segSharedCount > 0
+            ? "underline decoration-dashed decoration-amber-300 decoration-1 underline-offset-4"
+            : "";
           // Keyboard accessibility for annotated segments (WCAG 2.1.1 / #2553):
           // A span with an existing annotation is an interactive control — keyboard
           // users must be able to focus it and activate it to edit or delete it.
-          const isAnnotationInteractive = !!(showAnnotations && fullSegmentAnnotation && onAnnotationClick);
+          // The shared-notes panel is the destination for a marked sentence,
+          // EVEN when the reader has their own annotation on it (owner,
+          // 2026-08-28) — the pinned "My note" card carries the edit action.
+          const isSharedInteractive = segSharedCount > 0 && !!onSharedNotesClick;
+          const isAnnotationInteractive = !isSharedInteractive && !!(showAnnotations && fullSegmentAnnotation && onAnnotationClick);
           return (
             <span
               key={seg.flatIdx}
               ref={active ? (el) => { activeRef.current = el; } : undefined}
               data-seg={seg.flatIdx}
               data-jump-target={isJumpTarget ? "true" : undefined}
-              role={isAnnotationInteractive ? "button" : undefined}
-              tabIndex={isAnnotationInteractive ? 0 : undefined}
-              aria-label={isAnnotationInteractive ? (segAnns.length > 1 ? `${segAnns.length} annotations on: ${seg.text.slice(0, 80)}. Press Enter to edit first annotation.` : `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.`) : undefined}
+              role={isAnnotationInteractive || isSharedInteractive ? "button" : undefined}
+              tabIndex={isAnnotationInteractive || isSharedInteractive ? 0 : undefined}
+              aria-label={isAnnotationInteractive ? (segAnns.length > 1 ? `${segAnns.length} annotations on: ${seg.text.slice(0, 80)}. Press Enter to edit first annotation.` : `Annotated sentence: ${seg.text.slice(0, 80)}. Press Enter to edit.`) : isSharedInteractive ? `Shared notes on: ${seg.text.slice(0, 80)}. Press Enter to view.` : undefined}
               onKeyDown={isAnnotationInteractive ? (e: React.KeyboardEvent<HTMLSpanElement>) => {
                 if (e.key !== "Enter" && e.key !== " ") return;
                 e.preventDefault();
@@ -1076,6 +1132,11 @@ export default function SentenceReader({
                   x: rect.left + rect.width / 2,
                   y: rect.bottom,
                 });
+              } : isSharedInteractive ? (e: React.KeyboardEvent<HTMLSpanElement>) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLSpanElement).getBoundingClientRect();
+                onSharedNotesClick!(seg.text, { x: rect.left + rect.width / 2, y: rect.bottom });
               } : undefined}
               onClick={(e) => {
                 if (disabled || !isSegmentLoaded(seg)) return;
@@ -1085,6 +1146,10 @@ export default function SentenceReader({
                 // event target to the nearest [data-ann-id]; a click that does
                 // not land on any annotation span falls through to the
                 // segment-click path so a fresh selection can begin.
+                if (isSharedInteractive) {
+                  onSharedNotesClick!(seg.text, { x: e.clientX, y: e.clientY });
+                  return;
+                }
                 if (showAnnotations && onAnnotationClick) {
                   const annHost = (e.target as HTMLElement | null)?.closest?.("[data-ann-id]") as HTMLElement | null;
                   if (annHost) {
@@ -1107,7 +1172,7 @@ export default function SentenceReader({
               onPointerUp={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
               onPointerCancel={(onWordTap || onAnnotate) ? cancelLongPress : undefined}
               onPointerMove={(onWordTap || onAnnotate) ? handlePointerMove : undefined}
-              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${selectedClass} ${extraClass}`}
+              className={`rounded px-0.5 -mx-0.5 transition-colors duration-200 ${segClass(seg)} ${annotationClass} ${flashClass} ${selectedClass} ${sharedClass} ${extraClass}`}
             >
               {wordSelectMode && seg.flatIdx === selectedSentenceFlatIdx
                 ? buildWordSelectContent(seg.text, selectedWordIdx)
@@ -1180,14 +1245,13 @@ export default function SentenceReader({
                 <div className={`border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6${translationSelectClass}`} data-translation="true">
                   {translationText ? (
                     <>
-                      <p lang={translationLang} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
-                        {translationText}
+                      <p lang={translationLang} {...paraProps} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
+                        <span {...postProps} className={postClass.trimStart()}>{translationText}</span>
                       </p>
                       {renderSessionExtras(textParaIdx, true)}
-                      {renderStoryMarker(textParaIdx)}
                     </>
                   ) : sessionMode ? (
-                    <>{renderSessionExtras(textParaIdx, false)}{renderStoryMarker(textParaIdx)}</>
+                    renderSessionExtras(textParaIdx, false)
                   ) : translationLoading ? (
                     <div role="status" aria-label="Loading translation">
                       <span className="sr-only">Loading translation...</span>
@@ -1220,12 +1284,12 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p lang={translationLang} data-translation="true" className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}`}>
-                {translationText}
+              <p lang={translationLang} data-translation="true" {...paraProps} className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}`}>
+                <span {...postProps} className={postClass.trimStart()}>{translationText}</span>
               </p>
             )}
             {sessionMode && (
-              <div className="mt-1">{renderSessionExtras(textParaIdx, !!translationText)}{renderStoryMarker(textParaIdx)}</div>
+              <div className="mt-1">{renderSessionExtras(textParaIdx, !!translationText)}</div>
             )}
           </div>
         );

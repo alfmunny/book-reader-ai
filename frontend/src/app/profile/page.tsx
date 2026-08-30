@@ -700,10 +700,33 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* Community shares (phase 2, #2752): profile-level opt-in; the
+              reader's toolbar 'Shares on/off' button flips the same
+              setting in-session. */}
+          <div className="mt-5">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.showOthersShares}
+                onChange={(e) => {
+                  const next = { ...settings, showOthersShares: e.target.checked };
+                  setSettings(next);
+                  saveSettings({ showOthersShares: e.target.checked });
+                }}
+                className="mt-0.5 accent-amber-700"
+              />
+              <span>
+                <span className="block text-sm font-medium text-ink">Community shares</span>
+                <span className="block text-xs text-stone-600">Show other readers&rsquo; shared notes and translations while you read — subtle dashed marks on shared sentences, margin counts on shared paragraphs. Off keeps reading fully private and calm.</span>
+              </span>
+            </label>
+          </div>
+
           {/* Single save button at the bottom of the preferences section */}
           <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
             {prefsSaved ? "Preferences saved." : ""}
           </div>
+
           <button
             onClick={savePreferences}
             className={`w-full rounded-lg py-2.5 text-sm font-medium transition-colors ${

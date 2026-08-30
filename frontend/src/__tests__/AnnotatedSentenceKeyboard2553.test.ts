@@ -24,26 +24,26 @@ describe("SentenceReader annotated span keyboard accessibility (closes #2553)", 
     const idx = src.indexOf("fullSegmentAnnotation");
     expect(idx).not.toBe(-1);
     // tabIndex may appear as tabIndex={0} or tabIndex={condition ? 0 : ...}
-    const block = src.slice(idx, idx + 3000);
+    const block = src.slice(idx, idx + 5000);
     expect(block).toMatch(/tabIndex=\{.*0/);
   });
 
   it("annotated span carries role button", () => {
     const idx = src.indexOf("fullSegmentAnnotation");
-    const block = src.slice(idx, idx + 3000);
+    const block = src.slice(idx, idx + 5000);
     // role may be role="button" or role={expr ? "button" : ...}
     expect(block).toMatch(/role=.*button/);
   });
 
   it("annotated span has aria-label referencing annotation", () => {
     const idx = src.indexOf("fullSegmentAnnotation");
-    const block = src.slice(idx, idx + 3000);
+    const block = src.slice(idx, idx + 5000);
     expect(block).toMatch(/aria-label=/);
   });
 
   it("annotated span has onKeyDown handler for Enter/Space activation", () => {
     const idx = src.indexOf("fullSegmentAnnotation");
-    const block = src.slice(idx, idx + 3000);
+    const block = src.slice(idx, idx + 5000);
     expect(block).toMatch(/onKeyDown=/);
     // The handler should respond to Enter or Space
     expect(block).toMatch(/Enter|Space|key\s*===\s*"Enter"|key\s*===\s*" "/);

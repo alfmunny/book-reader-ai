@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { createAnnotation, updateAnnotation, deleteAnnotation, Annotation } from "@/lib/api";
 import { TrashIcon, NoteIcon } from "@/components/Icons";
 
-const COLORS = [
+export const COLORS = [
   { key: "yellow", bg: "bg-yellow-400", border: "border-yellow-500", label: "Yellow" },
   { key: "blue", bg: "bg-blue-400", border: "border-blue-500", label: "Blue" },
   { key: "green", bg: "bg-green-400", border: "border-green-500", label: "Green" },

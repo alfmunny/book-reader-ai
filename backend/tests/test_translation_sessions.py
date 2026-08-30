@@ -28,9 +28,11 @@ async def _seed_book(client):
 
 
 async def _create(client, name="诗意版", provider="deepseek", lang="zh", style="优雅的书面语"):
+    # Explicitly private: these tests cover the core translate mechanics;
+    # public-session auto-posting is covered in test_stories.
     resp = await client.post("/api/translation-sessions", json={
         "book_id": 1, "name": name, "target_language": lang,
-        "provider": provider, "style_prompt": style,
+        "provider": provider, "style_prompt": style, "status": "private",
     })
     return resp
 

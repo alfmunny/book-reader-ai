@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, Story, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, getParagraphNoteCounts, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -13,6 +13,7 @@ import TTSControls from "@/components/TTSControls";
 import TranslationView from "@/components/TranslationView";
 import SentenceReader from "@/components/SentenceReader";
 import StoryPanel from "@/components/StoryPanel";
+import { anchorsOverlap, poolNoteStories } from "@/lib/storyPooling";
 import SelectionToolbar from "@/components/SelectionToolbar";
 import AnnotationToolbar from "@/components/AnnotationToolbar";
 import QuickHighlightPanel from "@/components/QuickHighlightPanel";
@@ -115,7 +116,7 @@ export default function ReaderPage() {
   const ttsIsPlayingRef = useRef(false);
 
   // Annotation display toggle (persisted; applied after mount — see below)
-  const [showAnnotations, setShowAnnotations] = useState(true);
+
 
   // Sidebar — hidden by default, resizable, tabbed
   // Remember the sidebar across visits (owner request, 2026-08-25). Stored
@@ -135,7 +136,6 @@ export default function ReaderPage() {
     const s = getSettings();
     if (window.innerWidth >= 768 && s.readerSidebarOpen) setSidebarOpen(true);
     setSidebarTab(s.readerSidebarTab);
-    setShowAnnotations(localStorage.getItem("reader-show-annotations") !== "false");
     setSettingsRestored(true);
   }, []);
   useEffect(() => {
@@ -229,16 +229,17 @@ export default function ReaderPage() {
     return () => { prev?.focus?.(); };
   }, [sidebarOpen, chatSheetText]);
 
-  // Dismiss chat sheet on Escape (WAI-ARIA dialog pattern)
+  // Dismiss the chat sheet on Escape (WAI-ARIA dialog pattern). The
+  // SIDEBAR is a persistent panel, not a dialog — Escape must not close it
+  // (owner, 2026-08-30: it kept collapsing mid-work).
   useEffect(() => {
-    const open = sidebarOpen || !!chatSheetText;
-    if (!open) return;
+    if (!chatSheetText) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { setSidebarOpen(false); setChatSheetText(null); }
+      if (e.key === "Escape") setChatSheetText(null);
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [sidebarOpen, chatSheetText]);
+  }, [chatSheetText]);
 
   // Swipe gesture for chapter navigation
   const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -352,52 +353,62 @@ export default function ReaderPage() {
   // Off by default — reading stays calm unless the reader opts in.
   const [showShares, setShowShares] = useState(false);
   const [chapterStories, setChapterStories] = useState<Story[]>([]);
-  const [openStoriesPara, setOpenStoriesPara] = useState<number | null>(null);
+  const [postsDialog, setPostsDialog] = useState<
+    { paraIdx: number; position: { x: number; y: number }; selectedText?: string; tab?: "notes" | "translations" } | null
+  >(null);
+  // Which paragraphs carry notes on the rendering being read — drives the
+  // solid/double underline marker (owner, 2026-08-30).
+  const [notedParas, setNotedParas] = useState<Set<number>>(new Set());
   const [storiesVersion, setStoriesVersion] = useState(0);
   const [shareDialog, setShareDialog] = useState<
-    { kind: "translation"; paraIdx: number } | { kind: "note"; annotationId: number } | null
+    | { kind: "note"; annotationId: number }
+    | { kind: "translation"; paraIdx: number; sessionId: number; sessionName: string; text: string; lang?: string }
+    | null
   >(null);
   const [shareCaption, setShareCaption] = useState("");
   const [shareBusy, setShareBusy] = useState(false);
+  // Per-paragraph retranslate asks first — it costs tokens and replaces
+  // the current rendering (owner, 2026-08-28).
+  const [confirmRetransPara, setConfirmRetransPara] = useState<number | null>(null);
 
   const setBookTranslationLang = (lang: string) => {
     setTranslationLang(lang);
     try { localStorage.setItem(`translation-lang:${bookId}`, lang); } catch { /* private mode */ }
   };
 
-  // Stories arrive in ONE call per chapter (design: no per-paragraph requests)
-  useEffect(() => {
-    if (!translationEnabled || !showShares || !session?.backendToken) {
-      setChapterStories([]);
-      return;
-    }
-    let cancelled = false;
-    listStories(Number(bookId), chapterIndex)
-      .then((r) => { if (!cancelled) setChapterStories(r.stories); })
-      .catch(() => { /* markers simply don't render */ });
-    return () => { cancelled = true; };
-  }, [translationEnabled, showShares, bookId, chapterIndex, session?.backendToken, storiesVersion]);
 
-  // Anchor stories to paragraphs: translation kind by its range, note kind by
-  // locating the annotation's sentence in the chapter's paragraph split.
+  // Translation stories anchor to paragraphs (margin count markers); note
+  // stories anchor to their SENTENCE (WeRead pattern, owner 2026-08-27) and
+  // render as dashed underlines + a superscript dot in the text itself.
   const storiesByPara = useMemo(() => {
     const map: Record<number, Story[]> = {};
-    if (chapterStories.length === 0) return map;
-    const paras = (chapters[chapterIndex]?.text ?? "").split("\n\n").filter((p) => p.trim());
-    const add = (i: number, st: Story) => { (map[i] ??= []).push(st); };
     for (const st of chapterStories) {
       if (st.kind === "translation" && st.paragraph_start != null && st.paragraph_end != null) {
-        for (let i = st.paragraph_start; i <= st.paragraph_end; i++) add(i, st);
-      } else if (st.kind === "note" && st.sentence_text) {
-        const idx = paras.findIndex((p) => p.includes(st.sentence_text!.trim()));
-        if (idx >= 0) add(idx, st);
+        for (let i = st.paragraph_start; i <= st.paragraph_end; i++) (map[i] ??= []).push(st);
       }
     }
     return map;
-  }, [chapterStories, chapters, chapterIndex]);
-  const storyCounts = useMemo(
-    () => Object.fromEntries(Object.entries(storiesByPara).map(([k, v]) => [k, v.length])),
+  }, [chapterStories]);
+
+
+  const postParagraphs = useMemo(
+    () => new Set(Object.keys(storiesByPara).map(Number)),
     [storiesByPara],
+  );
+  const sharedNoteAnchors = useMemo(
+    () =>
+      chapterStories
+        .filter((st) => st.kind === "note" && st.sentence_text)
+        .map((st) => ({ sentenceText: st.sentence_text!.trim(), count: 1 })),
+    [chapterStories],
+  );
+  const [sharedNotesFor, setSharedNotesFor] = useState<{ sentenceText: string; position: { x: number; y: number } | null } | null>(null);
+  const sharedNotesStories = useMemo(
+    () =>
+      sharedNotesFor == null
+        ? []
+        : poolNoteStories(chapterStories, sharedNotesFor.sentenceText),
+    [chapterStories, sharedNotesFor],
   );
 
   async function handleShare() {
@@ -406,19 +417,17 @@ export default function ReaderPage() {
     try {
       const caption = shareCaption.trim() ? { caption: shareCaption.trim() } : {};
       if (shareDialog.kind === "translation") {
-        if (!activeSession) return;
         await createStory({
           kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
-          session_id: activeSession.id,
+          session_id: shareDialog.sessionId,
           paragraph_start: shareDialog.paraIdx, paragraph_end: shareDialog.paraIdx,
           ...caption,
         });
-      } else {
-        await createStory({
-          kind: "note", book_id: Number(bookId), chapter_index: chapterIndex,
-          annotation_id: shareDialog.annotationId, ...caption,
-        });
-      }
+      } else await createStory({
+        kind: "note", book_id: Number(bookId), chapter_index: chapterIndex,
+        annotation_id: shareDialog.annotationId,
+        ...caption,
+      });
       setShareDialog(null);
       setShareCaption("");
       setStoriesVersion((v) => v + 1);
@@ -434,7 +443,56 @@ export default function ReaderPage() {
   const [translatedParagraphs, setTranslatedParagraphs] = useState<string[]>([]);
   // ── Translation sessions (design: docs/design/user-translations.md) ──
   const [translationSessions, setTranslationSessions] = useState<TranslationSession[]>([]);
+  // After any mutation of a version's rendering, refresh stories, the
+  // dialog's version texts, and (when it's the active session) the page.
+  async function refreshVersionData(sessionId: number) {
+    setStoriesVersion((v) => v + 1);
+    if (activeSession?.id === sessionId) {
+      try {
+        const data = await getSessionChapter(sessionId, chapterIndex);
+        applySessionChapter(data);
+      } catch { /* next poll corrects */ }
+    }
+  }
+
+  const [myParaVersions, setMyParaVersions] = useState<Array<{
+    sessionId: number; sessionName: string; model?: string | null; text: string;
+  }>>([]);
+  useEffect(() => {
+    if (!postsDialog || !session?.backendToken) {
+      setMyParaVersions([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const mine: Array<{ sessionId: number; sessionName: string; model?: string | null; text: string }> = [];
+      for (const ts of translationSessions) {
+        if (!ts.coverage?.[String(chapterIndex)]) continue;
+        try {
+          const ch = await getSessionChapter(ts.id, chapterIndex);
+          const para = ch.paragraphs[String(postsDialog.paraIdx)];
+          if (para?.text) mine.push({ sessionId: ts.id, sessionName: ts.name, model: para.model, text: para.text });
+        } catch { /* skip this version */ }
+      }
+      if (!cancelled) setMyParaVersions(mine);
+    })();
+    return () => { cancelled = true; };
+  }, [postsDialog, translationSessions, chapterIndex, session?.backendToken, storiesVersion]);
+
+
   const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
+
+  useEffect(() => {
+    if (!translationEnabled || !session?.backendToken) { setNotedParas(new Set()); return; }
+    let cancelled = false;
+    const params = activeSession
+      ? { chapter_index: chapterIndex, session_id: activeSession.id }
+      : { chapter_index: chapterIndex, book_id: Number(bookId), target_language: translationLang };
+    getParagraphNoteCounts(params)
+      .then((r) => { if (!cancelled) setNotedParas(new Set(Object.keys(r.counts).map(Number))); })
+      .catch(() => { if (!cancelled) setNotedParas(new Set()); });
+    return () => { cancelled = true; };
+  }, [translationEnabled, activeSession, chapterIndex, bookId, translationLang, session?.backendToken, storiesVersion]);
   const [sessionChapter, setSessionChapter] = useState<SessionChapter | null>(null);
   const [sessionTranslating, setSessionTranslating] = useState(false);
   const [translatingParas, setTranslatingParas] = useState<Set<number>>(new Set());
@@ -443,6 +501,22 @@ export default function ReaderPage() {
   // Persistent, in-panel error for session actions (owner report: a failed
   // translate showed nothing — the corner toast was too transient).
   const [sessionActionError, setSessionActionError] = useState<string | null>(null);
+
+  // Stories arrive in ONE call per chapter (design: no per-paragraph
+  // requests). Shared notes are a reading surface, so the fetch is gated on
+  // the opt-in alone — not on translation being enabled.
+  useEffect(() => {
+    if ((!showShares && !postsDialog && !activeSession && !annotationPanel) || !session?.backendToken) {
+      setChapterStories([]);
+      return;
+    }
+    let cancelled = false;
+    listStories(Number(bookId), chapterIndex)
+      .then((r) => { if (!cancelled) setChapterStories(r.stories); })
+      .catch(() => { /* markers simply don't render */ });
+    return () => { cancelled = true; };
+  }, [showShares, postsDialog, activeSession, annotationPanel, bookId, chapterIndex, session?.backendToken, storiesVersion]);
+
   const activeSessionRef = useRef<TranslationSession | null>(null);
   activeSessionRef.current = activeSession;
 
@@ -465,12 +539,23 @@ export default function ReaderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookId, session?.backendToken]);
 
+  // Every sessionChapter write goes through this guard: a slow response
+  // from a PREVIOUS version (poll tick, translate call) must never
+  // overwrite the one now on screen (owner bug report, 2026-08-28:
+  // switching to an empty version kept showing the old rendering).
+  const applySessionChapter = useCallback((data: SessionChapter) => {
+    if (activeSessionRef.current?.id !== data.session_id) return;
+    setSessionChapter(data);
+  }, []);
+
   // Fetch the active session's paragraphs for the current chapter.
   useEffect(() => {
-    if (!activeSession) { setSessionChapter(null); return; }
+    // Clear immediately — placeholders beat another version's stale text
+    setSessionChapter(null);
+    if (!activeSession) return;
     let cancelled = false;
     getSessionChapter(activeSession.id, chapterIndex)
-      .then((data) => { if (!cancelled) setSessionChapter(data); })
+      .then((data) => { if (!cancelled) applySessionChapter(data); })
       .catch(() => { if (!cancelled) setSessionChapter(null); });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -485,7 +570,7 @@ export default function ReaderPage() {
     const timer = setInterval(() => {
       getSessionChapter(activeSession.id, chapterIndex)
         .then((data) => {
-          setSessionChapter(data);
+          applySessionChapter(data);
           if (data.run && !data.run.active) {
             if (data.run.error) setSessionActionError(data.run.error);
             listTranslationSessions(Number(bookId)).then(setTranslationSessions).catch(() => {});
@@ -513,10 +598,10 @@ export default function ReaderPage() {
       // Starts a background run; the polling effect renders paragraphs as
       // they finish and surfaces run errors.
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: "chapter", force });
-      setSessionChapter(data);
+      applySessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
-      getSessionChapter(activeSession.id, chapterIndex).then(setSessionChapter).catch(() => {});
+      getSessionChapter(activeSession.id, chapterIndex).then(applySessionChapter).catch(() => {});
     } finally {
       setSessionTranslating(false);
     }
@@ -528,7 +613,7 @@ export default function ReaderPage() {
     setSessionActionError(null);
     try {
       const data = await translateSession(activeSession.id, { chapter_index: chapterIndex, scope: paraIdx });
-      setSessionChapter(data);
+      applySessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Translation failed — try again.");
     } finally {
@@ -542,7 +627,7 @@ export default function ReaderPage() {
     try {
       await editSessionParagraph(activeSession.id, chapterIndex, paragraphEditor.paraIdx, paragraphEditor.text);
       const data = await getSessionChapter(activeSession.id, chapterIndex);
-      setSessionChapter(data);
+      applySessionChapter(data);
       setParagraphEditor(null);
     } catch {
       setParagraphEditorError(true);
@@ -554,7 +639,7 @@ export default function ReaderPage() {
     try {
       await deleteSessionParagraph(activeSession.id, chapterIndex, paraIdx);
       const data = await getSessionChapter(activeSession.id, chapterIndex);
-      setSessionChapter(data);
+      applySessionChapter(data);
     } catch (e) {
       setSessionActionError(e instanceof Error ? e.message : "Delete failed — try again.");
     }
@@ -1506,22 +1591,20 @@ export default function ReaderPage() {
           {session?.backendToken && (
             <button
               onClick={() => {
-                setShowAnnotations((v) => {
-                  const next = !v;
-                  localStorage.setItem("reader-show-annotations", String(next));
-                  return next;
-                });
+                const next = !showShares;
+                setShowShares(next);
+                saveSettings({ showOthersShares: next });
               }}
-              aria-pressed={showAnnotations}
-              title={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+              aria-pressed={showShares}
+              title={showShares ? "Hide community notes" : "Show community notes"}
               className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-                showAnnotations
+                showShares
                   ? "bg-amber-100 text-amber-900 border-amber-400"
                   : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-900"
               }`}
             >
               <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />
-              {showAnnotations ? "Marks on" : "Marks off"}
+              {showShares ? "Shares on" : "Shares off"}
             </button>
           )}
 
@@ -1854,18 +1937,14 @@ export default function ReaderPage() {
                   translationMeta={sessionMeta}
                   translatingParagraphs={translatingParas}
                   actionsDisabled={sessionTranslating || chapterRunActive}
-                  onTranslateParagraph={activeSession ? handleSessionTranslateParagraph : undefined}
-                  onEditParagraph={activeSession ? (idx) => {
-                    setParagraphEditorError(false);
-                    setParagraphEditor({ paraIdx: idx, text: sessionChapter?.paragraphs[String(idx)]?.text ?? "" });
+                  onTranslateParagraph={activeSession ? (idx) => setConfirmRetransPara(idx) : undefined}
+                  postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
+                  notedParagraphs={notedParas.size > 0 ? notedParas : undefined}
+                  onOpenPosts={session?.backendToken ? (idx, position, tab) => {
+                    setPostsDialog({ paraIdx: idx, position, tab });
                   } : undefined}
-                  onDeleteParagraph={activeSession ? handleSessionDeleteParagraph : undefined}
-                  onShareParagraph={activeSession && session?.backendToken ? (idx) => {
-                    setShareCaption("");
-                    setShareDialog({ kind: "translation", paraIdx: idx });
-                  } : undefined}
-                  storyCounts={showShares ? storyCounts : undefined}
-                  onOpenStories={showShares ? setOpenStoriesPara : undefined}
+                  sharedNotes={showShares && sharedNoteAnchors.length > 0 ? sharedNoteAnchors : undefined}
+                  onSharedNotesClick={showShares ? (sentenceText, position) => setSharedNotesFor({ sentenceText, position }) : undefined}
                   annotations={session?.backendToken ? annotations.filter((a) => a.chapter_index === chapterIndex) : undefined}
                   chapterIndex={chapterIndex}
                   onAnnotationClick={session?.backendToken ? (annotation, position) => {
@@ -1876,7 +1955,6 @@ export default function ReaderPage() {
                       existingAnnotation: annotation,
                     });
                   } : undefined}
-                  showAnnotations={showAnnotations}
                   scrollTargetSentence={scrollTargetSentence}
                   scrollTargetWord={searchParams?.get("word") ? decodeURIComponent(searchParams.get("word")!) : undefined}
                   vocabWords={vocabWordsSet}
@@ -1922,10 +2000,18 @@ export default function ReaderPage() {
 
           {/* Selection toolbar — appears when user selects text */}
           <SelectionToolbar
-            onRead={(text) => {
+            translationLang={translationEnabled ? (activeSession?.target_language ?? translationLang) : undefined}
+            onTranslationNote={session?.backendToken ? (paraIdx, rect, selectedText) => {
+              setPostsDialog({
+                paraIdx,
+                position: { x: rect.left + rect.width / 2, y: rect.bottom },
+                selectedText,
+              });
+            } : undefined}
+            onRead={(text, lang) => {
               const wasPlaying = ttsIsPlayingRef.current;
               if (wasPlaying) ttsControlsRef.current?.pause();
-              synthesizeSpeech(text, bookLanguage, 1.0, getSettings().ttsGender)
+              synthesizeSpeech(text, lang ?? bookLanguage, 1.0, getSettings().ttsGender)
                 .then(({ url }) => {
                   const audio = new Audio(url);
                   const resume = () => {
@@ -1939,7 +2025,7 @@ export default function ReaderPage() {
                 .catch(() => {
                   window.speechSynthesis.cancel();
                   const utter = new SpeechSynthesisUtterance(text);
-                  utter.lang = bookLanguage;
+                  utter.lang = lang ?? bookLanguage;
                   utter.onend = () => { if (wasPlaying) ttsControlsRef.current?.play(); };
                   window.speechSynthesis.speak(utter);
                 });
@@ -1998,6 +2084,32 @@ export default function ReaderPage() {
                 setAnnotations((prev) => prev.filter((a) => a.id !== id));
                 if (ann) setDeletedAnnotationToast(ann);
               }}
+              initialVisibility={(() => {
+                const existing = annotations.find(
+                  (a) => a.sentence_text === annotationPanel.sentenceText &&
+                    a.chapter_index === annotationPanel.chapterIndex,
+                );
+                if (!existing) return "public"; // new notes default public
+                return chapterStories.some(
+                  (st) => st.kind === "note" && st.user_id === session?.backendUser?.id &&
+                    st.annotation_id === existing.id,
+                ) ? "public" : "private";
+              })()}
+              onVisibilityChange={session?.backendToken ? async (annotation, makePublic) => {
+                const post = chapterStories.find(
+                  (st) => st.kind === "note" && st.user_id === session?.backendUser?.id &&
+                    st.annotation_id === annotation.id,
+                );
+                if (makePublic && !post) {
+                  await createStory({
+                    kind: "note", book_id: Number(bookId),
+                    chapter_index: annotation.chapter_index, annotation_id: annotation.id,
+                  });
+                } else if (!makePublic && post) {
+                  await deleteStory(post.id);
+                }
+                setStoriesVersion((v) => v + 1);
+              } : undefined}
             />
           )}
 
@@ -2039,21 +2151,54 @@ export default function ReaderPage() {
           )}
 
           {/* Session paragraph editor (design: docs/design/user-translations.md) */}
+          {confirmRetransPara != null && activeSession && (
+            <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Confirm retranslate">
+              <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-sm space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
+                <p className="text-sm font-medium text-ink">Retranslate paragraph {confirmRetransPara + 1}?</p>
+                <p className="text-xs text-stone-500">
+                  The current rendering will be replaced and this costs tokens on your {activeSession.provider === "claude" ? "Claude" : "DeepSeek"} key.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setConfirmRetransPara(null)}
+                    className="text-sm px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const idx = confirmRetransPara;
+                      setConfirmRetransPara(null);
+                      handleSessionTranslateParagraph(idx);
+                    }}
+                    className="text-sm px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Retranslate
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {shareDialog && (
             <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Share">
               <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-3" style={{ boxShadow: "var(--shadow-card-hover)" }}>
                 <p className="text-sm font-medium text-ink">
-                  {shareDialog.kind === "translation"
-                    ? `Share your rendering of paragraph ${shareDialog.paraIdx + 1}`
-                    : "Share this note"}
+                  {shareDialog.kind === "translation" ? "Share this translation" : "Post this note"}
                 </p>
-                <p className="text-xs text-stone-500">
-                  Other readers of this book will see it{shareDialog.kind === "translation" ? " — and future edits to your translation update the share." : "."}
-                </p>
+                <p className="text-xs text-stone-500">Other readers of this book will see it.</p>
+                {shareDialog.kind === "translation" && (
+                  <blockquote className="border-l-2 border-amber-300 bg-amber-50/60 rounded-r-lg px-3 py-2 space-y-1" data-testid="share-quote">
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">{shareDialog.sessionName}</span>
+                    <p lang={shareDialog.lang} className="text-[13px] leading-relaxed font-serif text-ink whitespace-pre-wrap">
+                      {shareDialog.text}
+                    </p>
+                  </blockquote>
+                )}
                 <textarea
                   value={shareCaption}
                   onChange={(e) => setShareCaption(e.target.value)}
-                  placeholder="Say something about it (optional)…"
+                  placeholder="Say something under the quote (optional)…"
                   aria-label="Share caption"
                   rows={2}
                   className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -2070,19 +2215,230 @@ export default function ReaderPage() {
                     disabled={shareBusy}
                     className="text-sm px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   >
-                    {shareBusy ? "Sharing…" : "Share"}
+                    {shareBusy ? "Posting…" : "Post"}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {openStoriesPara != null && (storiesByPara[openStoriesPara]?.length ?? 0) > 0 && (
+          {sharedNotesFor != null && sharedNotesStories.length > 0 && (
             <StoryPanel
-              stories={storiesByPara[openStoriesPara]}
-              paragraphIndex={openStoriesPara}
+              stories={sharedNotesStories}
+              paragraphIndex={0}
+              title="Notes on this sentence"
+              variant="sentence"
+              myNote={(() => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                if (!own) return null;
+                const myNoteStory = sharedNotesStories.find(
+                  (st) => st.user_id === session?.backendUser?.id && st.annotation_id === own.id,
+                );
+                return {
+                  text: own.note_text,
+                  authorName: session?.backendUser?.name ?? "You",
+                  picture: session?.backendUser?.picture,
+                  storyId: myNoteStory?.id,
+                };
+              })()}
+              annotationBar={(() => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                return {
+                  existingColor: own?.color ?? null,
+                  onColor: async (color: "yellow" | "blue" | "green" | "pink") => {
+                    try {
+                      if (own) {
+                        const saved = await updateAnnotation(own.id, { color, note_text: own.note_text });
+                        setAnnotations((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+                      } else {
+                        const saved = await createAnnotation({
+                          book_id: Number(bookId),
+                          chapter_index: chapterIndex,
+                          sentence_text: sharedNotesFor.sentenceText,
+                          note_text: "",
+                          color,
+                        });
+                        setAnnotations((prev) => [...prev, saved]);
+                      }
+                    } catch { /* transient — next tap retries */ }
+                  },
+                };
+              })()}
+              onEditMyNoteExternally={() => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                setSharedNotesFor(null);
+                setAnnotationPanel({
+                  sentenceText: own?.sentence_text ?? sharedNotesFor.sentenceText,
+                  chapterIndex: own?.chapter_index ?? chapterIndex,
+                });
+              }}
+              onSaveMyNote={async (text, makePublic) => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                let anno = own;
+                if (own) {
+                  const saved = await updateAnnotation(own.id, { color: own.color, note_text: text });
+                  setAnnotations((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+                } else {
+                  anno = await createAnnotation({
+                    book_id: Number(bookId),
+                    chapter_index: chapterIndex,
+                    sentence_text: sharedNotesFor.sentenceText,
+                    note_text: text,
+                    color: "yellow",
+                  });
+                  setAnnotations((prev) => [...prev, anno!]);
+                }
+                // Visibility from the editor's dropdown (owner, 2026-08-28)
+                const notePost = anno ? chapterStories.find(
+                  (st) => st.kind === "note" && st.user_id === session?.backendUser?.id && st.annotation_id === anno!.id,
+                ) : undefined;
+                if (makePublic && anno && !notePost) {
+                  await createStory({
+                    kind: "note", book_id: Number(bookId),
+                    chapter_index: anno.chapter_index, annotation_id: anno.id,
+                  });
+                } else if (!makePublic && notePost) {
+                  await deleteStory(notePost.id);
+                }
+                setStoriesVersion((v) => v + 1);
+              }}
+              onDeleteMyNote={async () => {
+                const own = annotations.find(
+                  (a) => a.chapter_index === chapterIndex &&
+                    (anchorsOverlap(a.sentence_text, sharedNotesFor.sentenceText) ||
+                      sharedNotesStories.some((st) => anchorsOverlap(a.sentence_text, st.sentence_text!))),
+                );
+                if (!own) return;
+                await deleteAnnotation(own.id);
+                setAnnotations((prev) => prev.filter((a) => a.id !== own.id));
+              }}
+              position={sharedNotesFor.position}
               currentUserId={session?.backendUser?.id}
-              onClose={() => setOpenStoriesPara(null)}
+              onClose={() => setSharedNotesFor(null)}
+              onChanged={() => setStoriesVersion((v) => v + 1)}
+            />
+          )}
+
+          {postsDialog != null && (
+            <StoryPanel
+              stories={storiesByPara[postsDialog.paraIdx] ?? []}
+              paragraphIndex={postsDialog.paraIdx}
+              title="Posts on this paragraph"
+              variant="sentence"
+              position={postsDialog.position}
+              myVersions={myParaVersions.map((v) => {
+                const post = (storiesByPara[postsDialog.paraIdx] ?? []).find(
+                  (st) => st.user_id === session?.backendUser?.id && st.session_id === v.sessionId,
+                );
+                return {
+                  sessionName: v.sessionName, model: v.model, text: v.text,
+                  posted: !!post, storyId: post?.id,
+                  isCurrent: v.sessionId === activeSession?.id,
+                  authorName: session?.backendUser?.name ?? "You",
+                  picture: session?.backendUser?.picture,
+                  onSave: async (text: string, makePublic: boolean) => {
+                    await editSessionParagraph(v.sessionId, chapterIndex, postsDialog.paraIdx, text);
+                    if (makePublic && !post) {
+                      await createStory({
+                        kind: "translation", book_id: Number(bookId), chapter_index: chapterIndex,
+                        session_id: v.sessionId,
+                        paragraph_start: postsDialog.paraIdx, paragraph_end: postsDialog.paraIdx,
+                      });
+                    } else if (!makePublic && post) {
+                      await deleteStory(post.id);
+                    }
+                    await refreshVersionData(v.sessionId);
+                  },
+                  onDelete: async () => {
+                    if (post) await deleteStory(post.id);
+                    await deleteSessionParagraph(v.sessionId, chapterIndex, postsDialog.paraIdx);
+                    await refreshVersionData(v.sessionId);
+                  },
+                  onShare: () => {
+                    setPostsDialog(null);
+                    setShareCaption("");
+                    setShareDialog({
+                      kind: "translation", paraIdx: postsDialog.paraIdx,
+                      sessionId: v.sessionId, sessionName: v.sessionName, text: v.text,
+                      lang: translationSessions.find((ts) => ts.id === v.sessionId)?.target_language,
+                    });
+                  },
+                  onRetranslate: post ? undefined : async () => {
+                    await translateSession(v.sessionId, { chapter_index: chapterIndex, scope: postsDialog.paraIdx });
+                    await refreshVersionData(v.sessionId);
+                  },
+                };
+              })}
+              commentsTab={(() => {
+                // Notes on a translated paragraph anchor to the PARAGRAPH
+                // (book + language + chapter + index), never to a post —
+                // so writing one always works, posted or not, exactly like
+                // the sentence-note panel (owner, 2026-08-30).
+                const lang = activeSession?.target_language ?? translationLang;
+                const langLabel = LANGUAGES.find((l) => l.code === lang)?.label ?? lang;
+                const myPara = activeSession
+                  ? sessionChapter?.paragraphs[String(postsDialog.paraIdx)]
+                  : undefined;
+                const editorialText = translatedParagraphs[postsDialog.paraIdx];
+                const myIdx = activeSession
+                  ? myParaVersions.findIndex((v) => v.sessionId === activeSession.id)
+                  : -1;
+                return {
+                  label: activeSession
+                    ? `${activeSession.name} · this paragraph`
+                    : `Editorial · ${langLabel} · this paragraph`,
+                  content: (activeSession ? myPara?.text : editorialText)
+                    ? {
+                        text: (activeSession ? myPara!.text : editorialText)!,
+                        lang,
+                        sessionName: activeSession?.name ?? "Editorial",
+                        model: activeSession ? myPara?.model : undefined,
+                        myVersionIndex: myIdx >= 0 ? myIdx : undefined,
+                        highlight: postsDialog.selectedText,
+                      }
+                    : undefined,
+                  // Notes belong to the VERSION you are reading; Editorial
+                  // keeps its own language-scoped anchor (owner, 2026-08-30).
+                  anchor: activeSession
+                    ? {
+                        kind: "version" as const,
+                        version: {
+                          session_id: activeSession.id,
+                          chapter_index: chapterIndex,
+                          paragraph_index: postsDialog.paraIdx,
+                        },
+                      }
+                    : {
+                        kind: "editorial" as const,
+                        editorial: {
+                          book_id: Number(bookId),
+                          target_language: lang,
+                          chapter_index: chapterIndex,
+                          paragraph_index: postsDialog.paraIdx,
+                        },
+                      },
+                  emptyText: "",
+                };
+              })()}
+              initialTab={postsDialog.tab}
+              currentUserId={session?.backendUser?.id}
+              onClose={() => setPostsDialog(null)}
               onChanged={() => setStoriesVersion((v) => v + 1)}
             />
           )}
@@ -2686,21 +3042,6 @@ export default function ReaderPage() {
                       </div>
                     </div>
 
-                    {/* Others' shares: explicit opt-in (phase 2, #2752) */}
-                    {translationEnabled && session?.backendToken && (
-                      <label className="flex items-center gap-2 mb-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showShares}
-                          onChange={(e) => {
-                            setShowShares(e.target.checked);
-                            saveSettings({ showOthersShares: e.target.checked });
-                          }}
-                          className="accent-amber-700"
-                        />
-                        <span className="text-sm text-ink">Show others&rsquo; shares</span>
-                      </label>
-                    )}
 
                     {/* Status */}
                     {!activeSession && translationEnabled && (
@@ -2842,27 +3183,25 @@ export default function ReaderPage() {
           {/* Notes expand panel */}
           {session?.backendToken && notesExpanded && (
             <div id="reader-mobile-notes-panel" className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
-              {/* Annotation visibility toggle */}
+              {/* Community-notes visibility toggle — own marks always show */}
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-100">
-                <span className="text-xs text-stone-600">Highlight marks</span>
+                <span className="text-xs text-stone-600">Community notes</span>
                 <button
                   onClick={() => {
-                    setShowAnnotations((v) => {
-                      const next = !v;
-                      localStorage.setItem("reader-show-annotations", String(next));
-                      return next;
-                    });
+                    const next = !showShares;
+                    setShowShares(next);
+                    saveSettings({ showOthersShares: next });
                   }}
-                  aria-pressed={showAnnotations}
-                  aria-label={showAnnotations ? "Hide annotation marks" : "Show annotation marks"}
+                  aria-pressed={showShares}
+                  aria-label={showShares ? "Hide community notes" : "Show community notes"}
                   className={`flex items-center gap-1 px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
-                    showAnnotations
+                    showShares
                       ? "bg-amber-100 text-amber-900 border-amber-400"
                       : "border-amber-300 text-amber-700 hover:bg-amber-50"
                   }`}
                 >
                   <BookmarkIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                  {showAnnotations ? "On" : "Off"}
+                  {showShares ? "On" : "Off"}
                 </button>
               </div>
               {annotations.length === 0 ? (

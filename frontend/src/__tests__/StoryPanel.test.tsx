@@ -8,6 +8,11 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 jest.mock("@/lib/api", () => ({
   listStoryComments: jest.fn(),
   addStoryComment: jest.fn(),
+  listEditorialComments: jest.fn(),
+  addEditorialComment: jest.fn(),
+  listSessionParagraphComments: jest.fn(),
+  addSessionParagraphComment: jest.fn(),
+  updateStoryComment: jest.fn(),
   deleteStory: jest.fn(),
   deleteStoryComment: jest.fn(),
 }));
@@ -97,4 +102,881 @@ test("close button fires onClose", () => {
   const { props } = renderPanel();
   fireEvent.click(screen.getByLabelText("Close shares panel"));
   expect(props.onClose).toHaveBeenCalled();
+});
+
+test("authors render with an avatar — picture when set, initial disc otherwise", () => {
+  renderPanel({
+    stories: [
+      { ...TRANSLATION_STORY, author_picture: "https://example.com/mira.png" },
+      NOTE_STORY, // no picture → initial disc
+    ],
+  });
+  const withPic = screen.getByTestId("story-1").querySelector("img") as HTMLImageElement;
+  expect(withPic.src).toBe("https://example.com/mira.png");
+  expect(screen.getByTestId("story-2")).toHaveTextContent("J"); // Jonas' initial
+});
+
+test("dialog opens BELOW the sentence, never covering it, arrow pointing up at it", () => {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+  renderPanel({ position: { x: 400, y: 200 } });
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.style.top).toBe("224px"); // below the clicked line (y + 24)
+  expect(panel.style.left).toBe("192px"); // centered on x, clamped
+  const arrow = screen.getByTestId("story-panel-arrow");
+  expect(arrow.className).toContain("-top-[7px]"); // on the top edge, pointing up
+  expect(arrow.style.left).toBe("202px"); // at the sentence's x
+  expect(screen.getByTestId("story-panel-backdrop")).toBeInTheDocument();
+});
+
+test("near the bottom the dialog flips ABOVE, its bottom edge hugging the sentence", () => {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 800 });
+  renderPanel({ position: { x: 400, y: 700 } });
+  const panel = screen.getByTestId("story-panel");
+  // Bottom-anchored so short content never floats away from the sentence:
+  // bottom = vh - y + 28 → the panel's bottom edge sits just above y=700.
+  expect(panel.style.bottom).toBe("128px");
+  expect(panel.style.top).toBe("");
+  expect(screen.getByTestId("story-panel-arrow").className).toContain("-bottom-[7px]");
+});
+
+test("backdrop click closes the dialog", () => {
+  const { props } = renderPanel({ position: { x: 400, y: 200 } });
+  fireEvent.click(screen.getByTestId("story-panel-backdrop"));
+  expect(props.onClose).toHaveBeenCalled();
+});
+
+test("without a position the panel keeps the corner/bottom-sheet layout", () => {
+  renderPanel();
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.style.left).toBe("");
+  expect(panel.className).toContain("bottom-0");
+});
+
+test("sentence variant: my note pinned on top, no quote, no discussion UI", () => {
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "my own thought", authorName: "Alfmunny", picture: null },
+    stories: [NOTE_STORY],
+  });
+  const mine = screen.getByTestId("my-note");
+  expect(mine).toHaveTextContent("My note");
+  expect(mine).toHaveTextContent("my own thought");
+  // Pinned card renders before the others in the list
+  const panel = screen.getByTestId("story-panel");
+  expect(panel.innerHTML.indexOf("my own thought")).toBeLessThan(panel.innerHTML.indexOf("wonderful opening"));
+  // No quote (the sentence is visible in the text) and no discussion yet
+  expect(screen.queryByText("Die Sonne tönt.")).toBeNull();
+  expect(screen.queryByText(/Discussion/)).toBeNull();
+});
+
+test("toolbar shows the merged color row; current color marked", () => {
+  const bar = { existingColor: "yellow", onColor: jest.fn() };
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "mine", authorName: "Alfmunny", picture: null },
+    annotationBar: bar,
+    stories: [NOTE_STORY],
+  });
+  expect(screen.getByTestId("story-panel-toolbar")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Yellow" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Blue" }));
+  expect(bar.onColor).toHaveBeenCalledWith("blue");
+});
+
+test("my note opens a DETAIL page like others — edit and delete live there", async () => {
+  const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
+  const onDeleteMyNote = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "old thought", authorName: "Alfmunny", picture: null },
+    annotationBar: { existingColor: "yellow", onColor: jest.fn() },
+    onSaveMyNote,
+    onDeleteMyNote,
+    stories: [NOTE_STORY],
+  });
+  // Tap → detail (not the editor), Private badge, Edit + Delete controls
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  const detail = screen.getByTestId("my-note-detail");
+  expect(detail).toHaveTextContent("old thought");
+  expect(detail).toHaveTextContent("Private");
+  expect(detail).toHaveTextContent("set it Public while editing");
+  // Edit → editor prefilled; save returns to the detail
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  const textarea = screen.getByLabelText("My note text") as HTMLTextAreaElement;
+  expect(textarea.value).toBe("old thought");
+  fireEvent.change(textarea, { target: { value: "new thought" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("new thought", false));
+  expect(screen.getByTestId("my-note-detail")).toBeInTheDocument();
+  // Back from detail → list
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.getByTestId("my-note")).toBeInTheDocument();
+});
+
+test("a SHARED my note's detail carries the same comment thread", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 61, story_id: 2, user_id: 3, body: "说得好", created_at: "", author_name: "Jonas" }],
+  });
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "mine", authorName: "Alfmunny", picture: null, storyId: 2 },
+    stories: [NOTE_STORY], // my own shared note story — represented by the pinned card
+  });
+  // Deduped: not shown twice in the list
+  expect(screen.queryByTestId("story-2")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  const detail = screen.getByTestId("my-note-detail");
+  expect(detail).toHaveTextContent("Posted");
+  expect(await screen.findByTestId("comment-61")).toBeInTheDocument();
+  expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+});
+
+test("deleting my note works from its detail page", async () => {
+  const onDeleteMyNote = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    myNote: { text: "mine", authorName: "Alfmunny", picture: null },
+    onSaveMyNote: jest.fn(),
+    onDeleteMyNote,
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete my note and highlight" }));
+  await waitFor(() => expect(onDeleteMyNote).toHaveBeenCalled());
+  expect(screen.queryByTestId("my-note-detail")).toBeNull();
+});
+
+test("Write note appears in the toolbar only without an existing note", () => {
+  renderPanel({
+    variant: "sentence",
+    annotationBar: { onColor: jest.fn() },
+    onSaveMyNote: jest.fn(),
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Write note" }));
+  expect((screen.getByLabelText("My note text") as HTMLTextAreaElement).value).toBe("");
+  // New notes default to Public (owner, 2026-08-29)
+  expect((screen.getByLabelText("Visibility") as HTMLSelectElement).value).toBe("public");
+});
+
+test("tapping a community note opens its detail page with author and delete for admins", async () => {
+  (api.deleteStory as jest.Mock).mockResolvedValue({ ok: true });
+  const { props } = renderPanel({
+    variant: "sentence",
+    isAdmin: true,
+    stories: [NOTE_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open note by Jonas" }));
+  const detail = screen.getByTestId("story-detail");
+  expect(detail).toHaveTextContent("Jonas");
+  expect(detail).toHaveTextContent("wonderful opening");
+  fireEvent.click(screen.getByRole("button", { name: "Delete this share" }));
+  await waitFor(() => expect(api.deleteStory).toHaveBeenCalledWith(2));
+  expect(props.onChanged).toHaveBeenCalled();
+  // Returns to the list after deleting
+  expect(screen.queryByTestId("story-detail")).toBeNull();
+});
+
+test("posts dialog: empty state plus publish composer, kept open after posting", async () => {
+  const onSubmit = jest.fn().mockResolvedValue(undefined);
+  const { props } = renderPanel({
+    variant: "sentence",
+    stories: [],
+    composer: {
+      placeholder: "Say something…",
+      submitLabel: "Publish my translation as a post",
+      emptyText: "No posts on this paragraph yet — publish yours below.",
+      onSubmit,
+    },
+  });
+  expect(screen.getByTestId("posts-empty")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Post caption"), { target: { value: "my take" } });
+  fireEvent.click(screen.getByRole("button", { name: "Publish my translation as a post" }));
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("my take"));
+  expect(props.onChanged).toHaveBeenCalled();
+  expect(screen.getByTestId("post-composer")).toBeInTheDocument();
+});
+
+test("tapping a translation post opens its detail with the rendering", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open translation by Mira" }));
+  const detail = screen.getByTestId("story-detail");
+  expect(detail).toHaveTextContent("太阳依着古老的方式轰鸣。");
+  expect(detail).toHaveTextContent("诗意版");
+  expect(detail).toHaveTextContent("deepseek-v4-flash");
+});
+
+test("my versions pin first with avatar and Private/Posted badges; posted opens its post", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [{ ...TRANSLATION_STORY, user_id: 9 }], // my own published post
+    myVersions: [
+      { sessionName: "诗意版", model: "deepseek-v4-flash", text: "太阳依着古老的方式轰鸣。", posted: true, storyId: 1, authorName: "Alfmunny", picture: null },
+      { sessionName: "直译版", model: "deepseek-v4-flash", text: "太阳轰鸣如常。", posted: false, authorName: "Alfmunny", picture: null },
+    ],
+  });
+  const posted = screen.getByTestId("my-version-0");
+  expect(posted).toHaveTextContent("Posted");
+  expect(posted).toHaveTextContent("A"); // avatar initial disc
+  const priv = screen.getByTestId("my-version-1");
+  expect(priv).toHaveTextContent("Private");
+  // My published post is represented by the pinned card, not duplicated below
+  expect(screen.queryByTestId("story-1")).toBeNull();
+  // Tapping the posted card opens the post's detail
+  fireEvent.click(screen.getByRole("button", { name: "Open my post from 诗意版" }));
+  expect(screen.getByTestId("story-detail")).toBeInTheDocument();
+});
+
+test("a private version opens its own detail sub-page — the universal flow", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    composer: { placeholder: "p", submitLabel: "Post", emptyText: "none", onSubmit: jest.fn() },
+    myVersions: [
+      { sessionName: "直译版", model: "deepseek-v4-flash", text: "很长的诗行\n第二行\n第三行\n第四行", posted: false, authorName: "Alfmunny", picture: null },
+    ],
+  });
+  // List card clamps its preview
+  const card = screen.getByTestId("my-version-0");
+  expect((card.querySelector("p.font-serif") as HTMLElement).className).toContain("line-clamp-3");
+  // Tap → detail with full text, Private badge, back returns
+  fireEvent.click(screen.getByRole("button", { name: "Open my version 直译版" }));
+  const detail = screen.getByTestId("my-version-detail");
+  expect(detail).toHaveTextContent("Private");
+  expect(detail).toHaveTextContent("直译版");
+  expect((detail.querySelector("p.font-serif") as HTMLElement).className).not.toContain("line-clamp-3");
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.queryByTestId("my-version-detail")).toBeNull();
+  expect(screen.getByTestId("my-version-0")).toBeInTheDocument();
+});
+
+test("community translation cards clamp in the list — full text lives in detail", () => {
+  renderPanel({ variant: "sentence", stories: [TRANSLATION_STORY] });
+  const card = screen.getByTestId(`story-${TRANSLATION_STORY.id}`);
+  expect(card.innerHTML).toContain("line-clamp-3");
+});
+
+test("Comments tab lists the current rendering's comments; tap one for its thread", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({
+    comments: [
+      { id: 31, story_id: 1, user_id: 3, body: "有味道", created_at: "", author_name: "Jonas" },
+      { id: 32, story_id: 1, user_id: 2, body: "谢谢！", created_at: "", author_name: "Mira", parent_comment_id: 31 },
+    ],
+  });
+  (api.addStoryComment as jest.Mock).mockResolvedValue({
+    id: 33, story_id: 1, user_id: 9, body: "我也来一句", created_at: "", author_name: "Me",
+  });
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "诗意版 · this paragraph", emptyText: "none" },
+    currentUserId: 9,
+  });
+  // Landing: the comment LIST of the current rendering (not a version detail)
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+  expect(screen.getByText("诗意版 · this paragraph")).toBeInTheDocument();
+  const row = await screen.findByTestId("comment-31");
+  expect(row).toHaveTextContent("有味道");
+  expect(row).toHaveTextContent("1 reply"); // replies fold into the detail
+  // Post a top-level comment right here
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我也来一句" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "我也来一句", undefined, "public", undefined));
+  // One level deeper: the comment's own thread with replies + reply box
+  fireEvent.click(screen.getByRole("button", { name: "Open comment by Jonas" }));
+  const detail = screen.getByTestId("comment-detail");
+  expect(detail).toHaveTextContent("有味道");
+  expect(detail).toHaveTextContent("Replies (1)");
+  expect(detail).toHaveTextContent("谢谢！");
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回一句" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addStoryComment).toHaveBeenCalledWith(1, "回一句", 31, "public", undefined));
+  // Back pops one level, to the comment list
+  fireEvent.click(screen.getByTestId("story-panel-back"));
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+});
+
+test("editorial anchor: comments load and post against the editorial paragraph", async () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.addEditorialComment as jest.Mock).mockResolvedValue({
+    id: 51, user_id: 9, body: "编辑版这段不错", created_at: "", author_name: "Me",
+  });
+  const editorial = { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: { anchor: { kind: "editorial", editorial }, label: "Editorial · 中文 · this paragraph", emptyText: "" },
+    currentUserId: 9,
+  });
+  await waitFor(() => expect(api.listEditorialComments).toHaveBeenCalledWith(editorial));
+  expect(screen.getByText("No notes on this translation yet — write the first.")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "编辑版这段不错" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "编辑版这段不错", undefined, "public", undefined));
+  expect(await screen.findByTestId("comment-51")).toBeInTheDocument();
+});
+
+test("Other translations tab swaps to the version list and back", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "none" },
+  });
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Other translations" })).toHaveAttribute("aria-selected", "true");
+  fireEvent.click(screen.getByRole("tab", { name: "Current translation" }));
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+});
+
+test("Comments view has no back arrow; list-opened details keep it under Other translations", () => {
+  const second = { ...TRANSLATION_STORY, id: 5, author_name: "Jonas", session_name: "直译版" };
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY, second],
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "none" },
+  });
+  // Comments landing: tabs are the navigation — no arrow
+  expect(screen.queryByTestId("story-panel-back")).toBeNull();
+  // A detail opened from the list keeps Other translations active + the arrow
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open translation by Jonas" }));
+  expect(screen.getByRole("tab", { name: "Other translations" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByTestId("story-panel-back")).toBeInTheDocument();
+});
+
+test("unposted rendering: Comments tab explains and points to the list", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+    commentsTab: { anchor: undefined, label: "L", emptyText: "Publish first to discuss." },
+  });
+  expect(screen.getByTestId("comments-empty")).toHaveTextContent("Publish first to discuss.");
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  expect(screen.getByTestId(`story-${TRANSLATION_STORY.id}`)).toBeInTheDocument();
+});
+
+test("note details carry the SAME discussion component as translations", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 41, story_id: 2, user_id: 3, body: "同感", created_at: "", author_name: "Jonas" }],
+  });
+  renderPanel({ variant: "sentence", stories: [NOTE_STORY] });
+  fireEvent.click(screen.getByRole("button", { name: "Open note by Jonas" }));
+  expect(screen.getByTestId("detail-discussion")).toBeInTheDocument();
+  expect(await screen.findByText("同感")).toBeInTheDocument();
+  expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+});
+
+test("private version detail carries the switcher chips and a parallel Comments section", () => {
+  const second = { ...TRANSLATION_STORY, id: 5, author_name: "Jonas", session_name: "直译版" };
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY, second],
+    myVersions: [
+      { sessionName: "我的私有版", text: "私有译文", posted: false, authorName: "Alfmunny", picture: null },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my version 我的私有版" }));
+  const detail = screen.getByTestId("my-version-detail");
+  // Switcher present, my private chip active, others switchable
+  const switcher = screen.getByTestId("version-switcher");
+  expect(switcher).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "我的私有版 · mine" })).toHaveAttribute("aria-selected", "true");
+  // Parallel comments section explains instead of diverging layouts
+  expect(detail).toHaveTextContent("set it Public while editing");
+  // Switch straight to another version — no back-and-forth needed
+  fireEvent.click(screen.getByRole("tab", { name: "Jonas" }));
+  expect(screen.getByTestId("story-detail")).toHaveTextContent("直译版");
+});
+
+test("note editor carries the Public/Private dropdown; Save applies both", async () => {
+  const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myNote: { text: "mine", authorName: "A", picture: null },
+    onSaveMyNote,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  // Dropdown defaults to the current visibility (private here)
+  const select = screen.getByLabelText("Visibility") as HTMLSelectElement;
+  expect(select.value).toBe("private");
+  fireEvent.change(select, { target: { value: "public" } });
+  fireEvent.change(screen.getByLabelText("My note text"), { target: { value: "mine v2" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("mine v2", true));
+});
+
+test("posted note's editor defaults the dropdown to Public; private saves unpost", async () => {
+  const onSaveMyNote = jest.fn().mockResolvedValue(undefined);
+  (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myNote: { text: "mine", authorName: "A", picture: null, storyId: 2 },
+    onSaveMyNote,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  const select = screen.getByLabelText("Visibility") as HTMLSelectElement;
+  expect(select.value).toBe("public");
+  fireEvent.change(select, { target: { value: "private" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSaveMyNote).toHaveBeenCalledWith("mine", false));
+});
+
+test("version detail: Edit opens the rendering editor with the dropdown", async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "V", text: "原译", posted: false, authorName: "A", picture: null, onSave },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my version V" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
+  const editor = screen.getByTestId("my-version-editor");
+  expect((screen.getByLabelText("My translation text") as HTMLTextAreaElement).value).toBe("原译");
+  fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改译" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith("改译", false));
+  // Saving privately returns to the detail you came from — not the list
+  expect(screen.getByTestId("my-version-detail")).toBeInTheDocument();
+});
+
+test("version detail packs Share, Retranslate, and Delete; chips are display-only", async () => {
+  const onShare = jest.fn();
+  const onRetranslate = jest.fn().mockResolvedValue(undefined);
+  const onDelete = jest.fn().mockResolvedValue(undefined);
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "V", text: "t", posted: false, authorName: "A", picture: null, onShare, onRetranslate, onDelete },
+    ],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my version V" }));
+  // Chip is not a button anymore — explicit visibility lives in Edit
+  expect(screen.queryByRole("button", { name: "Make public" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Share this translation" }));
+  expect(onShare).toHaveBeenCalled();
+  // Retranslate asks first (owner, 2026-08-29)
+  fireEvent.click(screen.getByRole("button", { name: "Retranslate this paragraph" }));
+  expect(onRetranslate).not.toHaveBeenCalled();
+  const confirm = screen.getByTestId("retranslate-confirm-detail");
+  expect(confirm).toHaveTextContent(/costs tokens/);
+  fireEvent.click(screen.getByRole("button", { name: "Retranslate" }));
+  await waitFor(() => expect(onRetranslate).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole("button", { name: "Delete my translation" }));
+  await waitFor(() => expect(onDelete).toHaveBeenCalled());
+});
+
+test("my posted translation's detail offers Edit + Share, no trash for others", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [{ ...TRANSLATION_STORY, user_id: 9 }],
+    currentUserId: 9,
+    myVersions: [
+      { sessionName: "诗意版", text: "太阳依着古老的方式轰鸣。", posted: true, storyId: 1, authorName: "Me", picture: null, onSave: jest.fn(), onShare: jest.fn() },
+    ],
+    commentsTab: { anchor: { kind: "story", storyId: 1 }, label: "L", emptyText: "" },
+  });
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  fireEvent.click(screen.getByRole("button", { name: "Open my post from 诗意版" }));
+  expect(screen.getByRole("button", { name: "Edit my translation" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Share this translation" })).toBeInTheDocument();
+  expect(screen.queryByLabelText("Delete this share")).toBeNull();
+});
+test("Comments view shows the rendering as context, clamped with a More toggle", () => {
+  const longText = Array.from({ length: 14 }, (_, i) => `诗行 ${i + 1}`).join("\n");
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: undefined,
+      label: "Editorial · 中文 · this paragraph",
+      emptyText: "none",
+      content: { text: longText, lang: "zh", sessionName: "Editorial" },
+    },
+  });
+  const ctx = screen.getByTestId("comments-context");
+  expect(ctx).toHaveTextContent("诗行 1");
+  const para = ctx.querySelector("p.font-serif") as HTMLElement;
+  expect(para.className).toContain("line-clamp-[10]");
+  fireEvent.click(screen.getByRole("button", { name: "More" }));
+  expect((ctx.querySelector("p.font-serif") as HTMLElement).className).not.toContain("line-clamp");
+  fireEvent.click(screen.getByRole("button", { name: "Less" }));
+  expect((ctx.querySelector("p.font-serif") as HTMLElement).className).toContain("line-clamp-[10]");
+});
+
+test("short context renders without a More toggle", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "story", storyId: 1 },
+      label: "L",
+      emptyText: "",
+      content: { text: "短句。", lang: "zh" },
+    },
+  });
+  expect(screen.getByTestId("comments-context")).toHaveTextContent("短句。");
+  expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+});
+
+test("Current translation tab shows the rendering's detail inline, then its notes", async () => {
+  (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const onShare = jest.fn();
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "诗意版", text: "我的译文", posted: false, authorName: "Me", picture: null, onSave, onShare, onDelete: jest.fn() },
+    ],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial: { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 } },
+      label: "诗意版 · this paragraph",
+      emptyText: "",
+      content: { text: "我的译文", lang: "zh", sessionName: "诗意版", myVersionIndex: 0 },
+    },
+  });
+  // The detail is right here — no extra hop (owner, 2026-08-30)
+  expect(screen.getByRole("tab", { name: "Current translation" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("button", { name: "Edit my translation" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Share this translation" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Delete my translation" })).toBeInTheDocument();
+  expect(screen.getByText("我的译文")).toBeInTheDocument();
+  // …and the notes section sits underneath, ready to write
+  expect(await screen.findByText(/Notes \(0\)/)).toBeInTheDocument();
+  expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+  // Edit opens the editor and returns here on save
+  fireEvent.click(screen.getByRole("button", { name: "Edit my translation" }));
+  fireEvent.change(screen.getByLabelText("My translation text"), { target: { value: "改" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith("改", false));
+  expect(screen.getByTestId("comments-view")).toBeInTheDocument();
+});
+
+test("the current rendering never repeats inside Other translations", () => {
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "当前版", text: "当前", posted: false, authorName: "Me", picture: null, isCurrent: true },
+      { sessionName: "另一版", text: "另一", posted: false, authorName: "Me", picture: null },
+    ],
+    commentsTab: {
+      anchor: undefined, label: "L", emptyText: "e",
+      content: { text: "当前", sessionName: "当前版", myVersionIndex: 0 },
+    },
+  });
+  fireEvent.click(screen.getByRole("tab", { name: "Other translations" }));
+  expect(screen.queryByRole("button", { name: "Open my version 当前版" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Open my version 另一版" })).toBeInTheDocument();
+});
+
+test("note editing delegates to the app-wide dialog when the host provides it", () => {
+  const onEditMyNoteExternally = jest.fn();
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myNote: { text: "mine", authorName: "A", picture: null },
+    onSaveMyNote: jest.fn(),
+    onEditMyNoteExternally,
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open my note" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit my note" }));
+  // The inline editor never opens — one note dialog everywhere
+  expect(onEditMyNoteExternally).toHaveBeenCalled();
+  expect(screen.queryByTestId("my-note-editor")).toBeNull();
+});
+
+test("an unposted rendering can still be noted — no dead end", async () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.addEditorialComment as jest.Mock).mockResolvedValue({
+    id: 71, user_id: 9, body: "先记一笔", created_at: "", author_name: "Me",
+  });
+  const editorial = { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 2 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    myVersions: [
+      { sessionName: "私有版", text: "我的译文", posted: false, authorName: "Me", picture: null },
+    ],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial },
+      label: "私有版 · this paragraph",
+      emptyText: "",
+      content: { text: "我的译文", lang: "zh", sessionName: "私有版", myVersionIndex: 0 },
+    },
+  });
+  // The old "publish first" dead end is gone — writing works right away
+  expect(screen.queryByText(/isn't posted yet/)).toBeNull();
+  fireEvent.change(await screen.findByLabelText("Comment text"), { target: { value: "先记一笔" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addEditorialComment).toHaveBeenCalledWith(editorial, "先记一笔", undefined, "public", undefined));
+  expect(await screen.findByTestId("comment-71")).toBeInTheDocument();
+});
+
+test("version anchor: notes load and post against THAT version's paragraph", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 81, user_id: 2, body: "诗意版的笔记", created_at: "", author_name: "Mira" }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 82, user_id: 9, body: "我的笔记", created_at: "", author_name: "Me",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版 · this paragraph", emptyText: "" },
+  });
+  await waitFor(() => expect(api.listSessionParagraphComments).toHaveBeenCalledWith(version));
+  expect(await screen.findByText("诗意版的笔记")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我的笔记" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "我的笔记", undefined, "public", undefined));
+  // The language-scoped editorial endpoint is NOT used for a version
+  expect(api.listEditorialComments).not.toHaveBeenCalled();
+});
+
+test("the note composer is multi-line with a visibility choice; rows are two-line", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{
+      id: 91, user_id: 2, body: "第一行\n第二行", created_at: "2026-08-29 10:00:00",
+      author_name: "Mira", visibility: "public",
+    }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 92, user_id: 9, body: "只给自己看", created_at: "", author_name: "Me", visibility: "private",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  // Composer: a real textarea, not a one-line input
+  const box = await screen.findByLabelText("Comment text");
+  expect(box.tagName).toBe("TEXTAREA");
+  expect(box).toHaveAttribute("rows", "4");
+  // Identity line and body live on separate lines
+  const row = await screen.findByTestId("comment-91");
+  expect(row.querySelector("time")).not.toBeNull();
+  const body = row.querySelector("p");
+  expect(body?.textContent).toContain("第一行");
+  expect(body?.className).toContain("whitespace-pre-wrap");
+  // Private notes post as private and are badged
+  fireEvent.change(screen.getByLabelText("Note visibility"), { target: { value: "private" } });
+  fireEvent.change(box, { target: { value: "只给自己看" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(version, "只给自己看", undefined, "private", undefined));
+  expect(await screen.findByText("private")).toBeInTheDocument();
+});
+
+test("a selection is highlighted in the context and shown expanded", () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  const long = Array.from({ length: 16 }, (_, i) => `诗行 ${i + 1}`).join("\n");
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial: { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 } },
+      label: "Editorial",
+      emptyText: "",
+      content: { text: long, lang: "zh", sessionName: "Editorial", highlight: "诗行 14" },
+    },
+  });
+  const mark = screen.getByTestId("context-highlight");
+  expect(mark).toHaveTextContent("诗行 14");
+  // Long text is NOT clamped when a selection has to be visible
+  const para = screen.getByTestId("comments-context").querySelector("p.font-serif") as HTMLElement;
+  expect(para.className).not.toContain("line-clamp");
+  expect(para.className).toContain("overflow-y-auto");
+});
+
+test("without a selection long context stays clamped behind More", () => {
+  (api.listEditorialComments as jest.Mock).mockResolvedValue({ comments: [] });
+  const long = Array.from({ length: 16 }, (_, i) => `诗行 ${i + 1}`).join("\n");
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "editorial", editorial: { book_id: 5, target_language: "zh", chapter_index: 4, paragraph_index: 0 } },
+      label: "Editorial",
+      emptyText: "",
+      content: { text: long, lang: "zh", sessionName: "Editorial" },
+    },
+  });
+  expect(screen.queryByTestId("context-highlight")).toBeNull();
+  const para = screen.getByTestId("comments-context").querySelector("p.font-serif") as HTMLElement;
+  expect(para.className).toContain("line-clamp-[10]");
+  expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+});
+
+test("a note carries the selected passage as its quote, shown clamped", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{
+      id: 101, user_id: 2, body: "这一句译得妙", quote: "太阳依着古老的方式轰鸣。",
+      created_at: "2026-08-29 10:00:00", author_name: "Mira", visibility: "public",
+    }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 102, user_id: 9, body: "我也这么想", quote: "大海在宽阔的河流中翻腾。",
+    created_at: "", author_name: "Me",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "version", version },
+      label: "诗意版",
+      emptyText: "",
+      content: { text: "太阳依着古老的方式轰鸣。大海在宽阔的河流中翻腾。", lang: "zh", highlight: "大海在宽阔的河流中翻腾。" },
+    },
+  });
+  // Existing notes show their quote above the body
+  expect(await screen.findByTestId("comment-quote-101")).toHaveTextContent("太阳依着古老的方式轰鸣。");
+  // The composer previews what will be quoted, and posts it
+  expect(screen.getByTestId("composer-quote")).toHaveTextContent("大海在宽阔的河流中翻腾。");
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "我也这么想" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
+    version, "我也这么想", undefined, "public", "大海在宽阔的河流中翻腾。",
+  ));
+  // The comment detail shows the full quote
+  fireEvent.click(screen.getByRole("button", { name: "Open comment by Mira" }));
+  expect(screen.getByTestId("comment-detail-quote")).toHaveTextContent("太阳依着古老的方式轰鸣。");
+});
+
+test("replies carry no quote of their own", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 111, user_id: 2, body: "顶层", created_at: "", author_name: "Mira" }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 112, user_id: 9, body: "回复", created_at: "", author_name: "Me",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "version", version }, label: "诗意版", emptyText: "",
+      content: { text: "上下文", lang: "zh", highlight: "上下文" },
+    },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Mira" }));
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回复" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
+    version, "回复", 111, "public", undefined,
+  ));
+});
+
+test("my note can be edited in its detail — text and visibility", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{
+      id: 121, user_id: 9, body: "初稿", created_at: "", author_name: "Me", visibility: "public",
+    }],
+  });
+  (api.updateStoryComment as jest.Mock).mockResolvedValue({
+    id: 121, user_id: 9, body: "改过的笔记", created_at: "", author_name: "Me", visibility: "private",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Me" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+  const box = screen.getByLabelText("Edit note text") as HTMLTextAreaElement;
+  expect(box.value).toBe("初稿");
+  fireEvent.change(box, { target: { value: "改过的笔记" } });
+  fireEvent.change(screen.getByLabelText("Edit note visibility"), { target: { value: "private" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(api.updateStoryComment).toHaveBeenCalledWith(121, {
+    body: "改过的笔记", visibility: "private",
+  }));
+  // The edited text is shown straight away, editor closed
+  expect(screen.queryByTestId("comment-editor")).toBeNull();
+  expect(screen.getByText("改过的笔记")).toBeInTheDocument();
+});
+
+test("someone else's note offers no edit control", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 131, user_id: 2, body: "别人的笔记", created_at: "", author_name: "Mira" }],
+  });
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: {
+      anchor: { kind: "version", version: { session_id: 5, chapter_index: 4, paragraph_index: 0 } },
+      label: "诗意版", emptyText: "",
+    },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Mira" }));
+  expect(screen.queryByRole("button", { name: "Edit note" })).toBeNull();
+});
+
+test("the reply box has no visibility choice — it inherits the note's", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 141, user_id: 2, body: "私密笔记", created_at: "", author_name: "Mira", visibility: "private" }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 142, user_id: 9, body: "回复", created_at: "", author_name: "Me", visibility: "private",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  // The top-level composer has the choice…
+  expect(await screen.findByLabelText("Note visibility")).toBeInTheDocument();
+  // …the reply composer does not
+  fireEvent.click(screen.getByRole("button", { name: "Open comment by Mira" }));
+  expect(screen.queryByLabelText("Note visibility")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回复" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  // …and the reply takes the parent's visibility
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
+    version, "回复", 141, "private", undefined,
+  ));
+});
+
+test("a private note is badged in its detail too, and the badge follows an edit", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 151, user_id: 9, body: "只给自己看", created_at: "", author_name: "Me", visibility: "private" }],
+  });
+  (api.updateStoryComment as jest.Mock).mockResolvedValue({
+    id: 151, user_id: 9, body: "只给自己看", created_at: "", author_name: "Me", visibility: "public",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Me" }));
+  expect(screen.getByTestId("comment-detail-private")).toHaveTextContent("private");
+  // Making it public in place drops the badge
+  fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+  fireEvent.change(screen.getByLabelText("Edit note visibility"), { target: { value: "public" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(screen.queryByTestId("comment-detail-private")).toBeNull());
 });

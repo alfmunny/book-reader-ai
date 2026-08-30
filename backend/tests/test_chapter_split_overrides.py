@@ -577,3 +577,97 @@ def test_hamlet_grouping_moved_no_paragraph():
     counts = [len(c["paragraphs"]) for c in artifact["chapters"]]
     assert len(counts) == 20
     assert counts[0] == 74, "chapter 0 is what the zh translation anchors to"
+
+
+# ── The committed C&P and Madame Bovary artifacts (#2745 Phase 2) ────────────
+
+CP_ARTIFACT = REPO_ROOT / "data" / "books" / "book_2554.json"
+BOVARY_ARTIFACT = REPO_ROOT / "data" / "books" / "book_14155.json"
+
+
+def test_cp_six_parts_tell_the_six_chapter_ones_apart():
+    """The panel showed CHAPTER I six times with nothing distinguishing them.
+    The parts appear in no title, so grouping is the only thing that can."""
+    artifact = json.loads(CP_ARTIFACT.read_text())
+    chapters = artifact["chapters"]
+
+    chapter_ones = [c for c in chapters if c["title"] == "CHAPTER I"]
+    assert len(chapter_ones) == 6
+    assert len({c["part"] for c in chapter_ones}) == 6, "each Chapter I is in its own part"
+
+    # freeze_book omits the key entirely for an ungrouped chapter, so .get().
+    sizes = {}
+    for c in chapters:
+        if c.get("part"):
+            sizes[c["part"]] = sizes.get(c["part"], 0) + 1
+    assert sizes == {"PART I": 7, "PART II": 7, "PART III": 6,
+                     "PART IV": 6, "PART V": 5, "PART VI": 8}
+
+
+def test_cp_epilogue_and_apparatus_belong_to_no_part():
+    """Owner's decision: the epilogue renders ungrouped rather than in a
+    one-chapter group asserting a structure the work does not have."""
+    chapters = json.loads(CP_ARTIFACT.read_text())["chapters"]
+    ungrouped = [c["index"] for c in chapters if not c.get("part")]
+    assert ungrouped == [0, 1, 41]
+    assert chapters[41]["title"] == "EPILOGUE"
+
+
+def test_cp_grouping_left_the_hash_alone():
+    """`part` sits outside content_sha256, and C&P has no retitle — so unlike
+    Hamlet and Bovary its frozen identity must be untouched."""
+    artifact = json.loads(CP_ARTIFACT.read_text())
+    assert artifact["split"]["content_sha256"] == (
+        "c8cb25d329700139741e47b54621170f02e90a74579ab892e5eb5d90512c71b2"
+    )
+
+
+def test_bovary_every_part_opens_on_a_nameable_chapter_one():
+    """Same defect #2769 repaired in Hamlet: 'PREMIÈRE PARTIE' *is* Part 1
+    Chapter I, and the panel jumped from the part name straight to II."""
+    chapters = json.loads(BOVARY_ARTIFACT.read_text())["chapters"]
+
+    for title in ("PREMIÈRE PARTIE", "DEUXIÈME PARTIE", "TROISIÈME PARTIE"):
+        assert title not in [c["title"] for c in chapters], f"{title} still a leaf title"
+
+    first_of_part = {}
+    for c in chapters:
+        if c.get("part"):
+            first_of_part.setdefault(c["part"], c)
+    assert len(first_of_part) == 3
+    for part, chapter in first_of_part.items():
+        assert chapter["title"] == "I", f"{part}: {chapter['title']!r}"
+        # The numeral the retitle restores is the chapter's own opening line.
+        assert chapter["paragraphs"][0] == "I", part
+
+
+def test_bovary_part_sizes_match_the_source():
+    chapters = json.loads(BOVARY_ARTIFACT.read_text())["chapters"]
+    sizes = {}
+    for c in chapters:
+        if c.get("part"):
+            sizes[c["part"]] = sizes.get(c["part"], 0) + 1
+    assert sizes == {"PREMIÈRE PARTIE": 9, "DEUXIÈME PARTIE": 15, "TROISIÈME PARTIE": 11}
+    # Chapter 0 is the title page and printed contents; labelling it frontmatter
+    # is a separate judgement and deliberately not made here.
+    assert not chapters[0].get("part")
+
+
+def test_grouping_moved_no_paragraph_in_either_book():
+    """Both books carry zh translations that align by paragraph position."""
+    for path, count in ((CP_ARTIFACT, 42), (BOVARY_ARTIFACT, 36)):
+        chapters = json.loads(path.read_text())["chapters"]
+        assert len(chapters) == count
+        assert [c["index"] for c in chapters] == list(range(count))
+        assert all(c["paragraphs"] for c in chapters)
+
+
+def test_room_with_a_view_is_not_grouped_yet():
+    """#2641 is deliberately absent: re-freezing it is blocked by a pre-existing
+    double-remap of its artifact's own translation entries, and forcing past the
+    guard would mis-anchor paid work. Declaring parts without a matching artifact
+    would leave the registry and the frozen data disagreeing."""
+    from scripts.chapter_split_overrides import OVERRIDES
+    assert "parts" not in OVERRIDES[2641]
+    chapters = json.loads((REPO_ROOT / "data" / "books" / "book_2641.json").read_text())["chapters"]
+    assert not any(c.get("part") for c in chapters)

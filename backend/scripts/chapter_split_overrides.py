@@ -140,6 +140,30 @@ OVERRIDES: dict[int, dict] = {
         ],
     },
     2554: {  # Crime and Punishment
+        # Six parts and an epilogue. The source sets PART I..PART VI as
+        # standalone headings, but the splitter cuts at the CHAPTER I that
+        # follows each one, so the part never reached a title: the panel showed
+        # CHAPTER I six times with nothing to tell them apart.
+        #
+        # No retitle — the leaf titles are already right. The epilogue takes no
+        # part: it belongs to none, and a one-chapter group would assert a
+        # structure the work does not have. Chapters 0-1 are the printed
+        # contents and the translator's preface, also outside the parts.
+        # Audited against Gutenberg #2554, 2026-08-30.
+        "parts": [
+            {"label": "PART I", "from": 2, "to": 8,
+             "expect_first_title": "CHAPTER I", "why": "Part I, seven chapters"},
+            {"label": "PART II", "from": 9, "to": 15,
+             "expect_first_title": "CHAPTER I", "why": "Part II, seven chapters"},
+            {"label": "PART III", "from": 16, "to": 21,
+             "expect_first_title": "CHAPTER I", "why": "Part III, six chapters"},
+            {"label": "PART IV", "from": 22, "to": 27,
+             "expect_first_title": "CHAPTER I", "why": "Part IV, six chapters"},
+            {"label": "PART V", "from": 28, "to": 32,
+             "expect_first_title": "CHAPTER I", "why": "Part V, five chapters"},
+            {"label": "PART VI", "from": 33, "to": 40,
+             "expect_first_title": "CHAPTER I", "why": "Part VI, eight chapters"},
+        ],
         "frontmatter": [
             {
                 "index": 0,
@@ -208,6 +232,41 @@ OVERRIDES: dict[int, dict] = {
                 ),
                 "why": "tail of Chapter XV; 'Chapter two' is narrative prose, not a heading",
             },
+        ],
+    },
+    14155: {  # Madame Bovary
+        # The same defect #2769 repaired in Hamlet. The source sets the part
+        # heading and its first chapter numeral as consecutive lines:
+        #
+        #     PREMIÈRE PARTIE
+        #     I
+        #
+        # The splitter cut at the first, so the chapter holding Chapter I was
+        # titled only "PREMIÈRE PARTIE" and the panel's numbering jumped from
+        # the part name straight to II. Chapter I was unreachable by name in all
+        # three parts. Each of these chapters opens on a bare "I" paragraph,
+        # which is the numeral the retitle restores; the part now rides on the
+        # group header.
+        #
+        # Chapter 0 is a title page and printed contents listing. Labelling it
+        # frontmatter is deliberately out of scope here — it is a separate
+        # judgement about apparatus, not about grouping.
+        # Audited against Gutenberg #14155, 2026-08-30.
+        "retitle": [
+            {"index": 1, "expect_title": "PREMIÈRE PARTIE", "title": "I",
+             "why": "holds Part 1 Chapter I; the part heading hid it"},
+            {"index": 10, "expect_title": "DEUXIÈME PARTIE", "title": "I",
+             "why": "holds Part 2 Chapter I; the part heading hid it"},
+            {"index": 25, "expect_title": "TROISIÈME PARTIE", "title": "I",
+             "why": "holds Part 3 Chapter I; the part heading hid it"},
+        ],
+        "parts": [
+            {"label": "PREMIÈRE PARTIE", "from": 1, "to": 9,
+             "expect_first_title": "I", "why": "nine chapters"},
+            {"label": "DEUXIÈME PARTIE", "from": 10, "to": 24,
+             "expect_first_title": "I", "why": "fifteen chapters"},
+            {"label": "TROISIÈME PARTIE", "from": 25, "to": 35,
+             "expect_first_title": "I", "why": "eleven chapters"},
         ],
     },
     1524: {  # Hamlet

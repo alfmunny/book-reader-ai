@@ -721,11 +721,15 @@ export default function SentenceReader({
   // scrollIntoView() on iOS Safari scrolls multiple ancestors including the body,
   // which causes the whole page to jump upward (#1736). Use container.scrollTo() directly.
   const activeRef = useRef<HTMLElement | null>(null);
+  // Follow fires when the SEGMENT changes, never because the parent handed us
+  // a new function. Keeping it in a ref keeps it out of the dependency lists.
+  const followRef = useRef(onFollowSegment);
+  followRef.current = onFollowSegment;
   useEffect(() => {
     if (currentIdx < 0 || !isPlaying || !activeRef.current) return;
     const el = activeRef.current;
-    if (paginated && onFollowSegment) {
-      onFollowSegment(el);
+    if (paginated && followRef.current) {
+      followRef.current(el);
       return;
     }
     const container = document.getElementById("reader-scroll");
@@ -743,7 +747,7 @@ export default function SentenceReader({
         behavior: "smooth",
       });
     }
-  }, [currentIdx, isPlaying, paginated, onFollowSegment]);
+  }, [currentIdx, isPlaying, paginated]);
 
   // Expose paragraph timings to parent whenever paragraphs recompute (chunks load)
   useEffect(() => {
@@ -814,12 +818,12 @@ export default function SentenceReader({
       // Only scroll if this effect's target is still the current flash target
       const el = containerRef.current?.querySelector("[data-jump-target]") as HTMLElement | null;
       if (!el) return;
-      if (paginated && onFollowSegment) onFollowSegment(el);
+      if (paginated && followRef.current) followRef.current(el);
       else el.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
     const clear = setTimeout(() => setFlashTarget((cur) => cur === target ? null : cur), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
-  }, [scrollTargetSentence, paginated, onFollowSegment]);
+  }, [scrollTargetSentence, paginated]);
 
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";

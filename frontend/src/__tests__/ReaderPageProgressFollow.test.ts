@@ -49,10 +49,26 @@ describe("page-aware TTS follow (collision 2, #2786)", () => {
     expect(reader).toContain("paginated?: boolean;");
     expect(reader).toContain("onFollowSegment?: (el: HTMLElement) => void;");
     // audio follow
-    expect(reader).toContain("if (paginated && onFollowSegment) {\n      onFollowSegment(el);\n      return;\n    }");
+    expect(reader).toContain("if (paginated && followRef.current) {");
     // search jump target
-    expect(reader).toContain("if (paginated && onFollowSegment) onFollowSegment(el);");
+    expect(reader).toContain("if (paginated && followRef.current) followRef.current(el);");
     expect(src).toContain('paginated={readerMode === "page"}');
     expect(src).toContain("onFollowSegment={revealElement}");
+  });
+});
+
+describe("following must not fight the reader (owner, 2026-08-31)", () => {
+  it("keeps the follow callback out of the effects' dependency lists", () => {
+    // With it in, every turn gave the effects a new function, re-fired the
+    // follow and snapped the page back — pages could not be turned at all.
+    expect(reader).toContain("const followRef = useRef(onFollowSegment);");
+    expect(reader).toContain("}, [currentIdx, isPlaying, paginated]);");
+    expect(reader).toContain("}, [scrollTargetSentence, paginated]);");
+    expect(reader).not.toContain("onFollowSegment]);");
+  });
+
+  it("does not churn revealElement's identity on every turn", () => {
+    expect(src).toContain("setPageIndex((prev) => (prev === target ? prev : target));");
+    expect(src).toContain("}, [readerMode, perView, pageCount]);");
   });
 });

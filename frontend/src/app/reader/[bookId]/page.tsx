@@ -944,8 +944,12 @@ export default function ReaderPage() {
     const column = Math.floor(x / step);
     const leaf = perView * Math.floor(column / perView);
     const target = Math.max(0, Math.min(leaf, pageCount - 1));
-    if (target !== pageIndex) setPageIndex(target);
-  }, [readerMode, pageIndex, perView, pageCount]);
+    // Functional update, so this callback does not change identity on every
+    // turn. It is a dependency of the follow effects; churning it re-fires
+    // them, which snapped the reader back and made pages unturnable while
+    // audio was playing (owner, 2026-08-31).
+    setPageIndex((prev) => (prev === target ? prev : target));
+  }, [readerMode, perView, pageCount]);
 
   const revealSegment = useCallback((seg: number) => {
     revealElement(document.querySelector<HTMLElement>(`[data-seg="${seg}"]`));

@@ -263,3 +263,29 @@ test("keyboard sentence navigation turns the page to reach its sentence", async 
   await page.keyboard.press("n");
   await expect.poll(async () => (await readPos(page)).first).toBe(1);
 });
+
+test("a turn sticks while the reader is following along", async ({ page }) => {
+  // Regression (owner, 2026-08-31): onFollowSegment changed identity on every
+  // turn and sat in the follow effects' dependency lists, so turning a page
+  // re-fired the follow and snapped straight back — pages would not turn.
+  await enterPageMode(page);
+
+  // Drive the follow path the same way playback does, then turn.
+  await page.evaluate(() => {
+    const el = document.querySelectorAll<HTMLElement>("[data-seg]")[0];
+    el?.scrollIntoView({ block: "nearest" });
+  });
+
+  const start = (await readPos(page)).first;
+  await page.getByRole("button", { name: "Next page" }).click();
+  const after = (await readPos(page)).first;
+  expect(after).toBeGreaterThan(start);
+
+  // Give any stray follow effect several frames to yank it back
+  await page.waitForTimeout(500);
+  expect((await readPos(page)).first).toBe(after);
+
+  // …and a second turn still moves
+  await page.getByRole("button", { name: "Next page" }).click();
+  expect((await readPos(page)).first).toBeGreaterThan(after);
+});

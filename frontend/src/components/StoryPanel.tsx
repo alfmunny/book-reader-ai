@@ -35,6 +35,7 @@ import {
   addSessionParagraphComment,
   deleteStory,
   deleteStoryComment,
+  updateStoryComment,
 } from "@/lib/api";
 import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon, ShareIcon, RetryIcon } from "@/components/Icons";
 import { timeAgo, exactTime } from "@/lib/timeAgo";
@@ -378,6 +379,28 @@ export default function StoryPanel({
     }
   }
 
+  async function saveCommentEdit(commentId: number) {
+    if (!activeKey || !commentDraft.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await updateStoryComment(commentId, {
+        body: commentDraft.trim(),
+        visibility: commentVis,
+      });
+      setCommentCache((c) => ({
+        ...c,
+        [activeKey]: (c[activeKey] ?? []).map((x) => (x.id === commentId ? { ...x, ...updated } : x)),
+      }));
+      setEditingComment(false);
+      onChanged();
+    } catch {
+      setError("Could not save the note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function removeComment(commentId: number) {
     if (!activeKey) return;
     try {
@@ -494,6 +517,10 @@ export default function StoryPanel({
     highlightRef.current?.scrollIntoView({ block: "center" });
   }, [commentsTab?.content?.highlight, contentExpanded]);
   const [noteVisibility, setNoteVisibility] = useState<"public" | "private">("public");
+  // Editing a note happens in its own detail page (owner, 2026-08-30)
+  const [editingComment, setEditingComment] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentVis, setCommentVis] = useState<"public" | "private">("public");
   // Detail-panel retranslate asks first, like the row (owner, 2026-08-29)
   const [confirmRetrans, setConfirmRetrans] = useState<number | null>(null);
   const [versionDraft, setVersionDraft] = useState("");
@@ -1101,6 +1128,20 @@ export default function StoryPanel({
                 <time title={exactTime(detailComment.created_at)} className="text-[11px] text-stone-400">{timeAgo(detailComment.created_at)}</time>
               )}
             </div>
+            {detailComment.user_id === currentUserId && !editingComment && (
+              <button
+                onClick={() => {
+                  setCommentDraft(detailComment.body);
+                  setCommentVis(detailComment.visibility === "private" ? "private" : "public");
+                  setEditingComment(true);
+                }}
+                aria-label="Edit note"
+                title="Edit"
+                className="text-stone-400 hover:text-amber-800 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                <NoteIcon className="w-4 h-4" />
+              </button>
+            )}
             {(detailComment.user_id === currentUserId || isAdmin) && (
               <button
                 onClick={async () => { await removeComment(detailComment.id); goBack(); }}
@@ -1119,7 +1160,45 @@ export default function StoryPanel({
               {detailComment.quote}
             </blockquote>
           )}
-          <p className="text-[13px] leading-relaxed text-ink whitespace-pre-wrap">{detailComment.body}</p>
+          {editingComment ? (
+            <div className="space-y-2" data-testid="comment-editor">
+              <textarea
+                value={commentDraft}
+                onChange={(e) => setCommentDraft(e.target.value)}
+                rows={4}
+                autoFocus
+                aria-label="Edit note text"
+                className="w-full text-[13px] leading-relaxed border border-amber-300 rounded-lg px-2.5 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Edit note visibility"
+                  value={commentVis}
+                  onChange={(e) => setCommentVis(e.target.value as "public" | "private")}
+                  className="text-[11px] rounded-lg border border-amber-200 px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="public">Public — others can read it</option>
+                  <option value="private">Private — only you</option>
+                </select>
+                <span className="flex-1" />
+                <button
+                  onClick={() => setEditingComment(false)}
+                  className="text-xs px-2.5 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => saveCommentEdit(detailComment.id)}
+                  disabled={busy || !commentDraft.trim()}
+                  className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[13px] leading-relaxed text-ink whitespace-pre-wrap">{detailComment.body}</p>
+          )}
           <div className="pt-2 border-t border-amber-100 space-y-2">
             <p className="text-[11px] font-medium text-stone-500">Replies ({repliesOf(detailComment.id).length})</p>
             {repliesOf(detailComment.id).map((r) => commentRow(r, { indent: true }))}

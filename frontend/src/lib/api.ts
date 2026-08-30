@@ -1404,6 +1404,17 @@ export function addEditorialComment(anchor: EditorialCommentAnchor, body: string
   });
 }
 
+export function updateStoryComment(
+  commentId: number,
+  data: { body: string; visibility?: "public" | "private" },
+) {
+  return request<StoryComment>(`/stories/comments/${commentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
 export function deleteStoryComment(commentId: number) {
   return request<{ ok: boolean }>(`/stories/comments/${commentId}`, { method: "DELETE" });
 }

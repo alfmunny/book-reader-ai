@@ -12,6 +12,7 @@ jest.mock("@/lib/api", () => ({
   addEditorialComment: jest.fn(),
   listSessionParagraphComments: jest.fn(),
   addSessionParagraphComment: jest.fn(),
+  updateStoryComment: jest.fn(),
   deleteStory: jest.fn(),
   deleteStoryComment: jest.fn(),
 }));
@@ -880,4 +881,52 @@ test("replies carry no quote of their own", async () => {
   await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
     version, "回复", 111, "public", undefined,
   ));
+});
+
+test("my note can be edited in its detail — text and visibility", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{
+      id: 121, user_id: 9, body: "初稿", created_at: "", author_name: "Me", visibility: "public",
+    }],
+  });
+  (api.updateStoryComment as jest.Mock).mockResolvedValue({
+    id: 121, user_id: 9, body: "改过的笔记", created_at: "", author_name: "Me", visibility: "private",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Me" }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit note" }));
+  const box = screen.getByLabelText("Edit note text") as HTMLTextAreaElement;
+  expect(box.value).toBe("初稿");
+  fireEvent.change(box, { target: { value: "改过的笔记" } });
+  fireEvent.change(screen.getByLabelText("Edit note visibility"), { target: { value: "private" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() => expect(api.updateStoryComment).toHaveBeenCalledWith(121, {
+    body: "改过的笔记", visibility: "private",
+  }));
+  // The edited text is shown straight away, editor closed
+  expect(screen.queryByTestId("comment-editor")).toBeNull();
+  expect(screen.getByText("改过的笔记")).toBeInTheDocument();
+});
+
+test("someone else's note offers no edit control", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 131, user_id: 2, body: "别人的笔记", created_at: "", author_name: "Mira" }],
+  });
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: {
+      anchor: { kind: "version", version: { session_id: 5, chapter_index: 4, paragraph_index: 0 } },
+      label: "诗意版", emptyText: "",
+    },
+  });
+  fireEvent.click(await screen.findByRole("button", { name: "Open comment by Mira" }));
+  expect(screen.queryByRole("button", { name: "Edit note" })).toBeNull();
 });

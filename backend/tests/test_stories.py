@@ -509,3 +509,23 @@ async def test_notes_carry_the_selected_passage(client, test_user):
     # A note written without a selection simply has none
     plain = (await client.post("/api/stories/comments/session", json={**anchor, "body": "泛泛而谈"})).json()
     assert plain["quote"] is None
+
+
+async def test_notes_are_editable_by_their_author_only(client, test_user):
+    from services.db import get_or_create_user, update_story_comment
+    sid = await _make_session(client, name="可编辑版")
+    anchor = {"session_id": sid, "chapter_index": 0, "paragraph_index": 0}
+    note = (await client.post("/api/stories/comments/session", json={**anchor, "body": "初稿"})).json()
+
+    edited = (await client.patch(f"/api/stories/comments/{note['id']}", json={
+        "body": "改过的笔记", "visibility": "private",
+    })).json()
+    assert edited["body"] == "改过的笔记"
+    assert edited["visibility"] == "private"
+    listed = (await client.get("/api/stories/comments/session", params=anchor)).json()["comments"]
+    assert [c["body"] for c in listed] == ["改过的笔记"]
+
+    # Someone else cannot edit it
+    other = await get_or_create_user(google_id="g-editor", email="e@e.com", name="E", picture="")
+    assert await update_story_comment(note["id"], other["id"], "劫持") is None
+    assert (await client.patch("/api/stories/comments/99999", json={"body": "x"})).status_code == 404

@@ -2195,6 +2195,34 @@ async def get_translation_session_any(session_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+async def update_story_comment(
+    comment_id: int, user_id: int, body: str, visibility: str | None = None,
+) -> dict | None:
+    """Edit your own note (owner, 2026-08-30). Returns the row, or None when
+    the note is not yours — authorship is the whole authorisation here."""
+    sets = ["body = ?"]
+    params: list = [body]
+    if visibility is not None:
+        sets.append("visibility = ?")
+        params.append(visibility)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            f"UPDATE story_comments SET {', '.join(sets)} WHERE id = ? AND user_id = ?",
+            (*params, comment_id, user_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
+
+
 async def delete_story_comment(comment_id: int, user_id: int, is_admin: bool = False) -> bool:
     async with aiosqlite.connect(DB_PATH) as db:
         if is_admin:

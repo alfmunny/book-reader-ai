@@ -25,6 +25,7 @@ from services.db import (
     create_story_comment,
     list_story_comments,
     delete_story_comment,
+    update_story_comment,
     create_editorial_comment,
     list_editorial_comments,
     create_session_paragraph_comment,
@@ -69,6 +70,11 @@ class SessionParagraphCommentCreate(BaseModel):
     parent_id: int | None = Field(default=None, ge=1)
     visibility: Literal["public", "private"] = "public"
     quote: str | None = Field(default=None, max_length=1000)
+
+
+class CommentUpdate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    visibility: Literal["public", "private"] | None = None
 
 
 class EditorialCommentCreate(BaseModel):
@@ -260,6 +266,19 @@ async def add_editorial_comment(req: EditorialCommentCreate, user: dict = Depend
         user["id"], req.body.strip(), req.parent_id, req.visibility,
         (req.quote or "").strip() or None,
     )
+
+
+@router.patch("/comments/{comment_id}")
+async def edit_comment(
+    req: CommentUpdate,
+    comment_id: int = Path(ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Edit your own note or reply (owner, 2026-08-30)."""
+    updated = await update_story_comment(comment_id, user["id"], req.body.strip(), req.visibility)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return updated
 
 
 @router.delete("/comments/{comment_id}")

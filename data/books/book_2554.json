@@ -22,8 +22,8 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-27",
-    "audited_by": "architect-agent (front-matter classification #2745)",
+    "frozen_at": "2026-08-30",
+    "audited_by": "uiux-agent (part grouping, #2745 Phase 2)",
     "content_sha256": "c8cb25d329700139741e47b54621170f02e90a74579ab892e5eb5d90512c71b2"
   },
   "chapters": [
@@ -155,7 +155,8 @@
         "Or suddenly waking up again:",
         "“Walking along the crowded row\nHe met the one he used to know.”",
         "But no one shared his enjoyment: his silent companion looked with positive\nhostility and mistrust at all these manifestations. There was another man\nin the room who looked somewhat like a retired government clerk. He was\nsitting apart, now and then sipping from his pot and looking round at the\ncompany. He, too, appeared to be in some agitation."
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 3,
@@ -216,7 +217,8 @@
         "“What a stupid thing I’ve done,” he thought to himself, “they have Sonia\nand I want it myself.” But reflecting that it would be impossible to take\nit back now and that in any case he would not have taken it, he dismissed\nit with a wave of his hand and went back to his lodging. “Sonia wants\npomatum too,” he said as he walked along the street, and he laughed\nmalignantly—“such smartness costs money.... Hm! And maybe Sonia\nherself will be bankrupt to-day, for there is always a risk, hunting big\ngame... digging for gold... then they would all be without a crust\nto-morrow except for my money. Hurrah for Sonia! What a mine they’ve dug\nthere! And they’re making the most of it! Yes, they are making the most of\nit! They’ve wept over it and grown used to it. Man grows used to\neverything, the scoundrel!”",
         "He sank into thought.",
         "“And what if I am wrong,” he cried suddenly after a moment’s thought.\n“What if man is not really a scoundrel, man in general, I mean, the whole\nrace of mankind—then all the rest is prejudice, simply artificial\nterrors and there are no barriers and it’s all as it should be.”"
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 4,
@@ -265,7 +267,8 @@
         "“Yours till death,",
         "“PULCHERIA RASKOLNIKOV.”",
         "Almost from the first, while he read the letter, Raskolnikov’s face was\nwet with tears; but when he finished it, his face was pale and distorted\nand a bitter, wrathful and malignant smile was on his lips. He laid his\nhead down on his threadbare dirty pillow and pondered, pondered a long\ntime. His heart was beating violently, and his brain was in a turmoil. At\nlast he felt cramped and stifled in the little yellow room that was like a\ncupboard or a box. His eyes and his mind craved for space. He took up his\nhat and went out, this time without dread of meeting anyone; he had\nforgotten his dread. He turned in the direction of the Vassilyevsky\nOstrov, walking along Vassilyevsky Prospect, as though hastening on some\nbusiness, but he walked, as his habit was, without noticing his way,\nmuttering and even speaking aloud to himself, to the astonishment of the\npassers-by. Many of them took him to be drunk."
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 5,
@@ -323,7 +326,8 @@
         "“But where am I going?” he thought suddenly. “Strange, I came out for\nsomething. As soon as I had read the letter I came out.... I was going to\nVassilyevsky Ostrov, to Razumihin. That’s what it was... now I remember.\nWhat for, though? And what put the idea of going to Razumihin into my head\njust now? That’s curious.”",
         "He wondered at himself. Razumihin was one of his old comrades at the\nuniversity. It was remarkable that Raskolnikov had hardly any friends at\nthe university; he kept aloof from everyone, went to see no one, and did\nnot welcome anyone who came to see him, and indeed everyone soon gave him\nup. He took no part in the students’ gatherings, amusements or\nconversations. He worked with great intensity without sparing himself, and\nhe was respected for this, but no one liked him. He was very poor, and\nthere was a sort of haughty pride and reserve about him, as though he were\nkeeping something to himself. He seemed to some of his comrades to look\ndown upon them all as children, as though he were superior in development,\nknowledge and convictions, as though their beliefs and interests were\nbeneath him.",
         "With Razumihin he had got on, or, at least, he was more unreserved and\ncommunicative with him. Indeed it was impossible to be on any other terms\nwith Razumihin. He was an exceptionally good-humoured and candid youth,\ngood-natured to the point of simplicity, though both depth and dignity lay\nconcealed under that simplicity. The better of his comrades understood\nthis, and all were fond of him. He was extremely intelligent, though he\nwas certainly rather a simpleton at times. He was of striking appearance—tall,\nthin, blackhaired and always badly shaved. He was sometimes uproarious and\nwas reputed to be of great physical strength. One night, when out in a\nfestive company, he had with one blow laid a gigantic policeman on his\nback. There was no limit to his drinking powers, but he could abstain from\ndrink altogether; he sometimes went too far in his pranks; but he could do\nwithout pranks altogether. Another thing striking about Razumihin, no\nfailure distressed him, and it seemed as though no unfavourable\ncircumstances could crush him. He could lodge anywhere, and bear the\nextremes of cold and hunger. He was very poor, and kept himself entirely\non what he could earn by work of one sort or another. He knew of no end of\nresources by which to earn money. He spent one whole winter without\nlighting his stove, and used to declare that he liked it better, because\none slept more soundly in the cold. For the present he, too, had been\nobliged to give up the university, but it was only for a time, and he was\nworking with all his might to save enough to return to his studies again.\nRaskolnikov had not been to see him for the last four months, and\nRazumihin did not even know his address. About two months before, they had\nmet in the street, but Raskolnikov had turned away and even crossed to the\nother side that he might not be observed. And though Razumihin noticed\nhim, he passed him by, as he did not want to annoy him."
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 6,
@@ -405,7 +409,8 @@
         "Raskolnikov had just passed and heard no more. He passed softly,\nunnoticed, trying not to miss a word. His first amazement was followed by\na thrill of horror, like a shiver running down his spine. He had learnt,\nhe had suddenly quite unexpectedly learnt, that the next day at seven\no’clock Lizaveta, the old woman’s sister and only companion, would be away\nfrom home and that therefore at seven o’clock precisely the old woman would\nbe left alone.",
         "He was only a few steps from his lodging. He went in like a man condemned\nto death. He thought of nothing and was incapable of thinking; but he felt\nsuddenly in his whole being that he had no more freedom of thought, no\nwill, and that everything was suddenly and irrevocably decided.",
         "Certainly, if he had to wait whole years for a suitable opportunity, he\ncould not reckon on a more certain step towards the success of the plan\nthan that which had just presented itself. In any case, it would have been\ndifficult to find out beforehand and with certainty, with greater\nexactness and less risk, and without dangerous inquiries and\ninvestigations, that next day at a certain time an old woman, on whose\nlife an attempt was contemplated, would be at home and entirely alone."
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 7,
@@ -472,7 +477,8 @@
         "And there was the fourth storey, here was the door, here was the flat\nopposite, the empty one. The flat underneath the old woman’s was\napparently empty also; the visiting card nailed on the door had been torn\noff—they had gone away!... He was out of breath. For one instant the\nthought floated through his mind “Shall I go back?” But he made no answer\nand began listening at the old woman’s door, a dead silence. Then he\nlistened again on the staircase, listened long and intently... then looked\nabout him for the last time, pulled himself together, drew himself up, and\nonce more tried the axe in the noose. “Am I very pale?” he wondered. “Am I\nnot evidently agitated? She is mistrustful.... Had I better wait a little\nlonger... till my heart leaves off thumping?”",
         "But his heart did not leave off. On the contrary, as though to spite him,\nit throbbed more and more violently. He could stand it no longer, he\nslowly put out his hand to the bell and rang. Half a minute later he rang\nagain, more loudly.",
         "No answer. To go on ringing was useless and out of place. The old woman\nwas, of course, at home, but she was suspicious and alone. He had some\nknowledge of her habits... and once more he put his ear to the door.\nEither his senses were peculiarly keen (which it is difficult to suppose),\nor the sound was really very distinct. Anyway, he suddenly heard something\nlike the cautious touch of a hand on the lock and the rustle of a skirt at\nthe very door. Someone was standing stealthily close to the lock and just\nas he was doing on the outside was secretly listening within, and seemed\nto have her ear to the door.... He moved a little on purpose and muttered\nsomething aloud that he might not have the appearance of hiding, then rang\na third time, but quietly, soberly, and without impatience, Recalling it\nafterwards, that moment stood out in his mind vividly, distinctly, for\never; he could not make out how he had had such cunning, for his mind was\nas it were clouded at moments and he was almost unconscious of his\nbody.... An instant later he heard the latch unfastened."
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 8,
@@ -567,7 +573,8 @@
         "At last he reached the turning. He turned down it more dead than alive.\nHere he was half way to safety, and he understood it; it was less risky\nbecause there was a great crowd of people, and he was lost in it like a\ngrain of sand. But all he had suffered had so weakened him that he could\nscarcely move. Perspiration ran down him in drops, his neck was all wet.\n“My word, he has been going it!” someone shouted at him when he came out\non the canal bank.",
         "He was only dimly conscious of himself now, and the farther he went the\nworse it was. He remembered however, that on coming out on to the canal\nbank, he was alarmed at finding few people there and so being more\nconspicuous, and he had thought of turning back. Though he was almost\nfalling from fatigue, he went a long way round so as to get home from\nquite a different direction.",
         "He was not fully conscious when he passed through the gateway of his\nhouse! He was already on the staircase before he recollected the axe. And\nyet he had a very grave problem before him, to put it back and to escape\nobservation as far as possible in doing so. He was of course incapable of\nreflecting that it might perhaps be far better not to restore the axe at\nall, but to drop it later on in somebody’s yard. But it all happened\nfortunately, the door of the porter’s room was closed but not locked, so\nthat it seemed most likely that the porter was at home. But he had so\ncompletely lost all power of reflection that he walked straight to the\ndoor and opened it. If the porter had asked him, “What do you want?” he\nwould perhaps have simply handed him the axe. But again the porter was not\nat home, and he succeeded in putting the axe back under the bench, and\neven covering it with the chunk of wood as before. He met no one, not a\nsoul, afterwards on the way to his room; the landlady’s door was shut.\nWhen he was in his room, he flung himself on the sofa just as he was—he\ndid not sleep, but sank into blank forgetfulness. If anyone had come into\nhis room then, he would have jumped up at once and screamed. Scraps and\nshreds of thoughts were simply swarming in his brain, but he could not\ncatch at one, he could not rest on one, in spite of all his efforts...."
-      ]
+      ],
+      "part": "PART I"
     },
     {
       "index": 9,
@@ -747,7 +754,8 @@
         "Raskolnikov went out. He caught the sound of eager conversation on his\ndeparture, and above the rest rose the questioning voice of Nikodim\nFomitch. In the street, his faintness passed off completely.",
         "“A search—there will be a search at once,” he repeated to himself,\nhurrying home. “The brutes! they suspect.”",
         "His former terror mastered him completely again."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 10,
@@ -822,7 +830,8 @@
         "He made no answer. Nastasya still stood over him, watching him.",
         "“Give me something to drink... Nastasya.”",
         "She went downstairs and returned with a white earthenware jug of water. He\nremembered only swallowing one sip of the cold water and spilling some on\nhis neck. Then followed forgetfulness."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 11,
@@ -950,7 +959,8 @@
         "“Money? Why, your own, what the messenger brought from Vahrushin, your\nmother sent it. Have you forgotten that, too?”",
         "“I remember now,” said Raskolnikov after a long, sullen silence. Razumihin\nlooked at him, frowning and uneasy.",
         "The door opened and a tall, stout man whose appearance seemed familiar to\nRaskolnikov came in."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 12,
@@ -1034,7 +1044,8 @@
         "“But, why, why?”",
         "“Why, because everything fits too well... it’s too melodramatic.”",
         "“A-ach!” Razumihin was exclaiming, but at that moment the door opened and\na personage came in who was a stranger to all present."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 13,
@@ -1156,7 +1167,8 @@
         "“Won’t you have some tea now?” she asked.",
         "“Later! I am sleepy! Leave me.”",
         "He turned abruptly to the wall; Nastasya went out."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 14,
@@ -1372,7 +1384,8 @@
         "“You should have taken him to the police station all the same,” said the\nman in the long coat.",
         "“Better have nothing to do with him,” decided the big porter. “A regular\nrogue! Just what he wants, you may be sure, but once take him up, you\nwon’t get rid of him.... We know the sort!”",
         "“Shall I go there or not?” thought Raskolnikov, standing in the middle of\nthe thoroughfare at the cross-roads, and he looked about him, as though\nexpecting from someone a decisive word. But no sound came, all was dead\nand silent like the stones on which he walked, dead to him, to him\nalone.... All at once at the end of the street, two hundred yards away, in\nthe gathering dusk he saw a crowd and heard talk and shouts. In the middle\nof the crowd stood a carriage.... A light gleamed in the middle of the\nstreet. “What is it?” Raskolnikov turned to the right and went up to the\ncrowd. He seemed to clutch at everything and smiled coldly when he\nrecognised it, for he had fully made up his mind to go to the police\nstation and knew that it would all soon be over."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 15,
@@ -1532,7 +1545,8 @@
         "Anxiety, cries of horror, moans... Razumihin who was standing in the\ndoorway flew into the room, seized the sick man in his strong arms and in\na moment had him on the sofa.",
         "“It’s nothing, nothing!” he cried to the mother and sister—“it’s\nonly a faint, a mere trifle! Only just now the doctor said he was much\nbetter, that he is perfectly well! Water! See, he is coming to himself, he\nis all right again!”",
         "And seizing Dounia by the arm so that he almost dislocated it, he made her\nbend down to see that “he is all right again.” The mother and sister\nlooked on him with emotion and gratitude, as their Providence. They had\nheard already from Nastasya all that had been done for their Rodya during\nhis illness, by this “very competent young man,” as Pulcheria Alexandrovna\nRaskolnikov called him that evening in conversation with Dounia."
-      ]
+      ],
+      "part": "PART II"
     },
     {
       "index": 16,
@@ -1627,7 +1641,8 @@
         "“I haven’t fascinated her; perhaps I was fascinated myself in my folly.\nBut she won’t care a straw whether it’s you or I, so long as somebody sits\nbeside her, sighing.... I can’t explain the position, brother... look\nhere, you are good at mathematics, and working at it now... begin teaching\nher the integral calculus; upon my soul, I’m not joking, I’m in earnest,\nit’ll be just the same to her. She will gaze at you and sigh for a whole\nyear together. I talked to her once for two days at a time about the\nPrussian House of Lords (for one must talk of something)—she just\nsighed and perspired! And you mustn’t talk of love—she’s bashful to\nhysterics—but just let her see you can’t tear yourself away—that’s\nenough. It’s fearfully comfortable; you’re quite at home, you can read,\nsit, lie about, write. You may even venture on a kiss, if you’re careful.”",
         "“But what do I want with her?”",
         "“Ach, I can’t make you understand! You see, you are made for each other! I\nhave often been reminded of you!... You’ll come to it in the end! So does\nit matter whether it’s sooner or later? There’s the feather-bed element\nhere, brother—ach! and not only that! There’s an attraction here—here\nyou have the end of the world, an anchorage, a quiet haven, the navel of\nthe earth, the three fishes that are the foundation of the world, the\nessence of pancakes, of savoury fish-pies, of the evening samovar, of soft\nsighs and warm shawls, and hot stoves to sleep on—as snug as though\nyou were dead, and yet you’re alive—the advantages of both at once!\nWell, hang it, brother, what stuff I’m talking, it’s bedtime! Listen. I\nsometimes wake up at night; so I’ll go in and look at him. But there’s no\nneed, it’s all right. Don’t you worry yourself, yet if you like, you might\njust look in once, too. But if you notice anything—delirium or fever—wake\nme at once. But there can’t be....”"
-      ]
+      ],
+      "part": "PART III"
     },
     {
       "index": 17,
@@ -1718,7 +1733,8 @@
         "“Mother, you are quite pale, don’t distress yourself, darling,” said\nDounia caressing her, then with flashing eyes she added: “He ought to be\nhappy at seeing you, and you are tormenting yourself so.”",
         "“Wait, I’ll peep in and see whether he has waked up.”",
         "The ladies slowly followed Razumihin, who went on before, and when they\nreached the landlady’s door on the fourth storey, they noticed that her\ndoor was a tiny crack open and that two keen black eyes were watching them\nfrom the darkness within. When their eyes met, the door was suddenly shut\nwith such a slam that Pulcheria Alexandrovna almost cried out."
-      ]
+      ],
+      "part": "PART III"
     },
     {
       "index": 18,
@@ -1861,7 +1877,8 @@
         "“Yes.”",
         "“I will ask you, too, to be with us at eight o’clock,” she said,\naddressing Razumihin. “Mother, I am inviting him, too.”",
         "“Quite right, Dounia. Well, since you have decided,” added Pulcheria\nAlexandrovna, “so be it. I shall feel easier myself. I do not like\nconcealment and deception. Better let us have the whole truth.... Pyotr\nPetrovitch may be angry or not, now!”"
-      ]
+      ],
+      "part": "PART III"
     },
     {
       "index": 19,
@@ -1990,7 +2007,8 @@
         "“Pig!”",
         "Raskolnikov laughed as though he could not restrain himself. So laughing,\nthey entered Porfiry Petrovitch’s flat. This is what Raskolnikov wanted:\nfrom within they could be heard laughing as they came in, still guffawing\nin the passage.",
         "“Not a word here or I’ll... brain you!” Razumihin whispered furiously,\nseizing Raskolnikov by the shoulder."
-      ]
+      ],
+      "part": "PART III"
     },
     {
       "index": 20,
@@ -2161,7 +2179,8 @@
         "“Then you should be more careful,” Razumihin observed grimly.",
         "The last words were uttered in the passage. Porfiry Petrovitch saw them to\nthe door with excessive politeness.",
         "They went out into the street gloomy and sullen, and for some steps they\ndid not say a word. Raskolnikov drew a deep breath."
-      ]
+      ],
+      "part": "PART III"
     },
     {
       "index": 21,
@@ -2236,7 +2255,8 @@
         "Ten minutes passed. It was still light, but beginning to get dusk. There\nwas complete stillness in the room. Not a sound came from the stairs. Only\na big fly buzzed and fluttered against the window pane. It was unbearable\nat last. Raskolnikov suddenly got up and sat on the sofa.",
         "“Come, tell me what you want.”",
         "“I knew you were not asleep, but only pretending,” the stranger answered\noddly, laughing calmly. “Arkady Ivanovitch Svidrigaïlov, allow me to\nintroduce myself....”"
-      ]
+      ],
+      "part": "PART III"
     },
     {
       "index": 22,
@@ -2372,7 +2392,8 @@
         "“Are you telling the truth?”",
         "“Yes, tell her. Well, your servant. I am staying very near you.”",
         "As he went out, Svidrigaïlov ran up against Razumihin in the doorway."
-      ]
+      ],
+      "part": "PART IV"
     },
     {
       "index": 23,
@@ -2488,7 +2509,8 @@
         "“You are a mean and spiteful man!” cried Dounia.",
         "“Not a word! Not a movement!” cried Raskolnikov, holding Razumihin back;\nthen going close up to Luzhin, “Kindly leave the room!” he said quietly\nand distinctly, “and not a word more or...”",
         "Pyotr Petrovitch gazed at him for some seconds with a pale face that\nworked with anger, then he turned, went out, and rarely has any man\ncarried away in his heart such vindictive hatred as he felt against\nRaskolnikov. Him, and him alone, he blamed for everything. It is\nnoteworthy that as he went downstairs he still imagined that his case was\nperhaps not utterly lost, and that, so far as the ladies were concerned,\nall might “very well indeed” be set right again."
-      ]
+      ],
+      "part": "PART IV"
     },
     {
       "index": 24,
@@ -2552,7 +2574,8 @@
         "It was dark in the corridor, they were standing near the lamp. For a\nminute they were looking at one another in silence. Razumihin remembered\nthat minute all his life. Raskolnikov’s burning and intent eyes grew more\npenetrating every moment, piercing into his soul, into his consciousness.\nSuddenly Razumihin started. Something strange, as it were, passed between\nthem.... Some idea, some hint, as it were, slipped, something awful,\nhideous, and suddenly understood on both sides.... Razumihin turned pale.",
         "“Do you understand now?” said Raskolnikov, his face twitching nervously.\n“Go back, go to them,” he said suddenly, and turning quickly, he went out\nof the house.",
         "I will not attempt to describe how Razumihin went back to the ladies, how\nhe soothed them, how he protested that Rodya needed rest in his illness,\nprotested that Rodya was sure to come, that he would come every day, that\nhe was very, very much upset, that he must not be irritated, that he,\nRazumihin, would watch over him, would get him a doctor, the best doctor,\na consultation.... In fact from that evening Razumihin took his place with\nthem as a son and a brother."
-      ]
+      ],
+      "part": "PART IV"
     },
     {
       "index": 25,
@@ -2770,7 +2793,8 @@
         "“Good heavens, how does he know who killed Lizaveta? What did those words\nmean? It’s awful!” But at the same time the idea did not enter her\nhead, not for a moment! “Oh, he must be terribly unhappy!... He has\nabandoned his mother and sister.... What for? What has happened? And what\nhad he in his mind? What did he say to her? He had kissed her foot and\nsaid... said (yes, he had said it clearly) that he could not live without\nher.... Oh, merciful heavens!”",
         "Sonia spent the whole night feverish and delirious. She jumped up from\ntime to time, wept and wrung her hands, then sank again into feverish\nsleep and dreamt of Polenka, Katerina Ivanovna and Lizaveta, of reading\nthe gospel and him... him with pale face, with burning eyes... kissing her\nfeet, weeping.",
         "On the other side of the door on the right, which divided Sonia’s room\nfrom Madame Resslich’s flat, was a room which had long stood empty. A card\nwas fixed on the gate and a notice stuck in the windows over the canal\nadvertising it to let. Sonia had long been accustomed to the room’s being\nuninhabited. But all that time Mr. Svidrigaïlov had been standing,\nlistening at the door of the empty room. When Raskolnikov went out he\nstood still, thought a moment, went on tiptoe to his own room which\nadjoined the empty one, brought a chair and noiselessly carried it to the\ndoor that led to Sonia’s room. The conversation had struck him as\ninteresting and remarkable, and he had greatly enjoyed it—so much so\nthat he brought a chair that he might not in the future, to-morrow, for\ninstance, have to endure the inconvenience of standing a whole hour, but\nmight listen in comfort."
-      ]
+      ],
+      "part": "PART IV"
     },
     {
       "index": 26,
@@ -2879,7 +2903,8 @@
         "“Why deputies, my good man? What things people will imagine! And to do so\nwould not be acting in form as you say, you don’t know the business, my\ndear fellow.... And there’s no escaping form, as you see,” Porfiry\nmuttered, listening at the door through which a noise could be heard.",
         "“Ah, they’re coming,” cried Raskolnikov. “You’ve sent for them! You\nexpected them! Well, produce them all: your deputies, your witnesses, what\nyou like!... I am ready!”",
         "But at this moment a strange incident occurred, something so unexpected\nthat neither Raskolnikov nor Porfiry Petrovitch could have looked for such\na conclusion to their interview."
-      ]
+      ],
+      "part": "PART IV"
     },
     {
       "index": 27,
@@ -2991,7 +3016,8 @@
         "And as he said this, the man bowed down again, but not to the ground,\nturned slowly and went out of the room.",
         "“It all cuts both ways, now it all cuts both ways,” repeated Raskolnikov,\nand he went out more confident than ever.",
         "“Now we’ll make a fight for it,” he said, with a malicious smile, as he\nwent down the stairs. His malice was aimed at himself; with shame and\ncontempt he recollected his “cowardice.”"
-      ]
+      ],
+      "part": "PART IV"
     },
     {
       "index": 28,
@@ -3089,7 +3115,8 @@
         "He seemed preoccupied by something.",
         "“Children? You referred to children,” Lebeziatnikov started off like a\nwarhorse at the trumpet call. “Children are a social question and a\nquestion of first importance, I agree; but the question of children has\nanother solution. Some refuse to have children altogether, because they\nsuggest the institution of the family. We’ll speak of children later, but\nnow as to the question of honour, I confess that’s my weak point. That\nhorrid, military, Pushkin expression is unthinkable in the dictionary of\nthe future. What does it mean indeed? It’s nonsense, there will be no\ndeception in a free marriage! That is only the natural consequence of a\nlegal marriage, so to say, its corrective, a protest. So that indeed it’s\nnot humiliating... and if I ever, to suppose an absurdity, were to be\nlegally married, I should be positively glad of it. I should say to my\nwife: ‘My dear, hitherto I have loved you, now I respect you, for you’ve\nshown you can protest!’ You laugh! That’s because you are incapable of\ngetting away from prejudices. Confound it all! I understand now where the\nunpleasantness is of being deceived in a legal marriage, but it’s simply a\ndespicable consequence of a despicable position in which both are\nhumiliated. When the deception is open, as in a free marriage, then it\ndoes not exist, it’s unthinkable. Your wife will only prove how she\nrespects you by considering you incapable of opposing her happiness and\navenging yourself on her for her new husband. Damn it all! I sometimes\ndream if I were to be married, pfoo! I mean if I were to marry, legally or\nnot, it’s just the same, I should present my wife with a lover if she had\nnot found one for herself. ‘My dear,’ I should say, ‘I love you, but even\nmore than that I desire you to respect me. See!’ Am I not right?”",
         "Pyotr Petrovitch sniggered as he listened, but without much merriment. He\nhardly heard it indeed. He was preoccupied with something else and even\nLebeziatnikov at last noticed it. Pyotr Petrovitch seemed excited and\nrubbed his hands. Lebeziatnikov remembered all this and reflected upon it\nafterwards."
-      ]
+      ],
+      "part": "PART V"
     },
     {
       "index": 29,
@@ -3135,7 +3162,8 @@
         "Katerina Ivanovna observed contemptuously that all knew what her family\nwas and that on that very certificate of honour it was stated in print\nthat her father was a colonel, while Amalia Ivanovna’s father—if she\nreally had one—was probably some Finnish milkman, but that probably\nshe never had a father at all, since it was still uncertain whether her\nname was Amalia Ivanovna or Amalia Ludwigovna.",
         "At this Amalia Ivanovna, lashed to fury, struck the table with her fist,\nand shrieked that she was Amalia Ivanovna, and not Ludwigovna, “that her\nVater was named Johann and that he was a burgomeister, and that\nKaterina Ivanovna’s Vater was quite never a burgomeister.” Katerina\nIvanovna rose from her chair, and with a stern and apparently calm voice\n(though she was pale and her chest was heaving) observed that “if she\ndared for one moment to set her contemptible wretch of a father on a level\nwith her papa, she, Katerina Ivanovna, would tear her cap off her head and\ntrample it under foot.” Amalia Ivanovna ran about the room, shouting at\nthe top of her voice, that she was mistress of the house and that Katerina\nIvanovna should leave the lodgings that minute; then she rushed for some\nreason to collect the silver spoons from the table. There was a great\noutcry and uproar, the children began crying. Sonia ran to restrain\nKaterina Ivanovna, but when Amalia Ivanovna shouted something about “the\nyellow ticket,” Katerina Ivanovna pushed Sonia away, and rushed at the\nlandlady to carry out her threat.",
         "At that minute the door opened, and Pyotr Petrovitch Luzhin appeared on\nthe threshold. He stood scanning the party with severe and vigilant eyes.\nKaterina Ivanovna rushed to him."
-      ]
+      ],
+      "part": "PART V"
     },
     {
       "index": 30,
@@ -3220,7 +3248,8 @@
         "And throwing over her head that green shawl which Marmeladov had mentioned\nto Raskolnikov, Katerina Ivanovna squeezed her way through the disorderly\nand drunken crowd of lodgers who still filled the room, and, wailing and\ntearful, she ran into the street—with a vague intention of going at\nonce somewhere to find justice. Polenka with the two little ones in her\narms crouched, terrified, on the trunk in the corner of the room, where\nshe waited trembling for her mother to come back. Amalia Ivanovna raged\nabout the room, shrieking, lamenting and throwing everything she came\nacross on the floor. The lodgers talked incoherently, some commented to\nthe best of their ability on what had happened, others quarrelled and\nswore at one another, while others struck up a song....",
         "“Now it’s time for me to go,” thought Raskolnikov. “Well, Sofya\nSemyonovna, we shall see what you’ll say now!”",
         "And he set off in the direction of Sonia’s lodgings."
-      ]
+      ],
+      "part": "PART V"
     },
     {
       "index": 31,
@@ -3396,7 +3425,8 @@
         "At that moment someone knocked three times at the door.",
         "“Sofya Semyonovna, may I come in?” they heard in a very familiar and\npolite voice.",
         "Sonia rushed to the door in a fright. The flaxen head of Mr. Lebeziatnikov\nappeared at the door."
-      ]
+      ],
+      "part": "PART V"
     },
     {
       "index": 32,
@@ -3512,7 +3542,8 @@
         "“Why, I lodge here at Madame Resslich’s, the other side of the wall. Here\nis Kapernaumov, and there lives Madame Resslich, an old and devoted friend\nof mine. I am a neighbour.”",
         "“You?”",
         "“Yes,” continued Svidrigaïlov, shaking with laughter. “I assure you on my\nhonour, dear Rodion Romanovitch, that you have interested me enormously. I\ntold you we should become friends, I foretold it. Well, here we have. And\nyou will see what an accommodating person I am. You’ll see that you can\nget on with me!”"
-      ]
+      ],
+      "part": "PART V"
     },
     {
       "index": 33,
@@ -3588,7 +3619,8 @@
         "The last moment had come, the last drops had to be drained! So a man will\nsometimes go through half an hour of mortal terror with a brigand, yet\nwhen the knife is at his throat at last, he feels no fear.",
         "Raskolnikov seated himself directly facing Porfiry, and looked at him\nwithout flinching. Porfiry screwed up his eyes and began lighting a\ncigarette.",
         "“Speak, speak,” seemed as though it would burst from Raskolnikov’s heart.\n“Come, why don’t you speak?”"
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 34,
@@ -3669,7 +3701,8 @@
         "“Porfiry Petrovitch, please don’t take up the notion that I have confessed\nto you to-day,” Raskolnikov pronounced with sullen insistence. “You’re a\nstrange man and I have listened to you from simple curiosity. But I have\nadmitted nothing, remember that!”",
         "“Oh, I know that, I’ll remember. Look at him, he’s trembling! Don’t be\nuneasy, my dear fellow, have it your own way. Walk about a bit, you won’t\nbe able to walk too far. If anything happens, I have one request to make\nof you,” he added, dropping his voice. “It’s an awkward one, but\nimportant. If anything were to happen (though indeed I don’t believe in it\nand think you quite incapable of it), yet in case you were taken during\nthese forty or fifty hours with the notion of putting an end to the\nbusiness in some other way, in some fantastic fashion—laying hands\non yourself—(it’s an absurd proposition, but you must forgive me for\nit) do leave a brief but precise note, only two lines, and mention the\nstone. It will be more generous. Come, till we meet! Good thoughts and\nsound decisions to you!”",
         "Porfiry went out, stooping and avoiding looking at Raskolnikov. The latter\nwent to the window and waited with irritable impatience till he calculated\nthat Porfiry had reached the street and moved away. Then he too went\nhurriedly out of the room."
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 35,
@@ -3757,7 +3790,8 @@
         "“A-ach! Sit down, stay a little!” Svidrigaïlov begged. “Let them bring you\nsome tea, anyway. Stay a little, I won’t talk nonsense, about myself, I\nmean. I’ll tell you something. If you like I’ll tell you how a woman tried\n‘to save’ me, as you would call it? It will be an answer to your first\nquestion indeed, for the woman was your sister. May I tell you? It will\nhelp to spend the time.”",
         "“Tell me, but I trust that you...”",
         "“Oh, don’t be uneasy. Besides, even in a worthless low fellow like me,\nAvdotya Romanovna can only excite the deepest respect.”"
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 36,
@@ -3801,7 +3835,8 @@
         "They came out on to the pavement.",
         "“You go to the right, and I to the left, or if you like, the other way.\nOnly adieu, mon plaisir, may we meet again.”",
         "And he walked to the right towards the Hay Market."
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 37,
@@ -3935,7 +3970,8 @@
         "“Make haste! Make haste!” repeated Svidrigaïlov, still without turning or\nmoving. But there seemed a terrible significance in the tone of that “make\nhaste.”",
         "Dounia understood it, snatched up the key, flew to the door, unlocked it\nquickly and rushed out of the room. A minute later, beside herself, she\nran out on to the canal bank in the direction of X. Bridge.",
         "Svidrigaïlov remained three minutes standing at the window. At last he\nslowly turned, looked about him and passed his hand over his forehead. A\nstrange smile contorted his face, a pitiful, sad, weak smile, a smile of\ndespair. The blood, which was already getting dry, smeared his hand. He\nlooked angrily at it, then wetted a towel and washed his temple. The\nrevolver which Dounia had flung away lay near the door and suddenly caught\nhis eye. He picked it up and examined it. It was a little pocket\nthree-barrel revolver of old-fashioned construction. There were still two\ncharges and one capsule left in it. It could be fired again. He thought a\nlittle, put the revolver in his pocket, took his hat and went out."
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 38,
@@ -4005,7 +4041,8 @@
         "He put the revolver to his right temple.",
         "“You can’t do it here, it’s not the place,” cried Achilles, rousing\nhimself, his eyes growing bigger and bigger.",
         "Svidrigaïlov pulled the trigger."
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 39,
@@ -4089,7 +4126,8 @@
         "At last they both went out. It was hard for Dounia, but she loved him. She\nwalked away, but after going fifty paces she turned round to look at him\nagain. He was still in sight. At the corner he too turned and for the last\ntime their eyes met; but noticing that she was looking at him, he motioned\nher away with impatience and even vexation, and turned the corner\nabruptly.",
         "“I am wicked, I see that,” he thought to himself, feeling ashamed a moment\nlater of his angry gesture to Dounia. “But why are they so fond of me if I\ndon’t deserve it? Oh, if only I were alone and no one loved me and I too\nhad never loved anyone! Nothing of all this would have happened.\nBut I wonder shall I in those fifteen or twenty years grow so meek that I\nshall humble myself before people and whimper at every word that I am a\ncriminal? Yes, that’s it, that’s it, that’s what they are sending me there\nfor, that’s what they want. Look at them running to and fro about the\nstreets, every one of them a scoundrel and a criminal at heart and, worse\nstill, an idiot. But try to get me off and they’d be wild with righteous\nindignation. Oh, how I hate them all!”",
         "He fell to musing by what process it could come to pass, that he could be\nhumbled before all of them, indiscriminately—humbled by conviction.\nAnd yet why not? It must be so. Would not twenty years of continual\nbondage crush him utterly? Water wears out a stone. And why, why should he\nlive after that? Why should he go now when he knew that it would be so? It\nwas the hundredth time perhaps that he had asked himself that question\nsince the previous evening, but still he went."
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 40,
@@ -4181,7 +4219,8 @@
         "“It was I killed the old pawnbroker woman and her sister Lizaveta with\nan axe and robbed them.”",
         "Ilya Petrovitch opened his mouth. People ran up on all sides.",
         "Raskolnikov repeated his statement."
-      ]
+      ],
+      "part": "PART VI"
     },
     {
       "index": 41,

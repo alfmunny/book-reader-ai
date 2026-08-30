@@ -2894,3 +2894,170 @@ async def test_migration_059_matches_the_committed_artifact(tmp_db):
     for index, (_old, new) in _PREFIXED.items():
         assert artifact["chapters"][index]["title"] == new
         assert new.replace("'", "''") in sql
+
+
+# ── 060: C&P and Madame Bovary part groups ───────────────────────────────────
+
+_M060 = "060_cp_bovary_part_groups"
+
+_CP_PARTS = {**{i: "PART I" for i in range(2, 9)},
+             **{i: "PART II" for i in range(9, 16)},
+             **{i: "PART III" for i in range(16, 22)},
+             **{i: "PART IV" for i in range(22, 28)},
+             **{i: "PART V" for i in range(28, 33)},
+             **{i: "PART VI" for i in range(33, 41)}}
+_CP_FIRSTS = (2, 9, 16, 22, 28, 33)
+
+_BOVARY_PARTS = {**{i: "PREMIÈRE PARTIE" for i in range(1, 10)},
+                 **{i: "DEUXIÈME PARTIE" for i in range(10, 25)},
+                 **{i: "TROISIÈME PARTIE" for i in range(25, 36)}}
+_BOVARY_OLD = {1: "PREMIÈRE PARTIE", 10: "DEUXIÈME PARTIE", 25: "TROISIÈME PARTIE"}
+_BOVARY_SHA_OLD = "9c15722deb358662ace503cb7a90bc671703ed6639b4fbf881774fedeb717ab5"
+_BOVARY_SHA_NEW = "b4f912aab9dbf1e2e78a9f02d967c16f31c8bae99e09beee1b2dacbd76bfef46"
+
+
+async def _seed_cp_and_bovary(db, cp_overrides=None, bovary_overrides=None):
+    cp_overrides = cp_overrides or {}
+    bovary_overrides = bovary_overrides or {}
+    await db.execute("PRAGMA foreign_keys = OFF")
+    await db.execute("INSERT OR IGNORE INTO books (id, title, images) VALUES (2554, 'CP', '[]')")
+    await db.execute("INSERT OR IGNORE INTO books (id, title, images) VALUES (14155, 'MB', '[]')")
+    for index in range(42):
+        title = cp_overrides.get(index, "CHAPTER I" if index in _CP_FIRSTS else f"CHAPTER {index}")
+        if index == 41:
+            title = cp_overrides.get(41, "EPILOGUE")
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (2554, ?, ?, 'x')", (index, title))
+    for index in range(36):
+        title = bovary_overrides.get(index, _BOVARY_OLD.get(index, f"CH{index}"))
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (14155, ?, ?, 'y')", (index, title))
+    await db.execute(
+        "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
+        " audited_by, content_sha256) VALUES (14155, 'html_preference', 'epub',"
+        " '2026-08-29', 'prior', ?)", (_BOVARY_SHA_OLD,))
+
+
+async def _rerun_060(tmp_db):
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M060,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_060_gives_each_cp_chapter_one_its_own_part(tmp_db):
+    """Six chapters titled CHAPTER I; only the part tells them apart."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_cp_and_bovary(db)
+        await db.commit()
+
+    await _rerun_060(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT chapter_index, part FROM book_chapters WHERE book_id = 2554"
+            " AND part IS NOT NULL ORDER BY chapter_index")).fetchall()
+    assert {i: p for i, p in rows} == _CP_PARTS
+    assert len({p for i, p in rows if i in _CP_FIRSTS}) == 6
+
+
+async def test_migration_060_leaves_the_cp_epilogue_and_apparatus_ungrouped(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_cp_and_bovary(db)
+        await db.commit()
+
+    await _rerun_060(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT chapter_index FROM book_chapters WHERE book_id = 2554"
+            " AND part IS NULL ORDER BY chapter_index")).fetchall()
+    assert [r[0] for r in rows] == [0, 1, 41]
+
+
+async def test_migration_060_restores_bovary_chapter_one_in_every_part(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_cp_and_bovary(db)
+        await db.commit()
+
+    await _rerun_060(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT chapter_index, title, part FROM book_chapters WHERE book_id = 14155"
+            " AND chapter_index IN (1, 10, 25) ORDER BY chapter_index")).fetchall()
+    assert [(i, t) for i, t, _ in rows] == [(1, "I"), (10, "I"), (25, "I")]
+    assert [p for _, _, p in rows] == ["PREMIÈRE PARTIE", "DEUXIÈME PARTIE", "TROISIÈME PARTIE"]
+
+
+async def test_migration_060_restamps_only_bovary(tmp_db):
+    """Bovary's titles changed so its hash did; C&P's did not change at all, and
+    it carries no freeze row here to be touched."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_cp_and_bovary(db)
+        await db.commit()
+
+    await _rerun_060(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 14155")).fetchone()
+    assert row[0] == _BOVARY_SHA_NEW
+
+
+async def test_migration_060_one_moved_part_does_not_group_or_restamp(tmp_db):
+    """All six C&P parts open on 'CHAPTER I' and all three Bovary parts end up on
+    'I', so a guard matching title alone would let one part vouch for another."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_cp_and_bovary(
+            db,
+            cp_overrides={22: "SOMETHING ELSE"},      # Part IV's boundary moved
+            bovary_overrides={10: "SOMETHING ELSE"},  # Part 2's boundary moved
+        )
+        await db.commit()
+
+    await _rerun_060(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        cp = await (await db.execute(
+            "SELECT part FROM book_chapters WHERE book_id = 2554 AND chapter_index = 22"
+        )).fetchone()
+        mb = await (await db.execute(
+            "SELECT part FROM book_chapters WHERE book_id = 14155 AND chapter_index = 10"
+        )).fetchone()
+        sha = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 14155")).fetchone()
+        # The parts whose boundaries did not move still group.
+        ok = await (await db.execute(
+            "SELECT part FROM book_chapters WHERE book_id = 2554 AND chapter_index = 2"
+        )).fetchone()
+    assert cp[0] is None, "grouped a part whose boundary had moved"
+    assert mb[0] is None, "grouped a part whose boundary had moved"
+    assert sha[0] == _BOVARY_SHA_OLD, "re-stamped despite a shifted split"
+    assert ok[0] == "PART I", "a moved part blocked an unrelated one"
+
+
+async def test_migration_060_matches_the_committed_artifacts(tmp_db):
+    import json
+    sql = open(os.path.join(os.path.dirname(__file__), "..", "migrations",
+                            "060_cp_bovary_part_groups.sql"), encoding="utf-8").read()
+    base = os.path.join(os.path.dirname(__file__), "..", "..", "data", "books")
+
+    cp = json.load(open(os.path.join(base, "book_2554.json"), encoding="utf-8"))
+    for chapter in cp["chapters"]:
+        assert chapter.get("part") == _CP_PARTS.get(chapter["index"]), chapter["index"]
+
+    mb = json.load(open(os.path.join(base, "book_14155.json"), encoding="utf-8"))
+    for chapter in mb["chapters"]:
+        assert chapter.get("part") == _BOVARY_PARTS.get(chapter["index"]), chapter["index"]
+    assert mb["split"]["content_sha256"] == _BOVARY_SHA_NEW
+    assert _BOVARY_SHA_NEW in sql
+    # C&P has no retitle, so its identity must be untouched and unmentioned.
+    assert cp["split"]["content_sha256"] not in sql

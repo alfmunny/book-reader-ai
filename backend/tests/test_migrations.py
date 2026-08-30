@@ -2394,8 +2394,14 @@ async def test_migration_057_matches_the_declared_overrides(tmp_db):
         for bid, spec in OVERRIDES.items()
         for entry in spec.get("frontmatter", [])
     }
-    path = os.path.join(os.path.dirname(__file__), "..", "migrations", "052_label_frontmatter.sql")
-    sql = open(path, encoding="utf-8").read()
+    # Labelling is spread over two migrations — 052 for the three books declared
+    # at the time, 062 for the rest (#2755). Every declared entry must appear in
+    # one of them, so the union is what the invariant is about.
+    migrations = os.path.join(os.path.dirname(__file__), "..", "migrations")
+    sql = "\n".join(
+        open(os.path.join(migrations, name), encoding="utf-8").read()
+        for name in ("052_label_frontmatter.sql", "062_label_remaining_frontmatter.sql")
+    )
     for book_id, index, title in declared:
         assert f"book_id = {book_id} AND chapter_index = {index}" in sql, f"{book_id} missing"
         assert title.replace("'", "''") in sql, f"{book_id} title guard missing"
@@ -3216,3 +3222,133 @@ async def test_migration_061_matches_the_committed_artifact(tmp_db):
     assert _RWAV_SHA_NEW in sql
     for title in _RWAV_NEW:
         assert title.replace("'", "''") in sql, title
+
+
+# ── 062: the remaining apparatus chapters (#2755) ────────────────────────────
+
+_M062 = "062_label_remaining_frontmatter"
+
+_FRONTMATTER = [
+    (45304, 0, "THE WORKS"),
+    (24288, 0, "Das Stunden-Buch"),
+    (8492, 0, "THE KING IN YELLOW"),
+    (14155, 0, "MADAME BOVARY"),
+    (2554, 1, "TRANSLATOR’S PREFACE"),
+]
+
+
+async def _seed_frontmatter_candidates(db, overrides=None):
+    overrides = overrides or {}
+    await db.execute("PRAGMA foreign_keys = OFF")
+    for book_id, index, title in _FRONTMATTER:
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images) VALUES (?, 'B', '[]')", (book_id,))
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (?, ?, ?, 'x')",
+            (book_id, index, overrides.get((book_id, index), title)))
+        # A body chapter that must stay untouched.
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (?, ?, 'REAL CHAPTER', 'y')", (book_id, index + 5))
+
+
+async def _rerun_062(tmp_db):
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M062,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_062_labels_every_declared_candidate(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_candidates(db)
+        await db.commit()
+
+    await _rerun_062(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        for book_id, index, _title in _FRONTMATTER:
+            row = await (await db.execute(
+                "SELECT role FROM book_chapters WHERE book_id = ? AND chapter_index = ?",
+                (book_id, index))).fetchone()
+            assert row[0] == "frontmatter", f"book {book_id} ch{index}"
+
+
+async def test_migration_062_leaves_the_body_alone(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_candidates(db)
+        await db.commit()
+
+    await _rerun_062(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT COUNT(*) FROM book_chapters WHERE title = 'REAL CHAPTER'"
+            " AND role IS NOT NULL")).fetchone()
+    assert rows[0] == 0
+
+
+async def test_migration_062_labels_nothing_when_the_title_moved(tmp_db):
+    """Hiding a chapter of the work is far worse than showing a title page."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_candidates(db, overrides={(8492, 0): "SOMETHING ELSE"})
+        await db.commit()
+
+    await _rerun_062(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        moved = await (await db.execute(
+            "SELECT role FROM book_chapters WHERE book_id = 8492 AND chapter_index = 0"
+        )).fetchone()
+        other = await (await db.execute(
+            "SELECT role FROM book_chapters WHERE book_id = 24288 AND chapter_index = 0"
+        )).fetchone()
+    assert moved[0] is None, "labelled a chapter whose title had moved"
+    assert other[0] == "frontmatter", "one moved book blocked an unrelated one"
+
+
+async def test_labelling_frontmatter_never_moves_a_content_hash(tmp_db):
+    """#2755 acceptance: `role` sits outside content_sha256, which covers index,
+    title and paragraphs only.
+
+    This is the guard that catches someone folding `role` into the hash. If it
+    ever were, every already-frozen book would disagree with its own integrity
+    stamp the moment a chapter was labelled.
+    """
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_candidates(db)
+        for book_id, _index, _title in _FRONTMATTER:
+            await db.execute(
+                "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
+                " audited_by, content_sha256) VALUES (?, 's', 'text', 'd', 'a', ?)",
+                (book_id, f"sha-for-{book_id}"))
+        await db.commit()
+
+    await _rerun_062(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT book_id, content_sha256 FROM book_freeze")).fetchall()
+    assert {b: s for b, s in rows} == {b: f"sha-for-{b}" for b, _i, _t in _FRONTMATTER}
+
+
+async def test_migration_062_matches_the_committed_artifacts(tmp_db):
+    """Every declared chapter carries the role in its artifact, and the artifact
+    hashes are unchanged from before it was labelled."""
+    import json as _json
+    base = os.path.join(os.path.dirname(__file__), "..", "..", "data", "books")
+    sql = open(os.path.join(os.path.dirname(__file__), "..", "migrations",
+                            "062_label_remaining_frontmatter.sql"), encoding="utf-8").read()
+
+    for book_id, index, title in _FRONTMATTER:
+        artifact = _json.load(open(os.path.join(base, f"book_{book_id}.json"), encoding="utf-8"))
+        chapter = artifact["chapters"][index]
+        assert chapter["title"] == title, f"book {book_id} ch{index}: {chapter['title']!r}"
+        assert chapter.get("role") == "frontmatter", f"book {book_id} ch{index}"
+        assert f"book_id = {book_id} AND chapter_index = {index}" in sql
+        assert title.replace("'", "''") in sql

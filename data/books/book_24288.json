@@ -13,13 +13,13 @@
       "German poetry -- 20th century"
     ],
     "cover": "https://www.gutenberg.org/cache/epub/24288/pg24288.cover.medium.jpg",
-    "download_count": 1516
+    "download_count": 1127
   },
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-06",
-    "audited_by": "architect-agent",
+    "frozen_at": "2026-08-30",
+    "audited_by": "uiux-agent (front matter, #2755)",
     "content_sha256": "711d2baabc1b152e1f5a0410737e56565ab87407fb9705c25b874e547a906cd9"
   },
   "chapters": [
@@ -33,7 +33,8 @@
         "Insel-Verlag / Leipzig / im Jahre 1918",
         "Das 12. bis 16. Tausend",
         "Gelegt in die Hände von Lou"
-      ]
+      ],
+      "role": "frontmatter"
     },
     {
       "index": 1,

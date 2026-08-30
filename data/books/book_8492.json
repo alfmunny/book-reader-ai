@@ -20,8 +20,8 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-06",
-    "audited_by": "architect-agent",
+    "frozen_at": "2026-08-30",
+    "audited_by": "uiux-agent (front matter, #2755)",
     "content_sha256": "f6206a223096b84e45835164c17756e2c12daeb89c731b87ff44dc2642e40915"
   },
   "chapters": [
@@ -33,7 +33,8 @@
         "THE KING IN YELLOW\nIS DEDICATED\nTO\nMY BROTHER",
         "“Along the shore the cloud waves break,\nThe twin suns sink behind the lake,\nThe shadows lengthen\nIn Carcosa.\nStrange is the night where black stars rise,\nAnd strange moons circle through the skies\nBut stranger still is\nLost Carcosa.\nSongs that the Hyades shall sing,\nWhere flap the tatters of the King,\nMust die unheard in\nDim Carcosa.\nSong of my soul, my voice is dead;\nDie thou, unsung, as tears unshed\nShall dry and die in\nLost Carcosa.”",
         "Cassilda’s Song in “The King in Yellow,” Act i, Scene 2."
-      ]
+      ],
+      "role": "frontmatter"
     },
     {
       "index": 1,

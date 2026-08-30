@@ -139,6 +139,57 @@ OVERRIDES: dict[int, dict] = {
             },
         ],
     },
+    45304: {  # The City of God, Volume I
+        # Chapter 0 is apparatus end to end: the T. & T. Clark title page and
+        # imprint (paragraphs 0-22), a printed CONTENTS listing with page
+        # numbers for Books I-XIII (24-51), and Marcus Dods' EDITOR'S PREFACE
+        # (52-56). None of it is Augustine.
+        #
+        # Chapter 1 continues that preface under a splitter-fabricated title.
+        # Deliberately not marked here: this book's fabricated titles are a
+        # separate, larger defect (126 of 133 chapters, noted in #2745), and
+        # guessing at the boundary between preface and work is exactly the
+        # inference this registry exists to avoid.
+        # Audited against Gutenberg #45304, 2026-08-30.
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "THE WORKS",
+                "why": "publisher's title page, printed contents and editor's preface",
+            },
+        ],
+    },
+    24288: {  # Das Stunden-Buch
+        # Six lines of Insel-Verlag imprint: the three books' names, the
+        # publisher, Leipzig 1918, the print run. The closing line is Rilke's
+        # dedication to Lou Andreas-Salomé — his own words, set on the imprint
+        # page, and reachable by expanding the group.
+        # Audited against Gutenberg #24288, 2026-08-30.
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "Das Stunden-Buch",
+                "why": "publisher's imprint page, 217 characters",
+            },
+        ],
+    },
+    8492: {  # The King in Yellow
+        # Author line, publication date, and the dedication to Chambers'
+        # brother. It also carries Cassilda's Song, which is genuinely part of
+        # the work's fabric — so this is a judgement, not a clear case. Marked
+        # because the chapter is a dedication page that happens to quote the
+        # song, and because collapsing is reversible in a way deleting is not:
+        # the song stays at index 0 with its paragraphs untouched, one click
+        # away.
+        # Audited against Gutenberg #8492, 2026-08-30.
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "THE KING IN YELLOW",
+                "why": "dedication page; carries Cassilda's Song, still reachable",
+            },
+        ],
+    },
     2554: {  # Crime and Punishment
         # Six parts and an epilogue. The source sets PART I..PART VI as
         # standalone headings, but the splitter cuts at the CHAPTER I that
@@ -169,6 +220,13 @@ OVERRIDES: dict[int, dict] = {
                 "index": 0,
                 "expect_title": "Translated By Constance Garnett",
                 "why": "48 paragraphs, entirely a printed contents listing",
+            },
+            {
+                # Garnett's own biographical essay on Dostoevsky, not the novel.
+                # #2755 names a translator's note as apparatus explicitly.
+                "index": 1,
+                "expect_title": "TRANSLATOR\u2019S PREFACE",
+                "why": "the translator writing about the author, not the work",
             },
         ],
     },
@@ -327,6 +385,21 @@ OVERRIDES: dict[int, dict] = {
         ],
     },
     14155: {  # Madame Bovary
+        # Chapter 0 is the 1857 title line, a printed "Table des matières"
+        # listing all three parts, and Flaubert's dedications to Senard and to
+        # Louis Bouilhet. Mixed: the contents listing is plainly apparatus, the
+        # dedications are Flaubert's own words. Marked because the chapter is
+        # predominantly the listing, and because front matter is collapsed
+        # rather than deleted — a reader who wants the dedication expands the
+        # group and it is still there, in the same position, with its
+        # paragraphs untouched.
+        "frontmatter": [
+            {
+                "index": 0,
+                "expect_title": "MADAME BOVARY",
+                "why": "printed Table des matières plus the dedications",
+            },
+        ],
         # The same defect #2769 repaired in Hamlet. The source sets the part
         # heading and its first chapter numeral as consecutive lines:
         #

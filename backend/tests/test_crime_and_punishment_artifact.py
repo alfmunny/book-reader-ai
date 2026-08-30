@@ -18,7 +18,9 @@ from scripts.ingest_book import load_artifact
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT = REPO_ROOT / "data" / "books" / "book_2554.json"
-TRANSLATED = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+# Coverage was 1-11 while the book was frozen ahead of its translation; #2764
+# completed it, and re-freezing carried the finished export into the artifact.
+TRANSLATED = list(range(42))
 
 
 def test_artifact_loads_and_sha_verifies():
@@ -40,13 +42,18 @@ def test_split_matches_the_novels_structure():
     assert len(numbered) == 39
 
 
-def test_partial_coverage_is_recorded_exactly():
-    """The book is frozen ahead of its translation; the entries it does have
-    must be the eight that exist, at their corrected indices."""
+def test_coverage_is_recorded_exactly():
+    """Every chapter is translated, each at its own index and none twice.
+
+    This began as a partial-coverage guard (entries 1-11 while the book was
+    frozen ahead of its translation). #2764 finished the translation, so what it
+    now guards is completeness — and, as before, that the indices are exactly the
+    chapters and not a shifted range."""
     artifact = load_artifact(ARTIFACT)
     entries = artifact["translations"]["zh"]["chapters"]
 
     assert [e["index"] for e in entries] == TRANSLATED
+    assert len(entries) == len(artifact["chapters"])
 
 
 def test_every_existing_entry_is_paragraph_aligned():
@@ -63,7 +70,10 @@ def test_the_preface_translation_sits_on_the_preface():
     """Regression for the +1 shift: entry 1 was anchored at index 0, putting
     the translator's preface against the table of contents."""
     artifact = load_artifact(ARTIFACT)
-    entry = artifact["translations"]["zh"]["chapters"][0]
+    # By index, not by position: the entry list starts at chapter 0 now that
+    # coverage is complete, and this guard is about *which chapter* the preface
+    # translation anchors to.
+    entry = next(e for e in artifact["translations"]["zh"]["chapters"] if e["index"] == 1)
 
     assert entry["index"] == 1
     assert artifact["chapters"][1]["title"] == "TRANSLATOR’S PREFACE"
@@ -71,12 +81,21 @@ def test_the_preface_translation_sits_on_the_preface():
 
 
 def test_no_entry_opens_with_its_own_heading():
-    """Entry 9 kept '第一章' as paragraph 0; it belongs in title_translation."""
+    """Entry 9 kept '第一章' as paragraph 0; it belongs in title_translation.
+
+    Front matter is exempt. Chapter 0 is a printed contents listing whose first
+    English paragraph is literally the word "CONTENTS", so its faithful
+    translation 目录 equals the title translation — the heading genuinely is the
+    body there, which is the opposite of the duplication this guards against.
+    """
     artifact = load_artifact(ARTIFACT)
+    apparatus = {c["index"] for c in artifact["chapters"] if c.get("role") == "frontmatter"}
 
     for entry in artifact["translations"]["zh"]["chapters"]:
         title = (entry.get("title_translation") or "").strip()
         assert title, f"chapter {entry['index']} has no title translation"
+        if entry["index"] in apparatus:
+            continue
         assert entry["paragraphs"][0].strip() != title
 
 

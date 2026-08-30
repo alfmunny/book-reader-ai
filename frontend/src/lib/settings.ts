@@ -8,6 +8,8 @@ export type LineHeight = "tight" | "normal" | "relaxed";
 export type ContentWidth = "narrow" | "normal" | "wide";
 export type FontFamily = "serif" | "sans";
 export type ReaderSidebarTab = "toc" | "chat" | "notes" | "vocab" | "translate";
+/** Continuous scroll (default) or paginated columns — design: reading-modes.md */
+export type ReaderMode = "scroll" | "page";
 
 export interface AppSettings {
   insightLang: string;
@@ -34,6 +36,8 @@ export interface AppSettings {
   // where the reader left it (open state restored on desktop only).
   readerSidebarOpen: boolean;
   readerSidebarTab: ReaderSidebarTab;
+  /** Scroll or page. Per profile, like every other reading preference. */
+  readerMode: ReaderMode;
 }
 
 const DEFAULTS: AppSettings = {
@@ -55,6 +59,7 @@ const DEFAULTS: AppSettings = {
   paragraphFocus: false,
   readerSidebarOpen: false,
   readerSidebarTab: "chat",
+  readerMode: "scroll",
 };
 
 const KEY = "book-reader-settings";

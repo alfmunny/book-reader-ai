@@ -70,6 +70,7 @@ export default function ProfilePage() {
     contentWidth: "normal",
     fontFamily: "serif",
     paragraphFocus: false,
+    readerMode: "scroll",
   });
   const [prefsSaved, setPrefsSaved] = useState(false);
 

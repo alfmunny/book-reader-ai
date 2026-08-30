@@ -169,3 +169,16 @@ body, [data-theme="light"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Page mode (design: docs/design/reading-modes.md). The chapter flows into
+   full-height columns one viewport wide; a turn translates the flow sideways.
+   The DOM never changes — only this transform — so note anchors and data-seg
+   spans survive a mode switch as the same nodes. */
+.reader-paged {
+  column-gap: 64px;
+  column-fill: auto;
+  transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-paged { transition: none; }
+}

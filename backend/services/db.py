@@ -2184,6 +2184,43 @@ async def count_paragraph_notes(
     return {int(r[0]): int(r[1]) for r in rows}
 
 
+async def create_version_comment(
+    session_id: int, user_id: int, body: str, parent_id: int | None = None,
+) -> dict:
+    """A comment on a whole VERSION (owner, 2026-08-30) — paragraph_index
+    stays NULL, which is what distinguishes it from a paragraph note."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO story_comments (session_id, user_id, body, parent_comment_id, visibility)
+               VALUES (?, ?, ?, ?, 'public')""",
+            (session_id, user_id, body, parent_id),
+        )
+        comment_id = cursor.lastrowid
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def list_version_comments(session_id: int) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id
+               WHERE sc.session_id = ? AND sc.story_id IS NULL AND sc.paragraph_index IS NULL
+               ORDER BY sc.created_at, sc.id""",
+            (session_id,),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]
+
+
 async def get_translation_session_any(session_id: int) -> dict | None:
     """The session row regardless of owner — callers check visibility."""
     async with aiosqlite.connect(DB_PATH) as db:
@@ -2377,15 +2414,30 @@ async def set_session_publication(
     return dict(row) if row else None
 
 
-async def list_published_sessions(book_id: int, exclude_user_id: int | None = None) -> list[dict]:
-    """Published versions of a book — the reader's Community group. Model
-    tags come from the paragraphs themselves, so the list is honest about
-    how a translation was made."""
-    params: tuple = (book_id,)
-    where = "ts.book_id = ? AND ts.status = 'published'"
+async def list_published_sessions(
+    book_id: int, exclude_user_id: int | None = None,
+    q: str | None = None, sort: str = "popular",
+    limit: int = 20, offset: int = 0,
+) -> tuple[list[dict], bool]:
+    """Published versions of a book — the reader's Community group.
+
+    Ranked by popularity (likes, then discussion, then recency) or by date,
+    searchable by version or author name, and paged: the sidebar shows the
+    top few and the dialog walks the rest (owner, 2026-08-30). Returns
+    (rows, has_more). Model tags come from the paragraphs themselves, so
+    the list is honest about how a translation was made.
+    """
+    where = ["ts.book_id = ?", "ts.status = 'published'"]
+    params: list = [book_id]
     if exclude_user_id is not None:
-        where += " AND ts.user_id != ?"
-        params = (book_id, exclude_user_id)
+        where.append("ts.user_id != ?")
+        params.append(exclude_user_id)
+    if q and q.strip():
+        where.append("(ts.name LIKE ? OR u.name LIKE ?)")
+        like = f"%{q.strip()}%"
+        params.extend([like, like])
+    order = ("likes DESC, comments DESC, ts.published_at DESC, ts.id DESC"
+             if sort == "popular" else "ts.published_at DESC, ts.id DESC")
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
@@ -2393,20 +2445,28 @@ async def list_published_sessions(book_id: int, exclude_user_id: int | None = No
                        (SELECT COUNT(DISTINCT chapter_index) FROM translation_session_paragraphs p
                         WHERE p.session_id = ts.id) AS chapters_covered,
                        (SELECT GROUP_CONCAT(DISTINCT p.model) FROM translation_session_paragraphs p
-                        WHERE p.session_id = ts.id) AS model_tags
+                        WHERE p.session_id = ts.id) AS model_tags,
+                       (SELECT COUNT(*) FROM reactions r
+                        WHERE r.target_kind = 'session' AND r.target_id = ts.id) AS likes,
+                       (SELECT COUNT(*) FROM story_comments sc
+                        WHERE sc.session_id = ts.id AND sc.story_id IS NULL) AS comments
                 FROM translation_sessions ts
                 JOIN users u ON u.id = ts.user_id
-                WHERE {where}
-                ORDER BY ts.published_at DESC, ts.id DESC""",
-            params,
+                WHERE {' AND '.join(where)}
+                ORDER BY {order}
+                LIMIT ? OFFSET ?""",
+            (*params, limit + 1, offset),
         ) as c:
             rows = await c.fetchall()
+    has_more = len(rows) > limit
     out = []
-    for r in rows:
+    for r in rows[:limit]:
         d = dict(r)
         d["model_tags"] = [m for m in (d.get("model_tags") or "").split(",") if m]
+        d["likes"] = int(d.get("likes") or 0)
+        d["comments"] = int(d.get("comments") or 0)
         out.append(d)
-    return out
+    return out, has_more
 
 
 async def get_readable_session(session_id: int, user_id: int) -> dict | None:

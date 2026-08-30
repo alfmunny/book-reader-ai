@@ -959,6 +959,8 @@ export interface PublishedSession extends TranslationSession {
   published_at?: string | null;
   chapters_covered: number;
   model_tags: string[];
+  likes: number;
+  comments: number;
 }
 
 export interface SessionCompleteness {
@@ -968,8 +970,16 @@ export interface SessionCompleteness {
   missing_chapters: Array<{ chapter_index: number; translated: number; paragraphs: number }>;
 }
 
-export function listPublishedSessions(bookId: number) {
-  return request<PublishedSession[]>(`/translation-sessions/published?book_id=${bookId}`);
+export function listPublishedSessions(
+  bookId: number,
+  opts: { q?: string; sort?: "popular" | "recent"; limit?: number; offset?: number } = {},
+) {
+  const p = new URLSearchParams({ book_id: String(bookId) });
+  if (opts.q) p.set("q", opts.q);
+  if (opts.sort) p.set("sort", opts.sort);
+  if (opts.limit != null) p.set("limit", String(opts.limit));
+  if (opts.offset != null) p.set("offset", String(opts.offset));
+  return request<{ items: PublishedSession[]; has_more: boolean }>(`/translation-sessions/published?${p}`);
 }
 
 export function getSessionCompleteness(sessionId: number) {
@@ -1402,6 +1412,18 @@ export function addStoryComment(storyId: number, body: string, parentId?: number
   });
 }
 
+export function listVersionComments(sessionId: number) {
+  return request<{ comments: StoryComment[] }>(`/stories/comments/version?session_id=${sessionId}`);
+}
+
+export function addVersionComment(sessionId: number, body: string) {
+  return request<StoryComment>(`/stories/comments/version`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: sessionId, body }),
+  });
+}
+
 export function listSessionParagraphComments(anchor: SessionParagraphAnchor) {
   const params = new URLSearchParams(
     Object.fromEntries(Object.entries(anchor).map(([k, v]) => [k, String(v)])),
@@ -1445,7 +1467,7 @@ export function addEditorialComment(anchor: EditorialCommentAnchor, body: string
 
 export interface ReactionState { count: number; liked: boolean }
 
-export function toggleReaction(targetKind: "story" | "comment", targetId: number) {
+export function toggleReaction(targetKind: "story" | "comment" | "session", targetId: number) {
   return request<{ liked: boolean; count: number }>(`/stories/reactions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1453,7 +1475,7 @@ export function toggleReaction(targetKind: "story" | "comment", targetId: number
   });
 }
 
-export function listReactions(targetKind: "story" | "comment", ids: number[]) {
+export function listReactions(targetKind: "story" | "comment" | "session", ids: number[]) {
   return request<{ reactions: Record<string, ReactionState> }>(
     `/stories/reactions?target_kind=${targetKind}&ids=${ids.join(",")}`,
   );

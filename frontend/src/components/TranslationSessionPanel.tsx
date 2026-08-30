@@ -1,11 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   TranslationSession,
   PublishedSession,
   publishTranslationSession,
   unpublishTranslationSession,
   getSessionCompleteness,
+  listVersionComments,
+  addVersionComment,
+  listPublishedSessions,
+  PublishedSession as PublishedSessionType,
+  toggleReaction,
+  listReactions,
+  StoryComment,
   SessionProvider,
   createTranslationSession,
   updateTranslationSession,
@@ -13,7 +20,7 @@ import {
 } from "@/lib/api";
 import { LANGUAGES } from "@/components/InsightChat";
 import { getSettings } from "@/lib/settings";
-import { TrashIcon, EditIcon } from "@/components/Icons";
+import { TrashIcon, EditIcon, HeartIcon } from "@/components/Icons";
 
 interface Props {
   bookId: number;
@@ -101,6 +108,168 @@ export default function TranslationSessionPanel({
   // Whole-book publication (track B): the gate lives on the server; here we
   // surface the shortfall so the reader knows what is left to translate.
   const [publishBusy, setPublishBusy] = useState(false);
+  // A whole version can be liked and discussed (owner, 2026-08-30) — the
+  // Community card and your own published version share this block.
+  const [versionLike, setVersionLike] = useState<{ count: number; liked: boolean }>({ count: 0, liked: false });
+  const [versionComments, setVersionComments] = useState<StoryComment[]>([]);
+  const [versionDraft, setVersionCommentDraft] = useState("");
+  const [versionBusy, setVersionBusy] = useState(false);
+  // Browse-all dialog: search, sort, load-more (owner, 2026-08-30)
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [browseQ, setBrowseQ] = useState("");
+  const [browseSort, setBrowseSort] = useState<"popular" | "recent">("popular");
+  const [browseItems, setBrowseItems] = useState<PublishedSessionType[]>([]);
+  const [browseMore, setBrowseMore] = useState(false);
+  const [browseBusy, setBrowseBusy] = useState(false);
+  const BROWSE_PAGE = 10;
+
+  async function loadBrowse(reset: boolean) {
+    setBrowseBusy(true);
+    try {
+      const r = await listPublishedSessions(bookId, {
+        q: browseQ.trim() || undefined,
+        sort: browseSort,
+        limit: BROWSE_PAGE,
+        offset: reset ? 0 : browseItems.length,
+      });
+      setBrowseItems((prev) => (reset ? r.items : [...prev, ...r.items]));
+      setBrowseMore(r.has_more);
+    } catch {
+      if (reset) setBrowseItems([]);
+      setBrowseMore(false);
+    } finally {
+      setBrowseBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!browseOpen) return;
+    const t = setTimeout(() => { loadBrowse(true); }, browseQ ? 250 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [browseOpen, browseQ, browseSort]);
+
+  const communityRow = (cs: PublishedSessionType, compact: boolean) => (
+    <button
+      key={`pub-${cs.id}`}
+      role="radio"
+      aria-checked={activeSessionId === cs.id}
+      onClick={() => { onSelect(cs); setBrowseOpen(false); }}
+      className={`w-full rounded-lg border px-3 py-2 text-left transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+        activeSessionId === cs.id
+          ? "border-amber-600 ring-1 ring-amber-600 bg-white"
+          : "border-amber-200 bg-white hover:bg-amber-50/50"
+      }`}
+    >
+      <span className="flex items-center gap-1.5 flex-wrap">
+        {cs.author_picture ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={cs.author_picture} alt="" aria-hidden="true" className="w-4 h-4 rounded-full object-cover shrink-0" />
+        ) : (
+          <span aria-hidden="true" className="w-4 h-4 rounded-full bg-amber-200 text-amber-900 inline-flex items-center justify-center text-[9px] font-semibold shrink-0">
+            {(cs.author_name || "?").charAt(0).toUpperCase()}
+          </span>
+        )}
+        <span className="text-xs text-stone-600 shrink-0">{cs.author_name}</span>
+        <span lang={cs.target_language} className="font-medium text-ink text-sm truncate">{cs.name}</span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 shrink-0">{cs.target_language}</span>
+        {!compact && cs.model_tags.slice(0, 1).map((m) => (
+          <span key={m} className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 shrink-0 font-mono">{m}</span>
+        ))}
+        <span className="flex-1" />
+        {cs.likes > 0 && (
+          <span className="text-[10px] text-stone-500 shrink-0 inline-flex items-center gap-0.5">
+            <HeartIcon className="w-3 h-3" /> {cs.likes}
+          </span>
+        )}
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">{cs.chapters_covered}/{chapterCount} ch</span>
+      </span>
+    </button>
+  );
+  const discussedId = activeSessionId;
+  useEffect(() => {
+    if (discussedId == null) { setVersionComments([]); setVersionLike({ count: 0, liked: false }); return; }
+    let cancelled = false;
+    listVersionComments(discussedId)
+      .then((r) => { if (!cancelled) setVersionComments(r.comments); })
+      .catch(() => { if (!cancelled) setVersionComments([]); });
+    listReactions("session", [discussedId])
+      .then((r) => {
+        if (cancelled) return;
+        setVersionLike(r.reactions[String(discussedId)] ?? { count: 0, liked: false });
+      })
+      .catch(() => { if (!cancelled) setVersionLike({ count: 0, liked: false }); });
+    return () => { cancelled = true; };
+  }, [discussedId]);
+
+  async function toggleVersionLike() {
+    if (discussedId == null) return;
+    const before = versionLike;
+    setVersionLike({ count: before.count + (before.liked ? -1 : 1), liked: !before.liked });
+    try {
+      const r = await toggleReaction("session", discussedId);
+      setVersionLike({ count: r.count, liked: r.liked });
+    } catch {
+      setVersionLike(before);
+    }
+  }
+
+  async function postVersionComment() {
+    if (discussedId == null || !versionDraft.trim() || versionBusy) return;
+    setVersionBusy(true);
+    try {
+      const created = await addVersionComment(discussedId, versionDraft.trim());
+      setVersionComments((c) => [...c, created]);
+      setVersionCommentDraft("");
+    } catch {
+      setError("Could not post the comment.");
+    } finally {
+      setVersionBusy(false);
+    }
+  }
+
+  const versionDiscussion = (
+    <div className="mt-2 pt-2 border-t border-amber-100 space-y-2" data-testid="version-discussion">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={toggleVersionLike}
+          aria-label={versionLike.liked ? "Unlike this version" : "Like this version"}
+          aria-pressed={versionLike.liked}
+          data-testid="version-like"
+          className={`inline-flex items-center gap-1 text-[11px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors ${
+            versionLike.liked ? "text-red-500 hover:text-red-600" : "text-stone-400 hover:text-red-500"
+          }`}
+        >
+          <HeartIcon className="w-4 h-4" filled={versionLike.liked} />
+          {versionLike.count > 0 && versionLike.count}
+        </button>
+        <span className="text-[11px] text-stone-500">{versionComments.length} comment{versionComments.length === 1 ? "" : "s"}</span>
+      </div>
+      {versionComments.map((c) => (
+        <div key={c.id} className="text-[11px]" data-testid={`version-comment-${c.id}`}>
+          <span className="font-medium text-ink">{c.author_name}</span>
+          <p className="text-stone-600 whitespace-pre-wrap">{c.body}</p>
+        </div>
+      ))}
+      <div className="flex gap-1.5">
+        <input
+          value={versionDraft}
+          onChange={(e) => setVersionCommentDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") postVersionComment(); }}
+          placeholder="Comment on this translation…"
+          aria-label="Version comment"
+          className="flex-1 text-[11px] border border-amber-200 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <button
+          onClick={postVersionComment}
+          disabled={versionBusy || !versionDraft.trim()}
+          className="text-[11px] px-2.5 py-1.5 rounded bg-amber-700 text-white disabled:opacity-50 hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          Post
+        </button>
+      </div>
+    </div>
+  );
   // Version-list filter (owner request, 2026-08-27): by name, language, model.
   const [filterText, setFilterText] = useState("");
   const [filterLang, setFilterLang] = useState("all");
@@ -375,38 +544,14 @@ export default function TranslationSessionPanel({
           <div className="mt-3" data-testid="community-versions">
             <p className="block text-xs text-amber-700 mb-1">Community · complete translations</p>
             <div className="space-y-1.5" role="radiogroup" aria-label="Community translations">
-              {publishedSessions!.map((cs) => (
-                <button
-                  key={`pub-${cs.id}`}
-                  role="radio"
-                  aria-checked={activeSessionId === cs.id}
-                  onClick={() => onSelect(cs)}
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition-colors min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                    activeSessionId === cs.id
-                      ? "border-amber-600 ring-1 ring-amber-600 bg-white"
-                      : "border-amber-200 bg-white hover:bg-amber-50/50"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5 flex-wrap">
-                    {cs.author_picture ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={cs.author_picture} alt="" aria-hidden="true" className="w-4 h-4 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <span aria-hidden="true" className="w-4 h-4 rounded-full bg-amber-200 text-amber-900 inline-flex items-center justify-center text-[9px] font-semibold shrink-0">
-                        {(cs.author_name || "?").charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="text-xs text-stone-600 shrink-0">{cs.author_name}</span>
-                    <span lang={cs.target_language} className="font-medium text-ink text-sm truncate">{cs.name}</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 shrink-0">{cs.target_language}</span>
-                    {cs.model_tags.slice(0, 1).map((m) => (
-                      <span key={m} className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 shrink-0 font-mono">{m}</span>
-                    ))}
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">{cs.chapters_covered}/{chapterCount} ch</span>
-                  </span>
-                </button>
-              ))}
+              {publishedSessions!.map((cs) => communityRow(cs as PublishedSessionType, true))}
             </div>
+            <button
+              onClick={() => setBrowseOpen(true)}
+              className="mt-1.5 text-xs text-amber-700 hover:underline min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+            >
+              More community translations →
+            </button>
           </div>
         )}
 
@@ -418,6 +563,58 @@ export default function TranslationSessionPanel({
             ＋ Add your own version
           </button>
         ) : null}
+        {browseOpen && (
+          <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Community translations">
+            <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-lg max-h-[80vh] flex flex-col" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="community-browse">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-sm font-medium text-ink flex-1">Community translations</p>
+                <button
+                  onClick={() => setBrowseOpen(false)}
+                  aria-label="Close community translations"
+                  className="text-stone-500 hover:text-ink min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 inline-flex items-center justify-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex gap-2 mb-2">
+                <input
+                  value={browseQ}
+                  onChange={(e) => setBrowseQ(e.target.value)}
+                  placeholder="Search by version or author…"
+                  aria-label="Search community translations"
+                  className="flex-1 text-sm border border-amber-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <select
+                  aria-label="Sort community translations"
+                  value={browseSort}
+                  onChange={(e) => setBrowseSort(e.target.value as "popular" | "recent")}
+                  className="text-sm border border-amber-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="popular">Most liked</option>
+                  <option value="recent">Newest</option>
+                </select>
+              </div>
+              <div className="space-y-1.5 overflow-y-auto" role="radiogroup" aria-label="All community translations">
+                {browseItems.length === 0 && !browseBusy && (
+                  <p className="text-xs text-stone-500 italic py-4 text-center">
+                    {browseQ ? "No translations match that search." : "No community translations for this book yet."}
+                  </p>
+                )}
+                {browseItems.map((cs) => communityRow(cs, false))}
+              </div>
+              {browseMore && (
+                <button
+                  onClick={() => loadBrowse(false)}
+                  disabled={browseBusy}
+                  className="mt-2 text-xs text-amber-700 hover:underline disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+                >
+                  {browseBusy ? "Loading…" : "Load more"}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {editDialog && (
           <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Edit translation version">
           <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md space-y-2.5" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="edit-session-form">
@@ -584,6 +781,7 @@ export default function TranslationSessionPanel({
             <p className="mt-1 text-[11px] text-stone-500">
               A community translation — you can read it and write notes on it, but only its author can change it.
             </p>
+            {versionDiscussion}
           </div>
         );
       })()}

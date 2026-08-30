@@ -239,13 +239,24 @@ async def _session_completeness(session_id: int, book_id: int) -> dict:
 
 
 @router.get("/published")
-async def published_sessions(book_id: int = Query(..., ge=1), user: dict = Depends(get_current_user)):
-    """Published versions other readers can select — the Community group."""
+async def published_sessions(
+    book_id: int = Query(..., ge=1),
+    q: str | None = Query(default=None, max_length=100),
+    sort: Literal["popular", "recent"] = Query(default="popular"),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Published versions other readers can select — the Community group.
+    Ranked, searchable and paged for the browse dialog."""
     book = await get_cached_book(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
-    return await list_published_sessions(book_id, exclude_user_id=user["id"])
+    items, has_more = await list_published_sessions(
+        book_id, exclude_user_id=user["id"], q=q, sort=sort, limit=limit, offset=offset,
+    )
+    return {"items": items, "has_more": has_more}
 
 
 @router.get("/{session_id}/completeness")

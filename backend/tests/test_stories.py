@@ -560,3 +560,31 @@ async def test_like_counts_come_back_in_a_batch(client, test_user):
     })).json()["reactions"]
     assert got[str(a["id"])] == {"count": 2, "liked": True}
     assert str(b["id"]) not in got  # no reactions, no row
+
+
+# ── A whole version can be liked and discussed (owner, 2026-08-30) ─────────
+
+async def test_version_level_comments_are_separate_from_paragraph_notes(client, test_user):
+    sid = await _make_session(client, name="整版讨论")
+    await client.patch(f"/api/translation-sessions/{sid}", json={"status": "public"})
+
+    await client.post("/api/stories/comments/version", json={"session_id": sid, "body": "整体读下来很流畅"})
+    await client.post("/api/stories/comments/session", json={
+        "session_id": sid, "chapter_index": 0, "paragraph_index": 0, "body": "这一段的笔记",
+    })
+
+    version_thread = (await client.get("/api/stories/comments/version", params={"session_id": sid})).json()["comments"]
+    assert [c["body"] for c in version_thread] == ["整体读下来很流畅"]
+    para_thread = (await client.get("/api/stories/comments/session", params={
+        "session_id": sid, "chapter_index": 0, "paragraph_index": 0,
+    })).json()["comments"]
+    assert [c["body"] for c in para_thread] == ["这一段的笔记"]
+
+
+async def test_a_version_can_be_liked(client, test_user):
+    sid = await _make_session(client, name="可点赞版")
+    await client.patch(f"/api/translation-sessions/{sid}", json={"status": "public"})
+    liked = (await client.post("/api/stories/reactions", json={"target_kind": "session", "target_id": sid})).json()
+    assert liked == {"liked": True, "count": 1}
+    got = (await client.get("/api/stories/reactions", params={"target_kind": "session", "ids": str(sid)})).json()
+    assert got["reactions"][str(sid)] == {"count": 1, "liked": True}

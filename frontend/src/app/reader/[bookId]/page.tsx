@@ -487,8 +487,9 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!session?.backendToken) { setPublishedSessions([]); return; }
     let cancelled = false;
-    listPublishedSessions(Number(bookId))
-      .then((r) => { if (!cancelled) setPublishedSessions(r); })
+    // The sidebar shows the few most popular; the browse dialog pages the rest
+    listPublishedSessions(Number(bookId), { sort: "popular", limit: 3 })
+      .then((r) => { if (!cancelled) setPublishedSessions(r.items); })
       .catch(() => { if (!cancelled) setPublishedSessions([]); });
     return () => { cancelled = true; };
   }, [bookId, session?.backendToken, storiesVersion]);

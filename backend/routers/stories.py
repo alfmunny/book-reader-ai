@@ -34,6 +34,8 @@ from services.db import (
     count_paragraph_notes,
     toggle_reaction,
     reaction_counts,
+    create_version_comment,
+    list_version_comments,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -200,7 +202,7 @@ async def _readable_session(session_id: int, user: dict) -> dict:
 
 
 class ReactionToggle(BaseModel):
-    target_kind: Literal["story", "comment"]
+    target_kind: Literal["story", "comment", "session"]
     target_id: int = Field(ge=1)
 
 
@@ -214,7 +216,7 @@ async def toggle_like(req: ReactionToggle, user: dict = Depends(get_current_user
 
 @router.get("/reactions")
 async def list_likes(
-    target_kind: Literal["story", "comment"] = Query(...),
+    target_kind: Literal["story", "comment", "session"] = Query(...),
     ids: str = Query(..., description="comma-separated target ids"),
     user: dict = Depends(get_current_user),
 ):
@@ -244,6 +246,25 @@ async def paragraph_note_counts(
             chapter_index, user["id"], book_id=book_id, target_language=target_language,
         )
     return {"counts": {str(k): v for k, v in counts.items()}}
+
+
+class VersionCommentCreate(BaseModel):
+    session_id: int = Field(ge=1)
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+
+
+@router.get("/comments/version")
+async def version_comments(session_id: int = Query(ge=1), user: dict = Depends(get_current_user)):
+    """Discussion of a whole version — the Community card's thread."""
+    await _readable_session(session_id, user)
+    return {"comments": await list_version_comments(session_id)}
+
+
+@router.post("/comments/version")
+async def add_version_comment(req: VersionCommentCreate, user: dict = Depends(get_current_user)):
+    await _readable_session(req.session_id, user)
+    return await create_version_comment(req.session_id, user["id"], req.body.strip(), req.parent_id)
 
 
 @router.get("/comments/session")

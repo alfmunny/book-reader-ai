@@ -11,6 +11,11 @@ jest.mock("@/lib/api", () => ({
   publishTranslationSession: jest.fn(),
   unpublishTranslationSession: jest.fn(),
   getSessionCompleteness: jest.fn(),
+  listVersionComments: jest.fn().mockResolvedValue({ comments: [] }),
+  addVersionComment: jest.fn(),
+  toggleReaction: jest.fn(),
+  listReactions: jest.fn().mockResolvedValue({ reactions: {} }),
+  listPublishedSessions: jest.fn().mockResolvedValue({ items: [], has_more: false }),
 }));
 
 import * as api from "@/lib/api";
@@ -43,7 +48,12 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof TranslationS
   return { ...render(<TranslationSessionPanel {...props} />), props };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  (api.listVersionComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.listReactions as jest.Mock).mockResolvedValue({ reactions: {} });
+  (api.listPublishedSessions as jest.Mock).mockResolvedValue({ items: [], has_more: false });
+});
 
 test("lists Editorial plus named sessions with language and provider chips", () => {
   renderPanel();
@@ -286,7 +296,7 @@ test("the create dialog offers explicit visibility; public is sent through", asy
 const PUBLISHED = {
   id: 77, book_id: 2229, name: "诗意全译", target_language: "zh", provider: "deepseek",
   status: "published", coverage: {}, author_name: "Mira", author_picture: null,
-  chapters_covered: 28, model_tags: ["deepseek-v4-flash"], published_at: "2026-08-30",
+  chapters_covered: 28, model_tags: ["deepseek-v4-flash"], published_at: "2026-08-30", likes: 0, comments: 0,
 } as never;
 
 test("published versions appear in a Community group and are selectable", () => {
@@ -294,8 +304,9 @@ test("published versions appear in a Community group and are selectable", () => 
   const group = screen.getByTestId("community-versions");
   expect(group).toHaveTextContent("Mira");
   expect(group).toHaveTextContent("诗意全译");
-  expect(group).toHaveTextContent("deepseek-v4-flash");
   expect(group).toHaveTextContent("28/28 ch");
+  // Sidebar rows stay compact — the model tag shows in the browse dialog
+  expect(group).not.toHaveTextContent("deepseek-v4-flash");
   fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
   expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
 });
@@ -332,4 +343,66 @@ test("an incomplete book explains what is left instead of publishing", async () 
   expect(err).toHaveTextContent(/412 of 980 paragraphs done, 17 chapter/);
   // …and the dialog stays open so it can be acted on
   expect(screen.getByRole("dialog", { name: "Edit translation version" })).toBeInTheDocument();
+});
+
+test("a community version can be liked and discussed as a whole", async () => {
+  (api.listVersionComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 301, user_id: 3, body: "整体很流畅", created_at: "", author_name: "Jonas" }],
+  });
+  (api.listReactions as jest.Mock).mockResolvedValue({ reactions: { "77": { count: 5, liked: false } } });
+  (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 6 });
+  (api.addVersionComment as jest.Mock).mockResolvedValue({
+    id: 302, user_id: 9, body: "我也喜欢", created_at: "", author_name: "Me",
+  });
+  renderPanel({ publishedSessions: [PUBLISHED], activeSessionId: 77 });
+
+  // Existing discussion of the whole version
+  expect(await screen.findByTestId("version-comment-301")).toHaveTextContent("整体很流畅");
+  const heart = screen.getByTestId("version-like");
+  await waitFor(() => expect(heart).toHaveTextContent("5"));
+  fireEvent.click(heart);
+  await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("session", 77));
+  await waitFor(() => expect(screen.getByTestId("version-like")).toHaveTextContent("6"));
+
+  // …and a new comment on the version itself
+  fireEvent.change(screen.getByLabelText("Version comment"), { target: { value: "我也喜欢" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addVersionComment).toHaveBeenCalledWith(77, "我也喜欢"));
+  expect(await screen.findByTestId("version-comment-302")).toBeInTheDocument();
+});
+
+test("the sidebar shows the top few; More opens a searchable, paged dialog", async () => {
+  const page1 = [
+    { ...PUBLISHED, id: 81, name: "第一版", likes: 9, comments: 2 },
+    { ...PUBLISHED, id: 82, name: "第二版", likes: 4, comments: 0 },
+  ];
+  (api.listPublishedSessions as jest.Mock)
+    .mockResolvedValueOnce({ items: page1, has_more: true })
+    .mockResolvedValueOnce({ items: [{ ...PUBLISHED, id: 83, name: "第三版", likes: 1, comments: 0 }], has_more: false });
+  const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
+
+  fireEvent.click(screen.getByRole("button", { name: /More community translations/ }));
+  const dialog = await screen.findByTestId("community-browse");
+  await waitFor(() => expect(dialog).toHaveTextContent("第一版"));
+  expect(dialog).toHaveTextContent("9"); // like count, ranked first
+
+  // Load more appends the next page
+  fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+  await waitFor(() => expect(screen.getByTestId("community-browse")).toHaveTextContent("第三版"));
+
+  // Selecting from the dialog picks the version and closes it
+  fireEvent.click(screen.getByRole("radio", { name: /第一版/ }));
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 81 }));
+  expect(screen.queryByTestId("community-browse")).toBeNull();
+});
+
+test("searching the community dialog re-queries the server", async () => {
+  (api.listPublishedSessions as jest.Mock).mockResolvedValue({ items: [], has_more: false });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+  fireEvent.click(screen.getByRole("button", { name: /More community translations/ }));
+  fireEvent.change(await screen.findByLabelText("Search community translations"), { target: { value: "Mira" } });
+  await waitFor(() => expect(api.listPublishedSessions).toHaveBeenCalledWith(
+    2229, expect.objectContaining({ q: "Mira", sort: "popular" }),
+  ));
+  expect(await screen.findByText("No translations match that search.")).toBeInTheDocument();
 });

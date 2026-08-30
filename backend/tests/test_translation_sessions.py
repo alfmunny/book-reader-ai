@@ -420,7 +420,7 @@ async def test_published_versions_are_listed_and_readable_by_others(client, test
 
     # A second reader sees it in the Community list and can read its chapters
     other = await get_or_create_user(google_id="g-visitor", email="v@e.com", name="Visitor", picture="")
-    listed = await list_published_sessions(1, exclude_user_id=other["id"])
+    listed, _ = await list_published_sessions(1, exclude_user_id=other["id"])
     assert [s["name"] for s in listed] == ["完整版"]
     assert listed[0]["author_name"] == test_user["name"]
     assert listed[0]["model_tags"] == ["deepseek-v4-flash"]
@@ -442,7 +442,7 @@ async def test_unpublish_withdraws_from_the_community_list(client, test_user):
     assert resp.status_code == 200
     assert resp.json()["status"] == "public"
     other = await get_or_create_user(google_id="g-visitor2", email="v2@e.com", name="V2", picture="")
-    assert await list_published_sessions(1, exclude_user_id=other["id"]) == []
+    assert (await list_published_sessions(1, exclude_user_id=other["id"]))[0] == []
     assert await get_readable_session(sid, other["id"]) is None
 
 
@@ -452,7 +452,7 @@ async def test_published_endpoint_excludes_your_own_versions(client, test_user):
     await _translate_everything(client, sid)
     await client.post(f"/api/translation-sessions/{sid}/publish")
     mine = (await client.get("/api/translation-sessions/published", params={"book_id": 1})).json()
-    assert mine == []  # my own versions are already in my list
+    assert mine["items"] == []  # my own versions are already in my list
 
 
 async def test_admin_can_unpublish_anyone_but_never_rewrites(client, test_user):
@@ -474,3 +474,37 @@ async def test_admin_can_unpublish_anyone_but_never_rewrites(client, test_user):
     # …and the translation itself survives
     paras = await get_session_paragraphs(sess["id"], 0)
     assert paras[0]["text"] == "他的译文"
+
+
+async def test_published_list_ranks_by_popularity_searches_and_pages(client, test_user):
+    """The sidebar shows the top few; the dialog searches and pages the rest."""
+    from services.db import (
+        create_translation_session, upsert_session_paragraph,
+        set_session_publication, toggle_reaction, get_or_create_user,
+    )
+    reader = await get_or_create_user(google_id="g-reader-x", email="rx@e.com", name="Reader X", picture="")
+    made = []
+    for i, (author_name, gid) in enumerate([("Mira", "g-m2"), ("Jonas", "g-j2"), ("Yuki", "g-y2")]):
+        u = await get_or_create_user(google_id=gid, email=f"{gid}@e.com", name=author_name, picture="")
+        sess = await create_translation_session(u["id"], 1, f"版本{i}", "zh", "deepseek")
+        await upsert_session_paragraph(sess["id"], 0, 0, "译文", "deepseek", "m")
+        await set_session_publication(sess["id"], u["id"], True)
+        made.append(sess["id"])
+    # Two likes for the middle one, one for the last → popularity order
+    await toggle_reaction(reader["id"], "session", made[1])
+    await toggle_reaction(test_user["id"], "session", made[1])
+    await toggle_reaction(reader["id"], "session", made[2])
+
+    ranked, _ = await list_published_sessions(1, exclude_user_id=reader["id"], sort="popular")
+    assert [r["id"] for r in ranked[:2]] == [made[1], made[2]]
+    assert ranked[0]["likes"] == 2
+
+    # Search by author name
+    found, _ = await list_published_sessions(1, exclude_user_id=reader["id"], q="Yuki")
+    assert [r["id"] for r in found] == [made[2]]
+
+    # Paging: first page reports more, second returns the remainder
+    page1, more1 = await list_published_sessions(1, exclude_user_id=reader["id"], limit=2)
+    assert len(page1) == 2 and more1 is True
+    page2, more2 = await list_published_sessions(1, exclude_user_id=reader["id"], limit=2, offset=2)
+    assert len(page2) == 1 and more2 is False

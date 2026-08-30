@@ -159,27 +159,29 @@ def mechanical_audit(chapters: list[dict]) -> list[str]:
     return findings
 
 
-def _load_legacy_entries(
+def _load_sources(
     book_id: int, books_dir: Path | None = None
-) -> tuple[dict[str, dict[int, dict]], list[str]]:
-    """Read every translation this book has, from both legacy conventions and
-    — when `books_dir` is given — its own existing artifact.
+) -> tuple[dict[str, dict[int, dict]], dict[str, dict[int, dict]],
+           dict[str, dict[int, dict]]]:
+    """Read this book's translations, kept separate by source.
 
-    Returns ({lang: {chapter_index: entry}}, warnings). Priority, lowest
-    first: existing artifact, Convention B, Convention A (DB export wins)."""
-    merged: dict[str, dict[int, dict]] = {}
-    warnings: list[str] = []
+    Returns (artifact, convention_b, convention_a), each {lang: {index: entry}}.
+    They stay apart because they are not in the same index space: the artifact's
+    indices are already corrected, the legacy conventions' are raw. The caller
+    maps the legacy two and only then merges, lowest priority first — artifact,
+    Convention B, Convention A (DB export wins).
 
-    def _absorb(entries: list[dict], lang: str, source_label: str, authoritative: bool):
-        by_index = merged.setdefault(lang, {})
+    Each entry carries `_source`, the filename it came from, so the caller can
+    name it when one overrides another.
+    """
+    artifact: dict[str, dict[int, dict]] = {}
+    convention_b: dict[str, dict[int, dict]] = {}
+    convention_a: dict[str, dict[int, dict]] = {}
+
+    def _absorb(target, entries: list[dict], lang: str, source_label: str):
+        by_index = target.setdefault(lang, {})
         for e in entries:
-            idx = e["chapter_index"]
-            if authoritative or idx not in by_index:
-                if idx in by_index and authoritative:
-                    warnings.append(
-                        f"{lang} ch{idx}: {source_label} overrides earlier entry"
-                    )
-                by_index[idx] = e
+            by_index[e["chapter_index"]] = {**e, "_source": source_label}
 
     # The book's own artifact first — lowest priority, but it must be read.
     # A re-freeze that repairs a split has to carry forward translations that
@@ -190,6 +192,7 @@ def _load_legacy_entries(
         existing = json.loads(artifact_path.read_text())
         for lang, block in sorted(existing.get("translations", {}).items()):
             _absorb(
+                artifact,
                 [
                     {
                         "chapter_index": c["index"],
@@ -202,18 +205,16 @@ def _load_legacy_entries(
                 ],
                 lang,
                 artifact_path.name,
-                authoritative=False,
             )
 
-    # Convention B next so A can override on conflict.
     for path in sorted(LEGACY_DIR_B.glob(f"{book_id}_*.json")):
         lang = path.stem.split("_", 1)[1]
-        _absorb(json.loads(path.read_text()), lang, path.name, authoritative=False)
+        _absorb(convention_b, json.loads(path.read_text()), lang, path.name)
     for path in sorted(LEGACY_DIR_A.glob(f"book_{book_id}_*.json")):
         lang = path.stem.split("_", 2)[2]
         wrapper = json.loads(path.read_text())
-        _absorb(wrapper["entries"], lang, path.name, authoritative=True)
-    return merged, warnings
+        _absorb(convention_a, wrapper["entries"], lang, path.name)
+    return artifact, convention_b, convention_a
 
 
 def _remap(
@@ -258,9 +259,31 @@ def build_translations(
     stale anchor means the splitter moved underneath them, and
     fossilizing the wrong index is permanent. The fix is realignment
     (scripts/realign_translations.py), not exclusion."""
-    merged, warnings = _load_legacy_entries(book_id, books_dir)
+    artifact, convention_b, convention_a = _load_sources(book_id, books_dir)
+    # Only the legacy conventions are mapped. The artifact was written by the
+    # previous freeze, which had already applied the overrides, so its indices
+    # are corrected already — mapping them again shifts them by the merge a
+    # second time, once per re-freeze (#2745).
     if index_map is not None:
-        merged = _remap(merged, index_map)
+        convention_b = _remap(convention_b, index_map)
+        convention_a = _remap(convention_a, index_map)
+
+    # Merge in priority order, now that all three are in the corrected space.
+    merged: dict[str, dict[int, dict]] = {}
+    warnings: list[str] = []
+    for source, authoritative in ((artifact, False), (convention_b, False),
+                                  (convention_a, True)):
+        for lang, by_index in sorted(source.items()):
+            target = merged.setdefault(lang, {})
+            for idx in sorted(by_index):
+                entry = by_index[idx]
+                if idx in target and not authoritative:
+                    continue
+                if idx in target:
+                    warnings.append(
+                        f"{lang} ch{idx}: {entry['_source']} overrides earlier entry"
+                    )
+                target[idx] = entry
     result: dict[str, dict] = {}
     errors: list[str] = []
     for lang, by_index in sorted(merged.items()):

@@ -59,8 +59,28 @@ describe("reader page mode — slice 1 (design: reading-modes.md, #2784)", () =>
     expect(turn).toContain("removeAllRanges");
   });
 
-  it("opens every chapter on its first page (decision 3)", () => {
-    expect(src).toContain("useEffect(() => { setPageIndex(0); }, [chapterIndex, readerMode]);");
+  it("lets measurement decide where a new chapter opens, so nothing races it", () => {
+    // A separate chapter effect would fight measurePages: the layout effect
+    // lands on the last page, then the later effect resets it to zero.
+    expect(src).toContain("measuredChapter.current !== chapterIndex");
+    expect(src).toContain("setPageIndex(wantLastPage.current ? count - 1 : 0)");
+    expect(src).not.toContain("}, [chapterIndex, readerMode]);");
+  });
+
+  it("continues into the neighbouring chapter instead of dead-ending", () => {
+    const turn = src.slice(src.indexOf("const turnPage ="), src.indexOf("// Track scroll progress"));
+    expect(turn).toContain("wantLastPage.current = true");
+    expect(turn).toContain("goToChapter(chapterIndex - 1)");
+    expect(turn).toContain("goToChapter(chapterIndex + 1)");
+    // the controls only stop at the two ends of the book
+    expect(src).toContain("disabled={pageIndex === 0 && chapterIndex === 0}");
+    expect(src).toContain("disabled={pageIndex >= pageCount - 1 && chapterIndex >= chapters.length - 1}");
+  });
+
+  it("clips at the page edge, not the reader's edge", () => {
+    expect(src).toContain('data-testid="reader-page-clip"');
+    expect(src).toContain('clip.style.overflow = "hidden"');
+    expect(src).toContain("clip.style.width = `${width}px`");
   });
 
   it("clips columns instead of scrolling them", () => {

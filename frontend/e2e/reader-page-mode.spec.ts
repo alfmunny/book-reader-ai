@@ -43,12 +43,49 @@ test("page mode paginates the chapter and the last page is reachable", async ({ 
   const total = Number((await position.textContent())!.match(/of (\d+)/)![1]);
   expect(total).toBeGreaterThan(1);
 
+  // First page of the first chapter is the start of the book
   await expect(page.getByRole("button", { name: "Previous page" })).toBeDisabled();
   for (let i = 1; i < total; i++) {
     await page.getByRole("button", { name: "Next page" }).click();
   }
   await expect(position).toContainText(`Page ${total} of ${total}`);
-  await expect(page.getByRole("button", { name: "Next page" })).toBeDisabled();
+  // …but the last page of a chapter is not a dead end
+  await expect(page.getByRole("button", { name: "Next page" })).toBeEnabled();
+});
+
+test("turning past a chapter edge continues into the neighbouring chapter", async ({ page }) => {
+  await enterPageMode(page);
+  const position = page.getByTestId("page-position");
+  const heading = page.getByTestId("reader-chapter-heading");
+  const total = Number((await position.textContent())!.match(/of (\d+)/)![1]);
+
+  // Forward past the last page opens the next chapter at its first page
+  for (let i = 1; i < total; i++) {
+    await page.getByRole("button", { name: "Next page" }).click();
+  }
+  await page.getByRole("button", { name: "Next page" }).click();
+  await expect(heading).toContainText("Chapter II");
+  await expect(position).toContainText("Page 1 of");
+  // last chapter, last page reached later — next is disabled only at the book's end
+
+  // Backwards past the first page returns to the previous chapter's LAST page
+  await page.getByRole("button", { name: "Previous page" }).click();
+  await expect(heading).toContainText("Chapter I");
+  await expect(position).toContainText(`Page ${total} of ${total}`);
+});
+
+test("exactly one page is visible — the neighbours are clipped", async ({ page }) => {
+  await enterPageMode(page);
+  const clip = page.getByTestId("reader-page-clip");
+  const box = (await clip.boundingBox())!;
+  const flowWidth = await page.evaluate(
+    () => document.querySelector<HTMLElement>("[data-testid='reader-flow']")!.clientWidth,
+  );
+  // The clip box is exactly one page wide, so column 2 cannot show beside it
+  expect(Math.abs(box.width - flowWidth)).toBeLessThan(2);
+  expect(await page.evaluate(
+    () => getComputedStyle(document.querySelector("[data-testid='reader-page-clip']")!).overflow,
+  )).toBe("hidden");
 });
 
 test("the page count re-measures when the layout reflows", async ({ page }) => {

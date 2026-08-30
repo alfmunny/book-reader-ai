@@ -113,3 +113,21 @@ describe("two-page spread (owner, 2026-08-31)", () => {
     expect(src).toContain("`Pages ${pageIndex + 1}\u2013${Math.min(pageIndex + perView, pageCount)} of ${pageCount}`");
   });
 });
+
+describe("chapter entry is a cut, not a turn (owner, 2026-08-31)", () => {
+  it("suppresses the transition when a new chapter lands on its page", () => {
+    expect(src).toContain("skipTurnAnim");
+    // set on chapter change and on a mode switch — both replace the content
+    const measure = src.slice(src.indexOf("const chapterChanged ="));
+    expect(measure.slice(0, 300)).toContain("skipTurnAnim.current = true");
+    expect(src).toContain("useEffect(() => { skipTurnAnim.current = true; setPageIndex(0); }, [readerMode]);");
+  });
+
+  it("commits the jump before restoring the transition", () => {
+    // Without the forced reflow the browser can coalesce the two style writes
+    // and animate anyway — the bug this guards against.
+    expect(src).toContain('flow.style.transition = "none"');
+    expect(src).toContain("void flow.offsetHeight");
+    expect(src).toContain('flow.style.transition = ""');
+  });
+});

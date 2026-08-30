@@ -744,6 +744,10 @@ export default function ReaderPage() {
   // must open on its LAST page, which is only known after it measures.
   const wantLastPage = useRef(false);
   const measuredChapter = useRef<number | null>(null);
+  // Entering a chapter is a cut, not a turn: the transform would otherwise
+  // animate across every page between the old index and the new one — most
+  // visibly when turning back lands on the last page (owner, 2026-08-31).
+  const skipTurnAnim = useRef(true);
   const [fontFamily, setFontFamily] = useState<FontFamily>("serif");
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -856,6 +860,7 @@ export default function ReaderPage() {
     const chapterChanged = measuredChapter.current !== chapterIndex;
     measuredChapter.current = chapterIndex;
     if (chapterChanged) {
+      skipTurnAnim.current = true;
       // Forward into a chapter opens page 1; backwards opens its last page.
       setPageIndex(wantLastPage.current ? columns * Math.floor((count - 1) / columns) : 0);
       wantLastPage.current = false;
@@ -880,12 +885,21 @@ export default function ReaderPage() {
   useEffect(() => {
     const flow = flowRef.current;
     if (!flow || readerMode !== "page") return;
-    flow.style.transform = `translateX(${-pageIndex * colStep.current}px)`;
+    const to = `translateX(${-pageIndex * colStep.current}px)`;
+    if (skipTurnAnim.current) {
+      skipTurnAnim.current = false;
+      flow.style.transition = "none";
+      flow.style.transform = to;
+      void flow.offsetHeight; // commit before the transition comes back
+      flow.style.transition = "";
+      return;
+    }
+    flow.style.transform = to;
   }, [pageIndex, readerMode, pageCount]);
 
   // Switching into page mode starts at the top; chapter entry is handled by
   // measurePages, which is the only place that knows the page count.
-  useEffect(() => { setPageIndex(0); }, [readerMode]);
+  useEffect(() => { skipTurnAnim.current = true; setPageIndex(0); }, [readerMode]);
 
   const turnPage = useCallback((delta: number) => {
     // Overlays pin themselves to viewport coordinates taken when they opened,

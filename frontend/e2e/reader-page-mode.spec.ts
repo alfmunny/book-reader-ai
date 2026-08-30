@@ -197,3 +197,38 @@ test("switching modes keeps the very same paragraph nodes", async ({ page }) => 
   );
   expect(survived).toBe(true);
 });
+
+test("entering a chapter cuts to the page — it does not sweep across the chapter", async ({ page }) => {
+  await enterPageMode(page);
+  const { lastFirst } = await toLastLeaf(page);
+
+  // Watch the transform while turning back into the previous chapter. If the
+  // jump animated, intermediate frames would show offsets between 0 and the
+  // last leaf; a cut shows only the destination.
+  await page.getByRole("button", { name: "Next page" }).click();   // → Chapter II
+  await expect(page.getByTestId("reader-chapter-heading")).toContainText("Chapter II");
+
+  await page.evaluate(() => {
+    const flow = document.querySelector<HTMLElement>("[data-testid='reader-flow']")!;
+    (window as unknown as { __x: number[] }).__x = [];
+    const tick = () => {
+      const m = /translateX\((-?[\d.]+)px\)/.exec(flow.style.transform || "");
+      if (m) (window as unknown as { __x: number[] }).__x.push(Number(m[1]));
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+
+  await page.getByRole("button", { name: "Previous page" }).click();
+  await expect(page.getByTestId("reader-chapter-heading")).toContainText("Chapter I");
+  expect((await readPos(page)).first).toBe(lastFirst);
+  await page.waitForTimeout(400); // longer than the 260ms turn transition
+
+  const offsets = await page.evaluate(() => (window as unknown as { __x: number[] }).__x);
+  const dest = Math.min(...offsets); // most negative = the last leaf
+  expect(dest).toBeLessThan(0);
+  // Frames sit either at the starting offset or at the destination. An
+  // animated sweep would leave partial offsets strictly between the two.
+  const between = offsets.filter((x) => x < 0 && x > dest);
+  expect(between).toHaveLength(0);
+});

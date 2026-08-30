@@ -13,7 +13,7 @@ const src = fs.readFileSync(
 
 describe("reader Shares toggle contrast (closes #1658)", () => {
   it("the <button> rendering 'Shares off' does not use text-amber-500 or opacity-60", () => {
-    const marker = '"Posts off"';
+    const marker = '"Shares off"';
     const markerIdx = src.indexOf(marker);
     expect(markerIdx).toBeGreaterThan(-1);
     // Find the enclosing <button. Walk back to the nearest <button.
@@ -37,5 +37,13 @@ describe("reader Shares toggle contrast (closes #1658)", () => {
     const tag = src.slice(buttonStart, tagEnd + 1);
     expect(tag).not.toMatch(/text-amber-500/);
     expect(tag).not.toMatch(/opacity-60/);
+  });
+});
+
+describe("the toolbar toggle is named for shares, not posts (owner, 2026-08-30)", () => {
+  it("reads 'Shares on' / 'Shares off' — the label track B renamed away from", () => {
+    expect(src).toContain('showShares ? "Shares on" : "Shares off"');
+    expect(src).not.toContain('"Posts on"');
+    expect(src).not.toContain('"Posts off"');
   });
 });

@@ -15,7 +15,7 @@ const src = fs.readFileSync(
 describe("Mobile annotation toggle accessible below lg breakpoint (closes #2568)", () => {
   it("desktop annotation toggle (hidden lg:flex) still exists alongside new mobile toggle", () => {
     // Desktop toggle: hidden lg:flex near Marks on/Marks off
-    const marksOnIdx = src.indexOf("Posts on");
+    const marksOnIdx = src.indexOf("Shares on");
     expect(marksOnIdx).not.toBe(-1);
     const desktopCtx = src.slice(Math.max(0, marksOnIdx - 700), marksOnIdx + 50);
     expect(desktopCtx).toContain("hidden lg:flex");

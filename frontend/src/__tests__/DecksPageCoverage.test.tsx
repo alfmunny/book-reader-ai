@@ -85,16 +85,7 @@ beforeEach(() => {
   mockDeleteDeck.mockResolvedValue(undefined);
 });
 
-// ── Back / Library link ───────────────────────────────────────────────────────
 
-test("back link navigates to /", async () => {
-  mockListDecks.mockResolvedValue([DECK_A]);
-  render(<DecksPage />);
-  await waitFor(() => screen.getByText("German verbs"));
-
-  const link = screen.getByRole("link", { name: /library/i });
-  expect(link).toHaveAttribute("href", "/");
-});
 
 // ── DeckCard link → navigate to deck ─────────────────────────────────────────
 

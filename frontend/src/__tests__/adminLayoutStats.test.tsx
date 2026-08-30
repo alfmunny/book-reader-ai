@@ -9,7 +9,7 @@
 
 import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
-import AdminLayout from "@/app/admin/layout";
+import AdminLayout from "@/app/(shell)/admin/layout";
 
 let currentPath = "/admin/users";
 jest.mock("next/navigation", () => ({

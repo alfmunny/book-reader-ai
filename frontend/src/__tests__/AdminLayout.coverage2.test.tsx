@@ -33,7 +33,7 @@ jest.mock("@/lib/adminFetch", () => ({
   adminFetch: () => Promise.resolve({ users_total: 0, users_approved: 0, users_pending: 0, books_cached: 0, audio_chunks_cached: 0, audio_cache_mb: 0, translations_cached: 0 }),
 }));
 
-import AdminLayout from "@/app/admin/layout";
+import AdminLayout from "@/app/(shell)/admin/layout";
 
 const flushPromises = () => new Promise<void>((r) => setTimeout(r, 0));
 

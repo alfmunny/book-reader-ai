@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import UploadsPage from "@/app/admin/uploads/page";
-import AdminLayout from "@/app/admin/layout";
+import UploadsPage from "@/app/(shell)/admin/uploads/page";
+import AdminLayout from "@/app/(shell)/admin/layout";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

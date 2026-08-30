@@ -5,10 +5,10 @@ const src = (rel: string) =>
   fs.readFileSync(path.join(process.cwd(), "src", rel), "utf-8");
 
 const mainPage = src("app/(shell)/page.tsx");
-const adminLayout = src("app/admin/layout.tsx");
-const adminUploads = src("app/admin/uploads/page.tsx");
-const adminBooks = src("app/admin/books/page.tsx");
-const adminAudio = src("app/admin/audio/page.tsx");
+const adminLayout = src("app/(shell)/admin/layout.tsx");
+const adminUploads = src("app/(shell)/admin/uploads/page.tsx");
+const adminBooks = src("app/(shell)/admin/books/page.tsx");
+const adminAudio = src("app/(shell)/admin/audio/page.tsx");
 const readerPage = src("app/reader/[bookId]/page.tsx");
 const notesBookPage = src("app/(shell)/notes/[bookId]/page.tsx");
 const importPage = src("app/(shell)/import/[bookId]/page.tsx");
@@ -31,19 +31,19 @@ describe("WCAG 1.4.3 contrast — text-amber-600 at small sizes (wave 9) (closes
     expect(countAmber600AtSmallSize(mainPage)).toBe(0);
   });
 
-  it("admin/layout.tsx has no text-amber-600 at text-xs/text-sm", () => {
+  it("(shell)/admin/layout.tsx has no text-amber-600 at text-xs/text-sm", () => {
     expect(countAmber600AtSmallSize(adminLayout)).toBe(0);
   });
 
-  it("admin/uploads/page.tsx has no text-amber-600 at text-xs/text-sm", () => {
+  it("(shell)/admin/uploads/page.tsx has no text-amber-600 at text-xs/text-sm", () => {
     expect(countAmber600AtSmallSize(adminUploads)).toBe(0);
   });
 
-  it("admin/books/page.tsx has no text-amber-600 at text-xs/text-sm", () => {
+  it("(shell)/admin/books/page.tsx has no text-amber-600 at text-xs/text-sm", () => {
     expect(countAmber600AtSmallSize(adminBooks)).toBe(0);
   });
 
-  it("admin/audio/page.tsx has no text-amber-600 at text-xs/text-sm", () => {
+  it("(shell)/admin/audio/page.tsx has no text-amber-600 at text-xs/text-sm", () => {
     expect(countAmber600AtSmallSize(adminAudio)).toBe(0);
   });
 

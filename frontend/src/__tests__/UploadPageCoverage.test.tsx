@@ -55,15 +55,7 @@ test("sign-in link points to /login (unauthenticated state)", async () => {
   expect(signInLink).toHaveAttribute("href", "/login");
 });
 
-// ── Back button navigation ────────────────────────────────────────────────────
 
-test("back link points to /", async () => {
-  render(<UploadPage />);
-  await flushPromises();
-
-  const backLink = screen.getByRole("link", { name: /back/i });
-  expect(backLink).toHaveAttribute("href", "/");
-});
 
 // ── Generic (non-ApiError) upload error ──────────────────────────────────────
 

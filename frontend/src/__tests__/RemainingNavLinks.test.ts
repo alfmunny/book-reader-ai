@@ -16,17 +16,13 @@ const notesBookSrc = readSrc("(shell)/notes/[bookId]/page.tsx");
 const decksSrc = readSrc("(shell)/decks/page.tsx");
 const decksNewSrc = readSrc("(shell)/decks/new/page.tsx");
 const deckDetailSrc = readSrc("(shell)/decks/[deckId]/page.tsx");
-const adminBooksSrc = readSrc("admin/books/page.tsx");
-const adminUploadsSrc = readSrc("admin/uploads/page.tsx");
+const adminBooksSrc = readSrc("(shell)/admin/books/page.tsx");
+const adminUploadsSrc = readSrc("(shell)/admin/uploads/page.tsx");
 const homeSrc = ["(shell)/page.tsx", "(shell)/bookshelf/page.tsx"].map(readSrc).join("\n")
   + fs.readFileSync(path.join(__dirname, "../components/SiteHeader.tsx"), "utf8");
 const readerSrc = readSrc("reader/[bookId]/page.tsx");
 
 describe("profile page nav links (closes #2451)", () => {
-  it("Library back button uses href=/ not router.push", () => {
-    expect(profileSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/["']\)/);
-    expect(profileSrc).toMatch(/href=["']\/["']/);
-  });
 
   it("Admin Panel uses href=/admin not router.push", () => {
     expect(profileSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/admin["']\)/);
@@ -35,10 +31,6 @@ describe("profile page nav links (closes #2451)", () => {
 });
 
 describe("vocabulary page nav links (closes #2451)", () => {
-  it("Library back button uses href=/ not router.push", () => {
-    expect(vocabSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/["']\)/);
-    expect(vocabSrc).toMatch(/href=["']\/["']/);
-  });
 
   it("Flashcards button uses href not router.push", () => {
     expect(vocabSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/vocabulary\/flashcards["']\)/);
@@ -47,10 +39,6 @@ describe("vocabulary page nav links (closes #2451)", () => {
 });
 
 describe("notes list page nav links (closes #2451)", () => {
-  it("Library back button uses href=/ not router.push", () => {
-    expect(notesListSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/["']\)/);
-    expect(notesListSrc).toMatch(/href=["']\/["']/);
-  });
 
   it("book card uses href not router.push", () => {
     expect(notesListSrc).not.toMatch(/onClick.*router\.push.*notes\//);
@@ -71,10 +59,6 @@ describe("notes book page nav links (closes #2451)", () => {
 });
 
 describe("decks page nav links (closes #2451)", () => {
-  it("Library back button uses href=/ not router.push", () => {
-    expect(decksSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/["']\)/);
-    expect(decksSrc).toMatch(/href=["']\/["']/);
-  });
 
   it("New deck header button uses href=/decks/new not router.push", () => {
     expect(decksSrc).not.toMatch(/<button[^>]*onClick[^>]*router\.push\(["']\/decks\/new["']\)/);

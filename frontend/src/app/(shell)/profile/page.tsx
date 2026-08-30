@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { saveGeminiKey, deleteGeminiKey, saveClaudeKey, deleteClaudeKey, saveDeepseekKey, deleteDeepseekKey, getMe, getObsidianSettings, saveObsidianSettings, listDecks, DeckSummary } from "@/lib/api";
-import { ArrowLeftIcon, CheckIcon, ChevronRightIcon, DeckIcon } from "@/components/Icons";
+import { CheckIcon, ChevronRightIcon, DeckIcon } from "@/components/Icons";
 import ProviderKeySection from "@/components/ProviderKeySection";
 import { getSettings, saveSettings, AppSettings } from "@/lib/settings";
 
@@ -225,12 +225,6 @@ export default function ProfilePage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       {/* Header */}
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-6 py-4 flex items-center gap-4">
-        <Link
-          href="/"
-          className="text-amber-700 hover:text-amber-900 text-sm min-h-[44px] md:min-h-0 flex items-center rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
-        >
-          <ArrowLeftIcon className="w-3.5 h-3.5 mr-1 inline" aria-hidden="true" />Library
-        </Link>
         <h1 className="font-serif font-bold text-ink">Profile &amp; Settings</h1>
       </header>
 

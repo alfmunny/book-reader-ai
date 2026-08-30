@@ -2,23 +2,23 @@ import * as fs from "fs";
 import * as path from "path";
 
 const booksPage = fs.readFileSync(
-  path.join(__dirname, "../app/admin/books/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/books/page.tsx"),
   "utf8"
 );
 const usersPage = fs.readFileSync(
-  path.join(__dirname, "../app/admin/users/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/users/page.tsx"),
   "utf8"
 );
 const uploadsPage = fs.readFileSync(
-  path.join(__dirname, "../app/admin/uploads/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/uploads/page.tsx"),
   "utf8"
 );
 const audioPage = fs.readFileSync(
-  path.join(__dirname, "../app/admin/audio/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/audio/page.tsx"),
   "utf8"
 );
 
-describe("admin/books focus rings (closes #2178)", () => {
+describe("(shell)/admin/books focus rings (closes #2178)", () => {
   it("Import Book button has focus-visible ring (amber-700 bg)", () => {
     const idx = booksPage.indexOf("Import Book");
     expect(idx).toBeGreaterThan(-1);
@@ -64,7 +64,7 @@ describe("admin/books focus rings (closes #2178)", () => {
   });
 });
 
-describe("admin/users focus rings (closes #2178)", () => {
+describe("(shell)/admin/users focus rings (closes #2178)", () => {
   it("Retry button has focus-visible ring (amber-700 bg)", () => {
     // Skip "RetryIcon" import and JSX component usage; find standalone button text
     const lastIcon = usersPage.lastIndexOf("RetryIcon");
@@ -103,7 +103,7 @@ describe("admin/users focus rings (closes #2178)", () => {
   });
 });
 
-describe("admin/uploads focus rings (closes #2178)", () => {
+describe("(shell)/admin/uploads focus rings (closes #2178)", () => {
   it("Filter button has focus-visible ring", () => {
     const idx = uploadsPage.indexOf('aria-label="Filter uploads"');
     expect(idx).toBeGreaterThan(-1);
@@ -119,7 +119,7 @@ describe("admin/uploads focus rings (closes #2178)", () => {
   });
 });
 
-describe("admin/audio focus rings (closes #2178)", () => {
+describe("(shell)/admin/audio focus rings (closes #2178)", () => {
   it("Dismiss error button has focus-visible ring (red)", () => {
     const idx = audioPage.indexOf('aria-label="Dismiss error"');
     expect(idx).toBeGreaterThan(-1);

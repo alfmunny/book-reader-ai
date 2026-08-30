@@ -2,11 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 const src = fs.readFileSync(
-  path.join(__dirname, "../app/admin/books/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/books/page.tsx"),
   "utf8"
 );
 
-describe("admin/books page form controls aria-label (closes #959)", () => {
+describe("(shell)/admin/books page form controls aria-label (closes #959)", () => {
   it("Gutenberg Book ID import input has aria-label", () => {
     const idx = src.indexOf('placeholder="Gutenberg Book ID (e.g. 2229)"');
     expect(idx).toBeGreaterThan(-1);

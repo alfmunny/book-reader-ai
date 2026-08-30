@@ -13,7 +13,7 @@ function readSrc(relPath: string) {
 const filesToCheck = [
   { rel: "app/reader/[bookId]/page.tsx", label: "reader page" },
   { rel: "components/QueueTab.tsx", label: "QueueTab component" },
-  { rel: "app/admin/books/page.tsx", label: "admin books page" },
+  { rel: "app/(shell)/admin/books/page.tsx", label: "admin books page" },
 ];
 
 describe("Reader/confirm button touch targets — WCAG 2.5.5 (closes #2525)", () => {

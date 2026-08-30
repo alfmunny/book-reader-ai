@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/admin/uploads/page.tsx — functions not covered by existing tests.
+ * Coverage tests for app/(shell)/admin/uploads/page.tsx — functions not covered by existing tests.
  * Closes #1987 — targets: clearFilter (lines 70-74), Open button router.push (line 172).
  */
 import React from "react";
@@ -23,7 +23,7 @@ jest.mock("@/lib/api", () => ({
   awaitSession: () => Promise.resolve(),
 }));
 
-import UploadsPage from "@/app/admin/uploads/page";
+import UploadsPage from "@/app/(shell)/admin/uploads/page";
 
 const UPLOAD = {
   book_id: 42,

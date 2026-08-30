@@ -2,11 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 const src = fs.readFileSync(
-  path.join(__dirname, "../app/admin/books/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/books/page.tsx"),
   "utf8"
 );
 
-describe("admin/books page touch targets (closes #867)", () => {
+describe("(shell)/admin/books page touch targets (closes #867)", () => {
   it("Import Book button has min-h-[44px]", () => {
     const idx = src.indexOf("handleImport}");
     expect(idx).toBeGreaterThan(-1);

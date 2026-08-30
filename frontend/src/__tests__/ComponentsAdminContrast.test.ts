@@ -14,10 +14,10 @@ const queueTab = read("../components/QueueTab.tsx");
 const annotationsSidebar = read("../components/AnnotationsSidebar.tsx");
 const bookDetailModal = read("../components/BookDetailModal.tsx");
 const vocabTooltip = read("../components/VocabWordTooltip.tsx");
-const adminBooks = read("../app/admin/books/page.tsx");
-const adminUploads = read("../app/admin/uploads/page.tsx");
-const adminAudio = read("../app/admin/audio/page.tsx");
-const adminUsers = read("../app/admin/users/page.tsx");
+const adminBooks = read("../app/(shell)/admin/books/page.tsx");
+const adminUploads = read("../app/(shell)/admin/uploads/page.tsx");
+const adminAudio = read("../app/(shell)/admin/audio/page.tsx");
+const adminUsers = read("../app/(shell)/admin/users/page.tsx");
 
 function noSmallStone400(src: string, label: string) {
   it(`${label} has no text-xs text-stone-400 (2.65:1 fail)`, () => {
@@ -31,17 +31,17 @@ describe("Shared components and admin pages contrast (closes #1353)", () => {
   noSmallStone400(annotationsSidebar, "AnnotationsSidebar.tsx");
   noSmallStone400(bookDetailModal, "BookDetailModal.tsx");
   noSmallStone400(vocabTooltip, "VocabWordTooltip.tsx");
-  noSmallStone400(adminBooks, "admin/books/page.tsx");
-  noSmallStone400(adminUploads, "admin/uploads/page.tsx");
-  noSmallStone400(adminAudio, "admin/audio/page.tsx");
-  noSmallStone400(adminUsers, "admin/users/page.tsx");
+  noSmallStone400(adminBooks, "(shell)/admin/books/page.tsx");
+  noSmallStone400(adminUploads, "(shell)/admin/uploads/page.tsx");
+  noSmallStone400(adminAudio, "(shell)/admin/audio/page.tsx");
+  noSmallStone400(adminUsers, "(shell)/admin/users/page.tsx");
 
   it("QueueTab.tsx has no text-sm text-stone-400 (2.65:1 fail)", () => {
     expect(queueTab).not.toContain('"text-center text-stone-400');
     expect(queueTab).not.toContain('"text-sm text-stone-400');
   });
 
-  it("admin/uploads/page.tsx has no text-sm text-stone-400 (2.65:1 fail)", () => {
+  it("(shell)/admin/uploads/page.tsx has no text-sm text-stone-400 (2.65:1 fail)", () => {
     expect(adminUploads).not.toContain('"text-sm text-stone-400');
   });
 });

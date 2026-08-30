@@ -53,7 +53,7 @@ beforeEach(() => {
 describe("AdminAudioPage error state", () => {
   let AudioPage: React.ComponentType;
   beforeAll(async () => {
-    const mod = await import("@/app/admin/audio/page");
+    const mod = await import("@/app/(shell)/admin/audio/page");
     AudioPage = mod.default;
   });
 
@@ -87,7 +87,7 @@ describe("AdminAudioPage error state", () => {
 describe("AdminUsersPage error state", () => {
   let UsersPage: React.ComponentType;
   beforeAll(async () => {
-    const mod = await import("@/app/admin/users/page");
+    const mod = await import("@/app/(shell)/admin/users/page");
     UsersPage = mod.default;
   });
 
@@ -122,7 +122,7 @@ describe("AdminUsersPage error state", () => {
 describe("AdminBooksPage error state", () => {
   let BooksPage: React.ComponentType;
   beforeAll(async () => {
-    const mod = await import("@/app/admin/books/page");
+    const mod = await import("@/app/(shell)/admin/books/page");
     BooksPage = mod.default;
   });
 
@@ -158,7 +158,7 @@ describe("AdminBooksPage error state", () => {
 describe("AdminUploadsPage error state", () => {
   let UploadsPage: React.ComponentType;
   beforeAll(async () => {
-    const mod = await import("@/app/admin/uploads/page");
+    const mod = await import("@/app/(shell)/admin/uploads/page");
     UploadsPage = mod.default;
   });
 

@@ -14,7 +14,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const adminBooksSrc = fs.readFileSync(
-  path.join(__dirname, "../app/admin/books/page.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/books/page.tsx"),
   "utf8",
 );
 const queueTabSrc = fs.readFileSync(

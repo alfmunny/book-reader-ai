@@ -40,14 +40,14 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let AdminBooksPage: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/admin/books/page");
+  const mod = await import("@/app/(shell)/admin/books/page");
   AdminBooksPage = mod.default;
 });
 
 beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
 
-test("admin/books confirm dialog has role='alertdialog' and aria-modal='true' (#1995, #1999)", async () => {
+test("(shell)/admin/books confirm dialog has role='alertdialog' and aria-modal='true' (#1995, #1999)", async () => {
   mockAdminFetch.mockResolvedValue([BOOK]);
 
   render(<AdminBooksPage />);

@@ -5,7 +5,7 @@ import * as path from "path";
 // at text-sm — fails WCAG 1.4.3 AA. Closes #1637.
 
 const src = fs.readFileSync(
-  path.join(__dirname, "../app/admin/layout.tsx"),
+  path.join(__dirname, "../app/(shell)/admin/layout.tsx"),
   "utf8",
 );
 

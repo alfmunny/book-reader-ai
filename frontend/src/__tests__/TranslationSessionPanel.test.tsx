@@ -499,3 +499,14 @@ test("liking inside the dialog lights up the sidebar row too", async () => {
   expect(after).toHaveTextContent("5");
   expect(after.className).toContain("text-red-500");
 });
+
+test("'Add your own version' sits with your versions, above the Community group", async () => {
+  renderPanel({ publishedSessions: [PUBLISHED] });
+  const add = screen.getByRole("button", { name: /Add your own version/ });
+  const community = screen.getByTestId("community-versions");
+
+  // Below the Community group it read as "add a community version" — it is
+  // the tail of YOUR list (owner, 2026-08-30).
+  expect(add.compareDocumentPosition(community) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
+});

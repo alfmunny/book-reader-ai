@@ -714,6 +714,15 @@ export default function TranslationSessionPanel({
           </div>
         ))}
 
+        {!creating ? (
+          <button
+            onClick={() => setCreating(true)}
+            className="text-sm text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+          >
+            ＋ Add your own version
+          </button>
+        ) : null}
+
         {(publishedSessions?.length ?? 0) > 0 && (
           <div className="mt-3" data-testid="community-versions">
             <p className="block text-xs text-amber-700 mb-1">Community · complete translations</p>
@@ -729,14 +738,6 @@ export default function TranslationSessionPanel({
           </div>
         )}
 
-        {!creating ? (
-          <button
-            onClick={() => setCreating(true)}
-            className="text-sm text-amber-700 hover:text-amber-800 hover:underline min-h-[44px] md:min-h-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-          >
-            ＋ Add your own version
-          </button>
-        ) : null}
         {versionDiscussionDialog}
 
         {browseOpen && (

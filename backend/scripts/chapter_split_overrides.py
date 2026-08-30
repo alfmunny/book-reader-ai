@@ -216,6 +216,98 @@ OVERRIDES: dict[int, dict] = {
         ],
     },
     2641: {  # A Room with a View
+        # Forster subtitles every chapter and the printed contents lists them,
+        # but the splitter kept only the numeral: twenty rows reading "Chapter
+        # I" … "Chapter XX", saying nothing about the book. Titles here are the
+        # contents listing's own punctuated form.
+        #
+        # Title-only, deliberately. Every subtitle also survives as the
+        # chapter's first paragraph, which makes moving it into the title look
+        # like the obvious change — and it would corrupt the book's one
+        # translation. Chapter 19 carries a zh translation of 57 paragraphs
+        # whose first is 第二十章\n中世纪之终: the translator translated the
+        # heading paragraph too. Translations align by paragraph position, so
+        # dropping English paragraph 0 would leave 56 against 57 and render
+        # every later paragraph against the wrong source. Nothing here touches
+        # a paragraph.
+        #
+        # Part Two's titles were composed as "PART TWO — Chapter VIII"; the
+        # prefix moves into the group header and the leaf keeps the chapter.
+        #
+        # Retitle indices are the RAW split (21 chapters). Raw 15 is the mis-cut
+        # merged below, so raw 16-20 become corrected 15-19 — the `parts` ranges
+        # use the corrected numbers.
+        # Audited against Gutenberg #2641, 2026-08-30.
+        "retitle": [
+            {"index": 0, "expect_title": 'Chapter I',
+             "title": 'Chapter I. The Bertolini',
+             "why": "subtitle from the printed contents"},
+            {"index": 1, "expect_title": 'Chapter II',
+             "title": 'Chapter II. In Santa Croce with No Baedeker',
+             "why": "subtitle from the printed contents"},
+            {"index": 2, "expect_title": 'Chapter III',
+             "title": 'Chapter III. Music, Violets, and the Letter “S”',
+             "why": "subtitle from the printed contents"},
+            {"index": 3, "expect_title": 'Chapter IV',
+             "title": 'Chapter IV. Fourth Chapter',
+             "why": "subtitle from the printed contents"},
+            {"index": 4, "expect_title": 'Chapter V',
+             "title": 'Chapter V. Possibilities of a Pleasant Outing',
+             "why": "subtitle from the printed contents"},
+            {"index": 5, "expect_title": 'Chapter VI',
+             "title": 'Chapter VI. The Reverend Arthur Beebe, the Reverend Cuthbert Eager, Mr. Emerson, Mr. George Emerson, Miss Eleanor Lavish, Miss Charlotte Bartlett, and Miss Lucy Honeychurch Drive Out in Carriages to See a View; Italians Drive Them',
+             "why": "subtitle from the printed contents"},
+            {"index": 6, "expect_title": 'Chapter VII',
+             "title": 'Chapter VII. They Return',
+             "why": "subtitle from the printed contents"},
+            {"index": 7, "expect_title": 'PART TWO — Chapter VIII',
+             "title": 'Chapter VIII. Medieval',
+             "why": "subtitle from the printed contents"},
+            {"index": 8, "expect_title": 'PART TWO — Chapter IX',
+             "title": 'Chapter IX. Lucy As a Work of Art',
+             "why": "subtitle from the printed contents"},
+            {"index": 9, "expect_title": 'PART TWO — Chapter X',
+             "title": 'Chapter X. Cecil as a Humourist',
+             "why": "subtitle from the printed contents"},
+            {"index": 10, "expect_title": 'PART TWO — Chapter XI',
+             "title": 'Chapter XI. In Mrs. Vyse’s Well-Appointed Flat',
+             "why": "subtitle from the printed contents"},
+            {"index": 11, "expect_title": 'PART TWO — Chapter XII',
+             "title": 'Chapter XII. Twelfth Chapter',
+             "why": "subtitle from the printed contents"},
+            {"index": 12, "expect_title": 'PART TWO — Chapter XIII',
+             "title": 'Chapter XIII. How Miss Bartlett’s Boiler Was So Tiresome',
+             "why": "subtitle from the printed contents"},
+            {"index": 13, "expect_title": 'PART TWO — Chapter XIV',
+             "title": 'Chapter XIV. How Lucy Faced the External Situation Bravely',
+             "why": "subtitle from the printed contents"},
+            {"index": 14, "expect_title": 'PART TWO — Chapter XV',
+             "title": 'Chapter XV. The Disaster Within',
+             "why": "subtitle from the printed contents"},
+            {"index": 16, "expect_title": 'PART TWO — Chapter XVI',
+             "title": 'Chapter XVI. Lying to George',
+             "why": "subtitle from the printed contents"},
+            {"index": 17, "expect_title": 'PART TWO — Chapter XVII',
+             "title": 'Chapter XVII. Lying to Cecil',
+             "why": "subtitle from the printed contents"},
+            {"index": 18, "expect_title": 'PART TWO — Chapter XVIII',
+             "title": 'Chapter XVIII. Lying to Mr. Beebe, Mrs. Honeychurch, Freddy, and The Servants',
+             "why": "subtitle from the printed contents"},
+            {"index": 19, "expect_title": 'PART TWO — Chapter XIX',
+             "title": 'Chapter XIX. Lying to Mr. Emerson',
+             "why": "subtitle from the printed contents"},
+            {"index": 20, "expect_title": 'PART TWO — Chapter XX',
+             "title": 'Chapter XX. The End of the Middle Ages',
+             "why": "subtitle from the printed contents"},
+        ],
+        "parts": [
+            {"label": "PART ONE", "from": 0, "to": 6,
+             "expect_first_title": 'Chapter I. The Bertolini',
+             "why": "Part One, seven chapters"},
+            {"label": "PART TWO", "from": 7, "to": 19,
+             "expect_first_title": 'Chapter VIII. Medieval',
+             "why": "Part Two, thirteen chapters"},
+        ],
         # The splitter matched "Chapter two" inside running prose — Lucy is
         # reading Miss Lavish's novel, and Cecil has just said "Find me chapter
         # two". The cut tore the last 15 paragraphs off Chapter XV: Lucy

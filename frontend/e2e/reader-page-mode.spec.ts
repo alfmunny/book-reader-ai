@@ -28,6 +28,34 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
+/** {first, total} from the readout — "Pages 3–4 of 26" or "Page 3 of 13". */
+async function readPos(page: import("@playwright/test").Page) {
+  const text = (await page.getByTestId("page-position").textContent())!;
+  return {
+    first: Number(text.match(/Pages? (\d+)/)![1]),
+    total: Number(text.match(/of (\d+)/)![1]),
+  };
+}
+
+/** How many pages a leaf shows — 2 on a wide window, 1 on a narrow one. */
+async function perView(page: import("@playwright/test").Page) {
+  return Number(await page.evaluate(
+    () => getComputedStyle(document.querySelector("[data-testid='reader-flow']")!).columnCount,
+  ));
+}
+
+/** Click Next until the last leaf of the chapter is showing. */
+async function toLastLeaf(page: import("@playwright/test").Page) {
+  const { total } = await readPos(page);
+  const per = await perView(page);
+  const lastFirst = per * Math.floor((total - 1) / per) + 1;
+  for (let guard = 0; guard < 60; guard++) {
+    if ((await readPos(page)).first >= lastFirst) break;
+    await page.getByRole("button", { name: "Next page" }).click();
+  }
+  return { total, per, lastFirst };
+}
+
 async function enterPageMode(page: import("@playwright/test").Page) {
   await page.goto("/reader/1342");
   await expect(page.getByText("Paragraph 1.", { exact: false })).toBeVisible();
@@ -39,53 +67,74 @@ test("page mode paginates the chapter and the last page is reachable", async ({ 
   await enterPageMode(page);
 
   const position = page.getByTestId("page-position");
-  await expect(position).toContainText(/Page 1 of \d+/);
+  await expect(position).toContainText(/Pages? 1(–2)? of \d+/);
   const total = Number((await position.textContent())!.match(/of (\d+)/)![1]);
   expect(total).toBeGreaterThan(1);
 
   // First page of the first chapter is the start of the book
   await expect(page.getByRole("button", { name: "Previous page" })).toBeDisabled();
-  for (let i = 1; i < total; i++) {
-    await page.getByRole("button", { name: "Next page" }).click();
-  }
-  await expect(position).toContainText(`Page ${total} of ${total}`);
+
+  const { lastFirst } = await toLastLeaf(page);
+  expect((await readPos(page)).first).toBe(lastFirst);
   // …but the last page of a chapter is not a dead end
   await expect(page.getByRole("button", { name: "Next page" })).toBeEnabled();
 });
 
 test("turning past a chapter edge continues into the neighbouring chapter", async ({ page }) => {
   await enterPageMode(page);
-  const position = page.getByTestId("page-position");
   const heading = page.getByTestId("reader-chapter-heading");
-  const total = Number((await position.textContent())!.match(/of (\d+)/)![1]);
+  const { lastFirst } = await toLastLeaf(page);
 
-  // Forward past the last page opens the next chapter at its first page
-  for (let i = 1; i < total; i++) {
-    await page.getByRole("button", { name: "Next page" }).click();
-  }
+  // Forward past the last leaf opens the next chapter at its first page
   await page.getByRole("button", { name: "Next page" }).click();
   await expect(heading).toContainText("Chapter II");
-  await expect(position).toContainText("Page 1 of");
-  // last chapter, last page reached later — next is disabled only at the book's end
+  expect((await readPos(page)).first).toBe(1);
 
-  // Backwards past the first page returns to the previous chapter's LAST page
+  // Backwards past the first page returns to the previous chapter's LAST leaf
   await page.getByRole("button", { name: "Previous page" }).click();
   await expect(heading).toContainText("Chapter I");
-  await expect(position).toContainText(`Page ${total} of ${total}`);
+  expect((await readPos(page)).first).toBe(lastFirst);
 });
 
-test("exactly one page is visible — the neighbours are clipped", async ({ page }) => {
+test("a wide window shows two equal pages; the rest is clipped", async ({ page }) => {
+  await page.setViewportSize({ width: 1500, height: 900 });
   await enterPageMode(page);
-  const clip = page.getByTestId("reader-page-clip");
-  const box = (await clip.boundingBox())!;
-  const flowWidth = await page.evaluate(
-    () => document.querySelector<HTMLElement>("[data-testid='reader-flow']")!.clientWidth,
-  );
-  // The clip box is exactly one page wide, so column 2 cannot show beside it
-  expect(Math.abs(box.width - flowWidth)).toBeLessThan(2);
+
+  await expect(page.getByTestId("page-position")).toContainText(/Pages 1–2 of \d+/);
+
+  const { clipWidth, flowWidth, columns } = await page.evaluate(() => {
+    const clip = document.querySelector<HTMLElement>("[data-testid='reader-page-clip']")!;
+    const flow = document.querySelector<HTMLElement>("[data-testid='reader-flow']")!;
+    return {
+      clipWidth: clip.clientWidth,
+      flowWidth: flow.clientWidth,
+      columns: getComputedStyle(flow).columnCount,
+    };
+  });
+  // Two columns, and the clip is exactly the leaf — so no third page shows
+  expect(columns).toBe("2");
+  expect(Math.abs(clipWidth - flowWidth)).toBeLessThan(2);
   expect(await page.evaluate(
     () => getComputedStyle(document.querySelector("[data-testid='reader-page-clip']")!).overflow,
   )).toBe("hidden");
+});
+
+test("a narrow window falls back to a single page", async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await enterPageMode(page);
+  await expect(page.getByTestId("page-position")).toContainText(/Page 1 of \d+/);
+  expect(await page.evaluate(
+    () => getComputedStyle(document.querySelector("[data-testid='reader-flow']")!).columnCount,
+  )).toBe("1");
+});
+
+test("a turn advances the whole leaf", async ({ page }) => {
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await enterPageMode(page);
+  await page.getByRole("button", { name: "Next page" }).click();
+  await expect(page.getByTestId("page-position")).toContainText(/Pages 3–4 of \d+/);
+  await page.getByRole("button", { name: "Previous page" }).click();
+  await expect(page.getByTestId("page-position")).toContainText(/Pages 1–2 of \d+/);
 });
 
 test("the page count re-measures when the layout reflows", async ({ page }) => {
@@ -112,14 +161,14 @@ test("arrows turn pages while paginated; brackets still change chapter", async (
 
   await page.getByTestId("reader-flow").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("ArrowRight");
-  await expect(position).toContainText("Page 2 of");
+  await expect(position).not.toContainText(/Pages? 1(–2)? of/);
   await page.keyboard.press("ArrowLeft");
-  await expect(position).toContainText("Page 1 of");
+  await expect(position).toContainText(/Pages? 1(–2)? of/);
 
   // ] moves to the next chapter, which reopens on its first page (decision 3)
   await page.keyboard.press("]");
   await expect(page.getByTestId("reader-chapter-heading")).toContainText("Chapter II");
-  await expect(position).toContainText("Page 1 of");
+  await expect(position).toContainText(/Pages? 1(–2)? of/);
 });
 
 test("the mode survives a reload", async ({ page }) => {

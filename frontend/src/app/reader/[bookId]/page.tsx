@@ -730,8 +730,12 @@ export default function ReaderPage() {
   // only the flow's transform, so note anchors and data-seg spans survive a
   // mode switch as the same nodes.
   const [readerMode, setReaderMode] = useState<ReaderMode>("scroll");
+  // pageIndex is the FIRST visible column. On a wide screen two pages show
+  // side by side like an open book, so a turn moves by perView, not by one.
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCount, setPageCount] = useState(1);
+  const [perView, setPerView] = useState(1);
+  const colStep = useRef(0);
   const flowRef = useRef<HTMLDivElement>(null);
   // The clip box is exactly one page wide and centred; without it the columns
   // either side stay visible in the reader's padding (owner, 2026-08-30).
@@ -802,6 +806,7 @@ export default function ReaderPage() {
   // chapter, translation — because the page count is a function of the layout.
   const PAGE_GUTTER = 64;
   const PAGE_CONTROLS_H = 60;
+  const MIN_PAGE = 500; // narrowest half that still reads as a page
   const measurePages = useCallback(() => {
     const flow = flowRef.current;
     const clip = clipRef.current;
@@ -809,7 +814,7 @@ export default function ReaderPage() {
     if (!flow || !clip || !box) return;
     if (readerMode !== "page") {
       flow.style.height = "";
-      flow.style.columnWidth = "";
+      flow.style.columnCount = "";
       flow.style.transform = "";
       flow.style.width = "";
       clip.style.width = "";
@@ -821,27 +826,38 @@ export default function ReaderPage() {
     // column as wide as the box would leave half of every page empty and
     // inflate the page count on wide screens.
     flow.style.width = "";
-    flow.style.columnWidth = "";
+    flow.style.columnCount = "";
     flow.style.height = "";
     clip.style.width = "";
     const avail = box.clientWidth - 64; // px-8 padding either side
-    const prose = flow.querySelector<HTMLElement>(".prose-reader");
-    const width = Math.min(avail, prose?.clientWidth || avail);
+    const proseEl = flow.querySelector<HTMLElement>(".prose-reader");
+    const measure = proseEl?.clientWidth || avail;
+    // Two equal pages side by side once each half is still a comfortable
+    // measure (owner, 2026-08-31). Requiring two FULL measures would need
+    // ~1600px before chrome, so no ordinary laptop would ever see a spread;
+    // the halves narrow to fit instead, down to MIN_PAGE.
+    const half = (avail - PAGE_GUTTER) / 2;
+    const spread = half >= MIN_PAGE;
+    const columns = spread ? 2 : 1;
+    const colWidth = spread ? Math.min(measure, half) : Math.min(avail, measure);
+    const viewWidth = spread ? colWidth * 2 + PAGE_GUTTER : colWidth;
     const height = box.clientHeight - 64 - PAGE_CONTROLS_H;
-    // Clip at the page edge, not the reader's edge, so exactly one page shows.
-    clip.style.width = `${width}px`;
+    // Clip at the leaf's edge, not the reader's, so no third column shows.
+    clip.style.width = `${viewWidth}px`;
     clip.style.overflow = "hidden";
-    flow.style.width = `${width}px`;
+    flow.style.width = `${viewWidth}px`;
     flow.style.height = `${height}px`;
-    flow.style.columnWidth = `${width}px`;
-    const step = width + PAGE_GUTTER;
+    flow.style.columnCount = String(columns);
+    const step = colWidth + PAGE_GUTTER;
+    colStep.current = step;
     const count = Math.max(1, Math.round(flow.scrollWidth / step));
+    setPerView(columns);
     setPageCount(count);
     const chapterChanged = measuredChapter.current !== chapterIndex;
     measuredChapter.current = chapterIndex;
     if (chapterChanged) {
       // Forward into a chapter opens page 1; backwards opens its last page.
-      setPageIndex(wantLastPage.current ? count - 1 : 0);
+      setPageIndex(wantLastPage.current ? columns * Math.floor((count - 1) / columns) : 0);
       wantLastPage.current = false;
     } else {
       setPageIndex((i) => Math.min(i, count - 1));
@@ -863,10 +879,8 @@ export default function ReaderPage() {
   // transform write, not a relayout.
   useEffect(() => {
     const flow = flowRef.current;
-    const box = document.getElementById("reader-scroll");
-    if (!flow || !box || readerMode !== "page") return;
-    const step = flow.clientWidth + PAGE_GUTTER;
-    flow.style.transform = `translateX(${-pageIndex * step}px)`;
+    if (!flow || readerMode !== "page") return;
+    flow.style.transform = `translateX(${-pageIndex * colStep.current}px)`;
   }, [pageIndex, readerMode, pageCount]);
 
   // Switching into page mode starts at the top; chapter entry is handled by
@@ -879,7 +893,7 @@ export default function ReaderPage() {
     setPostsDialog(null);
     try { window.getSelection()?.removeAllRanges(); } catch { /* no selection */ }
 
-    const next = pageIndex + delta;
+    const next = pageIndex + delta * perView;
     // Turning past either edge continues into the neighbouring chapter, so a
     // book reads as one sequence of pages rather than per-chapter dead ends
     // (owner, 2026-08-30). Backwards lands on that chapter's LAST page.
@@ -895,7 +909,7 @@ export default function ReaderPage() {
       return;
     }
     setPageIndex(next);
-  }, [pageIndex, pageCount, chapterIndex, chapters.length]);
+  }, [pageIndex, pageCount, perView, chapterIndex, chapters.length]);
 
   // Track scroll progress
   useEffect(() => {
@@ -2178,10 +2192,14 @@ export default function ReaderPage() {
                       aria-label="Previous page"
                       className="inline-flex items-center gap-1 min-h-[44px] md:min-h-0 disabled:opacity-30 hover:text-amber-900 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous page</button>
-                    <span data-testid="page-position" className="tabular-nums">Page {pageIndex + 1} of {pageCount}</span>
+                    <span data-testid="page-position" className="tabular-nums">
+                      {perView === 2 && pageIndex + 1 < pageCount
+                        ? `Pages ${pageIndex + 1}–${Math.min(pageIndex + perView, pageCount)} of ${pageCount}`
+                        : `Page ${pageIndex + 1} of ${pageCount}`}
+                    </span>
                     <button
                       onClick={() => turnPage(1)}
-                      disabled={pageIndex >= pageCount - 1 && chapterIndex >= chapters.length - 1}
+                      disabled={pageIndex + perView > pageCount - 1 && chapterIndex >= chapters.length - 1}
                       aria-label="Next page"
                       className="inline-flex items-center gap-1 min-h-[44px] md:min-h-0 disabled:opacity-30 hover:text-amber-900 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                     >Next page <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>

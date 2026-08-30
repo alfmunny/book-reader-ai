@@ -24,7 +24,7 @@ describe("reader page mode — slice 1 (design: reading-modes.md, #2784)", () =>
     // nodes. A JS-chunking implementation would slice the paragraph list here.
     expect(css).toContain(".reader-paged");
     expect(css).toContain("column-fill: auto");
-    expect(src).toContain("flow.style.columnWidth");
+    expect(src).toContain("flow.style.columnCount");
     expect(src).toContain("translateX(");
     expect(src).not.toMatch(/paragraphs\.slice\(\s*pageIndex/);
   });
@@ -63,7 +63,7 @@ describe("reader page mode — slice 1 (design: reading-modes.md, #2784)", () =>
     // A separate chapter effect would fight measurePages: the layout effect
     // lands on the last page, then the later effect resets it to zero.
     expect(src).toContain("measuredChapter.current !== chapterIndex");
-    expect(src).toContain("setPageIndex(wantLastPage.current ? count - 1 : 0)");
+    expect(src).toContain("wantLastPage.current ? columns * Math.floor((count - 1) / columns) : 0");
     expect(src).not.toContain("}, [chapterIndex, readerMode]);");
   });
 
@@ -74,13 +74,12 @@ describe("reader page mode — slice 1 (design: reading-modes.md, #2784)", () =>
     expect(turn).toContain("goToChapter(chapterIndex + 1)");
     // the controls only stop at the two ends of the book
     expect(src).toContain("disabled={pageIndex === 0 && chapterIndex === 0}");
-    expect(src).toContain("disabled={pageIndex >= pageCount - 1 && chapterIndex >= chapters.length - 1}");
   });
 
   it("clips at the page edge, not the reader's edge", () => {
     expect(src).toContain('data-testid="reader-page-clip"');
     expect(src).toContain('clip.style.overflow = "hidden"');
-    expect(src).toContain("clip.style.width = `${width}px`");
+    expect(src).toContain("clip.style.width = `${viewWidth}px`");
   });
 
   it("clips columns instead of scrolling them", () => {
@@ -92,5 +91,25 @@ describe("reader page mode — slice 1 (design: reading-modes.md, #2784)", () =>
     expect(btn).toContain("disabled={parallelOn}");
     expect(btn).toContain("hidden lg:flex");
     expect(btn).toContain("Page mode needs inline translation");
+  });
+});
+
+describe("two-page spread (owner, 2026-08-31)", () => {
+  it("shows two equal halves once each one is still a readable measure", () => {
+    expect(src).toContain("const half = (avail - PAGE_GUTTER) / 2");
+    expect(src).toContain("const spread = half >= MIN_PAGE");
+    // Halves narrow to fit rather than demanding two FULL measures, which
+    // would need ~1600px before chrome — no ordinary laptop would qualify.
+    expect(src).toContain("Math.min(measure, half)");
+    expect(src).toContain("colWidth * 2 + PAGE_GUTTER");
+  });
+
+  it("turns by the leaf, not by a single page", () => {
+    expect(src).toContain("pageIndex + delta * perView");
+    expect(src).toContain("disabled={pageIndex + perView > pageCount - 1 && chapterIndex >= chapters.length - 1}");
+  });
+
+  it("names both pages of a spread in the readout", () => {
+    expect(src).toContain("`Pages ${pageIndex + 1}\u2013${Math.min(pageIndex + perView, pageCount)} of ${pageCount}`");
   });
 });

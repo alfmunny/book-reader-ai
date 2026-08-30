@@ -98,6 +98,7 @@ async def _upsert_user(db, google_id: str, name: str, email: str, picture: str) 
 
 
 async def main() -> None:
+    full_paras = 0
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--book-id", type=int, default=None)
     args = parser.parse_args()
@@ -425,6 +426,37 @@ async def main() -> None:
                        VALUES (?, 'zh', 4, ?, ?, ?, ?)""",
                     (book_id, para_idx, r_uid, r_body, parent),
                 )
+        # A COMPLETE, published version by a demo user so the Community
+        # group in the switcher has something to select (owner, 2026-08-30).
+        await db.execute(
+            """INSERT INTO translation_sessions
+               (user_id, book_id, name, target_language, provider, style_prompt, status)
+               VALUES (?, ?, '诗意全译 (demo)', 'zh', 'deepseek', '优雅的书面语', 'published')
+               ON CONFLICT(user_id, book_id, name) DO UPDATE SET status = 'published'""",
+            (mira_id, book_id),
+        )
+        async with db.execute(
+            "SELECT id FROM translation_sessions WHERE user_id = ? AND book_id = ? AND name = '诗意全译 (demo)'",
+            (mira_id, book_id),
+        ) as c:
+            full_session = (await c.fetchone())[0]
+        full_paras = 0
+        for ci, ch in enumerate(chapters):
+            for pi, para in enumerate(p for p in ch.text.split("\n\n") if p.strip()):
+                await db.execute(
+                    """INSERT INTO translation_session_paragraphs
+                       (session_id, chapter_index, paragraph_index, text, provider, model)
+                       VALUES (?, ?, ?, ?, 'deepseek', 'deepseek-v4-flash')
+                       ON CONFLICT(session_id, chapter_index, paragraph_index)
+                       DO UPDATE SET text = excluded.text""",
+                    (full_session, ci, pi,
+                     f"【诗意全译·演示】第{ci + 1}章 第{pi + 1}段 —— 这是用于本地测试的完整译文示例。"),
+                )
+                full_paras += 1
+        await db.execute(
+            "UPDATE translation_sessions SET published_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (full_session,),
+        )
         await db.commit()
 
     print(f"Seeded demo stories on book {book_id} ({title}):")
@@ -434,6 +466,7 @@ async def main() -> None:
     print("  - 3 sentence-anchored shared notes on chapter 5 (index 4) with cross-comments")
     print(f"  - {posts_made} translation posts on chapter 5 (index 4): Mira 诗意版 + Jonas 直译版")
     print(f"  - {notes_made} translation notes (zh) on chapter-5 paragraphs 1-5, with replies — demo users + you")
+    print(f"  - Mira's PUBLISHED whole-book version '诗意全译 (demo)' — {full_paras} paragraphs across {len(chapters)} chapters (Community group)")
     print("Open the book, enable translation, and tick 'Show others' shares' — or visit /discover.")
 
 

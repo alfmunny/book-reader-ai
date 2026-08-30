@@ -47,6 +47,13 @@ const QUEUE_LANG_OPTIONS = [
   { code: "fr", label: "French (fr)" },
 ] as const;
 
+const AUDIT_FILTER_LABELS: Record<string, string> = {
+  unaudited: "not audited",
+  frozen: "frozen",
+  awaiting: "awaiting review",
+  published: "in library",
+};
+
 export default function BooksPage() {
   useEffect(() => {
     document.title = "Admin: Books — Book Reader AI";
@@ -76,6 +83,18 @@ export default function BooksPage() {
   const [moveInput, setMoveInput] = useState<Record<string, string>>({});
   const [moving, setMoving] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  /** Audit state filter (#2745 follow-up): freeze and publish are two
+   *  separate facts, so the states are not-audited / awaiting / published,
+   *  plus "frozen" for either of the last two. */
+  const [auditFilter, setAuditFilter] = useState("all");
+
+  function matchesAudit(b: { frozen?: boolean; published?: boolean }): boolean {
+    if (auditFilter === "unaudited") return !b.frozen;
+    if (auditFilter === "frozen") return !!b.frozen;
+    if (auditFilter === "awaiting") return !!b.frozen && !b.published;
+    if (auditFilter === "published") return !!b.published;
+    return true;
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -347,6 +366,19 @@ export default function BooksPage() {
       <SeedPopularButton adminFetch={adminFetch} onComplete={() => load({ silent: true })} />
 
       <div className="flex items-center gap-2">
+        <select
+          value={auditFilter}
+          onChange={(e) => setAuditFilter(e.target.value)}
+          aria-label="Audit state"
+          title="Show only books in a given audit state"
+          className="rounded-lg border border-amber-300 px-2 py-2 min-h-[44px] md:min-h-0 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          <option value="all">All books</option>
+          <option value="unaudited">Not audited</option>
+          <option value="frozen">Frozen (any)</option>
+          <option value="awaiting">Awaiting review</option>
+          <option value="published">In library</option>
+        </select>
         <input
           type="search"
           placeholder="Search books by title, author, or ID…"
@@ -356,15 +388,15 @@ export default function BooksPage() {
           aria-label="Filter books"
         />
         <span aria-live="polite" aria-atomic="true" className="text-xs text-stone-600">
-          {searchQuery ? `${books.filter((b) =>
-            fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
+          {searchQuery || auditFilter !== "all" ? `${books.filter((b) =>
+            matchesAudit(b) && fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
           ).length} / ${books.length}` : ""}
         </span>
       </div>
 
       <ul role="list" aria-label="Books" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">
         {books
-          .filter((b) => fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]))
+          .filter((b) => matchesAudit(b) && fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]))
           .map((b) => {
           const isExpanded = expandedBookId === b.id;
           const translatedLangs = Object.keys(b.translations || {});
@@ -414,6 +446,14 @@ export default function BooksPage() {
                         title={`Frozen${b.frozen_at ? ` ${b.frozen_at}` : ""}${b.audited_by ? ` by ${b.audited_by}` : ""} — waiting to be added to the library`}
                       >
                         awaiting review
+                      </span>
+                    )}
+                    {b.frozen && b.published && (
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        title={`Frozen${b.frozen_at ? ` ${b.frozen_at}` : ""}${b.audited_by ? ` by ${b.audited_by}` : ""} — the split is fixed and the book is in the library`}
+                      >
+                        frozen · in library
                       </span>
                     )}
                     {/* The endpoint existed from the publish gate but nothing
@@ -722,10 +762,15 @@ export default function BooksPage() {
           <li className="px-4 py-8 text-center text-amber-700 text-sm">No books cached.</li>
         ) : (
           books.filter((b) =>
-            fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
+            matchesAudit(b) && fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]),
           ).length === 0 && (
             <li className="px-4 py-8 text-center text-amber-700 text-sm">
-              No books match &ldquo;{searchQuery}&rdquo;.
+              {/* Name whichever filter emptied the list — a state filter with no
+                  matches used to fall through to `No books match ""`. */}
+              No books match
+              {searchQuery ? ` \u201c${searchQuery}\u201d` : ""}
+              {searchQuery && auditFilter !== "all" ? " in" : ""}
+              {auditFilter !== "all" ? ` ${AUDIT_FILTER_LABELS[auditFilter]}` : ""}.
             </li>
           )
         )}

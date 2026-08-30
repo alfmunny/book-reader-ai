@@ -48,7 +48,11 @@ describe("Admin books search live region — WCAG 4.1.3 (closes #2340)", () => {
   it("admin books search count uses ternary for empty state", () => {
     const idx = adminBooksSrc.indexOf('aria-label="Filter books"');
     const section = adminBooksSrc.slice(idx, idx + 400);
+    // The condition gained a second clause when the audit-state filter landed
+    // (#2745 follow-up), so this matches the ternary rather than the exact text.
+    // The property that matters is unchanged: the count renders through a
+    // ternary, so the live region node is always in the DOM.
     // The content should be conditional (ternary), not the container
-    expect(section).toMatch(/searchQuery\s*\?/);
+    expect(section).toMatch(/searchQuery[\s\S]{0,40}\?/);
   });
 });

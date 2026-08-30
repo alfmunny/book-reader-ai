@@ -930,3 +930,30 @@ test("someone else's note offers no edit control", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Open comment by Mira" }));
   expect(screen.queryByRole("button", { name: "Edit note" })).toBeNull();
 });
+
+test("the reply box has no visibility choice — it inherits the note's", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 141, user_id: 2, body: "私密笔记", created_at: "", author_name: "Mira", visibility: "private" }],
+  });
+  (api.addSessionParagraphComment as jest.Mock).mockResolvedValue({
+    id: 142, user_id: 9, body: "回复", created_at: "", author_name: "Me", visibility: "private",
+  });
+  const version = { session_id: 5, chapter_index: 4, paragraph_index: 0 };
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    currentUserId: 9,
+    commentsTab: { anchor: { kind: "version", version }, label: "诗意版", emptyText: "" },
+  });
+  // The top-level composer has the choice…
+  expect(await screen.findByLabelText("Note visibility")).toBeInTheDocument();
+  // …the reply composer does not
+  fireEvent.click(screen.getByRole("button", { name: "Open comment by Mira" }));
+  expect(screen.queryByLabelText("Note visibility")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Comment text"), { target: { value: "回复" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  // …and the reply takes the parent's visibility
+  await waitFor(() => expect(api.addSessionParagraphComment).toHaveBeenCalledWith(
+    version, "回复", 141, "private", undefined,
+  ));
+});

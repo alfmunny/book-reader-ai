@@ -365,8 +365,10 @@ export default function StoryPanel({
     setBusy(true);
     setError(null);
     try {
+      const parent = parentId ? anchorComments.find((c) => c.id === parentId) : undefined;
       const created = await postToAnchor(
-        activeAnchor, draft.trim(), parentId, noteVisibility,
+        activeAnchor, draft.trim(), parentId,
+        parentId ? (parent?.visibility === "private" ? "private" : "public") : noteVisibility,
         parentId ? undefined : commentsTab?.content?.highlight?.trim() || undefined,
       );
       setCommentCache((c) => ({ ...c, [activeKey]: [...(c[activeKey] ?? []), created] }));
@@ -812,17 +814,23 @@ export default function StoryPanel({
         className="w-full text-[13px] leading-relaxed border border-amber-200 rounded-lg px-2.5 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-amber-400"
       />
       <div className="flex items-center gap-2">
-        <label htmlFor={`note-visibility-${parentId ?? "top"}`} className="sr-only">Note visibility</label>
-        <select
-          id={`note-visibility-${parentId ?? "top"}`}
-          aria-label="Note visibility"
-          value={noteVisibility}
-          onChange={(e) => setNoteVisibility(e.target.value as "public" | "private")}
-          className="text-[11px] rounded-lg border border-amber-200 px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-        >
-          <option value="public">Public — others can read it</option>
-          <option value="private">Private — only you</option>
-        </select>
+        {/* A reply inherits the visibility of the note it answers — offering
+            the choice again would be meaningless (owner, 2026-08-30). */}
+        {!parentId && (
+          <>
+            <label htmlFor="note-visibility-top" className="sr-only">Note visibility</label>
+            <select
+              id="note-visibility-top"
+              aria-label="Note visibility"
+              value={noteVisibility}
+              onChange={(e) => setNoteVisibility(e.target.value as "public" | "private")}
+              className="text-[11px] rounded-lg border border-amber-200 px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="public">Public — others can read it</option>
+              <option value="private">Private — only you</option>
+            </select>
+          </>
+        )}
         <span className="flex-1" />
         <button
           onClick={() => addComment(parentId)}

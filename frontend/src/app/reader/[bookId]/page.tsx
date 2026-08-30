@@ -229,16 +229,17 @@ export default function ReaderPage() {
     return () => { prev?.focus?.(); };
   }, [sidebarOpen, chatSheetText]);
 
-  // Dismiss chat sheet on Escape (WAI-ARIA dialog pattern)
+  // Dismiss the chat sheet on Escape (WAI-ARIA dialog pattern). The
+  // SIDEBAR is a persistent panel, not a dialog — Escape must not close it
+  // (owner, 2026-08-30: it kept collapsing mid-work).
   useEffect(() => {
-    const open = sidebarOpen || !!chatSheetText;
-    if (!open) return;
+    if (!chatSheetText) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { setSidebarOpen(false); setChatSheetText(null); }
+      if (e.key === "Escape") setChatSheetText(null);
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [sidebarOpen, chatSheetText]);
+  }, [chatSheetText]);
 
   // Swipe gesture for chapter navigation
   const swipeStartRef = useRef<{ x: number; y: number; t: number } | null>(null);

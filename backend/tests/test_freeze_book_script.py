@@ -444,3 +444,108 @@ def test_audit_tolerates_whitespace_differences_between_title_and_body():
     ])
 
     assert len(findings) == 1
+
+
+# ── The artifact's own entries are already corrected (#2745) ─────────────────
+
+async def test_artifact_entries_are_not_remapped_a_second_time(frozen_env):
+    """Regression: re-freezing a book with a merge walked its translations
+    backwards, once per re-freeze.
+
+    `index_map` moves entries from the *raw* split onto the corrected one, which
+    is what legacy exports need — they were made before the merge existed. The
+    book's own artifact is different: the previous freeze already applied the
+    overrides, so its indices are corrected already. Mapping them again shifts
+    them by the merge a second time.
+
+    A Room with a View #2641 is the live case. Its merge maps raw 19 → 18, so
+    its zh entry for Chapter XX (57 paragraphs) was tested against Chapter XIX
+    (177) and the freeze aborted. Hamlet #1524 has a merge too and was masked
+    only because its single entry sits at index 0, where the map is identity.
+    """
+    (frozen_env / "book_2229.json").write_text(json.dumps({
+        "schema_version": 1, "book_id": 2229, "meta": {}, "chapters": [],
+        "split": {},
+        "translations": {"zh": {
+            "provider": "claude-code", "model": "claude-opus-4-7",
+            "chapters": [
+                # Corrected index 2 — where the previous freeze placed it.
+                {"index": 2, "title_translation": "第三章", "paragraphs": ["c-2"]},
+            ],
+        }},
+    }))
+    chapters = [
+        {"index": 0, "title": "A", "paragraphs": ["a"]},
+        {"index": 1, "title": "B", "paragraphs": ["b"]},
+        {"index": 2, "title": "C", "paragraphs": ["c-2"]},
+    ]
+    # A merge at raw 2: raw 2 folds into 1, so raw 3 → 2. Applying this to an
+    # already-corrected 2 would walk it to 1, whose paragraphs differ.
+    index_map = {0: 0, 1: 1, 2: 1, 3: 2}
+
+    translations, _warnings, errors = build_translations(
+        2229, 3, chapters, books_dir=frozen_env, index_map=index_map
+    )
+
+    assert errors == [], errors
+    assert [e["index"] for e in translations["zh"]["chapters"]] == [2]
+    assert translations["zh"]["chapters"][0]["paragraphs"] == ["c-2"]
+
+
+async def test_legacy_exports_are_still_remapped(frozen_env):
+    """The exemption is for the artifact only. A legacy export predates the
+    merge, so it still has to be moved onto the corrected split — dropping that
+    would orphan every translation after a repaired boundary."""
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [
+            {"book_id": 2229, "chapter_index": 3, "target_language": "zh",
+             "paragraphs": ["c-2"]},
+        ],
+    }))
+    chapters = [
+        {"index": 0, "title": "A", "paragraphs": ["a"]},
+        {"index": 1, "title": "B", "paragraphs": ["b"]},
+        {"index": 2, "title": "C", "paragraphs": ["c-2"]},
+    ]
+    index_map = {0: 0, 1: 1, 2: 1, 3: 2}
+
+    translations, _warnings, errors = build_translations(
+        2229, 3, chapters, books_dir=frozen_env, index_map=index_map
+    )
+
+    assert errors == [], errors
+    assert [e["index"] for e in translations["zh"]["chapters"]] == [2]
+
+
+async def test_a_legacy_export_still_overrides_the_artifact_after_remapping(frozen_env):
+    """Priority is unchanged: Convention A wins. The comparison now happens in
+    corrected space for both, which is the only space where index 2 from the
+    artifact and index 3 from a legacy export mean the same chapter."""
+    (frozen_env / "book_2229.json").write_text(json.dumps({
+        "schema_version": 1, "book_id": 2229, "meta": {}, "chapters": [],
+        "split": {},
+        "translations": {"zh": {"provider": "old", "model": "old", "chapters": [
+            {"index": 2, "title_translation": "stale", "paragraphs": ["from-artifact"]},
+        ]}},
+    }))
+    (frozen_env / "legacy_a" / "book_2229_zh.json").write_text(json.dumps({
+        "book_id": 2229, "target_language": "zh",
+        "entries": [
+            {"book_id": 2229, "chapter_index": 3, "target_language": "zh",
+             "paragraphs": ["from-export"]},
+        ],
+    }))
+    chapters = [
+        {"index": 0, "title": "A", "paragraphs": ["a"]},
+        {"index": 1, "title": "B", "paragraphs": ["b"]},
+        {"index": 2, "title": "C", "paragraphs": ["from-export"]},
+    ]
+    index_map = {0: 0, 1: 1, 2: 1, 3: 2}
+
+    translations, _warnings, errors = build_translations(
+        2229, 3, chapters, books_dir=frozen_env, index_map=index_map
+    )
+
+    assert errors == [], errors
+    assert translations["zh"]["chapters"][0]["paragraphs"] == ["from-export"]

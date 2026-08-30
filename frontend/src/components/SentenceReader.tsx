@@ -971,8 +971,12 @@ export default function SentenceReader({
         const hasNotes = !!notedParagraphs?.has(postParaIdx);
         const openTab: "notes" | "translations" = hasNotes ? "notes" : "translations";
         const marked = hasPosts || hasNotes;
+        // The paragraph tag lives on the <p> (the selection toolbar walks
+        // ancestors); the marker + click live on an INLINE span so the hit
+        // area hugs the words instead of the whole line box (owner,
+        // 2026-08-30: the pointer showed up beside the sentence).
+        const paraProps = { "data-translation-para": postParaIdx };
         const postProps = {
-          "data-translation-para": postParaIdx,
           "data-testid": `post-underline-${postParaIdx}`,
           ...(marked && onOpenPosts
             ? {
@@ -1241,8 +1245,8 @@ export default function SentenceReader({
                 <div className={`border-t md:border-t-0 md:border-l border-amber-200 pt-2 md:pt-0 md:pl-6${translationSelectClass}`} data-translation="true">
                   {translationText ? (
                     <>
-                      <p lang={translationLang} {...postProps} className={`font-serif text-base text-amber-800 italic whitespace-pre-wrap${postClass}`}>
-                        {translationText}
+                      <p lang={translationLang} {...paraProps} className="font-serif text-base text-amber-800 italic whitespace-pre-wrap">
+                        <span {...postProps} className={postClass.trimStart()}>{translationText}</span>
                       </p>
                       {renderSessionExtras(textParaIdx, true)}
                     </>
@@ -1280,8 +1284,8 @@ export default function SentenceReader({
               </div>
             )}
             {translationText && (
-              <p lang={translationLang} data-translation="true" {...postProps} className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}${postClass}`}>
-                {translationText}
+              <p lang={translationLang} data-translation="true" {...paraProps} className={`mt-1 font-serif text-sm text-amber-700 italic border-l-2 border-amber-300 pl-3 whitespace-pre-wrap${translationSelectClass}`}>
+                <span {...postProps} className={postClass.trimStart()}>{translationText}</span>
               </p>
             )}
             {sessionMode && (

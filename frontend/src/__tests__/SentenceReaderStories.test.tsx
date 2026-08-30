@@ -132,11 +132,14 @@ test("translations carry their paragraph tag; only posted ones get the dashed ma
   renderReader({ postParagraphs: new Set([0]) });
   const dashed = screen.getByTestId("post-underline-0");
   expect(dashed.className).toContain("decoration-dashed");
-  expect(dashed).toHaveAttribute("data-translation-para", "0");
+  // The marker is an INLINE span so the hit area hugs the words; the
+  // paragraph tag stays on its <p> ancestor for the selection toolbar
+  expect(dashed.tagName).toBe("SPAN");
+  expect(dashed.closest("[data-translation-para]")).toHaveAttribute("data-translation-para", "0");
   const plain = screen.getByTestId("post-underline-1");
   expect(plain.className).not.toContain("decoration-dashed");
-  expect(plain).toHaveAttribute("data-translation-para", "1");
-  // No click affordance on the paragraph itself
+  expect(plain.closest("[data-translation-para]")).toHaveAttribute("data-translation-para", "1");
+  // Nothing clickable without notes or posts
   expect(dashed).not.toHaveAttribute("role");
 });
 

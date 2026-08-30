@@ -65,7 +65,9 @@ async def get_chapters(book_id: int) -> list[Chapter]:
             # .get: an absent role means body text, so a row without the column
             # (a pre-migration read, or a caller building rows by hand) is fine.
             chapters = [
-                Chapter(title=r["title"], text=r["text"], role=r.get("role")) for r in rows
+                Chapter(title=r["title"], text=r["text"], role=r.get("role"),
+                        part=r.get("part"))
+                for r in rows
             ]
             _chapter_cache[book_id] = chapters
             return chapters

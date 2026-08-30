@@ -2523,29 +2523,37 @@ async def test_migration_057_does_not_restamp_a_partial_match(tmp_db):
         assert untouched[0] == "SOMETHING ELSE"
 
 
-async def test_migration_057_matches_the_committed_artifact(tmp_db):
-    """Drift guard, and the bug this nearly shipped with: the source sets
-    'Polonius’s' with U+2019, and a straight ASCII apostrophe in the SQL
-    would write a title no artifact ever contained while silently failing the
-    hash re-stamp."""
-    import json
-    artifact_path = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "books", "book_1524.json"
-    )
-    artifact = json.load(open(artifact_path, encoding="utf-8"))
+async def test_migration_056_titles_are_exactly_what_059_supersedes(tmp_db):
+    """Drift guard for the 056 → 059 chain.
 
-    path = os.path.join(
-        os.path.dirname(__file__), "..", "migrations", "056_hamlet_act_scene_titles.sql"
-    )
-    sql = open(path, encoding="utf-8").read()
+    056 put the act into the title because the panel was flat; 059 moved it to
+    the group header and stripped the prefix again. The committed artifact now
+    reflects 059, so this no longer pins to the artifact — what must stay true
+    is that every title 056 writes is exactly a title 059 expects to find. Edit
+    one side alone and a database sitting between the two migrations is
+    stranded, with 059's guards matching nothing and its re-stamp skipped.
 
-    by_index = {c["index"]: c["title"] for c in artifact["chapters"]}
-    for index, _old, new in _HAMLET_ACTS:
-        assert by_index[index] == new, f"artifact chapter {index} disagrees with the migration"
-        assert new.replace("'", "''") in sql, f"chapter {index} title missing from the SQL"
+    It also guards the bug 056 nearly shipped with: the source sets 'Polonius’s'
+    with U+2019, and a straight ASCII apostrophe would write a title no artifact
+    ever contained while silently failing the hash re-stamp.
+    """
+    def read(name):
+        return open(os.path.join(os.path.dirname(__file__), "..", "migrations", name),
+                    encoding="utf-8").read()
 
-    assert artifact["split"]["content_sha256"] == _NEW_SHA
-    assert _NEW_SHA in sql
+    sql_056 = read("056_hamlet_act_scene_titles.sql")
+    sql_059 = read("059_hamlet_act_groups.sql")
+
+    for index, _old, intermediate in _HAMLET_ACTS:
+        escaped = intermediate.replace("'", "''")
+        assert escaped in sql_056, f"chapter {index}: 056 no longer writes this title"
+        assert escaped in sql_059, f"chapter {index}: 059 no longer expects what 056 writes"
+
+    # 056 stamps its own hash; 059 stamps a different one over it.
+    assert _NEW_SHA in sql_056
+    assert _NEW_SHA not in sql_059
+
+
 # ── 057: German noun capitals restored (#2768) ───────────────────────────────
 
 async def _seed_vocab(db_path: str, rows: list[tuple[int, str, str]]) -> None:
@@ -2558,6 +2566,69 @@ async def _seed_vocab(db_path: str, rows: list[tuple[int, str, str]]) -> None:
             [(u, w, w, lang) for u, w, lang in rows],
         )
         await db.commit()
+
+
+async def _words(db_path: str) -> list[str]:
+    async with aiosqlite.connect(db_path) as db:
+        async with db.execute("SELECT word FROM vocabulary ORDER BY word") as cur:
+            return [r[0] for r in await cur.fetchall()]
+
+
+async def _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch):
+    """Run every migration except 057, so rows can exist before it lands."""
+    real_dir = os.path.join(os.path.dirname(__file__), "..", "migrations")
+    for f in sorted(x for x in os.listdir(real_dir) if x.endswith(".sql")):
+        if not f.startswith("057"):
+            shutil.copy(os.path.join(real_dir, f), os.path.join(tmp_migrations, f))
+    monkeypatch.setattr("services.migrations._MIGRATIONS_DIR", tmp_migrations)
+    await run_migrations(tmp_db)
+    shutil.copy(os.path.join(real_dir, "057_vocabulary_restore_noun_capitals.sql"),
+                os.path.join(tmp_migrations, "057_vocabulary_restore_noun_capitals.sql"))
+
+
+async def test_migration_057_capitalises_the_five_nouns(tmp_db, tmp_migrations, monkeypatch):
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, w, "de") for w in
+                               ("gesell", "laffe", "leichnam", "pracht", "schalk")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["Gesell", "Laffe", "Leichnam", "Pracht", "Schalk"]
+
+
+async def test_migration_057_leaves_the_nominalised_verb_alone(tmp_db, tmp_migrations, monkeypatch):
+    """`verheeren` appears capitalised in the text but its lemma is a verb."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, "verheeren", "de"), (1, "zieren", "de")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["verheeren", "zieren"]
+
+
+async def test_migration_057_is_scoped_to_german(tmp_db, tmp_migrations, monkeypatch):
+    """An identically-spelled word saved in another language is not ours to fix."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, "pracht", "nl")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["pracht"]
+
+
+async def test_migration_057_does_not_collide_with_an_existing_capital(
+    tmp_db, tmp_migrations, monkeypatch
+):
+    """Migration 051's index forbids two casings; the guard must skip, not crash."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DROP INDEX IF EXISTS idx_vocabulary_user_word_nocase")
+        await db.commit()
+    await _seed_vocab(tmp_db, [(1, "pracht", "de"), (1, "Pracht", "de")])
+
+    await run_migrations(tmp_db)
+
+    assert sorted(await _words(tmp_db)) == ["Pracht", "pracht"], "left alone, no collision"
 
 
 async def _words(db_path: str) -> list[str]:
@@ -2644,3 +2715,182 @@ async def test_migration_057_is_idempotent(tmp_db, tmp_migrations, monkeypatch):
     await run_migrations(tmp_db)
 
     assert await _words(tmp_db) == ["Pracht"]
+
+
+# ── 058/059: part column, and Hamlet's acts as groups ────────────────────────
+
+_M059 = "059_hamlet_act_groups"
+
+_ACT_OF = {0: "ACT I", 1: "ACT I", 2: "ACT I", 3: "ACT I", 4: "ACT I",
+           5: "ACT II", 6: "ACT II",
+           7: "ACT III", 8: "ACT III", 9: "ACT III", 10: "ACT III",
+           11: "ACT IV", 12: "ACT IV", 13: "ACT IV", 14: "ACT IV",
+           15: "ACT IV", 16: "ACT IV", 17: "ACT IV",
+           18: "ACT V", 19: "ACT V"}
+
+# The five that 056 titled "ACT n, SCENE I. …" and 059 strips back.
+_PREFIXED = {
+    0: ("ACT I, SCENE I. Elsinore. A platform before the Castle.",
+        "SCENE I. Elsinore. A platform before the Castle."),
+    5: ("ACT II, SCENE I. A room in Polonius’s house.",
+        "SCENE I. A room in Polonius’s house."),
+    7: ("ACT III, SCENE I. A room in the Castle.",
+        "SCENE I. A room in the Castle."),
+    11: ("ACT IV, SCENE I. A room in the Castle.",
+         "SCENE I. A room in the Castle."),
+    18: ("ACT V, SCENE I. A churchyard.", "SCENE I. A churchyard."),
+}
+
+_SHA_056 = "26b228ab53ed94a54925886bbc95bb35197ad99904ceebc919e2e1770a1e1705"
+_SHA_059 = "a7007bc694082795f4805fd2510dadfaad37c6ada7273d376cfac43b5bb9954c"
+
+
+async def _seed_hamlet_acts(db, overrides=None, sha=_SHA_056):
+    overrides = overrides or {}
+    await db.execute("PRAGMA foreign_keys = OFF")
+    await db.execute(
+        "INSERT OR IGNORE INTO books (id, title, images) VALUES (1524, 'Hamlet', '[]')"
+    )
+    for index in range(20):
+        title = overrides.get(
+            index, _PREFIXED[index][0] if index in _PREFIXED else f"SCENE {index}"
+        )
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (1524, ?, ?, 'x')",
+            (index, title),
+        )
+    await db.execute(
+        "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
+        " audited_by, content_sha256) VALUES (1524, 'html_preference', 'text',"
+        " '2026-08-30', 'prior', ?)",
+        (sha,),
+    )
+
+
+async def _rerun_059(tmp_db):
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M059,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_058_adds_a_nullable_part_column(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        cols = {r[1] async for r in await db.execute("PRAGMA table_info(book_chapters)")}
+    assert "part" in cols
+
+
+async def test_migration_059_groups_every_scene_under_its_act(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet_acts(db)
+        await db.commit()
+
+    await _rerun_059(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT chapter_index, part FROM book_chapters WHERE book_id = 1524"
+            " ORDER BY chapter_index"
+        )).fetchall()
+    assert {i: p for i, p in rows} == _ACT_OF
+
+
+async def test_migration_059_drops_the_now_duplicated_act_prefix(tmp_db):
+    """Under an ACT I header, 'ACT I, SCENE I. …' says ACT I twice."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet_acts(db)
+        await db.commit()
+
+    await _rerun_059(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        for index, (_old, new) in _PREFIXED.items():
+            row = await (await db.execute(
+                "SELECT title FROM book_chapters WHERE book_id = 1524 AND chapter_index = ?",
+                (index,),
+            )).fetchone()
+            assert row[0] == new, f"chapter {index}"
+
+
+async def test_migration_059_restamps_to_the_regenerated_artifact(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet_acts(db)
+        await db.commit()
+
+    await _rerun_059(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 1524"
+        )).fetchone()
+    assert row[0] == _SHA_059
+
+
+async def test_migration_059_does_not_restamp_a_shifted_split(tmp_db):
+    """Acts III and IV both open on 'SCENE I. A room in the Castle.', so a guard
+    matching on title alone would let one act vouch for the other. Moving act IV
+    must still block the re-stamp."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet_acts(db, overrides={11: "SOMETHING ELSE"})
+        await db.commit()
+
+    await _rerun_059(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        sha = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 1524"
+        )).fetchone()
+        act_iv = await (await db.execute(
+            "SELECT part FROM book_chapters WHERE book_id = 1524 AND chapter_index = 11"
+        )).fetchone()
+    assert sha[0] == _SHA_056, "re-stamped despite a shifted split"
+    assert act_iv[0] is None, "grouped an act whose boundary had moved"
+
+
+async def test_migration_059_leaves_other_books_ungrouped(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("PRAGMA foreign_keys = OFF")
+        await db.execute(
+            "INSERT OR IGNORE INTO books (id, title, images) VALUES (345, 'D', '[]')"
+        )
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (345, 0, 'ACT I, SCENE I. Elsinore. A platform before the Castle.', 'x')"
+        )
+        await db.commit()
+
+    await _rerun_059(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT title, part FROM book_chapters WHERE book_id = 345"
+        )).fetchone()
+    assert row[1] is None
+    assert row[0].startswith("ACT I,"), "retitled a book the migration does not name"
+
+
+async def test_migration_059_matches_the_committed_artifact(tmp_db):
+    """Drift guard: the SQL and the artifact must agree byte-for-byte, including
+    the U+2019 in Polonius’s."""
+    import json
+    artifact = json.load(open(os.path.join(
+        os.path.dirname(__file__), "..", "..", "data", "books", "book_1524.json"
+    ), encoding="utf-8"))
+    sql = open(os.path.join(
+        os.path.dirname(__file__), "..", "migrations", "059_hamlet_act_groups.sql"
+    ), encoding="utf-8").read()
+
+    assert artifact["split"]["content_sha256"] == _SHA_059
+    assert _SHA_059 in sql
+    for chapter in artifact["chapters"]:
+        assert chapter["part"] == _ACT_OF[chapter["index"]]
+    for index, (_old, new) in _PREFIXED.items():
+        assert artifact["chapters"][index]["title"] == new
+        assert new.replace("'", "''") in sql

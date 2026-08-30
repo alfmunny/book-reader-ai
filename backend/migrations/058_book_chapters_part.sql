@@ -1,0 +1,25 @@
+-- Record the part / act / book a frozen chapter belongs to (#2745 Phase 2).
+--
+-- The Contents panel renders a flat list. For four of the twenty frozen books
+-- that discards the structure the work is built on — Crime and Punishment shows
+-- CHAPTER I six times with nothing distinguishing them.
+--
+-- `part` holds the label verbatim from the source ("ACT I", "PREMIÈRE PARTIE",
+-- "PART ONE"), never normalised to English. NULL means the chapter belongs to no
+-- part: sixteen books have no part structure at all, and Crime and Punishment's
+-- epilogue belongs to none within a book that does.
+--
+-- Declared per book in backend/scripts/chapter_split_overrides.py and verified
+-- against the range's first chapter before anything is labelled. Boundaries are
+-- never inferred, even though they are visible — deriving them is the mistake
+-- the registry exists to prevent.
+--
+-- Like `role` (migration 050) this sits deliberately OUTSIDE content_sha256,
+-- which covers index, title and paragraphs only. Labelling a chapter therefore
+-- moves no anchor and changes no frozen artifact's identity, so no re-stamp is
+-- needed and `chapter_index` remains the canonical key for annotations,
+-- translations, word_occurrences and reading progress.
+--
+-- Additive and nullable, so the migration policy requires no data-cleanup step.
+
+ALTER TABLE book_chapters ADD COLUMN part TEXT;

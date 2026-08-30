@@ -154,6 +154,120 @@ describe("TableOfContents", () => {
   });
 
 
+  // ── Part grouping (#2745 Phase 2) ─────────────────────────────────────────
+
+  const HAMLET = [
+    { title: "SCENE I. A platform before the Castle." },
+    { title: "SCENE II. A room of state." },
+    { title: "SCENE I. A room in Polonius's house." },
+    { title: "EPILOGUE" },
+  ];
+  const ACTS = { 0: "ACT I", 1: "ACT I", 2: "ACT II" };
+
+  it("renders no group headers when the book declares no parts", () => {
+    renderToc();
+    const nav = screen.getByRole("navigation", { name: /table of contents/i });
+    expect(within(nav).getAllByRole("button")).toHaveLength(3);
+  });
+
+  it("gathers consecutive chapters of one act under its header", () => {
+    renderToc({ chapters: HAMLET, parts: ACTS });
+    expect(screen.getByRole("button", { name: /^act i$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^act ii$/i })).toBeInTheDocument();
+  });
+
+  it("shows part groups expanded — they are the reading path, not apparatus", () => {
+    renderToc({ chapters: HAMLET, parts: ACTS });
+    expect(screen.getByRole("button", { name: /^act i$/i })).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    );
+    expect(
+      screen.getByRole("button", { name: "1. SCENE I. A platform before the Castle." })
+    ).toBeInTheDocument();
+  });
+
+  it("collapses a part when its header is activated", () => {
+    // From chapter 4, which is in no act — a section holding the current
+    // chapter stays open no matter what, which the next test covers.
+    renderToc({ chapters: HAMLET, parts: ACTS, chapterIndex: 3 });
+    fireEvent.click(screen.getByRole("button", { name: /^act i$/i }));
+    expect(screen.getByRole("button", { name: /^act i$/i })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(
+      screen.queryByRole("button", { name: "1. SCENE I. A platform before the Castle." })
+    ).not.toBeInTheDocument();
+    // Collapsing one act must not touch another.
+    expect(
+      screen.getByRole("button", { name: "3. SCENE I. A room in Polonius's house." })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a collapsed part open when the reader is inside it", () => {
+    renderToc({ chapters: HAMLET, parts: ACTS, chapterIndex: 0 });
+    fireEvent.click(screen.getByRole("button", { name: /^act i$/i }));
+    // Never hide where the reader is.
+    expect(screen.getByRole("button", { name: /^act i$/i })).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    );
+  });
+
+  it("renders a chapter belonging to no part at top level, with no header", () => {
+    renderToc({ chapters: HAMLET, parts: ACTS });
+    // The epilogue has no part and no group of its own.
+    expect(screen.getByRole("button", { name: "4. EPILOGUE" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^epilogue$/i })).not.toBeInTheDocument();
+    const headers = screen
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("aria-expanded") !== null);
+    expect(headers.map((h) => h.textContent)).toEqual(["ACT I", "ACT II"]);
+  });
+
+  it("gives a reused label its own group rather than merging across the book", () => {
+    renderToc({
+      chapters: HAMLET,
+      parts: { 0: "ACT I", 1: "ACT II", 2: "ACT I" },
+    });
+    const headers = screen
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("aria-expanded") !== null);
+    expect(headers.map((h) => h.textContent)).toEqual(["ACT I", "ACT II", "ACT I"]);
+  });
+
+  it("front matter and parts coexist, front matter first and closed", () => {
+    renderToc({
+      chapters: HAMLET,
+      roles: { 0: "frontmatter" },
+      parts: { 1: "ACT I", 2: "ACT II" },
+    });
+    const headers = screen
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("aria-expanded") !== null);
+    expect(headers.map((h) => h.textContent)).toEqual(["Front matter", "ACT I", "ACT II"]);
+    expect(headers[0]).toHaveAttribute("aria-expanded", "false");
+    expect(headers[1]).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("drops a group header whose rows all fail the filter", () => {
+    // The filter box only appears past 20 chapters, so this needs a real book's
+    // worth of rows rather than the four-chapter fixture.
+    const many = Array.from({ length: 24 }, (_, i) => ({ title: `SCENE ${i + 1}` }));
+    many[23] = { title: "A room in Polonius's house." };
+    const acts = Object.fromEntries(
+      many.map((_, i) => [i, i < 23 ? "ACT I" : "ACT II"])
+    );
+    renderToc({ chapters: many, parts: acts, chapterIndex: 23 });
+
+    fireEvent.change(screen.getByRole("searchbox", { name: /filter chapters/i }), {
+      target: { value: "Polonius" },
+    });
+    expect(screen.getByRole("button", { name: /^act ii$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^act i$/i })).not.toBeInTheDocument();
+  });
+
   // ── Visual hierarchy (#2745 follow-up) ────────────────────────────────────
 
   it("distinguishes the current chapter by weight, not colour alone", () => {

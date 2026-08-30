@@ -23,13 +23,13 @@
     "splitter": "html_preference",
     "chapter_source": "text",
     "frozen_at": "2026-08-30",
-    "audited_by": "uiux-agent (act/scene titling, #2745)",
-    "content_sha256": "26b228ab53ed94a54925886bbc95bb35197ad99904ceebc919e2e1770a1e1705"
+    "audited_by": "uiux-agent (act grouping, #2745 Phase 2)",
+    "content_sha256": "a7007bc694082795f4805fd2510dadfaad37c6ada7273d376cfac43b5bb9954c"
   },
   "chapters": [
     {
       "index": 0,
-      "title": "ACT I, SCENE I. Elsinore. A platform before the Castle.",
+      "title": "SCENE I. Elsinore. A platform before the Castle.",
       "paragraphs": [
         "SCENE. Elsinore.",
         "ACT I",
@@ -105,7 +105,8 @@
         "HORATIO.\nSo have I heard, and do in part believe it.\nBut look, the morn in russet mantle clad,\nWalks o’er the dew of yon high eastward hill.\nBreak we our watch up, and by my advice,\nLet us impart what we have seen tonight\nUnto young Hamlet; for upon my life,\nThis spirit, dumb to us, will speak to him.\nDo you consent we shall acquaint him with it,\nAs needful in our loves, fitting our duty?",
         "MARCELLUS.\nLet’s do’t, I pray, and I this morning know\nWhere we shall find him most conveniently.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT I"
     },
     {
       "index": 1,
@@ -194,7 +195,8 @@
         "[_Exeunt Horatio, Marcellus and Barnardo._]",
         "My father’s spirit in arms! All is not well;\nI doubt some foul play: would the night were come!\nTill then sit still, my soul: foul deeds will rise,\nThough all the earth o’erwhelm them, to men’s eyes.",
         "[_Exit._]"
-      ]
+      ],
+      "part": "ACT I"
     },
     {
       "index": 2,
@@ -232,7 +234,8 @@
         "POLONIUS.\nAy, springes to catch woodcocks. I do know,\nWhen the blood burns, how prodigal the soul\nLends the tongue vows: these blazes, daughter,\nGiving more light than heat, extinct in both,\nEven in their promise, as it is a-making,\nYou must not take for fire. From this time\nBe something scanter of your maiden presence;\nSet your entreatments at a higher rate\nThan a command to parley. For Lord Hamlet,\nBelieve so much in him that he is young;\nAnd with a larger tether may he walk\nThan may be given you. In few, Ophelia,\nDo not believe his vows; for they are brokers,\nNot of that dye which their investments show,\nBut mere implorators of unholy suits,\nBreathing like sanctified and pious bawds,\nThe better to beguile. This is for all:\nI would not, in plain terms, from this time forth\nHave you so slander any moment leisure\nAs to give words or talk with the Lord Hamlet.\nLook to’t, I charge you; come your ways.",
         "OPHELIA.\nI shall obey, my lord.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT I"
     },
     {
       "index": 3,
@@ -278,7 +281,8 @@
         "HORATIO.\nHeaven will direct it.",
         "MARCELLUS.\nNay, let’s follow him.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT I"
     },
     {
       "index": 4,
@@ -352,11 +356,12 @@
         "GHOST.\n[_Beneath._] Swear.",
         "HAMLET.\nRest, rest, perturbed spirit. So, gentlemen,\nWith all my love I do commend me to you;\nAnd what so poor a man as Hamlet is\nMay do t’express his love and friending to you,\nGod willing, shall not lack. Let us go in together,\nAnd still your fingers on your lips, I pray.\nThe time is out of joint. O cursed spite,\nThat ever I was born to set it right.\nNay, come, let’s go together.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT I"
     },
     {
       "index": 5,
-      "title": "ACT II, SCENE I. A room in Polonius’s house.",
+      "title": "SCENE I. A room in Polonius’s house.",
       "paragraphs": [
         "SCENE I. A room in Polonius’s house.",
         "Enter Polonius and Reynaldo.",
@@ -401,7 +406,8 @@
         "OPHELIA.\nNo, my good lord; but as you did command,\nI did repel his letters and denied\nHis access to me.",
         "POLONIUS.\nThat hath made him mad.\nI am sorry that with better heed and judgement\nI had not quoted him. I fear’d he did but trifle,\nAnd meant to wreck thee. But beshrew my jealousy!\nIt seems it is as proper to our age\nTo cast beyond ourselves in our opinions\nAs it is common for the younger sort\nTo lack discretion. Come, go we to the King.\nThis must be known, which, being kept close, might move\nMore grief to hide than hate to utter love.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT II"
     },
     {
       "index": 6,
@@ -594,11 +600,12 @@
         "[_Exeunt Rosencrantz and Guildenstern._]",
         "HAMLET.\nAy, so, God b’ wi’ ye. Now I am alone.\nO what a rogue and peasant slave am I!\nIs it not monstrous that this player here,\nBut in a fiction, in a dream of passion,\nCould force his soul so to his own conceit\nThat from her working all his visage wan’d;\nTears in his eyes, distraction in’s aspect,\nA broken voice, and his whole function suiting\nWith forms to his conceit? And all for nothing!\nFor Hecuba?\nWhat’s Hecuba to him, or he to Hecuba,\nThat he should weep for her? What would he do,\nHad he the motive and the cue for passion\nThat I have? He would drown the stage with tears\nAnd cleave the general ear with horrid speech;\nMake mad the guilty, and appal the free,\nConfound the ignorant, and amaze indeed,\nThe very faculties of eyes and ears. Yet I,\nA dull and muddy-mettled rascal, peak\nLike John-a-dreams, unpregnant of my cause,\nAnd can say nothing. No, not for a king\nUpon whose property and most dear life\nA damn’d defeat was made. Am I a coward?\nWho calls me villain, breaks my pate across?\nPlucks off my beard and blows it in my face?\nTweaks me by the nose, gives me the lie i’ th’ throat\nAs deep as to the lungs? Who does me this?\nHa! ’Swounds, I should take it: for it cannot be\nBut I am pigeon-liver’d, and lack gall\nTo make oppression bitter, or ere this\nI should have fatted all the region kites\nWith this slave’s offal. Bloody, bawdy villain!\nRemorseless, treacherous, lecherous, kindless villain!\nOh vengeance!\nWhy, what an ass am I! This is most brave,\nThat I, the son of a dear father murder’d,\nPrompted to my revenge by heaven and hell,\nMust, like a whore, unpack my heart with words\nAnd fall a-cursing like a very drab,\nA scullion! Fie upon’t! Foh!\nAbout, my brain! I have heard\nThat guilty creatures sitting at a play,\nHave by the very cunning of the scene,\nBeen struck so to the soul that presently\nThey have proclaim’d their malefactions.\nFor murder, though it have no tongue, will speak\nWith most miraculous organ. I’ll have these players\nPlay something like the murder of my father\nBefore mine uncle. I’ll observe his looks;\nI’ll tent him to the quick. If he but blench,\nI know my course. The spirit that I have seen\nMay be the devil, and the devil hath power\nT’assume a pleasing shape, yea, and perhaps\nOut of my weakness and my melancholy,\nAs he is very potent with such spirits,\nAbuses me to damn me. I’ll have grounds\nMore relative than this. The play’s the thing\nWherein I’ll catch the conscience of the King.",
         "[_Exit._]"
-      ]
+      ],
+      "part": "ACT II"
     },
     {
       "index": 7,
-      "title": "ACT III, SCENE I. A room in the Castle.",
+      "title": "SCENE I. A room in the Castle.",
       "paragraphs": [
         "SCENE I. A room in the Castle.",
         "Enter King, Queen, Polonius, Ophelia, Rosencrantz and Guildenstern.",
@@ -654,7 +661,8 @@
         "POLONIUS.\nIt shall do well. But yet do I believe\nThe origin and commencement of his grief\nSprung from neglected love. How now, Ophelia?\nYou need not tell us what Lord Hamlet said,\nWe heard it all. My lord, do as you please,\nBut if you hold it fit, after the play,\nLet his queen mother all alone entreat him\nTo show his grief, let her be round with him,\nAnd I’ll be plac’d, so please you, in the ear\nOf all their conference. If she find him not,\nTo England send him; or confine him where\nYour wisdom best shall think.",
         "KING.\nIt shall be so.\nMadness in great ones must not unwatch’d go.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT III"
     },
     {
       "index": 8,
@@ -829,7 +837,8 @@
         "[_Exeunt all but Hamlet._]",
         "’Tis now the very witching time of night,\nWhen churchyards yawn, and hell itself breathes out\nContagion to this world. Now could I drink hot blood,\nAnd do such bitter business as the day\nWould quake to look on. Soft now, to my mother.\nO heart, lose not thy nature; let not ever\nThe soul of Nero enter this firm bosom:\nLet me be cruel, not unnatural.\nI will speak daggers to her, but use none;\nMy tongue and soul in this be hypocrites.\nHow in my words somever she be shent,\nTo give them seals never, my soul, consent.",
         "[_Exit._]"
-      ]
+      ],
+      "part": "ACT III"
     },
     {
       "index": 9,
@@ -854,7 +863,8 @@
         "The King rises and advances.",
         "KING.\nMy words fly up, my thoughts remain below.\nWords without thoughts never to heaven go.",
         "[_Exit._]"
-      ]
+      ],
+      "part": "ACT III"
     },
     {
       "index": 10,
@@ -926,11 +936,12 @@
         "QUEEN.\nAlack,\nI had forgot. ’Tis so concluded on.",
         "HAMLET.\nThere’s letters seal’d: and my two schoolfellows,\nWhom I will trust as I will adders fang’d,—\nThey bear the mandate, they must sweep my way\nAnd marshal me to knavery. Let it work;\nFor ’tis the sport to have the enginer\nHoist with his own petard, and ’t shall go hard\nBut I will delve one yard below their mines\nAnd blow them at the moon. O, ’tis most sweet,\nWhen in one line two crafts directly meet.\nThis man shall set me packing.\nI’ll lug the guts into the neighbour room.\nMother, good night. Indeed, this counsellor\nIs now most still, most secret, and most grave,\nWho was in life a foolish prating knave.\nCome, sir, to draw toward an end with you.\nGood night, mother.",
         "[_Exit Hamlet dragging out Polonius._]"
-      ]
+      ],
+      "part": "ACT III"
     },
     {
       "index": 11,
-      "title": "ACT IV, SCENE I. A room in the Castle.",
+      "title": "SCENE I. A room in the Castle.",
       "paragraphs": [
         "SCENE I. A room in the Castle.",
         "Enter King, Queen, Rosencrantz and Guildenstern.",
@@ -948,7 +959,8 @@
         "[_Exeunt Rosencrantz and Guildenstern._]",
         "Come, Gertrude, we’ll call up our wisest friends,\nAnd let them know both what we mean to do\nAnd what’s untimely done, so haply slander,\nWhose whisper o’er the world’s diameter,\nAs level as the cannon to his blank,\nTransports his poison’d shot, may miss our name,\nAnd hit the woundless air. O, come away!\nMy soul is full of discord and dismay.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 12,
@@ -974,7 +986,8 @@
         "GUILDENSTERN.\nA thing, my lord!",
         "HAMLET.\nOf nothing. Bring me to him. Hide fox, and all after.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 13,
@@ -1016,7 +1029,8 @@
         "[_Exeunt Rosencrantz and Guildenstern._]",
         "And England, if my love thou hold’st at aught,—\nAs my great power thereof may give thee sense,\nSince yet thy cicatrice looks raw and red\nAfter the Danish sword, and thy free awe\nPays homage to us,—thou mayst not coldly set\nOur sovereign process, which imports at full,\nBy letters conjuring to that effect,\nThe present death of Hamlet. Do it, England;\nFor like the hectic in my blood he rages,\nAnd thou must cure me. Till I know ’tis done,\nHowe’er my haps, my joys were ne’er begun.",
         "[_Exit._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 14,
@@ -1046,7 +1060,8 @@
         "[_Exeunt all but Hamlet._]",
         "How all occasions do inform against me,\nAnd spur my dull revenge. What is a man\nIf his chief good and market of his time\nBe but to sleep and feed? A beast, no more.\nSure he that made us with such large discourse,\nLooking before and after, gave us not\nThat capability and godlike reason\nTo fust in us unus’d. Now whether it be\nBestial oblivion, or some craven scruple\nOf thinking too precisely on th’event,—\nA thought which, quarter’d, hath but one part wisdom\nAnd ever three parts coward,—I do not know\nWhy yet I live to say this thing’s to do,\nSith I have cause, and will, and strength, and means\nTo do’t. Examples gross as earth exhort me,\nWitness this army of such mass and charge,\nLed by a delicate and tender prince,\nWhose spirit, with divine ambition puff’d,\nMakes mouths at the invisible event,\nExposing what is mortal and unsure\nTo all that fortune, death, and danger dare,\nEven for an eggshell. Rightly to be great\nIs not to stir without great argument,\nBut greatly to find quarrel in a straw\nWhen honour’s at the stake. How stand I then,\nThat have a father kill’d, a mother stain’d,\nExcitements of my reason and my blood,\nAnd let all sleep, while to my shame I see\nThe imminent death of twenty thousand men\nThat, for a fantasy and trick of fame,\nGo to their graves like beds, fight for a plot\nWhereon the numbers cannot try the cause,\nWhich is not tomb enough and continent\nTo hide the slain? O, from this time forth,\nMy thoughts be bloody or be nothing worth.",
         "[_Exit._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 15,
@@ -1137,7 +1152,8 @@
         "LAERTES.\nLet this be so;\nHis means of death, his obscure burial,—\nNo trophy, sword, nor hatchment o’er his bones,\nNo noble rite, nor formal ostentation,—\nCry to be heard, as ’twere from heaven to earth,\nThat I must call’t in question.",
         "KING.\nSo you shall.\nAnd where th’offence is let the great axe fall.\nI pray you go with me.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 16,
@@ -1156,7 +1172,8 @@
         "HORATIO.\n[_Reads._] ‘Horatio, when thou shalt have overlooked this, give these\nfellows some means to the King. They have letters for him. Ere we were\ntwo days old at sea, a pirate of very warlike appointment gave us\nchase. Finding ourselves too slow of sail, we put on a compelled\nvalour, and in the grapple I boarded them. On the instant they got\nclear of our ship, so I alone became their prisoner. They have dealt\nwith me like thieves of mercy. But they knew what they did; I am to do\na good turn for them. Let the King have the letters I have sent, and\nrepair thou to me with as much haste as thou wouldst fly death. I have\nwords to speak in thine ear will make thee dumb; yet are they much too\nlight for the bore of the matter. These good fellows will bring thee\nwhere I am. Rosencrantz and Guildenstern hold their course for England:\nof them I have much to tell thee. Farewell.\n     He that thou knowest thine,\n     HAMLET.’",
         "Come, I will give you way for these your letters,\nAnd do’t the speedier, that you may direct me\nTo him from whom you brought them.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 17,
@@ -1212,11 +1229,12 @@
         "[_Exit._]",
         "KING.\nLet’s follow, Gertrude;\nHow much I had to do to calm his rage!\nNow fear I this will give it start again;\nTherefore let’s follow.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT IV"
     },
     {
       "index": 18,
-      "title": "ACT V, SCENE I. A churchyard.",
+      "title": "SCENE I. A churchyard.",
       "paragraphs": [
         "SCENE I. A churchyard.",
         "Enter two Clowns with spades, &c.",
@@ -1345,7 +1363,8 @@
         "[_Exit Horatio._]",
         "[_To Laertes_]\nStrengthen your patience in our last night’s speech;\nWe’ll put the matter to the present push.—\nGood Gertrude, set some watch over your son.\nThis grave shall have a living monument.\nAn hour of quiet shortly shall we see;\nTill then in patience our proceeding be.",
         "[_Exeunt._]"
-      ]
+      ],
+      "part": "ACT V"
     },
     {
       "index": 19,
@@ -1528,7 +1547,8 @@
         "FORTINBRAS.\nLet four captains\nBear Hamlet like a soldier to the stage,\nFor he was likely, had he been put on,\nTo have prov’d most royally; and for his passage,\nThe soldiers’ music and the rites of war\nSpeak loudly for him.\nTake up the bodies. Such a sight as this\nBecomes the field, but here shows much amiss.\nGo, bid the soldiers shoot.",
         "[_A dead march._]",
         "[_Exeunt, bearing off the bodies, after which a peal of ordnance is\nshot off._]"
-      ]
+      ],
+      "part": "ACT V"
     }
   ],
   "translations": {

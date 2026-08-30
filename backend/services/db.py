@@ -727,7 +727,7 @@ async def get_frozen_chapters(book_id: int) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT chapter_index, title, text, role FROM book_chapters "
+            "SELECT chapter_index, title, text, role, part FROM book_chapters "
             "WHERE book_id = ? ORDER BY chapter_index",
             (book_id,),
         ) as cur:

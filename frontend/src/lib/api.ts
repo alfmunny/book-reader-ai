@@ -168,6 +168,12 @@ export interface BookChapter {
    * this is absent for anything split at runtime.
    */
   role?: string | null;
+  /**
+   * The part, act or book this chapter belongs to, verbatim from the source
+   * ("ACT I", "PREMIÈRE PARTIE"). Null for a chapter belonging to no part —
+   * a book without parts, or Crime and Punishment's epilogue (#2745 Phase 2).
+   */
+  part?: string | null;
 }
 
 /** An event streamed from GET /books/:id/import-stream. */

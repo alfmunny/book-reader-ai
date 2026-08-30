@@ -931,6 +931,53 @@ def test_split_sql_trailing_whitespace_after_semicolon_not_added():
     assert all(s.strip() for s in stmts)  # no empty or whitespace-only statements
 
 
+def test_split_sql_semicolon_inside_a_string_literal_is_not_a_terminator():
+    """A `;` inside quotes belongs to the value, not to the statement.
+
+    Migration 052 guards on Moby Dick's real title, `MOBY-DICK; or, THE WHALE.`.
+    Split on that semicolon and SQLite sees `... title = 'MOBY-DICK` and dies on
+    an unrecognized token.
+    """
+    from services.migrations import _split_sql_statements
+    sql = "UPDATE t SET role = 'a' WHERE title = 'MOBY-DICK; or, THE WHALE.';"
+    stmts = _split_sql_statements(sql)
+    assert len(stmts) == 1
+    assert stmts[0].endswith("'MOBY-DICK; or, THE WHALE.'")
+
+
+def test_split_sql_apostrophe_in_a_comment_does_not_open_a_string():
+    """Comments are prose, and prose has apostrophes.
+
+    Migration 010 says `-- that don't specify a model`. Treat that quote as the
+    start of a literal and everything up to the next quote — the whole CREATE
+    TABLE — is swallowed into one unrunnable statement.
+    """
+    from services.migrations import _split_sql_statements
+    sql = "-- callers that don't specify a model\nCREATE TABLE a (m TEXT DEFAULT '');\nDROP TABLE b;"
+    stmts = _split_sql_statements(sql)
+    assert len(stmts) == 2
+    assert stmts[0].startswith("CREATE TABLE a")
+    assert stmts[1] == "DROP TABLE b"
+
+
+def test_split_sql_double_dash_inside_a_string_is_not_a_comment():
+    """`--` in a value must survive; stripping it would truncate the statement."""
+    from services.migrations import _split_sql_statements
+    stmts = _split_sql_statements("UPDATE t SET title = 'well -- almost' WHERE id = 1;")
+    assert len(stmts) == 1
+    assert "well -- almost" in stmts[0]
+    assert stmts[0].endswith("id = 1")
+
+
+def test_split_sql_escaped_quote_does_not_end_the_literal():
+    """SQLite escapes a quote by doubling it — `'don''t'` is one string."""
+    from services.migrations import _split_sql_statements
+    stmts = _split_sql_statements("UPDATE t SET a = 'don''t; stop' WHERE id = 1;\nDROP TABLE b;")
+    assert len(stmts) == 2
+    assert "'don''t; stop'" in stmts[0]
+    assert stmts[1] == "DROP TABLE b"
+
+
 async def test_migration_025_unique_constraint_enforced(tmp_db):
     """user_book_chapters (book_id, chapter_index) UNIQUE must reject duplicates."""
     await run_migrations(tmp_db)
@@ -2244,3 +2291,111 @@ async def test_migration_046_creates_the_published_index(tmp_db):
             "SELECT name FROM sqlite_master WHERE type='index' AND name='book_freeze_published'"
         ) as cur:
             assert await cur.fetchone() is not None
+
+
+# ── 052: apply the declared front-matter labels to existing rows ─────────────
+
+_M052 = "052_label_frontmatter"
+
+
+async def _seed_frontmatter_book(db, book_id: int, title: str):
+    await db.execute("PRAGMA foreign_keys = OFF")
+    await db.execute(
+        "INSERT OR IGNORE INTO books (id, title, images) VALUES (?, 'T', '[]')", (book_id,)
+    )
+    await db.execute(
+        "INSERT INTO book_chapters (book_id, chapter_index, title, text) VALUES (?, 0, ?, 'x')",
+        (book_id, title),
+    )
+    await db.execute(
+        "INSERT INTO book_chapters (book_id, chapter_index, title, text) VALUES (?, 1, 'Real', 'y')",
+        (book_id,),
+    )
+
+
+async def _rerun_052(tmp_db):
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M052,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_052_labels_the_declared_chapters(tmp_db):
+    """Books ingested before #2763 carry NULL, so the Front matter group never
+    appears for them — this is what makes the feature visible."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_book(db, 345, "TITLE PAGE")
+        await _seed_frontmatter_book(db, 2554, "Translated By Constance Garnett")
+        await _seed_frontmatter_book(db, 2701, "MOBY-DICK; or, THE WHALE.")
+        await db.commit()
+
+    await _rerun_052(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT book_id, role FROM book_chapters WHERE chapter_index = 0 ORDER BY book_id"
+        ) as cur:
+            assert await cur.fetchall() == [
+                (345, "frontmatter"), (2554, "frontmatter"), (2701, "frontmatter"),
+            ]
+
+
+async def test_migration_052_leaves_the_body_alone(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_book(db, 345, "TITLE PAGE")
+        await db.commit()
+    await _rerun_052(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute(
+            "SELECT role FROM book_chapters WHERE book_id = 345 AND chapter_index = 1"
+        ) as cur:
+            assert (await cur.fetchone())[0] is None
+
+
+async def test_migration_052_labels_nothing_when_the_title_does_not_match(tmp_db):
+    """The guard that matters. If a split shifted and index 0 is now a real
+    chapter, labelling it would hide part of the work — far worse than leaving a
+    title page visible."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_book(db, 345, "CHAPTER I JONATHAN HARKER'S JOURNAL")
+        await db.commit()
+    await _rerun_052(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT role FROM book_chapters WHERE book_id = 345") as cur:
+            assert [r[0] for r in await cur.fetchall()] == [None, None]
+
+
+async def test_migration_052_does_not_label_undeclared_books(tmp_db):
+    """Only the audited set. Dorian Gray's PREFACE is Wilde's, part of the work."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_frontmatter_book(db, 174, "THE PREFACE")
+        await db.commit()
+    await _rerun_052(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        async with db.execute("SELECT role FROM book_chapters WHERE book_id = 174") as cur:
+            assert all(r[0] is None for r in await cur.fetchall())
+
+
+async def test_migration_052_matches_the_declared_overrides(tmp_db):
+    """The migration and chapter_split_overrides.py must not drift: a re-ingest
+    rewrites role from the artifact, so a book declared in one and not the other
+    would flip its label depending on which ran last."""
+    from scripts.chapter_split_overrides import OVERRIDES
+
+    declared = {
+        (bid, entry["index"], entry["expect_title"])
+        for bid, spec in OVERRIDES.items()
+        for entry in spec.get("frontmatter", [])
+    }
+    path = os.path.join(os.path.dirname(__file__), "..", "migrations", "052_label_frontmatter.sql")
+    sql = open(path, encoding="utf-8").read()
+    for book_id, index, title in declared:
+        assert f"book_id = {book_id} AND chapter_index = {index}" in sql, f"{book_id} missing"
+        assert title.replace("'", "''") in sql, f"{book_id} title guard missing"

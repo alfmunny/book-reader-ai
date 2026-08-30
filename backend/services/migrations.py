@@ -33,56 +33,81 @@ def _split_sql_statements(sql: str) -> list[str]:
     triggers) intact — trigger bodies contain `;` separators that must not
     terminate the outer CREATE TRIGGER statement.
 
-    Line comments (`-- ...`) are stripped first so semicolons inside
-    comments don't produce spurious empty/invalid fragments (#544).
-    """
-    sql_no_comments = re.sub(r"--[^\n]*", "", sql)
+    Line comments (`-- ...`) are skipped so semicolons inside them don't produce
+    spurious empty/invalid fragments (#544), and quoted strings are consumed
+    whole so a `;` or `--` inside one is never read as a terminator or a
+    comment — Moby Dick's title really is `MOBY-DICK; or, THE WHALE.`.
 
+    Both are resolved in a single left-to-right scan, because neither pass is
+    correct on its own: strip comments first and a `--` inside a string eats the
+    rest of the line; find strings first and an apostrophe in a comment
+    (`don't specify a model`, migration 010) opens a literal that swallows every
+    statement up to the next quote.
+    """
     statements: list[str] = []
     current: list[str] = []
     in_trigger = 0  # BEGIN/END nesting depth
     i = 0
-    n = len(sql_no_comments)
+    n = len(sql)
 
-    # Walk token-by-token on word boundaries to detect BEGIN/END
-    # (case-insensitive). Semicolons while in_trigger>0 are kept in current.
-    word_re = re.compile(r"\b(BEGIN|END)\b", re.IGNORECASE)
+    # Identifiers, so BEGIN/END are only recognised as whole words.
+    word_re = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
+
     while i < n:
-        m = word_re.search(sql_no_comments, i)
-        # Find the next ';' in the remaining text (tracked for splitting).
-        next_semi = sql_no_comments.find(";", i)
+        ch = sql[i]
 
-        # No more BEGIN/END tokens ahead of the next ';' — process the
-        # semicolon at the top level (or if none, consume the rest).
-        if not m or (next_semi != -1 and next_semi < m.start()):
-            if next_semi == -1:
-                current.append(sql_no_comments[i:])
-                break
-            current.append(sql_no_comments[i:next_semi])
-            if in_trigger > 0:
-                current.append(";")  # keep inner semi; it's part of the trigger body
-                i = next_semi + 1
-                continue
-            statements.append("".join(current).strip())
-            current = []
-            i = next_semi + 1
+        # A quoted run: '...' for literals, "..." for identifiers. A doubled
+        # quote is an escaped one and stays inside. An unterminated quote runs
+        # to the end, and SQLite reports it far better than we could.
+        if ch in "'\"":
+            j = i + 1
+            while j < n:
+                if sql[j] == ch:
+                    if j + 1 < n and sql[j + 1] == ch:
+                        j += 2
+                        continue
+                    j += 1
+                    break
+                j += 1
+            current.append(sql[i:j])
+            i = j
             continue
 
-        # Consume up through the BEGIN/END token as part of current.
-        current.append(sql_no_comments[i:m.end()])
-        if m.group(0).upper() == "BEGIN":
-            in_trigger += 1
-        else:
-            # END — matches a BEGIN. Only semantically relevant inside trigger bodies.
-            if in_trigger > 0:
-                in_trigger -= 1
-        i = m.end()
+        # Line comment: drop it, but keep the newline so tokens stay apart.
+        if sql.startswith("--", i):
+            newline = sql.find("\n", i)
+            i = n if newline == -1 else newline
+            continue
 
-    if current:
-        stmt = "".join(current).strip()
-        if stmt:
-            statements.append(stmt)
-    return [s for s in statements if s]
+        if ch == ";":
+            if in_trigger > 0:
+                current.append(";")  # part of the trigger body
+            else:
+                stmt = "".join(current).strip()
+                if stmt:
+                    statements.append(stmt)
+                current = []
+            i += 1
+            continue
+
+        word = word_re.match(sql, i)
+        if word:
+            keyword = word.group(0).upper()
+            if keyword == "BEGIN":
+                in_trigger += 1
+            elif keyword == "END" and in_trigger > 0:
+                in_trigger -= 1
+            current.append(word.group(0))
+            i = word.end()
+            continue
+
+        current.append(ch)
+        i += 1
+
+    stmt = "".join(current).strip()
+    if stmt:
+        statements.append(stmt)
+    return statements
 
 
 async def run(db_path: str) -> list[str]:

@@ -4,7 +4,7 @@
 import fs from "fs";
 import path from "path";
 
-const SOURCE_PATH = path.resolve(__dirname, "../app/upload/page.tsx");
+const SOURCE_PATH = path.resolve(__dirname, "../app/(shell)/upload/page.tsx");
 const SOURCE = fs.readFileSync(SOURCE_PATH, "utf8");
 
 describe("Upload page — quota fetch error state (issue #2423)", () => {

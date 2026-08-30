@@ -46,13 +46,13 @@ function checkFile(rel: string, label: string) {
 }
 
 const FILES: [string, string][] = [
-  ["app/vocabulary/page.tsx", "VocabularyPage"],
-  ["app/notes/page.tsx", "NotesPage"],
-  ["app/notes/[bookId]/page.tsx", "NotesDetailPage"],
-  ["app/search/page.tsx", "SearchPage"],
-  ["app/profile/page.tsx", "ProfilePage"],
-  ["app/decks/page.tsx", "DecksPage"],
-  ["app/decks/new/page.tsx", "DecksNewPage"],
+  ["app/(shell)/vocabulary/page.tsx", "VocabularyPage"],
+  ["app/(shell)/notes/page.tsx", "NotesPage"],
+  ["app/(shell)/notes/[bookId]/page.tsx", "NotesDetailPage"],
+  ["app/(shell)/search/page.tsx", "SearchPage"],
+  ["app/(shell)/profile/page.tsx", "ProfilePage"],
+  ["app/(shell)/decks/page.tsx", "DecksPage"],
+  ["app/(shell)/decks/new/page.tsx", "DecksNewPage"],
   ["components/SentenceReader.tsx", "SentenceReader"],
   ["components/BookCard.tsx", "BookCard"],
   ["components/InsightChat.tsx", "InsightChat"],

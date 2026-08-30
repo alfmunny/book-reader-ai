@@ -12,7 +12,7 @@ function read(rel: string): string {
 }
 
 describe("Profile decks-due-today panel", () => {
-  const src = read("src/app/profile/page.tsx");
+  const src = read("src/app/(shell)/profile/page.tsx");
 
   it("imports listDecks and DeckSummary", () => {
     expect(src).toMatch(/listDecks/);

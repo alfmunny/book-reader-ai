@@ -7,11 +7,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 const decksSrc = fs.readFileSync(
-  path.join(__dirname, "../app/decks/[deckId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"),
   "utf8",
 );
 const vocabSrc = fs.readFileSync(
-  path.join(__dirname, "../app/vocabulary/page.tsx"),
+  path.join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 

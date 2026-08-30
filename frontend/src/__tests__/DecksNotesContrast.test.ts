@@ -6,19 +6,19 @@ import * as fs from "fs";
 import * as path from "path";
 
 const decksPage = fs.readFileSync(
-  path.join(__dirname, "../app/decks/page.tsx"),
+  path.join(__dirname, "../app/(shell)/decks/page.tsx"),
   "utf8",
 );
 const deckDetailPage = fs.readFileSync(
-  path.join(__dirname, "../app/decks/[deckId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"),
   "utf8",
 );
 const notesPage = fs.readFileSync(
-  path.join(__dirname, "../app/notes/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/page.tsx"),
   "utf8",
 );
 const notesDetailPage = fs.readFileSync(
-  path.join(__dirname, "../app/notes/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 

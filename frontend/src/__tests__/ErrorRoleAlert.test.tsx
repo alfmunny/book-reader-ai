@@ -79,7 +79,7 @@ test("SeedPopularButton error has role=alert when start fails", async () => {
 });
 
 // --- upload/page: unsupported file type triggers error ---
-import UploadPage from "@/app/upload/page";
+import UploadPage from "@/app/(shell)/upload/page";
 
 test("upload/page error has role=alert when unsupported file type chosen", async () => {
   render(<UploadPage />);

@@ -4,13 +4,13 @@ import path from "path";
 const errorPage = fs.readFileSync(
   path.resolve(__dirname, "../app/error.tsx"), "utf8");
 const pendingPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/pending/page.tsx"), "utf8");
+  path.resolve(__dirname, "../app/(shell)/pending/page.tsx"), "utf8");
 const uploadPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/upload/page.tsx"), "utf8");
+  path.resolve(__dirname, "../app/(shell)/upload/page.tsx"), "utf8");
 const chaptersPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/upload/[bookId]/chapters/page.tsx"), "utf8");
+  path.resolve(__dirname, "../app/(shell)/upload/[bookId]/chapters/page.tsx"), "utf8");
 const importPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/import/[bookId]/page.tsx"), "utf8");
+  path.resolve(__dirname, "../app/(shell)/import/[bookId]/page.tsx"), "utf8");
 
 const panelSrc = fs.readFileSync(
   path.resolve(__dirname, "../components/ChapterAuditPanel.tsx"), "utf8");

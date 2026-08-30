@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const profileSrc = fs.readFileSync(path.join(__dirname, "../app/profile/page.tsx"), "utf8");
+const profileSrc = fs.readFileSync(path.join(__dirname, "../app/(shell)/profile/page.tsx"), "utf8");
 const queueTabSrc = fs.readFileSync(path.join(__dirname, "../components/QueueTab.tsx"), "utf8");
 
 describe("API key / token inputs have autoComplete=off and focus ring", () => {

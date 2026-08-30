@@ -6,7 +6,6 @@ import BookCard from "@/components/BookCard";
 import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
 import ReadingStats from "@/components/ReadingStats";
-import SiteHeader from "@/components/SiteHeader";
 import GeneratedCover from "@/components/GeneratedCover";
 import { FireIcon, ArrowRightIcon, BookOpenIcon, NoteIcon, VocabIcon, BookCoverPlaceholderIcon } from "@/components/Icons";
 import Link from "next/link";
@@ -82,7 +81,6 @@ export default function Bookshelf() {
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <SiteHeader current="bookshelf" />
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <div className="space-y-8">

@@ -10,7 +10,7 @@ function read(rel: string): string {
 }
 
 describe("DeckDetailPage AddWordPicker — aria-live announcement on add (issue #2398)", () => {
-  const src = read("src/app/decks/[deckId]/page.tsx");
+  const src = read("src/app/(shell)/decks/[deckId]/page.tsx");
 
   // Find the AddWordPicker function body (from its declaration to the next top-level function).
   const pickerStart = src.indexOf("function AddWordPicker");

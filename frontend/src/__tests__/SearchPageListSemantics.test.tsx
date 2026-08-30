@@ -25,7 +25,7 @@ jest.mock("next/link", () => {
   return { __esModule: true, default: Link };
 });
 
-import SearchPage from "@/app/search/page";
+import SearchPage from "@/app/(shell)/search/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

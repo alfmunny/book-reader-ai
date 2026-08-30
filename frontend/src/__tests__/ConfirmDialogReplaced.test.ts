@@ -6,12 +6,12 @@ import fs from "fs";
 import path from "path";
 
 const notesPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/notes/[bookId]/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 
 const homePage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/bookshelf/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/bookshelf/page.tsx"),
   "utf8",
 );
 
@@ -24,7 +24,7 @@ describe("ConfirmDialogReplaced", () => {
     expect(notesPage).not.toContain('window.confirm("Delete this insight?")');
   });
 
-  it("app/page.tsx has no confirm() for library remove", () => {
+  it("app/(shell)/page.tsx has no confirm() for library remove", () => {
     expect(homePage).not.toMatch(/confirm\(`Remove/);
   });
 
@@ -32,7 +32,7 @@ describe("ConfirmDialogReplaced", () => {
     expect(notesPage).toContain('import UndoToast from "@/components/UndoToast"');
   });
 
-  it("app/page.tsx imports UndoToast", () => {
+  it("app/(shell)/page.tsx imports UndoToast", () => {
     expect(homePage).toContain('import UndoToast from "@/components/UndoToast"');
   });
 });

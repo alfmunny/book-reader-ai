@@ -31,13 +31,13 @@ function hasDistinctTitle(src: string): boolean {
 describe("WCAG 2.4.2 — per-page <title> (closes #1841)", () => {
   const staticLayouts = [
     "layout.tsx",                      // root → My Library (template default)
-    "vocabulary/layout.tsx",
+    "(shell)/vocabulary/layout.tsx",
     "vocabulary/flashcards/layout.tsx",
-    "notes/layout.tsx",
-    "profile/layout.tsx",
-    "upload/layout.tsx",
+    "(shell)/notes/layout.tsx",
+    "(shell)/profile/layout.tsx",
+    "(shell)/upload/layout.tsx",
     "login/layout.tsx",
-    "search/layout.tsx",
+    "(shell)/search/layout.tsx",
   ];
 
   staticLayouts.forEach((rel) => {
@@ -54,18 +54,18 @@ describe("WCAG 2.4.2 — per-page <title> (closes #1841)", () => {
   });
 
   it("notes/[bookId]/layout.tsx exports generateMetadata for dynamic book title", () => {
-    const src = readLayout("notes/[bookId]/layout.tsx");
+    const src = readLayout("(shell)/notes/[bookId]/layout.tsx");
     expect(src).toMatch(/export\s+(async\s+)?function\s+generateMetadata/);
   });
 });
 
 describe("WCAG 2.4.2 — follow-up page titles (closes #1844)", () => {
   const staticLayouts = [
-    "pending/layout.tsx",
-    "decks/layout.tsx",
-    "decks/new/layout.tsx",
-    "import/[bookId]/layout.tsx",
-    "upload/[bookId]/chapters/layout.tsx",
+    "(shell)/pending/layout.tsx",
+    "(shell)/decks/layout.tsx",
+    "(shell)/decks/new/layout.tsx",
+    "(shell)/import/[bookId]/layout.tsx",
+    "(shell)/upload/[bookId]/chapters/layout.tsx",
   ];
 
   staticLayouts.forEach((rel) => {
@@ -77,7 +77,7 @@ describe("WCAG 2.4.2 — follow-up page titles (closes #1844)", () => {
   });
 
   it("decks/[deckId]/layout.tsx exports generateMetadata for dynamic deck title", () => {
-    const src = readLayout("decks/[deckId]/layout.tsx");
+    const src = readLayout("(shell)/decks/[deckId]/layout.tsx");
     expect(src).toMatch(/export\s+(async\s+)?function\s+generateMetadata/);
   });
 });

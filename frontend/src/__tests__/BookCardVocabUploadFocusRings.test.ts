@@ -15,7 +15,7 @@ const vocabTooltipSrc = fs.readFileSync(
   "utf8"
 );
 
-const uploadSrc = ["../app/upload/[bookId]/chapters/page.tsx", "../components/ChapterAuditPanel.tsx"].map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
+const uploadSrc = ["../app/(shell)/upload/[bookId]/chapters/page.tsx", "../components/ChapterAuditPanel.tsx"].map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 
 describe("BookCard focus rings (closes #2198)", () => {
   it("Remove book button has focus ring", () => {

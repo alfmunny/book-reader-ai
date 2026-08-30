@@ -43,8 +43,8 @@ jest.mock("@/components/DeckCard", () => {
   return DeckCard;
 });
 
-import NotesPage from "@/app/notes/page";
-import DecksPage from "@/app/decks/page";
+import NotesPage from "@/app/(shell)/notes/page";
+import DecksPage from "@/app/(shell)/decks/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

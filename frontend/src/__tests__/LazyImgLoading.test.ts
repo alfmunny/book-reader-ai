@@ -29,7 +29,7 @@ describe("loading='lazy' on remote images", () => {
   });
 
   it("page.tsx user avatar img has loading=lazy", () => {
-    const content = ["components/SiteHeader.tsx", "app/page.tsx", "app/bookshelf/page.tsx"].map(src).join("\n");
+    const content = ["components/SiteHeader.tsx", "app/(shell)/page.tsx", "app/(shell)/bookshelf/page.tsx"].map(src).join("\n");
     const idx = content.indexOf("src={session.backendUser.picture}");
     expect(idx).toBeGreaterThan(-1);
     const window = content.slice(idx, idx + 200);
@@ -37,7 +37,7 @@ describe("loading='lazy' on remote images", () => {
   });
 
   it("page.tsx Continue Reading cover img has loading=lazy", () => {
-    const content = ["components/SiteHeader.tsx", "app/page.tsx", "app/bookshelf/page.tsx"].map(src).join("\n");
+    const content = ["components/SiteHeader.tsx", "app/(shell)/page.tsx", "app/(shell)/bookshelf/page.tsx"].map(src).join("\n");
     const idx = content.indexOf("src={recentBooks[0].cover}");
     expect(idx).toBeGreaterThan(-1);
     const window = content.slice(idx, idx + 200);

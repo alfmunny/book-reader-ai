@@ -2,15 +2,15 @@ import fs from "fs";
 import path from "path";
 
 const vocabPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/vocabulary/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 const deckDetailPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/decks/[deckId]/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"),
   "utf8",
 );
 const notesBookPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/notes/[bookId]/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 const deckCard = fs.readFileSync(

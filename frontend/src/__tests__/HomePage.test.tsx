@@ -6,6 +6,7 @@
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import ShellLayout from "@/app/(shell)/layout";
 
 // ─── next-auth ────────────────────────────────────────────────────────────────
 const mockUseSession = jest.fn();
@@ -15,8 +16,10 @@ jest.mock("next-auth/react", () => ({
 
 // ─── next/navigation ─────────────────────────────────────────────────────────
 const mockPush = jest.fn();
+const mockNav = { pathname: "/" };
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => mockNav.pathname,
 }));
 
 // ─── @/lib/api ────────────────────────────────────────────────────────────────
@@ -108,8 +111,8 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 let Home: React.ComponentType;
 let Bookshelf: React.ComponentType;
 beforeAll(async () => {
-  Home = (await import("@/app/page")).default;
-  Bookshelf = (await import("@/app/bookshelf/page")).default;
+  Home = (await import("@/app/(shell)/page")).default;
+  Bookshelf = (await import("@/app/(shell)/bookshelf/page")).default;
 });
 
 beforeEach(() => {
@@ -126,13 +129,15 @@ beforeEach(() => {
 
 // ─── Render helper ────────────────────────────────────────────────────────────
 async function renderHome() {
-  render(<Home />);
+  mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
   await act(flushPromises);
   await act(flushPromises);
 }
 
 async function renderBookshelf() {
-  render(<Bookshelf />);
+  mockNav.pathname = "/bookshelf";
+  render(<ShellLayout><Bookshelf /></ShellLayout>);
   await act(flushPromises);
   await act(flushPromises);
 }

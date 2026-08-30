@@ -20,7 +20,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import DiscoverPage from "@/app/discover/page";
+import DiscoverPage from "@/app/(shell)/discover/page";
 
 const FEED = [
   {

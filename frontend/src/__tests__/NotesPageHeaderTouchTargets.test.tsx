@@ -30,7 +30,7 @@ jest.mock("@/lib/api", () => ({
   exportVocabularyToObsidian: jest.fn(),
 }));
 
-import BookNotesPage from "@/app/notes/[bookId]/page";
+import BookNotesPage from "@/app/(shell)/notes/[bookId]/page";
 
 afterEach(() => jest.clearAllMocks());
 

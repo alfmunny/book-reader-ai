@@ -12,15 +12,15 @@ import * as path from "path";
 const srcDir = path.join(__dirname, "..");
 
 const decksPage = fs.readFileSync(
-  path.join(srcDir, "app/decks/page.tsx"),
+  path.join(srcDir, "app/(shell)/decks/page.tsx"),
   "utf8",
 );
 const deckDetailPage = fs.readFileSync(
-  path.join(srcDir, "app/decks/[deckId]/page.tsx"),
+  path.join(srcDir, "app/(shell)/decks/[deckId]/page.tsx"),
   "utf8",
 );
 const notesPage = fs.readFileSync(
-  path.join(srcDir, "app/notes/[bookId]/page.tsx"),
+  path.join(srcDir, "app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 

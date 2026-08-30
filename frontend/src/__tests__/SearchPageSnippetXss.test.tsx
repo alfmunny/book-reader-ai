@@ -19,7 +19,7 @@ jest.mock("@/lib/api", () => ({
 
 // isomorphic-dompurify works in Node/jsdom — no mock needed; we test real behaviour.
 
-import SearchPage from "@/app/search/page";
+import SearchPage from "@/app/(shell)/search/page";
 
 describe("SnippetHtml XSS sanitization (regression #1027)", () => {
   beforeEach(() => {

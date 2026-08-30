@@ -6,10 +6,10 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const pages: Array<[string, string, RegExp]> = [
-  ["pending/page.tsx", "Pending", /pending/i],
-  ["upload/page.tsx", "Upload", /upload/i],
-  ["upload/[bookId]/chapters/page.tsx", "Upload chapters", /upload|chapter/i],
-  ["decks/new/page.tsx", "New Deck", /deck/i],
+  ["(shell)/pending/page.tsx", "Pending", /pending/i],
+  ["(shell)/upload/page.tsx", "Upload", /upload/i],
+  ["(shell)/upload/[bookId]/chapters/page.tsx", "Upload chapters", /upload|chapter/i],
+  ["(shell)/decks/new/page.tsx", "New Deck", /deck/i],
   ["admin/page.tsx", "Admin", /admin/i],
   ["admin/books/page.tsx", "Admin: Books", /admin|book/i],
   ["admin/audio/page.tsx", "Admin: Audio", /admin|audio/i],

@@ -11,7 +11,7 @@ function read(rel: string): string {
 }
 
 describe("Deck detail page — add-word failure UX (#2614)", () => {
-  const src = read("src/app/decks/[deckId]/page.tsx");
+  const src = read("src/app/(shell)/decks/[deckId]/page.tsx");
 
   it("declares an addMemberErrorMsg state for add failures", () => {
     expect(src).toMatch(/addMemberErrorMsg/);

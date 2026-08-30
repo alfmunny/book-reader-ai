@@ -7,8 +7,8 @@ import path from "path";
 
 const homePage = [
   "src/components/SiteHeader.tsx",
-  "src/app/page.tsx",
-  "src/app/bookshelf/page.tsx",
+  "src/app/(shell)/page.tsx",
+  "src/app/(shell)/bookshelf/page.tsx",
 ].map((f) => fs.readFileSync(path.join(process.cwd(), f), "utf8")).join("\n");
 
 describe("Home page heading hierarchy", () => {

@@ -2,15 +2,15 @@ import fs from "fs";
 import path from "path";
 
 const decksPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/decks/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/decks/page.tsx"),
   "utf8",
 );
 const decksNew = fs.readFileSync(
-  path.resolve(__dirname, "../app/decks/new/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/decks/new/page.tsx"),
   "utf8",
 );
 const notesPage = fs.readFileSync(
-  path.resolve(__dirname, "../app/notes/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/notes/page.tsx"),
   "utf8",
 );
 const flashcardsPage = fs.readFileSync(

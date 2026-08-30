@@ -8,7 +8,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const src = readFileSync(
-  join(process.cwd(), "src/app/profile/page.tsx"),
+  join(process.cwd(), "src/app/(shell)/profile/page.tsx"),
   "utf-8"
 );
 

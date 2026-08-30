@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/notes/page.tsx — functions not covered by existing tests.
+ * Coverage tests for app/(shell)/notes/page.tsx — functions not covered by existing tests.
  * Closes #1993 — targets:
  *   FN:184 "Browse books" onClick (empty-state, books.length === 0) → router.push("/")
  *   FN:196 "Clear search" onClick (filtered empty state) → setSearch("")
@@ -24,7 +24,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import NotesPage from "@/app/notes/page";
+import NotesPage from "@/app/(shell)/notes/page";
 
 const mockGetAllAnnotations = api.getAllAnnotations as jest.MockedFunction<typeof api.getAllAnnotations>;
 const mockGetAllInsights = api.getAllInsights as jest.MockedFunction<typeof api.getAllInsights>;

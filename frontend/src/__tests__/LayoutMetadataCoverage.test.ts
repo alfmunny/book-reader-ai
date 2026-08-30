@@ -13,9 +13,9 @@ const makeParams = <T extends object>(obj: T) => Promise.resolve(obj);
 
 // ─── Deck layout ─────────────────────────────────────────────────────────────
 
-import { generateMetadata as deckMeta } from "@/app/decks/[deckId]/layout";
+import { generateMetadata as deckMeta } from "@/app/(shell)/decks/[deckId]/layout";
 
-describe("app/decks/[deckId]/layout — generateMetadata", () => {
+describe("app/(shell)/decks/[deckId]/layout — generateMetadata", () => {
   let origFetch: typeof global.fetch;
   beforeAll(() => { origFetch = global.fetch; });
   afterAll(() => { global.fetch = origFetch; });
@@ -64,9 +64,9 @@ describe("app/decks/[deckId]/layout — generateMetadata", () => {
 
 // ─── Notes layout ─────────────────────────────────────────────────────────────
 
-import { generateMetadata as notesMeta } from "@/app/notes/[bookId]/layout";
+import { generateMetadata as notesMeta } from "@/app/(shell)/notes/[bookId]/layout";
 
-describe("app/notes/[bookId]/layout — generateMetadata", () => {
+describe("app/(shell)/notes/[bookId]/layout — generateMetadata", () => {
   let origFetch: typeof global.fetch;
   beforeAll(() => { origFetch = global.fetch; });
   afterAll(() => { global.fetch = origFetch; });

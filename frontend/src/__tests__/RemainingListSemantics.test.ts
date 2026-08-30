@@ -1,9 +1,9 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const profile = readFileSync(join(__dirname, "../app/profile/page.tsx"), "utf-8");
-const deckDetail = readFileSync(join(__dirname, "../app/decks/[deckId]/page.tsx"), "utf-8");
-const notesBook = readFileSync(join(__dirname, "../app/notes/[bookId]/page.tsx"), "utf-8");
+const profile = readFileSync(join(__dirname, "../app/(shell)/profile/page.tsx"), "utf-8");
+const deckDetail = readFileSync(join(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"), "utf-8");
+const notesBook = readFileSync(join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"), "utf-8");
 const queueTab = readFileSync(join(__dirname, "../components/QueueTab.tsx"), "utf-8");
 const seedPopular = readFileSync(join(__dirname, "../components/SeedPopularButton.tsx"), "utf-8");
 

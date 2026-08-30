@@ -28,7 +28,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import BookNotesPage from "@/app/notes/[bookId]/page";
+import BookNotesPage from "@/app/(shell)/notes/[bookId]/page";
 
 const ANSWER = "## The wager\n\nA bet over **striving** and error.";
 

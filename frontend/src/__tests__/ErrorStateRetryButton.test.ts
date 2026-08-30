@@ -7,16 +7,16 @@ import fs from "fs";
 import path from "path";
 
 const vocabSrc = fs.readFileSync(
-  path.resolve(__dirname, "../app/vocabulary/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 const notesSrc = fs.readFileSync(
-  path.resolve(__dirname, "../app/notes/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/notes/page.tsx"),
   "utf8",
 );
 const notesBookSrcPath = path.resolve(
   __dirname,
-  "../app/notes/[bookId]/page.tsx",
+  "../app/(shell)/notes/[bookId]/page.tsx",
 );
 const notesBookSrc = fs.readFileSync(notesBookSrcPath, "utf8");
 

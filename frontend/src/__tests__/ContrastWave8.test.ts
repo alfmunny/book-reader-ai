@@ -4,17 +4,17 @@ import path from "path";
 const src = (rel: string) =>
   fs.readFileSync(path.join(process.cwd(), "src", rel), "utf-8");
 
-const uploadPage = src("app/upload/page.tsx");
-const chaptersPage = src("app/upload/[bookId]/chapters/page.tsx");
-const importPage = src("app/import/[bookId]/page.tsx");
+const uploadPage = src("app/(shell)/upload/page.tsx");
+const chaptersPage = src("app/(shell)/upload/[bookId]/chapters/page.tsx");
+const importPage = src("app/(shell)/import/[bookId]/page.tsx");
 const loginPage = src("app/login/page.tsx");
 const sentenceReader = src("components/SentenceReader.tsx");
 const annotationToolbar = src("components/AnnotationToolbar.tsx");
 const annotationsSidebar = src("components/AnnotationsSidebar.tsx");
 const bookDetailModal = src("components/BookDetailModal.tsx");
-const notesBookPage = src("app/notes/[bookId]/page.tsx");
-const deckIdPage = src("app/decks/[deckId]/page.tsx");
-const profilePage = src("app/profile/page.tsx");
+const notesBookPage = src("app/(shell)/notes/[bookId]/page.tsx");
+const deckIdPage = src("app/(shell)/decks/[deckId]/page.tsx");
+const profilePage = src("app/(shell)/profile/page.tsx");
 
 describe("Contrast wave 8 (closes #1369)", () => {
   // ─── Text contrast (WCAG 1.4.3) ────────────────────────────────────────

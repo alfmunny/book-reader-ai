@@ -6,17 +6,17 @@ import fs from "fs";
 import path from "path";
 
 const vocabPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/vocabulary/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 
 const notesOverviewPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/notes/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/notes/page.tsx"),
   "utf8",
 );
 
 const homePage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/page.tsx"),
   "utf8",
 );
 

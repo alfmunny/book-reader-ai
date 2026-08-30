@@ -29,17 +29,17 @@ describe("Secondary skeleton/spinner role=status aria accessibility (WCAG 4.1.3)
   });
 
   it("upload/[bookId]/chapters page has role=status on loading spinner", () => {
-    const src = readSrc("app/upload/[bookId]/chapters/page.tsx");
+    const src = readSrc("app/(shell)/upload/[bookId]/chapters/page.tsx");
     expect(src).toMatch(/role="status"/);
   });
 
   it("upload/[bookId]/chapters page has aria-label on loading spinner", () => {
-    const src = readSrc("app/upload/[bookId]/chapters/page.tsx");
+    const src = readSrc("app/(shell)/upload/[bookId]/chapters/page.tsx");
     expect(src).toMatch(/aria-label="[^"]*[Ll]oad[^"]*"/);
   });
 
   it("notes/[bookId] page has role=status on content spinner", () => {
-    const src = readSrc("app/notes/[bookId]/page.tsx");
+    const src = readSrc("app/(shell)/notes/[bookId]/page.tsx");
     expect(src).toMatch(/role="status"/);
   });
 
@@ -49,7 +49,7 @@ describe("Secondary skeleton/spinner role=status aria accessibility (WCAG 4.1.3)
   });
 
   it("vocabulary page word-list skeleton has role=status and aria-label", () => {
-    const src = readSrc("app/vocabulary/page.tsx");
+    const src = readSrc("app/(shell)/vocabulary/page.tsx");
     expect(src).toMatch(/aria-label="Loading vocabulary"/);
   });
 });

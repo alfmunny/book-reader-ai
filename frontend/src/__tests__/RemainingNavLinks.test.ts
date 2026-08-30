@@ -9,16 +9,16 @@ function readSrc(rel: string): string {
   return fs.readFileSync(path.join(__dirname, "../app", rel), "utf8");
 }
 
-const profileSrc = readSrc("profile/page.tsx");
-const vocabSrc = readSrc("vocabulary/page.tsx");
-const notesListSrc = readSrc("notes/page.tsx");
-const notesBookSrc = readSrc("notes/[bookId]/page.tsx");
-const decksSrc = readSrc("decks/page.tsx");
-const decksNewSrc = readSrc("decks/new/page.tsx");
-const deckDetailSrc = readSrc("decks/[deckId]/page.tsx");
+const profileSrc = readSrc("(shell)/profile/page.tsx");
+const vocabSrc = readSrc("(shell)/vocabulary/page.tsx");
+const notesListSrc = readSrc("(shell)/notes/page.tsx");
+const notesBookSrc = readSrc("(shell)/notes/[bookId]/page.tsx");
+const decksSrc = readSrc("(shell)/decks/page.tsx");
+const decksNewSrc = readSrc("(shell)/decks/new/page.tsx");
+const deckDetailSrc = readSrc("(shell)/decks/[deckId]/page.tsx");
 const adminBooksSrc = readSrc("admin/books/page.tsx");
 const adminUploadsSrc = readSrc("admin/uploads/page.tsx");
-const homeSrc = ["page.tsx", "bookshelf/page.tsx"].map(readSrc).join("\n")
+const homeSrc = ["(shell)/page.tsx", "(shell)/bookshelf/page.tsx"].map(readSrc).join("\n")
   + fs.readFileSync(path.join(__dirname, "../components/SiteHeader.tsx"), "utf8");
 const readerSrc = readSrc("reader/[bookId]/page.tsx");
 

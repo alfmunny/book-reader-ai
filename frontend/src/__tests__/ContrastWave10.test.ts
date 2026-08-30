@@ -35,7 +35,7 @@ describe("WCAG 1.4.3 contrast — text-amber-600 at small sizes (wave 10) (close
   });
   it("upload/[bookId]/chapters/page.tsx has no text-amber-600 at xs/sm", () => {
     expect(
-      countAmber600AtSmallSize(read("app/upload/[bookId]/chapters/page.tsx")),
+      countAmber600AtSmallSize(read("app/(shell)/upload/[bookId]/chapters/page.tsx")),
     ).toBe(0);
   });
 });

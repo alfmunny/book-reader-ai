@@ -10,7 +10,7 @@ function read(rel: string) {
 }
 
 describe("Import page chapter translation progress bar (closes #1251)", () => {
-  const src = read("../app/import/[bookId]/page.tsx");
+  const src = read("../app/(shell)/import/[bookId]/page.tsx");
 
   it("has role=progressbar", () => {
     const idx = src.indexOf("STAGE_LABELS[stage]} progress`}");
@@ -46,7 +46,7 @@ describe("Flashcards study progress bar (closes #1251)", () => {
 });
 
 describe("Upload quota progress bar (closes #1251)", () => {
-  const src = read("../app/upload/page.tsx");
+  const src = read("../app/(shell)/upload/page.tsx");
 
   it("has role=progressbar", () => {
     const idx = src.indexOf("Upload quota");

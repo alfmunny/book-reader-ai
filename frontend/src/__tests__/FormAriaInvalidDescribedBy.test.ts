@@ -6,7 +6,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const decksSrc = readFileSync(
-  join(__dirname, "../app/decks/new/page.tsx"),
+  join(__dirname, "../app/(shell)/decks/new/page.tsx"),
   "utf8",
 );
 const tagEditorSrc = readFileSync(
@@ -14,7 +14,7 @@ const tagEditorSrc = readFileSync(
   "utf8",
 );
 const profileSrc = readFileSync(
-  join(__dirname, "../app/profile/page.tsx"),
+  join(__dirname, "../app/(shell)/profile/page.tsx"),
   "utf8",
 );
 

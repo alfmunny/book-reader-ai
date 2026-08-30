@@ -4,7 +4,7 @@
 import fs from "fs";
 import path from "path";
 
-const SOURCE_PATH = path.resolve(__dirname, "../app/profile/page.tsx");
+const SOURCE_PATH = path.resolve(__dirname, "../app/(shell)/profile/page.tsx");
 const SOURCE = fs.readFileSync(SOURCE_PATH, "utf8");
 
 describe("Profile page — Obsidian settings fetch error state (issue #2424)", () => {

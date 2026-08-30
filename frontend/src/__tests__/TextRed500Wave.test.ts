@@ -8,7 +8,7 @@ const FILES = [
   "app/admin/books/page.tsx",
   "app/admin/audio/page.tsx",
   "app/admin/users/page.tsx",
-  "app/profile/page.tsx",
+  "app/(shell)/profile/page.tsx",
   "components/QueueTab.tsx",
 ];
 

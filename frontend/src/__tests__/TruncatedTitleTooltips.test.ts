@@ -6,7 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const pageSrc = fs.readFileSync(
-  path.join(__dirname, "../app/bookshelf/page.tsx"),
+  path.join(__dirname, "../app/(shell)/bookshelf/page.tsx"),
   "utf8"
 );
 const cardSrc = fs.readFileSync(
@@ -18,7 +18,7 @@ const readerSrc = fs.readFileSync(
   "utf8"
 );
 const profileSrc = fs.readFileSync(
-  path.join(__dirname, "../app/profile/page.tsx"),
+  path.join(__dirname, "../app/(shell)/profile/page.tsx"),
   "utf8"
 );
 const seedSrc = fs.readFileSync(
@@ -30,11 +30,11 @@ const queueTabSrc = fs.readFileSync(
   "utf8"
 );
 const notesSrc = fs.readFileSync(
-  path.join(__dirname, "../app/notes/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/page.tsx"),
   "utf8"
 );
 const deckDetailSrc = fs.readFileSync(
-  path.join(__dirname, "../app/decks/[deckId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"),
   "utf8"
 );
 const deckCardSrc = fs.readFileSync(

@@ -14,15 +14,15 @@ const chapterSummary = fs.readFileSync(
   "utf8",
 );
 const notesPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/notes/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/notes/page.tsx"),
   "utf8",
 );
 const notesBookPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/notes/[bookId]/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 const vocabPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/vocabulary/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 

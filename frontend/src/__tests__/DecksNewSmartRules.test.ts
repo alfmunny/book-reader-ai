@@ -12,7 +12,7 @@ function read(rel: string): string {
 }
 
 describe("Smart-rule builder on /decks/new", () => {
-  const src = read("src/app/decks/new/page.tsx");
+  const src = read("src/app/(shell)/decks/new/page.tsx");
 
   it("smart radio is no longer disabled", () => {
     // Look for the smart radio block; it must NOT contain `disabled`

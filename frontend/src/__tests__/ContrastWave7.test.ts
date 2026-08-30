@@ -4,10 +4,10 @@ import path from "path";
 const readApp = (p: string) =>
   fs.readFileSync(path.resolve(__dirname, `../app/${p}`), "utf8");
 
-const decksNew      = readApp("decks/new/page.tsx");
+const decksNew      = readApp("(shell)/decks/new/page.tsx");
 const adminUploads  = readApp("admin/uploads/page.tsx");
 const adminBooks    = readApp("admin/books/page.tsx");
-const searchPage    = readApp("search/page.tsx");
+const searchPage    = readApp("(shell)/search/page.tsx");
 
 describe("Contrast wave 7 (closes #1364)", () => {
   it("decks/new label hints use text-stone-600 not text-stone-400", () => {

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getMe } from "@/lib/api";
 import { SearchBar } from "@/components/SearchBar";
@@ -12,9 +13,24 @@ import { SettingsIcon } from "@/components/Icons";
  * Extracted when the personal collection moved out of the homepage tab strip and
  * onto its own /bookshelf route (#2711) — the nav now has to render on both pages
  * rather than living inline in the homepage.
+ *
+ * Rendered once by `app/(shell)/layout.tsx` for every in-app route. The active
+ * tab is derived from the pathname rather than passed in: when each page mounted
+ * this itself it also had to declare which tab was current, so Upload, Notes,
+ * Word List and Admin were hardcoded inactive — they had no page that rendered
+ * the nav to light them up.
  */
-export default function SiteHeader({ current }: { current: "home" | "bookshelf" | "discover" }) {
+
+/** Is `href` the section the current pathname belongs to? "/" must match exactly. */
+export function isActiveNav(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export default function SiteHeader() {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -73,32 +89,32 @@ export default function SiteHeader({ current }: { current: "home" | "bookshelf" 
 
       <nav aria-label="Main navigation" className="border-b border-amber-200 bg-white/40 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 md:px-6 flex gap-1 items-center overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          <Link href="/" aria-current={current === "home" ? "page" : undefined} className={linkClass(current === "home")}>
+          <Link href="/" aria-current={isActiveNav(pathname, "/") ? "page" : undefined} className={linkClass(isActiveNav(pathname, "/"))}>
             Home
           </Link>
           {status === "authenticated" && (
             <Link
               href="/bookshelf"
-              aria-current={current === "bookshelf" ? "page" : undefined}
-              className={linkClass(current === "bookshelf")}
+              aria-current={isActiveNav(pathname, "/bookshelf") ? "page" : undefined}
+              className={linkClass(isActiveNav(pathname, "/bookshelf"))}
             >
               Your Bookshelf
             </Link>
           )}
           {status === "authenticated" && (
-            <Link href="/upload" className={linkClass(false)}>Upload</Link>
+            <Link href="/upload" aria-current={isActiveNav(pathname, "/upload") ? "page" : undefined} className={linkClass(isActiveNav(pathname, "/upload"))}>Upload</Link>
           )}
           {status === "authenticated" && (
-            <Link href="/discover" aria-current={current === "discover" ? "page" : undefined} className={linkClass(current === "discover")}>Discover</Link>
+            <Link href="/discover" aria-current={isActiveNav(pathname, "/discover") ? "page" : undefined} className={linkClass(isActiveNav(pathname, "/discover"))}>Discover</Link>
           )}
           {status === "authenticated" && (
-            <Link href="/notes" className={linkClass(false)}>Your Notes</Link>
+            <Link href="/notes" aria-current={isActiveNav(pathname, "/notes") ? "page" : undefined} className={linkClass(isActiveNav(pathname, "/notes"))}>Your Notes</Link>
           )}
           {status === "authenticated" && (
-            <Link href="/vocabulary" className={linkClass(false)}>Your Word List</Link>
+            <Link href="/vocabulary" aria-current={isActiveNav(pathname, "/vocabulary") ? "page" : undefined} className={linkClass(isActiveNav(pathname, "/vocabulary"))}>Your Word List</Link>
           )}
           {isAdmin && (
-            <Link href="/admin" data-testid="admin-tab" className={linkClass(false)}>
+            <Link href="/admin" data-testid="admin-tab" aria-current={isActiveNav(pathname, "/admin") ? "page" : undefined} className={linkClass(isActiveNav(pathname, "/admin"))}>
               <SettingsIcon className="w-3.5 h-3.5" aria-hidden="true" />
               Admin
             </Link>

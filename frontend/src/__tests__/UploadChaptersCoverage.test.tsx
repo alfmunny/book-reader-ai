@@ -41,7 +41,7 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-import ChapterEditorPage from "@/app/upload/[bookId]/chapters/page";
+import ChapterEditorPage from "@/app/(shell)/upload/[bookId]/chapters/page";
 
 const DRAFT = {
   chapters: [

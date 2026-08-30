@@ -4,16 +4,16 @@ import path from "path";
 const src = (rel: string) =>
   fs.readFileSync(path.join(process.cwd(), "src", rel), "utf-8");
 
-const mainPage = src("app/page.tsx");
+const mainPage = src("app/(shell)/page.tsx");
 const adminLayout = src("app/admin/layout.tsx");
 const adminUploads = src("app/admin/uploads/page.tsx");
 const adminBooks = src("app/admin/books/page.tsx");
 const adminAudio = src("app/admin/audio/page.tsx");
 const readerPage = src("app/reader/[bookId]/page.tsx");
-const notesBookPage = src("app/notes/[bookId]/page.tsx");
-const importPage = src("app/import/[bookId]/page.tsx");
-const vocabPage = src("app/vocabulary/page.tsx");
-const uploadPage = src("app/upload/page.tsx");
+const notesBookPage = src("app/(shell)/notes/[bookId]/page.tsx");
+const importPage = src("app/(shell)/import/[bookId]/page.tsx");
+const vocabPage = src("app/(shell)/vocabulary/page.tsx");
+const uploadPage = src("app/(shell)/upload/page.tsx");
 
 // text-amber-600 (#d97706) on white = 3.19:1 — fails WCAG 1.4.3 for normal text
 // text-amber-700 (#b45309) on white = 5.02:1 — passes WCAG 1.4.3

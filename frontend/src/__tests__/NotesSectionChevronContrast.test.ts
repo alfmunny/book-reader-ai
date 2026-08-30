@@ -6,7 +6,7 @@ import * as path from "path";
 // components). Closes #1662.
 
 const src = fs.readFileSync(
-  path.join(__dirname, "../app/notes/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 

@@ -10,7 +10,7 @@ const authSrc = fs.readFileSync(
   "utf8"
 );
 const notesSrc = fs.readFileSync(
-  path.join(__dirname, "../app/notes/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8"
 );
 

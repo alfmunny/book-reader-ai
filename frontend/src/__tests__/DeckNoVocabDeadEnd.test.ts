@@ -10,7 +10,7 @@ function read(rel: string): string {
 }
 
 describe("DeckDetailPage — zero vocab empty-state guidance (issue #2394)", () => {
-  const src = read("src/app/decks/[deckId]/page.tsx");
+  const src = read("src/app/(shell)/decks/[deckId]/page.tsx");
 
   it("distinguishes zero-vocab case from all-in-deck case", () => {
     // vocab.length === 0 and candidateWords.length === 0 are both possible —

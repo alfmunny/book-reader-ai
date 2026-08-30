@@ -33,7 +33,7 @@ jest.mock("@/lib/download", () => ({
 
 import * as api from "@/lib/api";
 import { downloadTextFile } from "@/lib/download";
-import BookNotesPage from "@/app/notes/[bookId]/page";
+import BookNotesPage from "@/app/(shell)/notes/[bookId]/page";
 import type { Annotation, BookInsight, BookMeta, BookChapter } from "@/lib/api";
 
 const mockGetBookChapters = api.getBookChapters as jest.MockedFunction<typeof api.getBookChapters>;

@@ -1,5 +1,5 @@
 /**
- * Tests for app/pending/page.tsx
+ * Tests for app/(shell)/pending/page.tsx
  */
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
@@ -19,7 +19,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import { signOut } from "next-auth/react";
-import PendingApprovalPage from "@/app/pending/page";
+import PendingApprovalPage from "@/app/(shell)/pending/page";
 
 const mockSignOut = signOut as jest.MockedFunction<typeof signOut>;
 

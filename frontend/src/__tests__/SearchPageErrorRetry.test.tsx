@@ -18,7 +18,7 @@ jest.mock("@/lib/api", () => ({
   searchInAppContent: (...args: unknown[]) => mockSearchFn(...args),
 }));
 
-import SearchPage from "@/app/search/page";
+import SearchPage from "@/app/(shell)/search/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

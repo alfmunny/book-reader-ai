@@ -10,12 +10,12 @@ function read(rel: string): string {
 }
 
 const pages = [
-  "src/app/decks/page.tsx",
-  "src/app/profile/page.tsx",
-  "src/app/search/page.tsx",
-  "src/app/upload/page.tsx",
-  "src/app/upload/[bookId]/chapters/page.tsx",
-  "src/app/decks/new/page.tsx",
+  "src/app/(shell)/decks/page.tsx",
+  "src/app/(shell)/profile/page.tsx",
+  "src/app/(shell)/search/page.tsx",
+  "src/app/(shell)/upload/page.tsx",
+  "src/app/(shell)/upload/[bookId]/chapters/page.tsx",
+  "src/app/(shell)/decks/new/page.tsx",
 ];
 
 describe("Skip-link main-content anchor on remaining pages", () => {

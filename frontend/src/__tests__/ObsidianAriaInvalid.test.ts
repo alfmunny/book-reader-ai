@@ -10,7 +10,7 @@ function read(rel: string): string {
 }
 
 describe("ProfilePage — Obsidian form aria-invalid (issue #2396)", () => {
-  const src = read("src/app/profile/page.tsx");
+  const src = read("src/app/(shell)/profile/page.tsx");
 
   it("does not scatter aria-invalid across all Obsidian fields for a generic error", () => {
     // Count how many Obsidian input elements apply aria-invalid based on obsidianMsg

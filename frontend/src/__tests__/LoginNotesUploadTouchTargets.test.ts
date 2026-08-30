@@ -6,11 +6,11 @@ const login = fs.readFileSync(
   "utf8"
 );
 const notes = fs.readFileSync(
-  path.join(__dirname, "../app/notes/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/page.tsx"),
   "utf8"
 );
 const upload = fs.readFileSync(
-  path.join(__dirname, "../app/upload/page.tsx"),
+  path.join(__dirname, "../app/(shell)/upload/page.tsx"),
   "utf8"
 );
 

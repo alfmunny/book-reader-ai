@@ -11,7 +11,7 @@ function read(rel: string) {
 
 describe("export URL links announce new-tab to screen readers (closes #2334)", () => {
   it("vocabulary page export URL link has sr-only new-tab announcement", () => {
-    const src = read("../app/vocabulary/page.tsx");
+    const src = read("../app/(shell)/vocabulary/page.tsx");
     // The export result link renders a URL as visible text inside an <a target="_blank">
     const idx = src.indexOf('target="_blank" rel="noopener noreferrer" className="text-amber-700 underline break-all');
     expect(idx).toBeGreaterThan(-1);

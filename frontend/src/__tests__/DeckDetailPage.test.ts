@@ -12,7 +12,7 @@ function read(rel: string): string {
 }
 
 describe("Deck detail page (read-only)", () => {
-  const src = read("src/app/decks/[deckId]/page.tsx");
+  const src = read("src/app/(shell)/decks/[deckId]/page.tsx");
 
   it("uses <main id=main-content>", () => {
     expect(src).toContain('id="main-content"');

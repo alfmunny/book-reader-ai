@@ -25,7 +25,7 @@ const wordActionDrawerSrc = fs.readFileSync(
 );
 
 const deckPageSrc = fs.readFileSync(
-  path.join(__dirname, "../app/decks/[deckId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"),
   "utf8",
 );
 

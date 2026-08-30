@@ -17,7 +17,7 @@ const vocabTooltip = fs.readFileSync(
 );
 
 const vocabPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/vocabulary/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 

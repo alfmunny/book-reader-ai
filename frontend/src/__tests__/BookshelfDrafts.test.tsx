@@ -39,7 +39,7 @@ jest.mock("@/components/SiteHeader", () => {
   return { __esModule: true, default: SiteHeader };
 });
 
-import Bookshelf from "@/app/bookshelf/page";
+import Bookshelf from "@/app/(shell)/bookshelf/page";
 
 const DRAFT = {
   book_id: 501,

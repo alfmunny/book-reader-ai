@@ -2,11 +2,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 const notesSrc = fs.readFileSync(
-  path.join(__dirname, "../app/notes/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/page.tsx"),
   "utf8"
 );
 const uploadSrc = fs.readFileSync(
-  path.join(__dirname, "../app/upload/page.tsx"),
+  path.join(__dirname, "../app/(shell)/upload/page.tsx"),
   "utf8"
 );
 

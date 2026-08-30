@@ -10,19 +10,19 @@ const readerSrc = fs.readFileSync(
   "utf8"
 );
 const notesSrc = fs.readFileSync(
-  path.join(__dirname, "../app/notes/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8"
 );
 const profileSrc = fs.readFileSync(
-  path.join(__dirname, "../app/profile/page.tsx"),
+  path.join(__dirname, "../app/(shell)/profile/page.tsx"),
   "utf8"
 );
 const importSrc = fs.readFileSync(
-  path.join(__dirname, "../app/import/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/import/[bookId]/page.tsx"),
   "utf8"
 );
 const vocabSrc = fs.readFileSync(
-  path.join(__dirname, "../app/vocabulary/page.tsx"),
+  path.join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8"
 );
 const tooltipSrc = fs.readFileSync(

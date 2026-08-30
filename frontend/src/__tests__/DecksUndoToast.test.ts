@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 
 const page = fs.readFileSync(
-  path.join(process.cwd(), "src/app/decks/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/decks/page.tsx"),
   "utf8",
 );
 

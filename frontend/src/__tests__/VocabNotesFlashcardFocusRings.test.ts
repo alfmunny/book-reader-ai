@@ -6,11 +6,11 @@ import * as fs from "fs";
 import * as path from "path";
 
 const vocabPage = fs.readFileSync(
-  path.join(__dirname, "../app/vocabulary/page.tsx"),
+  path.join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8"
 );
 const notesBookPage = fs.readFileSync(
-  path.join(__dirname, "../app/notes/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8"
 );
 const flashcardsPage = fs.readFileSync(

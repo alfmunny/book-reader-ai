@@ -15,7 +15,7 @@ import {
   waitFor,
   act,
 } from "@testing-library/react";
-import ProfilePage from "@/app/profile/page";
+import ProfilePage from "@/app/(shell)/profile/page";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 jest.mock("next-auth/react", () => ({

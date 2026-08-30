@@ -16,12 +16,12 @@ describe("Skip-link final coverage", () => {
   });
 
   it("pending page uses <main id=main-content>", () => {
-    const src = read("src/app/pending/page.tsx");
+    const src = read("src/app/(shell)/pending/page.tsx");
     expect(src).toContain('id="main-content"');
   });
 
   it("notes/[bookId] page <main> has id=main-content", () => {
-    const src = read("src/app/notes/[bookId]/page.tsx");
+    const src = read("src/app/(shell)/notes/[bookId]/page.tsx");
     expect(src).toContain('id="main-content"');
   });
 });

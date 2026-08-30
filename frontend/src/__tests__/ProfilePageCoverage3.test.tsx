@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/profile/page.tsx — functions not covered by existing tests.
+ * Coverage tests for app/(shell)/profile/page.tsx — functions not covered by existing tests.
  * Closes #1985 — targets: gotoFlashcardsForDeck, handleRemoveObsidianToken success/error.
  *
  * Root causes for gaps:
@@ -58,7 +58,7 @@ jest.mock("@/lib/settings", () => ({
 }));
 
 import * as api from "@/lib/api";
-import ProfilePage from "@/app/profile/page";
+import ProfilePage from "@/app/(shell)/profile/page";
 
 const mockListDecks = api.listDecks as jest.MockedFunction<typeof api.listDecks>;
 const mockGetObsidianSettings = api.getObsidianSettings as jest.MockedFunction<typeof api.getObsidianSettings>;

@@ -6,12 +6,12 @@ import fs from "fs";
 import path from "path";
 
 const uploadChaptersPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/upload/[bookId]/chapters/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/upload/[bookId]/chapters/page.tsx"),
   "utf8",
 );
 
 const importPage = fs.readFileSync(
-  path.join(process.cwd(), "src/app/import/[bookId]/page.tsx"),
+  path.join(process.cwd(), "src/app/(shell)/import/[bookId]/page.tsx"),
   "utf8",
 );
 

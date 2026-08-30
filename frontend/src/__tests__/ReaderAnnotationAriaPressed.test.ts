@@ -7,8 +7,9 @@ const src = fs.readFileSync(
 );
 
 describe("reader annotation toggle aria-pressed (issue #1281)", () => {
-  it("adds aria-pressed to annotation marks toggle", () => {
-    expect(src).toMatch(/aria-pressed=\{showAnnotations\}/);
+  it("adds aria-pressed to the community-notes toggle", () => {
+    // The toggle now governs community notes only (own marks always show)
+    expect(src).toMatch(/aria-pressed=\{showShares\}/);
   });
 });
 

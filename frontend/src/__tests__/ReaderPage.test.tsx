@@ -47,6 +47,8 @@ const mockSynthesizeSpeech = jest.fn();
 jest.mock("@/lib/api", () => ({
   getBookTranslationLanguages: jest.fn().mockResolvedValue({ book_id: 1, total_chapters: 0, languages: [] }),
   listTranslationSessions: jest.fn().mockResolvedValue([]),
+  listStories: jest.fn().mockResolvedValue({ stories: [] }),
+  getParagraphNoteCounts: jest.fn().mockResolvedValue({ counts: {} }),
   getSessionChapter: jest.fn().mockResolvedValue({ session_id: 1, chapter_index: 0, paragraph_count: 0, paragraphs: {} }),
   translateSession: jest.fn(),
   editSessionParagraph: jest.fn(),
@@ -581,16 +583,15 @@ describe("ReaderPage — theme cycling", () => {
 });
 
 describe("ReaderPage — showAnnotations toggle", () => {
-  it("toggles annotation marks when 🔖 button is clicked", async () => {
+  it("toolbar Notes button toggles community notes only (own marks always show)", async () => {
     mockGetBookChapters.mockResolvedValue({ meta: SAMPLE_META, chapters: SAMPLE_CHAPTERS });
     render(<ReaderPage />);
     await flushPromises();
 
-    const marksBtn = await screen.findByTitle(/annotation marks/i);
-    await userEvent.click(marksBtn);
+    const notesBtn = await screen.findByTitle(/show community notes/i);
+    await userEvent.click(notesBtn);
 
-    // localStorage should be updated
-    expect(localStorage.getItem("reader-show-annotations")).toBeDefined();
+    expect(mockSaveSettings).toHaveBeenCalledWith({ showOthersShares: true });
   });
 });
 
@@ -699,7 +700,7 @@ describe("ReaderPage — unauthenticated session", () => {
     expect(screen.getByTitle("Annotations & notes")).toBeInTheDocument();
     expect(screen.getByTitle("Vocabulary")).toBeInTheDocument();
     // Obsidian export and annotation marks toggle remain hidden (no auth)
-    expect(screen.queryByTitle(/annotation marks/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/marks \(your highlights/i)).not.toBeInTheDocument();
   });
 
   it("does not call saveReadingProgress when not authenticated", async () => {

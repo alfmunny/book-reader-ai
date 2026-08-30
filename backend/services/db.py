@@ -1184,12 +1184,14 @@ async def _resolve_base_form(
         lang = "en"
 
     if provided and provided.strip():
-        return provided.strip().lower(), lang, None
+        return provided.strip(), lang, None
 
     try:
         from services import wiktionary
         result = await wiktionary.lookup(word, lang)
-        base = (result.get("lemma") or "").strip().lower()
+        # Capitalisation is lexical in German — `Pracht` is a noun, `pracht`
+        # is a misspelling (#2748). The dictionary already knows which.
+        base = (result.get("lemma") or "").strip()
         # The caller reuses this payload to store the meaning, so resolving the
         # base form and capturing the definition cost one request, not two.
         return (base or word), (result.get("language") or lang), result
@@ -1299,7 +1301,7 @@ async def save_word(
     definition_url: str | None = None,
     definition_lang: str | None = None,
 ) -> dict:
-    word = word.strip().lower()
+    word = word.strip()
     base, language, looked_up = await _resolve_base_form(word, book_id, lemma)
 
     # The meaning is captured once, here, instead of being re-fetched on every
@@ -1322,7 +1324,8 @@ async def save_word(
         )
         # An entry saved before base-form storage landed can carry a stale lemma.
         await db.execute(
-            "UPDATE vocabulary SET lemma = ?, language = COALESCE(?, language) WHERE user_id = ? AND word = ?",
+            "UPDATE vocabulary SET lemma = ?, language = COALESCE(?, language) "
+            "WHERE user_id = ? AND LOWER(word) = LOWER(?)",
             (base, language, user_id, base),
         )
         # COALESCE so a save with nothing in hand (the mobile drawer, which can
@@ -1331,13 +1334,13 @@ async def save_word(
             await db.execute(
                 """UPDATE vocabulary
                       SET definitions = ?, form_of = ?, definition_url = ?, definition_lang = ?
-                    WHERE user_id = ? AND word = ?""",
+                    WHERE user_id = ? AND LOWER(word) = LOWER(?)""",
                 (defs_json, form_of, definition_url, definition_lang, user_id, base),
             )
         # SQLite makes uncommitted writes visible to subsequent reads on the
         # same connection, so no intermediate commit is needed before the SELECT.
         async with db.execute(
-            "SELECT id FROM vocabulary WHERE user_id = ? AND word = ?",
+            "SELECT id FROM vocabulary WHERE user_id = ? AND LOWER(word) = LOWER(?)",
             (user_id, base),
         ) as cursor:
             vocab_row = await cursor.fetchone()
@@ -1414,7 +1417,7 @@ async def delete_word(user_id: int, word: str) -> bool:
         # FK enforcement (issue #748) cascades vocabulary → word_occurrences /
         # flashcard_reviews / vocabulary_tags / deck_members automatically.
         cursor = await db.execute(
-            "DELETE FROM vocabulary WHERE user_id = ? AND word = ?",
+            "DELETE FROM vocabulary WHERE user_id = ? AND LOWER(word) = LOWER(?)",
             (user_id, word),
         )
         await db.commit()
@@ -1798,17 +1801,20 @@ async def get_flashcard_stats(
 
 async def create_translation_session(
     user_id: int, book_id: int, name: str, target_language: str,
-    provider: str, style_prompt: str | None = None,
+    provider: str, style_prompt: str | None = None, status: str = "private",
 ) -> dict | None:
-    """Create a named session; returns the row, or None on a duplicate name."""
+    """Create a named session; returns the row, or None on a duplicate name.
+    status 'public' = renderings auto-post as they are made (owner,
+    2026-08-28: the session's visibility is explicit, not per-paragraph
+    ceremony). 'published' stays reserved for track B whole-book review."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         try:
             cursor = await db.execute(
                 """INSERT INTO translation_sessions
-                   (user_id, book_id, name, target_language, provider, style_prompt)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (user_id, book_id, name, target_language, provider, style_prompt),
+                   (user_id, book_id, name, target_language, provider, style_prompt, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (user_id, book_id, name, target_language, provider, style_prompt, status),
             )
         except aiosqlite.IntegrityError:
             return None
@@ -1855,7 +1861,7 @@ async def get_translation_session(session_id: int, user_id: int) -> dict | None:
 async def update_translation_session(session_id: int, user_id: int, fields: dict) -> dict | None:
     """Update name / style_prompt / provider; returns the row, None if not
     owned, or raises IntegrityError → caller maps to 409 on duplicate name."""
-    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider", "target_language")}
+    allowed = {k: v for k, v in fields.items() if k in ("name", "style_prompt", "provider", "target_language", "status")}
     if not allowed:
         return await get_translation_session(session_id, user_id)
     sets = ", ".join(f"{k} = ?" for k in allowed)
@@ -1981,7 +1987,7 @@ async def list_stories(book_id: int, chapter_index: int | None = None) -> list[d
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            f"""SELECT s.*, u.name AS author_name,
+            f"""SELECT s.*, u.name AS author_name, u.picture AS author_picture,
                        ts.name AS session_name, ts.target_language,
                        a.sentence_text, a.note_text, a.color,
                        (SELECT COUNT(*) FROM story_comments sc WHERE sc.story_id = s.id) AS comment_count
@@ -2031,17 +2037,18 @@ async def delete_story(story_id: int, user_id: int, is_admin: bool = False) -> b
         return cursor.rowcount > 0
 
 
-async def create_story_comment(story_id: int, user_id: int, body: str) -> dict:
+async def create_story_comment(story_id: int, user_id: int, body: str, parent_id: int | None = None,
+                               visibility: str = "public", quote: str | None = None) -> dict:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cursor = await db.execute(
-            "INSERT INTO story_comments (story_id, user_id, body) VALUES (?, ?, ?)",
-            (story_id, user_id, body),
+            "INSERT INTO story_comments (story_id, user_id, body, parent_comment_id, visibility, quote) VALUES (?, ?, ?, ?, ?, ?)",
+            (story_id, user_id, body, parent_id, visibility, quote),
         )
         comment_id = cursor.lastrowid
         await db.commit()
         async with db.execute(
-            """SELECT sc.*, u.name AS author_name FROM story_comments sc
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
                JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
             (comment_id,),
         ) as c:
@@ -2049,17 +2056,171 @@ async def create_story_comment(story_id: int, user_id: int, body: str) -> dict:
     return dict(row)
 
 
-async def list_story_comments(story_id: int) -> list[dict]:
+async def list_story_comments(story_id: int, viewer_id: int | None = None) -> list[dict]:
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            """SELECT sc.*, u.name AS author_name FROM story_comments sc
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
                JOIN users u ON u.id = sc.user_id
-               WHERE sc.story_id = ? ORDER BY sc.created_at, sc.id""",
-            (story_id,),
+               WHERE sc.story_id = ? AND (sc.visibility = 'public' OR sc.user_id = ?)
+               ORDER BY sc.created_at, sc.id""",
+            (story_id, viewer_id),
         ) as c:
             rows = await c.fetchall()
     return [dict(r) for r in rows]
+
+
+async def create_editorial_comment(
+    book_id: int, target_language: str, chapter_index: int, paragraph_index: int,
+    user_id: int, body: str, parent_id: int | None = None,
+    visibility: str = "public", quote: str | None = None,
+) -> dict:
+    """Comment anchored on an EDITORIAL paragraph — no story/session row
+    exists for editorial, so the anchor is (book, language, chapter, para)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO story_comments
+               (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility, quote)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (book_id, target_language, chapter_index, paragraph_index, user_id, body, parent_id, visibility, quote),
+        )
+        comment_id = cursor.lastrowid
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def list_editorial_comments(
+    book_id: int, target_language: str, chapter_index: int, paragraph_index: int,
+    viewer_id: int | None = None,
+) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id
+               WHERE sc.book_id = ? AND sc.target_language = ?
+                 AND sc.chapter_index = ? AND sc.paragraph_index = ?
+                 AND (sc.visibility = 'public' OR sc.user_id = ?)
+               ORDER BY sc.created_at, sc.id""",
+            (book_id, target_language, chapter_index, paragraph_index, viewer_id),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def create_session_paragraph_comment(
+    session_id: int, chapter_index: int, paragraph_index: int,
+    user_id: int, body: str, parent_id: int | None = None,
+    visibility: str = "public", quote: str | None = None,
+) -> dict:
+    """Note on ONE version's rendering of a paragraph (owner, 2026-08-30:
+    notes belong to the version you are reading, not to the language)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """INSERT INTO story_comments
+               (session_id, chapter_index, paragraph_index, user_id, body, parent_comment_id, visibility, quote)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (session_id, chapter_index, paragraph_index, user_id, body, parent_id, visibility, quote),
+        )
+        comment_id = cursor.lastrowid
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row)
+
+
+async def list_session_paragraph_comments(
+    session_id: int, chapter_index: int, paragraph_index: int, viewer_id: int | None = None,
+) -> list[dict]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id
+               WHERE sc.session_id = ? AND sc.story_id IS NULL
+                 AND sc.chapter_index = ? AND sc.paragraph_index = ?
+                 AND (sc.visibility = 'public' OR sc.user_id = ?)
+               ORDER BY sc.created_at, sc.id""",
+            (session_id, chapter_index, paragraph_index, viewer_id),
+        ) as c:
+            rows = await c.fetchall()
+    return [dict(r) for r in rows]
+
+
+async def count_paragraph_notes(
+    chapter_index: int, viewer_id: int,
+    session_id: int | None = None,
+    book_id: int | None = None, target_language: str | None = None,
+) -> dict[int, int]:
+    """Note counts per paragraph for one chapter — drives the reading-view
+    marker (owner, 2026-08-30). Private notes count only for their author."""
+    if session_id is not None:
+        where = "sc.session_id = ? AND sc.story_id IS NULL AND sc.chapter_index = ?"
+        params: tuple = (session_id, chapter_index, viewer_id)
+    else:
+        where = "sc.book_id = ? AND sc.target_language = ? AND sc.chapter_index = ?"
+        params = (book_id, target_language, chapter_index, viewer_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            f"""SELECT sc.paragraph_index, COUNT(*) FROM story_comments sc
+                WHERE {where} AND sc.paragraph_index IS NOT NULL
+                  AND (sc.visibility = 'public' OR sc.user_id = ?)
+                GROUP BY sc.paragraph_index""",
+            params,
+        ) as c:
+            rows = await c.fetchall()
+    return {int(r[0]): int(r[1]) for r in rows}
+
+
+async def get_translation_session_any(session_id: int) -> dict | None:
+    """The session row regardless of owner — callers check visibility."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE id = ?", (session_id,)
+        ) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
+
+
+async def update_story_comment(
+    comment_id: int, user_id: int, body: str, visibility: str | None = None,
+) -> dict | None:
+    """Edit your own note (owner, 2026-08-30). Returns the row, or None when
+    the note is not yours — authorship is the whole authorisation here."""
+    sets = ["body = ?"]
+    params: list = [body]
+    if visibility is not None:
+        sets.append("visibility = ?")
+        params.append(visibility)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            f"UPDATE story_comments SET {', '.join(sets)} WHERE id = ? AND user_id = ?",
+            (*params, comment_id, user_id),
+        )
+        if cursor.rowcount == 0:
+            return None
+        await db.commit()
+        async with db.execute(
+            """SELECT sc.*, u.name AS author_name, u.picture AS author_picture FROM story_comments sc
+               JOIN users u ON u.id = sc.user_id WHERE sc.id = ?""",
+            (comment_id,),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
 
 
 async def delete_story_comment(comment_id: int, user_id: int, is_admin: bool = False) -> bool:
@@ -2088,7 +2249,7 @@ async def list_story_feed(limit: int = 50, follower_id: int | None = None) -> li
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            f"""SELECT s.*, u.name AS author_name,
+            f"""SELECT s.*, u.name AS author_name, u.picture AS author_picture,
                       ts.name AS session_name, ts.target_language,
                       a.sentence_text, a.note_text, a.color,
                       b.title AS book_title,
@@ -2150,3 +2311,23 @@ async def list_following(follower_id: int) -> list[dict]:
         ) as c:
             rows = await c.fetchall()
     return [dict(r) for r in rows]
+
+
+async def get_posted_paragraph_indexes(session_id: int, chapter_index: int) -> set[int]:
+    """Paragraph indexes of this session/chapter that are referenced by a
+    published post — retranslation must not silently rewrite public content
+    (owner, 2026-08-31). Manual edits remain allowed: live references are
+    the design."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """SELECT paragraph_start, paragraph_end FROM stories
+               WHERE session_id = ? AND chapter_index = ? AND kind = 'translation'""",
+            (session_id, chapter_index),
+        ) as c:
+            rows = await c.fetchall()
+    posted: set[int] = set()
+    for start, end in rows:
+        if start is None or end is None:
+            continue
+        posted.update(range(start, end + 1))
+    return posted

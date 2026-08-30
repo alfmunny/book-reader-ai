@@ -1,8 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
 
-// Reader Marks toggle (off state) used text-amber-500 + opacity-60 —
-// effective contrast ≈1.65:1, failing both WCAG 1.4.3 AA (visible text)
+// Reader Shares toggle (off state; formerly 'Marks') used text-amber-500 +
+// opacity-60 — contrast ≈1.65:1, failing WCAG 1.4.3 AA (visible text)
 // and 1.4.11 (BookmarkIcon). The button is active, not disabled, so
 // disabled-state relaxations don't apply. Closes #1658.
 
@@ -11,9 +11,9 @@ const src = fs.readFileSync(
   "utf8",
 );
 
-describe("reader Marks toggle contrast (closes #1658)", () => {
-  it("the <button> rendering 'Marks off' does not use text-amber-500 or opacity-60", () => {
-    const marker = '"Marks off"';
+describe("reader Shares toggle contrast (closes #1658)", () => {
+  it("the <button> rendering 'Shares off' does not use text-amber-500 or opacity-60", () => {
+    const marker = '"Shares off"';
     const markerIdx = src.indexOf(marker);
     expect(markerIdx).toBeGreaterThan(-1);
     // Find the enclosing <button. Walk back to the nearest <button.

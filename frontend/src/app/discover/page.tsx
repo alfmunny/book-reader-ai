@@ -14,6 +14,7 @@ import { useSession } from "next-auth/react";
 import { Story, getStoryFeed, followUser, unfollowUser } from "@/lib/api";
 import SiteHeader from "@/components/SiteHeader";
 import { BookOpenIcon, ChatIcon } from "@/components/Icons";
+import { timeAgo, exactTime } from "@/lib/timeAgo";
 
 function StoryCard({
   story,
@@ -54,6 +55,9 @@ function StoryCard({
           <span>shared a note</span>
         )}
         <span className="flex-1" />
+        {story.created_at && (
+          <time title={exactTime(story.created_at)} className="text-[10px] text-stone-400">{timeAgo(story.created_at)}</time>
+        )}
         <span className="inline-flex items-center gap-1 text-stone-400">
           <ChatIcon className="w-3.5 h-3.5" aria-hidden="true" />
           {story.comment_count}

@@ -24,6 +24,8 @@ from services.db import (
     get_session_paragraphs,
     upsert_session_paragraph,
     delete_session_paragraph,
+    get_posted_paragraph_indexes,
+    create_story,
 )
 from services import user_translate
 # Shared error vocabulary with the insight chat (#2683): actionable,
@@ -98,6 +100,7 @@ class SessionCreate(BaseModel):
     target_language: str = Field(..., min_length=1, max_length=20)
     provider: Literal["deepseek", "claude"]
     style_prompt: str | None = Field(default=None, max_length=2000)
+    status: Literal["private", "public"] = "public"
 
     @field_validator("name")
     @classmethod
@@ -122,6 +125,7 @@ class SessionUpdate(BaseModel):
     # Changeable mid-version (owner decision, 2026-08-27): paragraphs already
     # translated to the old language simply stay — not strict on purpose.
     target_language: str | None = Field(default=None, min_length=1, max_length=20)
+    status: Literal["private", "public"] | None = None
 
     @field_validator("target_language")
     @classmethod
@@ -175,7 +179,8 @@ async def create_session(req: SessionCreate, user: dict = Depends(get_current_us
         raise HTTPException(status_code=404, detail="Book not found")
     check_book_access(book, user)
     created = await create_translation_session(
-        user["id"], req.book_id, req.name, req.target_language, req.provider, req.style_prompt
+        user["id"], req.book_id, req.name, req.target_language, req.provider, req.style_prompt,
+        status=req.status,
     )
     if created is None:
         raise HTTPException(status_code=409, detail=f'You already have a version named "{req.name}" for this book.')
@@ -259,6 +264,16 @@ async def translate(
         await upsert_session_paragraph(
             session_id, req.chapter_index, i, translated, provider, model
         )
+        # A PUBLIC session shares as it goes (owner, 2026-08-28): ensure a
+        # post exists for the fresh rendering.
+        if session.get("status") == "public":
+            posted = await get_posted_paragraph_indexes(session_id, req.chapter_index)
+            if i not in posted:
+                await create_story(user["id"], {
+                    "kind": "translation", "book_id": session["book_id"],
+                    "chapter_index": req.chapter_index, "session_id": session_id,
+                    "paragraph_start": i, "paragraph_end": i,
+                })
 
     if isinstance(req.scope, int):
         if active_run is not None and not active_run["finished"]:
@@ -267,6 +282,11 @@ async def translate(
             raise HTTPException(
                 status_code=400,
                 detail=f"Paragraph index out of range (chapter has {len(paragraphs)} paragraph(s)).",
+            )
+        if req.scope in await get_posted_paragraph_indexes(session_id, req.chapter_index):
+            raise HTTPException(
+                status_code=409,
+                detail="This paragraph is posted — make it private before retranslating.",
             )
         try:
             await _translate_one(req.scope, asyncio.Semaphore(1))
@@ -290,10 +310,12 @@ async def translate(
     existing = await get_session_paragraphs(session_id, req.chapter_index)
     if req.force:
         # Explicit retranslate: redo everything machine-made; manual edits
-        # are kept (only a per-paragraph action touches those).
+        # AND posted paragraphs are kept — a public post must never be
+        # silently rewritten by a machine pass (owner, 2026-08-31).
+        posted = await get_posted_paragraph_indexes(session_id, req.chapter_index)
         targets = [
             i for i in range(len(paragraphs))
-            if not existing.get(i, {}).get("edited_by_user")
+            if not existing.get(i, {}).get("edited_by_user") and i not in posted
         ]
     else:
         # Default fill run: only paragraphs with no translation yet — a

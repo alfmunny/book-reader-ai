@@ -952,6 +952,7 @@ export function listTranslationSessions(bookId: number) {
 export function createTranslationSession(data: {
   book_id: number;
   name: string;
+  status?: "private" | "public";
   target_language: string;
   provider: SessionProvider;
   style_prompt?: string;
@@ -965,7 +966,7 @@ export function createTranslationSession(data: {
 
 export function updateTranslationSession(
   id: number,
-  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string },
+  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string; status?: "private" | "public" },
 ) {
   return request<TranslationSession>(`/translation-sessions/${id}`, {
     method: "PATCH",
@@ -1266,6 +1267,7 @@ export interface Story {
   caption?: string | null;
   created_at: string;
   author_name: string;
+  author_picture?: string | null;
   comment_count: number;
   // kind='translation' (live references — never snapshots)
   session_name?: string | null;
@@ -1282,11 +1284,32 @@ export interface Story {
 
 export interface StoryComment {
   id: number;
-  story_id: number;
+  story_id?: number | null;
   user_id: number;
   body: string;
   created_at: string;
   author_name: string;
+  author_picture?: string | null;
+  parent_comment_id?: number | null;
+  visibility?: "public" | "private";
+  /** The passage its author had selected (notes anchor to the paragraph). */
+  quote?: string | null;
+}
+
+/** Anchor for comments on an EDITORIAL paragraph (no story row exists). */
+export interface EditorialCommentAnchor {
+  book_id: number;
+  target_language: string;
+  chapter_index: number;
+  paragraph_index: number;
+}
+
+/** Anchor for notes on ONE version's rendering of a paragraph — notes
+ *  belong to the version you are reading (owner, 2026-08-30). */
+export interface SessionParagraphAnchor {
+  session_id: number;
+  chapter_index: number;
+  paragraph_index: number;
 }
 
 export function createStory(data: {
@@ -1332,11 +1355,63 @@ export function listStoryComments(storyId: number) {
   return request<{ comments: StoryComment[] }>(`/stories/${storyId}/comments`);
 }
 
-export function addStoryComment(storyId: number, body: string) {
+export function addStoryComment(storyId: number, body: string, parentId?: number, visibility?: "public" | "private", quote?: string) {
   return request<StoryComment>(`/stories/${storyId}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}), ...(quote ? { quote } : {}) }),
+  });
+}
+
+export function listSessionParagraphComments(anchor: SessionParagraphAnchor) {
+  const params = new URLSearchParams(
+    Object.fromEntries(Object.entries(anchor).map(([k, v]) => [k, String(v)])),
+  );
+  return request<{ comments: StoryComment[] }>(`/stories/comments/session?${params}`);
+}
+
+export function addSessionParagraphComment(anchor: SessionParagraphAnchor, body: string, parentId?: number, visibility?: "public" | "private", quote?: string) {
+  return request<StoryComment>(`/stories/comments/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}), ...(quote ? { quote } : {}) }),
+  });
+}
+
+export function getParagraphNoteCounts(params: {
+  chapter_index: number;
+  session_id?: number;
+  book_id?: number;
+  target_language?: string;
+}) {
+  const q = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v != null) q.set(k, String(v)); });
+  return request<{ counts: Record<string, number> }>(`/stories/comments/counts?${q}`);
+}
+
+export function listEditorialComments(anchor: EditorialCommentAnchor) {
+  const params = new URLSearchParams(
+    Object.fromEntries(Object.entries(anchor).map(([k, v]) => [k, String(v)])),
+  );
+  return request<{ comments: StoryComment[] }>(`/stories/comments/editorial?${params}`);
+}
+
+export function addEditorialComment(anchor: EditorialCommentAnchor, body: string, parentId?: number, visibility?: "public" | "private", quote?: string) {
+  return request<StoryComment>(`/stories/comments/editorial`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}), ...(quote ? { quote } : {}) }),
+  });
+}
+
+export function updateStoryComment(
+  commentId: number,
+  data: { body: string; visibility?: "public" | "private" },
+) {
+  return request<StoryComment>(`/stories/comments/${commentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 

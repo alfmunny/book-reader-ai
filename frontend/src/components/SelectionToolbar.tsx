@@ -6,14 +6,23 @@ export interface SelectionAction {
   text: string;
   context: string;
   rect: DOMRect;
+  /** Set when the selection lies inside a TRANSLATION paragraph — the
+   *  toolbar then offers Read + Note for that paragraph's dialog
+   *  (owner, 2026-08-30). */
+  translationParaIdx?: number;
 }
 
 interface Props {
-  onRead?: (text: string) => void;
+  onRead?: (text: string, lang?: string) => void;
   onHighlight?: (text: string) => void;
   onNote?: (text: string) => void;
   onChat?: (text: string) => void;
   onVocab?: (word: string, context: string, rect: DOMRect) => void;
+  /** Opens the paragraph dialog (Current translation / Other translations)
+   *  where notes on the rendering are written, read and discussed. */
+  onTranslationNote?: (paragraphIdx: number, rect: DOMRect, selectedText: string) => void;
+  /** BCP-47 tag used when reading a translation selection aloud. */
+  translationLang?: string;
 }
 
 /** Walk up from a node to find the nearest sentence span (data-seg) or paragraph. */
@@ -27,7 +36,7 @@ function extractContext(node: Node | null): string {
   return "";
 }
 
-export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, onVocab }: Props) {
+export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, onVocab, onTranslationNote, translationLang }: Props) {
   const [selection, setSelection] = useState<SelectionAction | null>(null);
   const [focusedToolbarIdx, setFocusedToolbarIdx] = useState(0);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -65,18 +74,31 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     // Only show for selections inside the reader area
     const readerEl = document.getElementById("reader-scroll");
     if (!readerEl?.contains(range.commonAncestorContainer)) return;
-    // Don't show toolbar for selections inside translation text
+    // A selection inside TRANSLATION text gets its own two-action toolbar
+    // (Read + Note); without a handler it stays suppressed as before.
     let node: Node | null = range.commonAncestorContainer;
+    let translationParaIdx: number | undefined;
+    let inTranslation = false;
     while (node && node !== readerEl) {
-      if ((node as Element).getAttribute?.("data-translation") === "true") {
-        setSelection(null);
-        return;
+      const el = node as Element;
+      if (el.getAttribute?.("data-translation") === "true") inTranslation = true;
+      const paraAttr = el.getAttribute?.("data-translation-para");
+      if (paraAttr != null && translationParaIdx === undefined) {
+        translationParaIdx = Number(paraAttr);
       }
       node = node.parentNode;
     }
+    if (inTranslation) {
+      if (!onTranslationNote || translationParaIdx === undefined) {
+        setSelection(null);
+        return;
+      }
+      setSelection({ text, context: "", rect, translationParaIdx });
+      return;
+    }
     const context = extractContext(range.startContainer);
     setSelection({ text, context, rect });
-  }, []);
+  }, [onTranslationNote]);
 
   // `selectionchange` fires continuously *during* a drag. Showing the toolbar then
   // parks it over the text under the cursor and swallows the pointer events that
@@ -181,13 +203,16 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
   }, [selection]);
 
   // Build action list for the screen-reader announcement
-  const actionLabels = [
-    onRead && "Read",
-    onHighlight && "Highlight",
-    onNote && "Note",
-    onChat && "Chat",
-    onVocab && "Look up word",
-  ].filter(Boolean).join(", ");
+  const actionLabels = (selection?.translationParaIdx !== undefined
+    ? [onRead && "Read", "Note"]
+    : [
+        onRead && "Read",
+        onHighlight && "Highlight",
+        onNote && "Note",
+        onChat && "Chat",
+        onVocab && "Look up word",
+      ]
+  ).filter(Boolean).join(", ");
 
   // Always render a live region so AT can announce when selection activates.
   // When there is no selection, render just the sr-only live region (no visual toolbar).
@@ -197,9 +222,10 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
     );
   }
 
+  const isTranslationSelection = selection.translationParaIdx !== undefined;
   const scrollEl = document.getElementById("reader-scroll");
   const scrollRect = scrollEl?.getBoundingClientRect();
-  const toolbarWidth = onVocab ? 264 : 220;
+  const toolbarWidth = isTranslationSelection ? 168 : onVocab ? 264 : 220;
 
   let left = selection.rect.left + selection.rect.width / 2 - toolbarWidth / 2;
   let top = selection.rect.top - 52;
@@ -238,7 +264,43 @@ export default function SelectionToolbar({ onRead, onHighlight, onNote, onChat, 
       className="fixed z-50 flex items-center gap-0.5 bg-stone-800/95 backdrop-blur rounded-xl shadow-xl border border-white/10 px-1 py-1 animate-fade-in"
       style={{ left, top }}
     >
-      {(() => {
+      {isTranslationSelection ? (
+        <>
+          {onRead && (
+            <button
+              aria-label="Read aloud"
+              tabIndex={focusedToolbarIdx === 0 ? 0 : -1}
+              onFocus={() => setFocusedToolbarIdx(0)}
+              onClick={() => {
+                if (!selection) return;
+                onRead(selection.text, translationLang);
+                window.getSelection()?.removeAllRanges();
+                setSelection(null);
+              }}
+              className={btnClass}
+            >
+              <SpeakerIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+              Read
+            </button>
+          )}
+          <button
+            aria-label="Notes on this translation"
+            data-testid="translation-note-action"
+            tabIndex={focusedToolbarIdx === 1 ? 0 : -1}
+            onFocus={() => setFocusedToolbarIdx(1)}
+            onClick={() => {
+              if (!selection || selection.translationParaIdx === undefined) return;
+              onTranslationNote?.(selection.translationParaIdx, selection.rect, selection.text);
+              window.getSelection()?.removeAllRanges();
+              setSelection(null);
+            }}
+            className={btnClass}
+          >
+            <NoteIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            Note
+          </button>
+        </>
+      ) : (() => {
         let _i = 0;
         const readIdx      = onRead      ? _i++ : -1;
         const highlightIdx = onHighlight ? _i++ : -1;

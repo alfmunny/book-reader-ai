@@ -23,6 +23,11 @@ interface Props {
   onClose: () => void;
   onSaved: (annotation: Annotation) => void;
   onDeleted: (id: number) => void;
+  /** Visibility, matching the dialog in the shared-notes panel (owner,
+   *  2026-08-29: every note-writing path behaves identically). Omit the
+   *  handler and the dropdown is hidden (e.g. signed-out flows). */
+  initialVisibility?: "private" | "public";
+  onVisibilityChange?: (annotation: Annotation, makePublic: boolean) => Promise<void>;
 }
 
 export default function AnnotationToolbar({
@@ -34,11 +39,14 @@ export default function AnnotationToolbar({
   onClose,
   onSaved,
   onDeleted,
+  initialVisibility,
+  onVisibilityChange,
 }: Props) {
   const [color, setColor] = useState<ColorKey>(
     (existingAnnotation?.color as ColorKey) ?? "yellow",
   );
   const [note, setNote] = useState(existingAnnotation?.note_text ?? "");
+  const [visibility, setVisibility] = useState<"private" | "public">(initialVisibility ?? "public");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +101,7 @@ export default function AnnotationToolbar({
           color,
         });
       }
+      if (onVisibilityChange) await onVisibilityChange(saved, visibility === "public");
       onSaved(saved);
       onClose();
     } catch (e) {
@@ -201,6 +210,21 @@ export default function AnnotationToolbar({
               className="w-full text-sm font-serif text-ink bg-white border border-amber-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 placeholder:text-stone-600 leading-relaxed"
             />
           </div>
+
+          {onVisibilityChange && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="annotation-visibility" className="text-xs text-stone-600">Visibility</label>
+              <select
+                id="annotation-visibility"
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value as "private" | "public")}
+                className="flex-1 text-sm rounded-lg border border-amber-200 px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <option value="public">Public — other readers see this note</option>
+                <option value="private">Private — only you</option>
+              </select>
+            </div>
+          )}
 
           {/* Error */}
           {error && (

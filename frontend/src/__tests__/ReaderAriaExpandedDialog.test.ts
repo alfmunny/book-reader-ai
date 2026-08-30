@@ -80,12 +80,13 @@ describe("Mobile chat sheet focus management (WCAG 2.4.3 / #1877)", () => {
     expect(src).toContain("chatSheetRef.current?.focus()");
   });
 
-  it("has Escape key handler to close chat sheet", () => {
-    // The effect must handle Escape and call both setSidebarOpen and setChatSheetText
+  it("has Escape key handler to close chat sheet — but not the sidebar", () => {
+    // Escape dismisses the chat sheet only; the sidebar is a persistent
+    // panel, not a dialog (owner, 2026-08-30).
     const idx = src.indexOf('e.key === "Escape"');
     expect(idx).toBeGreaterThan(-1);
     const region = src.slice(Math.max(0, idx - 100), idx + 200);
-    expect(region).toContain("setSidebarOpen");
+    expect(region).not.toContain("setSidebarOpen");
     expect(region).toContain("setChatSheetText");
   });
 });

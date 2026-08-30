@@ -34,9 +34,9 @@ describe("reader desktop toolbar touch targets (closes #871)", () => {
     checkForward('"Annotations & notes"', 400);
   });
 
-  it("Show/hide annotation marks button has min-h-[44px]", () => {
-    // setItem anchor is inside the button's onClick (only 1 occurrence)
-    checkForward('setItem("reader-show-annotations"', 400);
+  it("Community-notes toggle button has min-h-[44px]", () => {
+    // First occurrence of this save call is the desktop toolbar button.
+    checkForward("saveSettings({ showOthersShares: next })", 600);
   });
 
   it("Vocabulary toggle has min-h-[44px]", () => {

@@ -63,15 +63,15 @@ async def test_occurrence_attaches_to_the_base_form_entry(client, test_user):
     assert entry["occurrences"][0]["chapter_index"] == 3
 
 
-async def test_supplied_base_form_is_normalised(client, test_user):
-    """A capitalised or padded base form from the client must not create a
-    second entry that differs only in case."""
+async def test_supplied_base_form_is_trimmed_but_not_case_folded(client, test_user):
+    """A padded base form is trimmed, and a differently-cased one must not
+    create a second entry — but the casing itself is kept (#2748)."""
     await save_book(BOOK_ID, _BOOK_META, "text")
     await save_word(test_user["id"], "Acknowledged", BOOK_ID, 0, "A.", lemma="  Acknowledge  ")
     await save_word(test_user["id"], "acknowledging", BOOK_ID, 1, "B.", lemma="acknowledge")
 
     vocab = await get_vocabulary(test_user["id"])
-    assert [v["word"] for v in vocab] == ["acknowledge"]
+    assert [v["word"] for v in vocab] == ["Acknowledge"], "one entry, casing preserved"
 
 
 # ── falling back when no base form can be found ───────────────────────────────

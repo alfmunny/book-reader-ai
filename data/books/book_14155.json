@@ -22,9 +22,9 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "epub",
-    "frozen_at": "2026-08-06",
-    "audited_by": "architect-agent",
-    "content_sha256": "9c15722deb358662ace503cb7a90bc671703ed6639b4fbf881774fedeb717ab5"
+    "frozen_at": "2026-08-30",
+    "audited_by": "uiux-agent (part grouping, #2745 Phase 2)",
+    "content_sha256": "b4f912aab9dbf1e2e78a9f02d967c16f31c8bae99e09beee1b2dacbd76bfef46"
   },
   "chapters": [
     {
@@ -45,7 +45,7 @@
     },
     {
       "index": 1,
-      "title": "PREMIÈRE PARTIE",
+      "title": "I",
       "paragraphs": [
         "I",
         "Nous étions à l’Étude, quand le Proviseur entra, suivi d’un nouveau\nhabillé en bourgeois et d’un garçon de classe qui portait un grand\npupitre. Ceux qui dormaient se réveillèrent, et chacun se leva comme\nsurpris dans son travail.",
@@ -102,7 +102,8 @@
         "Quoiqu’elle fût laide, sèche comme un cotret, et bourgeonnée comme un\nprintemps, certes madame Dubuc ne manquait pas de partis à choisir.\nPour arriver à ses fins, la mère Bovary fut obligée de les évincer\ntous, et elle déjoua même fort habilement les intrigues d’un charcutier\nqui était soutenu par les prêtres.",
         "Charles avait entrevu dans le mariage l’avènement d’une condition\nmeilleure, imaginant qu’il serait plus libre et pourrait disposer\nde sa personne et de son argent. Mais sa femme fut le maître; il\ndevait devant le monde dire ceci, ne pas dire cela, faire maigre tous\nles vendredis, s’habiller comme elle l’entendait, harceler par son\nordre les clients qui ne payaient pas. Elle décachetait ses lettres,\népiait ses démarches, et l’écoutait, à travers la cloison, donner ses\nconsultations dans son cabinet, quand il y avait des femmes.",
         "Il lui fallait son chocolat tous les matins, des égards à n’en plus\nfinir. Elle se plaignait sans cesse de ses nerfs, de sa poitrine, de\nses humeurs. Le bruit des pas lui faisait mal; on s’en allait, la\nsolitude lui devenait odieuse; revenait-on près d’elle, c’était pour la\nvoir mourir, sans doute. Le soir, quand Charles rentrait, elle sortait\nde dessous ses draps ses longs bras maigres, les lui passait autour du\ncou, et, l’ayant fait asseoir au bord du lit, se mettait à lui parler\nde ses chagrins: il l’oubliait, il en aimait une autre! On lui avait\nbien dit qu’elle serait malheureuse; et elle finissait en lui demandant\nquelque sirop pour sa santé et un peu plus d’amour."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 2,
@@ -142,7 +143,8 @@
         "Il arriva qu’au commencement du printemps, un notaire d’Ingouville,\ndétenteur de fonds de la veuve Dubuc, s’embarqua, par une belle marée,\nemportant avec lui tout l’argent de son étude. Héloïse, il est vrai,\npossédait encore, outre une part de bateau évaluée six mille francs,\nsa maison de la rue Saint-François; et cependant, de toute cette\nfortune que l’on avait fait sonner si haut, rien, si ce n’est un peu\nde mobilier et quelques nippes, n’avait paru dans le ménage. Il fallut\ntirer la chose au clair. La maison de Dieppe se trouva vermoulue\nd’hypothèques jusque dans ses pilotis; ce qu’elle avait mis chez le\nnotaire, Dieu seul le savait, et la part de barque n’excéda point mille\nécus. Elle avait donc menti, la bonne dame! Dans son exaspération,\nM. Bovary père, brisant une chaise contre les pavés, accusa sa femme\nd’avoir fait le malheur de leur fils en l’attelant à une haridelle\nsemblable, dont les harnais ne valaient pas la peau. Ils vinrent à\nTostes. On s’expliqua. Il y eut des scènes. Héloïse, en pleurs, se\njetant dans les bras de son mari, le conjura de la défendre de ses\nparents. Charles voulut parler pour elle. Ceux-ci se fâchèrent, et ils\npartirent.",
         "Mais le coup était porté. Huit jours après, comme elle étendait du\nlinge dans sa cour, elle fut prise d’un crachement de sang, et le\nlendemain, tandis que Charles avait le dos tourné pour fermer le\nrideau de la fenêtre, elle dit: «Ah! mon Dieu!» poussa un soupir et\ns’évanouit. Elle était morte! Quel étonnement!",
         "Quand tout fut fini au cimetière, Charles rentra chez lui. Il ne\ntrouva personne en bas; il monta au premier, dans la chambre, vit sa\nrobe encore accrochée au pied de l’alcôve; alors, s’appuyant contre le\nsecrétaire, il resta jusqu’au soir perdu dans une rêverie douloureuse.\nElle l’avait aimé, après tout."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 3,
@@ -174,7 +176,8 @@
         "Le lendemain, dès neuf heures, il était à la ferme. Emma rougit quand\nil entra, tout en s’efforçant de rire un peu, par contenance. Le père\nRouault embrassa son futur gendre. On remit à causer des arrangements\nd’intérêt; on avait, d’ailleurs, du temps devant soi, puisque le\nmariage ne pouvait décemment avoir lieu avant la fin du deuil de\nCharles, c’est-à-dire vers le printemps de l’année prochaine.",
         "L’hiver se passa dans cette attente. Mademoiselle Rouault s’occupa\nde son trousseau. Une partie en fut commandée à Rouen, et elle se\nconfectionna des chemises et des bonnets de nuit, d’après des dessins\nde modes qu’elle emprunta. Dans les visites que Charles faisait à la\nferme, on causait des préparatifs de la noce; on se demandait dans quel\nappartement se donnerait le dîner; on rêvait à la quantité de plats\nqu’il faudrait et quelles seraient les entrées.",
         "Emma eût, au contraire, désiré se marier à minuit, aux flambeaux; mais\nle père Rouault ne comprit rien à cette idée. Il y eut donc une noce,\noù vinrent quarante-trois personnes, où l’on resta seize heures à\ntable, qui recommença le lendemain et quelque peu les jours suivants."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 4,
@@ -194,7 +197,8 @@
         "Deux jours après la noce, les époux s’en allèrent: Charles, à cause\nde ses malades, ne pouvait s’absenter plus longtemps. Le père Rouault\nles fit reconduire dans sa carriole et les accompagna lui-même jusqu’à\nVassonville. Là, il embrassa sa fille une dernière fois, mit pied à\nterre et reprit sa route. Lorsqu’il eut fait cent pas environ, il\ns’arrêta, et, comme il vit la carriole s’éloignant, dont les roues\ntournaient dans la poussière, il poussa un gros soupir. Puis il se\nrappela ses noces, son temps d’autrefois, la première grossesse de\nsa femme; il était bien joyeux, lui aussi, le jour qu’il l’avait\nemmenée de chez son père dans sa maison, quand il la portait en croupe\nen trottant sur la neige; car on était aux environs de Noël et la\ncampagne était toute blanche; elle le tenait par un bras, à l’autre\nétait accroché son panier; le vent agitait les longues dentelles de sa\ncoiffure cauchoise, qui lui passaient quelquefois sur la bouche, et,\nlorsqu’il tournait la tête, il voyait près de lui, sur son épaule, sa\npetite mine rosée qui souriait silencieusement, sous la plaque d’or de\nson bonnet. Pour se réchauffer les doigts, elle les lui mettait, de\ntemps en temps, dans la poitrine. Comme c’était vieux tout cela! Leur\nfils, à présent, aurait trente ans! Alors il regarda derrière lui,\nil n’aperçut rien sur la route. Il se sentit triste comme une maison\ndémeublée; et, les souvenirs tendres se mêlant aux pensées noires dans\nsa cervelle obscurcie par les vapeurs de la bombance, il eut bien envie\nun moment d’aller faire un tour du côté de l’église. Comme il eut peur,\ncependant, que cette vue ne le rendît plus triste encore, il s’en\nrevint tout droit chez lui.",
         "M. et madame Charles arrivèrent à Tostes, vers six heures. Les voisins\nse mirent aux fenêtres pour voir la nouvelle femme de leur médecin.",
         "La vieille bonne se présenta, lui fit ses salutations, s’excusa de\nce que le dîner n’était pas prêt, et engagea Madame, en attendant, à\nprendre connaissance de sa maison."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 5,
@@ -208,7 +212,8 @@
         "Jusqu’à présent, qu’avait-il eu de bon dans l’existence? Était-ce son\ntemps de collège, où il restait enfermé entre ces hauts murs, seul au\nmilieu de ses camarades plus riches ou plus forts que lui dans leurs\nclasses, qu’il faisait rire par son accent, qui se moquaient de ses\nhabits, et dont les mères venaient au parloir avec des pâtisseries\ndans leur manchon? Était-ce plus tard, lorsqu’il étudiait la médecine\net n’avait jamais la bourse assez ronde pour payer la contredanse à\nquelque petite ouvrière qui fût devenue sa maîtresse? Ensuite il avait\nvécu pendant quatorze mois avec la veuve, dont les pieds, dans le lit,\nétaient froids comme des glaçons. Mais, à présent, il possédait pour la\nvie cette jolie femme qu’il adorait. L’univers, pour lui, n’excédait\npas le tour soyeux de son jupon; et il se reprochait de ne pas l’aimer,\nil avait envie de la revoir; il s’en revenait vite, montait l’escalier,\nle cœur battant. Emma, dans sa chambre, était à faire sa toilette; il\narrivait à pas muets, il la baisait dans le dos, elle poussait un cri.",
         "Il ne pouvait se retenir de toucher continuellement à son peigne, à ses\nbagues, à son fichu; quelquefois, il lui donnait sur les joues de gros\nbaisers à pleine bouche, ou c’étaient de petits baisers à la file tout\nle long de son bras nu, depuis le bout des doigts jusqu’à l’épaule; et\nelle le repoussait, à demi souriante et ennuyée, comme on fait à un\nenfant qui se pend après vous.",
         "Avant qu’elle se mariât, elle avait cru avoir de l’amour; mais le\nbonheur qui aurait dû résulter de cet amour n’étant pas venu, il\nfallait qu’elle se fût trompée, songeait-elle. Et Emma cherchait à\nsavoir ce que l’on entendait au juste dans la vie par les mots de\nfélicité, de passion et d’ivresse, qui lui avaient paru si beaux dans\nles livres."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 6,
@@ -227,7 +232,8 @@
         "Les bonnes religieuses, qui avaient si bien présumé de sa vocation,\ns’aperçurent avec de grands étonnements que mademoiselle Rouault\nsemblait échapper à leur soin. Elles lui avaient, en effet, tant\nprodigué les offices, les retraites, les neuvaines et les sermons, si\nbien prêché le respect que l’on doit aux saints et aux martyrs, et\ndonné tant de bons conseils pour la modestie du corps et le salut de\nson âme, qu’elle fit comme les chevaux que l’on tire par la bride: elle\ns’arrêta court et le mors lui sortit des dents. Cet esprit, positif\nau milieu de ses enthousiasmes, qui avait aimé l’église pour ses\nfleurs, la musique pour les paroles des romances, et la littérature\npour ses excitations passionnelles, s’insurgeait devant les mystères\nde la foi, de même qu’elle s’irritait davantage contre la discipline,\nqui était quelque chose d’antipathique à sa constitution. Quand son\npère la retira de pension, on ne fut point fâché de la voir partir.\nLa supérieure trouvait même qu’elle était devenue, dans les derniers\ntemps, peu révérencieuse envers la communauté.",
         "Emma, rentrée chez elle, se plut d’abord au commandement des\ndomestiques, prit ensuite la campagne en dégoût et regretta son\ncouvent. Quand Charles vint aux Bertaux pour la première fois, elle se\nconsidérait comme fort désillusionnée, n’ayant plus rien à apprendre,\nne devant plus rien sentir.",
         "Mais l’anxiété d’un état nouveau, ou peut-être l’irritation causée\npar la présence de cet homme, avait suffi à lui faire croire qu’elle\npossédait enfin cette passion merveilleuse qui jusqu’alors s’était\ntenue comme un grand oiseau au plumage rose planant dans la splendeur\ndes ciels poétiques; — et elle ne pouvait s’imaginer à présent que ce\ncalme où elle vivait fût le bonheur qu’elle avait rêvé."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 7,
@@ -262,7 +268,8 @@
         "Secrétaire d’État sous la Restauration, le Marquis, cherchant à rentrer\ndans la vie politique, préparait de longue main sa candidature à la\nChambre des députés. Il faisait, l’hiver, de nombreuses distributions\nde fagots, et, au Conseil général, réclamait avec exaltation toujours\ndes routes pour son arrondissement. Il avait eu, lors des grandes\nchaleurs, un abcès dans la bouche, dont Charles l’avait soulagé\ncomme par miracle, en y donnant à point un coup de lancette. L’homme\nd’affaires, envoyé à Tostes pour payer l’opération, conta, le soir,\nqu’il avait vu dans le jardinet du médecin des cerises superbes. Or,\nles cerisiers poussaient mal à la Vaubyessard, M. le Marquis demanda\nquelques boutures à Bovary, se fit un devoir de l’en remercier\nlui-même, aperçut Emma, trouva qu’elle avait une jolie taille et\nqu’elle ne saluait point en paysanne; si bien qu’on ne crut pas au\nchâteau outrepasser les bornes de la condescendance, ni d’autre part\ncommettre une maladresse, en invitant le jeune ménage.",
         "Un mercredi, à trois heures, M. et madame Bovary, montés dans leur\nboc, partirent pour la Vaubyessard, avec une grande malle attachée par\nderrière et une boîte à chapeau qui était posée devant le tablier.\nCharles avait, de plus, un carton entre les jambes.",
         "Ils arrivèrent à la nuit tombante, comme on commençait à allumer des\nlampions dans le parc, afin d’éclairer les voitures."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 8,
@@ -332,7 +339,8 @@
         "Il déposa son cigare, et courut avaler, à la pompe, un verre d’eau\nfroide. Emma, saisissant le porte-cigares, le jeta vivement au fond de\nl’armoire.",
         "La journée fut longue, le lendemain! Elle se promena dans son jardinet,\npassant et revenant par les mêmes allées, s’arrêtant devant les\nplates-bandes, devant l’espalier, devant le curé de plâtre, considérant\navec ébahissement toutes ces choses d’autrefois qu’elle connaissait si\nbien. Comme le bal déjà lui semblait loin! Qui donc écartait, à tant de\ndistance, le matin d’avant-hier et le soir d’aujourd’hui? Son voyage\nà la Vaubyessard avait fait un trou dans sa vie, à la manière de ces\ngrandes crevasses qu’un orage, en une seule nuit, creuse quelquefois\ndans les montagnes. Elle se résigna pourtant; elle serra pieusement\ndans la commode sa belle toilette et jusqu’à ses souliers de satin,\ndont la semelle s’était jaunie à la cire glissante du parquet. Son cœur\nétait comme eux: au frottement de la richesse, il s’était placé dessus\nquelque chose qui ne s’effacerait pas.",
         "Ce fut donc une occupation pour Emma que le souvenir de ce bal. Toutes\nles fois que revenait le mercredi, elle se disait en s’éveillant: «Ah!\nil y a huit jours… il y a quinze jours…, il y a trois semaines, j’y\nétais!» Et peu à peu, les physionomies se confondirent dans sa mémoire,\nelle oublia l’air des contredanses, elle ne vit plus si nettement les\nlivrées et les appartements; quelques détails s’en allèrent; mais le\nregret lui resta."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 9,
@@ -385,11 +393,12 @@
         "Après s’être tourné de côté et d’autre, Charles apprit qu’il y\navait dans l’arrondissement de Neufchâtel, un fort bourg nommé\nYonville-l’Abbaye, dont le médecin, qui était un réfugié polonais,\nvenait de décamper la semaine précédente. Alors il écrivit au\npharmacien de l’endroit pour savoir quel était le chiffre de la\npopulation, la distance où se trouvait le confrère le plus voisin,\ncombien par année gagnait son prédécesseur, etc.; et, les réponses\nayant été satisfaisantes, il se résolut à déménager vers le printemps,\nsi la santé d’Emma ne s’améliorait pas.",
         "Un jour qu’en prévision de son départ elle faisait des rangements dans\nun tiroir, elle se piqua les doigts à quelque chose. C’était un fil de\nfer de son bouquet de mariage. Les boutons d’oranger étaient jaunes de\npoussière, et les rubans de satin, à liséré d’argent, s’effiloquaient\npar le bord. Elle le jeta dans le feu. Il s’enflamma plus vite qu’une\npaille sèche. Puis ce fut comme un buisson rouge sur les cendres, et\nqui se rongeait lentement. Elle le regarda brûler. Les petites baies de\ncarton éclataient, les fils d’archal se tordaient, le galon se fondait;\net les corolles de papier, racornies, se balançant le long de la plaque\ncomme des papillons noirs, enfin s’envolèrent par la cheminée.",
         "Quand on partit de Tostes, au mois de mars, madame Bovary était\nenceinte."
-      ]
+      ],
+      "part": "PREMIÈRE PARTIE"
     },
     {
       "index": 10,
-      "title": "DEUXIÈME PARTIE",
+      "title": "I",
       "paragraphs": [
         "I",
         "Yonville-l’Abbaye (ainsi nommé à cause d’une ancienne abbaye de\nCapucins dont les ruines n’existent même plus) est un bourg à huit\nlieues de Rouen, entre la route d’Abbeville et celle de Beauvais, au\nfond d’une vallée qu’arrose la Rieule, petite rivière qui se jette dans\nl’Andelle, après avoir fait tourner trois moulins vers son embouchure,\net où il y a quelques truites, que les garçons, le dimanche, s’amusent\nà pêcher à la ligne.",
@@ -443,7 +452,8 @@
         "C’était un coffre jaune porté par deux grandes roues qui, montant\njusqu’à la hauteur de la bâche, empêchaient les voyageurs de voir la\nroute et leur salissaient les épaules. Les petits carreaux de ses\nvasistas étroits tremblaient dans leurs châssis quand la voiture était\nfermée, et gardaient des taches de boue, çà et là, parmi leur vieille\ncouche de poussière, que les pluies d’orage même ne lavaient pas tout à\nfait. Elle était attelée de trois chevaux, dont le premier en arbalète,\net, lorsqu’on descendait les côtes, elle touchait du fond en cahotant.",
         "Quelques bourgeois d’Yonville arrivèrent sur la place; ils parlaient\ntous à la fois, demandant des nouvelles, des explications et des\nbourriches; Hivert ne savait auquel répondre. C’était lui qui faisait\nà la ville les commissions du pays. Il allait dans les boutiques,\nrapportait des rouleaux de cuir au cordonnier, de la ferraille au\nmaréchal, un baril de harengs pour sa maîtresse, des bonnets de chez la\nmodiste, des toupets de chez le coiffeur; et, le long de la route, en\ns’en revenant, il distribuait ses paquets, qu’il jetait par-dessus les\nclôtures des cours, debout sur son siège, et criant à pleine poitrine,\npendant que ses chevaux allaient tout seuls.",
         "Un accident l’avait retardé: la levrette de madame Bovary s’était\nenfuie à travers champs. On l’avait sifflée un grand quart d’heure.\nHivert même était retourné d’une demi-lieue en arrière, croyant\nl’apercevoir à chaque minute; mais il avait fallu continuer la route.\nEmma avait pleuré, s’était emportée; elle avait accusé Charles de ce\nmalheur. M. Lheureux, marchand d’étoffes, qui se trouvait avec elle\ndans la voiture, avait essayé de la consoler par quantité d’exemples de\nchiens perdus, reconnaissant leur maître au bout de longues années. On\nen citait un, disait-il, qui était revenu de Constantinople à Paris.\nUn autre avait fait cinquante lieues en ligne droite et passé quatre\nrivières à la nage; et son père à lui-même avait possédé un caniche\nqui, après douze ans d’absence, lui avait tout à coup sauté sur le dos,\nun soir, dans la rue, comme il allait dîner en ville."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 11,
@@ -497,7 +507,8 @@
         "Mais, la maison du médecin se trouvant à cinquante pas de l’auberge,\nil fallut presque aussitôt se souhaiter le bonsoir, et la compagnie se\ndispersa.",
         "Emma, dès le vestibule, sentit tomber sur ses épaules, comme un linge\nhumide, le froid du plâtre. Les murs étaient neufs, et les marches\nde bois craquèrent. Dans la chambre, au premier, un jour blanchâtre\npassait par les fenêtres sans rideaux. On entrevoyait des cimes\nd’arbres, et plus loin la prairie, à demi noyée dans le brouillard, qui\nfumait au clair de la lune, selon le cours de la rivière. Au milieu\nde l’appartement, pêle-mêle, il y avait des tiroirs de commode, des\nbouteilles, des tringles, des bâtons dorés avec des matelas sur des\nchaises et des cuvettes sur le parquet, — les deux hommes qui avaient\napporté les meubles ayant tout laissé là, négligemment.",
         "C’était la quatrième fois qu’elle couchait dans un endroit inconnu. La\npremière avait été le jour de son entrée au couvent, la seconde celle\nde son arrivée à Tostes, la troisième à la Vaubyessard, la quatrième\nétait celle-ci; et chacune s’était trouvée faire dans sa vie comme\nl’inauguration d’une phase nouvelle. Elle ne croyait pas que les choses\npussent se représenter les mêmes à des places différentes, et, puisque\nla portion vécue avait été mauvaise, sans doute ce qui restait à\nconsommer serait meilleur."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 12,
@@ -570,7 +581,8 @@
         "Et ensuite, qu’y avait-il? Binet, quelques marchands, deux ou trois\ncabaretiers, le curé, et enfin M. Tuvache, le maire, avec ses deux\nfils, gens cossus, bourrus, obtus, cultivant leurs terres eux-mêmes,\nfaisant des ripailles en famille, dévots d’ailleurs, et d’une société\ntout à fait insupportable.",
         "Mais, sur le fond commun de tous ces visages humains, la figure d’Emma\nse détachait isolée et plus lointaine cependant; car il sentait entre\nelle et lui comme de vagues abîmes.",
         "Au commencement, il était venu chez elle plusieurs fois dans la\ncompagnie du pharmacien, Charles n’avait point paru extrêmement curieux\nde le recevoir; et Léon ne savait comment s’y prendre entre la peur\nd’être indiscret et le désir d’une intimité qu’il estimait presque\nimpossible."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 13,
@@ -594,7 +606,8 @@
         "— Que m’importe, à moi, puisque je ne suis pas de sa société!",
         "Il se torturait à découvrir par quel moyen lui faire sa déclaration;\net, toujours hésitant entre la crainte de lui déplaire et la honte\nd’être si pusillanime, il en pleurait de découragement et de désirs.\nPuis il prenait des décisions énergiques; il écrivait des lettres qu’il\ndéchirait, s’ajournait à des époques qu’il reculait. Souvent il se\nmettait en marche, dans le projet de tout oser; mais cette résolution\nl’abandonnait bien vite en la présence d’Emma, et, quand Charles,\nsurvenant, l’invitait à monter dans son boc pour aller voir ensemble\nquelque malade aux environs, il acceptait aussitôt, saluait Madame et\ns’en allait. Son mari, n’était-ce pas quelque chose d’elle?",
         "Quant à Emma, elle ne s’interrogea point pour savoir si elle l’aimait.\nL’amour, croyait-elle, devait arriver tout à coup, avec de grands\néclats et des fulgurations, — ouragan des cieux qui tombe sur la vie,\nla bouleverse, arrache les volontés comme des feuilles et emporte à\nl’abîme le cœur entier. Elle ne savait pas que, sur la terrasse des\nmaisons, la pluie fait des lacs quand les gouttières sont bouchées,\net elle fût ainsi demeurée en sa sécurité, lorsqu’elle découvrit\nsubitement une lézarde dans le mur."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 14,
@@ -680,7 +693,8 @@
         "— Ce sont les nerfs, répondait Emma; ne lui en parle pas, tu\nl’affligerais.",
         "— Ah! oui, reprenait Félicité, vous êtes justement comme la Guérine, la\nfille au père Guérin, le pêcheur du Pollet, que j’ai connue à Dieppe,\navant de venir chez vous. Elle était si triste, si triste, qu’à la voir\ndebout sur le seuil de sa maison, elle vous faisait l’effet d’un drap\nd’enterrement tendu devant la porte. Son mal, à ce qu’il paraît, était\nune manière de brouillard qu’elle avait dans la tête, et les médecins\nn’y pouvaient rien, ni le curé non plus. Quand ça la prenait trop fort,\nelle s’en allait toute seule sur le bord de la mer, si bien que le\nlieutenant de la douane, en faisant sa tournée, souvent la trouvait\nétendue à plat ventre et pleurant sur les galets. Puis, après son\nmariage, ça lui a passé, dit-on.",
         "— Mais, moi, reprenait Emma, c’est après le mariage que ça m’est venu."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 15,
@@ -841,7 +855,8 @@
         "— À propos, dit-il, savez-vous la nouvelle?",
         "— Quoi donc?",
         "— C’est qu’il est fort probable, reprit Homais en dressant ses sourcils\net en prenant une figure des plus sérieuses, que les comices agricoles\nde la Seine-Inférieure se tiendront cette année à Yonville-l’Abbaye. Le\nbruit, du moins, en circule. Ce matin, le journal en touchait quelque\nchose. Ce serait pour notre arrondissement de la dernière importance!\nMais nous en causerons plus tard. J’y vois, je vous remercie; Justin a\nla lanterne."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 16,
@@ -922,7 +937,8 @@
         "— C’est qu’elle a des yeux qui vous entrent au cœur comme des vrilles.\nEt ce teint pâle!… Moi, qui adore les femmes pâles!",
         "Au haut de la côte d’Argueil, sa résolution était prise.",
         "— Il n’y a plus qu’à chercher les occasions. Eh bien, j’y passerai\nquelquefois, je leur enverrai du gibier, de la volaille; je me ferai\nsaigner, s’il le faut; nous deviendrons amis, je les inviterai chez\nmoi… Ah! parbleu! ajouta-t-il, voilà les comices bientôt; elle y\nsera, je la verrai. Nous commencerons, et hardiment, car c’est le plus\nsûr."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 17,
@@ -1125,7 +1141,8 @@
         "«Vers six heures, un banquet, dressé dans l’herbage de M. Liégeard, a\nréuni les principaux assistants de la fête. La plus grande cordialité\nn’a cessé d’y régner. Divers toasts ont été portés: M. Lieuvain, au\nmonarque! M. Tuvache, au préfet! M. Derozerays, à l’agriculture! M.\nHomais, à l’industrie et aux beaux-arts, ces deux sœurs! M. Leplichey,\naux améliorations! Le soir, un brillant feu d’artifice a tout à coup\nilluminé les airs. On eût dit un véritable kaléidoscope, un vrai décor\nd’Opéra, et un moment notre petite localité, a pu se croire transportée\nau milieu d’un rêve des Mille et une Nuits.",
         "«Constatons qu’aucun événement fâcheux n’est venu troubler cette\nréunion de famille.»",
         "Et il ajoutait: «On y a seulement remarqué l’absence du clergé. Sans\ndoute les sacristies entendent le progrès d’une autre manière. Libre à\nvous, messieurs de Loyola!»"
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 18,
@@ -1259,7 +1276,8 @@
         "Il leur fallait un bon quart d’heure pour les adieux. Alors Emma\npleurait; elle aurait voulu ne jamais abandonner Rodolphe. Quelque\nchose de plus fort qu’elle la poussait vers lui, si bien qu’un jour, la\nvoyant survenir à l’improviste, il fronça le visage comme quelqu’un de\ncontrarié.",
         "— Qu’as-tu donc? dit-elle. Souffres-tu? Parle-moi!",
         "Enfin il déclara, d’un air sérieux, que ses visites devenaient\nimprudentes et qu’elle se compromettait."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 19,
@@ -1351,7 +1369,8 @@
         "Et il eut l’air de ne point remarquer ses soupirs mélancoliques, ni le\nmouchoir qu’elle tirait.",
         "C’est alors qu’Emma se repentit!",
         "Elle se demanda même pourquoi donc elle exécrait Charles, et s’il\nn’eût pas été meilleur de le pouvoir aimer. Mais il n’offrait pas\ngrande prise à ces retours du sentiment, si bien qu’elle demeurait fort\nembarrassée dans sa velléité de sacrifice, lorsque l’apothicaire vint à\npropos lui fournir une occasion."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 20,
@@ -1439,7 +1458,8 @@
         "Et s’échappant de la salle, Emma ferma la porte si fort, que le\nbaromètre bondit de la muraille et s’écrasa par terre.",
         "Charles s’affaissa dans son fauteuil, bouleversé, cherchant ce\nqu’elle pouvait avoir, imaginant une maladie nerveuse, pleurant, et\nsentant vaguement circuler autour de lui quelque chose de funeste et\nd’incompréhensible.",
         "Quand Rodolphe, le soir, arriva dans le jardin, il trouva sa maîtresse\nqui l’attendait au bas du perron, sur la première marche. Ils\ns’étreignirent, et toute leur rancune se fondit comme une neige sous la\nchaleur de ce baiser."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 21,
@@ -1597,7 +1617,8 @@
         "— Car enfin, exclamait-il en gesticulant, je ne peux pas m’expatrier,\navoir la charge d’une enfant.",
         "Il se disait ces choses pour s’affermir davantage.",
         "— Et, d’ailleurs, les embarras, la dépense… Ah! non, non, mille fois\nnon! cela eût été trop bête!"
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 22,
@@ -1703,7 +1724,8 @@
         "— Oh! non, pas là, pas là! fit-elle d’une voix défaillante.",
         "Elle eut un étourdissement, et dès le soir, sa maladie recommença,\navec une allure plus incertaine, il est vrai, et des caractères plus\ncomplexes. Tantôt elle souffrait au cœur, puis dans la poitrine, dans\nle cerveau, dans les membres; il lui survint des vomissements où\nCharles crut apercevoir les premiers symptômes d’un cancer.",
         "Et le pauvre garçon, par là-dessus, avait des inquiétudes d’argent!"
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 23,
@@ -1768,7 +1790,8 @@
         "— Je vous trouve jolie comme un Amour! Vous allez faire florès à\nRouen.",
         "La diligence descendait à l’hôtel de la Croix rouge, sur la place\nBeauvoisine. C’était une de ces auberges comme il y en a dans tous les\nfaubourgs de province, avec de grandes écuries et de petites chambres\nà coucher, où l’on voit au milieu de la cour des poules picorant\nl’avoine sous les cabriolets crottés des commis voyageurs; — bons vieux\ngîtes à balcon de bois vermoulu qui craquent au vent dans les nuits\nd’hiver, continuellement pleins de monde, de vacarme et de mangeaille,\ndont les tables noires sont poissées par les glorias, les vitres\népaisses jaunies par les mouches, les serviettes humides tachées par\nle vin bleu; et qui, sentant toujours le village, comme des valets de\nferme habillés en bourgeois, ont un café sur la rue, et du côté de la\ncampagne un jardin à légumes. Charles immédiatement se mit en courses.\nIl confondit l’avant-scène avec les galeries, le parquet avec les\nloges, demanda des explications, ne les comprit pas, fut renvoyé du\ncontrôleur au directeur, revint à l’auberge, retourna au bureau, et,\nplusieurs fois ainsi, arpenta toute la longueur de la ville, depuis le\nthéâtre jusqu’au boulevard.",
         "Madame s’acheta un chapeau, des gants, un bouquet. Monsieur craignait\nbeaucoup de manquer le commencement; et, sans avoir eu le temps\nd’avaler un bouillon, ils se présentèrent devant les portes du théâtre,\nqui étaient encore fermées."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 24,
@@ -1843,11 +1866,12 @@
         "Puis à Léon, qui les accompagnait:",
         "— Maintenant que vous voilà dans nos contrées, vous viendrez, j’espère\nde temps à autre, nous demander à dîner?",
         "Le clerc affirma qu’il n’y manquerait pas, ayant d’ailleurs besoin de\nse rendre à Yonville pour une affaire de son étude. Et l’on se sépara\ndevant le passage Saint-Herbland, au moment où onze heures et demie\nsonnaient à la cathédrale."
-      ]
+      ],
+      "part": "DEUXIÈME PARTIE"
     },
     {
       "index": 25,
-      "title": "TROISIÈME PARTIE",
+      "title": "I",
       "paragraphs": [
         "I",
         "M. Léon, tout en étudiant son droit, avait passablement fréquenté la\nChaumière, où il obtint même de fort jolis succès près des grisettes,\nqui lui trouvaient l’air distingué. C’était le plus convenable des\nétudiants: il ne portait les cheveux ni trop longs ni trop courts,\nne mangeait pas le 1er du mois l’argent de son trimestre, et se\nmaintenait en de bons termes avec ses professeurs. Quant à faire des\nexcès, il s’en était toujours abstenu, autant par pusillanimité que par\ndélicatesse.",
@@ -2025,7 +2049,8 @@
         "Et sur le port, au milieu des camions et des barriques, et dans les\nrues, au coin des bornes, les bourgeois ouvraient de grands yeux ébahis\ndevant cette chose si extraordinaire en province, une voiture à stores\ntendus, et qui apparaissait ainsi continuellement, plus close qu’un\ntombeau et ballottée comme un navire.",
         "Une fois, au milieu du jour, en pleine campagne, au moment où le soleil\ndardait le plus fort contre les vieilles lanternes argentées, une main\nnue passa sous les petits rideaux de toile jaune et jeta des déchirures\nde papier, qui se dispersèrent au vent et s’abattirent plus loin, comme\ndes papillons blancs, sur un champ de trèfles rouges tout en fleur.",
         "Puis, vers six heures, la voiture s’arrêta dans une ruelle du quartier\nBeauvoisine, et une femme en descendit qui marchait le voile baissé,\nsans détourner la tête."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 26,
@@ -2145,7 +2170,8 @@
         "— Non, je t’en prie, j’irai.",
         "— Comme tu es bonne! dit-il en la baisant au front.",
         "Dès le lendemain, elle s’embarqua dans l’Hirondelle pour aller à Rouen\nconsulter M. Léon; et elle y resta trois jours."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 27,
@@ -2174,7 +2200,8 @@
         "Il fallut pourtant se séparer! Les adieux furent tristes. C’était chez\nla mère Rolet qu’il devait envoyer ses lettres; et elle lui fit des\nrecommandations si précises à propos de la double enveloppe, qu’il\nadmira grandement son astuce amoureuse.",
         "— Ainsi, tu m’affirmes que tout est bien? dit-elle dans le dernier\nbaiser.",
         "— Oui certes! — Mais pourquoi donc, songea-t-il après, en s’en revenant\nseul par les rues, tient-elle si fort à cette procuration?"
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 28,
@@ -2217,7 +2244,8 @@
         "— Si tu voulais…, disait-il, de temps à autre, une leçon, cela ne\nserait pas, après tout, extrêmement ruineux.",
         "— Mais les leçons, répliquait-elle, ne sont profitables que suivies.",
         "Et voilà comme elle s’y prit pour obtenir de son époux la permission\nd’aller à la ville, une fois la semaine, voir son amant. On trouva\nmême, au bout d’un mois, qu’elle avait fait des progrès considérables."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 29,
@@ -2399,7 +2427,8 @@
         "— Ah! ah! tu tiens à tes petits écus! dit-elle en riant.",
         "Il fallait que Léon, chaque fois, lui racontât toute sa conduite,\ndepuis le dernier rendez-vous. Elle demanda des vers, des vers pour\nelle, une pièce d’amour en son honneur; jamais il ne put parvenir à\ntrouver la rime du second vers, et il finit par copier un sonnet dans\nun keepsake.",
         "Ce fut moins par vanité que dans le seul but de lui complaire. Il ne\ndiscutait pas ses idées; il acceptait tous ses goûts; il devenait sa\nmaîtresse plutôt qu’elle n’était la sienne. Elle avait des paroles\ntendres avec des baisers qui lui emportaient l’âme. Où donc avait-elle\nappris cette corruption, presque immatérielle à force d’être profonde\net dissimulée?"
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 30,
@@ -2601,7 +2630,8 @@
         "— Allons, bon! des larmes!",
         "— Vous me désespérez!",
         "— Je m’en moque pas mal! dit-il en refermant la porte."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 31,
@@ -2783,7 +2813,8 @@
         "— Comment?",
         "— Oh! personne! Et monsieur pleure. Il vous appelle. On vous cherche.",
         "Emma ne répondit rien. Elle haletait, tout en roulant les yeux autour\nd’elle, tandis que la paysanne, effrayée de son visage, se reculait\ninstinctivement, la croyant folle. Tout à coup elle se frappa le front,\npoussa un cri, car le souvenir de Rodolphe, comme un grand éclair\ndans une nuit sombre, lui avait passé dans l’âme. Il était si bon,\nsi délicat, si généreux! Et, d’ailleurs, s’il hésitait à lui rendre\nce service, elle saurait bien l’y contraindre en rappelant d’un seul\nclin d’œil leur amour perdu. Elle partit donc vers la Huchette, sans\ns’apercevoir qu’elle courait s’offrir à ce qui l’avait tantôt si fort\nexaspérée, ni se douter le moins du monde de cette prostitution."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 32,
@@ -3007,7 +3038,8 @@
         "Et Emma se mit à rire, d’un rire atroce, frénétique, désespéré, croyant\nvoir la face hideuse du misérable, qui se dressait dans les ténèbres\néternelles comme un épouvantement.",
         "Il souffla bien fort ce jour-là,\nEt le jupon court s’envola!",
         "Une convulsion la rabattit sur le matelas. Tous s’approchèrent. Elle\nn’existait plus."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 33,
@@ -3114,7 +3146,8 @@
         "— Nous finirons par nous entendre!",
         "Ils rencontrèrent en bas, dans le vestibule, les ouvriers qui\narrivaient. Alors Charles, pendant deux heures, eut à subir le supplice\ndu marteau qui résonnait sur les planches. Puis on la descendit dans\nson cercueil de chêne, que l’on emboîta dans les deux autres; mais,\ncomme la bière était trop large, il fallut boucher les interstices\navec la laine d’un matelas. Enfin, quand les trois couvercles furent\nrabotés, cloués, soudés, on l’exposa devant la porte; on ouvrit toute\ngrande la maison, et les gens d’Yonville commencèrent à affluer.",
         "Le père Rouault arriva. Il s’évanouit sur la Place en apercevant le\ndrap noir."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 34,
@@ -3176,7 +3209,8 @@
         "Rodolphe, qui, pour se distraire, avait battu le bois toute la journée,\ndormait tranquillement dans son château; et Léon, là-bas, dormait aussi.",
         "Il y en avait un autre qui, à cette heure-là, ne dormait pas.",
         "Sur la fosse, entre les sapins, un enfant pleurait agenouillé, et sa\npoitrine, brisée par les sanglots, haletait dans l’ombre, sous la\npression d’un regret immense plus doux que la lune et plus insondable\nque la nuit. La grille tout à coup craqua. C’était Lestiboudois; il\nvenait chercher sa bêche qu’il avait oubliée tantôt. Il reconnut Justin\nescaladant le mur, et sut alors à quoi s’en tenir sur le malfaiteur qui\nlui dérobait ses pommes de terre."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     },
     {
       "index": 35,
@@ -3249,7 +3283,8 @@
         "Quand tout fut vendu, il resta douze francs soixante et quinze centimes\nqui servirent à payer le voyage de mademoiselle Bovary chez sa\ngrand-mère. La bonne femme mourut dans l’année même; le père Rouault\nétant paralysé, ce fut une tante qui s’en chargea. Elle est pauvre et\nl’envoie, pour gagner sa vie, dans une filature de coton.",
         "Depuis la mort de Bovary, trois médecins se sont succédé à Yonville\nsans pouvoir y réussir, tant M. Homais les a tout de suite battus\nen brèche. Il fait une clientèle d’enfer; l’autorité le ménage et\nl’opinion publique le protège.",
         "Il vient de recevoir la croix d’honneur."
-      ]
+      ],
+      "part": "TROISIÈME PARTIE"
     }
   ],
   "translations": {

@@ -1628,7 +1628,7 @@ export default function ReaderPage() {
               }`}
             >
               <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />
-              {showShares ? "Posts on" : "Posts off"}
+              {showShares ? "Shares on" : "Shares off"}
             </button>
           )}
 

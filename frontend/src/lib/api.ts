@@ -951,6 +951,39 @@ export interface SessionChapter {
   run?: ChapterRun | null;
 }
 
+/** A whole-book translation another reader published — the Community
+ *  group in the version switcher (track B, #2752). */
+export interface PublishedSession extends TranslationSession {
+  author_name: string;
+  author_picture?: string | null;
+  published_at?: string | null;
+  chapters_covered: number;
+  model_tags: string[];
+}
+
+export interface SessionCompleteness {
+  total_paragraphs: number;
+  translated_paragraphs: number;
+  complete: boolean;
+  missing_chapters: Array<{ chapter_index: number; translated: number; paragraphs: number }>;
+}
+
+export function listPublishedSessions(bookId: number) {
+  return request<PublishedSession[]>(`/translation-sessions/published?book_id=${bookId}`);
+}
+
+export function getSessionCompleteness(sessionId: number) {
+  return request<SessionCompleteness>(`/translation-sessions/${sessionId}/completeness`);
+}
+
+export function publishTranslationSession(sessionId: number) {
+  return request<TranslationSession>(`/translation-sessions/${sessionId}/publish`, { method: "POST" });
+}
+
+export function unpublishTranslationSession(sessionId: number) {
+  return request<TranslationSession>(`/translation-sessions/${sessionId}/publish`, { method: "DELETE" });
+}
+
 export function listTranslationSessions(bookId: number) {
   return request<TranslationSession[]>(`/translation-sessions?book_id=${bookId}`);
 }
@@ -1408,6 +1441,22 @@ export function addEditorialComment(anchor: EditorialCommentAnchor, body: string
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...anchor, body, ...(parentId != null ? { parent_id: parentId } : {}), ...(visibility ? { visibility } : {}), ...(quote ? { quote } : {}) }),
   });
+}
+
+export interface ReactionState { count: number; liked: boolean }
+
+export function toggleReaction(targetKind: "story" | "comment", targetId: number) {
+  return request<{ liked: boolean; count: number }>(`/stories/reactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target_kind: targetKind, target_id: targetId }),
+  });
+}
+
+export function listReactions(targetKind: "story" | "comment", ids: number[]) {
+  return request<{ reactions: Record<string, ReactionState> }>(
+    `/stories/reactions?target_kind=${targetKind}&ids=${ids.join(",")}`,
+  );
 }
 
 export function updateStoryComment(

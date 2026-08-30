@@ -48,11 +48,11 @@ function StoryCard({
         )}
         {story.kind === "translation" ? (
           <>
-            <span>shared a translation</span>
+            <span>posted a translation</span>
             <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">{story.session_name}</span>
           </>
         ) : (
-          <span>shared a note</span>
+          <span>posted a note</span>
         )}
         <span className="flex-1" />
         {story.created_at && (
@@ -166,12 +166,12 @@ export default function DiscoverPage() {
           <div className="mt-10 text-center">
             <BookOpenIcon className="w-10 h-10 mx-auto text-amber-300" aria-hidden="true" />
             <h2 className="mt-3 font-serif text-lg text-ink">
-              {scope === "following" ? "Your timeline is quiet" : "Nothing shared yet"}
+              {scope === "following" ? "Your timeline is quiet" : "Nothing posted yet"}
             </h2>
             <p className="mt-1 text-sm text-stone-500 max-w-sm mx-auto">
               {scope === "following"
-                ? "Follow readers from the Everyone tab and their shares will appear here."
-                : "Share a paragraph from one of your translation versions, or a note you made while reading — it will appear here for other readers."}
+                ? "Follow readers from the Everyone tab and their posts will appear here."
+                : "Post a paragraph from one of your translation versions, or a note you made while reading — it will appear here for other readers."}
             </p>
             {scope === "all" && (
               <Link

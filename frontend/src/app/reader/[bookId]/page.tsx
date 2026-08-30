@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } fr
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, getParagraphNoteCounts, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
+import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, getParagraphNoteCounts, listPublishedSessions, PublishedSession, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
 import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
@@ -481,6 +481,19 @@ export default function ReaderPage() {
 
 
   const [activeSession, setActiveSession] = useState<TranslationSession | null>(null);
+  // Track B: complete translations other readers published — the Community
+  // group. Selecting one READS it; it is never editable here.
+  const [publishedSessions, setPublishedSessions] = useState<PublishedSession[]>([]);
+  useEffect(() => {
+    if (!session?.backendToken) { setPublishedSessions([]); return; }
+    let cancelled = false;
+    listPublishedSessions(Number(bookId))
+      .then((r) => { if (!cancelled) setPublishedSessions(r); })
+      .catch(() => { if (!cancelled) setPublishedSessions([]); });
+    return () => { cancelled = true; };
+  }, [bookId, session?.backendToken, storiesVersion]);
+  const readingCommunityVersion = !!activeSession &&
+    publishedSessions.some((p) => p.id === activeSession.id);
 
   useEffect(() => {
     if (!translationEnabled || !session?.backendToken) { setNotedParas(new Set()); return; }
@@ -1606,7 +1619,7 @@ export default function ReaderPage() {
                 saveSettings({ showOthersShares: next });
               }}
               aria-pressed={showShares}
-              title={showShares ? "Hide community notes" : "Show community notes"}
+              title={showShares ? "Hide community posts and notes" : "Show community posts and notes"}
               className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                 showShares
                   ? "bg-amber-100 text-amber-900 border-amber-400"
@@ -1614,7 +1627,7 @@ export default function ReaderPage() {
               }`}
             >
               <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />
-              {showShares ? "Shares on" : "Shares off"}
+              {showShares ? "Posts on" : "Posts off"}
             </button>
           )}
 
@@ -1947,7 +1960,7 @@ export default function ReaderPage() {
                   translationMeta={sessionMeta}
                   translatingParagraphs={translatingParas}
                   actionsDisabled={sessionTranslating || chapterRunActive}
-                  onTranslateParagraph={activeSession ? (idx) => setConfirmRetransPara(idx) : undefined}
+                  onTranslateParagraph={activeSession && !readingCommunityVersion ? (idx) => setConfirmRetransPara(idx) : undefined}
                   postParagraphs={showShares && postParagraphs.size > 0 ? postParagraphs : undefined}
                   notedParagraphs={notedParas.size > 0 ? notedParas : undefined}
                   onOpenPosts={session?.backendToken ? (idx, position, tab) => {
@@ -3002,6 +3015,7 @@ export default function ReaderPage() {
                         hasClaudeKey={hasClaudeKey}
                         hasDeepseekKey={hasDeepseekKey}
                         onSelect={selectTranslationSession}
+                        publishedSessions={publishedSessions}
                         onSessionsChanged={setTranslationSessions}
                         onTranslateChapter={handleSessionTranslateChapter}
                         chapterChars={chapters[chapterIndex]?.text?.length ?? 0}
@@ -3197,7 +3211,7 @@ export default function ReaderPage() {
             <div id="reader-mobile-notes-panel" className="bg-white/95 backdrop-blur border-t border-amber-200 px-3 py-2 max-h-60 overflow-y-auto animate-slide-up">
               {/* Community-notes visibility toggle — own marks always show */}
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-amber-100">
-                <span className="text-xs text-stone-600">Community notes</span>
+                <span className="text-xs text-stone-600">Community posts</span>
                 <button
                   onClick={() => {
                     const next = !showShares;
@@ -3205,7 +3219,7 @@ export default function ReaderPage() {
                     saveSettings({ showOthersShares: next });
                   }}
                   aria-pressed={showShares}
-                  aria-label={showShares ? "Hide community notes" : "Show community notes"}
+                  aria-label={showShares ? "Hide community posts and notes" : "Show community posts and notes"}
                   className={`flex items-center gap-1 px-2.5 py-1 min-h-[44px] md:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
                     showShares
                       ? "bg-amber-100 text-amber-900 border-amber-400"

@@ -55,7 +55,7 @@ test("renders feed cards with author, content, and reader link", async () => {
 test("empty feed shows the empty state with a CTA", async () => {
   (api.getStoryFeed as jest.Mock).mockResolvedValue({ stories: [] });
   render(<DiscoverPage />);
-  expect(await screen.findByText("Nothing shared yet")).toBeInTheDocument();
+  expect(await screen.findByText("Nothing posted yet")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Open a book" })).toHaveAttribute("href", "/");
 });
 
@@ -68,7 +68,7 @@ test("feed failure shows an error, not a blank page", async () => {
 test("Following tab refetches with the scope and shows its own empty state", async () => {
   (api.getStoryFeed as jest.Mock).mockResolvedValue({ stories: [] });
   render(<DiscoverPage />);
-  await screen.findByText("Nothing shared yet");
+  await screen.findByText("Nothing posted yet");
   fireEvent.click(screen.getByRole("tab", { name: "Following" }));
   await waitFor(() => expect(api.getStoryFeed).toHaveBeenLastCalledWith("following"));
   expect(await screen.findByText("Your timeline is quiet")).toBeInTheDocument();

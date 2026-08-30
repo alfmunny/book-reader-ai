@@ -371,7 +371,7 @@ describe("ProfilePage — user with picture (line ~149)", () => {
 test("Community shares toggle persists the profile-level opt-in", async () => {
   const { saveSettings } = require("@/lib/settings");
   render(<ProfilePage />);
-  const toggle = await screen.findByRole("checkbox", { name: /Community shares/ });
+  const toggle = await screen.findByRole("checkbox", { name: /Community posts/ });
   expect(toggle).not.toBeChecked();
   fireEvent.click(toggle);
   expect(saveSettings).toHaveBeenCalledWith({ showOthersShares: true });

@@ -52,6 +52,7 @@ const mockExportVocabularyToObsidian = jest.fn();
 const mockSaveInsight = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  listPublishedSessions: jest.fn().mockResolvedValue([]),
   getParagraphNoteCounts: jest.fn().mockResolvedValue({ counts: {} }),
   getBookTranslationLanguages: jest.fn().mockResolvedValue({ book_id: 1, total_chapters: 0, languages: [] }),
   listTranslationSessions: jest.fn().mockResolvedValue([]),

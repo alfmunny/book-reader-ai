@@ -13,6 +13,8 @@ jest.mock("@/lib/api", () => ({
   listSessionParagraphComments: jest.fn(),
   addSessionParagraphComment: jest.fn(),
   updateStoryComment: jest.fn(),
+  toggleReaction: jest.fn(),
+  listReactions: jest.fn(),
   deleteStory: jest.fn(),
   deleteStoryComment: jest.fn(),
 }));
@@ -51,6 +53,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof StoryPanel>>
 beforeEach(() => {
   jest.clearAllMocks();
   (api.listStoryComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.listReactions as jest.Mock).mockResolvedValue({ reactions: {} });
 });
 
 test("renders both kinds: rendering with provenance, note with quote + thought", () => {
@@ -86,21 +89,21 @@ test("delete appears only on the caller's own share", () => {
   renderPanel(); // currentUserId 2 owns the translation story only
   const own = screen.getByTestId("story-1");
   const foreign = screen.getByTestId("story-2");
-  expect(own.querySelector('[aria-label="Delete this share"]')).not.toBeNull();
-  expect(foreign.querySelector('[aria-label="Delete this share"]')).toBeNull();
+  expect(own.querySelector('[aria-label="Delete this post"]')).not.toBeNull();
+  expect(foreign.querySelector('[aria-label="Delete this post"]')).toBeNull();
 });
 
 test("deleting a share calls the API and notifies the parent", async () => {
   (api.deleteStory as jest.Mock).mockResolvedValue({ ok: true });
   const { props } = renderPanel();
-  fireEvent.click(screen.getAllByLabelText("Delete this share")[0]);
+  fireEvent.click(screen.getAllByLabelText("Delete this post")[0]);
   await waitFor(() => expect(api.deleteStory).toHaveBeenCalledWith(1));
   expect(props.onChanged).toHaveBeenCalled();
 });
 
 test("close button fires onClose", () => {
   const { props } = renderPanel();
-  fireEvent.click(screen.getByLabelText("Close shares panel"));
+  fireEvent.click(screen.getByLabelText("Close panel"));
   expect(props.onClose).toHaveBeenCalled();
 });
 
@@ -272,7 +275,7 @@ test("tapping a community note opens its detail page with author and delete for 
   const detail = screen.getByTestId("story-detail");
   expect(detail).toHaveTextContent("Jonas");
   expect(detail).toHaveTextContent("wonderful opening");
-  fireEvent.click(screen.getByRole("button", { name: "Delete this share" }));
+  fireEvent.click(screen.getByRole("button", { name: "Delete this post" }));
   await waitFor(() => expect(api.deleteStory).toHaveBeenCalledWith(2));
   expect(props.onChanged).toHaveBeenCalled();
   // Returns to the list after deleting
@@ -592,7 +595,7 @@ test("my posted translation's detail offers Edit + Share, no trash for others", 
   fireEvent.click(screen.getByRole("button", { name: "Open my post from 诗意版" }));
   expect(screen.getByRole("button", { name: "Edit my translation" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Share this translation" })).toBeInTheDocument();
-  expect(screen.queryByLabelText("Delete this share")).toBeNull();
+  expect(screen.queryByLabelText("Delete this post")).toBeNull();
 });
 test("Comments view shows the rendering as context, clamped with a More toggle", () => {
   const longText = Array.from({ length: 14 }, (_, i) => `诗行 ${i + 1}`).join("\n");
@@ -979,4 +982,39 @@ test("a private note is badged in its detail too, and the badge follows an edit"
   fireEvent.change(screen.getByLabelText("Edit note visibility"), { target: { value: "public" } });
   fireEvent.click(screen.getByRole("button", { name: "Save" }));
   await waitFor(() => expect(screen.queryByTestId("comment-detail-private")).toBeNull());
+});
+
+test("likes render on note rows and detail, toggling optimistically", async () => {
+  (api.listSessionParagraphComments as jest.Mock).mockResolvedValue({
+    comments: [{ id: 201, user_id: 2, body: "好译文", created_at: "", author_name: "Mira" }],
+  });
+  (api.listReactions as jest.Mock).mockResolvedValue({ reactions: { "201": { count: 3, liked: false } } });
+  (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 4 });
+  renderPanel({
+    variant: "sentence",
+    stories: [],
+    commentsTab: {
+      anchor: { kind: "version", version: { session_id: 5, chapter_index: 4, paragraph_index: 0 } },
+      label: "诗意版", emptyText: "",
+    },
+  });
+  const heart = await screen.findByTestId("like-comment-201");
+  await waitFor(() => expect(heart).toHaveTextContent("3"));
+  expect(heart).toHaveAttribute("aria-pressed", "false");
+  fireEvent.click(heart);
+  await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("comment", 201));
+  await waitFor(() => expect(screen.getByTestId("like-comment-201")).toHaveTextContent("4"));
+  expect(screen.getByTestId("like-comment-201")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a post detail can be liked too — same component", async () => {
+  (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 1 });
+  renderPanel({
+    variant: "sentence",
+    stories: [TRANSLATION_STORY],
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Open translation by Mira" }));
+  const heart = screen.getByTestId("like-story-1");
+  fireEvent.click(heart);
+  await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("story", 1));
 });

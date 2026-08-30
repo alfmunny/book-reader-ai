@@ -32,6 +32,8 @@ from services.db import (
     list_session_paragraph_comments,
     get_translation_session_any,
     count_paragraph_notes,
+    toggle_reaction,
+    reaction_counts,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -195,6 +197,30 @@ async def _readable_session(session_id: int, user: dict) -> dict:
         raise HTTPException(status_code=404, detail="Version not found")
     await _require_book(session["book_id"], user)
     return session
+
+
+class ReactionToggle(BaseModel):
+    target_kind: Literal["story", "comment"]
+    target_id: int = Field(ge=1)
+
+
+@router.post("/reactions")
+async def toggle_like(req: ReactionToggle, user: dict = Depends(get_current_user)):
+    """Like or un-like a post or a note (track B, #2752)."""
+    liked = await toggle_reaction(user["id"], req.target_kind, req.target_id)
+    counts = await reaction_counts(req.target_kind, [req.target_id], user["id"])
+    return {"liked": liked, "count": counts.get(req.target_id, {}).get("count", 0)}
+
+
+@router.get("/reactions")
+async def list_likes(
+    target_kind: Literal["story", "comment"] = Query(...),
+    ids: str = Query(..., description="comma-separated target ids"),
+    user: dict = Depends(get_current_user),
+):
+    parsed = [int(x) for x in ids.split(",") if x.strip().isdigit()][:200]
+    counts = await reaction_counts(target_kind, parsed, user["id"])
+    return {"reactions": {str(k): v for k, v in counts.items()}}
 
 
 @router.get("/comments/counts")

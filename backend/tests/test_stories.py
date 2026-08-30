@@ -529,3 +529,34 @@ async def test_notes_are_editable_by_their_author_only(client, test_user):
     other = await get_or_create_user(google_id="g-editor", email="e@e.com", name="E", picture="")
     assert await update_story_comment(note["id"], other["id"], "劫持") is None
     assert (await client.patch("/api/stories/comments/99999", json={"body": "x"})).status_code == 404
+
+
+# ── Likes (track B, #2752) ─────────────────────────────────────────────────
+
+async def test_likes_toggle_and_are_idempotent(client, test_user):
+    sid = await _translated_session(client)
+    story_id = (await _share_translation(client, sid)).json()["id"]
+
+    first = (await client.post("/api/stories/reactions", json={"target_kind": "story", "target_id": story_id})).json()
+    assert first == {"liked": True, "count": 1}
+    # Liking again un-likes — never a double count
+    again = (await client.post("/api/stories/reactions", json={"target_kind": "story", "target_id": story_id})).json()
+    assert again == {"liked": False, "count": 0}
+
+
+async def test_like_counts_come_back_in_a_batch(client, test_user):
+    from services.db import get_or_create_user, toggle_reaction
+    sid = await _make_session(client, name="点赞版")
+    anchor = {"session_id": sid, "chapter_index": 0, "paragraph_index": 0}
+    a = (await client.post("/api/stories/comments/session", json={**anchor, "body": "一"})).json()
+    b = (await client.post("/api/stories/comments/session", json={**anchor, "body": "二"})).json()
+
+    await client.post("/api/stories/reactions", json={"target_kind": "comment", "target_id": a["id"]})
+    other = await get_or_create_user(google_id="g-liker", email="l@e.com", name="L", picture="")
+    await toggle_reaction(other["id"], "comment", a["id"])  # someone else likes it too
+
+    got = (await client.get("/api/stories/reactions", params={
+        "target_kind": "comment", "ids": f"{a['id']},{b['id']}",
+    })).json()["reactions"]
+    assert got[str(a["id"])] == {"count": 2, "liked": True}
+    assert str(b["id"]) not in got  # no reactions, no row

@@ -8,6 +8,9 @@ jest.mock("@/lib/api", () => ({
   createTranslationSession: jest.fn(),
   updateTranslationSession: jest.fn(),
   deleteTranslationSession: jest.fn(),
+  publishTranslationSession: jest.fn(),
+  unpublishTranslationSession: jest.fn(),
+  getSessionCompleteness: jest.fn(),
 }));
 
 import * as api from "@/lib/api";
@@ -276,4 +279,53 @@ test("the create dialog offers explicit visibility; public is sent through", asy
   await waitFor(() => expect(api.createTranslationSession).toHaveBeenCalledWith(
     expect.objectContaining({ name: "公开版", status: "public" }),
   ));
+});
+
+// ── Track B: Community group + publication (#2752) ────────────────────────
+
+const PUBLISHED = {
+  id: 77, book_id: 2229, name: "诗意全译", target_language: "zh", provider: "deepseek",
+  status: "published", coverage: {}, author_name: "Mira", author_picture: null,
+  chapters_covered: 28, model_tags: ["deepseek-v4-flash"], published_at: "2026-08-30",
+} as never;
+
+test("published versions appear in a Community group and are selectable", () => {
+  const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
+  const group = screen.getByTestId("community-versions");
+  expect(group).toHaveTextContent("Mira");
+  expect(group).toHaveTextContent("诗意全译");
+  expect(group).toHaveTextContent("deepseek-v4-flash");
+  expect(group).toHaveTextContent("28/28 ch");
+  fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
+});
+
+test("reading a community version shows the read-only notice, not the translate panel", () => {
+  renderPanel({ publishedSessions: [PUBLISHED], activeSessionId: 77 });
+  expect(screen.getByTestId("community-readonly")).toHaveTextContent("only its author can change it");
+  expect(screen.queryByTestId("session-style-panel")).toBeNull();
+  expect(screen.queryByTestId("translate-chapter-button")).toBeNull();
+});
+
+test("the Edit dialog carries Publish, and Unpublish once published", async () => {
+  (api.publishTranslationSession as jest.Mock).mockResolvedValue({ ...SESSION, status: "published" });
+  const { props } = renderPanel({ activeSessionId: 5 });
+  fireEvent.click(screen.getByRole("button", { name: "Edit version 诗意版" }));
+  fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+  await waitFor(() => expect(api.publishTranslationSession).toHaveBeenCalledWith(5));
+  expect(props.onSessionsChanged).toHaveBeenCalledWith(
+    expect.arrayContaining([expect.objectContaining({ id: 5, status: "published" })]),
+  );
+});
+
+test("an incomplete book explains what is left instead of publishing", async () => {
+  (api.publishTranslationSession as jest.Mock).mockRejectedValue(new Error("nope"));
+  (api.getSessionCompleteness as jest.Mock).mockResolvedValue({
+    total_paragraphs: 980, translated_paragraphs: 412, complete: false,
+    missing_chapters: new Array(17).fill({ chapter_index: 0, translated: 0, paragraphs: 1 }),
+  });
+  renderPanel({ activeSessionId: 5 });
+  fireEvent.click(screen.getByRole("button", { name: "Edit version 诗意版" }));
+  fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+  expect(await screen.findByText(/412 of 980 paragraphs done, 17 chapter/)).toBeInTheDocument();
 });

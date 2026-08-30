@@ -2331,3 +2331,134 @@ async def get_posted_paragraph_indexes(session_id: int, chapter_index: int) -> s
             continue
         posted.update(range(start, end + 1))
     return posted
+
+
+# ── Track B: whole-book publication (design: user-translations.md, #2752) ───
+
+async def count_session_paragraphs_by_chapter(session_id: int) -> dict[int, int]:
+    """Translated paragraph counts per chapter for a whole session."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            """SELECT chapter_index, COUNT(*) FROM translation_session_paragraphs
+               WHERE session_id = ? GROUP BY chapter_index""",
+            (session_id,),
+        ) as c:
+            rows = await c.fetchall()
+    return {int(r[0]): int(r[1]) for r in rows}
+
+
+async def set_session_publication(
+    session_id: int, user_id: int, published: bool, is_admin: bool = False,
+) -> dict | None:
+    """Flip a session between published and public. Publication is gated by
+    the caller (completeness check); this only records the decision."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """UPDATE translation_sessions
+               SET status = ?, published_at = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ?""" + ("" if is_admin else " AND user_id = ?"),
+            ("published" if published else "public",
+             None if not published else None, session_id,
+             *(() if is_admin else (user_id,))),
+        )
+        if cursor.rowcount == 0:
+            return None
+        if published:
+            await db.execute(
+                "UPDATE translation_sessions SET published_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (session_id,),
+            )
+        async with db.execute(
+            "SELECT * FROM translation_sessions WHERE id = ?", (session_id,)
+        ) as c:
+            row = await c.fetchone()
+        await db.commit()
+    return dict(row) if row else None
+
+
+async def list_published_sessions(book_id: int, exclude_user_id: int | None = None) -> list[dict]:
+    """Published versions of a book — the reader's Community group. Model
+    tags come from the paragraphs themselves, so the list is honest about
+    how a translation was made."""
+    params: tuple = (book_id,)
+    where = "ts.book_id = ? AND ts.status = 'published'"
+    if exclude_user_id is not None:
+        where += " AND ts.user_id != ?"
+        params = (book_id, exclude_user_id)
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            f"""SELECT ts.*, u.name AS author_name, u.picture AS author_picture,
+                       (SELECT COUNT(DISTINCT chapter_index) FROM translation_session_paragraphs p
+                        WHERE p.session_id = ts.id) AS chapters_covered,
+                       (SELECT GROUP_CONCAT(DISTINCT p.model) FROM translation_session_paragraphs p
+                        WHERE p.session_id = ts.id) AS model_tags
+                FROM translation_sessions ts
+                JOIN users u ON u.id = ts.user_id
+                WHERE {where}
+                ORDER BY ts.published_at DESC, ts.id DESC""",
+            params,
+        ) as c:
+            rows = await c.fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["model_tags"] = [m for m in (d.get("model_tags") or "").split(",") if m]
+        out.append(d)
+    return out
+
+
+async def get_readable_session(session_id: int, user_id: int) -> dict | None:
+    """The caller's own session, or anyone's PUBLISHED one — the read path
+    for a Community version in the switcher."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT * FROM translation_sessions
+               WHERE id = ? AND (user_id = ? OR status = 'published')""",
+            (session_id, user_id),
+        ) as c:
+            row = await c.fetchone()
+    return dict(row) if row else None
+
+
+# ── Likes (track B, #2752): one table, every likeable thing ────────────────
+
+async def toggle_reaction(user_id: int, target_kind: str, target_id: int) -> bool:
+    """Like or un-like; returns the resulting liked state. Idempotent by the
+    unique key, so a double tap can never double-count."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT id FROM reactions WHERE user_id = ? AND target_kind = ? AND target_id = ?",
+            (user_id, target_kind, target_id),
+        ) as c:
+            existing = await c.fetchone()
+        if existing:
+            await db.execute("DELETE FROM reactions WHERE id = ?", (existing[0],))
+            await db.commit()
+            return False
+        await db.execute(
+            "INSERT INTO reactions (user_id, target_kind, target_id) VALUES (?, ?, ?)",
+            (user_id, target_kind, target_id),
+        )
+        await db.commit()
+        return True
+
+
+async def reaction_counts(target_kind: str, target_ids: list[int], viewer_id: int) -> dict[int, dict]:
+    """{target_id: {count, liked}} for a batch — one query per surface."""
+    if not target_ids:
+        return {}
+    marks = ",".join("?" for _ in target_ids)
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            f"""SELECT target_id, COUNT(*),
+                       SUM(CASE WHEN user_id = ? THEN 1 ELSE 0 END)
+                FROM reactions
+                WHERE target_kind = ? AND target_id IN ({marks})
+                GROUP BY target_id""",
+            (viewer_id, target_kind, *target_ids),
+        ) as c:
+            rows = await c.fetchall()
+    return {int(r[0]): {"count": int(r[1]), "liked": bool(r[2])} for r in rows}

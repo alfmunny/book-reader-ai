@@ -45,6 +45,7 @@ const mockSaveInsight = jest.fn();
 const mockSynthesizeSpeech = jest.fn();
 
 jest.mock("@/lib/api", () => ({
+  listPublishedSessions: jest.fn().mockResolvedValue([]),
   getBookTranslationLanguages: jest.fn().mockResolvedValue({ book_id: 1, total_chapters: 0, languages: [] }),
   listTranslationSessions: jest.fn().mockResolvedValue([]),
   listStories: jest.fn().mockResolvedValue({ stories: [] }),
@@ -588,7 +589,7 @@ describe("ReaderPage — showAnnotations toggle", () => {
     render(<ReaderPage />);
     await flushPromises();
 
-    const notesBtn = await screen.findByTitle(/show community notes/i);
+    const notesBtn = await screen.findByTitle(/show community posts/i);
     await userEvent.click(notesBtn);
 
     expect(mockSaveSettings).toHaveBeenCalledWith({ showOthersShares: true });

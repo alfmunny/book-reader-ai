@@ -13,7 +13,7 @@ const src = fs.readFileSync(
 
 describe("reader Shares toggle contrast (closes #1658)", () => {
   it("the <button> rendering 'Shares off' does not use text-amber-500 or opacity-60", () => {
-    const marker = '"Shares off"';
+    const marker = '"Posts off"';
     const markerIdx = src.indexOf(marker);
     expect(markerIdx).toBeGreaterThan(-1);
     // Find the enclosing <button. Walk back to the nearest <button.

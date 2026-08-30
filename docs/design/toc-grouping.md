@@ -1,6 +1,6 @@
 # Contents panel grouping — parts, acts and scenes
 
-**Status:** Draft
+**Status:** User-approved (repo owner, 2026-08-30; merged as #2772) — implementation pending
 **Author:** UI/UX Dev
 **Date:** 2026-08-30
 **Priority:** P1

@@ -345,6 +345,7 @@ export default function TranslationSessionPanel({
                 <button
                   onClick={() => {
                     setEditDialog(s);
+                    setError(null);
                     setEditDraft({
                       name: s.name,
                       target_language: s.target_language,
@@ -464,32 +465,39 @@ export default function TranslationSessionPanel({
               rows={3}
               className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
-            {/* Whole-book publication (track B): selectable by other readers
-                only when every chapter is translated — the server gates it. */}
-            <div className="flex items-center gap-2 pt-1 border-t border-amber-100">
-              <span className="text-[11px] text-stone-500 flex-1">
-                {editDialog.status === "published"
-                  ? "Published — other readers can select and read this version."
-                  : "Publish to let other readers select this version (needs the whole book translated)."}
-              </span>
+            {/* Errors belong where the action is, not out in the sidebar
+                (owner, 2026-08-30). */}
+            {error && (
+              <p role="alert" data-testid="edit-dialog-error" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-2.5 py-2">
+                {error}
+              </p>
+            )}
+            <p className="text-[11px] text-stone-500">
+              {editDialog.status === "published"
+                ? "Published — other readers can select and read this version."
+                : "Publishing lets other readers select this version; it needs the whole book translated."}
+            </p>
+            {/* One footer row: publication on the left, save/cancel on the
+                right — the same button language throughout. */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePublishToggle(editDialog)}
-                disabled={publishBusy}
-                className={`text-xs px-2.5 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                  editDialog.status === "published"
-                    ? "border-amber-300 text-amber-800 hover:bg-amber-50"
-                    : "border-amber-600 bg-amber-700 text-white hover:bg-amber-800"
-                }`}
+                disabled={publishBusy || busy}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 {publishBusy ? "Working…" : editDialog.status === "published" ? "Unpublish" : "Publish"}
               </button>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => { setEditDialog(null); setError(null); }} className="text-xs px-2 py-1.5 min-h-[44px] md:min-h-0 text-stone-600 hover:text-stone-700 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">Cancel</button>
+              <span className="flex-1" />
+              <button
+                onClick={() => { setEditDialog(null); setError(null); }}
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-200 text-stone-600 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                Cancel
+              </button>
               <button
                 onClick={handleEditSave}
                 disabled={busy || !editDraft.name.trim()}
-                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                className="text-xs px-3 py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 Save
               </button>

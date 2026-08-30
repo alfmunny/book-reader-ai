@@ -327,5 +327,9 @@ test("an incomplete book explains what is left instead of publishing", async () 
   renderPanel({ activeSessionId: 5 });
   fireEvent.click(screen.getByRole("button", { name: "Edit version 诗意版" }));
   fireEvent.click(screen.getByRole("button", { name: "Publish" }));
-  expect(await screen.findByText(/412 of 980 paragraphs done, 17 chapter/)).toBeInTheDocument();
+  // The shortfall is reported inside the dialog, where the action was
+  const err = await screen.findByTestId("edit-dialog-error");
+  expect(err).toHaveTextContent(/412 of 980 paragraphs done, 17 chapter/);
+  // …and the dialog stays open so it can be acted on
+  expect(screen.getByRole("dialog", { name: "Edit translation version" })).toBeInTheDocument();
 });

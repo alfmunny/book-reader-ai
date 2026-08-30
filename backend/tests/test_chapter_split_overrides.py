@@ -376,7 +376,7 @@ def test_rwav_has_no_chapter_invented_from_prose():
 def test_rwav_chapter_xv_is_whole():
     artifact = json.loads(RWAV_ARTIFACT.read_text())
     chapter = next(c for c in artifact["chapters"]
-                   if c["title"] == "PART TWO — Chapter XV")
+                   if c["title"].startswith("Chapter XV."))
 
     # The source hard-wraps lines inside paragraphs, so compare on normalised
     # whitespace rather than the raw text.
@@ -389,12 +389,13 @@ def test_rwav_chapter_xv_is_whole():
 
 def test_rwav_translation_followed_its_chapter_down():
     """The single zh entry was anchored at index 20; after the merge Chapter XX
-    is index 19, and the entry must have moved with it."""
+    is index 19, and the entry must have moved with it — once, on the freeze that
+    introduced the merge, and never again (#2776)."""
     artifact = json.loads(RWAV_ARTIFACT.read_text())
     entries = artifact["translations"]["zh"]["chapters"]
 
     assert [e["index"] for e in entries] == [19]
-    assert artifact["chapters"][19]["title"] == "PART TWO — Chapter XX"
+    assert artifact["chapters"][19]["title"].startswith("Chapter XX.")
     assert len(entries[0]["paragraphs"]) == len(artifact["chapters"][19]["paragraphs"])
 
 
@@ -662,12 +663,62 @@ def test_grouping_moved_no_paragraph_in_either_book():
         assert all(c["paragraphs"] for c in chapters)
 
 
-def test_room_with_a_view_is_not_grouped_yet():
-    """#2641 is deliberately absent: re-freezing it is blocked by a pre-existing
-    double-remap of its artifact's own translation entries, and forcing past the
-    guard would mis-anchor paid work. Declaring parts without a matching artifact
-    would leave the registry and the frozen data disagreeing."""
+RWAV_ARTIFACT = REPO_ROOT / "data" / "books" / "book_2641.json"
+
+
+def test_room_with_a_view_carries_its_chapter_subtitles():
+    """Forster subtitles every chapter; the splitter kept only the numeral, so
+    twenty rows read 'Chapter I' … 'Chapter XX' and said nothing."""
+    chapters = json.loads(RWAV_ARTIFACT.read_text())["chapters"]
+
+    assert chapters[0]["title"] == "Chapter I. The Bertolini"
+    assert chapters[19]["title"] == "Chapter XX. The End of the Middle Ages"
+    # Every title is numeral + subtitle, and none is a bare numeral.
+    for chapter in chapters:
+        assert re.fullmatch(r"Chapter [IVXL]+\. .+", chapter["title"]), chapter["title"]
+
+
+def test_room_with_a_view_part_two_prefix_moved_to_the_header():
+    """'PART TWO — Chapter VIII' was the lossy composition the superseded design
+    complained about: it could not be collapsed and the leaf never round-tripped
+    out. The group header carries it now."""
+    chapters = json.loads(RWAV_ARTIFACT.read_text())["chapters"]
+
+    assert not any(c["title"].startswith("PART TWO") for c in chapters)
+    assert [c["part"] for c in chapters] == ["PART ONE"] * 7 + ["PART TWO"] * 13
+
+
+def test_room_with_a_view_keeps_forsters_joke_intact():
+    """Chapter VI's subtitle is a 200-character joke. Per the owner's decision to
+    show the work's own words it is carried verbatim, and #2745's no-truncation
+    line means the panel wraps it rather than clipping."""
+    chapters = json.loads(RWAV_ARTIFACT.read_text())["chapters"]
+    assert chapters[5]["title"].endswith("Italians Drive Them")
+    assert len(chapters[5]["title"]) > 200
+
+
+def test_room_with_a_view_subtitles_did_not_move_a_paragraph():
+    """The subtitle is also the chapter's first paragraph. Moving it out instead
+    of copying it would have left chapter 19's 57-paragraph zh translation
+    against 56 English paragraphs."""
+    artifact = json.loads(RWAV_ARTIFACT.read_text())
+    chapters = artifact["chapters"]
+
+    assert chapters[0]["paragraphs"][0] == "The Bertolini"
+    assert chapters[7]["paragraphs"][0] == "Chapter VIII\nMedieval"
+
+    entry = artifact["translations"]["zh"]["chapters"][0]
+    assert len(entry["paragraphs"]) == len(chapters[entry["index"]]["paragraphs"])
+
+
+def test_room_with_a_view_retitles_are_keyed_to_the_raw_split():
+    """The trap this book carries: its merge means retitle indices (raw, 21
+    chapters) and part ranges (corrected, 20) diverge past the mis-cut. Raw 15 is
+    the merged chapter and takes no retitle."""
     from scripts.chapter_split_overrides import OVERRIDES
-    assert "parts" not in OVERRIDES[2641]
-    chapters = json.loads((REPO_ROOT / "data" / "books" / "book_2641.json").read_text())["chapters"]
-    assert not any(c.get("part") for c in chapters)
+    spec = OVERRIDES[2641]
+
+    indices = [r["index"] for r in spec["retitle"]]
+    assert indices == [i for i in range(21) if i != 15]
+    assert spec["merge_into_previous"][0]["index"] == 15
+    assert spec["parts"][-1]["to"] == 19, "part ranges are the corrected split"

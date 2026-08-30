@@ -22,14 +22,14 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "text",
-    "frozen_at": "2026-08-26",
-    "audited_by": "architect-agent (Chapter XV boundary re-audit)",
-    "content_sha256": "d4043bf3c9fa111e3d297db2277edb657466895672fa0d833ae938fab83998c1"
+    "frozen_at": "2026-08-30",
+    "audited_by": "uiux-agent (part grouping + subtitles, #2745 Phase 2)",
+    "content_sha256": "877acea56f5833116f44b5ebb9ad12f4e3acf4ac0c72453710205d9c87e24303"
   },
   "chapters": [
     {
       "index": 0,
-      "title": "Chapter I",
+      "title": "Chapter I. The Bertolini",
       "paragraphs": [
         "The Bertolini",
         "“The Signora had no business to do it,” said Miss Bartlett, “no\nbusiness at all. She promised us south rooms with a view close\ntogether, instead of which here are north rooms, looking into a\ncourtyard, and a long way apart. Oh, Lucy!”",
@@ -151,11 +151,12 @@
         "Miss Bartlett only sighed, and enveloped her in a protecting embrace as\nshe wished her good-night. It gave Lucy the sensation of a fog, and\nwhen she reached her own room she opened the window and breathed the\nclean night air, thinking of the kind old man who had enabled her to\nsee the lights dancing in the Arno and the cypresses of San Miniato,\nand the foot-hills of the Apennines, black against the rising moon.",
         "Miss Bartlett, in her room, fastened the window-shutters and locked the\ndoor, and then made a tour of the apartment to see where the cupboards\nled, and whether there were any oubliettes or secret entrances. It was\nthen that she saw, pinned up over the washstand, a sheet of paper on\nwhich was scrawled an enormous note of interrogation. Nothing more.",
         "“What does it mean?” she thought, and she examined it carefully by the\nlight of a candle. Meaningless at first, it gradually became menacing,\nobnoxious, portentous with evil. She was seized with an impulse to\ndestroy it, but fortunately remembered that she had no right to do so,\nsince it must be the property of young Mr. Emerson. So she unpinned it\ncarefully, and put it between two pieces of blotting-paper to keep it\nclean for him. Then she completed her inspection of the room, sighed\nheavily according to her habit, and went to bed."
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 1,
-      "title": "Chapter II",
+      "title": "Chapter II. In Santa Croce with No Baedeker",
       "paragraphs": [
         "In Santa Croce with No Baedeker",
         "It was pleasant to wake up in Florence, to open the eyes upon a bright\nbare room, with a floor of red tiles which look clean though they are\nnot; with a painted ceiling whereon pink griffins and blue amorini\nsport in a forest of yellow violins and bassoons. It was pleasant, too,\nto fling wide the windows, pinching the fingers in unfamiliar\nfastenings, to lean out into sunshine with beautiful hills and trees\nand marble churches opposite, and close below, the Arno, gurgling\nagainst the embankment of the road.",
@@ -291,11 +292,12 @@
         "She could not let this pass, for it was just what she was feeling\nherself.",
         "“Poor girl? I fail to understand the point of that remark. I think\nmyself a very fortunate girl, I assure you. I’m thoroughly happy, and\nhaving a splendid time. Pray don’t waste time mourning over _me_.\nThere’s enough sorrow in the world, isn’t there, without trying to\ninvent it. Good-bye. Thank you both so much for all your kindness. Ah,\nyes! there does come my cousin. A delightful morning! Santa Croce is a\nwonderful church.”",
         "She joined her cousin."
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 2,
-      "title": "Chapter III",
+      "title": "Chapter III. Music, Violets, and the Letter “S”",
       "paragraphs": [
         "Music, Violets, and the Letter “S”",
         "It so happened that Lucy, who found daily life rather chaotic, entered\na more solid world when she opened the piano. She was then no longer\neither deferential or patronizing; no longer either a rebel or a slave.\nThe kingdom of music is not the kingdom of this world; it will accept\nthose whom breeding and intellect and culture have alike rejected. The\ncommonplace person begins to play, and shoots into the empyrean without\neffort, whilst we look up, marvelling how he has escaped us, and\nthinking how we could worship him and love him, would he but translate\nhis visions into human words, and his experiences into human actions.\nPerhaps he cannot; certainly he does not, or does so very seldom. Lucy\nhad done so never.",
@@ -370,11 +372,12 @@
         "“Perhaps I shall meet someone who reads me through and through!”",
         "But they still looked disapproval, and she so far conceded to Mr. Beebe\nas to say that she would only go for a little walk, and keep to the\nstreet frequented by tourists.",
         "“She oughtn’t really to go at all,” said Mr. Beebe, as they watched her\nfrom the window, “and she knows it. I put it down to too much\nBeethoven.”"
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 3,
-      "title": "Chapter IV",
+      "title": "Chapter IV. Fourth Chapter",
       "paragraphs": [
         "Fourth Chapter",
         "Mr. Beebe was right. Lucy never knew her desires so clearly as after\nmusic. She had not really appreciated the clergyman’s wit, nor the\nsuggestive twitterings of Miss Alan. Conversation was tedious; she\nwanted something big, and she believed that it would have come to her\non the wind-swept platform of an electric tram. This she might not\nattempt. It was unladylike. Why? Why were most big things unladylike?\nCharlotte had once explained to her why. It was not that ladies were\ninferior to men; it was that they were different. Their mission was to\ninspire others to achievement rather than to achieve themselves.\nIndirectly, by means of tact and a spotless name, a lady could\naccomplish much. But if she rushed into the fray herself she would be\nfirst censured, then despised, and finally ignored. Poems had been\nwritten to illustrate this point.",
@@ -450,11 +453,12 @@
         "“But why, Mr. Emerson? What do you mean?”",
         "“I shall want to live, I say.”",
         "Leaning her elbows on the parapet, she contemplated the River Arno,\nwhose roar was suggesting some unexpected melody to her ears."
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 4,
-      "title": "Chapter V",
+      "title": "Chapter V. Possibilities of a Pleasant Outing",
       "paragraphs": [
         "Possibilities of a Pleasant Outing",
         "It was a family saying that “you never knew which way Charlotte\nBartlett would turn.” She was perfectly pleasant and sensible over\nLucy’s adventure, found the abridged account of it quite adequate, and\npaid suitable tribute to the courtesy of Mr. George Emerson. She and\nMiss Lavish had had an adventure also. They had been stopped at the\nDazio coming back, and the young officials there, who seemed impudent\nand _désœuvré_, had tried to search their reticules for provisions. It\nmight have been most unpleasant. Fortunately Miss Lavish was a match\nfor any one.",
@@ -576,11 +580,12 @@
         "Miss Bartlett, with equal vivacity, replied:",
         "“Oh, you droll person! Pray, what would become of your drive in the\nhills?”",
         "They passed together through the gaunt beauty of the square, laughing\nover the unpractical suggestion."
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 5,
-      "title": "Chapter VI",
+      "title": "Chapter VI. The Reverend Arthur Beebe, the Reverend Cuthbert Eager, Mr. Emerson, Mr. George Emerson, Miss Eleanor Lavish, Miss Charlotte Bartlett, and Miss Lucy Honeychurch Drive Out in Carriages to See a View; Italians Drive Them",
       "paragraphs": [
         "The Reverend Arthur Beebe, the Reverend Cuthbert Eager, Mr. Emerson,\nMr. George Emerson, Miss Eleanor Lavish, Miss Charlotte Bartlett, and\nMiss Lucy Honeychurch Drive Out in Carriages to See a View; Italians\nDrive Them.",
         "It was Phaethon who drove them to Fiesole that memorable day, a youth\nall irresponsibility and fire, recklessly urging his master’s horses up\nthe stony hill. Mr. Beebe recognized him at once. Neither the Ages of\nFaith nor the Age of Doubt had touched him; he was Phaethon in Tuscany\ndriving a cab. And it was Persephone whom he asked leave to pick up on\nthe way, saying that she was his sister—Persephone, tall and slender\nand pale, returning with the Spring to her mother’s cottage, and still\nshading her eyes from the unaccustomed light. To her Mr. Eager\nobjected, saying that here was the thin edge of the wedge, and one must\nguard against imposition. But the ladies interceded, and when it had\nbeen made clear that it was a very great favour, the goddess was\nallowed to mount beside the god.",
@@ -674,11 +679,12 @@
         "Standing at its brink, like a swimmer who prepares, was the good man.\nBut he was not the good man that she had expected, and he was alone.",
         "George had turned at the sound of her arrival. For a moment he\ncontemplated her, as one who had fallen out of heaven. He saw radiant\njoy in her face, he saw the flowers beat against her dress in blue\nwaves. The bushes above them closed. He stepped quickly forward and\nkissed her.",
         "Before she could speak, almost before she could feel, a voice called,\n“Lucy! Lucy! Lucy!” The silence of life had been broken by Miss\nBartlett who stood brown against the view."
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 6,
-      "title": "Chapter VII",
+      "title": "Chapter VII. They Return",
       "paragraphs": [
         "They Return",
         "Some complicated game had been playing up and down the hillside all the\nafternoon. What it was and exactly how the players had sided, Lucy was\nslow to discover. Mr. Eager had met them with a questioning eye.\nCharlotte had repulsed him with much small talk. Mr. Emerson, seeking\nhis son, was told whereabouts to find him. Mr. Beebe, who wore the\nheated aspect of a neutral, was bidden to collect the factions for the\nreturn home. There was a general sense of groping and bewilderment. Pan\nhad been amongst them—not the great god Pan, who has been buried these\ntwo thousand years, but the little god Pan, who presides over social\ncontretemps and unsuccessful picnics. Mr. Beebe had lost everyone, and\nhad consumed in solitude the tea-basket which he had brought up as a\npleasant surprise. Miss Lavish had lost Miss Bartlett. Lucy had lost\nMr. Eager. Mr. Emerson had lost George. Miss Bartlett had lost a\nmackintosh square. Phaethon had lost the game.",
@@ -809,11 +815,12 @@
         "“Go to bed at once, dear. You need all the rest you can get.”",
         "In the morning they left for Rome.",
         "PART TWO"
-      ]
+      ],
+      "part": "PART ONE"
     },
     {
       "index": 7,
-      "title": "PART TWO — Chapter VIII",
+      "title": "Chapter VIII. Medieval",
       "paragraphs": [
         "Chapter VIII\nMedieval",
         "The drawing-room curtains at Windy Corner had been pulled to meet, for\nthe carpet was new and deserved protection from the August sun. They\nwere heavy curtains, reaching almost to the ground, and the light that\nfiltered through them was subdued and varied. A poet—none was\npresent—might have quoted, “Life like a dome of many coloured glass,”\nor might have compared the curtains to sluice-gates, lowered against\nthe intolerable tides of heaven. Without was poured a sea of radiance;\nwithin, the glory, though visible, was tempered to the capacities of\nman.",
@@ -962,11 +969,12 @@
         "He took his tone from her. There was no more heavy beneficence, no more\nattempts to dignify the situation with poetry or the Scriptures. None\nof them dared or was able to be serious any more.",
         "An engagement is so potent a thing that sooner or later it reduces all\nwho speak of it to this state of cheerful awe. Away from it, in the\nsolitude of their rooms, Mr. Beebe, and even Freddy, might again be\ncritical. But in its presence and in the presence of each other they\nwere sincerely hilarious. It has a strange power, for it compels not\nonly the lips, but the very heart. The chief parallel to compare one\ngreat thing with another—is the power over us of a temple of some alien\ncreed. Standing outside, we deride or oppose it, or at the most feel\nsentimental. Inside, though the saints and gods are not ours, we become\ntrue believers, in case any true believer should be present.",
         "So it was that after the gropings and the misgivings of the afternoon\nthey pulled themselves together and settled down to a very pleasant\ntea-party. If they were hypocrites they did not know it, and their\nhypocrisy had every chance of setting and of becoming true. Anne,\nputting down each plate as if it were a wedding present, stimulated\nthem greatly. They could not lag behind that smile of hers which she\ngave them ere she kicked the drawing-room door. Mr. Beebe chirruped.\nFreddy was at his wittiest, referring to Cecil as the “Fiasco”—family\nhonoured pun on fiance. Mrs. Honeychurch, amusing and portly, promised\nwell as a mother-in-law. As for Lucy and Cecil, for whom the temple had\nbeen built, they also joined in the merry ritual, but waited, as\nearnest worshippers should, for the disclosure of some holier shrine of\njoy."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 8,
-      "title": "PART TWO — Chapter IX",
+      "title": "Chapter IX. Lucy As a Work of Art",
       "paragraphs": [
         "Chapter IX\nLucy As a Work of Art",
         "A few days after the engagement was announced Mrs. Honeychurch made\nLucy and her Fiasco come to a little garden-party in the neighbourhood,\nfor naturally she wanted to show people that her daughter was marrying\na presentable man.",
@@ -1137,11 +1145,12 @@
         "“What old man?”",
         "“That old man I told you about. The one Mr. Eager was so unkind to.”",
         "He could not know that this was the most intimate conversation they had\never had."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 9,
-      "title": "PART TWO — Chapter X",
+      "title": "Chapter X. Cecil as a Humourist",
       "paragraphs": [
         "Chapter X\nCecil as a Humourist",
         "The society out of which Cecil proposed to rescue Lucy was perhaps no\nvery splendid affair, yet it was more splendid than her antecedents\nentitled her to. Her father, a prosperous local solicitor, had built\nWindy Corner, as a speculation at the time the district was opening up,\nand, falling in love with his own creation, had ended by living there\nhimself. Soon after his marriage the social atmosphere began to alter.\nOther houses were built on the brow of that steep southern slope and\nothers, again, among the pine-trees behind, and northward on the chalk\nbarrier of the downs. Most of these houses were larger than Windy\nCorner, and were filled by people who came, not from the district, but\nfrom London, and who mistook the Honeychurches for the remnants of an\nindigenous aristocracy. He was inclined to be frightened, but his wife\naccepted the situation without either pride or humility. “I cannot\nthink what people are doing,” she would say, “but it is extremely\nfortunate for the children.” She called everywhere; her calls were\nreturned with enthusiasm, and by the time people found out that she was\nnot exactly of their _milieu_, they liked her, and it did not seem to\nmatter. When Mr. Honeychurch died, he had the satisfaction—which few\nhonest solicitors despise—of leaving his family rooted in the best\nsociety obtainable.",
@@ -1225,11 +1234,12 @@
         "She left him.",
         "“Temper!” he thought, raising his eyebrows.",
         "No, it was worse than temper—snobbishness. As long as Lucy thought that\nhis own smart friends were supplanting the Miss Alans, she had not\nminded. He perceived that these new tenants might be of value\neducationally. He would tolerate the father and draw out the son, who\nwas silent. In the interests of the Comic Muse and of Truth, he would\nbring them to Windy Corner."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 10,
-      "title": "PART TWO — Chapter XI",
+      "title": "Chapter XI. In Mrs. Vyse’s Well-Appointed Flat",
       "paragraphs": [
         "Chapter XI\nIn Mrs. Vyse’s Well-Appointed Flat",
         "The Comic Muse, though able to look after her own interests, did not\ndisdain the assistance of Mr. Vyse. His idea of bringing the Emersons\nto Windy Corner struck her as decidedly good, and she carried through\nthe negotiations without a hitch. Sir Harry Otway signed the agreement,\nmet Mr. Emerson, who was duly disillusioned. The Miss Alans were duly\noffended, and wrote a dignified letter to Lucy, whom they held\nresponsible for the failure. Mr. Beebe planned pleasant moments for the\nnew-comers, and told Mrs. Honeychurch that Freddy must call on them as\nsoon as they arrived. Indeed, so ample was the Muse’s equipment that\nshe permitted Mr. Harris, never a very robust criminal, to droop his\nhead, to be forgotten, and to die.",
@@ -1267,11 +1277,12 @@
         "“Just dreams.”",
         "The elder lady smiled and kissed her, saying very distinctly: “You\nshould have heard us talking about you, dear. He admires you more than\never. Dream of that.”",
         "Lucy returned the kiss, still covering one cheek with her hand. Mrs.\nVyse recessed to bed. Cecil, whom the cry had not awoke, snored.\nDarkness enveloped the flat."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 11,
-      "title": "PART TWO — Chapter XII",
+      "title": "Chapter XII. Twelfth Chapter",
       "paragraphs": [
         "Chapter XII\nTwelfth Chapter",
         "It was a Saturday afternoon, gay and brilliant after abundant rains,\nand the spirit of youth dwelt in it, though the season was now autumn.\nAll that was gracious triumphed. As the motorcars passed through Summer\nStreet they raised only a little dust, and their stench was soon\ndispersed by the wind and replaced by the scent of the wet birches or\nof the pines. Mr. Beebe, at leisure for life’s amenities, leant over\nhis Rectory gate. Freddy leant by him, smoking a pendant pipe.",
@@ -1407,11 +1418,12 @@
         "“Bow, Lucy; better bow. Whoever is it? I shall bow.”",
         "Miss Honeychurch bowed.",
         "That evening and all that night the water ran away. On the morrow the\npool had shrunk to its old size and lost its glory. It had been a call\nto the blood and to the relaxed will, a passing benediction whose\ninfluence did not pass, a holiness, a spell, a momentary chalice for\nyouth."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 12,
-      "title": "PART TWO — Chapter XIII",
+      "title": "Chapter XIII. How Miss Bartlett’s Boiler Was So Tiresome",
       "paragraphs": [
         "Chapter XIII\nHow Miss Bartlett’s Boiler Was So Tiresome",
         "How often had Lucy rehearsed this bow, this interview! But she had\nalways rehearsed them indoors, and with certain accessories, which\nsurely we have a right to assume. Who could foretell that she and\nGeorge would meet in the rout of a civilization, amidst an army of\ncoats and collars and boots that lay wounded over the sunlit earth? She\nhad imagined a young Mr. Emerson, who might be shy or morbid or\nindifferent or furtively impudent. She was prepared for all of these.\nBut she had never imagined one who would be happy and greet her with\nthe shout of the morning star.",
@@ -1509,11 +1521,12 @@
         "“I suppose Miss Bartlett must come, since she boils eggs so well,” said\nCecil, who was in rather a happier frame of mind, thanks to the\nadmirable cooking.",
         "“I didn’t mean the egg was _well_ boiled,” corrected Freddy, “because\nin point of fact she forgot to take it off, and as a matter of fact I\ndon’t care for eggs. I only meant how jolly kind she seemed.”",
         "Cecil frowned again. Oh, these Honeychurches! Eggs, boilers,\nhydrangeas, maids—of such were their lives compact. “May me and Lucy\nget down from our chairs?” he asked, with scarcely veiled insolence.\n“We don’t want no dessert.”"
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 13,
-      "title": "PART TWO — Chapter XIV",
+      "title": "Chapter XIV. How Lucy Faced the External Situation Bravely",
       "paragraphs": [
         "Chapter XIV\nHow Lucy Faced the External Situation Bravely",
         "Of course Miss Bartlett accepted. And, equally of course, she felt sure\nthat she would prove a nuisance, and begged to be given an inferior\nspare room—something with no view, anything. Her love to Lucy. And,\nequally of course, George Emerson could come to tennis on the Sunday\nweek.",
@@ -1578,11 +1591,12 @@
         "“Once a cad, always a cad,” droned Miss Bartlett.",
         "“What I mean by subconscious is that Emerson lost his head. I fell into\nall those violets, and he was silly and surprised. I don’t think we\nought to blame him very much. It makes such a difference when you see a\nperson with beautiful things behind him unexpectedly. It really does;\nit makes an enormous difference, and he lost his head: he doesn’t\nadmire me, or any of that nonsense, one straw. Freddy rather likes him,\nand has asked him up here on Sunday, so you can judge for yourself. He\nhas improved; he doesn’t always look as if he’s going to burst into\ntears. He is a clerk in the General Manager’s office at one of the big\nrailways—not a porter! and runs down to his father for week-ends. Papa\nwas to do with journalism, but is rheumatic and has retired. There! Now\nfor the garden.” She took hold of her guest by the arm. “Suppose we\ndon’t talk about this silly Italian business any more. We want you to\nhave a nice restful visit at Windy Corner, with no worriting.”",
         "Lucy thought this rather a good speech. The reader may have detected an\nunfortunate slip in it. Whether Miss Bartlett detected the slip one\ncannot say, for it is impossible to penetrate into the minds of elderly\npeople. She might have spoken further, but they were interrupted by the\nentrance of her hostess. Explanations took place, and in the midst of\nthem Lucy escaped, the images throbbing a little more vividly in her\nbrain."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 14,
-      "title": "PART TWO — Chapter XV",
+      "title": "Chapter XV. The Disaster Within",
       "paragraphs": [
         "Chapter XV\nThe Disaster Within",
         "The Sunday after Miss Bartlett’s arrival was a glorious day, like most\nof the days of that year. In the Weald, autumn approached, breaking up\nthe green monotony of summer, touching the parks with the grey bloom of\nmist, the beech-trees with russet, the oak-trees with gold. Up on the\nheights, battalions of black pines witnessed the change, themselves\nunchangeable. Either country was spanned by a cloudless sky, and in\neither arose the tinkle of church bells.",
@@ -1731,11 +1745,12 @@
         "She led the way up the garden, Cecil following her, George last. She\nthought a disaster was averted. But when they entered the shrubbery it\ncame. The book, as if it had not worked mischief enough, had been\nforgotten, and Cecil must go back for it; and George, who loved\npassionately, must blunder against her in the narrow path.",
         "“No—” she gasped, and, for the second time, was kissed by him.",
         "As if no more was possible, he slipped back; Cecil rejoined her; they\nreached the upper lawn alone."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 15,
-      "title": "PART TWO — Chapter XVI",
+      "title": "Chapter XVI. Lying to George",
       "paragraphs": [
         "Chapter XVI\nLying to George",
         "But Lucy had developed since the spring. That is to say, she was now\nbetter able to stifle the emotions of which the conventions and the\nworld disapprove. Though the danger was greater, she was not shaken by\ndeep sobs. She said to Cecil, “I am not coming in to tea—tell mother—I\nmust write some letters,” and went up to her room. Then she prepared\nfor action. Love felt and returned, love which our bodies exact and our\nhearts have transfigured, love which is the most real thing that we\nshall ever meet, reappeared now as the world’s enemy, and she must\nstifle it.",
@@ -1832,11 +1847,12 @@
         "“What a nuisance! That spoils the four. I say, Cecil, do play, do,\nthere’s a good chap. It’s Floyd’s last day. Do play tennis with us,\njust this once.”",
         "Cecil’s voice came: “My dear Freddy, I am no athlete. As you well\nremarked this very morning, ‘There are some chaps who are no good for\nanything but books’; I plead guilty to being such a chap, and will not\ninflict myself on you.”",
         "The scales fell from Lucy’s eyes. How had she stood Cecil for a moment?\nHe was absolutely intolerable, and the same evening she broke off her\nengagement."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 16,
-      "title": "PART TWO — Chapter XVII",
+      "title": "Chapter XVII. Lying to Cecil",
       "paragraphs": [
         "Chapter XVII\nLying to Cecil",
         "He was bewildered. He had nothing to say. He was not even angry, but\nstood, with a glass of whiskey between his hands, trying to think what\nhad led her to such a conclusion.",
@@ -1894,11 +1910,12 @@
         "She put out the lamp.",
         "It did not do to think, nor, for the matter of that, to feel. She gave\nup trying to understand herself, and joined the vast armies of the\nbenighted, who follow neither the heart nor the brain, and march to\ntheir destiny by catch-words. The armies are full of pleasant and pious\nfolk. But they have yielded to the only enemy that matters—the enemy\nwithin. They have sinned against passion and truth, and vain will be\ntheir strife after virtue. As the years pass, they are censured. Their\npleasantry and their piety show cracks, their wit becomes cynicism,\ntheir unselfishness hypocrisy; they feel and produce discomfort\nwherever they go. They have sinned against Eros and against Pallas\nAthene, and not by any heavenly intervention, but by the ordinary\ncourse of nature, those allied deities will be avenged.",
         "Lucy entered this army when she pretended to George that she did not\nlove him, and pretended to Cecil that she loved no one. The night\nreceived her, as it had received Miss Bartlett thirty years before."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 17,
-      "title": "PART TWO — Chapter XVIII",
+      "title": "Chapter XVIII. Lying to Mr. Beebe, Mrs. Honeychurch, Freddy, and The Servants",
       "paragraphs": [
         "Chapter XVIII\nLying to Mr. Beebe, Mrs. Honeychurch, Freddy, and The Servants",
         "Windy Corner lay, not on the summit of the ridge, but a few hundred\nfeet down the southern slope, at the springing of one of the great\nbuttresses that supported the hill. On either side of it was a shallow\nravine, filled with ferns and pine-trees, and down the ravine on the\nleft ran the highway into the Weald.",
@@ -2061,11 +2078,12 @@
         "Perhaps the song stated “the better part” rather too strongly. He half\nfancied that the soaring accompaniment—which he did not lose in the\nshout of the gale—really agreed with Freddy, and was gently criticizing\nthe words that it adorned:",
         "“Vacant heart and hand and eye\nEasy live and quiet die.”",
         "However, for the fourth time Windy Corner lay poised below him—now as a\nbeacon in the roaring tides of darkness."
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 18,
-      "title": "PART TWO — Chapter XIX",
+      "title": "Chapter XIX. Lying to Mr. Emerson",
       "paragraphs": [
         "Chapter XIX\nLying to Mr. Emerson",
         "The Miss Alans were found in their beloved temperance hotel near\nBloomsbury—a clean, airless establishment much patronized by provincial\nEngland. They always perched there before crossing the great seas, and\nfor a week or two would fidget gently over clothes, guide-books,\nmackintosh squares, digestive bread, and other Continental necessaries.\nThat there are shops abroad, even in Athens, never occurred to them,\nfor they regarded travel as a species of warfare, only to be undertaken\nby those who have been fully armed at the Haymarket Stores. Miss\nHoneychurch, they trusted, would take care to equip herself duly.\nQuinine could now be obtained in tabloids; paper soap was a great help\ntowards freshening up one’s face in the train. Lucy promised, a little\ndepressed.",
@@ -2244,11 +2262,12 @@
         "“Now it is all dark. Now Beauty and Passion seem never to have existed.\nI know. But remember the mountains over Florence and the view. Ah,\ndear, if I were George, and gave you one kiss, it would make you brave.\nYou have to go cold into a battle that needs warmth, out into the\nmuddle that you have made yourself; and your mother and all your\nfriends will despise you, oh, my darling, and rightly, if it is ever\nright to despise. George still dark, all the tussle and the misery\nwithout a word from him. Am I justified?” Into his own eyes tears came.\n“Yes, for we fight for more than Love or Pleasure; there is Truth.\nTruth counts, Truth does count.”",
         "“You kiss me,” said the girl. “You kiss me. I will try.”",
         "He gave her a sense of deities reconciled, a feeling that, in gaining\nthe man she loved, she would gain something for the whole world.\nThroughout the squalor of her homeward drive—she spoke at once—his\nsalutation remained. He had robbed the body of its taint, the world’s\ntaunts of their sting; he had shown her the holiness of direct desire.\nShe “never exactly understood,” she would say in after years, “how he\nmanaged to strengthen her. It was as if he had made her see the whole\nof everything at once.”"
-      ]
+      ],
+      "part": "PART TWO"
     },
     {
       "index": 19,
-      "title": "PART TWO — Chapter XX",
+      "title": "Chapter XX. The End of the Middle Ages",
       "paragraphs": [
         "Chapter XX\nThe End of the Middle Ages",
         "The Miss Alans did go to Greece, but they went by themselves. They\nalone of this little company will double Malea and plough the waters of\nthe Saronic gulf. They alone will visit Athens and Delphi, and either\nshrine of intellectual song—that upon the Acropolis, encircled by blue\nseas; that under Parnassus, where the eagles build and the bronze\ncharioteer drives undismayed towards infinity. Trembling, anxious,\ncumbered with much digestive bread, they did proceed to Constantinople,\nthey did go round the world. The rest of us must be contented with a\nfair, but a less arduous, goal. Italiam petimus: we return to the\nPension Bertolini.",
@@ -2307,7 +2326,8 @@
         "He whispered: “Is it this? Is this possible? I’ll put a marvel to you.\nThat your cousin has always hoped. That from the very first moment we\nmet, she hoped, far down in her mind, that we should be like this—of\ncourse, very far down. That she fought us on the surface, and yet she\nhoped. I can’t explain her any other way. Can you? Look how she kept me\nalive in you all the summer; how she gave you no peace; how month after\nmonth she became more eccentric and unreliable. The sight of us haunted\nher—or she couldn’t have described us as she did to her friend. There\nare details—it burnt. I read the book afterwards. She is not frozen,\nLucy, she is not withered up all through. She tore us apart twice, but\nin the rectory that evening she was given one more chance to make us\nhappy. We can never make friends with her or thank her. But I do\nbelieve that, far down in her heart, far below all speech and\nbehaviour, she is glad.”",
         "“It is impossible,” murmured Lucy, and then, remembering the\nexperiences of her own heart, she said: “No—it is just possible.”",
         "Youth enwrapped them; the song of Phaethon announced passion requited,\nlove attained. But they were conscious of a love more mysterious than\nthis. The song died away; they heard the river, bearing down the snows\nof winter into the Mediterranean."
-      ]
+      ],
+      "part": "PART TWO"
     }
   ],
   "translations": {

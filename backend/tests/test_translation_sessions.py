@@ -508,3 +508,29 @@ async def test_published_list_ranks_by_popularity_searches_and_pages(client, tes
     assert len(page1) == 2 and more1 is True
     page2, more2 = await list_published_sessions(1, exclude_user_id=reader["id"], limit=2, offset=2)
     assert len(page2) == 1 and more2 is False
+
+
+async def test_version_description_round_trips_and_reaches_the_community_list(client, test_user):
+    """A version carries the translator's own blurb (owner, 2026-08-30) —
+    set at creation or edited later, and served with the published listing
+    so the discussion dialog can show it."""
+    from services.db import get_or_create_user, set_session_publication
+
+    created = (await client.post("/api/translation-sessions", json={
+        "book_id": 1, "name": "带简介的版本", "target_language": "zh",
+        "provider": "deepseek", "description": "偏文学化的译法",
+    })).json()
+    assert created["description"] == "偏文学化的译法"
+
+    edited = (await client.patch(f"/api/translation-sessions/{created['id']}", json={
+        "description": "改了简介",
+    })).json()
+    assert edited["description"] == "改了简介"
+
+    # …and a reader browsing the Community group sees it on the published row
+    await set_session_publication(created["id"], test_user["id"], True)
+    other = await get_or_create_user(google_id="g-desc-reader", email="dr@e.com", name="DR", picture="")
+    from services.db import list_published_sessions
+    rows, _ = await list_published_sessions(1, exclude_user_id=other["id"])
+    mine = next(r for r in rows if r["id"] == created["id"])
+    assert mine["description"] == "改了简介"

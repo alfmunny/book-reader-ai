@@ -42,6 +42,13 @@ RENDERINGS = [
 ]
 
 
+DEMO_VERSION_DESCRIPTION = (
+    "一版偏文学化的完整中译。我尽量保留原文的节奏和意象，"
+    "遇到双关和典故时选择意译并在注释里说明取舍。适合已经读过一遍、"
+    "想细品语言的读者。"
+)
+
+
 async def _find_book(db, book_id: int | None) -> tuple[int, str]:
     if book_id is not None:
         async with db.execute("SELECT id, title FROM books WHERE id = ?", (book_id,)) as c:
@@ -430,10 +437,11 @@ async def main() -> None:
         # group in the switcher has something to select (owner, 2026-08-30).
         await db.execute(
             """INSERT INTO translation_sessions
-               (user_id, book_id, name, target_language, provider, style_prompt, status)
-               VALUES (?, ?, '诗意全译 (demo)', 'zh', 'deepseek', '优雅的书面语', 'published')
-               ON CONFLICT(user_id, book_id, name) DO UPDATE SET status = 'published'""",
-            (mira_id, book_id),
+               (user_id, book_id, name, target_language, provider, style_prompt, status, description)
+               VALUES (?, ?, '诗意全译 (demo)', 'zh', 'deepseek', '优雅的书面语', 'published', ?)
+               ON CONFLICT(user_id, book_id, name)
+               DO UPDATE SET status = 'published', description = excluded.description""",
+            (mira_id, book_id, DEMO_VERSION_DESCRIPTION),
         )
         async with db.execute(
             "SELECT id FROM translation_sessions WHERE user_id = ? AND book_id = ? AND name = '诗意全译 (demo)'",
@@ -461,6 +469,7 @@ async def main() -> None:
 
     print(f"Seeded demo stories on book {book_id} ({title}):")
     print(f"  - Mira's translation story #{translation_story_id} (paragraph 1, session '诗意版 (demo)')")
+    print("  - Mira's published '诗意全译 (demo)' carries a description blurb")
     print(f"  - Mira's note story #{note_story_id}")
     print("  - Jonas commented on both")
     print("  - 3 sentence-anchored shared notes on chapter 5 (index 4) with cross-comments")

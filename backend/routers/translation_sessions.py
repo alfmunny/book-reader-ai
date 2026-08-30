@@ -105,6 +105,7 @@ class SessionCreate(BaseModel):
     provider: Literal["deepseek", "claude"]
     style_prompt: str | None = Field(default=None, max_length=2000)
     status: Literal["private", "public"] = "public"
+    description: str | None = Field(default=None, max_length=500)
 
     @field_validator("name")
     @classmethod
@@ -130,6 +131,9 @@ class SessionUpdate(BaseModel):
     # translated to the old language simply stay — not strict on purpose.
     target_language: str | None = Field(default=None, min_length=1, max_length=20)
     status: Literal["private", "public"] | None = None
+    # A blurb readers see in the version dialog. "" clears it, so this field
+    # is passed through exclude_none, not exclude_unset.
+    description: str | None = Field(default=None, max_length=500)
 
     @field_validator("target_language")
     @classmethod
@@ -184,7 +188,7 @@ async def create_session(req: SessionCreate, user: dict = Depends(get_current_us
     check_book_access(book, user)
     created = await create_translation_session(
         user["id"], req.book_id, req.name, req.target_language, req.provider, req.style_prompt,
-        status=req.status,
+        status=req.status, description=req.description,
     )
     if created is None:
         raise HTTPException(status_code=409, detail=f'You already have a version named "{req.name}" for this book.')

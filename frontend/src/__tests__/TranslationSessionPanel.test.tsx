@@ -2,7 +2,7 @@
  * Translation session switcher (design: docs/design/user-translations.md, #2740).
  */
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 jest.mock("@/lib/api", () => ({
   createTranslationSession: jest.fn(),
@@ -295,7 +295,8 @@ test("the create dialog offers explicit visibility; public is sent through", asy
 
 const PUBLISHED = {
   id: 77, book_id: 2229, name: "诗意全译", target_language: "zh", provider: "deepseek",
-  status: "published", coverage: {}, author_name: "Mira", author_picture: null,
+  status: "published", coverage: {}, author_name: "Mira", author_picture: "https://img/mira.png",
+  description: "偏文学化的完整中译，保留原文节奏。",
   chapters_covered: 28, model_tags: ["deepseek-v4-flash"], published_at: "2026-08-30", likes: 0, comments: 0,
 } as never;
 
@@ -347,7 +348,10 @@ test("an incomplete book explains what is left instead of publishing", async () 
 
 test("the chat button on a version opens its likes-and-comments dialog", async () => {
   (api.listVersionComments as jest.Mock).mockResolvedValue({
-    comments: [{ id: 301, user_id: 3, body: "整体很流畅", created_at: "", author_name: "Jonas" }],
+    comments: [{
+      id: 301, user_id: 3, body: "整体很流畅", author_name: "Jonas",
+      created_at: new Date(Date.now() - 2 * 3600_000).toISOString().slice(0, 19).replace("T", " "),
+    }],
   });
   (api.listReactions as jest.Mock).mockResolvedValue({ reactions: { "77": { count: 5, liked: false } } });
   (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 6 });
@@ -362,7 +366,19 @@ test("the chat button on a version opens its likes-and-comments dialog", async (
   const dialog = await screen.findByTestId("version-discussion");
   expect(dialog).toHaveTextContent("诗意全译");
   expect(dialog).toHaveTextContent("by Mira");
-  expect(await screen.findByTestId("version-comment-301")).toHaveTextContent("整体很流畅");
+  // The blurb and the how-it-was-made facts belong here, not just the thread
+  expect(dialog).toHaveTextContent("偏文学化的完整中译");
+  const meta = within(dialog).getByTestId("version-meta");
+  expect(meta).toHaveTextContent("中文");
+  expect(meta).toHaveTextContent("deepseek-v4-flash");
+  expect(meta).toHaveTextContent("28 chapters");
+  expect(dialog.querySelector("img")).toHaveAttribute("src", "https://img/mira.png");
+
+  // Comments carry identity and time, like every other thread in the reader
+  const comment = await screen.findByTestId("version-comment-301");
+  expect(comment).toHaveTextContent("整体很流畅");
+  expect(comment).toHaveTextContent("Jonas");
+  expect(within(comment).getByText("2 h ago")).toBeInTheDocument();
 
   const heart = screen.getByTestId("version-like");
   await waitFor(() => expect(heart).toHaveTextContent("5"));
@@ -422,4 +438,23 @@ test("searching the community dialog re-queries the server", async () => {
     2229, expect.objectContaining({ q: "Mira", sort: "popular" }),
   ));
   expect(await screen.findByText("No translations match that search.")).toBeInTheDocument();
+});
+
+test("the edit dialog carries the version's description", async () => {
+  (api.updateTranslationSession as jest.Mock).mockResolvedValue({
+    ...SESSION, description: "保留原文节奏",
+  });
+  renderPanel({ sessions: [{ ...SESSION, description: "旧的简介" }] });
+
+  fireEvent.click(screen.getByLabelText(`Edit version ${SESSION.name}`));
+  const field = screen.getByLabelText("Version description") as HTMLTextAreaElement;
+  expect(field.value).toBe("旧的简介");
+
+  fireEvent.change(field, { target: { value: "保留原文节奏" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(api.updateTranslationSession).toHaveBeenCalledWith(
+      SESSION.id, expect.objectContaining({ description: "保留原文节奏" }),
+    ),
+  );
 });

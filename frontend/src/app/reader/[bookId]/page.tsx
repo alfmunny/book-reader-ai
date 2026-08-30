@@ -3015,6 +3015,8 @@ export default function ReaderPage() {
                         chapterIndex={chapterIndex}
                         hasClaudeKey={hasClaudeKey}
                         hasDeepseekKey={hasDeepseekKey}
+                        currentUserName={session?.backendUser?.name ?? session?.user?.name}
+                        currentUserPicture={session?.backendUser?.picture ?? session?.user?.image}
                         onSelect={selectTranslationSession}
                         publishedSessions={publishedSessions}
                         onSessionsChanged={setTranslationSessions}

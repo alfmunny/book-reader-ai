@@ -21,6 +21,37 @@ import {
 import { LANGUAGES } from "@/components/InsightChat";
 import { getSettings } from "@/lib/settings";
 import { TrashIcon, EditIcon, HeartIcon, ChatIcon } from "@/components/Icons";
+import Avatar from "@/components/Avatar";
+import { timeAgo, exactTime } from "@/lib/timeAgo";
+
+type DiscussTarget = {
+  id: number;
+  name: string;
+  author?: string;
+  authorPicture?: string | null;
+  description?: string | null;
+  language?: string;
+  provider?: string;
+  models?: string[];
+  chapters?: number;
+  publishedAt?: string | null;
+};
+
+const langLabel = (code?: string) =>
+  LANGUAGES.find((l) => l.code === code)?.label ?? code ?? "";
+
+const discussFromCommunity = (cs: PublishedSessionType): DiscussTarget => ({
+  id: cs.id,
+  name: cs.name,
+  author: cs.author_name,
+  authorPicture: cs.author_picture,
+  description: cs.description,
+  language: cs.target_language,
+  provider: cs.provider,
+  models: cs.model_tags,
+  chapters: cs.chapters_covered,
+  publishedAt: cs.published_at,
+});
 
 interface Props {
   bookId: number;
@@ -42,6 +73,10 @@ interface Props {
    *  token/cost estimate in the retranslate confirmation. */
   chapterChars?: number;
   translating: boolean;
+  /** Signed-in reader's identity — the discussion dialog credits your own
+   *  published versions to you, the same way it credits everyone else. */
+  currentUserName?: string | null;
+  currentUserPicture?: string | null;
   /** Persistent error from the last session action (translate/delete). */
   actionError?: string | null;
   onDismissError?: () => void;
@@ -64,6 +99,8 @@ export default function TranslationSessionPanel({
   activeSessionId,
   chapterCount,
   chapterIndex,
+  currentUserName,
+  currentUserPicture,
   hasClaudeKey,
   hasDeepseekKey,
   onSelect,
@@ -102,7 +139,7 @@ export default function TranslationSessionPanel({
   const [editDialog, setEditDialog] = useState<TranslationSession | null>(null);
   const [editDraft, setEditDraft] = useState({
     name: "", target_language: "en", provider: "deepseek" as SessionProvider,
-    style_prompt: "", status: "private" as "private" | "public",
+    style_prompt: "", status: "private" as "private" | "public", description: "",
   });
   const [confirmRetranslate, setConfirmRetranslate] = useState(false);
   // Whole-book publication (track B): the gate lives on the server; here we
@@ -183,12 +220,12 @@ export default function TranslationSessionPanel({
           aria-label={`Likes and comments on ${cs.name}`}
           title="Likes and comments"
           data-testid={`version-discuss-${cs.id}`}
-          onClick={(e) => { e.stopPropagation(); setDiscussVersion({ id: cs.id, name: cs.name, author: cs.author_name }); }}
+          onClick={(e) => { e.stopPropagation(); setDiscussVersion(discussFromCommunity(cs)); }}
           onKeyDown={(e) => {
             if (e.key !== "Enter" && e.key !== " ") return;
             e.preventDefault();
             e.stopPropagation();
-            setDiscussVersion({ id: cs.id, name: cs.name, author: cs.author_name });
+            setDiscussVersion(discussFromCommunity(cs));
           }}
           className="shrink-0 inline-flex items-center gap-0.5 text-[10px] text-stone-400 hover:text-amber-700 rounded px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
@@ -204,7 +241,10 @@ export default function TranslationSessionPanel({
       </span>
     </button>
   );
-  const [discussVersion, setDiscussVersion] = useState<{ id: number; name: string; author?: string } | null>(null);
+  // What the discussion dialog shows above the thread: who made this
+  // translation, their blurb, and how it was made (owner, 2026-08-30) —
+  // a version is a piece of work, not just a row to comment under.
+  const [discussVersion, setDiscussVersion] = useState<DiscussTarget | null>(null);
   const discussedId = discussVersion?.id ?? null;
   useEffect(() => {
     if (discussedId == null) { setVersionComments([]); setVersionLike({ count: 0, liked: false }); return; }
@@ -250,10 +290,23 @@ export default function TranslationSessionPanel({
   const versionDiscussionDialog = discussVersion && (
     <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" role="dialog" aria-label="Translation discussion">
       <div className="bg-white rounded-xl border border-amber-200 p-4 w-full max-w-md max-h-[70vh] flex flex-col" style={{ boxShadow: "var(--shadow-card-hover)" }} data-testid="version-discussion">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-start gap-2 mb-2">
+          {discussVersion.author && (
+            <Avatar name={discussVersion.author} picture={discussVersion.authorPicture} />
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-ink truncate">{discussVersion.name}</p>
-            {discussVersion.author && <p className="text-[11px] text-stone-400">by {discussVersion.author}</p>}
+            <p className="text-sm font-medium text-ink break-words">{discussVersion.name}</p>
+            {discussVersion.author && (
+              <p className="text-[11px] text-stone-500">
+                by {discussVersion.author}
+                {discussVersion.publishedAt && (
+                  <>
+                    {" · "}
+                    <time title={exactTime(discussVersion.publishedAt)}>{timeAgo(discussVersion.publishedAt)}</time>
+                  </>
+                )}
+              </p>
+            )}
           </div>
           <button
             onClick={() => setDiscussVersion(null)}
@@ -262,6 +315,25 @@ export default function TranslationSessionPanel({
           >
             ✕
           </button>
+        </div>
+        {discussVersion.description && (
+          <p className="text-[13px] leading-relaxed text-stone-600 mb-2 whitespace-pre-wrap">{discussVersion.description}</p>
+        )}
+        <div className="flex items-center gap-1 flex-wrap text-[10px] mb-2" data-testid="version-meta">
+          {discussVersion.language && (
+            <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700">{langLabel(discussVersion.language)}</span>
+          )}
+          {(discussVersion.models?.length
+            ? discussVersion.models
+            : discussVersion.provider ? [discussVersion.provider] : []
+          ).map((m) => (
+            <span key={m} className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-mono">{m}</span>
+          ))}
+          {discussVersion.chapters !== undefined && (
+            <span className="px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-600">
+              {discussVersion.chapters} chapter{discussVersion.chapters === 1 ? "" : "s"}
+            </span>
+          )}
         </div>
       <div className="space-y-2 overflow-y-auto">
       <div className="flex items-center gap-2">
@@ -279,10 +351,19 @@ export default function TranslationSessionPanel({
         </button>
         <span className="text-[11px] text-stone-500">{versionComments.length} comment{versionComments.length === 1 ? "" : "s"}</span>
       </div>
+      {versionComments.length === 0 && (
+        <p className="text-[11px] text-stone-400 py-1">No comments yet — say what you think of this translation.</p>
+      )}
       {versionComments.map((c) => (
         <div key={c.id} className="text-xs" data-testid={`version-comment-${c.id}`}>
-          <span className="font-medium text-ink">{c.author_name}</span>
-          <p className="mt-0.5 text-[13px] leading-relaxed text-stone-600 whitespace-pre-wrap">{c.body}</p>
+          <div className="flex items-center gap-1.5">
+            <Avatar name={c.author_name} picture={c.author_picture} size="w-4 h-4" />
+            <span className="font-medium text-ink">{c.author_name}</span>
+            {c.created_at && (
+              <time title={exactTime(c.created_at)} className="text-[10px] text-stone-400">{timeAgo(c.created_at)}</time>
+            )}
+          </div>
+          <p className="mt-0.5 pl-[22px] text-[13px] leading-relaxed text-stone-600 whitespace-pre-wrap">{c.body}</p>
         </div>
       ))}
       </div>
@@ -389,6 +470,7 @@ export default function TranslationSessionPanel({
         provider: editDraft.provider,
         style_prompt: editDraft.style_prompt,
         status: editDraft.status,
+        description: editDraft.description,
       });
       const merged = { ...editDialog, ...updated, coverage: editDialog.coverage };
       onSessionsChanged(sessions.map((s) => (s.id === editDialog.id ? merged : s)));
@@ -549,7 +631,12 @@ export default function TranslationSessionPanel({
                 </button>
                 {s.status === "published" && (
                   <button
-                    onClick={() => setDiscussVersion({ id: s.id, name: s.name })}
+                    onClick={() => setDiscussVersion({
+                      id: s.id, name: s.name, author: currentUserName ?? undefined, authorPicture: currentUserPicture,
+                      description: s.description, language: s.target_language,
+                      provider: s.provider, chapters: Object.keys(s.coverage ?? {}).length,
+                      publishedAt: s.updated_at,
+                    })}
                     aria-label={`Likes and comments on ${s.name}`}
                     title="Likes and comments"
                     data-testid={`version-discuss-${s.id}`}
@@ -568,6 +655,7 @@ export default function TranslationSessionPanel({
                       provider: s.provider,
                       style_prompt: s.style_prompt ?? "",
                       status: s.status === "public" ? "public" : "private",
+                      description: s.description ?? "",
                     });
                   }}
                   aria-label={`Edit version ${s.name}`}
@@ -674,6 +762,15 @@ export default function TranslationSessionPanel({
               onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
               className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
               autoFocus
+            />
+            <textarea
+              aria-label="Version description"
+              value={editDraft.description}
+              onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
+              placeholder="Describe this translation — your approach, who it's for…"
+              rows={2}
+              maxLength={500}
+              className="w-full text-sm border border-amber-300 rounded px-2 py-1.5 resize-y focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
             <select
               aria-label="Version target language"

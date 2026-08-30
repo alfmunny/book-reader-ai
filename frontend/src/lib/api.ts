@@ -919,6 +919,8 @@ export interface TranslationSession {
   book_id: number;
   name: string;
   target_language: string;
+  /** The translator's own blurb, shown in the version dialog. */
+  description?: string | null;
   style_prompt?: string | null;
   provider: SessionProvider;
   status: string;
@@ -1015,7 +1017,10 @@ export function createTranslationSession(data: {
 
 export function updateTranslationSession(
   id: number,
-  data: { name?: string; style_prompt?: string; provider?: SessionProvider; target_language?: string; status?: "private" | "public" },
+  data: {
+    name?: string; style_prompt?: string; provider?: SessionProvider;
+    target_language?: string; status?: "private" | "public"; description?: string;
+  },
 ) {
   return request<TranslationSession>(`/translation-sessions/${id}`, {
     method: "PATCH",

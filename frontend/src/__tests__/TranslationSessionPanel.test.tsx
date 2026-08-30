@@ -345,7 +345,7 @@ test("an incomplete book explains what is left instead of publishing", async () 
   expect(screen.getByRole("dialog", { name: "Edit translation version" })).toBeInTheDocument();
 });
 
-test("a community version can be liked and discussed as a whole", async () => {
+test("the chat button on a version opens its likes-and-comments dialog", async () => {
   (api.listVersionComments as jest.Mock).mockResolvedValue({
     comments: [{ id: 301, user_id: 3, body: "整体很流畅", created_at: "", author_name: "Jonas" }],
   });
@@ -354,21 +354,38 @@ test("a community version can be liked and discussed as a whole", async () => {
   (api.addVersionComment as jest.Mock).mockResolvedValue({
     id: 302, user_id: 9, body: "我也喜欢", created_at: "", author_name: "Me",
   });
-  renderPanel({ publishedSessions: [PUBLISHED], activeSessionId: 77 });
+  renderPanel({ publishedSessions: [PUBLISHED] });
 
-  // Existing discussion of the whole version
+  // Nothing inline in the sidebar — it opens from the row's chat button
+  expect(screen.queryByTestId("version-discussion")).toBeNull();
+  fireEvent.click(screen.getByTestId("version-discuss-77"));
+  const dialog = await screen.findByTestId("version-discussion");
+  expect(dialog).toHaveTextContent("诗意全译");
+  expect(dialog).toHaveTextContent("by Mira");
   expect(await screen.findByTestId("version-comment-301")).toHaveTextContent("整体很流畅");
+
   const heart = screen.getByTestId("version-like");
   await waitFor(() => expect(heart).toHaveTextContent("5"));
   fireEvent.click(heart);
   await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("session", 77));
   await waitFor(() => expect(screen.getByTestId("version-like")).toHaveTextContent("6"));
 
-  // …and a new comment on the version itself
   fireEvent.change(screen.getByLabelText("Version comment"), { target: { value: "我也喜欢" } });
   fireEvent.click(screen.getByRole("button", { name: "Post" }));
   await waitFor(() => expect(api.addVersionComment).toHaveBeenCalledWith(77, "我也喜欢"));
   expect(await screen.findByTestId("version-comment-302")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
+  expect(screen.queryByTestId("version-discussion")).toBeNull();
+});
+
+test("selecting a community row still reads it — the chat button does not", async () => {
+  const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
+  fireEvent.click(screen.getByTestId("version-discuss-77"));
+  expect(props.onSelect).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
+  fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
 });
 
 test("the sidebar shows the top few; More opens a searchable, paged dialog", async () => {

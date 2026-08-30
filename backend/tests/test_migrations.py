@@ -2320,7 +2320,7 @@ async def _rerun_052(tmp_db):
     await run_migrations(tmp_db)
 
 
-async def test_migration_052_labels_the_declared_chapters(tmp_db):
+async def test_migration_057_labels_the_declared_chapters(tmp_db):
     """Books ingested before #2763 carry NULL, so the Front matter group never
     appears for them — this is what makes the feature visible."""
     await run_migrations(tmp_db)
@@ -2341,7 +2341,7 @@ async def test_migration_052_labels_the_declared_chapters(tmp_db):
             ]
 
 
-async def test_migration_052_leaves_the_body_alone(tmp_db):
+async def test_migration_057_leaves_the_body_alone(tmp_db):
     await run_migrations(tmp_db)
     async with aiosqlite.connect(tmp_db) as db:
         await _seed_frontmatter_book(db, 345, "TITLE PAGE")
@@ -2355,7 +2355,7 @@ async def test_migration_052_leaves_the_body_alone(tmp_db):
             assert (await cur.fetchone())[0] is None
 
 
-async def test_migration_052_labels_nothing_when_the_title_does_not_match(tmp_db):
+async def test_migration_057_labels_nothing_when_the_title_does_not_match(tmp_db):
     """The guard that matters. If a split shifted and index 0 is now a real
     chapter, labelling it would hide part of the work — far worse than leaving a
     title page visible."""
@@ -2370,7 +2370,7 @@ async def test_migration_052_labels_nothing_when_the_title_does_not_match(tmp_db
             assert [r[0] for r in await cur.fetchall()] == [None, None]
 
 
-async def test_migration_052_does_not_label_undeclared_books(tmp_db):
+async def test_migration_057_does_not_label_undeclared_books(tmp_db):
     """Only the audited set. Dorian Gray's PREFACE is Wilde's, part of the work."""
     await run_migrations(tmp_db)
     async with aiosqlite.connect(tmp_db) as db:
@@ -2383,7 +2383,7 @@ async def test_migration_052_does_not_label_undeclared_books(tmp_db):
             assert all(r[0] is None for r in await cur.fetchall())
 
 
-async def test_migration_052_matches_the_declared_overrides(tmp_db):
+async def test_migration_057_matches_the_declared_overrides(tmp_db):
     """The migration and chapter_split_overrides.py must not drift: a re-ingest
     rewrites role from the artifact, so a book declared in one and not the other
     would flip its label depending on which ran last."""
@@ -2448,7 +2448,7 @@ async def _rerun_056(tmp_db):
     await run_migrations(tmp_db)
 
 
-async def test_migration_056_names_each_act_for_its_scene(tmp_db):
+async def test_migration_057_names_each_act_for_its_scene(tmp_db):
     """The chapter titled 'ACT I' is Act I Scene I; the panel never said so."""
     await run_migrations(tmp_db)
     async with aiosqlite.connect(tmp_db) as db:
@@ -2466,7 +2466,7 @@ async def test_migration_056_names_each_act_for_its_scene(tmp_db):
             assert row[0] == new, f"chapter {index}"
 
 
-async def test_migration_056_leaves_the_scene_chapters_alone(tmp_db):
+async def test_migration_057_leaves_the_scene_chapters_alone(tmp_db):
     await run_migrations(tmp_db)
     async with aiosqlite.connect(tmp_db) as db:
         await _seed_hamlet(db)
@@ -2481,7 +2481,7 @@ async def test_migration_056_leaves_the_scene_chapters_alone(tmp_db):
         assert row[0] == "SCENE II. Elsinore. A room of state in the Castle."
 
 
-async def test_migration_056_restamps_the_integrity_hash(tmp_db):
+async def test_migration_057_restamps_the_integrity_hash(tmp_db):
     """`title` sits inside content_sha256, unlike `role`. Leaving the old hash
     would make every row disagree with its own integrity stamp."""
     await run_migrations(tmp_db)
@@ -2499,7 +2499,7 @@ async def test_migration_056_restamps_the_integrity_hash(tmp_db):
         assert "act/scene titling" in row[1]
 
 
-async def test_migration_056_does_not_restamp_a_partial_match(tmp_db):
+async def test_migration_057_does_not_restamp_a_partial_match(tmp_db):
     """A split that has shifted must not be stamped with a hash describing a
     different chapter list — that would assert an integrity that isn't there."""
     await run_migrations(tmp_db)
@@ -2523,7 +2523,7 @@ async def test_migration_056_does_not_restamp_a_partial_match(tmp_db):
         assert untouched[0] == "SOMETHING ELSE"
 
 
-async def test_migration_056_matches_the_committed_artifact(tmp_db):
+async def test_migration_057_matches_the_committed_artifact(tmp_db):
     """Drift guard, and the bug this nearly shipped with: the source sets
     'Polonius’s' with U+2019, and a straight ASCII apostrophe in the SQL
     would write a title no artifact ever contained while silently failing the
@@ -2546,3 +2546,101 @@ async def test_migration_056_matches_the_committed_artifact(tmp_db):
 
     assert artifact["split"]["content_sha256"] == _NEW_SHA
     assert _NEW_SHA in sql
+# ── 057: German noun capitals restored (#2768) ───────────────────────────────
+
+async def _seed_vocab(db_path: str, rows: list[tuple[int, str, str]]) -> None:
+    """Seed (user_id, word, language) vocabulary rows."""
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute("INSERT OR IGNORE INTO users (id, google_id, email, name) VALUES (1,'g1','e1','n')")
+        await db.execute("INSERT OR IGNORE INTO users (id, google_id, email, name) VALUES (2,'g2','e2','n')")
+        await db.executemany(
+            "INSERT INTO vocabulary (user_id, word, lemma, language) VALUES (?,?,?,?)",
+            [(u, w, w, lang) for u, w, lang in rows],
+        )
+        await db.commit()
+
+
+async def _words(db_path: str) -> list[str]:
+    async with aiosqlite.connect(db_path) as db:
+        async with db.execute("SELECT word FROM vocabulary ORDER BY word") as cur:
+            return [r[0] for r in await cur.fetchall()]
+
+
+async def _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch):
+    """Run every migration except 057, so rows can exist before it lands."""
+    real_dir = os.path.join(os.path.dirname(__file__), "..", "migrations")
+    for f in sorted(x for x in os.listdir(real_dir) if x.endswith(".sql")):
+        if not f.startswith("057"):
+            shutil.copy(os.path.join(real_dir, f), os.path.join(tmp_migrations, f))
+    monkeypatch.setattr("services.migrations._MIGRATIONS_DIR", tmp_migrations)
+    await run_migrations(tmp_db)
+    shutil.copy(os.path.join(real_dir, "057_vocabulary_restore_noun_capitals.sql"),
+                os.path.join(tmp_migrations, "057_vocabulary_restore_noun_capitals.sql"))
+
+
+async def test_migration_057_capitalises_the_five_nouns(tmp_db, tmp_migrations, monkeypatch):
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, w, "de") for w in
+                               ("gesell", "laffe", "leichnam", "pracht", "schalk")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["Gesell", "Laffe", "Leichnam", "Pracht", "Schalk"]
+
+
+async def test_migration_057_leaves_the_nominalised_verb_alone(tmp_db, tmp_migrations, monkeypatch):
+    """`verheeren` appears capitalised in the text but its lemma is a verb."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, "verheeren", "de"), (1, "zieren", "de")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["verheeren", "zieren"]
+
+
+async def test_migration_057_is_scoped_to_german(tmp_db, tmp_migrations, monkeypatch):
+    """An identically-spelled word saved in another language is not ours to fix."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, "pracht", "nl")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["pracht"]
+
+
+async def test_migration_057_does_not_collide_with_an_existing_capital(
+    tmp_db, tmp_migrations, monkeypatch
+):
+    """Migration 051's index forbids two casings; the guard must skip, not crash."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DROP INDEX IF EXISTS idx_vocabulary_user_word_nocase")
+        await db.commit()
+    await _seed_vocab(tmp_db, [(1, "pracht", "de"), (1, "Pracht", "de")])
+
+    await run_migrations(tmp_db)
+
+    assert sorted(await _words(tmp_db)) == ["Pracht", "pracht"], "left alone, no collision"
+
+
+async def test_migration_057_corrects_every_user(tmp_db, tmp_migrations, monkeypatch):
+    """The bug was in shared code, so it hit every reader's rows."""
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, "pracht", "de"), (2, "pracht", "de")])
+
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["Pracht", "Pracht"]
+
+
+async def test_migration_057_is_idempotent(tmp_db, tmp_migrations, monkeypatch):
+    await _apply_all_but_057(tmp_db, tmp_migrations, monkeypatch)
+    await _seed_vocab(tmp_db, [(1, "pracht", "de")])
+
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version LIKE '057%'")
+        await db.commit()
+    await run_migrations(tmp_db)
+
+    assert await _words(tmp_db) == ["Pracht"]

@@ -1,5 +1,5 @@
 /**
- * Branch coverage for app/search/page.tsx (closes #2023).
+ * Branch coverage for app/(shell)/search/page.tsx (closes #2023).
  *
  * Covers:
  *  - book_title / chapter_title fallbacks (lines 32, 56, 71)
@@ -31,7 +31,7 @@ jest.mock("next/link", () => {
   return { __esModule: true, default: Link };
 });
 
-import SearchPage from "@/app/search/page";
+import SearchPage from "@/app/(shell)/search/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

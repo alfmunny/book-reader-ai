@@ -5,7 +5,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const src = fs.readFileSync(path.join(__dirname, "../app/notes/[bookId]/page.tsx"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"), "utf8");
 
 describe("notes/[bookId] export URL is clickable (closes #2336)", () => {
   // Anchor from the aria-live status region that shows the export result

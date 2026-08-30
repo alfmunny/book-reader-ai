@@ -12,8 +12,8 @@ import path from "path";
 const read = (rel: string) =>
   fs.readFileSync(path.join(__dirname, "..", rel), "utf8");
 
-const homeSrc = read("app/page.tsx");
-const bookshelfSrc = read("app/bookshelf/page.tsx");
+const homeSrc = read("app/(shell)/page.tsx");
+const bookshelfSrc = read("app/(shell)/bookshelf/page.tsx");
 
 function assertListGrid(src: string, label: string) {
   // Match the role and label together: the bookshelf has several lists now, and

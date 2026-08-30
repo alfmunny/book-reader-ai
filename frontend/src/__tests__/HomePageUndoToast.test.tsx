@@ -1,5 +1,5 @@
 /**
- * Regression tests for #2007 — UndoToast onUndo/onDone callbacks in app/page.tsx
+ * Regression tests for #2007 — UndoToast onUndo/onDone callbacks in app/(shell)/page.tsx
  * are uncovered (lines 833-838).
  *
  *   - onUndo  (line 833): called when user clicks "Undo" in the remove-book toast.
@@ -106,7 +106,7 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let Home: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/bookshelf/page");
+  const mod = await import("@/app/(shell)/bookshelf/page");
   Home = mod.default;
 });
 

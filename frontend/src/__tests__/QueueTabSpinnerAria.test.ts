@@ -7,7 +7,7 @@ const queueTabSrc = fs.readFileSync(
 );
 
 const pageSrc = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
+  path.join(__dirname, "../app/(shell)/page.tsx"),
   "utf-8",
 );
 

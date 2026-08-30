@@ -7,7 +7,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const src = readFileSync(
-  join(__dirname, "../app/vocabulary/page.tsx"),
+  join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 

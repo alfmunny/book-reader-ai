@@ -10,7 +10,7 @@ const readerSrc = readFileSync(
   "utf8",
 );
 const notesSrc = readFileSync(
-  join(__dirname, "../app/notes/[bookId]/page.tsx"),
+  join(__dirname, "../app/(shell)/notes/[bookId]/page.tsx"),
   "utf8",
 );
 

@@ -15,7 +15,7 @@ const wordDrawerSrc = fs.readFileSync(
 );
 
 const vocabPageSrc = fs.readFileSync(
-  path.join(__dirname, "../app/vocabulary/page.tsx"),
+  path.join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8",
 );
 

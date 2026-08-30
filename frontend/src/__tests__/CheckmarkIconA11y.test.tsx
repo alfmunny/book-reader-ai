@@ -42,7 +42,7 @@ jest.mock("next/navigation", () => ({
 import * as api from "@/lib/api";
 import BookDetailModal from "@/components/BookDetailModal";
 import type { BookMeta } from "@/lib/api";
-import ProfilePage from "@/app/profile/page";
+import ProfilePage from "@/app/(shell)/profile/page";
 
 const mockGetTranslationStatus = api.getBookTranslationStatus as jest.MockedFunction<
   typeof api.getBookTranslationStatus

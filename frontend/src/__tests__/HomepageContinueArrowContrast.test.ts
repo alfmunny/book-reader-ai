@@ -5,7 +5,7 @@ import * as path from "path";
 // ArrowRightIcon (≈2.18:1 on white) — failed WCAG 1.4.11. Closes #1646.
 
 const src = fs.readFileSync(
-  path.join(__dirname, "../app/bookshelf/page.tsx"),
+  path.join(__dirname, "../app/(shell)/bookshelf/page.tsx"),
   "utf8",
 );
 

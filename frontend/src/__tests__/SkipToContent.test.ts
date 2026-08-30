@@ -18,17 +18,17 @@ describe("Skip-to-main-content", () => {
   });
 
   it("home page <main> has id=main-content", () => {
-    const src = read("src/app/page.tsx");
+    const src = read("src/app/(shell)/page.tsx");
     expect(src).toMatch(/<main[^>]*id="main-content"/);
   });
 
   it("notes page <main> has id=main-content", () => {
-    const src = read("src/app/notes/page.tsx");
+    const src = read("src/app/(shell)/notes/page.tsx");
     expect(src).toMatch(/<main[^>]*id="main-content"/);
   });
 
   it("vocabulary page <main> has id=main-content", () => {
-    const src = read("src/app/vocabulary/page.tsx");
+    const src = read("src/app/(shell)/vocabulary/page.tsx");
     expect(src).toMatch(/<main[^>]*id="main-content"/);
   });
 });

@@ -14,6 +14,7 @@
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import ShellLayout from "@/app/(shell)/layout";
 
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
@@ -21,8 +22,10 @@ jest.mock("next-auth/react", () => ({
 }));
 
 const mockPush = jest.fn();
+const mockNav = { pathname: "/" };
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => mockNav.pathname,
 }));
 
 const mockGetPopularBooks = jest.fn();
@@ -107,7 +110,7 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 let Home: React.ComponentType;
 beforeAll(async () => {
-  const mod = await import("@/app/bookshelf/page");
+  const mod = await import("@/app/(shell)/bookshelf/page");
   Home = mod.default;
 });
 
@@ -122,7 +125,8 @@ beforeEach(() => {
 });
 
 async function renderHome() {
-  render(<Home />);
+  mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
   await act(flushPromises);
   await act(flushPromises);
 }
@@ -149,7 +153,8 @@ describe("HomePage — timeAgo d ago branch (line 35)", () => {
     });
     mockGetReadingProgress.mockResolvedValue([]);
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
 
@@ -176,7 +181,8 @@ describe("HomePage — timeAgo d ago branch (line 35)", () => {
     });
     mockGetReadingProgress.mockResolvedValue([]);
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
 
@@ -202,7 +208,8 @@ describe("HomePage — timeAgo d ago branch (line 35)", () => {
     });
     mockGetReadingProgress.mockResolvedValue([]);
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
 
@@ -240,7 +247,8 @@ describe("HomePage — getReadingProgress merges backend data (lines 73-83)", ()
 
     const setItemSpy = jest.spyOn(Storage.prototype, "setItem");
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
     await act(flushPromises);
@@ -277,7 +285,8 @@ describe("HomePage — getReadingProgress merges backend data (lines 73-83)", ()
 
     const setItemSpy = jest.spyOn(Storage.prototype, "setItem");
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
 
@@ -310,7 +319,8 @@ describe("HomePage — getReadingProgress merges backend data (lines 73-83)", ()
 
     const setItemSpy = jest.spyOn(Storage.prototype, "setItem");
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
     await act(flushPromises);
@@ -333,7 +343,8 @@ describe("HomePage — Your Notes tab (line 216)", () => {
     });
     mockGetReadingProgress.mockResolvedValue([]);
 
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
 
     const notesLink = screen.getByRole("link", { name: "Your Notes" });
@@ -367,7 +378,8 @@ describe("HomePage — onRemove handler (lines 253-255)", () => {
     mockGetRecentBooks.mockReturnValueOnce(RECENT).mockReturnValue([]);
 
     const user = userEvent.setup();
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
 
@@ -400,7 +412,8 @@ describe("HomePage — onRemove handler (lines 253-255)", () => {
     mockGetReadingProgress.mockResolvedValue([]);
 
     const user = userEvent.setup();
-    render(<Home />);
+    mockNav.pathname = "/";
+  render(<ShellLayout><Home /></ShellLayout>);
     await act(flushPromises);
     await act(flushPromises);
 

@@ -31,7 +31,7 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-import UploadPage from "@/app/upload/page";
+import UploadPage from "@/app/(shell)/upload/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 

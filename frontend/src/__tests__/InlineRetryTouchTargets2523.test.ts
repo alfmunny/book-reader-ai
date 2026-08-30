@@ -11,11 +11,11 @@ function readSrc(relPath: string) {
 }
 
 const filesToCheck = [
-  { rel: "app/page.tsx", label: "home page" },
-  { rel: "app/search/page.tsx", label: "search page" },
-  { rel: "app/upload/page.tsx", label: "upload page" },
-  { rel: "app/profile/page.tsx", label: "profile page" },
-  { rel: "app/vocabulary/page.tsx", label: "vocabulary page" },
+  { rel: "app/(shell)/page.tsx", label: "home page" },
+  { rel: "app/(shell)/search/page.tsx", label: "search page" },
+  { rel: "app/(shell)/upload/page.tsx", label: "upload page" },
+  { rel: "app/(shell)/profile/page.tsx", label: "profile page" },
+  { rel: "app/(shell)/vocabulary/page.tsx", label: "vocabulary page" },
   { rel: "components/ReadingStats.tsx", label: "ReadingStats component" },
 ];
 

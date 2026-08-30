@@ -27,7 +27,7 @@ describe("WCAG 1.4.3 contrast — text-amber-500/600 at custom sizes (wave 13) (
   });
 
   it("home page hero card labels have no text-amber-{500,600} at text-[11px]", () => {
-    expect(countCustomSmallAmber(read("app/page.tsx"))).toBe(0);
+    expect(countCustomSmallAmber(read("app/(shell)/page.tsx"))).toBe(0);
   });
 
   it("VocabWordTooltip has no text-amber-{500,600} at text-[11px]", () => {

@@ -9,7 +9,7 @@
 
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import ProfilePage from "@/app/profile/page";
+import ProfilePage from "@/app/(shell)/profile/page";
 
 const mockPush = jest.fn();
 const mockSignOut = jest.fn();

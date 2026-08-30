@@ -11,8 +11,8 @@ function readSrc(rel: string): string {
 }
 
 const flashcardsSrc = readSrc("vocabulary/flashcards/page.tsx");
-const uploadSrc = readSrc("upload/page.tsx");
-const uploadChaptersSrc = readSrc("upload/[bookId]/chapters/page.tsx");
+const uploadSrc = readSrc("(shell)/upload/page.tsx");
+const uploadChaptersSrc = readSrc("(shell)/upload/[bookId]/chapters/page.tsx");
 const readerSrc = readSrc("reader/[bookId]/page.tsx");
 
 describe("flashcards page nav links (closes #2453)", () => {

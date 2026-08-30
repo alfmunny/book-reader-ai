@@ -6,7 +6,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 const src = readFileSync(
-  join(__dirname, "../app/import/[bookId]/page.tsx"),
+  join(__dirname, "../app/(shell)/import/[bookId]/page.tsx"),
   "utf-8"
 );
 

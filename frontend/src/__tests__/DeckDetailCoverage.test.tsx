@@ -1,5 +1,5 @@
 /**
- * Runtime regression tests for branches uncovered in app/decks/[deckId]/page.tsx.
+ * Runtime regression tests for branches uncovered in app/(shell)/decks/[deckId]/page.tsx.
  * Closes #1965
  *
  * Covers:
@@ -54,7 +54,7 @@ jest.mock("@/components/UndoToast", () => {
 });
 
 import * as api from "@/lib/api";
-import DeckDetailPage from "@/app/decks/[deckId]/page";
+import DeckDetailPage from "@/app/(shell)/decks/[deckId]/page";
 
 const mockGetDeck = api.getDeck as jest.MockedFunction<typeof api.getDeck>;
 const mockGetVocabulary = api.getVocabulary as jest.MockedFunction<typeof api.getVocabulary>;

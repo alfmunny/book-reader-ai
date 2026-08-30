@@ -27,7 +27,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import BookNotesPage from "@/app/notes/[bookId]/page";
+import BookNotesPage from "@/app/(shell)/notes/[bookId]/page";
 
 const mockUpdateInsight = api.updateInsight as jest.Mock;
 

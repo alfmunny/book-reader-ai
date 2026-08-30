@@ -1,5 +1,5 @@
 /**
- * Regression tests for missing branch coverage in app/decks/page.tsx
+ * Regression tests for missing branch coverage in app/(shell)/decks/page.tsx
  * Closes #1979 — targets: back button, deck card click, undo/done toast
  * callbacks, consecutive delete while toast showing.
  */
@@ -62,7 +62,7 @@ jest.mock("@/components/UndoToast", () => {
 });
 
 import * as api from "@/lib/api";
-import DecksPage from "@/app/decks/page";
+import DecksPage from "@/app/(shell)/decks/page";
 
 const mockListDecks = api.listDecks as jest.MockedFunction<typeof api.listDecks>;
 const mockDeleteDeck = api.deleteDeck as jest.MockedFunction<typeof api.deleteDeck>;

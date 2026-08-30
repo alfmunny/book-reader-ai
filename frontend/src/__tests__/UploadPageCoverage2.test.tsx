@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/upload/page.tsx — functions not covered by existing tests.
+ * Coverage tests for app/(shell)/upload/page.tsx — functions not covered by existing tests.
  * Closes #1993 — targets:
  *   FN:24  .catch(() => {}) on getUploadQuota rejection
  *   FN:151 drop-zone div onClick handler
@@ -33,7 +33,7 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-import UploadPage from "@/app/upload/page";
+import UploadPage from "@/app/(shell)/upload/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 const QUOTA = { used: 0, max: 10 };

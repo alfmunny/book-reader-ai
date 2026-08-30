@@ -7,7 +7,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const src = fs.readFileSync(
-  path.resolve(__dirname, "../app/upload/page.tsx"),
+  path.resolve(__dirname, "../app/(shell)/upload/page.tsx"),
   "utf-8",
 );
 

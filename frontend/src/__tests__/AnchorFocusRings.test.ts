@@ -11,7 +11,7 @@ const readerSrc = fs.readFileSync(
 );
 
 const vocabSrc = fs.readFileSync(
-  path.join(__dirname, "../app/vocabulary/page.tsx"),
+  path.join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
   "utf8"
 );
 

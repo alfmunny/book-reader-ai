@@ -28,7 +28,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import VocabularyPage from "@/app/vocabulary/page";
+import VocabularyPage from "@/app/(shell)/vocabulary/page";
 
 const SENTENCE = "Und wenn mich auch der ganze Kreis verhöhnt;";
 

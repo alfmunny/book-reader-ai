@@ -27,7 +27,7 @@ describe("target=_blank new-tab announcement for screen readers (closes #2241)",
   });
 
   it("vocabulary page Wiktionary link announces new tab", () => {
-    const src = read("../app/vocabulary/page.tsx");
+    const src = read("../app/(shell)/vocabulary/page.tsx");
     const idx = src.indexOf("View on Wiktionary");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 50), idx + 200);
@@ -35,7 +35,7 @@ describe("target=_blank new-tab announcement for screen readers (closes #2241)",
   });
 
   it("profile page Google AI Studio link announces new tab", () => {
-    const src = read("../app/profile/page.tsx");
+    const src = read("../app/(shell)/profile/page.tsx");
     const idx = src.indexOf("Google AI Studio");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(Math.max(0, idx - 50), idx + 200);

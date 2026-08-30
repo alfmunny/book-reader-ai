@@ -11,7 +11,7 @@ function read(rel: string): string {
 
 describe("Import page skip-link target", () => {
   it("import/[bookId]/page.tsx <main> has id=main-content", () => {
-    const src = read("src/app/import/[bookId]/page.tsx");
+    const src = read("src/app/(shell)/import/[bookId]/page.tsx");
     expect(src).toContain('id="main-content"');
     expect(src).toMatch(/<main\b[^>]*id=["']main-content["']/);
   });

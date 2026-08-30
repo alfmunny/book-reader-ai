@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Story, getStoryFeed, followUser, unfollowUser } from "@/lib/api";
-import SiteHeader from "@/components/SiteHeader";
 import { BookOpenIcon, ChatIcon } from "@/components/Icons";
 import { timeAgo, exactTime } from "@/lib/timeAgo";
 
@@ -126,7 +125,6 @@ export default function DiscoverPage() {
 
   return (
     <main className="min-h-screen bg-parchment">
-      <SiteHeader current="discover" />
       <div className="max-w-2xl mx-auto px-4 py-8">
         <h1 className="font-serif text-2xl font-bold text-ink">Discover</h1>
         <p className="mt-1 text-sm text-stone-500">

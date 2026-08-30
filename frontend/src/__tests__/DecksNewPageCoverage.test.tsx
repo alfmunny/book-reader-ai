@@ -1,5 +1,5 @@
 /**
- * Coverage tests for app/decks/new/page.tsx — branches not hit by DecksNewPage.test.tsx.
+ * Coverage tests for app/(shell)/decks/new/page.tsx — branches not hit by DecksNewPage.test.tsx.
  * Closes #1967
  *
  * Covers:
@@ -36,7 +36,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import DecksNewPage from "@/app/decks/new/page";
+import DecksNewPage from "@/app/(shell)/decks/new/page";
 
 const mockCreateDeck = api.createDeck as jest.MockedFunction<typeof api.createDeck>;
 

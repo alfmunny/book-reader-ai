@@ -1,5 +1,5 @@
 /**
- * Regression tests for missing branch coverage in app/decks/[deckId]/page.tsx
+ * Regression tests for missing branch coverage in app/(shell)/decks/[deckId]/page.tsx
  * Closes #1983 — targets: invalid deckId, handleAdd error rollback,
  * handleRemove pending commit, undo/done callbacks, AddWordPicker open/filter/add/Escape.
  */
@@ -53,7 +53,7 @@ jest.mock("@/components/UndoToast", () => {
 });
 
 import * as api from "@/lib/api";
-import DeckDetailPage from "@/app/decks/[deckId]/page";
+import DeckDetailPage from "@/app/(shell)/decks/[deckId]/page";
 
 const mockGetDeck = api.getDeck as jest.MockedFunction<typeof api.getDeck>;
 const mockGetVocabulary = api.getVocabulary as jest.MockedFunction<typeof api.getVocabulary>;

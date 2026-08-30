@@ -39,15 +39,15 @@ function checkFile(rel: string, label: string) {
 }
 
 checkFile("app/vocabulary/flashcards/page.tsx", "FlashcardsPage");
-checkFile("app/decks/[deckId]/page.tsx", "DeckDetailPage");
-checkFile("app/import/[bookId]/page.tsx", "ImportPage");
+checkFile("app/(shell)/decks/[deckId]/page.tsx", "DeckDetailPage");
+checkFile("app/(shell)/import/[bookId]/page.tsx", "ImportPage");
 checkFile("app/error.tsx", "ErrorPage");
 checkFile("app/not-found.tsx", "NotFoundPage");
 checkFile("app/login/page.tsx", "LoginPage");
-checkFile("app/pending/page.tsx", "PendingPage");
-checkFile("app/upload/page.tsx", "UploadPage");
-checkFile("app/upload/[bookId]/chapters/page.tsx", "UploadChaptersPage");
-checkFile("app/page.tsx", "HomePage");
+checkFile("app/(shell)/pending/page.tsx", "PendingPage");
+checkFile("app/(shell)/upload/page.tsx", "UploadPage");
+checkFile("app/(shell)/upload/[bookId]/chapters/page.tsx", "UploadChaptersPage");
+checkFile("app/(shell)/page.tsx", "HomePage");
 checkFile("components/WordActionDrawer.tsx", "WordActionDrawer");
 checkFile("components/VocabWordTooltip.tsx", "VocabWordTooltip");
 checkFile("components/DeckCard.tsx", "DeckCard");

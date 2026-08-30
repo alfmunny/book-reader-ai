@@ -7,7 +7,7 @@ function read(rel: string) {
 
 describe("role=alert on dynamic error containers (closes #1256)", () => {
   it("home catalog fetch error div has role=alert", () => {
-    const src = read("../app/page.tsx");
+    const src = read("../app/(shell)/page.tsx");
     const idx = src.indexOf("fetchError &&");
     expect(idx).toBeGreaterThan(-1);
     const window = src.slice(idx, idx + 200);

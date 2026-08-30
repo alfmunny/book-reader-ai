@@ -2,10 +2,10 @@ import * as fs from "fs";
 import * as path from "path";
 
 const importPage = fs.readFileSync(
-  path.join(__dirname, "../app/import/[bookId]/page.tsx"),
+  path.join(__dirname, "../app/(shell)/import/[bookId]/page.tsx"),
   "utf8"
 );
-const chaptersPage = ["../app/upload/[bookId]/chapters/page.tsx", "../components/ChapterAuditPanel.tsx"].map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
+const chaptersPage = ["../app/(shell)/upload/[bookId]/chapters/page.tsx", "../components/ChapterAuditPanel.tsx"].map((f) => fs.readFileSync(path.join(__dirname, f), "utf8")).join("\n");
 
 function checkBefore(src: string, anchor: string, before = 300): void {
   const idx = src.indexOf(anchor);

@@ -1,7 +1,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const vocab = readFileSync(join(__dirname, "../app/vocabulary/page.tsx"), "utf-8");
+const vocab = readFileSync(join(__dirname, "../app/(shell)/vocabulary/page.tsx"), "utf-8");
 
 describe("VocabularyPage DefinitionSheet accessibility (WCAG 2.1.1)", () => {
   it("DefinitionSheet imports CloseIcon", () => {

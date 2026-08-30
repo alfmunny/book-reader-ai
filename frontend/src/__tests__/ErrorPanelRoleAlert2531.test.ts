@@ -20,7 +20,7 @@ function nearestRoleBefore(src: string, marker: string): string | null {
 
 describe("Error panels use role=alert not role=status (closes #2531)", () => {
   it("home page stats error uses role=alert", () => {
-    const src = ["components/SiteHeader.tsx", "app/page.tsx", "app/bookshelf/page.tsx"].map(readSrc).join("\n");
+    const src = ["components/SiteHeader.tsx", "app/(shell)/page.tsx", "app/(shell)/bookshelf/page.tsx"].map(readSrc).join("\n");
     const role = nearestRoleBefore(src, "Couldn&apos;t load stats");
     expect(role).toBe("alert");
   });
@@ -32,31 +32,31 @@ describe("Error panels use role=alert not role=status (closes #2531)", () => {
   });
 
   it("profile decks fetch error uses role=alert", () => {
-    const src = readSrc("app/profile/page.tsx");
+    const src = readSrc("app/(shell)/profile/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t load study decks");
     expect(role).toBe("alert");
   });
 
   it("profile gemini key fetch error uses role=alert", () => {
-    const src = readSrc("app/profile/page.tsx");
+    const src = readSrc("app/(shell)/profile/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t load key status");
     expect(role).toBe("alert");
   });
 
   it("profile obsidian fetch error uses role=alert", () => {
-    const src = readSrc("app/profile/page.tsx");
+    const src = readSrc("app/(shell)/profile/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t load Obsidian settings");
     expect(role).toBe("alert");
   });
 
   it("vocabulary definition fetch error uses role=alert", () => {
-    const src = readSrc("app/vocabulary/page.tsx");
+    const src = readSrc("app/(shell)/vocabulary/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t load definition");
     expect(role).toBe("alert");
   });
 
   it("vocabulary tags fetch error uses role=alert", () => {
-    const src = readSrc("app/vocabulary/page.tsx");
+    const src = readSrc("app/(shell)/vocabulary/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t load tags");
     expect(role).toBe("alert");
   });
@@ -68,7 +68,7 @@ describe("Error panels use role=alert not role=status (closes #2531)", () => {
   });
 
   it("upload quota fetch error uses role=alert", () => {
-    const src = readSrc("app/upload/page.tsx");
+    const src = readSrc("app/(shell)/upload/page.tsx");
     const role = nearestRoleBefore(src, "Couldn&apos;t load quota");
     expect(role).toBe("alert");
   });

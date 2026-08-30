@@ -1,5 +1,5 @@
 /**
- * Regression tests for missing branch coverage in app/upload/page.tsx
+ * Regression tests for missing branch coverage in app/(shell)/upload/page.tsx
  * Closes #1975 — targets: drag-drop handler, back button, sign-in click,
  * non-ApiError generic error path.
  */
@@ -33,7 +33,7 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-import UploadPage from "@/app/upload/page";
+import UploadPage from "@/app/(shell)/upload/page";
 
 const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 const QUOTA = { used: 0, max: 10 };

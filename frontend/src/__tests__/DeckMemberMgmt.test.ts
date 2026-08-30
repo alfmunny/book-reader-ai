@@ -11,7 +11,7 @@ function read(rel: string): string {
 }
 
 describe("Deck detail member management UI", () => {
-  const src = read("src/app/decks/[deckId]/page.tsx");
+  const src = read("src/app/(shell)/decks/[deckId]/page.tsx");
 
   it("imports addDeckMember and removeDeckMember", () => {
     expect(src).toMatch(/addDeckMember/);

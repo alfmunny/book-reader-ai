@@ -26,7 +26,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import DecksNewPage from "@/app/decks/new/page";
+import DecksNewPage from "@/app/(shell)/decks/new/page";
 
 const mockCreateDeck = api.createDeck as jest.MockedFunction<typeof api.createDeck>;
 

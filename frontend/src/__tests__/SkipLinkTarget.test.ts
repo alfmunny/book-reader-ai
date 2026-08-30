@@ -6,8 +6,8 @@ const src = (rel: string) =>
 
 const errorPage = src("app/error.tsx");
 const notFoundPage = src("app/not-found.tsx");
-const uploadPage = src("app/upload/page.tsx");
-const chaptersPage = src("app/upload/[bookId]/chapters/page.tsx");
+const uploadPage = src("app/(shell)/upload/page.tsx");
+const chaptersPage = src("app/(shell)/upload/[bookId]/chapters/page.tsx");
 
 describe("Skip navigation link target (WCAG 2.4.1) (closes #1371)", () => {
   it("error.tsx <main> has id=main-content so skip link target exists", () => {

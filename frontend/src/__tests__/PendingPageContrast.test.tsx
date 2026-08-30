@@ -15,7 +15,7 @@ jest.mock("@/lib/api", () => ({
   getMe: jest.fn(() => new Promise(() => {})),
 }));
 
-import PendingApprovalPage from "@/app/pending/page";
+import PendingApprovalPage from "@/app/(shell)/pending/page";
 
 test("hint text does not use text-stone-400 (WCAG AA contrast failure)", () => {
   const { container } = render(<PendingApprovalPage />);

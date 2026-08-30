@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const pendingSrc = fs.readFileSync(
-  path.join(__dirname, "../app/pending/page.tsx"),
+  path.join(__dirname, "../app/(shell)/pending/page.tsx"),
   "utf8"
 );
 const iconsSrc = fs.readFileSync(

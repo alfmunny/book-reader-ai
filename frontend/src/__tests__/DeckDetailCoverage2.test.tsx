@@ -1,5 +1,5 @@
 /**
- * Branch coverage for app/decks/[deckId]/page.tsx — closes #2029.
+ * Branch coverage for app/(shell)/decks/[deckId]/page.tsx — closes #2029.
  *
  * Covers:
  *  - lines 52/58/62: alive cleanup — unmount before getDeck/getVocabulary resolves
@@ -48,7 +48,7 @@ jest.mock("@/components/UndoToast", () => {
   return UndoToast;
 });
 
-import DeckDetailPage from "@/app/decks/[deckId]/page";
+import DeckDetailPage from "@/app/(shell)/decks/[deckId]/page";
 
 const MANUAL_DECK = {
   id: 7,

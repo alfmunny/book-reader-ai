@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const src = ["../components/SiteHeader.tsx", "../app/page.tsx", "../app/bookshelf/page.tsx"]
+const src = ["../components/SiteHeader.tsx", "../app/(shell)/page.tsx", "../app/(shell)/bookshelf/page.tsx"]
   .map((f) => fs.readFileSync(path.join(__dirname, f), "utf8"))
   .join("\n");
 

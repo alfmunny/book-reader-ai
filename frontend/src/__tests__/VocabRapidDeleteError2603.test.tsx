@@ -36,7 +36,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import VocabularyPage from "@/app/vocabulary/page";
+import VocabularyPage from "@/app/(shell)/vocabulary/page";
 
 const mockGetVocabulary = api.getVocabulary as jest.MockedFunction<
   typeof api.getVocabulary
@@ -99,7 +99,7 @@ test("source: onDone handler does not silently swallow deleteVocabularyWord erro
   // Statically verify that onDone does NOT use a bare .catch(() => {}) silencer.
   // The handler must propagate or show an error when the backend call fails.
   const src = require("fs").readFileSync(
-    require("path").join(__dirname, "../app/vocabulary/page.tsx"),
+    require("path").join(__dirname, "../app/(shell)/vocabulary/page.tsx"),
     "utf8",
   );
   const onDoneIdx = src.indexOf("onDone={() =>");

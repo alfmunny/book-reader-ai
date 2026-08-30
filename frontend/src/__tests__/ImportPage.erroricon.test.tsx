@@ -21,7 +21,7 @@ jest.mock("@/lib/api", () => {
   };
 });
 
-import ImportPage from "@/app/import/[bookId]/page";
+import ImportPage from "@/app/(shell)/import/[bookId]/page";
 
 beforeEach(() => {
   jest.clearAllMocks();

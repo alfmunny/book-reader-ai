@@ -3,11 +3,11 @@ import * as path from "path";
 
 const appDir = path.join(__dirname, "../app");
 
-const homeSrc = fs.readFileSync(path.join(appDir, "page.tsx"), "utf8");
-const vocabSrc = fs.readFileSync(path.join(appDir, "vocabulary/page.tsx"), "utf8");
-const notesSrc = fs.readFileSync(path.join(appDir, "notes/page.tsx"), "utf8");
-const decksSrc = fs.readFileSync(path.join(appDir, "decks/page.tsx"), "utf8");
-const uploadSrc = fs.readFileSync(path.join(appDir, "upload/page.tsx"), "utf8");
+const homeSrc = fs.readFileSync(path.join(appDir, "(shell)/page.tsx"), "utf8");
+const vocabSrc = fs.readFileSync(path.join(appDir, "(shell)/vocabulary/page.tsx"), "utf8");
+const notesSrc = fs.readFileSync(path.join(appDir, "(shell)/notes/page.tsx"), "utf8");
+const decksSrc = fs.readFileSync(path.join(appDir, "(shell)/decks/page.tsx"), "utf8");
+const uploadSrc = fs.readFileSync(path.join(appDir, "(shell)/upload/page.tsx"), "utf8");
 const adminLayoutSrc = fs.readFileSync(path.join(appDir, "admin/layout.tsx"), "utf8");
 const adminUploadsSrc = fs.readFileSync(path.join(appDir, "admin/uploads/page.tsx"), "utf8");
 const adminBooksSrc = fs.readFileSync(path.join(appDir, "admin/books/page.tsx"), "utf8");

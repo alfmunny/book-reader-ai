@@ -1,14 +1,14 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const decksDetailSrc = readFileSync(join(__dirname, "../app/decks/[deckId]/page.tsx"), "utf-8");
+const decksDetailSrc = readFileSync(join(__dirname, "../app/(shell)/decks/[deckId]/page.tsx"), "utf-8");
 const annotationToolbarSrc = readFileSync(join(__dirname, "../components/AnnotationToolbar.tsx"), "utf-8");
 const searchBarSrc = readFileSync(join(__dirname, "../components/SearchBar.tsx"), "utf-8");
 const insightChatSrc = readFileSync(join(__dirname, "../components/InsightChat.tsx"), "utf-8");
-const notesPageSrc = readFileSync(join(__dirname, "../app/notes/page.tsx"), "utf-8");
-const vocabPageSrc = readFileSync(join(__dirname, "../app/vocabulary/page.tsx"), "utf-8");
-const decksNewSrc = readFileSync(join(__dirname, "../app/decks/new/page.tsx"), "utf-8");
-const profileSrc = readFileSync(join(__dirname, "../app/profile/page.tsx"), "utf-8");
+const notesPageSrc = readFileSync(join(__dirname, "../app/(shell)/notes/page.tsx"), "utf-8");
+const vocabPageSrc = readFileSync(join(__dirname, "../app/(shell)/vocabulary/page.tsx"), "utf-8");
+const decksNewSrc = readFileSync(join(__dirname, "../app/(shell)/decks/new/page.tsx"), "utf-8");
+const profileSrc = readFileSync(join(__dirname, "../app/(shell)/profile/page.tsx"), "utf-8");
 const tagEditorSrc = readFileSync(join(__dirname, "../components/TagEditor.tsx"), "utf-8");
 const queueTabSrc = readFileSync(join(__dirname, "../components/QueueTab.tsx"), "utf-8");
 const adminUploadsSrc = readFileSync(join(__dirname, "../app/admin/uploads/page.tsx"), "utf-8");

@@ -15,8 +15,10 @@ jest.mock("next-auth/react", () => ({
   useSession: (...args: unknown[]) => mockUseSession(...args),
 }));
 
+const mockNav = { pathname: "/" };
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => mockNav.pathname,
 }));
 
 jest.mock("@/lib/api", () => ({
@@ -29,6 +31,7 @@ const flushPromises = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockNav.pathname = "/";
   mockUseSession.mockReturnValue({
     data: { backendUser: { name: "User", picture: "" } },
     status: "authenticated",
@@ -36,13 +39,15 @@ beforeEach(() => {
 });
 
 test("primary navigation is a labelled nav landmark", async () => {
-  render(<SiteHeader current="home" />);
+  mockNav.pathname = "/";
+  render(<SiteHeader />);
   await flushPromises();
   expect(screen.getByRole("navigation", { name: /main navigation/i })).toBeInTheDocument();
 });
 
 test("Home and Your Bookshelf are links, not tabs", async () => {
-  render(<SiteHeader current="home" />);
+  mockNav.pathname = "/";
+  render(<SiteHeader />);
   await flushPromises();
   const labels = screen.getAllByRole("link").map((l) => l.textContent?.trim());
   expect(labels).toContain("Home");
@@ -52,14 +57,16 @@ test("Home and Your Bookshelf are links, not tabs", async () => {
 });
 
 test("the active destination is marked with aria-current=page", async () => {
-  render(<SiteHeader current="bookshelf" />);
+  mockNav.pathname = "/bookshelf";
+  render(<SiteHeader />);
   await flushPromises();
   const current = screen.getByRole("link", { current: "page" });
   expect(current).toHaveTextContent("Your Bookshelf");
 });
 
 test("only one destination is current at a time", async () => {
-  render(<SiteHeader current="home" />);
+  mockNav.pathname = "/";
+  render(<SiteHeader />);
   await flushPromises();
   const marked = screen.getAllByRole("link").filter(
     (l) => l.getAttribute("aria-current") === "page",
@@ -70,7 +77,8 @@ test("only one destination is current at a time", async () => {
 
 test("Your Bookshelf is hidden from signed-out visitors", async () => {
   mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
-  render(<SiteHeader current="home" />);
+  mockNav.pathname = "/";
+  render(<SiteHeader />);
   await flushPromises();
   const labels = screen.getAllByRole("link").map((l) => l.textContent?.trim());
   expect(labels).not.toContain("Your Bookshelf");

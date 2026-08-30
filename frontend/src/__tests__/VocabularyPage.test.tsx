@@ -30,7 +30,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import VocabularyPage from "@/app/vocabulary/page";
+import VocabularyPage from "@/app/(shell)/vocabulary/page";
 
 const mockGetVocabulary = api.getVocabulary as jest.MockedFunction<typeof api.getVocabulary>;
 const mockDeleteVocabularyWord = api.deleteVocabularyWord as jest.MockedFunction<typeof api.deleteVocabularyWord>;

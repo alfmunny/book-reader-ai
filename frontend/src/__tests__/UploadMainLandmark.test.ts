@@ -1,8 +1,8 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 
-const uploadPageSrc = readFileSync(join(__dirname, "../app/upload/page.tsx"), "utf-8");
-const chaptersPageSrc = readFileSync(join(__dirname, "../app/upload/[bookId]/chapters/page.tsx"), "utf-8");
+const uploadPageSrc = readFileSync(join(__dirname, "../app/(shell)/upload/page.tsx"), "utf-8");
+const chaptersPageSrc = readFileSync(join(__dirname, "../app/(shell)/upload/[bookId]/chapters/page.tsx"), "utf-8");
 
 describe("Upload pages — main landmark integrity (WCAG 1.3.6)", () => {
   it("upload/page.tsx must not use <main role=\"status\"> — overrides landmark with live region", () => {

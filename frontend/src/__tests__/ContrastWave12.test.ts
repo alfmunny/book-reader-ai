@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 const pageSrc = fs.readFileSync(
-  path.join(__dirname, "../app/page.tsx"),
+  path.join(__dirname, "../app/(shell)/page.tsx"),
   "utf8",
 );
 

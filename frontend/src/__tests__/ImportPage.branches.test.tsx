@@ -27,7 +27,7 @@ import {
   waitFor,
   act,
 } from "@testing-library/react";
-import BookImportPage from "@/app/import/[bookId]/page";
+import BookImportPage from "@/app/(shell)/import/[bookId]/page";
 
 jest.mock("next/navigation", () => ({
   useParams: jest.fn().mockReturnValue({ bookId: "42" }),

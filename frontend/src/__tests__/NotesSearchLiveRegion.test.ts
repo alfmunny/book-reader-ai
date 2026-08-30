@@ -10,7 +10,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const src = fs.readFileSync(path.join(__dirname, "../app/notes/page.tsx"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "../app/(shell)/notes/page.tsx"), "utf8");
 
 describe("notes/page.tsx search live region — WCAG 4.1.3 (closes #2338)", () => {
   it("search result live region is always-present (not conditionally mounted)", () => {

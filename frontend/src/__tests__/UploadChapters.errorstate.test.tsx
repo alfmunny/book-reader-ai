@@ -30,7 +30,7 @@ jest.mock("@/lib/api", () => ({
 }));
 
 import * as api from "@/lib/api";
-import ChapterEditorPage from "@/app/upload/[bookId]/chapters/page";
+import ChapterEditorPage from "@/app/(shell)/upload/[bookId]/chapters/page";
 
 const mockGetDraftChapters = api.getDraftChapters as jest.MockedFunction<
   typeof api.getDraftChapters

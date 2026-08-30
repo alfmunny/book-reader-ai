@@ -5,11 +5,11 @@ import fs from "fs";
 import path from "path";
 
 const uploadSrc = fs.readFileSync(
-  path.join(__dirname, "../app/upload/page.tsx"),
+  path.join(__dirname, "../app/(shell)/upload/page.tsx"),
   "utf-8"
 );
 const chaptersSrc = fs.readFileSync(
-  path.join(__dirname, "../app/upload/[bookId]/chapters/page.tsx"),
+  path.join(__dirname, "../app/(shell)/upload/[bookId]/chapters/page.tsx"),
   "utf-8"
 );
 const adminUploadsSrc = fs.readFileSync(

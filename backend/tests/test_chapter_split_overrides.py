@@ -269,6 +269,53 @@ def test_hamlet_play_scene_is_whole_and_keeps_the_prologue_cue():
     assert "Is this a prologue, or the posy of a ring?" in joined
 
 
+def test_hamlet_every_act_names_the_scene_it_actually_contains():
+    """Regression: the chapter titled 'ACT I' *is* Act I Scene I.
+
+    The splitter cut at the 'ACT n' heading, so each act's Scene I was swallowed
+    into a chapter named only for the act. The Contents panel then listed
+    ACT I / SCENE II / SCENE III …, and Scene I appeared nowhere in the play —
+    five scenes unreachable by name in a 20-row table of contents.
+    """
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+
+    bare_acts = [c["title"] for c in artifact["chapters"]
+                 if re.fullmatch(r"ACT [IVX]+", c["title"])]
+    assert not bare_acts, f"act chapters still unnamed for their scene: {bare_acts}"
+
+    # Each act opens on its own Scene I, and the title now says so.
+    for chapter in artifact["chapters"]:
+        if chapter["title"].startswith("ACT "):
+            assert ", SCENE I." in chapter["title"], chapter["title"]
+            heading = next(p for p in chapter["paragraphs"] if p.startswith("SCENE I."))
+            # The title carries the scene's own location, not an invented one.
+            assert chapter["title"].endswith(heading[len("SCENE I. "):]), chapter["title"]
+
+
+def test_hamlet_keeps_all_five_acts_and_twenty_scenes():
+    """The retitle renames; it must not add, drop or reorder a chapter."""
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+
+    titles = [c["title"] for c in artifact["chapters"]]
+    assert len(titles) == 20
+    assert [c["index"] for c in artifact["chapters"]] == list(range(20))
+    assert sum(t.startswith("ACT ") for t in titles) == 5
+
+
+def test_hamlet_retitles_match_the_declared_overrides():
+    """Drift guard: the artifact must carry exactly what the registry declares.
+
+    Indices in the registry name the *raw* split (21 chapters, before the
+    PROLOGUE merge), so this asserts the titles landed rather than the numbers.
+    """
+    from scripts.chapter_split_overrides import OVERRIDES
+
+    declared = {r["title"] for r in OVERRIDES[1524]["retitle"]}
+    artifact = json.loads(HAMLET_ARTIFACT.read_text())
+    present = {c["title"] for c in artifact["chapters"]}
+    assert declared <= present, declared - present
+
+
 # ── The committed Dracula artifact (#345) ────────────────────────────────────
 
 DRACULA_ARTIFACT = REPO_ROOT / "data" / "books" / "book_345.json"

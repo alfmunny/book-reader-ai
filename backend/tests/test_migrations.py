@@ -2399,3 +2399,150 @@ async def test_migration_052_matches_the_declared_overrides(tmp_db):
     for book_id, index, title in declared:
         assert f"book_id = {book_id} AND chapter_index = {index}" in sql, f"{book_id} missing"
         assert title.replace("'", "''") in sql, f"{book_id} title guard missing"
+
+
+# ── 056: name Hamlet's acts for the scenes they contain ──────────────────────
+
+_M056 = "056_hamlet_act_scene_titles"
+
+_HAMLET_ACTS = [
+    (0, "ACT I", "ACT I, SCENE I. Elsinore. A platform before the Castle."),
+    (5, "ACT II", "ACT II, SCENE I. A room in Polonius’s house."),
+    (7, "ACT III", "ACT III, SCENE I. A room in the Castle."),
+    (11, "ACT IV", "ACT IV, SCENE I. A room in the Castle."),
+    (18, "ACT V", "ACT V, SCENE I. A churchyard."),
+]
+
+_OLD_SHA = "933be729d90560ea85871be9d481dc5ce8772aea5f0d105ba0aeb69c9c796869"
+_NEW_SHA = "26b228ab53ed94a54925886bbc95bb35197ad99904ceebc919e2e1770a1e1705"
+
+
+async def _seed_hamlet(db, acts=_HAMLET_ACTS, sha=_OLD_SHA):
+    await db.execute("PRAGMA foreign_keys = OFF")
+    await db.execute(
+        "INSERT OR IGNORE INTO books (id, title, images) VALUES (1524, 'Hamlet', '[]')"
+    )
+    for index, old, _new in acts:
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (1524, ?, ?, 'x')",
+            (index, old),
+        )
+    # A scene chapter that must not be touched.
+    await db.execute(
+        "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+        " VALUES (1524, 1, 'SCENE II. Elsinore. A room of state in the Castle.', 'y')"
+    )
+    await db.execute(
+        "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
+        " audited_by, content_sha256) VALUES (1524, 'html_preference', 'text',"
+        " '2026-08-26', 'architect-agent', ?)",
+        (sha,),
+    )
+
+
+async def _rerun_056(tmp_db):
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M056,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_056_names_each_act_for_its_scene(tmp_db):
+    """The chapter titled 'ACT I' is Act I Scene I; the panel never said so."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet(db)
+        await db.commit()
+
+    await _rerun_056(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        for index, _old, new in _HAMLET_ACTS:
+            row = await (await db.execute(
+                "SELECT title FROM book_chapters WHERE book_id = 1524 AND chapter_index = ?",
+                (index,),
+            )).fetchone()
+            assert row[0] == new, f"chapter {index}"
+
+
+async def test_migration_056_leaves_the_scene_chapters_alone(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet(db)
+        await db.commit()
+
+    await _rerun_056(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT title FROM book_chapters WHERE book_id = 1524 AND chapter_index = 1"
+        )).fetchone()
+        assert row[0] == "SCENE II. Elsinore. A room of state in the Castle."
+
+
+async def test_migration_056_restamps_the_integrity_hash(tmp_db):
+    """`title` sits inside content_sha256, unlike `role`. Leaving the old hash
+    would make every row disagree with its own integrity stamp."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_hamlet(db)
+        await db.commit()
+
+    await _rerun_056(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT content_sha256, audited_by FROM book_freeze WHERE book_id = 1524"
+        )).fetchone()
+        assert row[0] == _NEW_SHA
+        assert "act/scene titling" in row[1]
+
+
+async def test_migration_056_does_not_restamp_a_partial_match(tmp_db):
+    """A split that has shifted must not be stamped with a hash describing a
+    different chapter list — that would assert an integrity that isn't there."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        # Act IV is something else entirely: only four of five can match.
+        moved = [a for a in _HAMLET_ACTS if a[0] != 11]
+        moved.append((11, "SOMETHING ELSE", "SOMETHING ELSE"))
+        await _seed_hamlet(db, acts=moved)
+        await db.commit()
+
+    await _rerun_056(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 1524"
+        )).fetchone()
+        assert row[0] == _OLD_SHA, "hash re-stamped despite a shifted split"
+        untouched = await (await db.execute(
+            "SELECT title FROM book_chapters WHERE book_id = 1524 AND chapter_index = 11"
+        )).fetchone()
+        assert untouched[0] == "SOMETHING ELSE"
+
+
+async def test_migration_056_matches_the_committed_artifact(tmp_db):
+    """Drift guard, and the bug this nearly shipped with: the source sets
+    'Polonius’s' with U+2019, and a straight ASCII apostrophe in the SQL
+    would write a title no artifact ever contained while silently failing the
+    hash re-stamp."""
+    import json
+    artifact_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "data", "books", "book_1524.json"
+    )
+    artifact = json.load(open(artifact_path, encoding="utf-8"))
+
+    path = os.path.join(
+        os.path.dirname(__file__), "..", "migrations", "056_hamlet_act_scene_titles.sql"
+    )
+    sql = open(path, encoding="utf-8").read()
+
+    by_index = {c["index"]: c["title"] for c in artifact["chapters"]}
+    for index, _old, new in _HAMLET_ACTS:
+        assert by_index[index] == new, f"artifact chapter {index} disagrees with the migration"
+        assert new.replace("'", "''") in sql, f"chapter {index} title missing from the SQL"
+
+    assert artifact["split"]["content_sha256"] == _NEW_SHA
+    assert _NEW_SHA in sql

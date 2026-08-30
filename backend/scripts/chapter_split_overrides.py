@@ -185,6 +185,56 @@ OVERRIDES: dict[int, dict] = {
         ],
     },
     1524: {  # Hamlet
+        # Every act's Scene I was invisible. The text sets an act heading and
+        # its first scene heading as consecutive lines:
+        #
+        #     ACT II
+        #     SCENE I. A room in Polonius’s house.
+        #
+        # The splitter cuts at the first of them, so the chapter holding Scene I
+        # was named only "ACT II" — and because Scene I never began a chapter of
+        # its own, no act's opening scene appeared anywhere in the Contents
+        # panel. A reader scanning Hamlet's twenty rows saw each act jump
+        # straight from the act heading to SCENE II.
+        #
+        # Retitle rather than re-cut: splitting the act heading off would
+        # manufacture five chapters of one line each, and shifting every later
+        # index would move the anchors of the zh translation already recorded
+        # against chapter 0. Each title takes the scene's own location line
+        # verbatim from the chapter's text — nothing is invented.
+        # Audited against Gutenberg #1524, 2026-08-30.
+        "retitle": [
+            {
+                "index": 0,
+                "expect_title": "ACT I",
+                "title": "ACT I, SCENE I. Elsinore. A platform before the Castle.",
+                "why": "holds Act I Scene I; the bare act heading hid it",
+            },
+            {
+                "index": 5,
+                "expect_title": "ACT II",
+                "title": "ACT II, SCENE I. A room in Polonius’s house.",
+                "why": "holds Act II Scene I; the bare act heading hid it",
+            },
+            {
+                "index": 7,
+                "expect_title": "ACT III",
+                "title": "ACT III, SCENE I. A room in the Castle.",
+                "why": "holds Act III Scene I; the bare act heading hid it",
+            },
+            {
+                "index": 12,
+                "expect_title": "ACT IV",
+                "title": "ACT IV, SCENE I. A room in the Castle.",
+                "why": "holds Act IV Scene I; the bare act heading hid it",
+            },
+            {
+                "index": 19,
+                "expect_title": "ACT V",
+                "title": "ACT V, SCENE I. A churchyard.",
+                "why": "holds Act V Scene I; the bare act heading hid it",
+            },
+        ],
         "merge_into_previous": [
             {
                 "index": 9,

@@ -148,6 +148,12 @@ export default function TranslationSessionPanel({
   // A whole version can be liked and discussed (owner, 2026-08-30) — the
   // Community card and your own published version share this block.
   const [versionLike, setVersionLike] = useState<{ count: number; liked: boolean }>({ count: 0, liked: false });
+  // Whether *you* liked each version on screen. The published listing counts
+  // likes but cannot know whose they are, so the sidebar heart stayed hollow
+  // on versions you had already liked (owner, 2026-08-30). One batched
+  // reactions call fills it in, and the dialog writes back here so the row
+  // updates the moment you like from inside it.
+  const [sessionLikes, setSessionLikes] = useState<Record<number, { count: number; liked: boolean }>>({});
   const [versionComments, setVersionComments] = useState<StoryComment[]>([]);
   const [versionDraft, setVersionCommentDraft] = useState("");
   const [versionBusy, setVersionBusy] = useState(false);
@@ -185,6 +191,27 @@ export default function TranslationSessionPanel({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browseOpen, browseQ, browseSort]);
+
+  // Batch-load your like state for every version currently on screen — the
+  // sidebar group and the browse dialog both feed this.
+  const visibleVersionIds = [
+    ...(publishedSessions ?? []).map((p) => p.id),
+    ...browseItems.map((p) => p.id),
+  ].join(",");
+  useEffect(() => {
+    const ids = visibleVersionIds ? visibleVersionIds.split(",").map(Number) : [];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    listReactions("session", ids)
+      .then((r) => {
+        if (cancelled) return;
+        const seen: Record<number, { count: number; liked: boolean }> = {};
+        for (const id of ids) if (r.reactions[String(id)]) seen[id] = r.reactions[String(id)];
+        setSessionLikes((m) => ({ ...m, ...seen }));
+      })
+      .catch(() => { /* the row falls back to the listing's count */ });
+    return () => { cancelled = true; };
+  }, [visibleVersionIds]);
 
   const communityRow = (cs: PublishedSessionType, compact: boolean) => (
     <button
@@ -232,11 +259,19 @@ export default function TranslationSessionPanel({
           <ChatIcon className="w-3.5 h-3.5" />
           {cs.comments > 0 && cs.comments}
         </span>
-        {cs.likes > 0 && (
-          <span className="text-[10px] text-stone-500 shrink-0 inline-flex items-center gap-0.5">
-            <HeartIcon className="w-3 h-3" /> {cs.likes}
-          </span>
-        )}
+        {(() => {
+          const like = sessionLikes[cs.id] ?? { count: cs.likes, liked: false };
+          if (like.count === 0 && !like.liked) return null;
+          return (
+            <span
+              data-testid={`version-likes-${cs.id}`}
+              title={like.liked ? "You liked this translation" : undefined}
+              className={`text-[10px] shrink-0 inline-flex items-center gap-0.5 ${like.liked ? "text-red-500" : "text-stone-500"}`}
+            >
+              <HeartIcon className="w-3 h-3" filled={like.liked} /> {like.count}
+            </span>
+          );
+        })()}
         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 shrink-0">{cs.chapters_covered}/{chapterCount} ch</span>
       </span>
     </button>
@@ -248,6 +283,7 @@ export default function TranslationSessionPanel({
   const discussedId = discussVersion?.id ?? null;
   useEffect(() => {
     if (discussedId == null) { setVersionComments([]); setVersionLike({ count: 0, liked: false }); return; }
+    setVersionLike(sessionLikes[discussedId] ?? { count: 0, liked: false });
     let cancelled = false;
     listVersionComments(discussedId)
       .then((r) => { if (!cancelled) setVersionComments(r.comments); })
@@ -264,10 +300,13 @@ export default function TranslationSessionPanel({
   async function toggleVersionLike() {
     if (discussedId == null) return;
     const before = versionLike;
-    setVersionLike({ count: before.count + (before.liked ? -1 : 1), liked: !before.liked });
+    const next = { count: before.count + (before.liked ? -1 : 1), liked: !before.liked };
+    setVersionLike(next);
+    setSessionLikes((m) => ({ ...m, [discussedId]: next }));
     try {
       const r = await toggleReaction("session", discussedId);
       setVersionLike({ count: r.count, liked: r.liked });
+      setSessionLikes((m) => ({ ...m, [discussedId]: { count: r.count, liked: r.liked } }));
     } catch {
       setVersionLike(before);
     }

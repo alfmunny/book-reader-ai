@@ -300,7 +300,7 @@ const PUBLISHED = {
   chapters_covered: 28, model_tags: ["deepseek-v4-flash"], published_at: "2026-08-30", likes: 0, comments: 0,
 } as never;
 
-test("published versions appear in a Community group and are selectable", () => {
+test("published versions appear in a Community group and are selectable", async () => {
   const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
   const group = screen.getByTestId("community-versions");
   expect(group).toHaveTextContent("Mira");
@@ -310,13 +310,15 @@ test("published versions appear in a Community group and are selectable", () => 
   expect(group).not.toHaveTextContent("deepseek-v4-flash");
   fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
   expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
 });
 
-test("reading a community version shows the read-only notice, not the translate panel", () => {
+test("reading a community version shows the read-only notice, not the translate panel", async () => {
   renderPanel({ publishedSessions: [PUBLISHED], activeSessionId: 77 });
   expect(screen.getByTestId("community-readonly")).toHaveTextContent("only its author can change it");
   expect(screen.queryByTestId("session-style-panel")).toBeNull();
   expect(screen.queryByTestId("translate-chapter-button")).toBeNull();
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
 });
 
 test("the Edit dialog carries Publish, and Unpublish once published", async () => {
@@ -402,6 +404,7 @@ test("selecting a community row still reads it — the chat button does not", as
   fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
   fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
   expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
 });
 
 test("the sidebar shows the top few; More opens a searchable, paged dialog", async () => {
@@ -427,6 +430,10 @@ test("the sidebar shows the top few; More opens a searchable, paged dialog", asy
   fireEvent.click(screen.getByRole("radio", { name: /第一版/ }));
   expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 81 }));
   expect(screen.queryByTestId("community-browse")).toBeNull();
+  // …and the browsed rows get their like state loaded like the sidebar's
+  await waitFor(() => expect(api.listReactions).toHaveBeenLastCalledWith(
+    "session", expect.arrayContaining([83]),
+  ));
 });
 
 test("searching the community dialog re-queries the server", async () => {
@@ -457,4 +464,38 @@ test("the edit dialog carries the version's description", async () => {
       SESSION.id, expect.objectContaining({ description: "保留原文节奏" }),
     ),
   );
+});
+
+test("the sidebar heart shows whether you already liked a community version", async () => {
+  (api.listReactions as jest.Mock).mockResolvedValue({
+    reactions: { "77": { count: 4, liked: true } },
+  });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+
+  // The listing's count alone cannot say whose likes those are — the batched
+  // reaction call fills in the "mine" bit, and the heart lights up.
+  const heart = await screen.findByTestId("version-likes-77");
+  await waitFor(() => expect(heart).toHaveTextContent("4"));
+  expect(heart).toHaveAttribute("title", "You liked this translation");
+  expect(heart.className).toContain("text-red-500");
+});
+
+test("liking inside the dialog lights up the sidebar row too", async () => {
+  (api.listReactions as jest.Mock).mockResolvedValue({
+    reactions: { "77": { count: 4, liked: false } },
+  });
+  (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 5 });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+
+  const before = await screen.findByTestId("version-likes-77");
+  await waitFor(() => expect(before.className).toContain("text-stone-500"));
+
+  fireEvent.click(screen.getByTestId("version-discuss-77"));
+  fireEvent.click(await screen.findByTestId("version-like"));
+  await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("session", 77));
+
+  fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
+  const after = screen.getByTestId("version-likes-77");
+  expect(after).toHaveTextContent("5");
+  expect(after.className).toContain("text-red-500");
 });

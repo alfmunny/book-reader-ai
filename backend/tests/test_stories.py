@@ -588,3 +588,31 @@ async def test_a_version_can_be_liked(client, test_user):
     assert liked == {"liked": True, "count": 1}
     got = (await client.get("/api/stories/reactions", params={"target_kind": "session", "ids": str(sid)})).json()
     assert got["reactions"][str(sid)] == {"count": 1, "liked": True}
+
+
+async def test_published_versions_accept_notes_and_comments_from_readers(client, test_user):
+    """A published version is readable by everyone — so its discussion must
+    accept posts too (owner bug report, 2026-08-30: comments 404'd because
+    only 'public' was accepted, never 'published')."""
+    from services.db import (
+        get_or_create_user, create_translation_session,
+        upsert_session_paragraph, set_session_publication,
+    )
+    author = await get_or_create_user(google_id="g-pub-author", email="pa@e.com", name="PA", picture="")
+    sess = await create_translation_session(author["id"], 1, "已发布版", "zh", "deepseek")
+    await upsert_session_paragraph(sess["id"], 0, 0, "译文", "deepseek", "m")
+    await set_session_publication(sess["id"], author["id"], True)
+
+    # A different reader can read AND join the version-level discussion
+    posted = await client.post("/api/stories/comments/version", json={
+        "session_id": sess["id"], "body": "读完了，很喜欢",
+    })
+    assert posted.status_code == 200
+    thread = (await client.get("/api/stories/comments/version", params={"session_id": sess["id"]})).json()
+    assert [c["body"] for c in thread["comments"]] == ["读完了，很喜欢"]
+
+    # …and take a paragraph note on it
+    note = await client.post("/api/stories/comments/session", json={
+        "session_id": sess["id"], "chapter_index": 0, "paragraph_index": 0, "body": "这段译得好",
+    })
+    assert note.status_code == 200

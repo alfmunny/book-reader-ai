@@ -195,7 +195,9 @@ async def _readable_session(session_id: int, user: dict) -> dict:
     """A version's notes are visible to its owner, and to everyone once the
     version is public."""
     session = await get_translation_session_any(session_id)
-    if not session or (session["user_id"] != user["id"] and session.get("status") != "public"):
+    # 'published' is a STRICTER form of public (track B) — both are readable
+    # by everyone; only 'private' is owner-only.
+    if not session or (session["user_id"] != user["id"] and session.get("status") not in ("public", "published")):
         raise HTTPException(status_code=404, detail="Version not found")
     await _require_book(session["book_id"], user)
     return session

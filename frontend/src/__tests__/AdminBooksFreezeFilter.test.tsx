@@ -30,7 +30,7 @@ jest.mock("@/components/SeedPopularButton", () => {
 
 let BooksPage: React.ComponentType;
 beforeAll(async () => {
-  BooksPage = (await import("@/app/admin/books/page")).default;
+  BooksPage = (await import("@/app/(shell)/admin/books/page")).default;
 });
 beforeEach(() => jest.clearAllMocks());
 

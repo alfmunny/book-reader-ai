@@ -3061,3 +3061,158 @@ async def test_migration_060_matches_the_committed_artifacts(tmp_db):
     assert _BOVARY_SHA_NEW in sql
     # C&P has no retitle, so its identity must be untouched and unmentioned.
     assert cp["split"]["content_sha256"] not in sql
+
+
+# ── 061: A Room with a View's subtitles and parts ────────────────────────────
+
+_M061 = "061_room_with_a_view_subtitles"
+
+_RWAV_OLD = [
+    "Chapter I",
+    "Chapter II",
+    "Chapter III",
+    "Chapter IV",
+    "Chapter V",
+    "Chapter VI",
+    "Chapter VII",
+    "PART TWO — Chapter VIII",
+    "PART TWO — Chapter IX",
+    "PART TWO — Chapter X",
+    "PART TWO — Chapter XI",
+    "PART TWO — Chapter XII",
+    "PART TWO — Chapter XIII",
+    "PART TWO — Chapter XIV",
+    "PART TWO — Chapter XV",
+    "PART TWO — Chapter XVI",
+    "PART TWO — Chapter XVII",
+    "PART TWO — Chapter XVIII",
+    "PART TWO — Chapter XIX",
+    "PART TWO — Chapter XX"
+]
+
+_RWAV_NEW = [
+    "Chapter I. The Bertolini",
+    "Chapter II. In Santa Croce with No Baedeker",
+    "Chapter III. Music, Violets, and the Letter “S”",
+    "Chapter IV. Fourth Chapter",
+    "Chapter V. Possibilities of a Pleasant Outing",
+    "Chapter VI. The Reverend Arthur Beebe, the Reverend Cuthbert Eager, Mr. Emerson, Mr. George Emerson, Miss Eleanor Lavish, Miss Charlotte Bartlett, and Miss Lucy Honeychurch Drive Out in Carriages to See a View; Italians Drive Them",
+    "Chapter VII. They Return",
+    "Chapter VIII. Medieval",
+    "Chapter IX. Lucy As a Work of Art",
+    "Chapter X. Cecil as a Humourist",
+    "Chapter XI. In Mrs. Vyse’s Well-Appointed Flat",
+    "Chapter XII. Twelfth Chapter",
+    "Chapter XIII. How Miss Bartlett’s Boiler Was So Tiresome",
+    "Chapter XIV. How Lucy Faced the External Situation Bravely",
+    "Chapter XV. The Disaster Within",
+    "Chapter XVI. Lying to George",
+    "Chapter XVII. Lying to Cecil",
+    "Chapter XVIII. Lying to Mr. Beebe, Mrs. Honeychurch, Freddy, and The Servants",
+    "Chapter XIX. Lying to Mr. Emerson",
+    "Chapter XX. The End of the Middle Ages"
+]
+
+_RWAV_SHA_OLD = "d4043bf3c9fa111e3d297db2277edb657466895672fa0d833ae938fab83998c1"
+_RWAV_SHA_NEW = "877acea56f5833116f44b5ebb9ad12f4e3acf4ac0c72453710205d9c87e24303"
+
+
+async def _seed_rwav(db, overrides=None, sha=_RWAV_SHA_OLD):
+    overrides = overrides or {}
+    await db.execute("PRAGMA foreign_keys = OFF")
+    await db.execute(
+        "INSERT OR IGNORE INTO books (id, title, images) VALUES (2641, 'RWAV', '[]')")
+    for index, title in enumerate(_RWAV_OLD):
+        await db.execute(
+            "INSERT INTO book_chapters (book_id, chapter_index, title, text)"
+            " VALUES (2641, ?, ?, 'x')", (index, overrides.get(index, title)))
+    await db.execute(
+        "INSERT INTO book_freeze (book_id, splitter, chapter_source, frozen_at,"
+        " audited_by, content_sha256) VALUES (2641, 'html_preference', 'text',"
+        " '2026-08-29', 'prior', ?)", (sha,))
+
+
+async def _rerun_061(tmp_db):
+    async with aiosqlite.connect(tmp_db) as db:
+        await db.execute("DELETE FROM schema_migrations WHERE version = ?", (_M061,))
+        await db.commit()
+    await run_migrations(tmp_db)
+
+
+async def test_migration_061_restores_every_subtitle(tmp_db):
+    """Twenty rows read 'Chapter I' ... 'Chapter XX' and said nothing."""
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_rwav(db)
+        await db.commit()
+
+    await _rerun_061(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT title FROM book_chapters WHERE book_id = 2641 ORDER BY chapter_index"
+        )).fetchall()
+    assert [r[0] for r in rows] == _RWAV_NEW
+
+
+async def test_migration_061_moves_the_part_two_prefix_into_the_group(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_rwav(db)
+        await db.commit()
+
+    await _rerun_061(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        rows = await (await db.execute(
+            "SELECT title, part FROM book_chapters WHERE book_id = 2641"
+            " ORDER BY chapter_index")).fetchall()
+    assert not any(t.startswith("PART TWO") for t, _ in rows)
+    assert [p for _, p in rows] == ["PART ONE"] * 7 + ["PART TWO"] * 13
+
+
+async def test_migration_061_restamps_to_the_regenerated_artifact(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_rwav(db)
+        await db.commit()
+
+    await _rerun_061(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        row = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 2641")).fetchone()
+    assert row[0] == _RWAV_SHA_NEW
+
+
+async def test_migration_061_does_not_restamp_a_shifted_split(tmp_db):
+    await run_migrations(tmp_db)
+    async with aiosqlite.connect(tmp_db) as db:
+        await _seed_rwav(db, overrides={12: "SOMETHING ELSE"})
+        await db.commit()
+
+    await _rerun_061(tmp_db)
+
+    async with aiosqlite.connect(tmp_db) as db:
+        sha = await (await db.execute(
+            "SELECT content_sha256 FROM book_freeze WHERE book_id = 2641")).fetchone()
+        moved = await (await db.execute(
+            "SELECT title FROM book_chapters WHERE book_id = 2641 AND chapter_index = 12"
+        )).fetchone()
+    assert sha[0] == _RWAV_SHA_OLD, "re-stamped despite a shifted split"
+    assert moved[0] == "SOMETHING ELSE", "retitled a chapter that had moved"
+
+
+async def test_migration_061_matches_the_committed_artifact(tmp_db):
+    import json as _json
+    artifact = _json.load(open(os.path.join(
+        os.path.dirname(__file__), "..", "..", "data", "books", "book_2641.json"
+    ), encoding="utf-8"))
+    sql = open(os.path.join(os.path.dirname(__file__), "..", "migrations",
+                            "061_room_with_a_view_subtitles.sql"), encoding="utf-8").read()
+
+    assert [c["title"] for c in artifact["chapters"]] == _RWAV_NEW
+    assert artifact["split"]["content_sha256"] == _RWAV_SHA_NEW
+    assert _RWAV_SHA_NEW in sql
+    for title in _RWAV_NEW:
+        assert title.replace("'", "''") in sql, title

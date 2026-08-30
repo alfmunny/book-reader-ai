@@ -46,7 +46,7 @@ What has changed since is that the route this design takes is now largely built.
 | Applied to already-ingested rows by migration | 052 |
 | Rendered as a collapsible group in the panel | `TableOfContents.tsx` |
 
-A part label is the same shape as `role`. A part group is the same component as the Front matter group. This design adds one column, one registry key, one migration and one generalisation of an existing component.
+A part label is the same shape as `role`. A part group is the same component as the Front matter group. This design adds one column, one registry key, three migrations and one generalisation of an existing component.
 
 ## Non-goal: inference
 
@@ -78,11 +78,49 @@ Parts are **not** present in any title; the numbering resets are the only signal
 
 Chapters 0 and 1 are front matter and the translator's preface; chapter 0 already carries `role: frontmatter`. The epilogue takes no part label — it belongs to none.
 
-### A Room with a View #2641 — 2 parts over 20 chapters
+### A Room with a View #2641 — 2 parts over 20 chapters, plus subtitles
 
 The source sets `PART ONE` and `PART TWO` as literal headings (verified in the Gutenberg text at offsets 1891 and 144332). Part One is chapters 0–6, Part Two is 7–19.
 
 The existing titles for Part Two are **already composed**: `PART TWO — Chapter VIII`. This is the lossy composition the superseded design complained about — the prefix cannot be collapsed and the bare `Chapter VIII` never round-trips out. Grouping moves the prefix into the header and returns the leaf to `Chapter VIII`.
+
+This book also loses its **chapter subtitles**, which are in scope here by the owner's decision (2026-08-30). Forster titles every chapter, and the printed contents lists them:
+
+```
+Part One.
+Chapter I. The Bertolini
+Chapter II. In Santa Croce with No Baedeker
+…
+```
+
+The splitter kept only the numeral, so the panel reads `Chapter I` … `Chapter XX` — twenty rows that say nothing. Every subtitle survives in the text as the chapter's **first paragraph**, in one of two shapes:
+
+| Chapters | Title today | First paragraph |
+|---|---|---|
+| 0–6 (Part One) | `Chapter I` | `The Bertolini` |
+| 7–19 (Part Two) | `PART TWO — Chapter VIII` | `Chapter VIII\nMedieval` |
+
+## Subtitles: title-only, and why the obvious version is wrong
+
+The tempting change is to move the subtitle out of the body and into the title. **That would corrupt the one existing translation.**
+
+Chapter 19 carries a zh translation of 57 paragraphs whose first is `第二十章\n中世纪之终` — the translator translated the heading paragraph along with the rest. Translations align to the English by paragraph position. Dropping English paragraph 0 leaves 56 English against 57 Chinese, and every paragraph after the first renders against the wrong source. That is the failure mode the repo already built `realign_translations.py` to repair, and it is not worth re-creating deliberately.
+
+So the change is **title-only**:
+
+| | Today | Proposed |
+|---|---|---|
+| part | — | `PART ONE` |
+| title | `Chapter I` | `Chapter I. The Bertolini` |
+| paragraph 0 | `The Bertolini` | `The Bertolini` — unchanged |
+
+The subtitle appears in both the title and the chapter's opening line. It already does today, in the sense that the line is already the first thing a reader sees; this adds it to the panel without removing anything. No paragraph moves, so chapter 19's translation stays aligned.
+
+Titles come from the **printed contents listing**, not from the body paragraph, because the listing is the author's own canonical form and is punctuated (`Chapter I. The Bertolini`). Each is guarded on the current title as usual.
+
+`title` sits inside `content_sha256`, so this re-stamps `book_freeze` and regenerates the artifact, following #2769 including its all-guards-match condition.
+
+**One long row.** Forster's Chapter VI subtitle is a 200-character joke ending *"…Italians Drive Them"*. Per the owner's decision to show the work's own words, it is carried verbatim, and #2745's acceptance line — *"No chapter title is truncated in the panel"* — means it wraps rather than clips. That row will be several lines tall. Truncating it would both regress #2745 and blunt the joke, so it stands.
 
 ### Madame Bovary #14155 — 3 parts over 36 chapters
 
@@ -180,9 +218,12 @@ Three migrations, in order:
 
 1. `ALTER TABLE book_chapters ADD COLUMN part TEXT` — additive, nullable.
 2. Label the four books' parts, each `UPDATE` guarded on `book_id`, an index range, and the boundary chapter's exact title.
-3. Retitle Hamlet's five and Madame Bovary's three, re-stamping `book_freeze.content_sha256` per book, and only when every guard for that book matched.
+3. Retitle, re-stamping `book_freeze.content_sha256` per book and only when every guard for that book matched:
+   - Hamlet's five act chapters — drop the `ACT n, ` prefix now carried by the group header.
+   - Madame Bovary's three part chapters — `PREMIÈRE PARTIE` → `I`, and so on.
+   - A Room with a View's twenty — append the subtitle from the printed contents, and drop the `PART TWO — ` prefix from the thirteen that carry it.
 
-Steps 2 and 3 mirror migrations 052 and 056 respectively. Artifacts are regenerated through `freeze_book.py` in the same PR, never hand-edited.
+Steps 2 and 3 mirror migrations 052 and 056 respectively. Artifacts are regenerated through `freeze_book.py` in the same PR, never hand-edited. No paragraph is added, removed or reordered anywhere in this design, so no translation realigns.
 
 ## Testing
 
@@ -190,7 +231,8 @@ Steps 2 and 3 mirror migrations 052 and 056 respectively. Artifacts are regenera
 - Artifact drift: each of the four committed artifacts carries exactly the parts the registry declares — the guard that caught the U+2019 apostrophe in #2769.
 - Migration: labels the declared ranges; leaves undeclared books NULL; labels nothing on a boundary mismatch; does not re-stamp a hash on a partial match; idempotent.
 - Panel: renders N groups in order; front matter collapsed and parts expanded; auto-opens the group containing the current chapter; filter retains headers with surviving children and drops empty ones; a book with no parts renders exactly as today.
-- Regression: Crime and Punishment's six `CHAPTER I` rows are distinguishable by their group; Madame Bovary's Chapter I is reachable by name in all three parts.
+- Paragraph conservation: for each of the four books, every chapter's paragraph list is byte-identical before and after. This is the test that would have caught moving A Room with a View's subtitle out of the body, which would have left chapter 19's 57-paragraph zh translation against 56 English paragraphs.
+- Regression: Crime and Punishment's six `CHAPTER I` rows are distinguishable by their group; Madame Bovary's Chapter I is reachable by name in all three parts; A Room with a View's twenty rows carry their subtitles.
 
 ## Rollback
 
@@ -202,8 +244,12 @@ The column is additive and nullable. `UPDATE book_chapters SET part = NULL` rest
 - **Scope creep into inference.** The registry is the only place a boundary can be stated. There is no code path that derives one.
 - **Churn on #2769.** Real but bounded, and stated above rather than discovered later.
 
-## Open questions
+## Decisions
 
-1. **Crime and Punishment's epilogue** — ungrouped at top level (proposed), or its own single-chapter group?
-2. **Part labels are shown verbatim from the source**, so Madame Bovary's headers read `PREMIÈRE PARTIE` while Hamlet's read `ACT I`. Consistent with showing the work's own words; confirm that is wanted over normalising to English.
-3. **A Room with a View's chapter subtitles** — the printed contents lists `Chapter I. The Bertolini`, `Chapter VIII. Medieval`; the split kept only the numeral. Out of scope here, but worth a separate issue.
+Settled with the repo owner, 2026-08-30:
+
+1. **Crime and Punishment's epilogue renders ungrouped at top level.** It belongs to no part, and inventing a one-chapter group to hold it would assert a structure the work does not have.
+2. **Part labels are shown verbatim from the source.** Madame Bovary's headers read `PREMIÈRE PARTIE`, Hamlet's read `ACT I`, A Room with a View's read `PART ONE`. The panel shows the work's own words rather than normalising to English — the same principle that keeps `MOBY-DICK; or, THE WHALE.` rather than a tidied form.
+3. **A Room with a View's chapter subtitles are in scope**, restored title-only for the alignment reason given above.
+
+No open questions remain.

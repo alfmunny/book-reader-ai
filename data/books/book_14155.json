@@ -23,7 +23,7 @@
     "splitter": "html_preference",
     "chapter_source": "epub",
     "frozen_at": "2026-08-30",
-    "audited_by": "uiux-agent (part grouping, #2745 Phase 2)",
+    "audited_by": "uiux-agent (front matter, #2755)",
     "content_sha256": "b4f912aab9dbf1e2e78a9f02d967c16f31c8bae99e09beee1b2dacbd76bfef46"
   },
   "chapters": [
@@ -41,7 +41,8 @@
         "GUSTAVE FLAUBERT",
         "Paris, 12 avril 1857",
         "À Louis Bouilhet"
-      ]
+      ],
+      "role": "frontmatter"
     },
     {
       "index": 1,

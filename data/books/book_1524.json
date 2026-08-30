@@ -22,14 +22,14 @@
   "split": {
     "splitter": "html_preference",
     "chapter_source": "text",
-    "frozen_at": "2026-08-26",
-    "audited_by": "architect-agent (III.ii boundary re-audit)",
-    "content_sha256": "933be729d90560ea85871be9d481dc5ce8772aea5f0d105ba0aeb69c9c796869"
+    "frozen_at": "2026-08-30",
+    "audited_by": "uiux-agent (act/scene titling, #2745)",
+    "content_sha256": "26b228ab53ed94a54925886bbc95bb35197ad99904ceebc919e2e1770a1e1705"
   },
   "chapters": [
     {
       "index": 0,
-      "title": "ACT I",
+      "title": "ACT I, SCENE I. Elsinore. A platform before the Castle.",
       "paragraphs": [
         "SCENE. Elsinore.",
         "ACT I",
@@ -356,7 +356,7 @@
     },
     {
       "index": 5,
-      "title": "ACT II",
+      "title": "ACT II, SCENE I. A room in Polonius’s house.",
       "paragraphs": [
         "SCENE I. A room in Polonius’s house.",
         "Enter Polonius and Reynaldo.",
@@ -598,7 +598,7 @@
     },
     {
       "index": 7,
-      "title": "ACT III",
+      "title": "ACT III, SCENE I. A room in the Castle.",
       "paragraphs": [
         "SCENE I. A room in the Castle.",
         "Enter King, Queen, Polonius, Ophelia, Rosencrantz and Guildenstern.",
@@ -930,7 +930,7 @@
     },
     {
       "index": 11,
-      "title": "ACT IV",
+      "title": "ACT IV, SCENE I. A room in the Castle.",
       "paragraphs": [
         "SCENE I. A room in the Castle.",
         "Enter King, Queen, Rosencrantz and Guildenstern.",
@@ -1216,7 +1216,7 @@
     },
     {
       "index": 18,
-      "title": "ACT V",
+      "title": "ACT V, SCENE I. A churchyard.",
       "paragraphs": [
         "SCENE I. A churchyard.",
         "Enter two Clowns with spades, &c.",

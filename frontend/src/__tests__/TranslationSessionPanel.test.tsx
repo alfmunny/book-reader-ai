@@ -2,12 +2,20 @@
  * Translation session switcher (design: docs/design/user-translations.md, #2740).
  */
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 jest.mock("@/lib/api", () => ({
   createTranslationSession: jest.fn(),
   updateTranslationSession: jest.fn(),
   deleteTranslationSession: jest.fn(),
+  publishTranslationSession: jest.fn(),
+  unpublishTranslationSession: jest.fn(),
+  getSessionCompleteness: jest.fn(),
+  listVersionComments: jest.fn().mockResolvedValue({ comments: [] }),
+  addVersionComment: jest.fn(),
+  toggleReaction: jest.fn(),
+  listReactions: jest.fn().mockResolvedValue({ reactions: {} }),
+  listPublishedSessions: jest.fn().mockResolvedValue({ items: [], has_more: false }),
 }));
 
 import * as api from "@/lib/api";
@@ -40,7 +48,12 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof TranslationS
   return { ...render(<TranslationSessionPanel {...props} />), props };
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  (api.listVersionComments as jest.Mock).mockResolvedValue({ comments: [] });
+  (api.listReactions as jest.Mock).mockResolvedValue({ reactions: {} });
+  (api.listPublishedSessions as jest.Mock).mockResolvedValue({ items: [], has_more: false });
+});
 
 test("lists Editorial plus named sessions with language and provider chips", () => {
   renderPanel();
@@ -276,4 +289,224 @@ test("the create dialog offers explicit visibility; public is sent through", asy
   await waitFor(() => expect(api.createTranslationSession).toHaveBeenCalledWith(
     expect.objectContaining({ name: "公开版", status: "public" }),
   ));
+});
+
+// ── Track B: Community group + publication (#2752) ────────────────────────
+
+const PUBLISHED = {
+  id: 77, book_id: 2229, name: "诗意全译", target_language: "zh", provider: "deepseek",
+  status: "published", coverage: {}, author_name: "Mira", author_picture: "https://img/mira.png",
+  description: "偏文学化的完整中译，保留原文节奏。",
+  chapters_covered: 28, model_tags: ["deepseek-v4-flash"], published_at: "2026-08-30", likes: 0, comments: 0,
+} as never;
+
+test("published versions appear in a Community group and are selectable", async () => {
+  const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
+  const group = screen.getByTestId("community-versions");
+  expect(group).toHaveTextContent("Mira");
+  expect(group).toHaveTextContent("诗意全译");
+  expect(group).toHaveTextContent("28/28 ch");
+  // Sidebar rows stay compact — the model tag shows in the browse dialog
+  expect(group).not.toHaveTextContent("deepseek-v4-flash");
+  fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
+});
+
+test("reading a community version shows the read-only notice, not the translate panel", async () => {
+  renderPanel({ publishedSessions: [PUBLISHED], activeSessionId: 77 });
+  expect(screen.getByTestId("community-readonly")).toHaveTextContent("only its author can change it");
+  expect(screen.queryByTestId("session-style-panel")).toBeNull();
+  expect(screen.queryByTestId("translate-chapter-button")).toBeNull();
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
+});
+
+test("the Edit dialog carries Publish, and Unpublish once published", async () => {
+  (api.publishTranslationSession as jest.Mock).mockResolvedValue({ ...SESSION, status: "published" });
+  const { props } = renderPanel({ activeSessionId: 5 });
+  fireEvent.click(screen.getByRole("button", { name: "Edit version 诗意版" }));
+  fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+  await waitFor(() => expect(api.publishTranslationSession).toHaveBeenCalledWith(5));
+  expect(props.onSessionsChanged).toHaveBeenCalledWith(
+    expect.arrayContaining([expect.objectContaining({ id: 5, status: "published" })]),
+  );
+});
+
+test("an incomplete book explains what is left instead of publishing", async () => {
+  (api.publishTranslationSession as jest.Mock).mockRejectedValue(new Error("nope"));
+  (api.getSessionCompleteness as jest.Mock).mockResolvedValue({
+    total_paragraphs: 980, translated_paragraphs: 412, complete: false,
+    missing_chapters: new Array(17).fill({ chapter_index: 0, translated: 0, paragraphs: 1 }),
+  });
+  renderPanel({ activeSessionId: 5 });
+  fireEvent.click(screen.getByRole("button", { name: "Edit version 诗意版" }));
+  fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+  // The shortfall is reported inside the dialog, where the action was
+  const err = await screen.findByTestId("edit-dialog-error");
+  expect(err).toHaveTextContent(/412 of 980 paragraphs done, 17 chapter/);
+  // …and the dialog stays open so it can be acted on
+  expect(screen.getByRole("dialog", { name: "Edit translation version" })).toBeInTheDocument();
+});
+
+test("the chat button on a version opens its likes-and-comments dialog", async () => {
+  (api.listVersionComments as jest.Mock).mockResolvedValue({
+    comments: [{
+      id: 301, user_id: 3, body: "整体很流畅", author_name: "Jonas",
+      created_at: new Date(Date.now() - 2 * 3600_000).toISOString().slice(0, 19).replace("T", " "),
+    }],
+  });
+  (api.listReactions as jest.Mock).mockResolvedValue({ reactions: { "77": { count: 5, liked: false } } });
+  (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 6 });
+  (api.addVersionComment as jest.Mock).mockResolvedValue({
+    id: 302, user_id: 9, body: "我也喜欢", created_at: "", author_name: "Me",
+  });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+
+  // Nothing inline in the sidebar — it opens from the row's chat button
+  expect(screen.queryByTestId("version-discussion")).toBeNull();
+  fireEvent.click(screen.getByTestId("version-discuss-77"));
+  const dialog = await screen.findByTestId("version-discussion");
+  expect(dialog).toHaveTextContent("诗意全译");
+  expect(dialog).toHaveTextContent("by Mira");
+  // The blurb and the how-it-was-made facts belong here, not just the thread
+  expect(dialog).toHaveTextContent("偏文学化的完整中译");
+  const meta = within(dialog).getByTestId("version-meta");
+  expect(meta).toHaveTextContent("中文");
+  expect(meta).toHaveTextContent("deepseek-v4-flash");
+  expect(meta).toHaveTextContent("28 chapters");
+  expect(dialog.querySelector("img")).toHaveAttribute("src", "https://img/mira.png");
+
+  // Comments carry identity and time, like every other thread in the reader
+  const comment = await screen.findByTestId("version-comment-301");
+  expect(comment).toHaveTextContent("整体很流畅");
+  expect(comment).toHaveTextContent("Jonas");
+  expect(within(comment).getByText("2 h ago")).toBeInTheDocument();
+
+  const heart = screen.getByTestId("version-like");
+  await waitFor(() => expect(heart).toHaveTextContent("5"));
+  fireEvent.click(heart);
+  await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("session", 77));
+  await waitFor(() => expect(screen.getByTestId("version-like")).toHaveTextContent("6"));
+
+  fireEvent.change(screen.getByLabelText("Version comment"), { target: { value: "我也喜欢" } });
+  fireEvent.click(screen.getByRole("button", { name: "Post" }));
+  await waitFor(() => expect(api.addVersionComment).toHaveBeenCalledWith(77, "我也喜欢"));
+  expect(await screen.findByTestId("version-comment-302")).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
+  expect(screen.queryByTestId("version-discussion")).toBeNull();
+});
+
+test("selecting a community row still reads it — the chat button does not", async () => {
+  const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
+  fireEvent.click(screen.getByTestId("version-discuss-77"));
+  expect(props.onSelect).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
+  fireEvent.click(screen.getByRole("radio", { name: /诗意全译/ }));
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 77 }));
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
+});
+
+test("the sidebar shows the top few; More opens a searchable, paged dialog", async () => {
+  const page1 = [
+    { ...PUBLISHED, id: 81, name: "第一版", likes: 9, comments: 2 },
+    { ...PUBLISHED, id: 82, name: "第二版", likes: 4, comments: 0 },
+  ];
+  (api.listPublishedSessions as jest.Mock)
+    .mockResolvedValueOnce({ items: page1, has_more: true })
+    .mockResolvedValueOnce({ items: [{ ...PUBLISHED, id: 83, name: "第三版", likes: 1, comments: 0 }], has_more: false });
+  const { props } = renderPanel({ publishedSessions: [PUBLISHED] });
+
+  fireEvent.click(screen.getByRole("button", { name: /More community translations/ }));
+  const dialog = await screen.findByTestId("community-browse");
+  await waitFor(() => expect(dialog).toHaveTextContent("第一版"));
+  expect(dialog).toHaveTextContent("9"); // like count, ranked first
+
+  // Load more appends the next page
+  fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+  await waitFor(() => expect(screen.getByTestId("community-browse")).toHaveTextContent("第三版"));
+
+  // Selecting from the dialog picks the version and closes it
+  fireEvent.click(screen.getByRole("radio", { name: /第一版/ }));
+  expect(props.onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 81 }));
+  expect(screen.queryByTestId("community-browse")).toBeNull();
+  // …and the browsed rows get their like state loaded like the sidebar's
+  await waitFor(() => expect(api.listReactions).toHaveBeenLastCalledWith(
+    "session", expect.arrayContaining([83]),
+  ));
+});
+
+test("searching the community dialog re-queries the server", async () => {
+  (api.listPublishedSessions as jest.Mock).mockResolvedValue({ items: [], has_more: false });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+  fireEvent.click(screen.getByRole("button", { name: /More community translations/ }));
+  fireEvent.change(await screen.findByLabelText("Search community translations"), { target: { value: "Mira" } });
+  await waitFor(() => expect(api.listPublishedSessions).toHaveBeenCalledWith(
+    2229, expect.objectContaining({ q: "Mira", sort: "popular" }),
+  ));
+  expect(await screen.findByText("No translations match that search.")).toBeInTheDocument();
+});
+
+test("the edit dialog carries the version's description", async () => {
+  (api.updateTranslationSession as jest.Mock).mockResolvedValue({
+    ...SESSION, description: "保留原文节奏",
+  });
+  renderPanel({ sessions: [{ ...SESSION, description: "旧的简介" }] });
+
+  fireEvent.click(screen.getByLabelText(`Edit version ${SESSION.name}`));
+  const field = screen.getByLabelText("Version description") as HTMLTextAreaElement;
+  expect(field.value).toBe("旧的简介");
+
+  fireEvent.change(field, { target: { value: "保留原文节奏" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(api.updateTranslationSession).toHaveBeenCalledWith(
+      SESSION.id, expect.objectContaining({ description: "保留原文节奏" }),
+    ),
+  );
+});
+
+test("the sidebar heart shows whether you already liked a community version", async () => {
+  (api.listReactions as jest.Mock).mockResolvedValue({
+    reactions: { "77": { count: 4, liked: true } },
+  });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+
+  // The listing's count alone cannot say whose likes those are — the batched
+  // reaction call fills in the "mine" bit, and the heart lights up.
+  const heart = await screen.findByTestId("version-likes-77");
+  await waitFor(() => expect(heart).toHaveTextContent("4"));
+  expect(heart).toHaveAttribute("title", "You liked this translation");
+  expect(heart.className).toContain("text-red-500");
+});
+
+test("liking inside the dialog lights up the sidebar row too", async () => {
+  (api.listReactions as jest.Mock).mockResolvedValue({
+    reactions: { "77": { count: 4, liked: false } },
+  });
+  (api.toggleReaction as jest.Mock).mockResolvedValue({ liked: true, count: 5 });
+  renderPanel({ publishedSessions: [PUBLISHED] });
+
+  const before = await screen.findByTestId("version-likes-77");
+  await waitFor(() => expect(before.className).toContain("text-stone-500"));
+
+  fireEvent.click(screen.getByTestId("version-discuss-77"));
+  fireEvent.click(await screen.findByTestId("version-like"));
+  await waitFor(() => expect(api.toggleReaction).toHaveBeenCalledWith("session", 77));
+
+  fireEvent.click(screen.getByRole("button", { name: "Close discussion" }));
+  const after = screen.getByTestId("version-likes-77");
+  expect(after).toHaveTextContent("5");
+  expect(after.className).toContain("text-red-500");
+});
+
+test("'Add your own version' sits with your versions, above the Community group", async () => {
+  renderPanel({ publishedSessions: [PUBLISHED] });
+  const add = screen.getByRole("button", { name: /Add your own version/ });
+  const community = screen.getByTestId("community-versions");
+
+  // Below the Community group it read as "add a community version" — it is
+  // the tail of YOUR list (owner, 2026-08-30).
+  expect(add.compareDocumentPosition(community) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await waitFor(() => expect(api.listReactions).toHaveBeenCalledWith("session", [77]));
 });

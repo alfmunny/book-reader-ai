@@ -10,7 +10,7 @@ from typing import Literal
 
 import aiosqlite
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field, field_validator
 
 from services.auth import get_current_user, decrypt_api_key, check_book_access
@@ -26,6 +26,10 @@ from services.db import (
     delete_session_paragraph,
     get_posted_paragraph_indexes,
     create_story,
+    count_session_paragraphs_by_chapter,
+    set_session_publication,
+    list_published_sessions,
+    get_readable_session,
 )
 from services import user_translate
 # Shared error vocabulary with the insight chat (#2683): actionable,
@@ -101,6 +105,7 @@ class SessionCreate(BaseModel):
     provider: Literal["deepseek", "claude"]
     style_prompt: str | None = Field(default=None, max_length=2000)
     status: Literal["private", "public"] = "public"
+    description: str | None = Field(default=None, max_length=500)
 
     @field_validator("name")
     @classmethod
@@ -126,6 +131,9 @@ class SessionUpdate(BaseModel):
     # translated to the old language simply stay — not strict on purpose.
     target_language: str | None = Field(default=None, min_length=1, max_length=20)
     status: Literal["private", "public"] | None = None
+    # A blurb readers see in the version dialog. "" clears it, so this field
+    # is passed through exclude_none, not exclude_unset.
+    description: str | None = Field(default=None, max_length=500)
 
     @field_validator("target_language")
     @classmethod
@@ -180,7 +188,7 @@ async def create_session(req: SessionCreate, user: dict = Depends(get_current_us
     check_book_access(book, user)
     created = await create_translation_session(
         user["id"], req.book_id, req.name, req.target_language, req.provider, req.style_prompt,
-        status=req.status,
+        status=req.status, description=req.description,
     )
     if created is None:
         raise HTTPException(status_code=409, detail=f'You already have a version named "{req.name}" for this book.')
@@ -215,13 +223,98 @@ async def delete_session(session_id: int = Path(..., ge=1), user: dict = Depends
     return {"ok": True}
 
 
+async def _session_completeness(session_id: int, book_id: int) -> dict:
+    """Whole-book coverage: every paragraph of every chapter (design: no
+    half-books in another reader's switcher)."""
+    from services.book_chapters import get_chapters
+    chapters = await get_chapters(book_id)
+    counts = await count_session_paragraphs_by_chapter(session_id)
+    missing: list[dict] = []
+    total = done = 0
+    for i, ch in enumerate(chapters):
+        expected = len(_chapter_paragraphs(ch.text))
+        have = counts.get(i, 0)
+        total += expected
+        done += min(have, expected)
+        if have < expected:
+            missing.append({"chapter_index": i, "translated": have, "paragraphs": expected})
+    return {"total_paragraphs": total, "translated_paragraphs": done,
+            "complete": not missing, "missing_chapters": missing}
+
+
+@router.get("/published")
+async def published_sessions(
+    book_id: int = Query(..., ge=1),
+    q: str | None = Query(default=None, max_length=100),
+    sort: Literal["popular", "recent"] = Query(default="popular"),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    user: dict = Depends(get_current_user),
+):
+    """Published versions other readers can select — the Community group.
+    Ranked, searchable and paged for the browse dialog."""
+    book = await get_cached_book(book_id)
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    check_book_access(book, user)
+    items, has_more = await list_published_sessions(
+        book_id, exclude_user_id=user["id"], q=q, sort=sort, limit=limit, offset=offset,
+    )
+    return {"items": items, "has_more": has_more}
+
+
+@router.get("/{session_id}/completeness")
+async def session_completeness(session_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
+    session = await get_translation_session(session_id, user["id"])
+    if not session:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return await _session_completeness(session_id, session["book_id"])
+
+
+@router.post("/{session_id}/publish")
+async def publish_session(session_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
+    """Publish a COMPLETE version so other readers can select and read it."""
+    session = await get_translation_session(session_id, user["id"])
+    if not session:
+        raise HTTPException(status_code=404, detail="Version not found")
+    state = await _session_completeness(session_id, session["book_id"])
+    if not state["complete"]:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Translate the whole book first — {state['translated_paragraphs']} of "
+                f"{state['total_paragraphs']} paragraphs done, "
+                f"{len(state['missing_chapters'])} chapter(s) incomplete."
+            ),
+        )
+    updated = await set_session_publication(session_id, user["id"], True)
+    return updated
+
+
+@router.delete("/{session_id}/publish")
+async def unpublish_session(session_id: int = Path(..., ge=1), user: dict = Depends(get_current_user)):
+    """Withdraw a published version; it stays public for its own posts.
+    An admin can withdraw anyone's — moderation removes visibility, never
+    the author's words (track B, #2752)."""
+    updated = await set_session_publication(
+        session_id, user["id"], False, is_admin=user.get("role") == "admin",
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return updated
+
+
 @router.get("/{session_id}/chapters/{chapter_index}")
 async def chapter_paragraphs(
     session_id: int = Path(..., ge=1),
     chapter_index: int = Path(..., ge=0),
     user: dict = Depends(get_current_user),
 ):
-    session = await _require_session(session_id, user)
+    # Published versions are readable by everyone — that IS the Community
+    # group in the switcher (track B). Everything else stays owner-only.
+    session = await get_readable_session(session_id, user["id"])
+    if not session:
+        raise HTTPException(status_code=404, detail="Version not found")
     text, _ = await _chapter_text(session["book_id"], chapter_index, user)
     paragraphs = await get_session_paragraphs(session_id, chapter_index)
     run = _chapter_runs.get((session_id, chapter_index))

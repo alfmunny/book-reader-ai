@@ -32,6 +32,10 @@ from services.db import (
     list_session_paragraph_comments,
     get_translation_session_any,
     count_paragraph_notes,
+    toggle_reaction,
+    reaction_counts,
+    create_version_comment,
+    list_version_comments,
     get_annotations,
     list_story_feed,
     follow_user,
@@ -191,10 +195,36 @@ async def _readable_session(session_id: int, user: dict) -> dict:
     """A version's notes are visible to its owner, and to everyone once the
     version is public."""
     session = await get_translation_session_any(session_id)
-    if not session or (session["user_id"] != user["id"] and session.get("status") != "public"):
+    # 'published' is a STRICTER form of public (track B) — both are readable
+    # by everyone; only 'private' is owner-only.
+    if not session or (session["user_id"] != user["id"] and session.get("status") not in ("public", "published")):
         raise HTTPException(status_code=404, detail="Version not found")
     await _require_book(session["book_id"], user)
     return session
+
+
+class ReactionToggle(BaseModel):
+    target_kind: Literal["story", "comment", "session"]
+    target_id: int = Field(ge=1)
+
+
+@router.post("/reactions")
+async def toggle_like(req: ReactionToggle, user: dict = Depends(get_current_user)):
+    """Like or un-like a post or a note (track B, #2752)."""
+    liked = await toggle_reaction(user["id"], req.target_kind, req.target_id)
+    counts = await reaction_counts(req.target_kind, [req.target_id], user["id"])
+    return {"liked": liked, "count": counts.get(req.target_id, {}).get("count", 0)}
+
+
+@router.get("/reactions")
+async def list_likes(
+    target_kind: Literal["story", "comment", "session"] = Query(...),
+    ids: str = Query(..., description="comma-separated target ids"),
+    user: dict = Depends(get_current_user),
+):
+    parsed = [int(x) for x in ids.split(",") if x.strip().isdigit()][:200]
+    counts = await reaction_counts(target_kind, parsed, user["id"])
+    return {"reactions": {str(k): v for k, v in counts.items()}}
 
 
 @router.get("/comments/counts")
@@ -218,6 +248,25 @@ async def paragraph_note_counts(
             chapter_index, user["id"], book_id=book_id, target_language=target_language,
         )
     return {"counts": {str(k): v for k, v in counts.items()}}
+
+
+class VersionCommentCreate(BaseModel):
+    session_id: int = Field(ge=1)
+    body: str = Field(min_length=1, max_length=4000)
+    parent_id: int | None = Field(default=None, ge=1)
+
+
+@router.get("/comments/version")
+async def version_comments(session_id: int = Query(ge=1), user: dict = Depends(get_current_user)):
+    """Discussion of a whole version — the Community card's thread."""
+    await _readable_session(session_id, user)
+    return {"comments": await list_version_comments(session_id)}
+
+
+@router.post("/comments/version")
+async def add_version_comment(req: VersionCommentCreate, user: dict = Depends(get_current_user)):
+    await _readable_session(req.session_id, user)
+    return await create_version_comment(req.session_id, user["id"], req.body.strip(), req.parent_id)
 
 
 @router.get("/comments/session")

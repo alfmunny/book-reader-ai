@@ -529,3 +529,90 @@ async def test_notes_are_editable_by_their_author_only(client, test_user):
     other = await get_or_create_user(google_id="g-editor", email="e@e.com", name="E", picture="")
     assert await update_story_comment(note["id"], other["id"], "劫持") is None
     assert (await client.patch("/api/stories/comments/99999", json={"body": "x"})).status_code == 404
+
+
+# ── Likes (track B, #2752) ─────────────────────────────────────────────────
+
+async def test_likes_toggle_and_are_idempotent(client, test_user):
+    sid = await _translated_session(client)
+    story_id = (await _share_translation(client, sid)).json()["id"]
+
+    first = (await client.post("/api/stories/reactions", json={"target_kind": "story", "target_id": story_id})).json()
+    assert first == {"liked": True, "count": 1}
+    # Liking again un-likes — never a double count
+    again = (await client.post("/api/stories/reactions", json={"target_kind": "story", "target_id": story_id})).json()
+    assert again == {"liked": False, "count": 0}
+
+
+async def test_like_counts_come_back_in_a_batch(client, test_user):
+    from services.db import get_or_create_user, toggle_reaction
+    sid = await _make_session(client, name="点赞版")
+    anchor = {"session_id": sid, "chapter_index": 0, "paragraph_index": 0}
+    a = (await client.post("/api/stories/comments/session", json={**anchor, "body": "一"})).json()
+    b = (await client.post("/api/stories/comments/session", json={**anchor, "body": "二"})).json()
+
+    await client.post("/api/stories/reactions", json={"target_kind": "comment", "target_id": a["id"]})
+    other = await get_or_create_user(google_id="g-liker", email="l@e.com", name="L", picture="")
+    await toggle_reaction(other["id"], "comment", a["id"])  # someone else likes it too
+
+    got = (await client.get("/api/stories/reactions", params={
+        "target_kind": "comment", "ids": f"{a['id']},{b['id']}",
+    })).json()["reactions"]
+    assert got[str(a["id"])] == {"count": 2, "liked": True}
+    assert str(b["id"]) not in got  # no reactions, no row
+
+
+# ── A whole version can be liked and discussed (owner, 2026-08-30) ─────────
+
+async def test_version_level_comments_are_separate_from_paragraph_notes(client, test_user):
+    sid = await _make_session(client, name="整版讨论")
+    await client.patch(f"/api/translation-sessions/{sid}", json={"status": "public"})
+
+    await client.post("/api/stories/comments/version", json={"session_id": sid, "body": "整体读下来很流畅"})
+    await client.post("/api/stories/comments/session", json={
+        "session_id": sid, "chapter_index": 0, "paragraph_index": 0, "body": "这一段的笔记",
+    })
+
+    version_thread = (await client.get("/api/stories/comments/version", params={"session_id": sid})).json()["comments"]
+    assert [c["body"] for c in version_thread] == ["整体读下来很流畅"]
+    para_thread = (await client.get("/api/stories/comments/session", params={
+        "session_id": sid, "chapter_index": 0, "paragraph_index": 0,
+    })).json()["comments"]
+    assert [c["body"] for c in para_thread] == ["这一段的笔记"]
+
+
+async def test_a_version_can_be_liked(client, test_user):
+    sid = await _make_session(client, name="可点赞版")
+    await client.patch(f"/api/translation-sessions/{sid}", json={"status": "public"})
+    liked = (await client.post("/api/stories/reactions", json={"target_kind": "session", "target_id": sid})).json()
+    assert liked == {"liked": True, "count": 1}
+    got = (await client.get("/api/stories/reactions", params={"target_kind": "session", "ids": str(sid)})).json()
+    assert got["reactions"][str(sid)] == {"count": 1, "liked": True}
+
+
+async def test_published_versions_accept_notes_and_comments_from_readers(client, test_user):
+    """A published version is readable by everyone — so its discussion must
+    accept posts too (owner bug report, 2026-08-30: comments 404'd because
+    only 'public' was accepted, never 'published')."""
+    from services.db import (
+        get_or_create_user, create_translation_session,
+        upsert_session_paragraph, set_session_publication,
+    )
+    author = await get_or_create_user(google_id="g-pub-author", email="pa@e.com", name="PA", picture="")
+    sess = await create_translation_session(author["id"], 1, "已发布版", "zh", "deepseek")
+    await upsert_session_paragraph(sess["id"], 0, 0, "译文", "deepseek", "m")
+    await set_session_publication(sess["id"], author["id"], True)
+
+    # A different reader can read AND join the version-level discussion
+    posted = await client.post("/api/stories/comments/version", json={
+        "session_id": sess["id"], "body": "读完了，很喜欢",
+    })
+    assert posted.status_code == 200
+    thread = (await client.get("/api/stories/comments/version", params={"session_id": sess["id"]})).json()
+    assert [c["body"] for c in thread["comments"]] == ["读完了，很喜欢"]
+
+    # …and take a paragraph note on it
+    note = await client.post("/api/stories/comments/session", json={
+        "session_id": sess["id"], "chapter_index": 0, "paragraph_index": 0, "body": "这段译得好",
+    })
+    assert note.status_code == 200

@@ -21,6 +21,7 @@ jest.mock("next/navigation", () => ({
 }));
 
 jest.mock("@/lib/api", () => ({
+  listPublishedSessions: jest.fn().mockResolvedValue([]),
   getParagraphNoteCounts: jest.fn().mockResolvedValue({ counts: {} }),
   getBookChapters: jest.fn().mockResolvedValue({
     meta: { id: 42, title: "Moby Dick", authors: [], languages: [], subjects: [], download_count: 0, cover: "" },

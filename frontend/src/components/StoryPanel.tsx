@@ -36,24 +36,14 @@ import {
   deleteStory,
   deleteStoryComment,
   updateStoryComment,
+  toggleReaction,
+  listReactions,
+  ReactionState,
 } from "@/lib/api";
-import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon, ShareIcon, RetryIcon } from "@/components/Icons";
+import { CloseIcon, TrashIcon, NoteIcon, ArrowLeftIcon, ShareIcon, RetryIcon, HeartIcon } from "@/components/Icons";
 import { timeAgo, exactTime } from "@/lib/timeAgo";
 import { COLORS } from "@/components/QuickHighlightPanel";
-
-/** Small round author avatar: picture when the account has one, an
- *  initial-letter disc otherwise. */
-function Avatar({ name, picture, size = "w-5 h-5" }: { name: string; picture?: string | null; size?: string }) {
-  if (picture) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={picture} alt="" aria-hidden="true" className={`${size} rounded-full shrink-0 object-cover`} />;
-  }
-  return (
-    <span aria-hidden="true" className={`${size} rounded-full shrink-0 bg-amber-200 text-amber-900 inline-flex items-center justify-center text-[10px] font-semibold`}>
-      {(name || "?").charAt(0).toUpperCase()}
-    </span>
-  );
-}
+import Avatar from "@/components/Avatar";
 
 type CommentAnchor =
   | { kind: "story"; storyId: number }
@@ -219,7 +209,7 @@ interface Props {
   stories: Story[];
   /** Paragraph the panel is anchored to (1-based in the title). */
   paragraphIndex: number;
-  /** Overrides the default "Shares on paragraph N" title (sentence anchors). */
+  /** Overrides the default "Posts on paragraph N" title (sentence anchors). */
   title?: string;
   /** Anchor point (viewport coords). On desktop the panel pops up near it,
    *  WeRead-style; small screens keep the bottom sheet. */
@@ -588,7 +578,7 @@ export default function StoryPanel({
           ? (detailStory?.kind === "translation" ? "Reader's translation" : "Reader's note")
           : view.mode === "myVersion"
             ? "My translation"
-            : title ?? `Shares on paragraph ${paragraphIndex + 1}`;
+            : title ?? `Posts on paragraph ${paragraphIndex + 1}`;
 
   function goBack() {
     if (view.mode === "editVersion" || view.mode === "comment") {
@@ -676,6 +666,7 @@ export default function StoryPanel({
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500">private</span>
           )}
           <span className="flex-1" />
+          {likeButton("comment", c.id)}
           {open && replies > 0 && (
             <span className="text-[10px] text-amber-700 shrink-0">{replies} repl{replies === 1 ? "y" : "ies"}</span>
           )}
@@ -730,6 +721,59 @@ export default function StoryPanel({
       </select>
     </div>
   );
+
+  // Likes: one component, every surface (track B, #2752). Counts load per
+  // visible batch; the toggle is idempotent server-side.
+  const [likes, setLikes] = useState<Record<string, ReactionState>>({});
+  const likeKey = (kind: "story" | "comment", id: number) => `${kind}:${id}`;
+  useEffect(() => {
+    const ids = anchorComments.map((c) => c.id);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    listReactions("comment", ids)
+      .then((r) => {
+        if (cancelled) return;
+        setLikes((prev) => {
+          const next = { ...prev };
+          for (const [id, st] of Object.entries(r.reactions)) next[likeKey("comment", Number(id))] = st;
+          return next;
+        });
+      })
+      .catch(() => { /* counts simply stay at zero */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey, anchorComments.length]);
+
+  async function like(kind: "story" | "comment", id: number) {
+    const key = likeKey(kind, id);
+    const before = likes[key] ?? { count: 0, liked: false };
+    // Optimistic — the server is the arbiter, and it is idempotent
+    setLikes((p) => ({ ...p, [key]: { count: before.count + (before.liked ? -1 : 1), liked: !before.liked } }));
+    try {
+      const r = await toggleReaction(kind, id);
+      setLikes((p) => ({ ...p, [key]: { count: r.count, liked: r.liked } }));
+    } catch {
+      setLikes((p) => ({ ...p, [key]: before }));
+    }
+  }
+
+  const likeButton = (kind: "story" | "comment", id: number, size = "w-3.5 h-3.5") => {
+    const st = likes[likeKey(kind, id)] ?? { count: 0, liked: false };
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); like(kind, id); }}
+        aria-label={st.liked ? "Unlike" : "Like"}
+        aria-pressed={st.liked}
+        data-testid={`like-${kind}-${id}`}
+        className={`inline-flex items-center gap-1 text-[10px] rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors ${
+          st.liked ? "text-red-500 hover:text-red-600" : "text-stone-400 hover:text-red-500"
+        }`}
+      >
+        <HeartIcon className={size} filled={st.liked} />
+        {st.count > 0 && st.count}
+      </button>
+    );
+  };
 
   const myVersionHeader = (
     v: NonNullable<Props["myVersions"]>[number],
@@ -879,7 +923,7 @@ export default function StoryPanel({
           {variant !== "sentence" && (story.user_id === currentUserId || isAdmin) && (
             <button
               onClick={(e) => { e.stopPropagation(); handleDeleteStory(story.id); }}
-              aria-label="Delete this share"
+              aria-label="Delete this post"
               className="text-stone-400 hover:text-red-600 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
             >
               <TrashIcon className="w-3.5 h-3.5" />
@@ -980,7 +1024,7 @@ export default function StoryPanel({
         <h3 className="font-serif font-semibold text-sm text-ink flex-1">{headerTitle}</h3>
         <button
           onClick={onClose}
-          aria-label="Close shares panel"
+          aria-label="Close panel"
           className="min-w-[44px] md:min-w-0 min-h-[44px] md:min-h-0 inline-flex items-center justify-center text-stone-500 hover:text-ink rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <CloseIcon className="w-4 h-4" />
@@ -1138,6 +1182,7 @@ export default function StoryPanel({
             </div>
             {/* The list row badges private notes — the detail must too
                 (owner, 2026-08-30). */}
+            {likeButton("comment", detailComment.id, "w-4 h-4")}
             {detailComment.visibility === "private" && (
               <span
                 data-testid="comment-detail-private"
@@ -1401,7 +1446,7 @@ export default function StoryPanel({
               <button
                 onClick={() => handleDeleteStory(detailStory.id)}
                 disabled={busy}
-                aria-label="Delete this share"
+                aria-label="Delete this post"
                 className="text-stone-400 hover:text-red-600 disabled:opacity-50 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 rounded"
               >
                 <TrashIcon className="w-4 h-4" />
@@ -1429,6 +1474,7 @@ export default function StoryPanel({
           {detailStory.caption && (
             <p className="text-xs text-stone-600">{detailStory.caption}</p>
           )}
+          <div>{likeButton("story", detailStory.id, "w-4 h-4")}</div>
           <div className="pt-2 border-t border-amber-100 space-y-2" data-testid="detail-discussion">
             <p className="text-[11px] font-medium text-stone-500">Comments ({topLevel.length || detailStory.comment_count})</p>
             {topLevel.map((c) => commentRow(c, { clickable: true, back: view }))}

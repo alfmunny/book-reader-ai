@@ -700,7 +700,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Community shares (phase 2, #2752): profile-level opt-in; the
+          {/* Community posts (phase 2, #2752): profile-level opt-in; the
               reader's toolbar 'Shares on/off' button flips the same
               setting in-session. */}
           <div className="mt-5">
@@ -716,8 +716,8 @@ export default function ProfilePage() {
                 className="mt-0.5 accent-amber-700"
               />
               <span>
-                <span className="block text-sm font-medium text-ink">Community shares</span>
-                <span className="block text-xs text-stone-600">Show other readers&rsquo; shared notes and translations while you read — subtle dashed marks on shared sentences, margin counts on shared paragraphs. Off keeps reading fully private and calm.</span>
+                <span className="block text-sm font-medium text-ink">Community posts</span>
+                <span className="block text-xs text-stone-600">Show other readers&rsquo; posted notes and translations while you read — subtle dashed marks on shared sentences, margin counts on shared paragraphs. Off keeps reading fully private and calm.</span>
               </span>
             </label>
           </div>

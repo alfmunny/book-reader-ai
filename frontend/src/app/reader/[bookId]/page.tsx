@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookChapters, synthesizeSpeech, getMe, getBookTranslationStatus, getBookTranslationLanguages, BookTranslationLanguages, getChapterTranslation, saveReadingProgress, getAnnotations, createAnnotation, getVocabulary, saveVocabularyWord, exportVocabularyToObsidian, saveInsight, listStories, createStory, deleteStory, getParagraphNoteCounts, listPublishedSessions, PublishedSession, Story, updateAnnotation, deleteAnnotation, listTranslationSessions, getSessionChapter, translateSession, editSessionParagraph, deleteSessionParagraph, TranslationSession, SessionChapter, TranslationStatus, BookMeta, BookChapter, ApiError, Annotation, VocabularyWord, ChapterSource, WordDefinition } from "@/lib/api";
 import { recordRecentBook, saveLastChapter, getLastChapter } from "@/lib/recentBooks";
-import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily } from "@/lib/settings";
+import { getSettings, saveSettings, FontSize, Theme, LineHeight, ContentWidth, FontFamily, ReaderMode } from "@/lib/settings";
 import TypographyPanel from "@/components/TypographyPanel";
 import TableOfContents from "@/components/TableOfContents";
 import InsightChat, { LANGUAGES } from "@/components/InsightChat";
@@ -725,6 +725,14 @@ export default function ReaderPage() {
   const [theme, setTheme] = useState<Theme>("light");
   const [lineHeight, setLineHeight] = useState<LineHeight>("normal");
   const [contentWidth, setContentWidth] = useState<ContentWidth>("normal");
+  // Reading mode (design: docs/design/reading-modes.md, slice 1). Page mode
+  // paginates the chapter into full-height CSS columns; the DOM never changes,
+  // only the flow's transform, so note anchors and data-seg spans survive a
+  // mode switch as the same nodes.
+  const [readerMode, setReaderMode] = useState<ReaderMode>("scroll");
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const flowRef = useRef<HTMLDivElement>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("serif");
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -762,6 +770,7 @@ export default function ReaderPage() {
     setContentWidth(s.contentWidth ?? "normal");
     setFontFamily(s.fontFamily ?? "serif");
     setParagraphFocus(s.paragraphFocus ?? false);
+    setReaderMode(s.readerMode ?? "scroll");
   }, []);
 
   // Apply theme and display settings to the document
@@ -779,6 +788,77 @@ export default function ReaderPage() {
       document.documentElement.removeAttribute("data-font-family");
     };
   }, [theme, fontSize, lineHeight, contentWidth, fontFamily]);
+
+  // Page-mode geometry. The flow is laid out as full-height columns exactly one
+  // viewport wide; turning a page translates it by one column plus the gutter.
+  // Recomputed whenever anything that reflows the text changes — typography,
+  // chapter, translation — because the page count is a function of the layout.
+  const PAGE_GUTTER = 64;
+  const PAGE_CONTROLS_H = 60;
+  const measurePages = useCallback(() => {
+    const flow = flowRef.current;
+    const box = document.getElementById("reader-scroll");
+    if (!flow || !box) return;
+    if (readerMode !== "page") {
+      flow.style.height = "";
+      flow.style.columnWidth = "";
+      flow.style.transform = "";
+      flow.style.width = "";
+      flow.style.margin = "";
+      return;
+    }
+    // Reset before measuring: the column width must be the *reading measure*,
+    // not the box. Paragraphs are capped by .prose-reader's max-width, so a
+    // column as wide as the box would leave half of every page empty and
+    // inflate the page count on wide screens.
+    flow.style.width = "";
+    flow.style.columnWidth = "";
+    flow.style.height = "";
+    const avail = box.clientWidth - 64; // px-8 padding either side
+    const prose = flow.querySelector<HTMLElement>(".prose-reader");
+    const width = Math.min(avail, prose?.clientWidth || avail);
+    const height = box.clientHeight - 64 - PAGE_CONTROLS_H;
+    flow.style.width = `${width}px`;
+    flow.style.margin = "0 auto";
+    flow.style.height = `${height}px`;
+    flow.style.columnWidth = `${width}px`;
+    const step = width + PAGE_GUTTER;
+    const count = Math.max(1, Math.round(flow.scrollWidth / step));
+    setPageCount(count);
+    setPageIndex((i) => Math.min(i, count - 1));
+  }, [readerMode]);
+
+  useLayoutEffect(() => {
+    measurePages();
+  }, [measurePages, chapterIndex, fontSize, lineHeight, contentWidth, fontFamily,
+      translationEnabled, displayMode, activeSession, loading]);
+
+  useEffect(() => {
+    if (readerMode !== "page") return;
+    window.addEventListener("resize", measurePages);
+    return () => window.removeEventListener("resize", measurePages);
+  }, [readerMode, measurePages]);
+
+  // Apply the turn. Kept separate from measurement so a page change is one
+  // transform write, not a relayout.
+  useEffect(() => {
+    const flow = flowRef.current;
+    const box = document.getElementById("reader-scroll");
+    if (!flow || !box || readerMode !== "page") return;
+    const step = flow.clientWidth + PAGE_GUTTER;
+    flow.style.transform = `translateX(${-pageIndex * step}px)`;
+  }, [pageIndex, readerMode, pageCount]);
+
+  // A chapter always opens on its first page (design decision 3).
+  useEffect(() => { setPageIndex(0); }, [chapterIndex, readerMode]);
+
+  const turnPage = useCallback((delta: number) => {
+    setPageIndex((i) => Math.min(Math.max(0, i + delta), pageCount - 1));
+    // Overlays pin themselves to viewport coordinates taken when they opened,
+    // so a turn slides the text out from under them (collision 5).
+    setPostsDialog(null);
+    try { window.getSelection()?.removeAllRanges(); } catch { /* no selection */ }
+  }, [pageCount]);
 
   // Track scroll progress
   useEffect(() => {
@@ -1135,10 +1215,24 @@ export default function ReaderPage() {
             document.querySelector(`[data-seg="${segs[0]}"]`)?.scrollIntoView({ block: "nearest" });
           }
         }
+      } else if (e.key === "ArrowLeft" && readerMode === "page") {
+        // Design decision 1: arrows turn pages while paginated — turning a page
+        // is the far more frequent act. Chapters move to [ and ].
+        e.preventDefault();
+        turnPage(-1);
+      } else if (e.key === "ArrowRight" && readerMode === "page") {
+        e.preventDefault();
+        turnPage(1);
       } else if (e.key === "ArrowLeft" && chapterIndex > 0) {
         e.preventDefault();
         goToChapter(chapterIndex - 1);
       } else if (e.key === "ArrowRight" && chapterIndex < chapters.length - 1) {
+        e.preventDefault();
+        goToChapter(chapterIndex + 1);
+      } else if (e.key === "[" && chapterIndex > 0) {
+        e.preventDefault();
+        goToChapter(chapterIndex - 1);
+      } else if (e.key === "]" && chapterIndex < chapters.length - 1) {
         e.preventDefault();
         goToChapter(chapterIndex + 1);
       } else if (e.key === "t" || e.key === "T") {
@@ -1170,7 +1264,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session]);
+  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session, readerMode, turnPage]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);
@@ -1611,6 +1705,34 @@ export default function ReaderPage() {
             )}
           </button>
 
+          {/* Reading mode — scroll or page (slice 1: desktop, inline translation) */}
+          {(() => {
+            const parallelOn = translationEnabled && displayMode === "parallel";
+            return (
+              <button
+                onClick={() => {
+                  const next: ReaderMode = readerMode === "page" ? "scroll" : "page";
+                  setReaderMode(next);
+                  saveSettings({ readerMode: next });
+                }}
+                disabled={parallelOn}
+                aria-pressed={readerMode === "page"}
+                data-testid="reader-mode-toggle"
+                title={parallelOn
+                  ? "Page mode needs inline translation — side-by-side columns cannot paginate"
+                  : readerMode === "page" ? "Switch to continuous scrolling" : "Switch to page mode"}
+                className={`hidden lg:flex shrink-0 items-center gap-1.5 px-3 py-1.5 min-h-[44px] lg:min-h-0 rounded-lg border text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  readerMode === "page"
+                    ? "bg-amber-100 text-amber-900 border-amber-400"
+                    : "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-900"
+                }`}
+              >
+                <BookOpenIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                {readerMode === "page" ? "Pages" : "Scroll"}
+              </button>
+            );
+          })()}
+
           {/* Show/hide annotation marks — lg+ only */}
           {session?.backendToken && (
             <button
@@ -1898,7 +2020,9 @@ export default function ReaderPage() {
             id="reader-scroll"
             lang={bookLanguage}
             tabIndex={0}
-            className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400"
+            className={`flex-1 px-4 py-4 md:px-8 md:py-8 pb-16 md:pb-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400 ${
+              readerMode === "page" ? "overflow-hidden" : "overflow-y-auto"
+            }`}
             onClick={handleReaderTap}
             onTouchStart={handleTouchStart}
             onTouchEnd={(e) => { handleTouchEnd(e); handleSelection(); }}
@@ -1933,6 +2057,12 @@ export default function ReaderPage() {
               </div>
             ) : (
               <>
+                <div
+                  ref={flowRef}
+                  data-testid="reader-flow"
+                  data-reader-mode={readerMode}
+                  className={readerMode === "page" ? "reader-paged" : undefined}
+                >
                 {/* Chapter heading — shows original title always; translated title below when available */}
                 {current?.title && (
                   <div className="prose-reader mx-auto mb-8 text-center" data-testid="reader-chapter-heading">
@@ -2000,6 +2130,24 @@ export default function ReaderPage() {
                   onActiveParagraphChange={handleActiveParagraphChange}
                   onParagraphTimingsUpdate={setParagraphTimings}
                 />
+                </div>
+                {readerMode === "page" && (
+                  <div className="prose-reader mx-auto mt-3 flex items-center justify-between text-xs text-amber-700" data-testid="page-turn-controls">
+                    <button
+                      onClick={() => turnPage(-1)}
+                      disabled={pageIndex === 0}
+                      aria-label="Previous page"
+                      className="inline-flex items-center gap-1 min-h-[44px] md:min-h-0 disabled:opacity-30 hover:text-amber-900 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    ><ArrowLeftIcon className="w-4 h-4" aria-hidden="true" /> Previous page</button>
+                    <span data-testid="page-position" className="tabular-nums">Page {pageIndex + 1} of {pageCount}</span>
+                    <button
+                      onClick={() => turnPage(1)}
+                      disabled={pageIndex >= pageCount - 1}
+                      aria-label="Next page"
+                      className="inline-flex items-center gap-1 min-h-[44px] md:min-h-0 disabled:opacity-30 hover:text-amber-900 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    >Next page <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
+                  </div>
+                )}
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
                     data-testid="bottom-prev-chapter"

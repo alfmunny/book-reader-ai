@@ -163,12 +163,40 @@ def parse_txt(content: str) -> dict[str, Any]:
         boundaries = _find_boundaries(lines, _HC_PATTERNS + _LC_PATTERNS)
 
     if len(boundaries) < 2:
-        # Last resort: word-count splitting.
-        words = content.split()
-        chunks = [words[i:i + FALLBACK_WORDS] for i in range(0, len(words), FALLBACK_WORDS)]
+        # Last resort: split on length, but along LINE boundaries. Chunking a
+        # flat word list and rejoining with spaces destroyed every line break
+        # in the book — a Japanese upload arrived as one 248,000-character
+        # paragraph, which left the reader nothing to review and the chapter
+        # detector nothing to work with next time (owner, 2026-08-31).
+        chunks: list[list[str]] = []
+        current: list[str] = []
+        words_in_current = 0
+        for line in lines:
+            words = line.split()
+            # A file with no line breaks at all is still one line here, so a
+            # line longer than the budget is broken on words — the only case
+            # where a line break has to be invented.
+            if len(words) > FALLBACK_WORDS:
+                if current:
+                    chunks.append(current)
+                    current, words_in_current = [], 0
+                for i in range(0, len(words), FALLBACK_WORDS):
+                    chunks.append([" ".join(words[i : i + FALLBACK_WORDS])])
+                continue
+            current.append(line)
+            words_in_current += len(words)
+            if words_in_current >= FALLBACK_WORDS:
+                chunks.append(current)
+                current, words_in_current = [], 0
+        if current:
+            chunks.append(current)
+        # A chunk that normalises to nothing is not a chapter: a whitespace-only
+        # upload must still produce zero chapters so the route can reject it,
+        # rather than a draft that can never be confirmed.
+        bodies = [_normalize_text("\n".join(chunk)) for chunk in chunks]
         chapters = [
-            {"title": f"Part {idx + 1}", "text": _normalize_text(" ".join(chunk))}
-            for idx, chunk in enumerate(chunks)
+            {"title": f"Part {idx + 1}", "text": body}
+            for idx, body in enumerate(b for b in bodies if b.strip())
         ]
     else:
         boundaries = boundaries[:MAX_CHAPTERS]

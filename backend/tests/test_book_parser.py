@@ -374,3 +374,22 @@ def test_extract_title_returns_untitled_when_all_lines_exceed_100_chars():
     long_line = "x" * 101
     text = "\n".join([long_line] * 25)
     assert _extract_title(text) == "Untitled"
+
+
+def test_fallback_split_keeps_line_breaks():
+    """A book with no recognisable headings still keeps its shape.
+
+    The fallback used to chunk a flat word list and rejoin with spaces, so a
+    Japanese upload became one 248,000-character paragraph — nothing to review,
+    and nothing for a re-split to find (owner, 2026-08-31).
+    """
+    from services.book_parser import parse_txt
+
+    body = "\n".join(f"これは第{i}行目です。" for i in range(400))
+    parsed = parse_txt(body)
+
+    joined = "\n".join(c["text"] for c in parsed["chapters"])
+    assert "\n" in joined, "line breaks were flattened"
+    # every line survives, and none were welded together
+    assert joined.count("これは第") == 400
+    assert "です。これは第" not in joined

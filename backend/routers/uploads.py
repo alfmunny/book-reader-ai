@@ -428,9 +428,20 @@ async def suggest_chapter_split(
         parts.append(f"{title}\n\n{body}" if title else body)
     text = "\n\n".join(parts)
 
+    from services.auth import decrypt_api_key
     from services.split_advisor import suggest_split
 
-    result = await suggest_split(text)
+    # The reader's own DeepSeek key drives it when they have one — their
+    # thinking model, their spend. Falls back to the server's Claude.
+    raw_key = user.get("deepseek_key")
+    key = None
+    if raw_key:
+        try:
+            key = decrypt_api_key(raw_key)
+        except Exception:
+            key = None
+
+    result = await suggest_split(text, deepseek_key=key)
     if not result["chapters"]:
         raise HTTPException(
             status_code=422,

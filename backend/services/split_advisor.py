@@ -135,7 +135,7 @@ def slice_chapters(text: str, boundaries: list[tuple[int, str]]) -> list[dict[st
     return chapters
 
 
-async def suggest_split(text: str) -> dict:
+async def suggest_split(text: str, deepseek_key: str | None = None) -> dict:
     """Propose chapters for `text`. Never raises — an empty list means
     'no proposal', and the caller keeps whatever split it already had."""
     skeleton = build_skeleton(text)
@@ -143,17 +143,10 @@ async def suggest_split(text: str) -> dict:
         return {"chapters": [], "language": None, "notes": "No candidate headings found."}
 
     listing = "\n".join(f"{n}: {t}" for n, t in skeleton)
-    from services.claude import get_client
 
     try:
-        client = get_client()
-        message = await client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4000,
-            system=SYSTEM,
-            messages=[{"role": "user", "content": listing}],
-        )
-        payload = json.loads(_json_block(message.content[0].text))
+        raw = await _ask(listing, deepseek_key)
+        payload = json.loads(_json_block(raw))
     except Exception:
         logger.exception("split suggestion failed")
         return {"chapters": [], "language": None, "notes": "Could not reach the model."}
@@ -167,6 +160,47 @@ async def suggest_split(text: str) -> dict:
         "notes": str(payload.get("notes") or "")[:300],
         "candidates_considered": len(skeleton),
     }
+
+
+# DeepSeek's reasoning model, which thinks before answering. Deciding which of
+# forty candidate lines are real chapter starts — and which are a contents page
+# — is exactly the kind of question that benefits, and the reader's own key
+# pays for it (owner, 2026-08-31).
+DEEPSEEK_REASONER = "deepseek-reasoner"
+
+
+async def _ask(listing: str, deepseek_key: str | None) -> str:
+    """The reader's DeepSeek key when they have one, else the server's Claude."""
+    if deepseek_key:
+        import httpx
+
+        from services.deepseek import DEEPSEEK_API_URL
+
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(
+                DEEPSEEK_API_URL,
+                headers={"Authorization": f"Bearer {deepseek_key}"},
+                json={
+                    "model": DEEPSEEK_REASONER,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM},
+                        {"role": "user", "content": listing},
+                    ],
+                    "max_tokens": 8000,
+                },
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+
+    from services.claude import get_client
+
+    message = await get_client().messages.create(
+        model="claude-sonnet-5",
+        max_tokens=4000,
+        system=SYSTEM,
+        messages=[{"role": "user", "content": listing}],
+    )
+    return message.content[0].text
 
 
 def _json_block(raw: str) -> str:

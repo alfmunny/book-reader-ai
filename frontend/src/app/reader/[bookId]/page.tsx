@@ -752,6 +752,10 @@ export default function ReaderPage() {
   // must open on its LAST page, which is only known after it measures.
   const wantLastPage = useRef(false);
   const measuredChapter = useRef<number | null>(null);
+  // The element a reflow should keep in view, and a mirror of pageIndex so the
+  // measurement can read it without re-creating itself on every turn.
+  const anchorEl = useRef<HTMLElement | null>(null);
+  const pageIndexRef = useRef(0);
   // Entering a chapter is a cut, not a turn: the transform would otherwise
   // animate across every page between the old index and the new one — most
   // visibly when turning back lands on the last page (owner, 2026-08-31).
@@ -878,10 +882,23 @@ export default function ReaderPage() {
       setPageIndex(wantLastPage.current ? columns * Math.floor((count - 1) / columns) : 0);
       wantLastPage.current = false;
     } else {
-      // Same rule on reflow: snap back to a leaf start, never to count - 1,
-      // which is an odd column whenever count is even.
+      // Keep the READING POSITION across a reflow, not the page number. The
+      // text moves when the layout changes — a sentence parked on the right
+      // page can end up in the next column — so preserving the index alone
+      // silently slides the reader onto different words, and the next follow
+      // then "turns" to catch up (owner, 2026-08-31).
       const lastLeaf = columns * Math.floor(Math.max(0, count - 1) / columns);
-      setPageIndex((i) => columns * Math.floor(Math.min(i, lastLeaf) / columns));
+      const anchor = anchorEl.current;
+      if (anchor && flow.contains(anchor)) {
+        const rect = anchor.getClientRects()[0] ?? anchor.getBoundingClientRect();
+        // The transform still reflects the OLD layout here, so undo it to get
+        // the anchor's position in the new one.
+        const x = rect.left - flow.getBoundingClientRect().left;
+        const col = Math.floor((x + pageIndexRef.current * step) / step);
+        setPageIndex(Math.max(0, Math.min(columns * Math.floor(col / columns), lastLeaf)));
+      } else {
+        setPageIndex((i) => columns * Math.floor(Math.min(i, lastLeaf) / columns));
+      }
     }
   }, [readerMode, chapterIndex]);
 
@@ -927,6 +944,7 @@ export default function ReaderPage() {
   // Switching into page mode starts at the top; chapter entry is handled by
   // measurePages, which is the only place that knows the page count.
   useEffect(() => { skipTurnAnim.current = true; setPageIndex(0); }, [readerMode]);
+  useEffect(() => { pageIndexRef.current = pageIndex; }, [pageIndex]);
 
   const turnPage = useCallback((delta: number) => {
     // Overlays pin themselves to viewport coordinates taken when they opened,
@@ -1010,6 +1028,7 @@ export default function ReaderPage() {
   // What SentenceReader calls as the spoken sentence advances.
   const handleFollowSegment = useCallback((el: HTMLElement) => {
     lastSpokenEl.current = el;
+    anchorEl.current = el;
     // Track the line only when it is really in the flow being read. Comparing
     // audioChapter to chapterIndex was meant to express this, but it is
     // bookkeeping about the DOM rather than the DOM — if the two drift for any

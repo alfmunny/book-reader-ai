@@ -49,6 +49,19 @@ describe("app-shell page headers", () => {
     const layout = read("admin/layout.tsx");
     expect(layout).toContain('<h1 className="font-serif text-xl font-bold text-ink">Admin Panel</h1>');
     // its title used to run full-bleed while the body below was max-w-5xl
-    expect(layout).toContain('<div className="max-w-5xl mx-auto flex items-center gap-3 md:gap-4">');
+    expect(layout).toMatch(/<div className="max-w-5xl mx-auto px-4 md:px-6 [^"]*flex items-center/);
+  });
+
+  it("puts the padding inside the container, so titles line up with the nav", () => {
+    // Home and Bookshelf pad INSIDE max-w-5xl, which is how the site header is
+    // built — that is why "The Library" lines up with the Home tab's underline.
+    // Header bars padded the <header> instead and sat 24px to the left of both
+    // the nav above and the body below (owner, 2026-08-31).
+    for (const file of ["notes/page.tsx", "vocabulary/page.tsx", "decks/page.tsx",
+                        "upload/page.tsx", "profile/page.tsx", "admin/layout.tsx"]) {
+      const src = read(file);
+      expect(src).toMatch(/<header className="border-b border-amber-200 bg-white\/[0-9]+ backdrop-blur(?! px-)/);
+      expect(src).toMatch(/<div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4/);
+    }
   });
 });

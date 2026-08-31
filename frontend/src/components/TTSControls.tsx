@@ -568,13 +568,35 @@ export default function TTSControls({
                   className="pointer-events-none absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-700 ring-2 ring-white shadow-sm"
                   style={{ left: `${Math.max(0, Math.min(100, headPct))}%` }}
                 />
+                {/* The slider runs on the SAME axis the bar is drawn on —
+                    weighted by chunk length — not on time. With a time axis a
+                    click at 50% set the time to 50%, which lands somewhere else
+                    entirely on a length-weighted bar, so the playhead never
+                    went where you clicked (owner, 2026-08-31). */}
                 <input
                   type="range"
                   min={0}
-                  max={globalDuration}
-                  step={0.1}
-                  value={globalCurrentTime}
-                  onChange={(e) => seekTo(Number(e.target.value))}
+                  max={1000}
+                  step={1}
+                  value={Math.round(Math.max(0, Math.min(100, headPct)) * 10)}
+                  onChange={(e) => {
+                    const target = (Number(e.target.value) / 1000) * totalWeight;
+                    let seen = 0;
+                    let elapsed = 0;
+                    for (let i = 0; i < allChunks.length; i++) {
+                      const w = weights[i];
+                      const d = allChunks[i].duration;
+                      if (seen + w >= target) {
+                        // Unloaded chunks have no time to seek into; stop at
+                        // the last position that actually exists.
+                        seekTo(d > 0 ? elapsed + ((target - seen) / w) * d : elapsed);
+                        return;
+                      }
+                      seen += w;
+                      elapsed += d;
+                    }
+                    seekTo(elapsed);
+                  }}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   aria-label="Playback position"
                   aria-valuetext={formatTime(globalCurrentTime)}

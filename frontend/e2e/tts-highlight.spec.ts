@@ -482,3 +482,36 @@ test.describe("segmented seek bar", () => {
     for (const g of grows) expect(Number(g)).toBeGreaterThan(1);
   });
 });
+
+test.describe("seek bar lands where you click", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupTtsReader(page);
+    await page.goto("/reader/1342");
+    await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
+  });
+
+  test("the playhead follows the pointer, not a different axis", async ({ page }) => {
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const slider = page.getByRole("slider", { name: "Playback position" });
+    const box = (await slider.boundingBox())!;
+
+    const headLeft = async () =>
+      Number(
+        (await page.evaluate(() => {
+          const bar = document.querySelector<HTMLElement>("[data-testid='chunk-bar']")!;
+          const head = bar.parentElement!.querySelector<HTMLElement>("span.rounded-full.bg-amber-700")!;
+          return head.style.left;
+        })).replace("%", ""),
+      );
+
+    for (const want of [25, 60, 85]) {
+      await page.mouse.click(box.x + (box.width * want) / 100, box.y + box.height / 2);
+      // The bar is drawn on a length-weighted axis; the slider must run on the
+      // same one, or the playhead lands somewhere other than the click.
+      await expect.poll(headLeft, { timeout: 3000 }).toBeGreaterThan(want - 8);
+      expect(await headLeft()).toBeLessThan(want + 8);
+    }
+  });
+});

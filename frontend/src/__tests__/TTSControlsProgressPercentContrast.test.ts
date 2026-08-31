@@ -61,4 +61,14 @@ describe("TTS chunk progress (closes #1653, relocated 2026-08-31)", () => {
     expect(controls).toContain("rounded-full bg-amber-700 ring-2 ring-white");
     expect(controls).toContain("left: `${Math.max(0, Math.min(100, headPct))}%`");
   });
+
+  it("runs the slider on the same weighted axis the bar is drawn on", () => {
+    // A time-based slider on a length-weighted bar sends the playhead
+    // somewhere other than where you clicked.
+    expect(controls).toContain("max={1000}");
+    expect(controls).toContain("value={Math.round(Math.max(0, Math.min(100, headPct)) * 10)}");
+    expect(controls).toContain("const target = (Number(e.target.value) / 1000) * totalWeight;");
+    // and it converts back through the durations that exist
+    expect(controls).toContain("seekTo(d > 0 ? elapsed + ((target - seen) / w) * d : elapsed);");
+  });
 });

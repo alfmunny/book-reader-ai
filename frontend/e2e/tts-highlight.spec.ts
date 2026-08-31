@@ -515,3 +515,72 @@ test.describe("seek bar lands where you click", () => {
     }
   });
 });
+
+test.describe("page mode follows the reading", () => {
+  // A chapter long enough to paginate, with sentences spread through it.
+  const LONG = Array.from({ length: 30 }, (_, i) =>
+    `Sentence ${i + 1}. ${"The quick brown fox jumps over the lazy dog and keeps going. ".repeat(3)}`,
+  ).join("\n\n");
+
+  test.beforeEach(async ({ page }) => {
+    await setupTtsReader(page, LONG);
+    await page.goto("/reader/1342");
+    await expect(page.getByText("Sentence 1.", { exact: false })).toBeVisible({ timeout: 10000 });
+  });
+
+  test("the page turns as the audio advances", async ({ page }) => {
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    expect(await pos()).toBe(1);
+
+    // Walk the audio forward; the spoken sentence moves off page one, so the
+    // reader must turn to keep up.
+    for (let t = 0.5; t <= 12; t += 0.5) {
+      await page.evaluate((time) => (window as unknown as { __tts_advance: (t: number) => void }).__tts_advance(time), t);
+      await page.waitForTimeout(30);
+      if (await pos() > 1) break;
+    }
+    expect(await pos()).toBeGreaterThan(1);
+  });
+
+  test("it also turns when the reader did not start on chapter one", async ({ page }) => {
+    // audioChapter initialises from a mount-time effect; if it lags the viewed
+    // chapter the follow is gated off and nothing ever turns.
+    // setupTtsReader only makes chapter 0 long, so give chapter 1 real length.
+    await page.route(/\/api\/books\/\d+\/chapters$/, (r) =>
+      r.fulfill({
+        json: {
+          book_id: 1342,
+          meta: MOCK_BOOK,
+          chapters: [
+            { title: "Chapter I", text: LONG },
+            { title: "Chapter II", text: LONG },
+          ],
+          images: [],
+        },
+      }),
+    );
+    await page.goto("/reader/1342?chapter=1");
+    await expect(page.getByTestId("reader-chapter-heading")).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    for (let t = 0.5; t <= 12; t += 0.5) {
+      await page.evaluate((time) => (window as unknown as { __tts_advance: (t: number) => void }).__tts_advance(time), t);
+      await page.waitForTimeout(30);
+      if (await pos() > 1) break;
+    }
+    expect(await pos()).toBeGreaterThan(1);
+  });
+});

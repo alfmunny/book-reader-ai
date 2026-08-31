@@ -29,25 +29,33 @@ describe("TTS chunk progress (closes #1653, relocated 2026-08-31)", () => {
     expect(controls).toContain("title={loadingState.preview}");
   });
 
-  it("reports progress upward instead of rendering it", () => {
-    expect(controls).toContain("onLoadingStateChange");
-    // the bar itself still lives in the reading progress bar
-    expect(controls).toContain("useEffect(() => { onLoadingStateRef.current?.(loadingState); }, [loadingState]);");
+  it("keeps the count and the line being generated on one row", () => {
+    expect(controls).toContain('data-testid="tts-generating"');
+    expect(controls).toContain("Generating {loadingState.index + 1}/{loadingState.total}");
   });
 
-  it("draws it as buffering in the reading bar, with no low-contrast label", () => {
-    expect(reader).toContain('data-testid="tts-buffer"');
-    // The percentage text that failed contrast is gone entirely; the state is
-    // announced to screen readers instead of printed in amber-600.
-    expect(reader).toContain("Generating audio, chunk {ttsLoading.index + 1} of {ttsLoading.total}");
-    const idx = reader.indexOf('data-testid="tts-buffer"');
-    expect(reader.slice(idx - 200, idx + 400)).not.toMatch(/text-amber-600/);
+  it("draws buffering as segments of the seek bar itself", () => {
+    // A chapter-wide sliver of the 4px book bar was unreadable at any width
+    // (owner, 2026-08-31); it was removed in favour of the segmented seek bar.
+    expect(reader).not.toContain('data-testid="tts-buffer"');
+    expect(controls).toContain('data-testid="chunk-bar"');
+    // one segment per chunk, buffered solid and pending faint
+    expect(controls).toContain('c.duration > 0\n                        ? "bg-stone-400"');
+    expect(controls).toContain('"bg-stone-200"');
   });
 
-  it("measures buffering in chunks and draws it in the audio chapter's slice", () => {
-    // Chunk counts are known up front; total duration is not, and grows with
-    // every chunk that loads — a time-based bar would rescale and jump.
-    expect(reader).toContain("(ttsLoading.index + 1) / ttsLoading.total / chapters.length");
-    expect(reader).toContain("left: `${(audioChapter / chapters.length) * 100}%`");
+  it("keeps the axis on chunk count, not on a duration that grows", () => {
+    // Equal-width segments cannot rescale; a time axis lengthens with every
+    // chunk that arrives and drags the fill backwards.
+    expect(controls).toContain("{allChunks.map((c, i) => {");
+    expect(controls).toContain("const start = allChunks.slice(0, i).reduce((sum, x) => sum + x.duration, 0);");
+    expect(controls).toContain("Math.max(0, Math.min(1, (globalCurrentTime - start) / c.duration))");
+  });
+
+  it("keeps the bar seekable and keyboard-reachable", () => {
+    // The native range still owns interaction; it is laid transparently over
+    // the segments so there is one bar, not two.
+    expect(controls).toContain('className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"');
+    expect(controls).toContain('aria-label="Playback position"');
   });
 });

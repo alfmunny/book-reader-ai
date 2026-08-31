@@ -19,9 +19,6 @@ interface Props {
   onPlaybackUpdate?: (currentTime: number, duration: number, isPlaying: boolean) => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onChunksUpdate?: (chunks: ChunkSnapshot[]) => void;
-  /** Chunk-generation progress, surfaced so the reader can show it as buffering
-   *  inside the reading progress bar instead of a block of its own. */
-  onLoadingStateChange?: (state: { index: number; total: number; preview: string } | null) => void;
   /** Follow toggle beside the play control: on while the page tracks the line
    *  being read, off once the reader turns a page themselves. Turning it back
    *  on returns to the line, however far away it is. */
@@ -61,7 +58,6 @@ export default function TTSControls({
   onPlaybackUpdate,
   onLoadingChange,
   onChunksUpdate,
-  onLoadingStateChange,
   following,
   onToggleFollow,
   onChapterFinished,
@@ -88,12 +84,13 @@ export default function TTSControls({
   const genRef = useRef(0);
 
   const [allChunks, setAllChunks] = useState<ChunkSnapshot[]>([]);
+  // Which chunk is sounding, derived from the playhead rather than tracked —
+  // the ref that drives playback does not re-render.
+  const [activeChunk, setActiveChunk] = useState(0);
 
   const onPlaybackUpdateRef = useRef(onPlaybackUpdate);
   const onLoadingChangeRef = useRef(onLoadingChange);
   const onChunksUpdateRef = useRef(onChunksUpdate);
-  const onLoadingStateRef = useRef(onLoadingStateChange);
-  onLoadingStateRef.current = onLoadingStateChange;
   const onChapterFinishedRef = useRef(onChapterFinished);
   onChapterFinishedRef.current = onChapterFinished;
   const onSeekRegisterRef = useRef(onSeekRegister);
@@ -103,7 +100,6 @@ export default function TTSControls({
   useEffect(() => { onPlaybackUpdateRef.current = onPlaybackUpdate; }, [onPlaybackUpdate]);
   useEffect(() => { onLoadingChangeRef.current = onLoadingChange; }, [onLoadingChange]);
   useEffect(() => { onChunksUpdateRef.current = onChunksUpdate; }, [onChunksUpdate]);
-  useEffect(() => { onLoadingStateRef.current?.(loadingState); }, [loadingState]);
   useEffect(() => { onSeekRegisterRef.current = onSeekRegister; }, [onSeekRegister]);
   useEffect(() => { onControlsRegisterRef.current = onControlsRegister; }, [onControlsRegister]);
   useEffect(() => { onStopAtReachedRef.current = onStopAtReached; }, [onStopAtReached]);
@@ -183,6 +179,7 @@ export default function TTSControls({
 
   useEffect(() => {
     onPlaybackUpdateRef.current?.(globalCurrentTime, globalDuration, status === "playing");
+    setActiveChunk(activeIndexRef.current);
   }, [globalCurrentTime, globalDuration, status]);
 
   async function loadAndPlay(seekToGlobal?: number) {
@@ -505,12 +502,45 @@ export default function TTSControls({
         {gender === "female" ? "F" : "M"}
       </button>
 
-      {/* Seek bar */}
+      {/* Seek bar, segmented by chunk (owner, 2026-08-31 — "YouTube style").
+          One bar with a hairline between chunks: each segment is solid once
+          its audio is buffered and faint until then, and playback fills
+          through them. The axis is the chunk COUNT, known the moment the text
+          is split — a time axis grows as chunks arrive, so the fill would
+          rescale and jump backwards. Equal-width segments mean the playhead
+          varies slightly in speed but never moves the wrong way. */}
       {chunks.length > 0 && globalDuration > 0 && (
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
           <span className="text-xs text-amber-700 tabular-nums w-10 text-right">
             {formatTime(globalCurrentTime)}
           </span>
+          <div className="relative flex-1 min-w-0">
+            <div className="flex gap-px" data-testid="chunk-bar" aria-hidden="true">
+              {allChunks.map((c, i) => {
+                const start = allChunks.slice(0, i).reduce((sum, x) => sum + x.duration, 0);
+                const played = c.duration > 0
+                  ? Math.max(0, Math.min(1, (globalCurrentTime - start) / c.duration))
+                  : 0;
+                return (
+                  <span
+                    key={i}
+                    title={c.text ? `${i + 1}. ${c.text.replace(/\s+/g, " ").trim().slice(0, 80)}…` : undefined}
+                    className={`relative h-1.5 flex-1 overflow-hidden first:rounded-l-full last:rounded-r-full transition-colors ${
+                      c.duration > 0
+                        ? "bg-stone-400"
+                        : loadingState && i === loadingState.index
+                          ? "bg-stone-300 animate-pulse"
+                          : "bg-stone-200"
+                    }`}
+                  >
+                    <span
+                      className="absolute inset-y-0 left-0 bg-amber-600"
+                      style={{ width: `${played * 100}%` }}
+                    />
+                  </span>
+                );
+              })}
+            </div>
           <input
             type="range"
             min={0}
@@ -518,10 +548,11 @@ export default function TTSControls({
             step={0.1}
             value={globalCurrentTime}
             onChange={(e) => seekTo(Number(e.target.value))}
-            className="flex-1 accent-amber-700"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             aria-label="Playback position"
             aria-valuetext={formatTime(globalCurrentTime)}
           />
+          </div>
           <span className="text-xs text-amber-700 tabular-nums w-10">
             {formatTime(globalDuration)}
           </span>
@@ -546,7 +577,7 @@ export default function TTSControls({
 
       {/* One compact line, not the heading/bar/preview stack this replaced:
           how far generation has got, and which line is being generated
-          (owner, 2026-08-31). The bar itself lives in the reading progress bar. */}
+          (owner, 2026-08-31). */}
       {loadingState && (
         <div
           data-testid="tts-generating"

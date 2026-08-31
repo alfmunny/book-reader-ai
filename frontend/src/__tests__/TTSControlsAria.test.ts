@@ -23,21 +23,21 @@ describe("TTSControls preparing button spinner", () => {
   });
 });
 
-describe("TTS loading progress a11y (moved into the reading bar 2026-08-31)", () => {
-  it("lives inside a container that is already a labelled progressbar", () => {
-    const idx = reader.indexOf('data-testid="tts-buffer"');
+describe("TTS chunk bar a11y (segmented seek bar, 2026-08-31)", () => {
+  it("the segments are decorative — the range input is the real control", () => {
+    const idx = ttsControls.indexOf('data-testid="chunk-bar"');
     expect(idx).toBeGreaterThan(-1);
-    const enclosing = reader.slice(Math.max(0, idx - 1200), idx);
-    expect(enclosing).toMatch(/role="progressbar"/);
-    expect(enclosing).toMatch(/aria-valuenow/);
+    expect(ttsControls.slice(idx, idx + 120)).toContain('aria-hidden="true"');
+    // #1237 wanted the progress reachable; the native range still owns it
+    expect(ttsControls).toContain('aria-label="Playback position"');
+    expect(ttsControls).toContain("aria-valuetext={formatTime(globalCurrentTime)}");
   });
 
-  it("the buffering fill is decorative and the state is announced instead", () => {
-    const idx = reader.indexOf('data-testid="tts-buffer"');
-    const block = reader.slice(idx, idx + 600);
-    expect(block).toMatch(/animate-pulse[\s\S]*aria-hidden="true"/);
-    // #1237 required the numbers to be readable; they are now announced.
-    expect(block).toContain('role="status"');
-    expect(block).toContain("Generating audio, chunk");
+  it("the pending-chunk pulse is decorative too", () => {
+    const idx = ttsControls.indexOf("animate-pulse");
+    expect(idx).toBeGreaterThan(-1);
+    // it lives inside the aria-hidden chunk bar
+    const barIdx = ttsControls.indexOf('data-testid="chunk-bar"');
+    expect(idx).toBeGreaterThan(barIdx);
   });
 });

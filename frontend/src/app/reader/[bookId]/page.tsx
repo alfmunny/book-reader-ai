@@ -111,9 +111,6 @@ export default function ReaderPage() {
   const [ttsIsPlaying, setTtsIsPlaying] = useState(false);
   const [ttsIsLoading, setTtsIsLoading] = useState(false);
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
-  // TTS chunk generation, drawn as buffering inside the reading progress bar
-  // rather than as a stack of its own above the controls (owner, 2026-08-31).
-  const [ttsLoading, setTtsLoading] = useState<{ index: number; total: number; preview: string } | null>(null);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
   const ttsControlsRef = useRef<{ pause: () => void; play: () => void } | null>(null);
   const ttsIsPlayingRef = useRef(false);
@@ -2137,30 +2134,6 @@ export default function ReaderPage() {
           aria-label="Reading progress"
           title={`${Math.round(((chapterIndex + chapterFraction) / chapters.length) * 100)}% through book`}
         >
-          {ttsLoading && ttsLoading.total > 0 && (
-            <>
-              {/* Buffering is measured in CHUNKS, not seconds. The chunk count
-                  is known the moment the text is split, whereas total duration
-                  only grows as each chunk loads — a time-based bar would
-                  rescale on every arrival and jump backwards. Chunks give a
-                  monotonic fill. It is drawn inside the audio chapter's own
-                  slice of the book bar, which is where that audio actually
-                  lives; spanning the whole bar put it behind the read-position
-                  fill, invisible (owner, 2026-08-31). */}
-              <div
-                data-testid="tts-buffer"
-                className="absolute inset-y-0 bg-sky-400/80 animate-pulse"
-                style={{
-                  left: `${(audioChapter / chapters.length) * 100}%`,
-                  width: `${((ttsLoading.index + 1) / ttsLoading.total / chapters.length) * 100}%`,
-                }}
-                aria-hidden="true"
-              />
-              <span role="status" className="sr-only">
-                Generating audio, chunk {ttsLoading.index + 1} of {ttsLoading.total}
-              </span>
-            </>
-          )}
           <div
             className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
             style={{ width: `${((chapterIndex + chapterFraction) / chapters.length) * 100}%` }}
@@ -2986,7 +2959,6 @@ export default function ReaderPage() {
                 chapterIndex change tears every chunk down, so turning pages
                 past a boundary used to stop playback (owner, 2026-08-31). */}
             <TTSControls
-              onLoadingStateChange={setTtsLoading}
               following={following}
               onToggleFollow={toggleFollowing}
               onChapterFinished={handleChapterFinished}

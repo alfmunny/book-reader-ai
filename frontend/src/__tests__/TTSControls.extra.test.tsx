@@ -672,12 +672,11 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
 // ── Lines 439-457: seek bar input and loading progress bar ──────────────────
 
 describe("seek bar and loading progress UI (lines 439-457)", () => {
-  it("loading progress is reported while loading", async () => {
+  it("loading progress row renders while loading", async () => {
     mockGetChunks.mockResolvedValue(["Loading chunk."]);
     mockSynthesize.mockReturnValue(new Promise(() => {})); // never resolves
 
-    const onLoadingStateChange = jest.fn();
-    render(<TTSControls {...DEFAULT_PROPS} onLoadingStateChange={onLoadingStateChange} />);
+    render(<TTSControls {...DEFAULT_PROPS} />);
     const playBtn = screen
       .getAllByRole("button")
       .find((b) => b.textContent?.includes("Read"))!;
@@ -687,12 +686,9 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
       await flushPromises();
     });
 
-    // The indicator itself moved into the reading progress bar (2026-08-31);
-    // TTSControls now reports the chunk state upward.
+    // One compact row now, instead of the heading/bar/preview stack.
     await waitFor(() =>
-      expect(onLoadingStateChange).toHaveBeenCalledWith(
-        expect.objectContaining({ total: expect.any(Number) }),
-      )
+      expect(screen.getByTestId("tts-generating")).toHaveTextContent(/Generating 1\/1/)
     );
   });
 

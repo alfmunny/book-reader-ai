@@ -38,4 +38,11 @@ describe("TTS chunk progress (closes #1653, relocated 2026-08-31)", () => {
     const idx = reader.indexOf('data-testid="tts-buffer"');
     expect(reader.slice(idx - 200, idx + 400)).not.toMatch(/text-amber-600/);
   });
+
+  it("measures buffering in chunks and draws it in the audio chapter's slice", () => {
+    // Chunk counts are known up front; total duration is not, and grows with
+    // every chunk that loads — a time-based bar would rescale and jump.
+    expect(reader).toContain("(ttsLoading.index + 1) / ttsLoading.total / chapters.length");
+    expect(reader).toContain("left: `${(audioChapter / chapters.length) * 100}%`");
+  });
 });

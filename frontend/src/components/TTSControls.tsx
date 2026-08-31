@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { synthesizeSpeech, getTtsChunks, WordBoundary } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { getAudioPosition, saveAudioPosition, clearAudioPosition } from "@/lib/audio";
-import { PlayIcon, PauseIcon, RetryIcon, CloseIcon } from "@/components/Icons";
+import { PlayIcon, PauseIcon, RetryIcon, CloseIcon, FollowLineIcon } from "@/components/Icons";
 
 export interface ChunkSnapshot {
   text: string;
@@ -22,6 +22,13 @@ interface Props {
   /** Chunk-generation progress, surfaced so the reader can show it as buffering
    *  inside the reading progress bar instead of a block of its own. */
   onLoadingStateChange?: (state: { index: number; total: number; preview: string } | null) => void;
+  /** Follow toggle beside the play control: on while the page tracks the line
+   *  being read, off once the reader turns a page themselves. Turning it back
+   *  on returns to the line, however far away it is. */
+  following?: boolean;
+  onToggleFollow?: () => void;
+  /** Chapter finished — the reader decides whether to continue into the next. */
+  onChapterFinished?: () => void;
   onSeekRegister?: (seekAndPlay: (time: number) => void) => void;
   onControlsRegister?: (controls: { pause: () => void; play: () => void }) => void;
   /** Auto-pause when globalCurrentTime reaches this value. */
@@ -55,6 +62,9 @@ export default function TTSControls({
   onLoadingChange,
   onChunksUpdate,
   onLoadingStateChange,
+  following,
+  onToggleFollow,
+  onChapterFinished,
   onSeekRegister,
   onControlsRegister,
   stopAtTime,
@@ -84,6 +94,8 @@ export default function TTSControls({
   const onChunksUpdateRef = useRef(onChunksUpdate);
   const onLoadingStateRef = useRef(onLoadingStateChange);
   onLoadingStateRef.current = onLoadingStateChange;
+  const onChapterFinishedRef = useRef(onChapterFinished);
+  onChapterFinishedRef.current = onChapterFinished;
   const onSeekRegisterRef = useRef(onSeekRegister);
   const onControlsRegisterRef = useRef(onControlsRegister);
   const onStopAtReachedRef = useRef(onStopAtReached);
@@ -273,6 +285,9 @@ export default function TTSControls({
             for (const c of chunksRef.current) c.audio.currentTime = 0;
             setGlobalCurrentTime(0);
             clearAudioPosition(bookId, chapterIndex);
+            // The reader decides whether to roll into the next chapter; this
+            // component only knows that this one is finished.
+            onChapterFinishedRef.current?.();
           }
         });
         audio.addEventListener("timeupdate", () => {
@@ -459,6 +474,22 @@ export default function TTSControls({
           >
             <PlayIcon className="w-3.5 h-3.5" aria-hidden="true" />
             Read
+          </button>
+        )}
+        {following !== undefined && onToggleFollow && (
+          <button
+            onClick={onToggleFollow}
+            data-testid="follow-toggle"
+            aria-pressed={following}
+            aria-label={following ? "Following the line being read" : "Back to the line being read"}
+            title={following ? "Following the line being read" : "Back to the line being read"}
+            className={`rounded-lg border px-2.5 py-2.5 md:py-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
+              following
+                ? "border-amber-500 bg-amber-100 text-amber-900"
+                : "border-amber-300 bg-white text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <FollowLineIcon className="w-4 h-4" />
           </button>
         )}
       </div>

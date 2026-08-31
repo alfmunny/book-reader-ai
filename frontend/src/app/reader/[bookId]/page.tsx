@@ -22,7 +22,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import TranslationSessionPanel from "@/components/TranslationSessionPanel";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, ShareIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon, FollowLineIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, ShareIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // Gemini Flash pricing constants — used for total queue cost estimate in the translation sidebar.
@@ -738,7 +738,14 @@ export default function ReaderPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [perView, setPerView] = useState(1);
-  const [followPaused, setFollowPaused] = useState(false);
+  // Following is on while reading and switches off the moment you turn a page
+  // yourself; turning it back on returns to the spoken line however far away
+  // it is — including in another chapter (owner, 2026-08-31).
+  const [following, setFollowing] = useState(true);
+  // Which chapter the AUDIO is reading. It only moves with the page while
+  // nothing is playing, so turning pages — even past a chapter boundary —
+  // cannot tear the audio down.
+  const [audioChapter, setAudioChapter] = useState(0);
   const colStep = useRef(0);
   const flowRef = useRef<HTMLDivElement>(null);
   // The clip box is exactly one page wide and centred; without it the columns
@@ -918,7 +925,7 @@ export default function ReaderPage() {
 
     // Turning by hand means "let me look elsewhere" — stop following, but do
     // not interrupt the reading itself.
-    if (ttsIsPlayingRef.current) setFollowPaused(true);
+    if (ttsIsPlayingRef.current) setFollowing(false);
     const next = pageIndex + delta * perView;
     // Turning past either edge continues into the neighbouring chapter, so a
     // book reads as one sequence of pages rather than per-chapter dead ends
@@ -966,13 +973,25 @@ export default function ReaderPage() {
   // What SentenceReader calls as the spoken sentence advances.
   const handleFollowSegment = useCallback((el: HTMLElement) => {
     lastSpokenEl.current = el;
-    if (!followPaused) revealElement(el);
-  }, [followPaused, revealElement]);
+    // Only track the line when it is actually on screen: the audio may be a
+    // chapter behind what is being viewed.
+    if (following && audioChapter === chapterIndex) revealElement(el);
+  }, [following, audioChapter, chapterIndex, revealElement]);
 
-  const resumeFollowing = useCallback(() => {
-    setFollowPaused(false);
+  const toggleFollowing = useCallback(() => {
+    if (following) {
+      setFollowing(false);
+      return;
+    }
+    setFollowing(true);
+    // Go back to the line being read, however far away — another page, or
+    // another chapter entirely.
+    if (audioChapter !== chapterIndex) {
+      goToChapter(audioChapter);
+      return; // the follow fires again once that chapter has laid out
+    }
     revealElement(lastSpokenEl.current);
-  }, [revealElement]);
+  }, [following, audioChapter, chapterIndex, revealElement]);
 
   const revealSegment = useCallback((seg: number) => {
     revealElement(document.querySelector<HTMLElement>(`[data-seg="${seg}"]`));
@@ -987,10 +1006,22 @@ export default function ReaderPage() {
     return Math.min(1, (pageIndex + perView) / pageCount);
   }, [readerMode, scrollProgress, pageIndex, pageCount, perView]);
 
+  // Reading starts following; the audio pins itself to the chapter it began on.
   useEffect(() => {
-    if (!ttsIsPlaying) setFollowPaused(false);
+    if (ttsIsPlaying) setFollowing(true);
   }, [ttsIsPlaying]);
-  useEffect(() => { setFollowPaused(false); }, [chapterIndex]);
+  useEffect(() => {
+    if (!ttsIsPlayingRef.current) setAudioChapter(chapterIndex);
+  }, [chapterIndex]);
+
+  // Chapter finished: roll into the next one, buffering and reading on. The
+  // page comes along only if the reader is still following.
+  const handleChapterFinished = useCallback(() => {
+    const next = audioChapter + 1;
+    if (next >= chapters.length) return;
+    setAudioChapter(next);
+    if (following) goToChapter(next);
+  }, [audioChapter, chapters.length, following]);
 
   // Track scroll progress
   useEffect(() => {
@@ -2084,10 +2115,21 @@ export default function ReaderPage() {
         >
           {ttsLoading && ttsLoading.total > 0 && (
             <>
+              {/* Buffering is measured in CHUNKS, not seconds. The chunk count
+                  is known the moment the text is split, whereas total duration
+                  only grows as each chunk loads — a time-based bar would
+                  rescale on every arrival and jump backwards. Chunks give a
+                  monotonic fill. It is drawn inside the audio chapter's own
+                  slice of the book bar, which is where that audio actually
+                  lives; spanning the whole bar put it behind the read-position
+                  fill, invisible (owner, 2026-08-31). */}
               <div
                 data-testid="tts-buffer"
-                className="absolute inset-y-0 left-0 bg-amber-300/70 animate-pulse rounded-r-full"
-                style={{ width: `${(ttsLoading.index / ttsLoading.total) * 100}%` }}
+                className="absolute inset-y-0 bg-sky-400/80 animate-pulse"
+                style={{
+                  left: `${(audioChapter / chapters.length) * 100}%`,
+                  width: `${((ttsLoading.index + 1) / ttsLoading.total / chapters.length) * 100}%`,
+                }}
                 aria-hidden="true"
               />
               <span role="status" className="sr-only">
@@ -2096,21 +2138,9 @@ export default function ReaderPage() {
             </>
           )}
           <div
-            className="relative h-full bg-amber-500 transition-all duration-200 rounded-r-full"
+            className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
             style={{ width: `${((chapterIndex + chapterFraction) / chapters.length) * 100}%` }}
           />
-          {followPaused && ttsIsPlaying && (
-            <button
-              onClick={resumeFollowing}
-              data-testid="resume-following"
-              aria-label="Back to the line being read"
-              title="Back to the line being read"
-              className="absolute right-3 top-2 z-20 inline-flex items-center gap-1 rounded-full border border-amber-400 bg-white/95 backdrop-blur px-2.5 py-1 min-h-[44px] md:min-h-0 text-[11px] font-medium text-amber-800 shadow-sm hover:bg-amber-50 animate-fade-in focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <FollowLineIcon className="w-3.5 h-3.5 shrink-0" />
-              Back to reading
-            </button>
-          )}
         </div>
       )}
 
@@ -2928,12 +2958,18 @@ export default function ReaderPage() {
 
           {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
           <div className="hidden md:block border-t border-amber-200 shrink-0">
+            {/* The audio reads its own chapter, not the one on screen: a
+                chapterIndex change tears every chunk down, so turning pages
+                past a boundary used to stop playback (owner, 2026-08-31). */}
             <TTSControls
               onLoadingStateChange={setTtsLoading}
-              text={current?.text ?? ""}
+              following={ttsIsPlaying || audioChapter !== chapterIndex ? following : undefined}
+              onToggleFollow={toggleFollowing}
+              onChapterFinished={handleChapterFinished}
+              text={chapters[audioChapter]?.text ?? current?.text ?? ""}
               language={bookLanguage}
               bookId={Number(bookId)}
-              chapterIndex={chapterIndex}
+              chapterIndex={audioChapter}
               onPlaybackUpdate={(currentTime, duration, isPlaying) => {
                 setTtsCurrentTime(currentTime);
                 setTtsDuration(duration);

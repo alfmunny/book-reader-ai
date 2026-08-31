@@ -28,7 +28,22 @@ def _system(style_prompt: str | None) -> str:
 
 
 def _prompt(text: str, source_language: str, target_language: str) -> str:
-    return f"Translate from {source_language} to {target_language}:\n\n{text}"
+    """Name the languages and state the target twice.
+
+    This read "Translate from en to zh:" — the target appeared once, as a bare
+    code, and it was the only thing telling the model what to produce. Given a
+    Japanese paragraph under a wrong source code, models answered in English
+    (owner, 2026-08-31).
+    """
+    from services.wiktionary import _LANG_NAMES
+
+    src = _LANG_NAMES.get(source_language, source_language)
+    dst = _LANG_NAMES.get(target_language, target_language)
+    return (
+        f"Translate the following {src} text into {dst}.\n"
+        f"Write your answer in {dst} only — do not answer in {src} or any other language.\n\n"
+        f"{text}"
+    )
 
 
 async def _deepseek_call(api_key: str, system: str, prompt: str, max_tokens: int) -> str:

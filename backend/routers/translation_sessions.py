@@ -92,8 +92,17 @@ async def _chapter_text(book_id: int, chapter_index: int, user: dict) -> tuple[s
             status_code=400,
             detail=f"Chapter index out of range (book has {len(chapters)} chapter(s)).",
         )
-    source_language = (book.get("languages") or ["en"])[0] if isinstance(book.get("languages"), list) else "en"
-    return chapters[chapter_index].text, source_language
+    text = chapters[chapter_index].text
+    languages = book.get("languages") if isinstance(book.get("languages"), list) else None
+    if languages:
+        source_language = languages[0]
+    else:
+        # Uploads record no language, so this defaulted to English and a
+        # Japanese novel was translated as though it were English
+        # (owner, 2026-08-31). Read the script instead of assuming.
+        from services.book_parser import detect_language
+        source_language = detect_language(text)
+    return text, source_language
 
 
 # ── Request models ────────────────────────────────────────────────────────────
@@ -402,13 +411,18 @@ async def translate(
     # 2026-08-27 — one long request rendered nothing until reload).
     existing = await get_session_paragraphs(session_id, req.chapter_index)
     if req.force:
-        # Explicit retranslate: redo everything machine-made; manual edits
-        # AND posted paragraphs are kept — a public post must never be
-        # silently rewritten by a machine pass (owner, 2026-08-31).
-        posted = await get_posted_paragraph_indexes(session_id, req.chapter_index)
+        # Explicit retranslate: redo everything machine-made. Manual edits are
+        # kept — those are the reader's own words.
+        #
+        # Posted paragraphs are NOT excluded. They were, to stop a machine pass
+        # rewriting a public post, but a story stores no text: it joins to the
+        # paragraph and always shows the current one. Skipping them protected
+        # nothing and broke the feature outright, because a public version
+        # posts every paragraph as it is translated — so "retranslate chapter"
+        # found no targets at all and silently did nothing (owner, 2026-08-31).
         targets = [
             i for i in range(len(paragraphs))
-            if not existing.get(i, {}).get("edited_by_user") and i not in posted
+            if not existing.get(i, {}).get("edited_by_user")
         ]
     else:
         # Default fill run: only paragraphs with no translation yet — a

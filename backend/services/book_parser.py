@@ -245,3 +245,31 @@ def parse_epub(file_bytes: bytes) -> dict[str, Any]:
 
     except ImportError:
         raise RuntimeError("ebooklib is not installed. Add it to requirements.txt.")
+
+
+# Script ranges are enough to tell a translator what it is reading. Uploads
+# record no language at all — books.languages is [] — so a Japanese novel was
+# translated as though it were English (owner, 2026-08-31).
+_SCRIPTS = [
+    ("ja", r"[\u3040-\u309f\u30a0-\u30ff]"),   # kana settles Japanese first
+    ("ko", r"[\uac00-\ud7af\u1100-\u11ff]"),
+    ("zh", r"[\u4e00-\u9fff]"),                  # ideographs without kana
+    ("ru", r"[\u0400-\u04ff]"),
+    ("el", r"[\u0370-\u03ff]"),
+    ("he", r"[\u0590-\u05ff]"),
+    ("ar", r"[\u0600-\u06ff]"),
+    ("hi", r"[\u0900-\u097f]"),
+]
+
+
+def detect_language(text: str, sample: int = 4000) -> str:
+    """Best guess at the language of `text`, by script. Falls back to English."""
+    head = text[:sample]
+    if not head.strip():
+        return "en"
+    for code, pattern in _SCRIPTS:
+        hits = len(re.findall(pattern, head))
+        # A stray borrowed word should not decide the language of a book.
+        if hits >= 8:
+            return code
+    return "en"

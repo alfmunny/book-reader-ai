@@ -393,3 +393,22 @@ def test_fallback_split_keeps_line_breaks():
     # every line survives, and none were welded together
     assert joined.count("これは第") == 400
     assert "です。これは第" not in joined
+
+
+def test_detect_language_reads_the_script():
+    from services.book_parser import detect_language
+    assert detect_language("吾輩は猫である。名前はまだ無い。どこで生れたか頓と見当がつかぬ。") == "ja"
+    assert detect_language("的一个人在城市里走着，天空很蓝，风也很轻，街道安静极了。") == "zh"
+    assert detect_language("Он вышел из дома и пошёл по улице, думая о вчерашнем дне.") == "ru"
+    assert detect_language("It was a bright cold day in April, and the clocks were striking.") == "en"
+
+
+def test_detect_language_is_not_swayed_by_a_borrowed_word():
+    from services.book_parser import detect_language
+    text = "It was a bright cold day in April. The sign read 東京 and nothing more."
+    assert detect_language(text) == "en"
+
+
+def test_detect_language_falls_back_for_empty_text():
+    from services.book_parser import detect_language
+    assert detect_language("   \n\n  ") == "en"

@@ -385,6 +385,40 @@ def apply_rule(text: str, rule: object) -> list[tuple[int, str]]:
     return found
 
 
+def _rule_ran_dry(boundaries: list[tuple[int, str]], total_lines: int) -> int | None:
+    """Line where the rule apparently stopped matching, or None.
+
+    A rule inferred from the opening only knows the formats the opening shows.
+    When a book changes format midway — full-width numerals １–９ giving way to
+    half-width 10, 11 (owner's book, 2026-08-31) — everything after the change
+    lands in one giant tail. Detect that: a long stretch after the last
+    boundary, out of proportion with the chapters found so far.
+    """
+    if len(boundaries) < 3:
+        return None
+    starts = [b[0] for b in boundaries]
+    spans = [b - a for a, b in zip(starts, starts[1:])]
+    tail = total_lines - starts[-1]
+    typical = sorted(spans)[len(spans) // 2]
+    if tail > max(4 * typical, total_lines // 4):
+        return starts[-1]
+    return None
+
+
+async def _infer_rule(
+    sample: str, deepseek_key: str | None, requirements: str | None
+) -> dict | None:
+    prompt = sample
+    if requirements and requirements.strip():
+        prompt = f"The reader adds:\n{requirements.strip()[:600]}\n\n{sample}"
+    try:
+        raw = await _ask(prompt, deepseek_key, system=SYSTEM_RULE)
+        return json.loads(_json_block(raw))
+    except Exception:
+        logger.exception("split rule request failed")
+        return None
+
+
 async def suggest_split_from_rule(
     text: str, deepseek_key: str | None = None, requirements: str | None = None
 ) -> dict:
@@ -397,25 +431,49 @@ async def suggest_split_from_rule(
     if not sample.strip():
         return {"chapters": [], "rule": None, "notes": "The book appears to be empty."}
 
-    try:
-        prompt = sample
-        if requirements and requirements.strip():
-            prompt = f"The reader adds:\n{requirements.strip()[:600]}\n\n{sample}"
-        raw = await _ask(prompt, deepseek_key, system=SYSTEM_RULE)
-        rule = json.loads(_json_block(raw))
-    except Exception:
-        logger.exception("split rule request failed")
+    rule = await _infer_rule(sample, deepseek_key, requirements)
+    if rule is None:
         return {"chapters": [], "rule": None, "notes": "Could not reach the model."}
 
     mode = rule.get("paragraph_mode")
     mode = mode if mode in _PARAGRAPH_MODES else "blank-line"
     boundaries = apply_rule(text, rule)
+
+    # Verify, then resample where the rule stopped working. The opening cannot
+    # show a format change that happens midway; the point where matches ran dry
+    # says exactly where to look next.
+    lines = text.split("\n")
+    dry_at = _rule_ran_dry(boundaries, len(lines))
+    second_rule = None
+    if dry_at is not None:
+        tail_sample = build_sample("\n".join(lines[dry_at:]))
+        note = (
+            "This is a LATER section of the same book. The rule inferred from the "
+            "opening stopped matching here — the heading format may have changed "
+            "(for example full-width numerals becoming half-width). Describe the "
+            "heading shape in THIS section."
+        )
+        extra = f"{note}\n\n{requirements.strip()[:600]}" if requirements and requirements.strip() else note
+        second_rule = await _infer_rule(tail_sample, deepseek_key, extra)
+        if second_rule is not None:
+            # Offset the second rule's matches back into whole-book line numbers.
+            tail_bounds = [
+                (n + dry_at, t)
+                for n, t in apply_rule("\n".join(lines[dry_at:]), second_rule)
+            ]
+            merged = {n: t for n, t in boundaries}
+            for n, t in tail_bounds:
+                merged.setdefault(n, t)
+            boundaries = sorted(merged.items())
     _, exclude, _ = compile_rule(rule)
     chapters = slice_chapters(text, boundaries, paragraph_mode=mode, drop=exclude)
+    combined_pattern = rule.get("heading_pattern")
+    if second_rule is not None and second_rule.get("heading_pattern"):
+        combined_pattern = f"{combined_pattern} | later: {second_rule['heading_pattern']}"
     return {
         "chapters": chapters,
         "rule": {
-            "heading_pattern": rule.get("heading_pattern"),
+            "heading_pattern": combined_pattern,
             "exclude_pattern": rule.get("exclude_pattern"),
             "require_unindented": bool(rule.get("require_unindented")),
             "paragraph_mode": mode,

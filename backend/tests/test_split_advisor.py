@@ -200,3 +200,22 @@ def test_excluded_lines_are_dropped_from_the_body_too():
         text, [(0, "1")], paragraph_mode="indent", drop=_re.compile("^［＃")
     )
     assert chapters[0]["text"] == "最初の段落。\n\n次の段落。"
+
+
+# ── Verify, then resample where the rule ran dry ─────────────────────────────
+
+def test_a_giant_tail_is_detected_as_the_rule_running_dry():
+    """A rule inferred from the opening only knows the formats the opening
+    shows. The owner's book numbered chapters １–９ full-width, then switched
+    to half-width 10, 11 — everything after landed in one 247k blob."""
+    from services.split_advisor import _rule_ran_dry
+    # nine chapters of ~50 lines, then a 5000-line tail after the last boundary
+    bounds = [(i * 50, str(i)) for i in range(1, 10)]
+    assert _rule_ran_dry(bounds, total_lines=5450) == 450
+
+
+def test_an_even_book_is_left_alone():
+    from services.split_advisor import _rule_ran_dry
+    bounds = [(i * 50, str(i)) for i in range(1, 10)]
+    assert _rule_ran_dry(bounds, total_lines=500) is None
+    assert _rule_ran_dry(bounds[:2], total_lines=100000) is None  # too few to judge

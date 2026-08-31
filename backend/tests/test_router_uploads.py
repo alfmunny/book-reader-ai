@@ -1177,3 +1177,49 @@ async def test_upload_accepts_uppercase_epub_extension(client, test_user, filena
         f"got {resp.status_code}: {resp.text}"
     )
     assert resp.json()["format"] == "epub"
+
+
+# ── AI split proposal (#2789 follow-up) ───────────────────────────────────────
+
+async def test_suggest_split_proposes_without_changing_the_draft(client, test_user):
+    """The proposal is advisory: the reader applies it through the existing
+    draft endpoint, so it lands on the same review screen as every upload."""
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    before = (await client.get(f"/api/books/{book_id}/chapters/draft")).json()["chapters"]
+
+    proposal = {
+        "chapters": [{"title": "第一章", "text": "本文。\n続き。"}],
+        "language": "ja", "notes": "ok", "candidates_considered": 4,
+    }
+    with patch("services.split_advisor.suggest_split", AsyncMock(return_value=proposal)):
+        resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["chapters"][0]["title"] == "第一章"
+
+    after = (await client.get(f"/api/books/{book_id}/chapters/draft")).json()["chapters"]
+    assert [c["title"] for c in after] == [c["title"] for c in before]
+
+
+async def test_suggest_split_reports_when_it_has_nothing_to_offer(client, test_user):
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    empty = {"chapters": [], "language": None, "notes": "No candidate headings found."}
+    with patch("services.split_advisor.suggest_split", AsyncMock(return_value=empty)):
+        resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
+    assert resp.status_code == 422
+    assert "No candidate headings" in resp.json()["detail"]
+
+
+async def test_suggest_split_refuses_someone_elses_book(client, test_user):
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    other = await get_or_create_user(google_id="g-split", email="split@e.com", name="S", picture="")
+    await set_user_role(other["id"], "user")
+
+    async def _other():
+        return other
+    app.dependency_overrides[get_current_user] = _other
+    try:
+        resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: test_user
+    assert resp.status_code in (403, 404)

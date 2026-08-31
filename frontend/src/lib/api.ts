@@ -1189,6 +1189,17 @@ export function saveDraftChapterMeta(
   });
 }
 
+/** Ask for a chapter split. Advisory only — nothing changes until the reader
+ *  applies it through saveDraftChapterStructure. */
+export function suggestChapterSplit(bookId: number): Promise<{
+  chapters: { title: string; text: string }[];
+  language?: string | null;
+  notes?: string;
+  candidates_considered?: number;
+}> {
+  return request("/books/" + bookId + "/chapters/suggest", { method: "POST" });
+}
+
 /** Replace the whole draft structure. Used after a split or merge moves text. */
 export function saveDraftChapterStructure(
   bookId: number,

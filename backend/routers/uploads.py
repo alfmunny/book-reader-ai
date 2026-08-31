@@ -401,6 +401,44 @@ async def patch_draft_chapters(
     return {"ok": True, "updated_at": stamp}
 
 
+@router.post("/{book_id}/chapters/suggest")
+async def suggest_chapter_split(
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Propose a chapter split for a draft book, without changing anything.
+
+    The reader applies it through the existing draft endpoint if they want it,
+    so an AI proposal goes through the same review screen every upload does.
+    Opt-in by construction: nothing calls this unless the reader asks.
+    """
+    await _owned_draft_book(book_id, user)
+
+    rows = await get_user_book_chapters(book_id, include_drafts=True)
+    if not rows:
+        raise HTTPException(status_code=400, detail="No draft chapters to work from")
+
+    # Reassemble what the reader uploaded. Headings live in the chapter titles
+    # once a split exists, so they go back into the text or a re-split cannot
+    # see them.
+    parts: list[str] = []
+    for r in rows:
+        title = (r["title"] or "").strip()
+        body = (r["text"] or "").strip()
+        parts.append(f"{title}\n\n{body}" if title else body)
+    text = "\n\n".join(parts)
+
+    from services.split_advisor import suggest_split
+
+    result = await suggest_split(text)
+    if not result["chapters"]:
+        raise HTTPException(
+            status_code=422,
+            detail=result.get("notes") or "No chapter structure could be identified.",
+        )
+    return result
+
+
 @router.put("/{book_id}/chapters/draft")
 async def put_draft_chapters(
     body: DraftStructureBody,

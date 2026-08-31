@@ -1191,15 +1191,22 @@ export function saveDraftChapterMeta(
 
 /** Ask for a chapter split. Advisory only — nothing changes until the reader
  *  applies it through saveDraftChapterStructure. */
-export function suggestChapterSplit(bookId: number): Promise<{
+export function suggestChapterSplit(bookId: number, requirements?: string): Promise<{
   chapters: { title: string; text: string }[];
   /** The inferred rule, so the reader can judge it rather than the output. */
-  rule?: { heading_pattern?: string; exclude_pattern?: string | null; require_unindented?: boolean } | null;
+  rule?: {
+    heading_pattern?: string; exclude_pattern?: string | null;
+    require_unindented?: boolean; paragraph_mode?: string;
+  } | null;
   language?: string | null;
   notes?: string;
   sample_lines?: number;
 }> {
-  return request("/books/" + bookId + "/chapters/suggest", { method: "POST" });
+  return request("/books/" + bookId + "/chapters/suggest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requirements: requirements?.trim() || null }),
+  });
 }
 
 /** Replace the whole draft structure. Used after a split or merge moves text. */

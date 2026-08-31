@@ -385,13 +385,28 @@ async def translate(
                 status_code=400,
                 detail=f"Paragraph index out of range (chapter has {len(paragraphs)} paragraph(s)).",
             )
-        if req.scope in await get_posted_paragraph_indexes(session_id, req.chapter_index):
-            raise HTTPException(
-                status_code=409,
-                detail="This paragraph is posted — make it private before retranslating.",
-            )
         try:
-            await _translate_one(req.scope, asyncio.Semaphore(1))
+            # The paragraph is stored alone, but never translated alone: its
+            # neighbours ride along as read-only context (owner, 2026-08-31).
+            translated, model = await user_translate.translate_paragraph_in_context(
+                provider, api_key, paragraphs, req.scope,
+                source_language, session["target_language"], session["style_prompt"],
+            )
+            await upsert_session_paragraph(
+                session_id, req.chapter_index, req.scope, translated, provider, model
+            )
+            # A public session shares as it goes, on this path like any other.
+            if session.get("status") == "public":
+                posted = await get_posted_paragraph_indexes(session_id, req.chapter_index)
+                if req.scope not in posted:
+                    await create_story(user["id"], {
+                        "kind": "translation",
+                        "book_id": session["book_id"],
+                        "chapter_index": req.chapter_index,
+                        "session_id": session_id,
+                        "paragraph_start": req.scope,
+                        "paragraph_end": req.scope,
+                    })
         except Exception as exc:
             logger.exception(
                 "translation session %s paragraph translate failed for user %s: %s",
@@ -434,12 +449,53 @@ async def translate(
     async def _run_chapter():
         sem = asyncio.Semaphore(3)
 
-        async def _tracked(i: int):
-            await _translate_one(i, sem)
-            run["done"] += 1
+        async def _tracked_batch(group: list[int]):
+            """Translate consecutive paragraphs together, for context.
+
+            One call per paragraph left every paragraph without any: pronouns
+            lost their referents and register drifted between neighbours
+            (owner, 2026-08-31). A batch that comes back misaligned is redone
+            one paragraph at a time — alignment is not negotiable, because
+            paragraph_index is what notes and posts anchor to.
+            """
+            async with sem:
+                try:
+                    texts, model = await user_translate.translate_batch(
+                        provider, api_key, [(i, paragraphs[i]) for i in group],
+                        source_language, session["target_language"], session["style_prompt"],
+                    )
+                except ValueError:
+                    logger.info("batch %s came back misaligned; falling back", group)
+                    texts = None
+                except Exception:
+                    raise
+
+            if texts is None:
+                for i in group:
+                    await _translate_one(i, sem)
+                    run["done"] += 1
+                return
+
+            for i, translated in zip(group, texts):
+                await upsert_session_paragraph(
+                    session_id, req.chapter_index, i, translated, provider, model
+                )
+                if session.get("status") == "public":
+                    posted = await get_posted_paragraph_indexes(session_id, req.chapter_index)
+                    if i not in posted:
+                        await create_story(user["id"], {
+                            "kind": "translation",
+                            "book_id": session["book_id"],
+                            "chapter_index": req.chapter_index,
+                            "session_id": session_id,
+                            "paragraph_start": i,
+                            "paragraph_end": i,
+                        })
+                run["done"] += 1
 
         try:
-            await asyncio.gather(*[_tracked(i) for i in targets])
+            groups = user_translate.plan_batches(targets, paragraphs)
+            await asyncio.gather(*[_tracked_batch(g) for g in groups])
         except Exception as exc:
             logger.exception(
                 "translation session %s chapter run failed for user %s: %s",

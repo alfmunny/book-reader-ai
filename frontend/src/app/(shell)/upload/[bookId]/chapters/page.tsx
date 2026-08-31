@@ -32,7 +32,8 @@ export default function ChapterEditorPage() {
   // recognises Latin-script headings, so a book that marks its chapters any
   // other way — 第一章, 序章 — arrives as a single chapter (#2789).
   const [proposal, setProposal] = useState<{ title: string; text: string }[] | null>(null);
-  const [rule, setRule] = useState<{ pattern?: string; notes?: string } | null>(null);
+  const [rule, setRule] = useState<{ pattern?: string; notes?: string; paragraphs?: string } | null>(null);
+  const [requirements, setRequirements] = useState("");
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,9 +121,13 @@ export default function ChapterEditorPage() {
     setSuggestError(null);
     setSuggesting(true);
     try {
-      const r = await suggestChapterSplit(Number(bookId));
+      const r = await suggestChapterSplit(Number(bookId), requirements);
       setProposal(r.chapters);
-      setRule({ pattern: r.rule?.heading_pattern, notes: r.notes });
+      setRule({
+        pattern: r.rule?.heading_pattern,
+        notes: r.notes,
+        paragraphs: r.rule?.paragraph_mode,
+      });
     } catch (e) {
       // The 422 carries why there was nothing to propose — worth showing.
       setSuggestError(e instanceof Error && e.message ? e.message : "Could not suggest a split.");
@@ -254,6 +259,16 @@ export default function ChapterEditorPage() {
               </button>
             </div>
 
+            <input
+              value={requirements}
+              onChange={(e) => setRequirements(e.target.value)}
+              maxLength={600}
+              data-testid="split-requirements"
+              aria-label="Anything the opening does not show"
+              placeholder="Optional: how this book marks paragraphs, headings to ignore…"
+              className="w-full text-xs border border-amber-300 rounded px-2.5 py-2 md:py-1.5 min-h-[44px] md:min-h-0 focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
+            />
+
             {suggestError && (
               <p role="alert" className="text-xs text-red-700 m-0">{suggestError}</p>
             )}
@@ -266,6 +281,13 @@ export default function ChapterEditorPage() {
                 </p>
                 {rule?.notes && (
                   <p className="text-xs text-stone-600 m-0 mb-1.5">{rule.notes}</p>
+                )}
+                {rule?.paragraphs && rule.paragraphs !== "blank-line" && (
+                  <p className="text-[11px] text-stone-600 m-0 mb-1" data-testid="split-paragraph-mode">
+                    Paragraphs: {rule.paragraphs === "indent"
+                      ? "each indented line starts one"
+                      : "one per line"} — reflowed so the translation lines up.
+                  </p>
                 )}
                 {rule?.pattern && (
                   <p className="text-[11px] text-stone-600 m-0 mb-2" data-testid="split-rule">

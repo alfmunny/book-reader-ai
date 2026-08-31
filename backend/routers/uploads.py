@@ -401,8 +401,15 @@ async def patch_draft_chapters(
     return {"ok": True, "updated_at": stamp}
 
 
+class SplitSuggestRequest(BaseModel):
+    """The reader's own instruction — how this book marks a paragraph,
+    headings to ignore, anything the opening alone does not reveal."""
+    requirements: str | None = Field(default=None, max_length=600)
+
+
 @router.post("/{book_id}/chapters/suggest")
 async def suggest_chapter_split(
+    req: SplitSuggestRequest | None = None,
     book_id: int = Path(..., ge=1),
     user: dict = Depends(get_current_user),
 ):
@@ -446,7 +453,9 @@ async def suggest_chapter_split(
         except Exception:
             key = None
 
-    result = await suggest_split_from_rule(text, deepseek_key=key)
+    result = await suggest_split_from_rule(
+        text, deepseek_key=key, requirements=(req.requirements if req else None)
+    )
     if not result["chapters"]:
         raise HTTPException(
             status_code=422,

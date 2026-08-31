@@ -156,3 +156,47 @@ def test_the_sample_is_the_opening_only():
     sample = build_sample(text)
     assert len(sample) < 8000, "the whole book must not be sent"
     assert sample.startswith("0: line 0")
+
+
+# ── Paragraph reflow ─────────────────────────────────────────────────────────
+
+def test_indent_mode_turns_indented_lines_into_paragraphs():
+    """Japanese typesetting marks a paragraph with a leading ideographic space
+    and no blank line. The reader and the translator both split on a blank
+    line, so thirteen paragraphs arrived as one block — unformatted, and the
+    translation misaligned against it (owner, 2026-08-31)."""
+    from services.split_advisor import reflow
+    body = "　一つ目の段落。\n続きの行。\n　二つ目の段落。\n　三つ目の段落。"
+    out = reflow(body, "indent")
+    assert out.split("\n\n") == ["一つ目の段落。続きの行。", "二つ目の段落。", "三つ目の段落。"]
+
+
+def test_every_line_mode_suits_verse():
+    from services.split_advisor import reflow
+    assert reflow("行一\n行二\n\n行三", "every-line").split("\n\n") == ["行一", "行二", "行三"]
+
+
+def test_blank_line_mode_and_unknown_modes_leave_the_text_alone():
+    from services.split_advisor import reflow
+    body = "One.\n\nTwo."
+    assert reflow(body, "blank-line") == body
+    assert reflow(body, "nonsense-mode") == body
+
+
+def test_slicing_applies_the_paragraph_mode():
+    from services.split_advisor import slice_chapters
+    text = "1\n　最初の段落。\n続き。\n　次の段落。\n"
+    chapters = slice_chapters(text, [(0, "1")], paragraph_mode="indent")
+    assert chapters[0]["text"] == "最初の段落。続き。\n\n次の段落。"
+
+
+def test_excluded_lines_are_dropped_from_the_body_too():
+    """A directive is excluded from being a heading; it is not prose either.
+    Left in, ［＃ここで字下げ終わり］ opened a chapter as its own paragraph."""
+    import re as _re
+    from services.split_advisor import slice_chapters
+    text = "1\n［＃ここで字下げ終わり］\n　最初の段落。\n　次の段落。\n"
+    chapters = slice_chapters(
+        text, [(0, "1")], paragraph_mode="indent", drop=_re.compile("^［＃")
+    )
+    assert chapters[0]["text"] == "最初の段落。\n\n次の段落。"

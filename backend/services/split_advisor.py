@@ -115,11 +115,21 @@ def _valid_boundaries(raw: object, allowed: set[int], total_lines: int) -> list[
     return kept
 
 
-def slice_chapters(text: str, boundaries: list[tuple[int, str]]) -> list[dict[str, str]]:
+def slice_chapters(
+    text: str,
+    boundaries: list[tuple[int, str]],
+    paragraph_mode: str = "blank-line",
+    drop: re.Pattern | None = None,
+) -> list[dict[str, str]]:
     """Cut the text at the given lines. Pure, and the only thing that splits."""
     if not boundaries:
         return []
     lines = text.split("\n")
+    if drop is not None:
+        # Typesetting directives are excluded from being headings; they are
+        # not part of the prose either, and left in they became paragraphs of
+        # their own — ［＃ここで字下げ終わり］ opening a chapter.
+        lines = ["" if drop.search(ln.strip()) else ln for ln in lines]
     chapters: list[dict[str, str]] = []
 
     head = lines[: boundaries[0][0]]
@@ -143,6 +153,9 @@ def slice_chapters(text: str, boundaries: list[tuple[int, str]]) -> list[dict[st
             chapters.append({"title": "Front matter", "text": f"{title}\n{body}".strip()})
             continue
         chapters.append({"title": title, "text": body})
+    if paragraph_mode != "blank-line":
+        for c in chapters:
+            c["text"] = reflow(c["text"], paragraph_mode)
     return chapters
 
 
@@ -249,8 +262,9 @@ describe it as a rule. Reply with JSON only:
 {"heading_pattern": "<Python regex, matched with fullmatch against each stripped line>",
  "exclude_pattern": "<Python regex or null; a line matching this is never a heading>",
  "require_unindented": <true|false>,
+ "paragraph_mode": "blank-line" | "indent" | "every-line",
  "language": "<code>",
- "notes": "<one sentence naming what a heading looks like here>"}
+ "notes": "<one sentence naming what a heading and a paragraph look like here>"}
 
 Rules:
 - heading_pattern must match a heading line completely and match nothing else.
@@ -258,10 +272,50 @@ Rules:
 - Typesetting directives, contents entries and headers usually need excluding.
 - require_unindented is true when body text is indented and headings are not.
 - Do not describe chapter positions. Describe their SHAPE.
+
+paragraph_mode says how THIS book separates paragraphs, so the text can be
+reflowed into blank-line-separated paragraphs:
+- "blank-line": already separated by an empty line. The usual case.
+- "indent": each paragraph begins with an indent (an ideographic space in
+  Japanese and Chinese typesetting) and there are no blank lines.
+- "every-line": each line is its own paragraph — verse, drama, subtitles.
 """
 
 _MAX_PATTERN_CHARS = 200
 _SAMPLE_CHARS = 6000
+_PARAGRAPH_MODES = ("blank-line", "indent", "every-line")
+_INDENTS = ("\u3000", "\t", "  ")
+
+
+def reflow(body: str, mode: str) -> str:
+    """Put the body into the blank-line-separated form the rest of the app
+    assumes.
+
+    The reader and the translator both split paragraphs on a blank line. A
+    Japanese chapter marks paragraphs with a leading ideographic space and no
+    blank line at all, so thirteen paragraphs arrived as three blocks: an
+    unformatted wall of text, and the translation misaligned against it
+    (owner, 2026-08-31). Normalising here fixes both, and needs no change on
+    either side.
+    """
+    if mode not in _PARAGRAPH_MODES or mode == "blank-line":
+        return body
+    lines = [ln for ln in body.split("\n")]
+    if mode == "every-line":
+        return "\n\n".join(ln.strip() for ln in lines if ln.strip())
+
+    # "indent": a new paragraph starts where a line is indented; anything else
+    # continues the one before it.
+    paragraphs: list[str] = []
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            continue
+        if raw.startswith(_INDENTS) or not paragraphs:
+            paragraphs.append(line)
+        else:
+            paragraphs[-1] = f"{paragraphs[-1]}{line}"
+    return "\n\n".join(paragraphs)
 
 
 def build_sample(text: str, limit: int = _SAMPLE_CHARS) -> str:
@@ -331,27 +385,40 @@ def apply_rule(text: str, rule: object) -> list[tuple[int, str]]:
     return found
 
 
-async def suggest_split_from_rule(text: str, deepseek_key: str | None = None) -> dict:
-    """Infer a rule from the opening, then apply it to the whole book."""
+async def suggest_split_from_rule(
+    text: str, deepseek_key: str | None = None, requirements: str | None = None
+) -> dict:
+    """Infer a rule from the opening, then apply it to the whole book.
+
+    `requirements` is the reader's own instruction — how this book marks a
+    paragraph, headings to ignore, anything the opening alone does not show.
+    """
     sample = build_sample(text)
     if not sample.strip():
         return {"chapters": [], "rule": None, "notes": "The book appears to be empty."}
 
     try:
-        raw = await _ask(sample, deepseek_key, system=SYSTEM_RULE)
+        prompt = sample
+        if requirements and requirements.strip():
+            prompt = f"The reader adds:\n{requirements.strip()[:600]}\n\n{sample}"
+        raw = await _ask(prompt, deepseek_key, system=SYSTEM_RULE)
         rule = json.loads(_json_block(raw))
     except Exception:
         logger.exception("split rule request failed")
         return {"chapters": [], "rule": None, "notes": "Could not reach the model."}
 
+    mode = rule.get("paragraph_mode")
+    mode = mode if mode in _PARAGRAPH_MODES else "blank-line"
     boundaries = apply_rule(text, rule)
-    chapters = slice_chapters(text, boundaries)
+    _, exclude, _ = compile_rule(rule)
+    chapters = slice_chapters(text, boundaries, paragraph_mode=mode, drop=exclude)
     return {
         "chapters": chapters,
         "rule": {
             "heading_pattern": rule.get("heading_pattern"),
             "exclude_pattern": rule.get("exclude_pattern"),
             "require_unindented": bool(rule.get("require_unindented")),
+            "paragraph_mode": mode,
         },
         "language": rule.get("language"),
         "notes": str(rule.get("notes") or "")[:300],

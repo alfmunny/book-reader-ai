@@ -74,8 +74,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4">
-        <div className="max-w-5xl mx-auto flex items-center gap-3 md:gap-4">
+      <header className="border-b border-amber-200 bg-white/60 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <h1 className="font-serif text-xl font-bold text-ink">Admin Panel</h1>
         <button onClick={loadStats} className="ml-auto text-sm text-amber-700 hover:text-amber-900 min-h-[44px] md:min-h-0 flex items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1">
           <RetryIcon className="w-4 h-4" aria-hidden="true" /> Refresh

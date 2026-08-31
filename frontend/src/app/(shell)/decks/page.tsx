@@ -63,7 +63,8 @@ export default function DecksPage() {
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
+      <header className="border-b border-amber-200 bg-white/70 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="font-serif text-xl font-bold text-ink truncate">Decks</h1>
           {!loading && !fetchError && (
@@ -83,6 +84,7 @@ export default function DecksPage() {
             <span className="hidden sm:inline">New deck</span>
           </Link>
         )}
+        </div>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">

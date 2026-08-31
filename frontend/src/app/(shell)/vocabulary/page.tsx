@@ -542,8 +542,8 @@ function VocabularyPageContent() {
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4">
-        <div className="max-w-5xl mx-auto flex items-center gap-3 md:gap-4">
+      <header className="border-b border-amber-200 bg-white/70 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="font-serif text-xl font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (

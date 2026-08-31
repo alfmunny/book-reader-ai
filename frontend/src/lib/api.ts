@@ -1148,7 +1148,8 @@ export function saveObsidianSettings(data: {
 
 // ── Book uploads ──────────────────────────────────────────────────────────────
 
-export interface UploadQuota { used: number; max: number; }
+/** `max` is null for admins, who have no upload limit (#2789 follow-up). */
+export interface UploadQuota { used: number; max: number | null; }
 export interface DraftChapter {
   index: number;
   /** Row key on the server — what PATCH addresses. */

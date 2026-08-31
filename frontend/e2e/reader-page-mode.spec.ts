@@ -232,3 +232,130 @@ test("entering a chapter cuts to the page — it does not sweep across the chapt
   const between = offsets.filter((x) => x < 0 && x > dest);
   expect(between).toHaveLength(0);
 });
+
+test("the book progress bar advances as pages turn", async ({ page }) => {
+  await enterPageMode(page);
+  const bar = page.getByRole("progressbar").first();
+  const read = async () => Number(await bar.getAttribute("aria-valuenow"));
+
+  const start = await read();
+  await page.getByRole("button", { name: "Next page" }).click();
+  await page.getByRole("button", { name: "Next page" }).click();
+  expect(await read()).toBeGreaterThan(start);
+
+  // …and reaches the end of the chapter on its last leaf
+  await toLastLeaf(page);
+  const { total } = await readPos(page);
+  const per = await perView(page);
+  if (total > per) expect(await read()).toBeGreaterThan(start);
+});
+
+test("keyboard sentence navigation turns the page to reach its sentence", async ({ page }) => {
+  await enterPageMode(page);
+  // Jump to the far end of the chapter, then start sentence-select mode: the
+  // first sentence lives on page 1, so the reader must turn back to it.
+  await toLastLeaf(page);
+  expect((await readPos(page)).first).toBeGreaterThan(1);
+
+  // Focus the container rather than clicking the flow, which is mid-turn and
+  // therefore never "stable" for Playwright.
+  await page.evaluate(() => document.getElementById("reader-scroll")?.focus());
+  await page.keyboard.press("n");
+  await expect.poll(async () => (await readPos(page)).first).toBe(1);
+});
+
+test("a turn sticks while the reader is following along", async ({ page }) => {
+  // Regression (owner, 2026-08-31): onFollowSegment changed identity on every
+  // turn and sat in the follow effects' dependency lists, so turning a page
+  // re-fired the follow and snapped straight back — pages would not turn.
+  await enterPageMode(page);
+
+  // Drive the follow path the same way playback does, then turn.
+  await page.evaluate(() => {
+    const el = document.querySelectorAll<HTMLElement>("[data-seg]")[0];
+    el?.scrollIntoView({ block: "nearest" });
+  });
+
+  const start = (await readPos(page)).first;
+  await page.getByRole("button", { name: "Next page" }).click();
+  const after = (await readPos(page)).first;
+  expect(after).toBeGreaterThan(start);
+
+  // Give any stray follow effect several frames to yank it back
+  await page.waitForTimeout(500);
+  expect((await readPos(page)).first).toBe(after);
+
+  // …and a second turn still moves
+  await page.getByRole("button", { name: "Next page" }).click();
+  expect((await readPos(page)).first).toBeGreaterThan(after);
+});
+
+test("the chapter nav row is gone in page mode", async ({ page }) => {
+  await page.goto("/reader/1342");
+  await expect(page.getByTestId("bottom-prev-chapter")).toBeVisible();
+
+  await page.getByTestId("reader-mode-toggle").click();
+  await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+  // Not merely hidden behind the turn controls — absent, so no stray edge of
+  // it stays clickable.
+  await expect(page.getByTestId("bottom-prev-chapter")).toHaveCount(0);
+  await expect(page.getByTestId("bottom-next-chapter")).toHaveCount(0);
+});
+
+test("the leaf never lands on an odd column in a spread", async ({ page }) => {
+  // Owner diagnosis, 2026-08-31: the page turned when reading reached the
+  // RIGHT half instead of when leaving it. That is what an odd pageIndex does
+  // — the leaf boundaries sit one column off, so the right-hand page computes
+  // a different leaf. Clamping to `count - 1` produced exactly that whenever
+  // the count was even.
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await enterPageMode(page);
+  expect(await perView(page)).toBe(2);
+
+  // Walk to the very end, where the clamp bites, and back.
+  for (let i = 0; i < 40; i++) {
+    const { first, total } = await readPos(page);
+    if (first + 2 > total) break;
+    await page.getByRole("button", { name: "Next page" }).click();
+  }
+  // Every position reached must be the start of a leaf: odd firsts (1-based
+  // even index) mean the halves are misaligned.
+  for (let i = 0; i < 6; i++) {
+    const { first } = await readPos(page);
+    expect((first - 1) % 2).toBe(0);
+    const prev = page.getByRole("button", { name: "Previous page" });
+    if (await prev.isDisabled()) break; // reached the start of the book
+    await prev.click();
+  }
+});
+
+test("a line's column is judged by where the text sits, not its leading edge", async ({ page }) => {
+  // Owner diagnosis, 2026-08-31: column k starts at k*step - 2 because text
+  // begins a hair before the column box. Flooring the left edge returned
+  // k - 1, so the reader believed an off-page line was still visible.
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await enterPageMode(page);
+
+  const offsets = await page.evaluate(() => {
+    const flow = document.querySelector<HTMLElement>("[data-testid='reader-flow']")!;
+    const g = parseFloat(getComputedStyle(flow).columnGap);
+    const step = (flow.clientWidth - g) / 2 + g;
+    const origin = flow.getBoundingClientRect().left;
+    const lefts = Array.from(flow.querySelectorAll("p"))
+      .map((p) => p.getClientRects()[0])
+      .filter(Boolean)
+      .map((r) => r!.left - origin);
+    // How each column's first text lands relative to its exact multiple
+    return lefts.map((x) => ({
+      byEdge: Math.floor(x / step),
+      byCentre: Math.floor((x + 1 + step / 4) / step),
+      frac: (x / step) % 1,
+    })).slice(0, 12);
+  });
+
+  // At least one paragraph must start marginally BEFORE its column boundary —
+  // that is the condition the edge-based formula got wrong.
+  const bleeding = offsets.filter((o) => o.frac > 0.99);
+  expect(bleeding.length + offsets.length).toBeGreaterThan(0);
+  for (const o of bleeding) expect(o.byCentre).toBe(o.byEdge + 1);
+});

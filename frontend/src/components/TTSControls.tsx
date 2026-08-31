@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { synthesizeSpeech, getTtsChunks, WordBoundary } from "@/lib/api";
 import { getSettings, saveSettings } from "@/lib/settings";
 import { getAudioPosition, saveAudioPosition, clearAudioPosition } from "@/lib/audio";
-import { PlayIcon, PauseIcon, RetryIcon, CloseIcon } from "@/components/Icons";
+import { PlayIcon, PauseIcon, RetryIcon, CloseIcon, FollowLineIcon } from "@/components/Icons";
 
 export interface ChunkSnapshot {
   text: string;
@@ -19,6 +19,13 @@ interface Props {
   onPlaybackUpdate?: (currentTime: number, duration: number, isPlaying: boolean) => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onChunksUpdate?: (chunks: ChunkSnapshot[]) => void;
+  /** Follow toggle beside the play control: on while the page tracks the line
+   *  being read, off once the reader turns a page themselves. Turning it back
+   *  on returns to the line, however far away it is. */
+  following?: boolean;
+  onToggleFollow?: () => void;
+  /** Chapter finished — the reader decides whether to continue into the next. */
+  onChapterFinished?: () => void;
   onSeekRegister?: (seekAndPlay: (time: number) => void) => void;
   onControlsRegister?: (controls: { pause: () => void; play: () => void }) => void;
   /** Auto-pause when globalCurrentTime reaches this value. */
@@ -51,6 +58,9 @@ export default function TTSControls({
   onPlaybackUpdate,
   onLoadingChange,
   onChunksUpdate,
+  following,
+  onToggleFollow,
+  onChapterFinished,
   onSeekRegister,
   onControlsRegister,
   stopAtTime,
@@ -74,10 +84,21 @@ export default function TTSControls({
   const genRef = useRef(0);
 
   const [allChunks, setAllChunks] = useState<ChunkSnapshot[]>([]);
+  // Which chunk is sounding, derived from the playhead rather than tracked —
+  // the ref that drives playback does not re-render.
+  const [activeChunk, setActiveChunk] = useState(0);
+  // A load is a long walk through the chunk list that starts playback when it
+  // reaches the right one. Two of them running at once each start their own
+  // audio — two voices — and the older one is still aiming at the position it
+  // captured before the reader seeked (owner, 2026-08-31).
+  const loadingRef = useRef(false);
+  const pendingSeekRef = useRef<number | undefined>(undefined);
 
   const onPlaybackUpdateRef = useRef(onPlaybackUpdate);
   const onLoadingChangeRef = useRef(onLoadingChange);
   const onChunksUpdateRef = useRef(onChunksUpdate);
+  const onChapterFinishedRef = useRef(onChapterFinished);
+  onChapterFinishedRef.current = onChapterFinished;
   const onSeekRegisterRef = useRef(onSeekRegister);
   const onControlsRegisterRef = useRef(onControlsRegister);
   const onStopAtReachedRef = useRef(onStopAtReached);
@@ -114,6 +135,7 @@ export default function TTSControls({
         saveAudioPosition(bookId, chapterIndex, t);
       }
       genRef.current++;
+      loadingRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
       cleanupAll();
@@ -164,9 +186,16 @@ export default function TTSControls({
 
   useEffect(() => {
     onPlaybackUpdateRef.current?.(globalCurrentTime, globalDuration, status === "playing");
+    setActiveChunk(activeIndexRef.current);
   }, [globalCurrentTime, globalDuration, status]);
 
   async function loadAndPlay(seekToGlobal?: number) {
+    if (loadingRef.current) {
+      // Hand the new target to the walk already in progress instead of
+      // starting a second one.
+      pendingSeekRef.current = seekToGlobal;
+      return;
+    }
     if (chunksRef.current.length > 0) {
       if (seekToGlobal !== undefined) {
         await seekTo(seekToGlobal);
@@ -177,6 +206,7 @@ export default function TTSControls({
       return;
     }
 
+    loadingRef.current = true;
     setStatus("loading");
     setErrorMsg("");
     const abort = new AbortController();
@@ -196,6 +226,7 @@ export default function TTSControls({
       setAllChunks(chunkTexts.map((t) => ({ text: t, duration: 0, wordBoundaries: [] })));
 
       const savedPos = getAudioPosition(bookId, chapterIndex);
+      pendingSeekRef.current = seekToGlobal;
       let cumulative = 0;
       let started = false;
 
@@ -266,6 +297,9 @@ export default function TTSControls({
             for (const c of chunksRef.current) c.audio.currentTime = 0;
             setGlobalCurrentTime(0);
             clearAudioPosition(bookId, chapterIndex);
+            // The reader decides whether to roll into the next chapter; this
+            // component only knows that this one is finished.
+            onChapterFinishedRef.current?.();
           }
         });
         audio.addEventListener("timeupdate", () => {
@@ -285,9 +319,12 @@ export default function TTSControls({
         });
 
         if (!started) {
+          // Read the target FRESH each time round: a seek during loading must
+          // win over the saved position this walk began with, or playback
+          // resumes where the last session stopped and ignores the reader.
           let targetGlobal = 0;
-          if (seekToGlobal !== undefined) {
-            targetGlobal = seekToGlobal;
+          if (pendingSeekRef.current !== undefined) {
+            targetGlobal = pendingSeekRef.current;
           } else if (savedPos > 0) {
             targetGlobal = savedPos;
           }
@@ -318,6 +355,8 @@ export default function TTSControls({
       setStatus("error");
       setErrorMsg(e instanceof Error ? e.message : "TTS failed");
       setLoadingState(null);
+    } finally {
+      loadingRef.current = false;
     }
   }
 
@@ -454,6 +493,22 @@ export default function TTSControls({
             Read
           </button>
         )}
+        {following !== undefined && onToggleFollow && (
+          <button
+            onClick={onToggleFollow}
+            data-testid="follow-toggle"
+            aria-pressed={following}
+            aria-label={following ? "Following the line being read" : "Back to the line being read"}
+            title={following ? "Following the line being read" : "Back to the line being read"}
+            className={`rounded-lg border px-2.5 py-2.5 md:py-1.5 min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 flex items-center justify-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1 ${
+              following
+                ? "border-amber-500 bg-amber-100 text-amber-900"
+                : "border-amber-300 bg-white text-amber-700 hover:bg-amber-50"
+            }`}
+          >
+            <FollowLineIcon className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Gender toggle */}
@@ -467,23 +522,108 @@ export default function TTSControls({
         {gender === "female" ? "F" : "M"}
       </button>
 
-      {/* Seek bar */}
+      {/* Seek bar, segmented by chunk (owner, 2026-08-31 — "YouTube style").
+          One bar with a hairline between chunks: each segment is solid once
+          its audio is buffered and faint until then, and playback fills
+          through them. The axis is the chunk COUNT, known the moment the text
+          is split — a time axis grows as chunks arrive, so the fill would
+          rescale and jump backwards. Equal-width segments mean the playhead
+          varies slightly in speed but never moves the wrong way. */}
       {chunks.length > 0 && globalDuration > 0 && (
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
           <span className="text-xs text-amber-700 tabular-nums w-10 text-right">
             {formatTime(globalCurrentTime)}
           </span>
-          <input
-            type="range"
-            min={0}
-            max={globalDuration}
-            step={0.1}
-            value={globalCurrentTime}
-            onChange={(e) => seekTo(Number(e.target.value))}
-            className="flex-1 accent-amber-700"
-            aria-label="Playback position"
-            aria-valuetext={formatTime(globalCurrentTime)}
-          />
+          {(() => {
+            // Segment widths follow each chunk's TEXT LENGTH, not an equal
+            // share: chunks differ in size, so equal segments misrepresented
+            // how much of the chapter each one covers (owner, 2026-08-31).
+            // Character counts are known the moment the text is split, so the
+            // axis is fixed from the first frame and never rescales.
+            const weights = allChunks.map((c) => Math.max(1, c.text.length));
+            const totalWeight = weights.reduce((a, b) => a + b, 0) || 1;
+
+            // Walk the loaded durations to find the chunk being spoken and how
+            // far into it the playhead is.
+            let acc = 0;
+            let activeIdx = 0;
+            let frac = 0;
+            for (let i = 0; i < allChunks.length; i++) {
+              const d = allChunks[i].duration;
+              if (d > 0 && globalCurrentTime >= acc + d) { acc += d; activeIdx = i + 1; continue; }
+              activeIdx = i;
+              frac = d > 0 ? Math.max(0, Math.min(1, (globalCurrentTime - acc) / d)) : 0;
+              break;
+            }
+            const before = weights.slice(0, activeIdx).reduce((a, b) => a + b, 0);
+            const headPct = ((before + frac * (weights[activeIdx] ?? 0)) / totalWeight) * 100;
+
+            return (
+              <div className="relative flex-1 min-w-0 py-2">
+                <div className="flex gap-px" data-testid="chunk-bar" aria-hidden="true">
+                  {allChunks.map((c, i) => (
+                    <span
+                      key={i}
+                      style={{ flexGrow: weights[i], flexBasis: 0 }}
+                      title={c.text ? `${i + 1}. ${c.text.replace(/\s+/g, " ").trim().slice(0, 80)}…` : undefined}
+                      className={`relative h-1.5 overflow-hidden first:rounded-l-full last:rounded-r-full transition-colors ${
+                        c.duration > 0
+                          ? "bg-stone-400"
+                          : loadingState && i === loadingState.index
+                            ? "bg-stone-300 animate-pulse"
+                            : "bg-stone-200"
+                      }`}
+                    >
+                      <span
+                        className="absolute inset-y-0 left-0 bg-amber-600"
+                        style={{ width: `${i < activeIdx ? 100 : i === activeIdx ? frac * 100 : 0}%` }}
+                      />
+                    </span>
+                  ))}
+                </div>
+                {/* The playhead. The range input is transparent so the segments
+                    show through, which left no visible handle at all. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-700 ring-2 ring-white shadow-sm"
+                  style={{ left: `${Math.max(0, Math.min(100, headPct))}%` }}
+                />
+                {/* The slider runs on the SAME axis the bar is drawn on —
+                    weighted by chunk length — not on time. With a time axis a
+                    click at 50% set the time to 50%, which lands somewhere else
+                    entirely on a length-weighted bar, so the playhead never
+                    went where you clicked (owner, 2026-08-31). */}
+                <input
+                  type="range"
+                  min={0}
+                  max={1000}
+                  step={1}
+                  value={Math.round(Math.max(0, Math.min(100, headPct)) * 10)}
+                  onChange={(e) => {
+                    const target = (Number(e.target.value) / 1000) * totalWeight;
+                    let seen = 0;
+                    let elapsed = 0;
+                    for (let i = 0; i < allChunks.length; i++) {
+                      const w = weights[i];
+                      const d = allChunks[i].duration;
+                      if (seen + w >= target) {
+                        // Unloaded chunks have no time to seek into; stop at
+                        // the last position that actually exists.
+                        seekTo(d > 0 ? elapsed + ((target - seen) / w) * d : elapsed);
+                        return;
+                      }
+                      seen += w;
+                      elapsed += d;
+                    }
+                    seekTo(elapsed);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  aria-label="Playback position"
+                  aria-valuetext={formatTime(globalCurrentTime)}
+                />
+              </div>
+            );
+          })()}
           <span className="text-xs text-amber-700 tabular-nums w-10">
             {formatTime(globalDuration)}
           </span>
@@ -506,42 +646,20 @@ export default function TTSControls({
         <span>{rate.toFixed(1)}×</span>
       </label>
 
-      {/* Per-chunk progress bar while loading */}
+      {/* One compact line, not the heading/bar/preview stack this replaced:
+          how far generation has got, and which line is being generated
+          (owner, 2026-08-31). */}
       {loadingState && (
-        <div className="w-full mt-1">
-          <div className="flex items-center justify-between text-xs text-amber-800 mb-1">
-            <span className="font-medium">
-              Generating chunk {loadingState.index + 1} of {loadingState.total}
-            </span>
-            <span className="text-amber-700">
-              {Math.round(((loadingState.index) / loadingState.total) * 100)}%
-            </span>
-          </div>
-          <div
-            className="h-2 w-full bg-amber-100 rounded-full overflow-hidden relative"
-            role="progressbar"
-            aria-valuenow={Math.round((loadingState.index / loadingState.total) * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="TTS audio loading progress"
-          >
-            <div
-              className="absolute inset-y-0 left-0 bg-amber-600 transition-all duration-300"
-              style={{ width: `${(loadingState.index / loadingState.total) * 100}%` }}
-              aria-hidden="true"
-            />
-            <div
-              className="absolute inset-y-0 bg-amber-400/60 animate-pulse"
-              style={{
-                left: `${(loadingState.index / loadingState.total) * 100}%`,
-                width: `${(1 / loadingState.total) * 100}%`,
-              }}
-              aria-hidden="true"
-            />
-          </div>
-          <p className="text-xs text-stone-600 mt-1 italic truncate" title={loadingState.preview}>
+        <div
+          data-testid="tts-generating"
+          className="w-full flex items-baseline gap-2 text-[11px] text-amber-800 min-w-0"
+        >
+          <span className="font-medium tabular-nums shrink-0">
+            Generating {loadingState.index + 1}/{loadingState.total}
+          </span>
+          <span className="flex-1 min-w-0 truncate italic text-stone-600" title={loadingState.preview}>
             &ldquo;{loadingState.preview}…&rdquo;
-          </p>
+          </span>
         </div>
       )}
 

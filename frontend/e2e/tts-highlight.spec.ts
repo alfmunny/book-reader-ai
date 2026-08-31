@@ -201,30 +201,30 @@ test.describe("TTS button states", () => {
   });
 
   test("Read button is visible and in paused state initially", async ({ page }) => {
-    await expect(page.getByRole("button", { name: "Read" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Read", exact: true })).toBeVisible();
   });
 
   test("clicking Read enters loading state", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     // Loading spinner appears briefly while chunks are fetched + audio synthesised
     await expect(page.getByText(/Preparing/)).toBeVisible({ timeout: 5000 });
   });
 
   test("clicking Read transitions to playing state", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     // After mock loadedmetadata fires, TTSControls sets status="playing"
     await waitForPlaying(page);
   });
 
   test("Pause button pauses playback", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
     await page.getByRole("button", { name: "Pause" }).click();
-    await expect(page.getByRole("button", { name: "Read" })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole("button", { name: "Read", exact: true })).toBeVisible({ timeout: 3000 });
   });
 
   test("seek bar appears once audio is loaded", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
     // Seek slider is rendered when chunks.length > 0 and globalDuration > 0
     await expect(page.locator('input[aria-label="Playback position"]')).toBeVisible({ timeout: 3000 });
@@ -238,8 +238,10 @@ test.describe("TTS button states", () => {
       await r.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from([]) });
     });
 
-    await page.getByRole("button", { name: "Read" }).click();
-    await expect(page.getByText(/Generating chunk/)).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    // Chunk generation shows as a compact row plus the segmented seek bar,
+    // not as its own stacked block (2026-08-31).
+    await expect(page.getByTestId("tts-generating")).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -249,7 +251,7 @@ test.describe("TTS sentence highlight synchronization", () => {
     await page.goto("/reader/1342");
     await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
     // Start playback and wait for audio to "load" (mock fires loadedmetadata)
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
   });
 
@@ -367,7 +369,7 @@ test.describe("TTS highlight with word boundaries (path a)", () => {
     await page.goto("/reader/1342");
     await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
 
     // At t=1.3s, word boundary says sentence 1 started at 1.2s
@@ -411,7 +413,7 @@ test.describe("TTS highlight — real API (skipped unless PLAYWRIGHT_REAL_TTS=1)
     await page.goto("/reader/1342");
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await expect(page.getByRole("button", { name: "Pause" })).toBeVisible({ timeout: 30000 });
 
     // Sample highlighted sentence every 500ms for 5 seconds
@@ -430,5 +432,222 @@ test.describe("TTS highlight — real API (skipped unless PLAYWRIGHT_REAL_TTS=1)
 
     // Basic assertion: at least one sentence was highlighted during playback
     expect(samples.some((s) => s.text !== null)).toBe(true);
+  });
+});
+
+test.describe("segmented seek bar", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupTtsReader(page);
+    await page.goto("/reader/1342");
+    await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
+  });
+
+  test("the bar is seekable and shows a playhead", async ({ page }) => {
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const slider = page.getByRole("slider", { name: "Playback position" });
+    await expect(slider).toBeVisible();
+    // The transparent range still owns interaction — it must be hit-testable,
+    // which a zero-height container would silently prevent.
+    const box = (await slider.boundingBox())!;
+    expect(box.height).toBeGreaterThan(8);
+    expect(box.width).toBeGreaterThan(50);
+
+    // Seeking moves the audio, and the playhead follows
+    const headBefore = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>("[data-testid='chunk-bar']")!
+        .parentElement!.querySelector<HTMLElement>("span.rounded-full.bg-amber-700")!;
+      return el.style.left;
+    });
+    await slider.fill("2");
+    await expect.poll(async () => Number(await slider.inputValue())).toBeGreaterThan(1);
+    const headAfter = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>("[data-testid='chunk-bar']")!
+        .parentElement!.querySelector<HTMLElement>("span.rounded-full.bg-amber-700")!;
+      return el.style.left;
+    });
+    expect(headAfter).not.toBe(headBefore);
+  });
+
+  test("segments are weighted by chunk length, not split evenly", async ({ page }) => {
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+    const grows = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>("[data-testid='chunk-bar'] > span"))
+        .map((s) => s.style.flexGrow),
+    );
+    expect(grows.length).toBeGreaterThan(0);
+    // flexGrow carries the character count, so it is never the default "1"
+    for (const g of grows) expect(Number(g)).toBeGreaterThan(1);
+  });
+});
+
+test.describe("seek bar lands where you click", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupTtsReader(page);
+    await page.goto("/reader/1342");
+    await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
+  });
+
+  test("the playhead follows the pointer, not a different axis", async ({ page }) => {
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const slider = page.getByRole("slider", { name: "Playback position" });
+    const box = (await slider.boundingBox())!;
+
+    const headLeft = async () =>
+      Number(
+        (await page.evaluate(() => {
+          const bar = document.querySelector<HTMLElement>("[data-testid='chunk-bar']")!;
+          const head = bar.parentElement!.querySelector<HTMLElement>("span.rounded-full.bg-amber-700")!;
+          return head.style.left;
+        })).replace("%", ""),
+      );
+
+    for (const want of [25, 60, 85]) {
+      await page.mouse.click(box.x + (box.width * want) / 100, box.y + box.height / 2);
+      // The bar is drawn on a length-weighted axis; the slider must run on the
+      // same one, or the playhead lands somewhere other than the click.
+      await expect.poll(headLeft, { timeout: 3000 }).toBeGreaterThan(want - 8);
+      expect(await headLeft()).toBeLessThan(want + 8);
+    }
+  });
+});
+
+test.describe("page mode follows the reading", () => {
+  // A chapter long enough to paginate, with sentences spread through it.
+  const LONG = Array.from({ length: 30 }, (_, i) =>
+    `Sentence ${i + 1}. ${"The quick brown fox jumps over the lazy dog and keeps going. ".repeat(3)}`,
+  ).join("\n\n");
+
+  test.beforeEach(async ({ page }) => {
+    await setupTtsReader(page, LONG);
+    await page.goto("/reader/1342");
+    await expect(page.getByText("Sentence 1.", { exact: false })).toBeVisible({ timeout: 10000 });
+  });
+
+  test("the page turns as the audio advances", async ({ page }) => {
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    expect(await pos()).toBe(1);
+
+    // Walk the audio forward; the spoken sentence moves off page one, so the
+    // reader must turn to keep up.
+    for (let t = 0.5; t <= 12; t += 0.5) {
+      await page.evaluate((time) => (window as unknown as { __tts_advance: (t: number) => void }).__tts_advance(time), t);
+      await page.waitForTimeout(30);
+      if (await pos() > 1) break;
+    }
+    expect(await pos()).toBeGreaterThan(1);
+  });
+
+  test("it also turns when the reader did not start on chapter one", async ({ page }) => {
+    // audioChapter initialises from a mount-time effect; if it lags the viewed
+    // chapter the follow is gated off and nothing ever turns.
+    // setupTtsReader only makes chapter 0 long, so give chapter 1 real length.
+    await page.route(/\/api\/books\/\d+\/chapters$/, (r) =>
+      r.fulfill({
+        json: {
+          book_id: 1342,
+          meta: MOCK_BOOK,
+          chapters: [
+            { title: "Chapter I", text: LONG },
+            { title: "Chapter II", text: LONG },
+          ],
+          images: [],
+        },
+      }),
+    );
+    await page.goto("/reader/1342?chapter=1");
+    await expect(page.getByTestId("reader-chapter-heading")).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    for (let t = 0.5; t <= 12; t += 0.5) {
+      await page.evaluate((time) => (window as unknown as { __tts_advance: (t: number) => void }).__tts_advance(time), t);
+      await page.waitForTimeout(30);
+      if (await pos() > 1) break;
+    }
+    expect(await pos()).toBeGreaterThan(1);
+  });
+
+  test("it turns after the reader has seeked with the progress bar", async ({ page }) => {
+    // Owner repro, 2026-08-31: click Read, drag the progress bar near the end
+    // of the visible page, then wait — the page never turned.
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    const startPage = await pos();
+
+    // Seek most of the way through, the way dragging the bar does
+    const slider = page.getByRole("slider", { name: "Playback position" });
+    await slider.fill("850");
+    await page.waitForTimeout(100);
+
+    // …then let the audio run on from there
+    for (let t = 2.5; t <= 14; t += 0.25) {
+      await page.evaluate((time) => (window as unknown as { __tts_advance: (t: number) => void }).__tts_advance(time), t);
+      await page.waitForTimeout(30);
+      if (await pos() > startPage) break;
+    }
+    expect(await pos()).toBeGreaterThan(startPage);
+  });
+
+  test("it turns with a realistically chunked chapter", async ({ page }) => {
+    // The shared harness returns ONE chunk for the whole chapter; a real one
+    // splits into many, and the follow depends on segment-to-chunk timing that
+    // only exists once there is more than one (owner repro, 2026-08-31).
+    const paras = LONG.split("\n\n");
+    await page.route("**/api/ai/tts/chunks", (r) =>
+      r.fulfill({ json: { chunks: paras } }),
+    );
+    await page.goto("/reader/1342");
+    await expect(page.getByText("Sentence 1.", { exact: false })).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    const startPage = await pos();
+
+    // Walk chunk by chunk the way playback does: run the active one out, then
+    // fire 'ended' so TTSControls hands over to the next.
+    for (let chunk = 0; chunk < paras.length; chunk++) {
+      for (const frac of [0.3, 0.6, 0.99]) {
+        await page.evaluate(({ i, f }) => {
+          const w = window as unknown as { __ttsInstances: Array<{ _advance: (t: number) => void; _duration: number }> };
+          const a = w.__ttsInstances[i];
+          if (a) a._advance(a._duration * f);
+        }, { i: chunk, f: frac });
+        await page.waitForTimeout(25);
+        if (await pos() > startPage) break;
+      }
+      if (await pos() > startPage) break;
+      await page.evaluate((i) => {
+        const w = window as unknown as { __ttsInstances: Array<{ _fire: (t: string) => void }> };
+        w.__ttsInstances[i]?._fire("ended");
+      }, chunk);
+      await page.waitForTimeout(25);
+    }
+    expect(await pos()).toBeGreaterThan(startPage);
   });
 });

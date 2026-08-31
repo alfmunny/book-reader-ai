@@ -9,6 +9,10 @@ const ttsControls = fs.readFileSync(
   path.join(process.cwd(), "src/components/TTSControls.tsx"),
   "utf8",
 );
+const reader = fs.readFileSync(
+  path.join(process.cwd(), "src/app/reader/[bookId]/page.tsx"),
+  "utf8",
+);
 
 describe("TTSControls preparing button spinner", () => {
   it("animate-spin span in preparing button has aria-hidden=true", () => {
@@ -19,17 +23,21 @@ describe("TTSControls preparing button spinner", () => {
   });
 });
 
-describe("TTSControls loading progress bar", () => {
-  it("progress bar outer container has role=progressbar", () => {
-    expect(ttsControls).toMatch(/role="progressbar"/);
+describe("TTS chunk bar a11y (segmented seek bar, 2026-08-31)", () => {
+  it("the segments are decorative — the range input is the real control", () => {
+    const idx = ttsControls.indexOf('data-testid="chunk-bar"');
+    expect(idx).toBeGreaterThan(-1);
+    expect(ttsControls.slice(idx, idx + 120)).toContain('aria-hidden="true"');
+    // #1237 wanted the progress reachable; the native range still owns it
+    expect(ttsControls).toContain('aria-label="Playback position"');
+    expect(ttsControls).toContain("aria-valuetext={formatTime(globalCurrentTime)}");
   });
 
-  it("progress bar has aria-valuenow attribute", () => {
-    expect(ttsControls).toMatch(/aria-valuenow/);
-  });
-
-  it("progress bar inner visual divs have aria-hidden=true", () => {
-    // The filled and pulsing divs are decorative — text already says 'X of Y'
-    expect(ttsControls).toMatch(/animate-pulse[^>]*aria-hidden="true"|aria-hidden="true"[^>]*animate-pulse/);
+  it("the pending-chunk pulse is decorative too", () => {
+    const idx = ttsControls.indexOf("animate-pulse");
+    expect(idx).toBeGreaterThan(-1);
+    // it lives inside the aria-hidden chunk bar
+    const barIdx = ttsControls.indexOf('data-testid="chunk-bar"');
+    expect(idx).toBeGreaterThan(barIdx);
   });
 });

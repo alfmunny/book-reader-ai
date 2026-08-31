@@ -299,6 +299,10 @@ interface Props {
    * in-flight chapter generation.
    */
   disabled?: boolean;
+  /** Page mode: scrolling cannot reveal a segment in a translated column, so
+   *  the reader turns the page instead (collision 2, reading-modes.md). */
+  paginated?: boolean;
+  onFollowSegment?: (el: HTMLElement) => void;
   /**
    * When provided, translations are rendered alongside the original text.
    * Each entry corresponds to a paragraph in the chapter (same indices as
@@ -625,6 +629,8 @@ export default function SentenceReader({
   onParagraphVisible,
   onActiveParagraphChange,
   onParagraphTimingsUpdate,
+  paginated = false,
+  onFollowSegment,
 }: Props) {
   const [flashTarget, setFlashTarget] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -715,9 +721,20 @@ export default function SentenceReader({
   // scrollIntoView() on iOS Safari scrolls multiple ancestors including the body,
   // which causes the whole page to jump upward (#1736). Use container.scrollTo() directly.
   const activeRef = useRef<HTMLElement | null>(null);
+  // Follow fires when the SEGMENT changes, never because the parent handed us
+  // a new function. Keeping it in a ref keeps it out of the dependency lists.
+  const followRef = useRef(onFollowSegment);
+  followRef.current = onFollowSegment;
   useEffect(() => {
     if (currentIdx < 0 || !isPlaying || !activeRef.current) return;
     const el = activeRef.current;
+    // Both modes go through the reader's follow, so one rule — the follow
+    // toggle — governs paginated turning and scrolling alike (owner,
+    // 2026-08-31). It decides whether to move at all.
+    if (followRef.current) {
+      followRef.current(el);
+      return;
+    }
     const container = document.getElementById("reader-scroll");
     if (!container) {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -733,7 +750,7 @@ export default function SentenceReader({
         behavior: "smooth",
       });
     }
-  }, [currentIdx, isPlaying]);
+  }, [currentIdx, isPlaying, paginated]);
 
   // Expose paragraph timings to parent whenever paragraphs recompute (chunks load)
   useEffect(() => {
@@ -803,11 +820,13 @@ export default function SentenceReader({
     const scroll = setTimeout(() => {
       // Only scroll if this effect's target is still the current flash target
       const el = containerRef.current?.querySelector("[data-jump-target]") as HTMLElement | null;
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (!el) return;
+      if (paginated && followRef.current) followRef.current(el);
+      else el.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
     const clear = setTimeout(() => setFlashTarget((cur) => cur === target ? null : cur), 2500);
     return () => { clearTimeout(scroll); clearTimeout(clear); };
-  }, [scrollTargetSentence]);
+  }, [scrollTargetSentence, paginated]);
 
   const hasTranslations = translations && translations.length > 0;
   const isParallel = hasTranslations && translationDisplayMode === "parallel";

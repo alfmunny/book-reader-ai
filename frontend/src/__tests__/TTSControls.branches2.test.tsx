@@ -727,13 +727,15 @@ describe("TTSControls — loadAndPlay seekToGlobal with existing chunks (line 15
     ) as HTMLInputElement | null;
 
     if (seekBar) {
+      // The slider runs 0–1000 across the length-weighted bar, not in seconds
+      // (2026-08-31). With one chunk, 800/1000 is 80% of its duration.
       await act(async () => {
-        fireEvent.change(seekBar, { target: { value: "4" } });
+        fireEvent.change(seekBar, { target: { value: "800" } });
         await flushPromises();
       });
 
-      // After seek, the chunk audio's currentTime should be updated
-      expect(audioInstances[0].currentTime).toBeCloseTo(4, 0);
+      const dur = audioInstances[0].duration || 5;
+      expect(audioInstances[0].currentTime).toBeCloseTo(dur * 0.8, 0);
     } else {
       // Seek bar may not render if duration wasn't set; verify at least no crash
       expect(audioInstances.length).toBeGreaterThan(0);

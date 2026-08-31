@@ -259,14 +259,15 @@ describe("TTSControls — seekTo pauses previous active chunk (line 326)", () =>
     // We should have 2 audio instances loaded
     await waitFor(() => expect(audioInstances.length).toBeGreaterThanOrEqual(2));
 
-    // Seek to a time in the second chunk (chunk 1 ends at ~5s, so seek to 6s)
+    // Seek into the SECOND chunk. The slider is 0–1000 across the whole
+    // length-weighted bar (2026-08-31), so past the halfway mark lands there.
     const seekInput = document.querySelector(
       'input[aria-label="Playback position"]'
     ) as HTMLInputElement | null;
 
     if (seekInput) {
       await act(async () => {
-        fireEvent.change(seekInput, { target: { value: "6" } });
+        fireEvent.change(seekInput, { target: { value: "900" } });
         await flushPromises();
       });
 

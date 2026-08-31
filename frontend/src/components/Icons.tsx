@@ -526,3 +526,15 @@ export function PlusIcon({ className = "w-4 h-4" }: IconProps) {
     </svg>
   );
 }
+
+/** Return to the line being read: arrows closing in on a line from above and
+ *  below. Used by the reader's "resume following" control. */
+export function FollowLineIcon({ className = "w-4 h-4" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="4" y1="12" x2="20" y2="12"/>
+      <polyline points="8 5 12 9 16 5"/>
+      <polyline points="8 19 12 15 16 19"/>
+    </svg>
+  );
+}

@@ -672,7 +672,7 @@ describe("seekTo — seek logic with loaded chunks (lines 300-356)", () => {
 // ── Lines 439-457: seek bar input and loading progress bar ──────────────────
 
 describe("seek bar and loading progress UI (lines 439-457)", () => {
-  it("loading progress bar appears while loading", async () => {
+  it("loading progress row renders while loading", async () => {
     mockGetChunks.mockResolvedValue(["Loading chunk."]);
     mockSynthesize.mockReturnValue(new Promise(() => {})); // never resolves
 
@@ -686,8 +686,9 @@ describe("seek bar and loading progress UI (lines 439-457)", () => {
       await flushPromises();
     });
 
+    // One compact row now, instead of the heading/bar/preview stack.
     await waitFor(() =>
-      expect(screen.getByText(/Generating chunk/)).toBeInTheDocument()
+      expect(screen.getByTestId("tts-generating")).toHaveTextContent(/Generating 1\/1/)
     );
   });
 

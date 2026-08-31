@@ -735,6 +735,14 @@ export default function ReaderPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [perView, setPerView] = useState(1);
+  // Following is on while reading and switches off the moment you turn a page
+  // yourself; turning it back on returns to the spoken line however far away
+  // it is — including in another chapter (owner, 2026-08-31).
+  const [following, setFollowing] = useState(true);
+  // Which chapter the AUDIO is reading. It only moves with the page while
+  // nothing is playing, so turning pages — even past a chapter boundary —
+  // cannot tear the audio down.
+  const [audioChapter, setAudioChapter] = useState(0);
   const colStep = useRef(0);
   const flowRef = useRef<HTMLDivElement>(null);
   // The clip box is exactly one page wide and centred; without it the columns
@@ -744,10 +752,21 @@ export default function ReaderPage() {
   // must open on its LAST page, which is only known after it measures.
   const wantLastPage = useRef(false);
   const measuredChapter = useRef<number | null>(null);
+  // The element a reflow should keep in view, and a mirror of pageIndex so the
+  // measurement can read it without re-creating itself on every turn.
+  const anchorEl = useRef<HTMLElement | null>(null);
+  // Scrolls we cause ourselves must not be mistaken for the reader scrolling
+  // away, which is what switches following off.
+  const selfScrollUntil = useRef(0);
   // Entering a chapter is a cut, not a turn: the transform would otherwise
   // animate across every page between the old index and the new one — most
   // visibly when turning back lands on the last page (owner, 2026-08-31).
   const skipTurnAnim = useRef(true);
+  // Following pauses the moment the reader turns a page themselves — the audio
+  // keeps going, it just stops dragging the page around (owner, 2026-08-31).
+  // The last spoken element is recorded regardless, so the resume control has
+  // somewhere to go back to.
+  const lastSpokenEl = useRef<HTMLElement | null>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("serif");
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -865,7 +884,24 @@ export default function ReaderPage() {
       setPageIndex(wantLastPage.current ? columns * Math.floor((count - 1) / columns) : 0);
       wantLastPage.current = false;
     } else {
-      setPageIndex((i) => Math.min(i, count - 1));
+      // Keep the READING POSITION across a reflow, not the page number. The
+      // text moves when the layout changes — a sentence parked on the right
+      // page can end up in the next column — so preserving the index alone
+      // silently slides the reader onto different words, and the next follow
+      // then "turns" to catch up (owner, 2026-08-31).
+      const lastLeaf = columns * Math.floor(Math.max(0, count - 1) / columns);
+      const anchor = anchorEl.current;
+      if (anchor && flow.contains(anchor)) {
+        const rect = anchor.getClientRects()[0] ?? anchor.getBoundingClientRect();
+        // Both rects move with the transform, so their difference is already
+        // in untranslated flow coordinates. Adding the page offset here double
+        // counts it — the same mistake this file had in revealElement.
+        const x = rect.left + rect.width / 2 - flow.getBoundingClientRect().left;
+        const col = Math.floor(x / step);
+        setPageIndex(Math.max(0, Math.min(columns * Math.floor(col / columns), lastLeaf)));
+      } else {
+        setPageIndex((i) => columns * Math.floor(Math.min(i, lastLeaf) / columns));
+      }
     }
   }, [readerMode, chapterIndex]);
 
@@ -876,8 +912,19 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (readerMode !== "page") return;
+    // Watch the reader BOX, not just the window. Opening the sidebar, the
+    // translate panel or the notes panel resizes the reader without resizing
+    // the window, and the columns kept their old width — so the visible halves
+    // no longer matched the page indices and turns landed a page out (owner,
+    // 2026-08-31).
+    const box = document.getElementById("reader-scroll");
+    const ro = box ? new ResizeObserver(() => measurePages()) : null;
+    if (box && ro) ro.observe(box);
     window.addEventListener("resize", measurePages);
-    return () => window.removeEventListener("resize", measurePages);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measurePages);
+    };
   }, [readerMode, measurePages]);
 
   // Apply the turn. Kept separate from measurement so a page change is one
@@ -907,6 +954,9 @@ export default function ReaderPage() {
     setPostsDialog(null);
     try { window.getSelection()?.removeAllRanges(); } catch { /* no selection */ }
 
+    // Turning by hand means "let me look elsewhere" — stop following, but do
+    // not interrupt the reading itself.
+    if (ttsIsPlayingRef.current) setFollowing(false);
     const next = pageIndex + delta * perView;
     // Turning past either edge continues into the neighbouring chapter, so a
     // book reads as one sequence of pages rather than per-chapter dead ends
@@ -924,6 +974,156 @@ export default function ReaderPage() {
     }
     setPageIndex(next);
   }, [pageIndex, pageCount, perView, chapterIndex, chapters.length]);
+
+  // Bring an element into view. Scrolling does nothing against a translated
+  // column, so in page mode "into view" means turning to the page whose
+  // column holds it (collision 2).
+  const revealElement = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    if (readerMode !== "page") {
+      // Scroll only the reader, never the window: scrollIntoView on iOS Safari
+      // scrolls every ancestor and jumps the whole page (#1736).
+      const container = document.getElementById("reader-scroll");
+      if (!container) {
+        el.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      const cRect = container.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      const relTop = eRect.top - cRect.top;
+      if (relTop < 0 || eRect.bottom - cRect.top > cRect.height) {
+        selfScrollUntil.current = performance.now() + 900;
+        container.scrollTo({ top: container.scrollTop + relTop - cRect.height / 3, behavior: "smooth" });
+      }
+      return;
+    }
+    const flow = flowRef.current;
+    const step = colStep.current;
+    if (!flow || !step) return;
+    // The flow's own rect moves with the transform, so a difference between
+    // the two rects is already in untranslated flow coordinates — adding the
+    // current page offset here would double-count it.
+    const origin = flow.getBoundingClientRect().left;
+    // A sentence that wraps across a column break has fragments in two
+    // columns, and getBoundingClientRect() returns their UNION — whose left
+    // edge sits in the earlier one. Following it landed a page behind the line
+    // being read (owner, 2026-08-31). Weigh the fragments and take the column
+    // holding most of the sentence.
+    const widthByColumn = new Map<number, number>();
+    const rects = Array.from(el.getClientRects());
+    for (const r of rects.length ? rects : [el.getBoundingClientRect()]) {
+      // Measure from the fragment's CENTRE, not its left edge. Text starts a
+      // pixel or two before the column box — column k begins at k*step - 2 —
+      // so flooring the left edge returned k - 1 for every column past the
+      // first, and the reader believed an off-page line was still showing
+      // (owner diagnosis, 2026-08-31).
+      const c = Math.floor((r.left + r.width / 2 - origin) / step);
+      widthByColumn.set(c, (widthByColumn.get(c) ?? 0) + r.width);
+    }
+    let column = 0;
+    let widest = -1;
+    for (const [c, w] of widthByColumn) {
+      if (w > widest) { widest = w; column = c; }
+    }
+    const leaf = perView * Math.floor(column / perView);
+    // Derive the count here rather than trusting pageCount: if the last
+    // measurement predates a reflow (translations arriving, a version switch)
+    // a stale count clamps the target back onto the page already showing, and
+    // the reveal looks like it did nothing.
+    const live = Math.max(1, Math.round(flow.scrollWidth / step));
+    // Clamp to the last LEAF, not the last column. Math.min(leaf, live - 1)
+    // lands on an odd column whenever live is even, and from then on every
+    // leaf boundary is off by one: reading the right-hand page computes a
+    // different leaf and turns, while the left-hand page turns backwards
+    // (owner diagnosis, 2026-08-31).
+    const lastLeaf = perView * Math.floor(Math.max(0, live - 1) / perView);
+    const target = Math.max(0, Math.min(leaf, lastLeaf));
+    // Functional update, so this callback does not change identity on every
+    // turn. It is a dependency of the follow effects; churning it re-fires
+    // them, which snapped the reader back and made pages unturnable while
+    // audio was playing (owner, 2026-08-31).
+    setPageIndex((prev) => (prev === target ? prev : target));
+  }, [readerMode, perView, pageCount]);
+
+  // What SentenceReader calls as the spoken sentence advances.
+  const handleFollowSegment = useCallback((el: HTMLElement) => {
+    lastSpokenEl.current = el;
+    anchorEl.current = el;
+    // Track the line only when it is really in the flow being read. Comparing
+    // audioChapter to chapterIndex was meant to express this, but it is
+    // bookkeeping about the DOM rather than the DOM — if the two drift for any
+    // reason the follow goes silent with nothing to show for it. Asking the
+    // flow whether it contains the element cannot drift (owner, 2026-08-31).
+    if (following && flowRef.current?.contains(el)) revealElement(el);
+  }, [following, revealElement]);
+
+  const toggleFollowing = useCallback(() => {
+    if (following) {
+      setFollowing(false);
+      return;
+    }
+    setFollowing(true);
+    // Go back to the line being read, however far away — another page, or
+    // another chapter entirely.
+    if (audioChapter !== chapterIndex) {
+      goToChapter(audioChapter);
+      return; // the follow fires again once that chapter has laid out
+    }
+    revealElement(lastSpokenEl.current);
+  }, [following, audioChapter, chapterIndex, revealElement]);
+
+  const revealSegment = useCallback((seg: number) => {
+    revealElement(document.querySelector<HTMLElement>(`[data-seg="${seg}"]`));
+  }, [revealElement]);
+
+  // How far through the current chapter the reader is, 0–1. Scroll mode reads
+  // it off the scrollbar; page mode off the page position, because a column
+  // layout never scrolls and would otherwise freeze the bar (collision 1).
+  const chapterFraction = useMemo(() => {
+    if (readerMode !== "page") return scrollProgress / 100;
+    if (pageCount <= perView) return 1;
+    return Math.min(1, (pageIndex + perView) / pageCount);
+  }, [readerMode, scrollProgress, pageIndex, pageCount, perView]);
+
+  // Reading starts following; the audio pins itself to the chapter it began on.
+  useEffect(() => {
+    if (ttsIsPlaying) setFollowing(true);
+  }, [ttsIsPlaying]);
+  useEffect(() => {
+    if (!ttsIsPlayingRef.current) setAudioChapter(chapterIndex);
+  }, [chapterIndex]);
+
+  // Chapter finished: roll into the next one, buffering and reading on. The
+  // page comes along only if the reader is still following.
+  // Read the chapter heading before its text (owner, 2026-08-31). Segments are
+  // matched into chunks by string search, so a title prefix in the first chunk
+  // does not disturb the sentence-to-chunk mapping.
+  const spokenText = useMemo(() => {
+    const ch = chapters[audioChapter];
+    if (!ch) return "";
+    return [ch.title, ch.text].filter(Boolean).join("\n\n");
+  }, [chapters, audioChapter]);
+
+  const handleChapterFinished = useCallback(() => {
+    const next = audioChapter + 1;
+    if (next >= chapters.length) return;
+    setAudioChapter(next);
+    if (following) goToChapter(next);
+  }, [audioChapter, chapters.length, following]);
+
+  // Scrolling away by hand means "let me look elsewhere" — the same gesture a
+  // page turn is in page mode, and it has the same effect on following.
+  useEffect(() => {
+    if (readerMode === "page") return;
+    const el = document.getElementById("reader-scroll");
+    if (!el) return;
+    const onScroll = () => {
+      if (performance.now() < selfScrollUntil.current) return; // our own scroll
+      if (ttsIsPlayingRef.current) setFollowing(false);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [readerMode, loading, chapterIndex]);
 
   // Track scroll progress
   useEffect(() => {
@@ -1214,7 +1414,7 @@ export default function ReaderPage() {
           const cur = segs.indexOf(selectedSentenceFlatIdx ?? segs[0]);
           const next = segs[Math.max(0, cur - 1)];
           setSelectedSentenceFlatIdx(next);
-          document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          revealSegment(next);
           return;
         }
         if (e.key === "ArrowDown" || e.key === "j" || e.key === "J") {
@@ -1225,7 +1425,7 @@ export default function ReaderPage() {
           const cur = segs.indexOf(selectedSentenceFlatIdx ?? -1);
           const next = segs[Math.min(segs.length - 1, cur + 1)];
           setSelectedSentenceFlatIdx(next);
-          document.querySelector(`[data-seg="${next}"]`)?.scrollIntoView({ block: "nearest" });
+          revealSegment(next);
           return;
         }
         if (e.key === "w" || e.key === "W") {
@@ -1277,7 +1477,7 @@ export default function ReaderPage() {
           if (segs.length > 0) {
             setSentenceSelectMode(true);
             setSelectedSentenceFlatIdx(segs[0]);
-            document.querySelector(`[data-seg="${segs[0]}"]`)?.scrollIntoView({ block: "nearest" });
+            revealSegment(segs[0]);
           }
         }
       } else if (e.key === "ArrowLeft" && readerMode === "page") {
@@ -1329,7 +1529,7 @@ export default function ReaderPage() {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session, readerMode, turnPage]);
+  }, [chapterIndex, chapters, focusMode, sentenceSelectMode, selectedSentenceFlatIdx, wordSelectMode, selectedWordIdx, session, readerMode, turnPage, revealSegment]);
 
   function goToChapter(index: number) {
     setChapterIndex(index);
@@ -2007,17 +2207,17 @@ export default function ReaderPage() {
       {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
         <div
-          className="h-1 bg-amber-100/80"
+          className="h-1 bg-amber-100/80 relative"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}
+          aria-valuenow={Math.round(((chapterIndex + chapterFraction) / chapters.length) * 100)}
           aria-label="Reading progress"
-          title={`${Math.round(((chapterIndex + scrollProgress / 100) / chapters.length) * 100)}% through book`}
+          title={`${Math.round(((chapterIndex + chapterFraction) / chapters.length) * 100)}% through book`}
         >
           <div
             className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
-            style={{ width: `${((chapterIndex + scrollProgress / 100) / chapters.length) * 100}%` }}
+            style={{ width: `${((chapterIndex + chapterFraction) / chapters.length) * 100}%` }}
           />
         </div>
       )}
@@ -2195,6 +2395,8 @@ export default function ReaderPage() {
                   onParagraphVisible={handleParagraphVisible}
                   onActiveParagraphChange={handleActiveParagraphChange}
                   onParagraphTimingsUpdate={setParagraphTimings}
+                  paginated={readerMode === "page"}
+                  onFollowSegment={handleFollowSegment}
                 />
                 </div>
                 </div>
@@ -2219,6 +2421,11 @@ export default function ReaderPage() {
                     >Next page <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                   </div>
                 )}
+                {/* Chapter nav belongs to scroll mode. In page mode turns already
+                    carry across chapter boundaries, and this row sat behind the
+                    turn controls with its edges still clickable (owner,
+                    2026-08-31). */}
+                {readerMode !== "page" && (
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
                     data-testid="bottom-prev-chapter"
@@ -2236,6 +2443,7 @@ export default function ReaderPage() {
                     className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >Next chapter <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
+                )}
               </>
             )}
           </div>
@@ -2828,11 +3036,17 @@ export default function ReaderPage() {
 
           {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
           <div className="hidden md:block border-t border-amber-200 shrink-0">
+            {/* The audio reads its own chapter, not the one on screen: a
+                chapterIndex change tears every chunk down, so turning pages
+                past a boundary used to stop playback (owner, 2026-08-31). */}
             <TTSControls
-              text={current?.text ?? ""}
+              following={following}
+              onToggleFollow={toggleFollowing}
+              onChapterFinished={handleChapterFinished}
+              text={spokenText}
               language={bookLanguage}
               bookId={Number(bookId)}
-              chapterIndex={chapterIndex}
+              chapterIndex={audioChapter}
               onPlaybackUpdate={(currentTime, duration, isPlaying) => {
                 setTtsCurrentTime(currentTime);
                 setTtsDuration(duration);

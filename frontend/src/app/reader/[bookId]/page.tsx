@@ -1016,6 +1016,15 @@ export default function ReaderPage() {
 
   // Chapter finished: roll into the next one, buffering and reading on. The
   // page comes along only if the reader is still following.
+  // Read the chapter heading before its text (owner, 2026-08-31). Segments are
+  // matched into chunks by string search, so a title prefix in the first chunk
+  // does not disturb the sentence-to-chunk mapping.
+  const spokenText = useMemo(() => {
+    const ch = chapters[audioChapter];
+    if (!ch) return "";
+    return [ch.title, ch.text].filter(Boolean).join("\n\n");
+  }, [chapters, audioChapter]);
+
   const handleChapterFinished = useCallback(() => {
     const next = audioChapter + 1;
     if (next >= chapters.length) return;
@@ -2966,7 +2975,7 @@ export default function ReaderPage() {
               following={ttsIsPlaying || audioChapter !== chapterIndex ? following : undefined}
               onToggleFollow={toggleFollowing}
               onChapterFinished={handleChapterFinished}
-              text={chapters[audioChapter]?.text ?? current?.text ?? ""}
+              text={spokenText}
               language={bookLanguage}
               bookId={Number(bookId)}
               chapterIndex={audioChapter}

@@ -201,30 +201,30 @@ test.describe("TTS button states", () => {
   });
 
   test("Read button is visible and in paused state initially", async ({ page }) => {
-    await expect(page.getByRole("button", { name: "Read" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Read", exact: true })).toBeVisible();
   });
 
   test("clicking Read enters loading state", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     // Loading spinner appears briefly while chunks are fetched + audio synthesised
     await expect(page.getByText(/Preparing/)).toBeVisible({ timeout: 5000 });
   });
 
   test("clicking Read transitions to playing state", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     // After mock loadedmetadata fires, TTSControls sets status="playing"
     await waitForPlaying(page);
   });
 
   test("Pause button pauses playback", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
     await page.getByRole("button", { name: "Pause" }).click();
-    await expect(page.getByRole("button", { name: "Read" })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole("button", { name: "Read", exact: true })).toBeVisible({ timeout: 3000 });
   });
 
   test("seek bar appears once audio is loaded", async ({ page }) => {
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
     // Seek slider is rendered when chunks.length > 0 and globalDuration > 0
     await expect(page.locator('input[aria-label="Playback position"]')).toBeVisible({ timeout: 3000 });
@@ -238,7 +238,7 @@ test.describe("TTS button states", () => {
       await r.fulfill({ status: 200, contentType: "audio/wav", body: Buffer.from([]) });
     });
 
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     // Chunk generation shows as buffering inside the reading progress bar
     // rather than as its own block (2026-08-31).
     await expect(page.getByTestId("tts-buffer")).toBeAttached({ timeout: 5000 });
@@ -251,7 +251,7 @@ test.describe("TTS sentence highlight synchronization", () => {
     await page.goto("/reader/1342");
     await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
     // Start playback and wait for audio to "load" (mock fires loadedmetadata)
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
   });
 
@@ -369,7 +369,7 @@ test.describe("TTS highlight with word boundaries (path a)", () => {
     await page.goto("/reader/1342");
     await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await waitForPlaying(page);
 
     // At t=1.3s, word boundary says sentence 1 started at 1.2s
@@ -413,7 +413,7 @@ test.describe("TTS highlight — real API (skipped unless PLAYWRIGHT_REAL_TTS=1)
     await page.goto("/reader/1342");
     await expect(page.getByText(MOCK_CHAPTERS[0].text.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
 
-    await page.getByRole("button", { name: "Read" }).click();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
     await expect(page.getByRole("button", { name: "Pause" })).toBeVisible({ timeout: 30000 });
 
     // Sample highlighted sentence every 500ms for 5 seconds

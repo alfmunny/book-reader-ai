@@ -55,7 +55,7 @@ describe("reading continues across chapters (owner, 2026-08-31)", () => {
     // boundary.
     expect(src).toContain("const [audioChapter, setAudioChapter] = useState(0);");
     expect(src).toContain("chapterIndex={audioChapter}");
-    expect(src).toContain('text={chapters[audioChapter]?.text ?? current?.text ?? ""}');
+    expect(src).toContain("text={spokenText}");
   });
 
   it("moves the audio pointer with the page only while nothing is playing", () => {
@@ -68,5 +68,14 @@ describe("reading continues across chapters (owner, 2026-08-31)", () => {
     expect(handler.slice(0, 400)).toContain("setAudioChapter(next);");
     expect(handler.slice(0, 400)).toContain("if (following) goToChapter(next);");
     expect(handler.slice(0, 400)).toContain("if (next >= chapters.length) return;");
+  });
+});
+
+describe("the chapter heading is read aloud (owner, 2026-08-31)", () => {
+  it("prefixes the spoken text with the chapter title", () => {
+    expect(src).toContain("const spokenText = useMemo(");
+    expect(src).toContain('return [ch.title, ch.text].filter(Boolean).join("\\n\\n");');
+    // and it is the audio's chapter, not the viewed one
+    expect(src).toContain("const ch = chapters[audioChapter];");
   });
 });

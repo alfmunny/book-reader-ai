@@ -101,7 +101,10 @@ export default function UploadPage() {
     );
   }
 
-  const quotaFull = quota !== null && quota.used >= quota.max;
+  // `max` is null for admins — no limit. Without the null check this read
+  // `used >= null`, which coerces to `used >= 0` and is therefore always
+  // true, disabling uploads for the one role that has no cap.
+  const quotaFull = quota !== null && quota.max !== null && quota.used >= quota.max;
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
@@ -131,21 +134,27 @@ export default function UploadPage() {
           <div className="bg-white rounded-xl border border-amber-100 p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-ink">Your uploaded books</p>
-              <p className="text-sm text-amber-700">{quota.used} / {quota.max}</p>
+              <p className="text-sm text-amber-700">
+                {quota.max === null ? `${quota.used} uploaded · No limit` : `${quota.used} / ${quota.max}`}
+              </p>
             </div>
-            <div
-              className="h-2 rounded-full bg-amber-100 overflow-hidden"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(Math.min(100, (quota.used / quota.max) * 100))}
-              aria-label={`Upload quota: ${quota.used} of ${quota.max} books used`}
-            >
+            {/* A bar needs a denominator. With none, `used / null` is Infinity,
+                which clamped to a permanently full bar for admins. */}
+            {quota.max !== null && (
               <div
-                className="h-full rounded-full bg-amber-500 transition-all duration-200"
-                style={{ width: `${Math.min(100, (quota.used / quota.max) * 100)}%` }}
-              />
-            </div>
+                className="h-2 rounded-full bg-amber-100 overflow-hidden"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(Math.min(100, (quota.used / quota.max) * 100))}
+                aria-label={`Upload quota: ${quota.used} of ${quota.max} books used`}
+              >
+                <div
+                  className="h-full rounded-full bg-amber-500 transition-all duration-200"
+                  style={{ width: `${Math.min(100, (quota.used / quota.max) * 100)}%` }}
+                />
+              </div>
+            )}
             {quotaFull && (
               <p className="text-xs text-red-600 mt-2">
                 Upload limit reached. Delete an uploaded book to add more.

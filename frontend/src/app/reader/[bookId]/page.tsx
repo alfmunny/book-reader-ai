@@ -755,7 +755,6 @@ export default function ReaderPage() {
   // The element a reflow should keep in view, and a mirror of pageIndex so the
   // measurement can read it without re-creating itself on every turn.
   const anchorEl = useRef<HTMLElement | null>(null);
-  const pageIndexRef = useRef(0);
   // Entering a chapter is a cut, not a turn: the transform would otherwise
   // animate across every page between the old index and the new one — most
   // visibly when turning back lands on the last page (owner, 2026-08-31).
@@ -891,10 +890,11 @@ export default function ReaderPage() {
       const anchor = anchorEl.current;
       if (anchor && flow.contains(anchor)) {
         const rect = anchor.getClientRects()[0] ?? anchor.getBoundingClientRect();
-        // The transform still reflects the OLD layout here, so undo it to get
-        // the anchor's position in the new one.
+        // Both rects move with the transform, so their difference is already
+        // in untranslated flow coordinates. Adding the page offset here double
+        // counts it — the same mistake this file had in revealElement.
         const x = rect.left - flow.getBoundingClientRect().left;
-        const col = Math.floor((x + pageIndexRef.current * step) / step);
+        const col = Math.floor(x / step);
         setPageIndex(Math.max(0, Math.min(columns * Math.floor(col / columns), lastLeaf)));
       } else {
         setPageIndex((i) => columns * Math.floor(Math.min(i, lastLeaf) / columns));
@@ -944,7 +944,6 @@ export default function ReaderPage() {
   // Switching into page mode starts at the top; chapter entry is handled by
   // measurePages, which is the only place that knows the page count.
   useEffect(() => { skipTurnAnim.current = true; setPageIndex(0); }, [readerMode]);
-  useEffect(() => { pageIndexRef.current = pageIndex; }, [pageIndex]);
 
   const turnPage = useCallback((delta: number) => {
     // Overlays pin themselves to viewport coordinates taken when they opened,

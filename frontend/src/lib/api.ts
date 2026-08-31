@@ -498,6 +498,30 @@ export interface WordBoundary {
   text: string;
 }
 
+/** Generated audio survives reloads and sessions here (owner, 2026-08-31).
+ *  Blob URLs die with the page, so every refresh used to re-synthesise the
+ *  whole chapter. Cache Storage keeps the bytes and the word timings keyed by
+ *  exactly what produced them — text, language, rate and voice — so a changed
+ *  voice or rate misses rather than serving the wrong audio. */
+const TTS_CACHE = "tts-audio-v1";
+
+async function ttsCacheKey(text: string, language: string, rate: number, gender: string) {
+  const raw = JSON.stringify({ text, language, rate, gender });
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  // Cache Storage keys must be URLs; this one is never fetched.
+  return `https://tts.cache/${hex}`;
+}
+
+function parseTimings(header: string | null): WordBoundary[] {
+  if (!header) return [];
+  try {
+    return JSON.parse(header) as WordBoundary[];
+  } catch {
+    return []; // malformed header — proceed without word boundaries
+  }
+}
+
 export async function synthesizeSpeech(
   text: string,
   language: string,
@@ -505,6 +529,21 @@ export async function synthesizeSpeech(
   gender: "female" | "male" = "female",
   signal?: AbortSignal,
 ): Promise<{ url: string; wordBoundaries: WordBoundary[] }> {
+  const key = await ttsCacheKey(text, language, rate, gender).catch(() => null);
+  const cache = key && typeof caches !== "undefined"
+    ? await caches.open(TTS_CACHE).catch(() => null)
+    : null;
+
+  if (cache && key) {
+    const hit = await cache.match(key).catch(() => undefined);
+    if (hit) {
+      return {
+        url: URL.createObjectURL(await hit.blob()),
+        wordBoundaries: parseTimings(hit.headers.get("X-TTS-Timings")),
+      };
+    }
+  }
+
   const res = await fetch(`${BASE}/ai/tts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -516,16 +555,15 @@ export async function synthesizeSpeech(
     throw new Error(err.detail || "TTS failed");
   }
   const timingsHeader = res.headers.get("X-TTS-Timings");
-  let wordBoundaries: WordBoundary[] = [];
-  if (timingsHeader) {
-    try {
-      wordBoundaries = JSON.parse(timingsHeader) as WordBoundary[];
-    } catch {
-      // malformed header — proceed without word boundaries
-    }
-  }
   const blob = await res.blob();
-  return { url: URL.createObjectURL(blob), wordBoundaries };
+  if (cache && key) {
+    // Never let a full disk or private mode break playback.
+    await cache.put(
+      key,
+      new Response(blob, { headers: timingsHeader ? { "X-TTS-Timings": timingsHeader } : {} }),
+    ).catch(() => {});
+  }
+  return { url: URL.createObjectURL(blob), wordBoundaries: parseTimings(timingsHeader) };
 }
 
 export async function getTtsChunks(text: string): Promise<string[]> {

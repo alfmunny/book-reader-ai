@@ -33,6 +33,8 @@ test("a proposal changes nothing until the reader accepts it", async () => {
       { title: "第一章", text: "本文。" },
       { title: "第二章", text: "続き。" },
     ],
+    rule: { heading_pattern: "第[一二三]章", require_unindented: true },
+    notes: "A chapter heading is 第N章 alone on its line.",
   });
   render(<Page />);
 
@@ -40,6 +42,9 @@ test("a proposal changes nothing until the reader accepts it", async () => {
   const panel = await screen.findByTestId("split-proposal");
   expect(panel).toHaveTextContent("第一章");
   expect(panel).toHaveTextContent("2 chapters proposed");
+  // The rule is the thing worth judging — the reader sees it, not just output
+  expect(panel).toHaveTextContent("A chapter heading is 第N章 alone on its line.");
+  expect(screen.getByTestId("split-rule")).toHaveTextContent("第[一二三]章");
   // the draft is untouched while the proposal is only being looked at
   expect(api.saveDraftChapterStructure).not.toHaveBeenCalled();
 

@@ -180,7 +180,7 @@ async def suggest_split(text: str, deepseek_key: str | None = None) -> dict:
 DEEPSEEK_REASONER = "deepseek-reasoner"
 
 
-async def _ask(listing: str, deepseek_key: str | None) -> str:
+async def _ask(listing: str, deepseek_key: str | None, system: str = SYSTEM) -> str:
     """The reader's DeepSeek key when they have one, else the server's Claude."""
     if deepseek_key:
         import httpx
@@ -197,7 +197,7 @@ async def _ask(listing: str, deepseek_key: str | None) -> str:
                 json={
                     "model": DEEPSEEK_REASONER,
                     "messages": [
-                        {"role": "system", "content": SYSTEM},
+                        {"role": "system", "content": system},
                         {"role": "user", "content": listing},
                     ],
                     # Reasoning tokens come out of this budget. At 8000 the
@@ -215,7 +215,7 @@ async def _ask(listing: str, deepseek_key: str | None) -> str:
     message = await get_client().messages.create(
         model="claude-sonnet-5",
         max_tokens=4000,
-        system=SYSTEM,
+        system=system,
         messages=[{"role": "user", "content": listing}],
     )
     return message.content[0].text
@@ -228,3 +228,132 @@ def _json_block(raw: str) -> str:
         return fenced.group(1)
     brace = re.search(r"\{.*\}", raw, re.S)
     return brace.group(0) if brace else "{}"
+
+
+# ── Rule mode ────────────────────────────────────────────────────────────────
+# Sending every candidate line and getting every boundary back costs minutes on
+# a long book and scales with its length. Asking instead for a RULE inferred
+# from the opening — the shape of a heading in this particular book — costs one
+# small request whatever the book's size, and the rule is applied here,
+# deterministically, to the whole text (owner, 2026-08-31).
+#
+# The rule is data, never code. A regex we compile and apply ourselves is a
+# plugin in effect without executing anything a model wrote.
+
+SYSTEM_RULE = """You infer how one particular book marks its chapters.
+
+You receive the opening of a book with line numbers — its front matter and its
+first few chapters. Work out what a chapter heading looks like IN THIS BOOK and
+describe it as a rule. Reply with JSON only:
+
+{"heading_pattern": "<Python regex, matched with fullmatch against each stripped line>",
+ "exclude_pattern": "<Python regex or null; a line matching this is never a heading>",
+ "require_unindented": <true|false>,
+ "language": "<code>",
+ "notes": "<one sentence naming what a heading looks like here>"}
+
+Rules:
+- heading_pattern must match a heading line completely and match nothing else.
+  Prefer a narrow pattern: "[０-９]{1,3}" beats ".{1,10}".
+- Typesetting directives, contents entries and headers usually need excluding.
+- require_unindented is true when body text is indented and headings are not.
+- Do not describe chapter positions. Describe their SHAPE.
+"""
+
+_MAX_PATTERN_CHARS = 200
+_SAMPLE_CHARS = 6000
+
+
+def build_sample(text: str, limit: int = _SAMPLE_CHARS) -> str:
+    """The opening, numbered — enough to show front matter and a few chapters."""
+    lines = text.split("\n")
+    out, used = [], 0
+    for i, line in enumerate(lines):
+        numbered = f"{i}: {line}"
+        out.append(numbered)
+        # Count what is actually sent, prefixes included, or the budget is
+        # quietly exceeded on a book with many short lines.
+        used += len(numbered) + 1
+        if used >= limit:
+            break
+    return "\n".join(out)
+
+
+def compile_rule(rule: object) -> tuple[re.Pattern | None, re.Pattern | None, bool]:
+    """Turn the model's answer into patterns, or nothing if it is unusable."""
+    if not isinstance(rule, dict):
+        return None, None, False
+    raw = rule.get("heading_pattern")
+    if not isinstance(raw, str) or not raw or len(raw) > _MAX_PATTERN_CHARS:
+        return None, None, False
+    try:
+        head = re.compile(raw)
+    except re.error:
+        return None, None, False
+    # A pattern that matches nothing at all, or matches emptiness, is useless.
+    if head.fullmatch(""):
+        return None, None, False
+
+    exc = None
+    raw_exc = rule.get("exclude_pattern")
+    if isinstance(raw_exc, str) and raw_exc and len(raw_exc) <= _MAX_PATTERN_CHARS:
+        try:
+            exc = re.compile(raw_exc)
+        except re.error:
+            exc = None
+    return head, exc, bool(rule.get("require_unindented"))
+
+
+def apply_rule(text: str, rule: object) -> list[tuple[int, str]]:
+    """Run the rule over the whole book. Pure, and the only thing that decides
+    boundaries — nothing the model wrote is executed."""
+    head, exc, unindented_only = compile_rule(rule)
+    if head is None:
+        return []
+    lines = text.split("\n")
+    found: list[tuple[int, str]] = []
+    for i, raw in enumerate(lines):
+        line = raw.strip()
+        # Matching only short lines bounds the work a pathological pattern can
+        # do, and no heading is long anyway.
+        if not line or len(line) > _MAX_HEADING_CHARS:
+            continue
+        if unindented_only and raw[:1] in ("\u3000", "\t", " "):
+            continue
+        if exc is not None and exc.search(line):
+            continue
+        if head.fullmatch(line):
+            found.append((i, line))
+    # A rule that fires on a large share of the book has matched prose, not
+    # headings. Better to offer nothing than to shred the text.
+    if len(found) > max(4, len(lines) // 8):
+        return []
+    return found
+
+
+async def suggest_split_from_rule(text: str, deepseek_key: str | None = None) -> dict:
+    """Infer a rule from the opening, then apply it to the whole book."""
+    sample = build_sample(text)
+    if not sample.strip():
+        return {"chapters": [], "rule": None, "notes": "The book appears to be empty."}
+
+    try:
+        raw = await _ask(sample, deepseek_key, system=SYSTEM_RULE)
+        rule = json.loads(_json_block(raw))
+    except Exception:
+        logger.exception("split rule request failed")
+        return {"chapters": [], "rule": None, "notes": "Could not reach the model."}
+
+    boundaries = apply_rule(text, rule)
+    chapters = slice_chapters(text, boundaries)
+    return {
+        "chapters": chapters,
+        "rule": {
+            "heading_pattern": rule.get("heading_pattern"),
+            "exclude_pattern": rule.get("exclude_pattern"),
+            "require_unindented": bool(rule.get("require_unindented")),
+        },
+        "language": rule.get("language"),
+        "notes": str(rule.get("notes") or "")[:300],
+        "sample_lines": sample.count("\n") + 1,
+    }

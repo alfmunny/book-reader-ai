@@ -408,9 +408,14 @@ async def suggest_chapter_split(
 ):
     """Propose a chapter split for a draft book, without changing anything.
 
-    The reader applies it through the existing draft endpoint if they want it,
-    so an AI proposal goes through the same review screen every upload does.
-    Opt-in by construction: nothing calls this unless the reader asks.
+    The model sees only the book's OPENING and infers a rule — what a heading
+    looks like in this particular book. The rule is applied here, to the whole
+    text, deterministically: one small request whatever the book's length, and
+    a rule the reader can read and judge.
+
+    The reader applies the result through the existing draft endpoint, so an AI
+    proposal goes through the same review screen every upload does. Opt-in by
+    construction: nothing calls this unless the reader asks.
     """
     await _owned_draft_book(book_id, user)
 
@@ -429,7 +434,7 @@ async def suggest_chapter_split(
     text = "\n\n".join(parts)
 
     from services.auth import decrypt_api_key
-    from services.split_advisor import suggest_split
+    from services.split_advisor import suggest_split_from_rule
 
     # The reader's own DeepSeek key drives it when they have one — their
     # thinking model, their spend. Falls back to the server's Claude.
@@ -441,7 +446,7 @@ async def suggest_chapter_split(
         except Exception:
             key = None
 
-    result = await suggest_split(text, deepseek_key=key)
+    result = await suggest_split_from_rule(text, deepseek_key=key)
     if not result["chapters"]:
         raise HTTPException(
             status_code=422,

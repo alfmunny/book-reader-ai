@@ -32,6 +32,7 @@ export default function ChapterEditorPage() {
   // recognises Latin-script headings, so a book that marks its chapters any
   // other way — 第一章, 序章 — arrives as a single chapter (#2789).
   const [proposal, setProposal] = useState<{ title: string; text: string }[] | null>(null);
+  const [rule, setRule] = useState<{ pattern?: string; notes?: string } | null>(null);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,6 +122,7 @@ export default function ChapterEditorPage() {
     try {
       const r = await suggestChapterSplit(Number(bookId));
       setProposal(r.chapters);
+      setRule({ pattern: r.rule?.heading_pattern, notes: r.notes });
     } catch (e) {
       // The 422 carries why there was nothing to propose — worth showing.
       setSuggestError(e instanceof Error && e.message ? e.message : "Could not suggest a split.");
@@ -134,6 +136,7 @@ export default function ChapterEditorPage() {
     const next: AuditChapter[] = proposal.map((c) => ({ ...c, reviewed: false }));
     setChapters(next);
     setProposal(null);
+    setRule(null);
     // Same endpoint a manual split or merge uses — the proposal is a draft
     // like any other, and still has to be confirmed.
     await saveStructure(next);
@@ -237,7 +240,8 @@ export default function ChapterEditorPage() {
                 <p className="text-sm font-medium text-ink m-0">Chapters in the wrong place?</p>
                 <p className="text-xs text-stone-600 m-0 mt-0.5">
                   Headings that are not English — 第一章, глава, فصل — are not detected
-                  automatically. Ask for a split and review it before it is applied.
+                  automatically. The opening of the book is read to work out what a
+                  heading looks like here; the rule is then applied to the whole text.
                 </p>
               </div>
               <button
@@ -260,6 +264,14 @@ export default function ChapterEditorPage() {
                   {proposal.length} chapter{proposal.length === 1 ? "" : "s"} proposed. Nothing has
                   changed yet.
                 </p>
+                {rule?.notes && (
+                  <p className="text-xs text-stone-600 m-0 mb-1.5">{rule.notes}</p>
+                )}
+                {rule?.pattern && (
+                  <p className="text-[11px] text-stone-600 m-0 mb-2" data-testid="split-rule">
+                    Rule: <code className="font-mono bg-white/70 px-1 rounded">{rule.pattern}</code>
+                  </p>
+                )}
                 <ol className="text-xs text-ink m-0 mb-2.5 pl-5 max-h-40 overflow-y-auto space-y-0.5">
                   {proposal.map((c, i) => (
                     <li key={i} className="truncate" lang="und">{c.title}</li>

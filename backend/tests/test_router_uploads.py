@@ -1189,9 +1189,10 @@ async def test_suggest_split_proposes_without_changing_the_draft(client, test_us
 
     proposal = {
         "chapters": [{"title": "第一章", "text": "本文。\n続き。"}],
-        "language": "ja", "notes": "ok", "candidates_considered": 4,
+        "language": "ja", "notes": "ok",
+        "rule": {"heading_pattern": "第[一二三]章", "require_unindented": True},
     }
-    with patch("services.split_advisor.suggest_split", AsyncMock(return_value=proposal)):
+    with patch("services.split_advisor.suggest_split_from_rule", AsyncMock(return_value=proposal)):
         resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
 
     assert resp.status_code == 200, resp.text
@@ -1204,7 +1205,7 @@ async def test_suggest_split_proposes_without_changing_the_draft(client, test_us
 async def test_suggest_split_reports_when_it_has_nothing_to_offer(client, test_user):
     book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
     empty = {"chapters": [], "language": None, "notes": "No candidate headings found."}
-    with patch("services.split_advisor.suggest_split", AsyncMock(return_value=empty)):
+    with patch("services.split_advisor.suggest_split_from_rule", AsyncMock(return_value=empty)):
         resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
     assert resp.status_code == 422
     assert "No candidate headings" in resp.json()["detail"]

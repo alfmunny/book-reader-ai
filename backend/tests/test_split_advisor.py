@@ -117,3 +117,42 @@ def test_reasoning_budget_is_large_enough_to_answer():
     src = open(adv.__file__).read()
     budget = int(re.search(r'"max_tokens": (\d+),', src[src.index("DEEPSEEK_REASONER"):]).group(1))
     assert budget >= 32000, "reasoning tokens come out of this budget"
+
+
+# ── Rule mode ────────────────────────────────────────────────────────────────
+
+def test_a_rule_is_applied_by_us_never_executed():
+    from services.split_advisor import apply_rule
+    text = "1\n\n本文がここにあります。\nもっと本文。\n\n2\n\n続きの本文です。\nさらに続く。\n"
+    rule = {"heading_pattern": "[0-9]{1,3}", "require_unindented": True}
+    assert [t for _, t in apply_rule(text, rule)] == ["1", "2"]
+
+
+def test_an_uncompilable_or_empty_pattern_yields_nothing():
+    from services.split_advisor import apply_rule
+    text = "1\n\n本文。\n"
+    assert apply_rule(text, {"heading_pattern": "[unclosed"}) == []
+    assert apply_rule(text, {"heading_pattern": ""}) == []
+    assert apply_rule(text, {"heading_pattern": ".*"}) == []   # matches emptiness
+    assert apply_rule(text, "not a rule") == []
+
+
+def test_a_rule_that_matches_most_of_the_book_is_refused():
+    # A pattern that fires on prose would shred the text into fragments.
+    from services.split_advisor import apply_rule
+    text = "\n".join("短い行" for _ in range(200))
+    assert apply_rule(text, {"heading_pattern": "短い行"}) == []
+
+
+def test_the_indentation_rule_separates_headings_from_prose():
+    from services.split_advisor import apply_rule
+    text = "1\n　1\n\n本文。\n"
+    assert [n for n, _ in apply_rule(text, {"heading_pattern": "[0-9]", "require_unindented": True})] == [0]
+
+
+def test_the_sample_is_the_opening_only():
+    from services.split_advisor import build_sample
+    text = "\n".join(f"line {i}" for i in range(5000))
+    sample = build_sample(text)
+    assert len(sample) < 8000, "the whole book must not be sent"
+    assert sample.startswith("0: line 0")

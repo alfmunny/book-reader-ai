@@ -1193,9 +1193,11 @@ export function saveDraftChapterMeta(
  *  applies it through saveDraftChapterStructure. */
 export function suggestChapterSplit(bookId: number): Promise<{
   chapters: { title: string; text: string }[];
+  /** The inferred rule, so the reader can judge it rather than the output. */
+  rule?: { heading_pattern?: string; exclude_pattern?: string | null; require_unindented?: boolean } | null;
   language?: string | null;
   notes?: string;
-  candidates_considered?: number;
+  sample_lines?: number;
 }> {
   return request("/books/" + bookId + "/chapters/suggest", { method: "POST" });
 }

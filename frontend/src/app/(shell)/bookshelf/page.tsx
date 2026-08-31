@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getMe, getReadingProgress, getUserStats, getDraftAudits, getMyUploads, UserStats, BookMeta, DraftAudit } from "@/lib/api";
+import { getMe, getReadingProgress, getUserStats, getDraftAudits, getMyUploads, deleteUploadedBook, UserStats, BookMeta, DraftAudit } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, recordRecentBook, RecentBook } from "@/lib/recentBooks";
 import BookCard from "@/components/BookCard";
 import UndoToast from "@/components/UndoToast";
@@ -40,6 +40,21 @@ export default function Bookshelf() {
   const [removedBookToast, setRemovedBookToast] = useState<RecentBook | null>(null);
   const [selectedBook, setSelectedBook] = useState<BookMeta | null>(null);
   const [drafts, setDrafts] = useState<DraftAudit[]>([]);
+  // Discarding an upload destroys its chapters and any notes anchored to them,
+  // so it asks first — and inline, not through a blocking confirm() (#1897).
+  const [pendingDiscard, setPendingDiscard] = useState<DraftAudit | null>(null);
+  const [discardError, setDiscardError] = useState<string | null>(null);
+
+  async function discardDraft(draft: DraftAudit) {
+    setPendingDiscard(null);
+    try {
+      await deleteUploadedBook(draft.book_id);
+      setDrafts((prev) => prev.filter((d) => d.book_id !== draft.book_id));
+      setDiscardError(null);
+    } catch (e) {
+      setDiscardError(e instanceof Error ? e.message : "Could not discard the book.");
+    }
+  }
   // Which shelf books the reader brought themselves. localStorage cannot say —
   // entries saved before `source` was recorded carry no marker at all.
   const [uploadIds, setUploadIds] = useState<Set<number>>(new Set());
@@ -98,6 +113,37 @@ export default function Bookshelf() {
               <h2 id="bookshelf-drafts-heading" className="text-xs font-semibold uppercase tracking-widest text-stone-600 mb-2">
                 In progress
               </h2>
+              {discardError && (
+                <p role="alert" className="text-xs text-red-600 mb-2">{discardError}</p>
+              )}
+              {pendingDiscard && (
+                <div
+                  role="alertdialog"
+                  aria-modal="true"
+                  aria-label="Confirm discard"
+                  className="mb-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm flex items-start gap-3"
+                >
+                  <p className="flex-1 text-red-900">
+                    Discard &ldquo;{pendingDiscard.title}&rdquo;? Its chapters and any notes on them are deleted.
+                  </p>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => discardDraft(pendingDiscard)}
+                      className="px-3 py-1.5 min-h-[44px] md:min-h-0 rounded border border-red-400 bg-red-100 text-red-800 hover:bg-red-200 text-xs font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingDiscard(null)}
+                      className="px-3 py-1.5 min-h-[44px] md:min-h-0 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               <ul role="list" aria-label="Books you are still reviewing" className="list-none p-0 m-0 space-y-2">
                 {drafts.map((d) => {
                   const ready = d.chapter_count > 0 && d.reviewed_count === d.chapter_count;
@@ -135,6 +181,15 @@ export default function Bookshelf() {
                       >
                         {ready ? "Add to shelf" : "Continue audit"}
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => setPendingDiscard(d)}
+                        aria-label={`Discard ${d.title}`}
+                        title="Delete this upload and its chapters"
+                        className="text-xs px-2.5 py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors inline-flex items-center shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+                      >
+                        Discard
+                      </button>
                     </li>
                   );
                 })}

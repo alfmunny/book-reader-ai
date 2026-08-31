@@ -23,3 +23,7 @@ pytest-cov
 pytest-xdist>=3.8.0
 ebooklib>=0.18
 stripe>=10.0.0
+# Encoding detection for uploaded text (#2789). Present transitively via
+# requests, but declared so a dependency change cannot silently remove it —
+# book_parser degrades to latin-1 for Cyrillic without it.
+charset-normalizer>=3.0

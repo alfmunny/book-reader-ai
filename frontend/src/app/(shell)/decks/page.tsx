@@ -65,7 +65,7 @@ export default function DecksPage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="font-serif font-bold text-ink truncate">Decks</h1>
+          <h1 className="font-serif text-xl font-bold text-ink truncate">Decks</h1>
           {!loading && !fetchError && (
             <p className="text-xs text-stone-600 mt-0.5">
               {decks.length} deck{decks.length !== 1 ? "s" : ""}
@@ -85,7 +85,7 @@ export default function DecksPage() {
         )}
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {loading ? (
           <div role="status" aria-label="Loading decks">
             <span className="sr-only">Loading decks...</span>

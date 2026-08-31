@@ -125,8 +125,8 @@ export default function DiscoverPage() {
 
   return (
     <main className="min-h-screen bg-parchment">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <h1 className="font-serif text-2xl font-bold text-ink">Discover</h1>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <h1 className="font-serif text-xl font-bold text-ink">Discover</h1>
         <p className="mt-1 text-sm text-stone-500">
           What other readers are translating and thinking, across the library.
         </p>

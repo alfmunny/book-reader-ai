@@ -225,10 +225,10 @@ export default function ProfilePage() {
     <main id="main-content" className="min-h-screen bg-parchment">
       {/* Header */}
       <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-6 py-4 flex items-center gap-4">
-        <h1 className="font-serif font-bold text-ink">Profile &amp; Settings</h1>
+        <h1 className="font-serif text-xl font-bold text-ink">Profile &amp; Settings</h1>
       </header>
 
-      <div className="max-w-lg mx-auto px-6 py-10 space-y-8">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
         {/* ── Account ─────────────────────────────────────────────────────── */}
         <section aria-labelledby="profile-account-heading" className="bg-white rounded-2xl border border-amber-100 p-6">
           <h2 id="profile-account-heading" className="font-serif text-lg font-semibold text-ink mb-4">Account</h2>

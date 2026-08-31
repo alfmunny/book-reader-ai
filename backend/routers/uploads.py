@@ -751,6 +751,28 @@ async def delete_uploaded_book(book_id: int = Path(..., ge=1), user: dict = Depe
         await db.execute("DELETE FROM user_reading_progress WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM user_book_chapters WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM book_uploads WHERE book_id=?", (book_id,))
+        # Phase-2 tables (#2752) post-date this delete and FK enforcement is
+        # off, so without these the rows leak: versions, their paragraphs,
+        # posts and notes, whole-version reactions, and the freeze row —
+        # exactly what the admin confirm promises goes with the book
+        # (owner, 2026-08-31).
+        await db.execute(
+            "DELETE FROM translation_session_paragraphs WHERE session_id IN "
+            "(SELECT id FROM translation_sessions WHERE book_id=?)", (book_id,))
+        await db.execute(
+            "DELETE FROM reactions WHERE target_kind='session' AND target_id IN "
+            "(SELECT id FROM translation_sessions WHERE book_id=?)", (book_id,))
+        await db.execute(
+            "DELETE FROM reactions WHERE target_kind='story' AND target_id IN "
+            "(SELECT id FROM stories WHERE book_id=?)", (book_id,))
+        await db.execute(
+            "DELETE FROM story_comments WHERE story_id IN "
+            "(SELECT id FROM stories WHERE book_id=?) OR session_id IN "
+            "(SELECT id FROM translation_sessions WHERE book_id=?) OR book_id=?",
+            (book_id, book_id, book_id))
+        await db.execute("DELETE FROM stories WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM translation_sessions WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM book_freeze WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM books WHERE id=?", (book_id,))
         await db.commit()
     from services.book_chapters import clear_cache as _clear_chapter_cache

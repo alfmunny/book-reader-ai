@@ -1270,6 +1270,17 @@ export function confirmChapters(bookId: number, chapters: { title: string; origi
   });
 }
 
+/** Which of these book ids still exist — the shelf reconciles its
+ *  localStorage recents against this, since a server delete cannot reach
+ *  localStorage. */
+export function booksExist(ids: number[]): Promise<{ existing: number[] }> {
+  return request("/books/exists", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+}
+
 /** Correct an uploaded book's own name and author — parser guesses until now. */
 export function updateBookMeta(
   bookId: number, data: { title?: string; author?: string },

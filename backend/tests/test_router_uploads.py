@@ -1258,3 +1258,47 @@ async def test_book_meta_refused_for_someone_elses_upload(client, test_user):
     finally:
         app.dependency_overrides[get_current_user] = lambda: test_user
     assert resp.status_code in (403, 404)
+
+
+# ── Delete removes everything, and the shelf can tell (owner, 2026-08-31) ────
+
+async def test_books_exist_reports_only_survivors(client, test_user):
+    """The shelf's recent list lives in localStorage; it reconciles against
+    this endpoint, since a server delete cannot reach the client."""
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    resp = await client.post("/api/books/exists", json={"ids": [book_id, 999999123]})
+    assert resp.json()["existing"] == [book_id]
+
+    await client.delete(f"/api/books/upload/{book_id}")
+    resp = await client.post("/api/books/exists", json={"ids": [book_id]})
+    assert resp.json()["existing"] == []
+
+
+async def test_delete_takes_phase2_rows_with_the_book(client, test_user):
+    """The delete predates phase 2 and FK enforcement is off, so versions,
+    posts, notes and the freeze row used to leak."""
+    import aiosqlite
+    import services.db as db_module
+    from services.db import create_translation_session, upsert_session_paragraph, create_story
+
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    sess = await create_translation_session(test_user["id"], book_id, "版", "zh", "deepseek")
+    await upsert_session_paragraph(sess["id"], 0, 0, "译", "deepseek", "m")
+    story = await create_story(test_user["id"], {
+        "kind": "translation", "book_id": book_id, "chapter_index": 0,
+        "session_id": sess["id"], "paragraph_start": 0, "paragraph_end": 0,
+    })
+    assert story
+
+    assert (await client.delete(f"/api/books/upload/{book_id}")).status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        for table, where in [
+            ("translation_sessions", f"book_id={book_id}"),
+            ("translation_session_paragraphs", f"session_id={sess['id']}"),
+            ("stories", f"book_id={book_id}"),
+            ("book_freeze", f"book_id={book_id}"),
+        ]:
+            async with db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}") as cur:
+                n = (await cur.fetchone())[0]
+            assert n == 0, f"{table} leaked {n} rows"

@@ -583,4 +583,71 @@ test.describe("page mode follows the reading", () => {
     }
     expect(await pos()).toBeGreaterThan(1);
   });
+
+  test("it turns after the reader has seeked with the progress bar", async ({ page }) => {
+    // Owner repro, 2026-08-31: click Read, drag the progress bar near the end
+    // of the visible page, then wait — the page never turned.
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    const startPage = await pos();
+
+    // Seek most of the way through, the way dragging the bar does
+    const slider = page.getByRole("slider", { name: "Playback position" });
+    await slider.fill("850");
+    await page.waitForTimeout(100);
+
+    // …then let the audio run on from there
+    for (let t = 2.5; t <= 14; t += 0.25) {
+      await page.evaluate((time) => (window as unknown as { __tts_advance: (t: number) => void }).__tts_advance(time), t);
+      await page.waitForTimeout(30);
+      if (await pos() > startPage) break;
+    }
+    expect(await pos()).toBeGreaterThan(startPage);
+  });
+
+  test("it turns with a realistically chunked chapter", async ({ page }) => {
+    // The shared harness returns ONE chunk for the whole chapter; a real one
+    // splits into many, and the follow depends on segment-to-chunk timing that
+    // only exists once there is more than one (owner repro, 2026-08-31).
+    const paras = LONG.split("\n\n");
+    await page.route("**/api/ai/tts/chunks", (r) =>
+      r.fulfill({ json: { chunks: paras } }),
+    );
+    await page.goto("/reader/1342");
+    await expect(page.getByText("Sentence 1.", { exact: false })).toBeVisible({ timeout: 10000 });
+    await page.getByTestId("reader-mode-toggle").click();
+    await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const pos = async () =>
+      Number((await page.getByTestId("page-position").textContent())!.match(/Pages? (\d+)/)![1]);
+    const startPage = await pos();
+
+    // Walk chunk by chunk the way playback does: run the active one out, then
+    // fire 'ended' so TTSControls hands over to the next.
+    for (let chunk = 0; chunk < paras.length; chunk++) {
+      for (const frac of [0.3, 0.6, 0.99]) {
+        await page.evaluate(({ i, f }) => {
+          const w = window as unknown as { __ttsInstances: Array<{ _advance: (t: number) => void; _duration: number }> };
+          const a = w.__ttsInstances[i];
+          if (a) a._advance(a._duration * f);
+        }, { i: chunk, f: frac });
+        await page.waitForTimeout(25);
+        if (await pos() > startPage) break;
+      }
+      if (await pos() > startPage) break;
+      await page.evaluate((i) => {
+        const w = window as unknown as { __ttsInstances: Array<{ _fire: (t: string) => void }> };
+        w.__ttsInstances[i]?._fire("ended");
+      }, chunk);
+      await page.waitForTimeout(25);
+    }
+    expect(await pos()).toBeGreaterThan(startPage);
+  });
 });

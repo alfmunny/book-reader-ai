@@ -98,7 +98,7 @@ async def upload_book(
     user: dict = Depends(get_current_user),
 ):
     """Upload a .txt or .epub file. Returns book_id + detected chapters for editing."""
-    from services.book_parser import parse_txt, parse_epub
+    from services.book_parser import parse_txt, parse_epub, decode_text_bytes
 
     # Admins are exempt; non-admins have the quota re-checked atomically inside
     # _save_upload_book to prevent TOCTOU races between concurrent uploads (#489).
@@ -123,10 +123,20 @@ async def upload_book(
         limit_mb = max_size // (1024 * 1024)
         raise HTTPException(status_code=413, detail=f"File too large. Limit for .{fmt} is {limit_mb} MB.")
 
+    # Decode before parsing. errors="replace" turned every non-ASCII sequence in
+    # a Shift_JIS / EUC-JP / GB18030 file into U+FFFD and stored the wreckage
+    # (#2789); the bytes are unrecoverable afterwards, so a rejected upload beats
+    # a library entry that cannot be read.
+    if fmt == "txt":
+        try:
+            text = decode_text_bytes(file_bytes)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc))
+
     # Parse
     try:
         if fmt == "txt":
-            parsed = parse_txt(file_bytes.decode("utf-8", errors="replace"))
+            parsed = parse_txt(text)
         else:
             parsed = parse_epub(file_bytes)
     except Exception:

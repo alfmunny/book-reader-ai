@@ -1,6 +1,7 @@
 """Parse uploaded .txt and .epub files into chapter lists."""
 import re
 import io
+import unicodedata
 from typing import Any
 
 # High-confidence chapter markers — unlikely to appear in front matter / preamble.
@@ -60,6 +61,94 @@ def _extract_author(text: str) -> str:
             if 1 < len(candidate) < 80:
                 return candidate
     return "Unknown"
+
+
+# ── Text decoding ────────────────────────────────────────────────────────────
+
+# Tried in order, strictly. Order matters: a byte string valid in several of
+# these decodes to different text in each, and the first match wins.
+#
+# latin-1 and cp1251 are deliberately NOT here — single-byte codecs accept any
+# byte sequence, so putting them in this list would mean nothing is ever
+# rejected and a Shift_JIS file would silently become mojibake.
+_STRICT_ENCODINGS = ("utf-8-sig", "utf-8", "cp932", "euc-jp", "gb18030", "big5")
+
+# Last resort for genuinely single-byte text. It cannot fail, so it is gated on
+# the result looking like prose rather than binary.
+#
+# Which single-byte codec is right is not decidable from the bytes alone —
+# cp1251 and latin-1 both accept everything, and the same bytes are valid
+# Russian and valid French. charset-normalizer is consulted for the one
+# distinction it makes reliably (Cyrillic has a distinctive byte distribution);
+# anything else falls to latin-1, which covers Western European. Getting this
+# wrong is recoverable — the text is readable and re-uploadable — unlike the
+# errors="replace" it replaces, which destroyed the bytes.
+_FALLBACK_ENCODINGS = ("latin-1",)
+
+_CYRILLIC_CODECS = ("cp1251", "koi8-r", "koi8-u", "iso8859-5", "mac-cyrillic")
+
+# Above this share of control characters the "decode" is binary noise, not text.
+_MAX_JUNK_RATIO = 0.05
+
+
+def _junk_ratio(text: str) -> float:
+    """Share of characters that no prose contains — controls, surrogates, U+FFFD."""
+    if not text:
+        return 1.0
+    bad = sum(
+        1
+        for ch in text
+        if ch not in "\t\n\r"
+        and (unicodedata.category(ch) in ("Cc", "Co", "Cs") or ch == "\ufffd")
+    )
+    return bad / len(text)
+
+
+def _detected_cyrillic(data: bytes) -> tuple[str, ...]:
+    """The detector's guess, but only when it says Cyrillic — see the note above."""
+    try:
+        from charset_normalizer import from_bytes
+
+        best = from_bytes(data).best()
+    except Exception:  # detector missing or unhappy — the fallbacks still apply
+        return ()
+    encoding = (best.encoding or "").replace("_", "-").lower() if best else ""
+    return (encoding,) if encoding in _CYRILLIC_CODECS else ()
+
+
+def decode_text_bytes(data: bytes) -> str:
+    """Decode uploaded text, detecting its encoding. Raises ValueError if none fits.
+
+    Japanese plain text is usually Shift_JIS, EUC-JP or ISO-2022-JP; Chinese is
+    usually GB18030 or Big5. Decoding those as UTF-8 with errors="replace" turns
+    every non-ASCII sequence into U+FFFD, destroying the text irreversibly (#2789)
+    — so this never replaces, it either decodes or refuses.
+    """
+    if not data:
+        raise ValueError("The file is empty.")
+
+    # ISO-2022-JP is 7-bit: it decodes cleanly as UTF-8 into escape sequences
+    # rather than Japanese, so it has to be recognised by its escapes first.
+    if b"\x1b$" in data or b"\x1b(" in data:
+        try:
+            return data.decode("iso-2022-jp")
+        except UnicodeDecodeError:
+            pass
+
+    # The junk check applies to every candidate, not only the single-byte ones:
+    # NUL bytes are valid UTF-8, so a binary file "decodes" strictly into a
+    # string of control characters.
+    for encoding in _STRICT_ENCODINGS + _detected_cyrillic(data) + _FALLBACK_ENCODINGS:
+        try:
+            text = data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        if _junk_ratio(text) <= _MAX_JUNK_RATIO:
+            return text
+
+    raise ValueError(
+        "Could not determine the file's text encoding. Save it as UTF-8 and try again."
+    )
 
 
 def parse_txt(content: str) -> dict[str, Any]:

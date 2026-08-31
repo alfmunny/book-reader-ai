@@ -131,3 +131,13 @@ describe("chapter entry is a cut, not a turn (owner, 2026-08-31)", () => {
     expect(src).toContain('flow.style.transition = ""');
   });
 });
+
+describe("chapter nav does not linger behind the turn controls", () => {
+  it("is scroll-mode only — page turns already cross chapters", () => {
+    // It sat behind the turn-control row with its edges still clickable
+    // (owner, 2026-08-31).
+    expect(src).toContain('{readerMode !== "page" && (');
+    const nav = src.slice(src.indexOf('{readerMode !== "page" && ('));
+    expect(nav.slice(0, 1400)).toContain('data-testid="bottom-prev-chapter"');
+  });
+});

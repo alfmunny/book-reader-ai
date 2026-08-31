@@ -19,6 +19,9 @@ interface Props {
   onPlaybackUpdate?: (currentTime: number, duration: number, isPlaying: boolean) => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onChunksUpdate?: (chunks: ChunkSnapshot[]) => void;
+  /** Chunk-generation progress, surfaced so the reader can show it as buffering
+   *  inside the reading progress bar instead of a block of its own. */
+  onLoadingStateChange?: (state: { index: number; total: number; preview: string } | null) => void;
   onSeekRegister?: (seekAndPlay: (time: number) => void) => void;
   onControlsRegister?: (controls: { pause: () => void; play: () => void }) => void;
   /** Auto-pause when globalCurrentTime reaches this value. */
@@ -51,6 +54,7 @@ export default function TTSControls({
   onPlaybackUpdate,
   onLoadingChange,
   onChunksUpdate,
+  onLoadingStateChange,
   onSeekRegister,
   onControlsRegister,
   stopAtTime,
@@ -78,6 +82,8 @@ export default function TTSControls({
   const onPlaybackUpdateRef = useRef(onPlaybackUpdate);
   const onLoadingChangeRef = useRef(onLoadingChange);
   const onChunksUpdateRef = useRef(onChunksUpdate);
+  const onLoadingStateRef = useRef(onLoadingStateChange);
+  onLoadingStateRef.current = onLoadingStateChange;
   const onSeekRegisterRef = useRef(onSeekRegister);
   const onControlsRegisterRef = useRef(onControlsRegister);
   const onStopAtReachedRef = useRef(onStopAtReached);
@@ -85,6 +91,7 @@ export default function TTSControls({
   useEffect(() => { onPlaybackUpdateRef.current = onPlaybackUpdate; }, [onPlaybackUpdate]);
   useEffect(() => { onLoadingChangeRef.current = onLoadingChange; }, [onLoadingChange]);
   useEffect(() => { onChunksUpdateRef.current = onChunksUpdate; }, [onChunksUpdate]);
+  useEffect(() => { onLoadingStateRef.current?.(loadingState); }, [loadingState]);
   useEffect(() => { onSeekRegisterRef.current = onSeekRegister; }, [onSeekRegister]);
   useEffect(() => { onControlsRegisterRef.current = onControlsRegister; }, [onControlsRegister]);
   useEffect(() => { onStopAtReachedRef.current = onStopAtReached; }, [onStopAtReached]);
@@ -506,44 +513,9 @@ export default function TTSControls({
         <span>{rate.toFixed(1)}×</span>
       </label>
 
-      {/* Per-chunk progress bar while loading */}
-      {loadingState && (
-        <div className="w-full mt-1">
-          <div className="flex items-center justify-between text-xs text-amber-800 mb-1">
-            <span className="font-medium">
-              Generating chunk {loadingState.index + 1} of {loadingState.total}
-            </span>
-            <span className="text-amber-700">
-              {Math.round(((loadingState.index) / loadingState.total) * 100)}%
-            </span>
-          </div>
-          <div
-            className="h-2 w-full bg-amber-100 rounded-full overflow-hidden relative"
-            role="progressbar"
-            aria-valuenow={Math.round((loadingState.index / loadingState.total) * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="TTS audio loading progress"
-          >
-            <div
-              className="absolute inset-y-0 left-0 bg-amber-600 transition-all duration-300"
-              style={{ width: `${(loadingState.index / loadingState.total) * 100}%` }}
-              aria-hidden="true"
-            />
-            <div
-              className="absolute inset-y-0 bg-amber-400/60 animate-pulse"
-              style={{
-                left: `${(loadingState.index / loadingState.total) * 100}%`,
-                width: `${(1 / loadingState.total) * 100}%`,
-              }}
-              aria-hidden="true"
-            />
-          </div>
-          <p className="text-xs text-stone-600 mt-1 italic truncate" title={loadingState.preview}>
-            &ldquo;{loadingState.preview}…&rdquo;
-          </p>
-        </div>
-      )}
+      {/* Chunk-generation progress is reported upward and drawn as buffering
+          inside the reading progress bar — it used to be a heading, a bar and
+          a preview line stacked here (owner, 2026-08-31). */}
 
       {status === "error" && errorMsg && (
         <p role="alert" className="text-xs text-red-600 w-full">{errorMsg}</p>

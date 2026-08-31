@@ -53,7 +53,8 @@ describe("page-aware TTS follow (collision 2, #2786)", () => {
     // search jump target
     expect(reader).toContain("if (paginated && followRef.current) followRef.current(el);");
     expect(src).toContain('paginated={readerMode === "page"}');
-    expect(src).toContain("onFollowSegment={revealElement}");
+    // handleFollowSegment wraps revealElement so the follow can be paused
+    expect(src).toContain("onFollowSegment={handleFollowSegment}");
   });
 });
 

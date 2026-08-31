@@ -289,3 +289,15 @@ test("a turn sticks while the reader is following along", async ({ page }) => {
   await page.getByRole("button", { name: "Next page" }).click();
   expect((await readPos(page)).first).toBeGreaterThan(after);
 });
+
+test("the chapter nav row is gone in page mode", async ({ page }) => {
+  await page.goto("/reader/1342");
+  await expect(page.getByTestId("bottom-prev-chapter")).toBeVisible();
+
+  await page.getByTestId("reader-mode-toggle").click();
+  await expect(page.getByTestId("page-turn-controls")).toBeVisible();
+  // Not merely hidden behind the turn controls — absent, so no stray edge of
+  // it stays clickable.
+  await expect(page.getByTestId("bottom-prev-chapter")).toHaveCount(0);
+  await expect(page.getByTestId("bottom-next-chapter")).toHaveCount(0);
+});

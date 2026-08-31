@@ -239,7 +239,9 @@ test.describe("TTS button states", () => {
     });
 
     await page.getByRole("button", { name: "Read" }).click();
-    await expect(page.getByText(/Generating chunk/)).toBeVisible({ timeout: 5000 });
+    // Chunk generation shows as buffering inside the reading progress bar
+    // rather than as its own block (2026-08-31).
+    await expect(page.getByTestId("tts-buffer")).toBeAttached({ timeout: 5000 });
   });
 });
 

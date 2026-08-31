@@ -22,7 +22,7 @@ import UndoToast from "@/components/UndoToast";
 import VocabWordTooltip from "@/components/VocabWordTooltip";
 import TranslationSessionPanel from "@/components/TranslationSessionPanel";
 import AuthPromptModal from "@/components/AuthPromptModal";
-import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, ShareIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon } from "@/components/Icons";
+import { SunIcon, MoonIcon, SepiaIcon, ChatIcon, GlobeIcon, NoteIcon, EditIcon, ShareIcon, BookmarkIcon, BookOpenIcon, ExportIcon, PlayIcon, PauseIcon, CloseIcon, KeyboardIcon, FocusIcon, ArrowLeftIcon, ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, ListViewIcon, EmptyVocabIcon, ArrowUpRightIcon, FollowLineIcon } from "@/components/Icons";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 
 // Gemini Flash pricing constants — used for total queue cost estimate in the translation sidebar.
@@ -111,6 +111,9 @@ export default function ReaderPage() {
   const [ttsIsPlaying, setTtsIsPlaying] = useState(false);
   const [ttsIsLoading, setTtsIsLoading] = useState(false);
   const [ttsChunks, setTtsChunks] = useState<{ text: string; duration: number }[]>([]);
+  // TTS chunk generation, drawn as buffering inside the reading progress bar
+  // rather than as a stack of its own above the controls (owner, 2026-08-31).
+  const [ttsLoading, setTtsLoading] = useState<{ index: number; total: number; preview: string } | null>(null);
   const ttsSeekRef = useRef<(t: number) => void>(() => {});
   const ttsControlsRef = useRef<{ pause: () => void; play: () => void } | null>(null);
   const ttsIsPlayingRef = useRef(false);
@@ -735,6 +738,7 @@ export default function ReaderPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [perView, setPerView] = useState(1);
+  const [followPaused, setFollowPaused] = useState(false);
   const colStep = useRef(0);
   const flowRef = useRef<HTMLDivElement>(null);
   // The clip box is exactly one page wide and centred; without it the columns
@@ -748,6 +752,11 @@ export default function ReaderPage() {
   // animate across every page between the old index and the new one — most
   // visibly when turning back lands on the last page (owner, 2026-08-31).
   const skipTurnAnim = useRef(true);
+  // Following pauses the moment the reader turns a page themselves — the audio
+  // keeps going, it just stops dragging the page around (owner, 2026-08-31).
+  // The last spoken element is recorded regardless, so the resume control has
+  // somewhere to go back to.
+  const lastSpokenEl = useRef<HTMLElement | null>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("serif");
   const [scrollProgress, setScrollProgress] = useState(0);
 
@@ -907,6 +916,9 @@ export default function ReaderPage() {
     setPostsDialog(null);
     try { window.getSelection()?.removeAllRanges(); } catch { /* no selection */ }
 
+    // Turning by hand means "let me look elsewhere" — stop following, but do
+    // not interrupt the reading itself.
+    if (ttsIsPlayingRef.current) setFollowPaused(true);
     const next = pageIndex + delta * perView;
     // Turning past either edge continues into the neighbouring chapter, so a
     // book reads as one sequence of pages rather than per-chapter dead ends
@@ -951,6 +963,17 @@ export default function ReaderPage() {
     setPageIndex((prev) => (prev === target ? prev : target));
   }, [readerMode, perView, pageCount]);
 
+  // What SentenceReader calls as the spoken sentence advances.
+  const handleFollowSegment = useCallback((el: HTMLElement) => {
+    lastSpokenEl.current = el;
+    if (!followPaused) revealElement(el);
+  }, [followPaused, revealElement]);
+
+  const resumeFollowing = useCallback(() => {
+    setFollowPaused(false);
+    revealElement(lastSpokenEl.current);
+  }, [revealElement]);
+
   const revealSegment = useCallback((seg: number) => {
     revealElement(document.querySelector<HTMLElement>(`[data-seg="${seg}"]`));
   }, [revealElement]);
@@ -963,6 +986,11 @@ export default function ReaderPage() {
     if (pageCount <= perView) return 1;
     return Math.min(1, (pageIndex + perView) / pageCount);
   }, [readerMode, scrollProgress, pageIndex, pageCount, perView]);
+
+  useEffect(() => {
+    if (!ttsIsPlaying) setFollowPaused(false);
+  }, [ttsIsPlaying]);
+  useEffect(() => { setFollowPaused(false); }, [chapterIndex]);
 
   // Track scroll progress
   useEffect(() => {
@@ -2046,7 +2074,7 @@ export default function ReaderPage() {
       {/* Reading progress bar — always visible, even in immersive mode */}
       {chapters.length > 0 && (
         <div
-          className="h-1 bg-amber-100/80"
+          className="h-1 bg-amber-100/80 relative"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={100}
@@ -2054,10 +2082,35 @@ export default function ReaderPage() {
           aria-label="Reading progress"
           title={`${Math.round(((chapterIndex + chapterFraction) / chapters.length) * 100)}% through book`}
         >
+          {ttsLoading && ttsLoading.total > 0 && (
+            <>
+              <div
+                data-testid="tts-buffer"
+                className="absolute inset-y-0 left-0 bg-amber-300/70 animate-pulse rounded-r-full"
+                style={{ width: `${(ttsLoading.index / ttsLoading.total) * 100}%` }}
+                aria-hidden="true"
+              />
+              <span role="status" className="sr-only">
+                Generating audio, chunk {ttsLoading.index + 1} of {ttsLoading.total}
+              </span>
+            </>
+          )}
           <div
-            className="h-full bg-amber-500 transition-all duration-200 rounded-r-full"
+            className="relative h-full bg-amber-500 transition-all duration-200 rounded-r-full"
             style={{ width: `${((chapterIndex + chapterFraction) / chapters.length) * 100}%` }}
           />
+          {followPaused && ttsIsPlaying && (
+            <button
+              onClick={resumeFollowing}
+              data-testid="resume-following"
+              aria-label="Back to the line being read"
+              title="Back to the line being read"
+              className="absolute right-3 top-2 z-20 inline-flex items-center gap-1 rounded-full border border-amber-400 bg-white/95 backdrop-blur px-2.5 py-1 min-h-[44px] md:min-h-0 text-[11px] font-medium text-amber-800 shadow-sm hover:bg-amber-50 animate-fade-in focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <FollowLineIcon className="w-3.5 h-3.5 shrink-0" />
+              Back to reading
+            </button>
+          )}
         </div>
       )}
 
@@ -2235,7 +2288,7 @@ export default function ReaderPage() {
                   onActiveParagraphChange={handleActiveParagraphChange}
                   onParagraphTimingsUpdate={setParagraphTimings}
                   paginated={readerMode === "page"}
-                  onFollowSegment={revealElement}
+                  onFollowSegment={handleFollowSegment}
                 />
                 </div>
                 </div>
@@ -2260,6 +2313,11 @@ export default function ReaderPage() {
                     >Next page <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                   </div>
                 )}
+                {/* Chapter nav belongs to scroll mode. In page mode turns already
+                    carry across chapter boundaries, and this row sat behind the
+                    turn controls with its edges still clickable (owner,
+                    2026-08-31). */}
+                {readerMode !== "page" && (
                 <div className={`mt-10 flex justify-between ${translationEnabled && displayMode === "parallel" ? "max-w-7xl mx-auto" : "prose-reader mx-auto"}`}>
                   <button
                     data-testid="bottom-prev-chapter"
@@ -2277,6 +2335,7 @@ export default function ReaderPage() {
                     className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 disabled:opacity-30 min-h-[44px] md:min-h-0 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-1"
                   >Next chapter <ArrowRightIcon className="w-4 h-4" aria-hidden="true" /></button>
                 </div>
+                )}
               </>
             )}
           </div>
@@ -2870,6 +2929,7 @@ export default function ReaderPage() {
           {/* TTS + Recorder — hidden on mobile (controlled from bottom bar) */}
           <div className="hidden md:block border-t border-amber-200 shrink-0">
             <TTSControls
+              onLoadingStateChange={setTtsLoading}
               text={current?.text ?? ""}
               language={bookLanguage}
               bookId={Number(bookId)}

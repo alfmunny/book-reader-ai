@@ -755,6 +755,9 @@ export default function ReaderPage() {
   // The element a reflow should keep in view, and a mirror of pageIndex so the
   // measurement can read it without re-creating itself on every turn.
   const anchorEl = useRef<HTMLElement | null>(null);
+  // Scrolls we cause ourselves must not be mistaken for the reader scrolling
+  // away, which is what switches following off.
+  const selfScrollUntil = useRef(0);
   // Entering a chapter is a cut, not a turn: the transform would otherwise
   // animate across every page between the old index and the new one — most
   // visibly when turning back lands on the last page (owner, 2026-08-31).
@@ -978,7 +981,20 @@ export default function ReaderPage() {
   const revealElement = useCallback((el: HTMLElement | null) => {
     if (!el) return;
     if (readerMode !== "page") {
-      el.scrollIntoView({ block: "nearest" });
+      // Scroll only the reader, never the window: scrollIntoView on iOS Safari
+      // scrolls every ancestor and jumps the whole page (#1736).
+      const container = document.getElementById("reader-scroll");
+      if (!container) {
+        el.scrollIntoView({ block: "nearest" });
+        return;
+      }
+      const cRect = container.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      const relTop = eRect.top - cRect.top;
+      if (relTop < 0 || eRect.bottom - cRect.top > cRect.height) {
+        selfScrollUntil.current = performance.now() + 900;
+        container.scrollTo({ top: container.scrollTop + relTop - cRect.height / 3, behavior: "smooth" });
+      }
       return;
     }
     const flow = flowRef.current;
@@ -1094,6 +1110,20 @@ export default function ReaderPage() {
     setAudioChapter(next);
     if (following) goToChapter(next);
   }, [audioChapter, chapters.length, following]);
+
+  // Scrolling away by hand means "let me look elsewhere" — the same gesture a
+  // page turn is in page mode, and it has the same effect on following.
+  useEffect(() => {
+    if (readerMode === "page") return;
+    const el = document.getElementById("reader-scroll");
+    if (!el) return;
+    const onScroll = () => {
+      if (performance.now() < selfScrollUntil.current) return; // our own scroll
+      if (ttsIsPlayingRef.current) setFollowing(false);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [readerMode, loading, chapterIndex]);
 
   // Track scroll progress
   useEffect(() => {

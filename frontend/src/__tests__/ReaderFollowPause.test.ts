@@ -93,3 +93,26 @@ describe("the chapter heading is read aloud (owner, 2026-08-31)", () => {
     expect(src).toContain("const ch = chapters[audioChapter];");
   });
 });
+
+describe("scroll mode follows the same rule (owner, 2026-08-31)", () => {
+  it("routes both modes through one follow, so one toggle governs both", () => {
+    const reader = fs.readFileSync(path.join(__dirname, "../components/SentenceReader.tsx"), "utf8");
+    // SentenceReader used to scroll by itself whenever it was not paginated,
+    // which bypassed the toggle entirely.
+    expect(reader).toContain("if (followRef.current) {");
+    expect(reader).not.toContain("if (paginated && followRef.current) {");
+  });
+
+  it("scrolls the reader, not the window, when following in scroll mode", () => {
+    // scrollIntoView on iOS Safari scrolls every ancestor (#1736).
+    expect(src).toContain('const container = document.getElementById("reader-scroll");');
+    expect(src).toContain("container.scrollTo({ top: container.scrollTop + relTop - cRect.height / 3, behavior: \"smooth\" });");
+  });
+
+  it("treats scrolling away like a page turn", () => {
+    expect(src).toContain("if (ttsIsPlayingRef.current) setFollowing(false);");
+    // …but not the scrolling it does itself, or it would switch off instantly
+    expect(src).toContain("if (performance.now() < selfScrollUntil.current) return;");
+    expect(src).toContain("selfScrollUntil.current = performance.now() + 900;");
+  });
+});

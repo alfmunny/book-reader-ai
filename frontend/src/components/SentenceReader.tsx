@@ -728,7 +728,10 @@ export default function SentenceReader({
   useEffect(() => {
     if (currentIdx < 0 || !isPlaying || !activeRef.current) return;
     const el = activeRef.current;
-    if (paginated && followRef.current) {
+    // Both modes go through the reader's follow, so one rule — the follow
+    // toggle — governs paginated turning and scrolling alike (owner,
+    // 2026-08-31). It decides whether to move at all.
+    if (followRef.current) {
       followRef.current(el);
       return;
     }

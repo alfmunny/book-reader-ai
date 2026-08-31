@@ -57,8 +57,9 @@ describe("page-aware TTS follow (collision 2, #2786)", () => {
   it("hands audio-follow and the search jump to the reader when paginated", () => {
     expect(reader).toContain("paginated?: boolean;");
     expect(reader).toContain("onFollowSegment?: (el: HTMLElement) => void;");
-    // audio follow
-    expect(reader).toContain("if (paginated && followRef.current) {");
+    // audio follow — delegated in BOTH modes now, so the follow toggle
+    // governs scrolling as well as turning (2026-08-31)
+    expect(reader).toContain("if (followRef.current) {");
     // search jump target
     expect(reader).toContain("if (paginated && followRef.current) followRef.current(el);");
     expect(src).toContain('paginated={readerMode === "page"}');

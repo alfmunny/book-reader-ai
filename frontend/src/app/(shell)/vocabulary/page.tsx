@@ -542,9 +542,10 @@ function VocabularyPageContent() {
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/70 backdrop-blur px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
+      <header className="border-b border-amber-200 bg-white/70 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="font-serif font-bold text-ink truncate">Vocabulary</h1>
+          <h1 className="font-serif text-xl font-bold text-ink truncate">Vocabulary</h1>
           {!loading && (
             <p className="text-xs text-stone-600 mt-0.5">
               {words.length} word{words.length !== 1 ? "s" : ""} · {totalOccurrences} occurrence{totalOccurrences !== 1 ? "s" : ""}
@@ -583,6 +584,7 @@ function VocabularyPageContent() {
             },
           ]}
         />
+        </div>
       </header>
 
       <div role="status" aria-live="polite" aria-atomic="true" className="mx-6 mt-4">
@@ -609,7 +611,7 @@ function VocabularyPageContent() {
         {(search || selectedTag) ? `${filtered.length} word${filtered.length === 1 ? "" : "s"} found.` : ""}
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {words.length > 5 && (
           <div className="mb-6 space-y-3">
             <input

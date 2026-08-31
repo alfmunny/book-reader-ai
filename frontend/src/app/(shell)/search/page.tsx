@@ -209,9 +209,9 @@ function SearchResultsInner() {
 
 export default function SearchPage() {
   return (
-    <main id="main-content" className="max-w-3xl mx-auto p-4 md:p-8">
+    <main id="main-content" className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
       <div className="flex items-center gap-4 mb-6">
-        <h1 className="font-serif text-2xl text-ink">Search</h1>
+        <h1 className="font-serif text-xl font-bold text-ink">Search</h1>
       </div>
       <Suspense fallback={
         <div role="status" aria-label="Loading search" className="space-y-3 animate-pulse py-2">

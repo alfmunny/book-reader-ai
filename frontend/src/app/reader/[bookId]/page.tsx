@@ -974,7 +974,12 @@ export default function ReaderPage() {
       if (w > widest) { widest = w; column = c; }
     }
     const leaf = perView * Math.floor(column / perView);
-    const target = Math.max(0, Math.min(leaf, pageCount - 1));
+    // Derive the count here rather than trusting pageCount: if the last
+    // measurement predates a reflow (translations arriving, a version switch)
+    // a stale count clamps the target back onto the page already showing, and
+    // the reveal looks like it did nothing.
+    const live = Math.max(1, Math.round(flow.scrollWidth / step));
+    const target = Math.max(0, Math.min(leaf, live - 1));
     // Functional update, so this callback does not change identity on every
     // turn. It is a dependency of the follow effects; churning it re-fires
     // them, which snapped the reader back and made pages unturnable while
@@ -985,10 +990,13 @@ export default function ReaderPage() {
   // What SentenceReader calls as the spoken sentence advances.
   const handleFollowSegment = useCallback((el: HTMLElement) => {
     lastSpokenEl.current = el;
-    // Only track the line when it is actually on screen: the audio may be a
-    // chapter behind what is being viewed.
-    if (following && audioChapter === chapterIndex) revealElement(el);
-  }, [following, audioChapter, chapterIndex, revealElement]);
+    // Track the line only when it is really in the flow being read. Comparing
+    // audioChapter to chapterIndex was meant to express this, but it is
+    // bookkeeping about the DOM rather than the DOM — if the two drift for any
+    // reason the follow goes silent with nothing to show for it. Asking the
+    // flow whether it contains the element cannot drift (owner, 2026-08-31).
+    if (following && flowRef.current?.contains(el)) revealElement(el);
+  }, [following, revealElement]);
 
   const toggleFollowing = useCallback(() => {
     if (following) {

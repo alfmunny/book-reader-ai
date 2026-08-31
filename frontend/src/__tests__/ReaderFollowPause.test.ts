@@ -18,10 +18,21 @@ describe("following the line being read (owner, 2026-08-31)", () => {
     expect(src).toContain("if (ttsIsPlaying) setFollowing(true);");
   });
 
-  it("only tracks the line when it is actually on screen", () => {
-    expect(src).toContain("if (following && audioChapter === chapterIndex) revealElement(el);");
+  it("asks the flow whether it holds the line, rather than tracking indices", () => {
+    // audioChapter === chapterIndex was bookkeeping ABOUT the DOM; when the two
+    // drifted the follow went silent (owner, 2026-08-31 — highlight advanced,
+    // page never turned). containment cannot drift.
+    expect(src).toContain("if (following && flowRef.current?.contains(el)) revealElement(el);");
+    expect(src).not.toContain("audioChapter === chapterIndex");
     // the spoken element is recorded regardless, so the toggle has a target
     expect(src).toContain("lastSpokenEl.current = el;");
+  });
+
+  it("clamps the target against a page count derived at reveal time", () => {
+    // A count measured before a reflow clamps the target onto the page already
+    // showing, and the reveal silently does nothing.
+    expect(src).toContain("const live = Math.max(1, Math.round(flow.scrollWidth / step));");
+    expect(src).toContain("const target = Math.max(0, Math.min(leaf, live - 1));");
   });
 
   it("returns to the line however far away, including another chapter", () => {

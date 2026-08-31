@@ -8,6 +8,8 @@ import {
   saveDraftChapterMeta,
   saveDraftChapterStructure,
   suggestChapterSplit,
+  updateBookMeta,
+  getBookMeta,
   getFrozenSplit,
   saveFrozenSplit,
   DraftChapter,
@@ -42,10 +44,39 @@ export default function ChapterEditorPage() {
   // A confirmed book has no drafts left; its split is corrected in place instead.
   const [confirmed, setConfirmed] = useState(false);
   const [blocked, setBlocked] = useState<string | null>(null);
+  // The book's own name is a parser guess — usually the file's first line —
+  // and this page had no way to correct it (owner, 2026-08-31).
+  const [bookTitle, setBookTitle] = useState("");
+  const [titleDraft, setTitleDraft] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleBusy, setTitleBusy] = useState(false);
 
   useEffect(() => {
     document.title = "Review chapters — Book Reader AI";
   }, []);
+
+  useEffect(() => {
+    if (!bookId) return;
+    getBookMeta(Number(bookId))
+      .then((b) => { setBookTitle(b.title); setTitleDraft(b.title); })
+      .catch(() => { /* the heading simply stays generic */ });
+  }, [bookId]);
+
+  async function saveTitle() {
+    const next = titleDraft.trim();
+    if (!next || next === bookTitle) { setEditingTitle(false); setTitleDraft(bookTitle); return; }
+    setTitleBusy(true);
+    try {
+      const r = await updateBookMeta(Number(bookId), { title: next });
+      setBookTitle(r.title);
+      setTitleDraft(r.title);
+      setEditingTitle(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not rename the book.");
+    } finally {
+      setTitleBusy(false);
+    }
+  }
 
   const load = useCallback(() => {
     if (!bookId) return;
@@ -221,6 +252,40 @@ export default function ChapterEditorPage() {
               <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Bookshelf
             </Link>
             <h1 className="font-serif text-lg font-semibold text-ink">Review chapters</h1>
+            {bookTitle && !editingTitle && (
+              <button
+                onClick={() => setEditingTitle(true)}
+                data-testid="edit-book-title"
+                title="Rename this book"
+                className="text-sm text-stone-600 hover:text-amber-800 truncate max-w-[16rem] min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                {bookTitle} ✎
+              </button>
+            )}
+            {editingTitle && (
+              <span className="flex items-center gap-1.5">
+                <input
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveTitle();
+                    if (e.key === "Escape") { setEditingTitle(false); setTitleDraft(bookTitle); }
+                  }}
+                  aria-label="Book title"
+                  maxLength={300}
+                  autoFocus
+                  className="text-sm border border-amber-300 rounded px-2 py-1 w-56 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <button
+                  onClick={saveTitle}
+                  disabled={titleBusy}
+                  data-testid="save-book-title"
+                  className="text-xs px-2 py-1 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  {titleBusy ? "…" : "Save"}
+                </button>
+              </span>
+            )}
           </div>
           <p className="text-xs text-stone-600 m-0">
             {confirmed

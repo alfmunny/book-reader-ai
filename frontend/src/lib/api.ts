@@ -1270,6 +1270,17 @@ export function confirmChapters(bookId: number, chapters: { title: string; origi
   });
 }
 
+/** Correct an uploaded book's own name and author — parser guesses until now. */
+export function updateBookMeta(
+  bookId: number, data: { title?: string; author?: string },
+): Promise<{ ok: boolean; title: string; authors: string[] }> {
+  return request("/books/" + bookId + "/meta", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
 export function deleteUploadedBook(bookId: number): Promise<{ ok: boolean }> {
   return request("/books/upload/" + bookId, { method: "DELETE" });
 }

@@ -22,6 +22,7 @@ const DRAFT = [
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (api.getBookMeta as jest.Mock).mockResolvedValue({ id: 7, title: "My Test Novel" });
   (api.getDraftChapters as jest.Mock).mockResolvedValue({ chapters: DRAFT });
   (api.getFrozenSplit as jest.Mock).mockRejectedValue(new Error("no frozen split"));
   (api.saveDraftChapterStructure as jest.Mock).mockResolvedValue({ ok: true, chapter_count: 2 });
@@ -83,4 +84,19 @@ test("when nothing can be proposed the reason is shown", async () => {
     "No chapter structure could be identified.",
   );
   expect(api.saveDraftChapterStructure).not.toHaveBeenCalled();
+});
+
+test("the book's own title can be corrected from the review page", async () => {
+  (api.getBookMeta as jest.Mock).mockResolvedValue({ id: 7, title: "My Test Novel" });
+  (api.updateBookMeta as jest.Mock).mockResolvedValue({ ok: true, title: "不夜城", authors: [] });
+  render(<Page />);
+
+  fireEvent.click(await screen.findByTestId("edit-book-title"));
+  const input = screen.getByLabelText("Book title") as HTMLInputElement;
+  expect(input.value).toBe("My Test Novel");
+  fireEvent.change(input, { target: { value: "不夜城" } });
+  fireEvent.click(screen.getByTestId("save-book-title"));
+
+  await waitFor(() => expect(api.updateBookMeta).toHaveBeenCalledWith(7, { title: "不夜城" }));
+  expect(await screen.findByTestId("edit-book-title")).toHaveTextContent("不夜城");
 });

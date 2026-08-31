@@ -1224,3 +1224,37 @@ async def test_suggest_split_refuses_someone_elses_book(client, test_user):
     finally:
         app.dependency_overrides[get_current_user] = lambda: test_user
     assert resp.status_code in (403, 404)
+
+
+# ── Book title and author are editable (owner, 2026-08-31) ───────────────────
+
+async def test_book_meta_can_be_corrected(client, test_user):
+    """The parser guesses the title from the file's first line; the review
+    page had no way to fix a wrong guess."""
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    resp = await client.patch(f"/api/books/{book_id}/meta", json={
+        "title": "不夜城", "author": "馳星周",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "不夜城"
+    assert resp.json()["authors"] == ["馳星周"]
+
+    # blank author clears it; blank title is refused rather than stored
+    resp = await client.patch(f"/api/books/{book_id}/meta", json={"author": "  "})
+    assert resp.json()["authors"] == []
+    assert (await client.patch(f"/api/books/{book_id}/meta", json={})).status_code == 400
+
+
+async def test_book_meta_refused_for_someone_elses_upload(client, test_user):
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    other = await get_or_create_user(google_id="g-meta", email="m@e.com", name="M", picture="")
+    await set_user_role(other["id"], "user")
+
+    async def _other():
+        return other
+    app.dependency_overrides[get_current_user] = _other
+    try:
+        resp = await client.patch(f"/api/books/{book_id}/meta", json={"title": "X"})
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: test_user
+    assert resp.status_code in (403, 404)

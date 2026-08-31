@@ -503,6 +503,40 @@ async def put_draft_chapters(
     return {"ok": True, "chapter_count": len(body.chapters), "updated_at": stamp}
 
 
+class BookMetaUpdate(BaseModel):
+    """The book's own name and author — the parser's guess is often the first
+    line of the file, and until now there was no way to correct it."""
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+    author: str | None = Field(default=None, max_length=300)
+
+
+@router.patch("/{book_id}/meta")
+async def update_book_meta(
+    req: BookMetaUpdate,
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Rename an uploaded book (owner or admin). Gutenberg books keep their
+    catalogue titles — this is for uploads, whose titles are parser guesses."""
+    await _owned_upload(book_id, user)
+    sets, params = [], []
+    if req.title is not None and req.title.strip():
+        sets.append("title = ?")
+        params.append(req.title.strip())
+    if req.author is not None:
+        sets.append("authors = ?")
+        params.append(json.dumps([req.author.strip()] if req.author.strip() else []))
+    if not sets:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        await db.execute(
+            f"UPDATE books SET {', '.join(sets)} WHERE id = ?", (*params, book_id)
+        )
+        await db.commit()
+    book = await _db.get_cached_book(book_id)
+    return {"ok": True, "title": book["title"], "authors": book.get("authors") or []}
+
+
 @router.get("/uploads/mine")
 async def list_my_uploads(user: dict = Depends(get_current_user)):
     """Ids of books this reader uploaded themselves.

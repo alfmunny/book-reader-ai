@@ -1,4 +1,5 @@
 """The advisor proposes boundaries; the slicing is ours and must be exact."""
+import re
 import pytest
 
 from services.split_advisor import build_skeleton, slice_chapters, _valid_boundaries
@@ -84,3 +85,35 @@ def test_slicing_keeps_a_substantial_preamble_as_front_matter():
 
 def test_no_boundaries_means_no_proposal():
     assert slice_chapters(JAPANESE, []) == []
+
+
+def test_skeleton_finds_a_bare_numeral_under_a_formatting_directive():
+    """Aozora Bunko marks chapters with a bare full-width numeral sitting
+    directly under ［＃ここから７字下げ］ — no blank line above it. Requiring one
+    excluded all 71 chapters of the owner's Japanese novel (2026-08-31)."""
+    text = "［＃改ページ］\n［＃ここから７字下げ］\n１\n［＃ここで字下げ終わり］\n　本文がここから始まる。\n"
+    found = [t for _, t in build_skeleton(text)]
+    assert "１" in found
+
+
+def test_skeleton_ignores_dialogue_and_indented_prose():
+    text = "\n".join([
+        "１",
+        "　地の文はここに入る。字下げされている。",
+        "「これは台詞です」",
+        "『これも台詞』",
+    ])
+    found = [t for _, t in build_skeleton(text)]
+    assert found == ["１"]
+    assert not any(t.startswith("「") or t.startswith("『") for t in found)
+
+
+def test_reasoning_budget_is_large_enough_to_answer():
+    """deepseek-reasoner spends max_tokens on thinking BEFORE answering. At
+    8000 it returned finish_reason "length", 7,999 reasoning tokens and empty
+    content — a silent no-op that looked like "no structure found"
+    (owner, 2026-08-31)."""
+    import services.split_advisor as adv
+    src = open(adv.__file__).read()
+    budget = int(re.search(r'"max_tokens": (\d+),', src[src.index("DEEPSEEK_REASONER"):]).group(1))
+    assert budget >= 32000, "reasoning tokens come out of this budget"

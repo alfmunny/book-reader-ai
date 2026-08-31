@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 # missing a real heading here means it can never be proposed.
 _MAX_HEADING_CHARS = 90
 _MAX_CANDIDATES = 400
+# Short enough to be a bare chapter mark: "1", "１", "IV", "第一章".
+_SHORT_HEADING_CHARS = 12
+_DIALOGUE_OPENERS = "「『（(\"'\u201c\u201d\u2018\u2019《"
 # A contents-page entry is one line under a heading. A real chapter is either
 # several lines or one substantial paragraph. Counting characters alone
 # misjudges dense scripts, where a full paragraph of Japanese is short.
@@ -60,8 +63,8 @@ Rules:
 def build_skeleton(text: str) -> list[tuple[int, str]]:
     """Lines that could plausibly be headings, as (line number, text).
 
-    Works on shape rather than vocabulary — length, isolation, absence of
-    sentence punctuation — so it does not favour any language.
+    Judged on shape — length, indentation, isolation, whether it reads as a
+    sentence — never on vocabulary, so no language is favoured.
     """
     lines = text.split("\n")
     out: list[tuple[int, str]] = []
@@ -69,15 +72,23 @@ def build_skeleton(text: str) -> list[tuple[int, str]]:
         line = raw.strip()
         if not line or len(line) > _MAX_HEADING_CHARS:
             continue
-        # A heading sits alone: blank line before or at the very start.
-        alone = i == 0 or not lines[i - 1].strip()
-        if not alone:
+        # Prose is indented in many typesettings; headings are not.
+        indented = raw[:1] in ("\u3000", "\t", " ")
+        # Dialogue opens with a quotation mark in every script that has one.
+        if line[0] in _DIALOGUE_OPENERS:
             continue
-        # Sentences end in punctuation and headings usually do not, but a
-        # numbered heading like "1." does — so only reject long prose.
         if len(line) > 40 and line[-1] in ".!?。！？":
             continue
-        out.append((i, line))
+        alone = i == 0 or not lines[i - 1].strip()
+        if alone and not indented:
+            out.append((i, line))
+            continue
+        # A heading need not have a blank line above it. Aozora Bunko marks
+        # chapters with a bare numeral directly under a formatting directive
+        # (［＃ここから７字下げ］), so requiring one excluded every chapter of a
+        # Japanese novel — 71 of them (owner, 2026-08-31).
+        if not indented and len(line) <= _SHORT_HEADING_CHARS and not line.endswith("。"):
+            out.append((i, line))
     return out[:_MAX_CANDIDATES]
 
 
@@ -186,7 +197,11 @@ async def _ask(listing: str, deepseek_key: str | None) -> str:
                         {"role": "system", "content": SYSTEM},
                         {"role": "user", "content": listing},
                     ],
-                    "max_tokens": 8000,
+                    # Reasoning tokens come out of this budget. At 8000 the
+                    # model spent all of it thinking — 7,999 reasoning tokens,
+                    # finish_reason "length", empty content — and answered
+                    # nothing (owner, 2026-08-31).
+                    "max_tokens": 32000,
                 },
             )
             resp.raise_for_status()

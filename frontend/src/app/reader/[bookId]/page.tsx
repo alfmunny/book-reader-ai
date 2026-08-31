@@ -892,8 +892,19 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (readerMode !== "page") return;
+    // Watch the reader BOX, not just the window. Opening the sidebar, the
+    // translate panel or the notes panel resizes the reader without resizing
+    // the window, and the columns kept their old width — so the visible halves
+    // no longer matched the page indices and turns landed a page out (owner,
+    // 2026-08-31).
+    const box = document.getElementById("reader-scroll");
+    const ro = box ? new ResizeObserver(() => measurePages()) : null;
+    if (box && ro) ro.observe(box);
     window.addEventListener("resize", measurePages);
-    return () => window.removeEventListener("resize", measurePages);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measurePages);
+    };
   }, [readerMode, measurePages]);
 
   // Apply the turn. Kept separate from measurement so a page change is one

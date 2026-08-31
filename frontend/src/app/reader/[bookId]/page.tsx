@@ -878,7 +878,10 @@ export default function ReaderPage() {
       setPageIndex(wantLastPage.current ? columns * Math.floor((count - 1) / columns) : 0);
       wantLastPage.current = false;
     } else {
-      setPageIndex((i) => Math.min(i, count - 1));
+      // Same rule on reflow: snap back to a leaf start, never to count - 1,
+      // which is an odd column whenever count is even.
+      const lastLeaf = columns * Math.floor(Math.max(0, count - 1) / columns);
+      setPageIndex((i) => columns * Math.floor(Math.min(i, lastLeaf) / columns));
     }
   }, [readerMode, chapterIndex]);
 
@@ -979,7 +982,13 @@ export default function ReaderPage() {
     // a stale count clamps the target back onto the page already showing, and
     // the reveal looks like it did nothing.
     const live = Math.max(1, Math.round(flow.scrollWidth / step));
-    const target = Math.max(0, Math.min(leaf, live - 1));
+    // Clamp to the last LEAF, not the last column. Math.min(leaf, live - 1)
+    // lands on an odd column whenever live is even, and from then on every
+    // leaf boundary is off by one: reading the right-hand page computes a
+    // different leaf and turns, while the left-hand page turns backwards
+    // (owner diagnosis, 2026-08-31).
+    const lastLeaf = perView * Math.floor(Math.max(0, live - 1) / perView);
+    const target = Math.max(0, Math.min(leaf, lastLeaf));
     // Functional update, so this callback does not change identity on every
     // turn. It is a dependency of the follow effects; churning it re-fires
     // them, which snapped the reader back and made pages unturnable while

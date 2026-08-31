@@ -301,3 +301,30 @@ test("the chapter nav row is gone in page mode", async ({ page }) => {
   await expect(page.getByTestId("bottom-prev-chapter")).toHaveCount(0);
   await expect(page.getByTestId("bottom-next-chapter")).toHaveCount(0);
 });
+
+test("the leaf never lands on an odd column in a spread", async ({ page }) => {
+  // Owner diagnosis, 2026-08-31: the page turned when reading reached the
+  // RIGHT half instead of when leaving it. That is what an odd pageIndex does
+  // — the leaf boundaries sit one column off, so the right-hand page computes
+  // a different leaf. Clamping to `count - 1` produced exactly that whenever
+  // the count was even.
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await enterPageMode(page);
+  expect(await perView(page)).toBe(2);
+
+  // Walk to the very end, where the clamp bites, and back.
+  for (let i = 0; i < 40; i++) {
+    const { first, total } = await readPos(page);
+    if (first + 2 > total) break;
+    await page.getByRole("button", { name: "Next page" }).click();
+  }
+  // Every position reached must be the start of a leaf: odd firsts (1-based
+  // even index) mean the halves are misaligned.
+  for (let i = 0; i < 6; i++) {
+    const { first } = await readPos(page);
+    expect((first - 1) % 2).toBe(0);
+    const prev = page.getByRole("button", { name: "Previous page" });
+    if (await prev.isDisabled()) break; // reached the start of the book
+    await prev.click();
+  }
+});

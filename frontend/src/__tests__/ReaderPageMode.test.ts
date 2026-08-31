@@ -32,8 +32,9 @@ describe("reader page mode — slice 1 (design: reading-modes.md, #2784)", () =>
   it("derives the page count from the laid-out flow width", () => {
     expect(src).toContain("flow.scrollWidth / step");
     expect(src).toContain("Math.max(1,");
-    // and never lets a stale index outlive a reflow
-    expect(src).toContain("setPageIndex((i) => Math.min(i, count - 1))");
+    // and never lets a stale index outlive a reflow — snapping to a leaf
+    // start, since count - 1 is an odd column when count is even
+    expect(src).toContain("setPageIndex((i) => columns * Math.floor(Math.min(i, lastLeaf) / columns));");
   });
 
   it("re-measures whenever anything that reflows the text changes", () => {

@@ -32,7 +32,10 @@ describe("following the line being read (owner, 2026-08-31)", () => {
     // A count measured before a reflow clamps the target onto the page already
     // showing, and the reveal silently does nothing.
     expect(src).toContain("const live = Math.max(1, Math.round(flow.scrollWidth / step));");
-    expect(src).toContain("const target = Math.max(0, Math.min(leaf, live - 1));");
+    // …and clamps to the last LEAF, not the last column: count - 1 is an odd
+    // column whenever the count is even, which misaligns every later leaf.
+    expect(src).toContain("const lastLeaf = perView * Math.floor(Math.max(0, live - 1) / perView);");
+    expect(src).toContain("const target = Math.max(0, Math.min(leaf, lastLeaf));");
   });
 
   it("returns to the line however far away, including another chapter", () => {

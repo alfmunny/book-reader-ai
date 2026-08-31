@@ -40,22 +40,25 @@ describe("TTS chunk progress (closes #1653, relocated 2026-08-31)", () => {
     expect(reader).not.toContain('data-testid="tts-buffer"');
     expect(controls).toContain('data-testid="chunk-bar"');
     // one segment per chunk, buffered solid and pending faint
-    expect(controls).toContain('c.duration > 0\n                        ? "bg-stone-400"');
+    expect(controls).toMatch(/c\.duration > 0\s*\?\s*"bg-stone-400"/);
     expect(controls).toContain('"bg-stone-200"');
   });
 
-  it("keeps the axis on chunk count, not on a duration that grows", () => {
-    // Equal-width segments cannot rescale; a time axis lengthens with every
-    // chunk that arrives and drags the fill backwards.
-    expect(controls).toContain("{allChunks.map((c, i) => {");
-    expect(controls).toContain("const start = allChunks.slice(0, i).reduce((sum, x) => sum + x.duration, 0);");
-    expect(controls).toContain("Math.max(0, Math.min(1, (globalCurrentTime - start) / c.duration))");
+  it("weights segments by chunk length, on an axis that cannot rescale", () => {
+    // Character counts are known when the text is split; durations are not,
+    // and a duration axis lengthens with every chunk that arrives.
+    expect(controls).toContain("const weights = allChunks.map((c) => Math.max(1, c.text.length));");
+    expect(controls).toContain("style={{ flexGrow: weights[i], flexBasis: 0 }}");
   });
 
-  it("keeps the bar seekable and keyboard-reachable", () => {
-    // The native range still owns interaction; it is laid transparently over
-    // the segments so there is one bar, not two.
+  it("keeps the bar seekable, grabbable and keyboard-reachable", () => {
+    // The range is transparent so the segments show through, which left no
+    // visible handle and a 6px hit area — unusable (owner, 2026-08-31).
     expect(controls).toContain('className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"');
     expect(controls).toContain('aria-label="Playback position"');
+    expect(controls).toContain('<div className="relative flex-1 min-w-0 py-2">');
+    // an explicit playhead, since the native thumb is invisible
+    expect(controls).toContain("rounded-full bg-amber-700 ring-2 ring-white");
+    expect(controls).toContain("left: `${Math.max(0, Math.min(100, headPct))}%`");
   });
 });

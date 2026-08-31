@@ -434,3 +434,51 @@ test.describe("TTS highlight — real API (skipped unless PLAYWRIGHT_REAL_TTS=1)
     expect(samples.some((s) => s.text !== null)).toBe(true);
   });
 });
+
+test.describe("segmented seek bar", () => {
+  test.beforeEach(async ({ page }) => {
+    await setupTtsReader(page);
+    await page.goto("/reader/1342");
+    await expect(page.getByText(TTS_CHAPTER_TEXT.slice(0, 20), { exact: false })).toBeVisible({ timeout: 10000 });
+  });
+
+  test("the bar is seekable and shows a playhead", async ({ page }) => {
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+
+    const slider = page.getByRole("slider", { name: "Playback position" });
+    await expect(slider).toBeVisible();
+    // The transparent range still owns interaction — it must be hit-testable,
+    // which a zero-height container would silently prevent.
+    const box = (await slider.boundingBox())!;
+    expect(box.height).toBeGreaterThan(8);
+    expect(box.width).toBeGreaterThan(50);
+
+    // Seeking moves the audio, and the playhead follows
+    const headBefore = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>("[data-testid='chunk-bar']")!
+        .parentElement!.querySelector<HTMLElement>("span.rounded-full.bg-amber-700")!;
+      return el.style.left;
+    });
+    await slider.fill("2");
+    await expect.poll(async () => Number(await slider.inputValue())).toBeGreaterThan(1);
+    const headAfter = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>("[data-testid='chunk-bar']")!
+        .parentElement!.querySelector<HTMLElement>("span.rounded-full.bg-amber-700")!;
+      return el.style.left;
+    });
+    expect(headAfter).not.toBe(headBefore);
+  });
+
+  test("segments are weighted by chunk length, not split evenly", async ({ page }) => {
+    await page.getByRole("button", { name: "Read", exact: true }).click();
+    await waitForPlaying(page);
+    const grows = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>("[data-testid='chunk-bar'] > span"))
+        .map((s) => s.style.flexGrow),
+    );
+    expect(grows.length).toBeGreaterThan(0);
+    // flexGrow carries the character count, so it is never the default "1"
+    for (const g of grows) expect(Number(g)).toBeGreaterThan(1);
+  });
+});

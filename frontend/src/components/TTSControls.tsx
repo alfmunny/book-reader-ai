@@ -514,45 +514,74 @@ export default function TTSControls({
           <span className="text-xs text-amber-700 tabular-nums w-10 text-right">
             {formatTime(globalCurrentTime)}
           </span>
-          <div className="relative flex-1 min-w-0">
-            <div className="flex gap-px" data-testid="chunk-bar" aria-hidden="true">
-              {allChunks.map((c, i) => {
-                const start = allChunks.slice(0, i).reduce((sum, x) => sum + x.duration, 0);
-                const played = c.duration > 0
-                  ? Math.max(0, Math.min(1, (globalCurrentTime - start) / c.duration))
-                  : 0;
-                return (
-                  <span
-                    key={i}
-                    title={c.text ? `${i + 1}. ${c.text.replace(/\s+/g, " ").trim().slice(0, 80)}…` : undefined}
-                    className={`relative h-1.5 flex-1 overflow-hidden first:rounded-l-full last:rounded-r-full transition-colors ${
-                      c.duration > 0
-                        ? "bg-stone-400"
-                        : loadingState && i === loadingState.index
-                          ? "bg-stone-300 animate-pulse"
-                          : "bg-stone-200"
-                    }`}
-                  >
+          {(() => {
+            // Segment widths follow each chunk's TEXT LENGTH, not an equal
+            // share: chunks differ in size, so equal segments misrepresented
+            // how much of the chapter each one covers (owner, 2026-08-31).
+            // Character counts are known the moment the text is split, so the
+            // axis is fixed from the first frame and never rescales.
+            const weights = allChunks.map((c) => Math.max(1, c.text.length));
+            const totalWeight = weights.reduce((a, b) => a + b, 0) || 1;
+
+            // Walk the loaded durations to find the chunk being spoken and how
+            // far into it the playhead is.
+            let acc = 0;
+            let activeIdx = 0;
+            let frac = 0;
+            for (let i = 0; i < allChunks.length; i++) {
+              const d = allChunks[i].duration;
+              if (d > 0 && globalCurrentTime >= acc + d) { acc += d; activeIdx = i + 1; continue; }
+              activeIdx = i;
+              frac = d > 0 ? Math.max(0, Math.min(1, (globalCurrentTime - acc) / d)) : 0;
+              break;
+            }
+            const before = weights.slice(0, activeIdx).reduce((a, b) => a + b, 0);
+            const headPct = ((before + frac * (weights[activeIdx] ?? 0)) / totalWeight) * 100;
+
+            return (
+              <div className="relative flex-1 min-w-0 py-2">
+                <div className="flex gap-px" data-testid="chunk-bar" aria-hidden="true">
+                  {allChunks.map((c, i) => (
                     <span
-                      className="absolute inset-y-0 left-0 bg-amber-600"
-                      style={{ width: `${played * 100}%` }}
-                    />
-                  </span>
-                );
-              })}
-            </div>
-          <input
-            type="range"
-            min={0}
-            max={globalDuration}
-            step={0.1}
-            value={globalCurrentTime}
-            onChange={(e) => seekTo(Number(e.target.value))}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            aria-label="Playback position"
-            aria-valuetext={formatTime(globalCurrentTime)}
-          />
-          </div>
+                      key={i}
+                      style={{ flexGrow: weights[i], flexBasis: 0 }}
+                      title={c.text ? `${i + 1}. ${c.text.replace(/\s+/g, " ").trim().slice(0, 80)}…` : undefined}
+                      className={`relative h-1.5 overflow-hidden first:rounded-l-full last:rounded-r-full transition-colors ${
+                        c.duration > 0
+                          ? "bg-stone-400"
+                          : loadingState && i === loadingState.index
+                            ? "bg-stone-300 animate-pulse"
+                            : "bg-stone-200"
+                      }`}
+                    >
+                      <span
+                        className="absolute inset-y-0 left-0 bg-amber-600"
+                        style={{ width: `${i < activeIdx ? 100 : i === activeIdx ? frac * 100 : 0}%` }}
+                      />
+                    </span>
+                  ))}
+                </div>
+                {/* The playhead. The range input is transparent so the segments
+                    show through, which left no visible handle at all. */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-700 ring-2 ring-white shadow-sm"
+                  style={{ left: `${Math.max(0, Math.min(100, headPct))}%` }}
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={globalDuration}
+                  step={0.1}
+                  value={globalCurrentTime}
+                  onChange={(e) => seekTo(Number(e.target.value))}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  aria-label="Playback position"
+                  aria-valuetext={formatTime(globalCurrentTime)}
+                />
+              </div>
+            );
+          })()}
           <span className="text-xs text-amber-700 tabular-nums w-10">
             {formatTime(globalDuration)}
           </span>

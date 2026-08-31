@@ -956,11 +956,26 @@ export default function ReaderPage() {
     const flow = flowRef.current;
     const step = colStep.current;
     if (!flow || !step) return;
-    // The flow's own rect moves with the transform, so the difference between
+    // The flow's own rect moves with the transform, so a difference between
     // the two rects is already in untranslated flow coordinates — adding the
     // current page offset here would double-count it.
-    const x = el.getBoundingClientRect().left - flow.getBoundingClientRect().left;
-    const column = Math.floor(x / step);
+    const origin = flow.getBoundingClientRect().left;
+    // A sentence that wraps across a column break has fragments in two
+    // columns, and getBoundingClientRect() returns their UNION — whose left
+    // edge sits in the earlier one. Following it landed a page behind the line
+    // being read (owner, 2026-08-31). Weigh the fragments and take the column
+    // holding most of the sentence.
+    const widthByColumn = new Map<number, number>();
+    const rects = Array.from(el.getClientRects());
+    for (const r of rects.length ? rects : [el.getBoundingClientRect()]) {
+      const c = Math.floor((r.left - origin) / step);
+      widthByColumn.set(c, (widthByColumn.get(c) ?? 0) + r.width);
+    }
+    let column = 0;
+    let widest = -1;
+    for (const [c, w] of widthByColumn) {
+      if (w > widest) { widest = w; column = c; }
+    }
     const leaf = perView * Math.floor(column / perView);
     const target = Math.max(0, Math.min(leaf, pageCount - 1));
     // Functional update, so this callback does not change identity on every
@@ -2972,7 +2987,7 @@ export default function ReaderPage() {
                 past a boundary used to stop playback (owner, 2026-08-31). */}
             <TTSControls
               onLoadingStateChange={setTtsLoading}
-              following={ttsIsPlaying || audioChapter !== chapterIndex ? following : undefined}
+              following={following}
               onToggleFollow={toggleFollowing}
               onChapterFinished={handleChapterFinished}
               text={spokenText}

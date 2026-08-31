@@ -544,9 +544,22 @@ export default function TTSControls({
         <span>{rate.toFixed(1)}×</span>
       </label>
 
-      {/* Chunk-generation progress is reported upward and drawn as buffering
-          inside the reading progress bar — it used to be a heading, a bar and
-          a preview line stacked here (owner, 2026-08-31). */}
+      {/* One compact line, not the heading/bar/preview stack this replaced:
+          how far generation has got, and which line is being generated
+          (owner, 2026-08-31). The bar itself lives in the reading progress bar. */}
+      {loadingState && (
+        <div
+          data-testid="tts-generating"
+          className="w-full flex items-baseline gap-2 text-[11px] text-amber-800 min-w-0"
+        >
+          <span className="font-medium tabular-nums shrink-0">
+            Generating {loadingState.index + 1}/{loadingState.total}
+          </span>
+          <span className="flex-1 min-w-0 truncate italic text-stone-600" title={loadingState.preview}>
+            &ldquo;{loadingState.preview}…&rdquo;
+          </span>
+        </div>
+      )}
 
       {status === "error" && errorMsg && (
         <p role="alert" className="text-xs text-red-600 w-full">{errorMsg}</p>

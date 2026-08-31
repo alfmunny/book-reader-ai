@@ -34,8 +34,12 @@ describe("page-aware TTS follow (collision 2, #2786)", () => {
     expect(src).toContain('el.scrollIntoView({ block: "nearest" });');
     // Both rects move with the transform, so their difference is already
     // untranslated — adding the page offset would double-count it.
-    expect(src).toContain("const column = Math.floor(x / step);");
     expect(src).not.toContain("x + pageIndex * step");
+    // A wrapped sentence has fragments in two columns; the union rect starts
+    // in the earlier one, which landed the reader a page behind the line.
+    expect(src).toContain("const rects = Array.from(el.getClientRects());");
+    expect(src).toContain("widthByColumn.set(c, (widthByColumn.get(c) ?? 0) + r.width);");
+    expect(src).toContain("if (w > widest) { widest = w; column = c; }");
     expect(src).toContain("perView * Math.floor(column / perView)");
   });
 

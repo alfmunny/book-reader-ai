@@ -17,16 +17,21 @@ const reader = fs.readFileSync(
 );
 
 describe("TTS chunk progress (closes #1653, relocated 2026-08-31)", () => {
-  it("no longer stacks a heading, bar and preview above the controls", () => {
+  it("no longer stacks a heading, its own bar and a preview above the controls", () => {
     expect(controls).not.toContain("Generating chunk");
     expect(controls).not.toContain("TTS audio loading progress");
-    // The preview line went with it — TTSLoadingPreviewTitle.test.ts guarded a
-    // tooltip on that element and was removed with it (2026-08-31).
-    expect(controls).not.toContain("loadingState.preview}…");
+    // The count and the line being generated are back by request, but as ONE
+    // compact row — the height was the complaint, not the information.
+    expect(controls).toContain('data-testid="tts-generating"');
+    expect(controls).toContain("Generating {loadingState.index + 1}/{loadingState.total}");
+    // truncated, so it cannot grow the row; the full line is in the tooltip
+    expect(controls).toContain("truncate");
+    expect(controls).toContain("title={loadingState.preview}");
   });
 
   it("reports progress upward instead of rendering it", () => {
     expect(controls).toContain("onLoadingStateChange");
+    // the bar itself still lives in the reading progress bar
     expect(controls).toContain("useEffect(() => { onLoadingStateRef.current?.(loadingState); }, [loadingState]);");
   });
 

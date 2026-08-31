@@ -187,7 +187,10 @@ async def _ask(listing: str, deepseek_key: str | None) -> str:
 
         from services.deepseek import DEEPSEEK_API_URL
 
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        # Thinking about a few hundred candidate lines takes minutes on a
+        # full-length novel — 215s for the owner's 78-chapter book. A 180s
+        # timeout cut it off just before the answer arrived.
+        async with httpx.AsyncClient(timeout=600.0) as client:
             resp = await client.post(
                 DEEPSEEK_API_URL,
                 headers={"Authorization": f"Bearer {deepseek_key}"},

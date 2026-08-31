@@ -20,6 +20,8 @@ jest.mock("@/lib/api", () => ({
   getFrozenSplit: (...a: unknown[]) => mockGetFrozenSplit(...a),
   saveFrozenSplit: (...a: unknown[]) => mockSaveFrozenSplit(...a),
   getDraftChapters: jest.fn(),
+  getBookMeta: jest.fn().mockResolvedValue({ id: 7, title: "T" }),
+  updateBookMeta: jest.fn(),
   confirmChapters: jest.fn(),
   ApiError: class ApiError extends Error {
     constructor(message: string) {

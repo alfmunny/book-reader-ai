@@ -401,6 +401,69 @@ async def patch_draft_chapters(
     return {"ok": True, "updated_at": stamp}
 
 
+class SplitSuggestRequest(BaseModel):
+    """The reader's own instruction — how this book marks a paragraph,
+    headings to ignore, anything the opening alone does not reveal."""
+    requirements: str | None = Field(default=None, max_length=600)
+
+
+@router.post("/{book_id}/chapters/suggest")
+async def suggest_chapter_split(
+    req: SplitSuggestRequest | None = None,
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Propose a chapter split for a draft book, without changing anything.
+
+    The model sees only the book's OPENING and infers a rule — what a heading
+    looks like in this particular book. The rule is applied here, to the whole
+    text, deterministically: one small request whatever the book's length, and
+    a rule the reader can read and judge.
+
+    The reader applies the result through the existing draft endpoint, so an AI
+    proposal goes through the same review screen every upload does. Opt-in by
+    construction: nothing calls this unless the reader asks.
+    """
+    await _owned_draft_book(book_id, user)
+
+    rows = await get_user_book_chapters(book_id, include_drafts=True)
+    if not rows:
+        raise HTTPException(status_code=400, detail="No draft chapters to work from")
+
+    # Reassemble what the reader uploaded. Headings live in the chapter titles
+    # once a split exists, so they go back into the text or a re-split cannot
+    # see them.
+    parts: list[str] = []
+    for r in rows:
+        title = (r["title"] or "").strip()
+        body = (r["text"] or "").strip()
+        parts.append(f"{title}\n\n{body}" if title else body)
+    text = "\n\n".join(parts)
+
+    from services.auth import decrypt_api_key
+    from services.split_advisor import suggest_split_from_rule
+
+    # The reader's own DeepSeek key drives it when they have one — their
+    # thinking model, their spend. Falls back to the server's Claude.
+    raw_key = user.get("deepseek_key")
+    key = None
+    if raw_key:
+        try:
+            key = decrypt_api_key(raw_key)
+        except Exception:
+            key = None
+
+    result = await suggest_split_from_rule(
+        text, deepseek_key=key, requirements=(req.requirements if req else None)
+    )
+    if not result["chapters"]:
+        raise HTTPException(
+            status_code=422,
+            detail=result.get("notes") or "No chapter structure could be identified.",
+        )
+    return result
+
+
 @router.put("/{book_id}/chapters/draft")
 async def put_draft_chapters(
     body: DraftStructureBody,
@@ -438,6 +501,40 @@ async def put_draft_chapters(
     from services.book_chapters import clear_cache as _clear_chapter_cache
     _clear_chapter_cache(book_id)
     return {"ok": True, "chapter_count": len(body.chapters), "updated_at": stamp}
+
+
+class BookMetaUpdate(BaseModel):
+    """The book's own name and author — the parser's guess is often the first
+    line of the file, and until now there was no way to correct it."""
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+    author: str | None = Field(default=None, max_length=300)
+
+
+@router.patch("/{book_id}/meta")
+async def update_book_meta(
+    req: BookMetaUpdate,
+    book_id: int = Path(..., ge=1),
+    user: dict = Depends(get_current_user),
+):
+    """Rename an uploaded book (owner or admin). Gutenberg books keep their
+    catalogue titles — this is for uploads, whose titles are parser guesses."""
+    await _owned_upload(book_id, user)
+    sets, params = [], []
+    if req.title is not None and req.title.strip():
+        sets.append("title = ?")
+        params.append(req.title.strip())
+    if req.author is not None:
+        sets.append("authors = ?")
+        params.append(json.dumps([req.author.strip()] if req.author.strip() else []))
+    if not sets:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    async with aiosqlite.connect(_db.DB_PATH) as db:
+        await db.execute(
+            f"UPDATE books SET {', '.join(sets)} WHERE id = ?", (*params, book_id)
+        )
+        await db.commit()
+    book = await _db.get_cached_book(book_id)
+    return {"ok": True, "title": book["title"], "authors": book.get("authors") or []}
 
 
 @router.get("/uploads/mine")
@@ -654,6 +751,28 @@ async def delete_uploaded_book(book_id: int = Path(..., ge=1), user: dict = Depe
         await db.execute("DELETE FROM user_reading_progress WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM user_book_chapters WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM book_uploads WHERE book_id=?", (book_id,))
+        # Phase-2 tables (#2752) post-date this delete and FK enforcement is
+        # off, so without these the rows leak: versions, their paragraphs,
+        # posts and notes, whole-version reactions, and the freeze row —
+        # exactly what the admin confirm promises goes with the book
+        # (owner, 2026-08-31).
+        await db.execute(
+            "DELETE FROM translation_session_paragraphs WHERE session_id IN "
+            "(SELECT id FROM translation_sessions WHERE book_id=?)", (book_id,))
+        await db.execute(
+            "DELETE FROM reactions WHERE target_kind='session' AND target_id IN "
+            "(SELECT id FROM translation_sessions WHERE book_id=?)", (book_id,))
+        await db.execute(
+            "DELETE FROM reactions WHERE target_kind='story' AND target_id IN "
+            "(SELECT id FROM stories WHERE book_id=?)", (book_id,))
+        await db.execute(
+            "DELETE FROM story_comments WHERE story_id IN "
+            "(SELECT id FROM stories WHERE book_id=?) OR session_id IN "
+            "(SELECT id FROM translation_sessions WHERE book_id=?) OR book_id=?",
+            (book_id, book_id, book_id))
+        await db.execute("DELETE FROM stories WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM translation_sessions WHERE book_id=?", (book_id,))
+        await db.execute("DELETE FROM book_freeze WHERE book_id=?", (book_id,))
         await db.execute("DELETE FROM books WHERE id=?", (book_id,))
         await db.commit()
     from services.book_chapters import clear_cache as _clear_chapter_cache

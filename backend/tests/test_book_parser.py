@@ -374,3 +374,41 @@ def test_extract_title_returns_untitled_when_all_lines_exceed_100_chars():
     long_line = "x" * 101
     text = "\n".join([long_line] * 25)
     assert _extract_title(text) == "Untitled"
+
+
+def test_fallback_split_keeps_line_breaks():
+    """A book with no recognisable headings still keeps its shape.
+
+    The fallback used to chunk a flat word list and rejoin with spaces, so a
+    Japanese upload became one 248,000-character paragraph — nothing to review,
+    and nothing for a re-split to find (owner, 2026-08-31).
+    """
+    from services.book_parser import parse_txt
+
+    body = "\n".join(f"これは第{i}行目です。" for i in range(400))
+    parsed = parse_txt(body)
+
+    joined = "\n".join(c["text"] for c in parsed["chapters"])
+    assert "\n" in joined, "line breaks were flattened"
+    # every line survives, and none were welded together
+    assert joined.count("これは第") == 400
+    assert "です。これは第" not in joined
+
+
+def test_detect_language_reads_the_script():
+    from services.book_parser import detect_language
+    assert detect_language("吾輩は猫である。名前はまだ無い。どこで生れたか頓と見当がつかぬ。") == "ja"
+    assert detect_language("的一个人在城市里走着，天空很蓝，风也很轻，街道安静极了。") == "zh"
+    assert detect_language("Он вышел из дома и пошёл по улице, думая о вчерашнем дне.") == "ru"
+    assert detect_language("It was a bright cold day in April, and the clocks were striking.") == "en"
+
+
+def test_detect_language_is_not_swayed_by_a_borrowed_word():
+    from services.book_parser import detect_language
+    text = "It was a bright cold day in April. The sign read 東京 and nothing more."
+    assert detect_language(text) == "en"
+
+
+def test_detect_language_falls_back_for_empty_text():
+    from services.book_parser import detect_language
+    assert detect_language("   \n\n  ") == "en"

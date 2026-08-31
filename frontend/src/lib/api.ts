@@ -1189,6 +1189,26 @@ export function saveDraftChapterMeta(
   });
 }
 
+/** Ask for a chapter split. Advisory only — nothing changes until the reader
+ *  applies it through saveDraftChapterStructure. */
+export function suggestChapterSplit(bookId: number, requirements?: string): Promise<{
+  chapters: { title: string; text: string }[];
+  /** The inferred rule, so the reader can judge it rather than the output. */
+  rule?: {
+    heading_pattern?: string; exclude_pattern?: string | null;
+    require_unindented?: boolean; paragraph_mode?: string;
+  } | null;
+  language?: string | null;
+  notes?: string;
+  sample_lines?: number;
+}> {
+  return request("/books/" + bookId + "/chapters/suggest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requirements: requirements?.trim() || null }),
+  });
+}
+
 /** Replace the whole draft structure. Used after a split or merge moves text. */
 export function saveDraftChapterStructure(
   bookId: number,
@@ -1247,6 +1267,28 @@ export function confirmChapters(bookId: number, chapters: { title: string; origi
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chapters }),
+  });
+}
+
+/** Which of these book ids still exist — the shelf reconciles its
+ *  localStorage recents against this, since a server delete cannot reach
+ *  localStorage. */
+export function booksExist(ids: number[]): Promise<{ existing: number[] }> {
+  return request("/books/exists", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+}
+
+/** Correct an uploaded book's own name and author — parser guesses until now. */
+export function updateBookMeta(
+  bookId: number, data: { title?: string; author?: string },
+): Promise<{ ok: boolean; title: string; authors: string[] }> {
+  return request("/books/" + bookId + "/meta", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }
 

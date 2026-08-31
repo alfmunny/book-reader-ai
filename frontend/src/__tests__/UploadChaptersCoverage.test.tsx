@@ -28,6 +28,8 @@ jest.mock("@/lib/api", () => ({
   getFrozenSplit: (...a: unknown[]) => mockGetFrozenSplit(...a),
   saveFrozenSplit: (...a: unknown[]) => mockSaveFrozenSplit(...a),
   getDraftChapters: (...a: unknown[]) => mockGetDraftChapters(...a),
+  getBookMeta: jest.fn().mockResolvedValue({ id: 7, title: "T" }),
+  updateBookMeta: jest.fn(),
   confirmChapters: (...a: unknown[]) => mockConfirmChapters(...a),
   saveDraftChapterMeta: (...a: unknown[]) => mockSaveMeta(...a),
   saveDraftChapterStructure: (...a: unknown[]) => mockSaveStructure(...a),

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { getMe, getReadingProgress, getUserStats, getDraftAudits, getMyUploads, deleteUploadedBook, UserStats, BookMeta, DraftAudit } from "@/lib/api";
 import { getRecentBooks, removeRecentBook, recordRecentBook, RecentBook } from "@/lib/recentBooks";
+import { booksExist } from "@/lib/api";
 import BookCard from "@/components/BookCard";
 import UndoToast from "@/components/UndoToast";
 import BookDetailModal from "@/components/BookDetailModal";
@@ -74,6 +75,24 @@ export default function Bookshelf() {
     getMyUploads().then((b) => setUploadIds(new Set(b.map((x) => x.id)))).catch(() => {});
     setUserStatsFetchError(false);
     getUserStats().then(setUserStats).catch(() => setUserStatsFetchError(true));
+    // Reconcile the localStorage shelf against the server: a book deleted in
+    // the admin panel (or discarded elsewhere) otherwise stays here as a
+    // ghost that 404s when opened (owner, 2026-08-31).
+    {
+      const local = getRecentBooks();
+      if (local.length > 0) {
+        booksExist(local.map((b) => b.id))
+          .then(({ existing }) => {
+            const keep = new Set(existing);
+            const ghosts = local.filter((b) => !keep.has(b.id));
+            if (ghosts.length > 0) {
+              ghosts.forEach((g) => removeRecentBook(g.id));
+              setRecentBooks(getRecentBooks());
+            }
+          })
+          .catch(() => { /* offline — the shelf keeps what it has */ });
+      }
+    }
     getReadingProgress().then((entries) => {
       const local = getRecentBooks();
       let changed = false;

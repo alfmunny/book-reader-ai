@@ -32,6 +32,8 @@ jest.mock("@/lib/api", () => ({
   getMe: () => Promise.resolve({ hasGeminiKey: false, role: "user", approved: true }),
   searchBooks: () => Promise.resolve({ books: [] }),
   getReadingProgress: () => Promise.resolve([]),
+  // echo: every locally-seeded book still exists unless a test says otherwise
+  booksExist: (ids: number[]) => Promise.resolve({ existing: ids }),
   getUserStats: () => Promise.resolve({
     streak: 0, longest_streak: 0,
     totals: { books_started: 0, vocabulary_words: 0, annotations: 0, insights: 0 },

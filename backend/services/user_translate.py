@@ -245,14 +245,37 @@ async def translate_batch(
 CONTEXT_BEFORE = 3
 CONTEXT_AFTER = 1
 MAX_CONTEXT_CHARS = 1200
+# Context scales INVERSELY with the paragraph (owner refinement, 2026-08-31):
+# a one-line reply needs its scene; a paragraph that is already a scene brings
+# its own context, and shipping neighbours with it is spend without gain.
+SELF_SUFFICIENT_CHARS = 800
+FULL_CONTEXT_CHARS = 150
+
+
+def _context_budget(target_len: int) -> int:
+    """How much surrounding text this paragraph deserves.
+
+    Full budget below FULL_CONTEXT_CHARS, none at SELF_SUFFICIENT_CHARS and
+    beyond, sliding linearly between — no cliff where one more character
+    suddenly halves the context.
+    """
+    if target_len >= SELF_SUFFICIENT_CHARS:
+        return 0
+    if target_len <= FULL_CONTEXT_CHARS:
+        return MAX_CONTEXT_CHARS
+    span = SELF_SUFFICIENT_CHARS - FULL_CONTEXT_CHARS
+    return int(MAX_CONTEXT_CHARS * (SELF_SUFFICIENT_CHARS - target_len) / span)
 
 
 def context_window(paragraphs: list[str], index: int) -> tuple[str, str]:
-    """(text before, text after) around `index`, bounded so a huge neighbour
-    cannot crowd out the paragraph being translated."""
+    """(text before, text after) around `index`, sized to what the target
+    actually needs and bounded so a huge neighbour cannot crowd it out."""
+    budget = _context_budget(len(paragraphs[index]))
+    if budget == 0:
+        return "", ""
     before = "\n\n".join(paragraphs[max(0, index - CONTEXT_BEFORE) : index])
     after = "\n\n".join(paragraphs[index + 1 : index + 1 + CONTEXT_AFTER])
-    return before[-MAX_CONTEXT_CHARS:], after[:MAX_CONTEXT_CHARS]
+    return before[-budget:], after[:budget]
 
 
 async def translate_paragraph_in_context(

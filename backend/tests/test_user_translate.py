@@ -81,3 +81,30 @@ def test_a_huge_neighbour_cannot_crowd_out_the_target():
     paras = ["x" * 9000, "target", "y" * 9000]
     before, after = context_window(paras, 1)
     assert len(before) <= MAX_CONTEXT_CHARS and len(after) <= MAX_CONTEXT_CHARS
+
+
+def test_context_scales_inversely_with_the_paragraph():
+    """A one-line reply needs its scene; a paragraph that is already a scene
+    brings its own context (owner refinement, 2026-08-31)."""
+    from services.user_translate import context_window
+    neighbours = ["前の段落です。" * 40, None, "次の段落です。" * 40]
+
+    # short target: full context
+    neighbours[1] = "「はい」"
+    before, after = context_window(neighbours, 1)
+    assert before and after
+
+    # long target: no context at all
+    neighbours[1] = "こ" * 900
+    assert context_window(neighbours, 1) == ("", "")
+
+
+def test_the_budget_slides_rather_than_cliffs():
+    from services.user_translate import _context_budget, MAX_CONTEXT_CHARS
+    assert _context_budget(50) == MAX_CONTEXT_CHARS
+    assert _context_budget(900) == 0
+    mid = _context_budget(475)   # midway between 150 and 800
+    assert 0 < mid < MAX_CONTEXT_CHARS
+    # monotone: more paragraph, never more context
+    budgets = [_context_budget(n) for n in (100, 200, 400, 600, 790, 810)]
+    assert budgets == sorted(budgets, reverse=True)

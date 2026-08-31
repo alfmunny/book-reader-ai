@@ -87,6 +87,12 @@ export default function TTSControls({
   // Which chunk is sounding, derived from the playhead rather than tracked —
   // the ref that drives playback does not re-render.
   const [activeChunk, setActiveChunk] = useState(0);
+  // A load is a long walk through the chunk list that starts playback when it
+  // reaches the right one. Two of them running at once each start their own
+  // audio — two voices — and the older one is still aiming at the position it
+  // captured before the reader seeked (owner, 2026-08-31).
+  const loadingRef = useRef(false);
+  const pendingSeekRef = useRef<number | undefined>(undefined);
 
   const onPlaybackUpdateRef = useRef(onPlaybackUpdate);
   const onLoadingChangeRef = useRef(onLoadingChange);
@@ -129,6 +135,7 @@ export default function TTSControls({
         saveAudioPosition(bookId, chapterIndex, t);
       }
       genRef.current++;
+      loadingRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
       cleanupAll();
@@ -183,6 +190,12 @@ export default function TTSControls({
   }, [globalCurrentTime, globalDuration, status]);
 
   async function loadAndPlay(seekToGlobal?: number) {
+    if (loadingRef.current) {
+      // Hand the new target to the walk already in progress instead of
+      // starting a second one.
+      pendingSeekRef.current = seekToGlobal;
+      return;
+    }
     if (chunksRef.current.length > 0) {
       if (seekToGlobal !== undefined) {
         await seekTo(seekToGlobal);
@@ -193,6 +206,7 @@ export default function TTSControls({
       return;
     }
 
+    loadingRef.current = true;
     setStatus("loading");
     setErrorMsg("");
     const abort = new AbortController();
@@ -212,6 +226,7 @@ export default function TTSControls({
       setAllChunks(chunkTexts.map((t) => ({ text: t, duration: 0, wordBoundaries: [] })));
 
       const savedPos = getAudioPosition(bookId, chapterIndex);
+      pendingSeekRef.current = seekToGlobal;
       let cumulative = 0;
       let started = false;
 
@@ -304,9 +319,12 @@ export default function TTSControls({
         });
 
         if (!started) {
+          // Read the target FRESH each time round: a seek during loading must
+          // win over the saved position this walk began with, or playback
+          // resumes where the last session stopped and ignores the reader.
           let targetGlobal = 0;
-          if (seekToGlobal !== undefined) {
-            targetGlobal = seekToGlobal;
+          if (pendingSeekRef.current !== undefined) {
+            targetGlobal = pendingSeekRef.current;
           } else if (savedPos > 0) {
             targetGlobal = savedPos;
           }
@@ -337,6 +355,8 @@ export default function TTSControls({
       setStatus("error");
       setErrorMsg(e instanceof Error ? e.message : "TTS failed");
       setLoadingState(null);
+    } finally {
+      loadingRef.current = false;
     }
   }
 

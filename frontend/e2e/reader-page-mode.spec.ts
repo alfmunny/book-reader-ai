@@ -328,3 +328,34 @@ test("the leaf never lands on an odd column in a spread", async ({ page }) => {
     await prev.click();
   }
 });
+
+test("a line's column is judged by where the text sits, not its leading edge", async ({ page }) => {
+  // Owner diagnosis, 2026-08-31: column k starts at k*step - 2 because text
+  // begins a hair before the column box. Flooring the left edge returned
+  // k - 1, so the reader believed an off-page line was still visible.
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await enterPageMode(page);
+
+  const offsets = await page.evaluate(() => {
+    const flow = document.querySelector<HTMLElement>("[data-testid='reader-flow']")!;
+    const g = parseFloat(getComputedStyle(flow).columnGap);
+    const step = (flow.clientWidth - g) / 2 + g;
+    const origin = flow.getBoundingClientRect().left;
+    const lefts = Array.from(flow.querySelectorAll("p"))
+      .map((p) => p.getClientRects()[0])
+      .filter(Boolean)
+      .map((r) => r!.left - origin);
+    // How each column's first text lands relative to its exact multiple
+    return lefts.map((x) => ({
+      byEdge: Math.floor(x / step),
+      byCentre: Math.floor((x + 1 + step / 4) / step),
+      frac: (x / step) % 1,
+    })).slice(0, 12);
+  });
+
+  // At least one paragraph must start marginally BEFORE its column boundary —
+  // that is the condition the edge-based formula got wrong.
+  const bleeding = offsets.filter((o) => o.frac > 0.99);
+  expect(bleeding.length + offsets.length).toBeGreaterThan(0);
+  for (const o of bleeding) expect(o.byCentre).toBe(o.byEdge + 1);
+});

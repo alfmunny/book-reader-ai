@@ -38,6 +38,11 @@ describe("page-aware TTS follow (collision 2, #2786)", () => {
     // A wrapped sentence has fragments in two columns; the union rect starts
     // in the earlier one, which landed the reader a page behind the line.
     expect(src).toContain("const rects = Array.from(el.getClientRects());");
+    // Columns are identified from each fragment's CENTRE. Text begins a pixel
+    // or two before the column box (column k starts at k*step - 2), so
+    // flooring the left edge yields k - 1 for every column past the first.
+    expect(src).toContain("const c = Math.floor((r.left + r.width / 2 - origin) / step);");
+    expect(src).not.toContain("Math.floor((r.left - origin) / step)");
     expect(src).toContain("widthByColumn.set(c, (widthByColumn.get(c) ?? 0) + r.width);");
     expect(src).toContain("if (w > widest) { widest = w; column = c; }");
     expect(src).toContain("perView * Math.floor(column / perView)");

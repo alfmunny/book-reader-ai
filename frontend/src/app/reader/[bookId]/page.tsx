@@ -893,7 +893,7 @@ export default function ReaderPage() {
         // Both rects move with the transform, so their difference is already
         // in untranslated flow coordinates. Adding the page offset here double
         // counts it — the same mistake this file had in revealElement.
-        const x = rect.left - flow.getBoundingClientRect().left;
+        const x = rect.left + rect.width / 2 - flow.getBoundingClientRect().left;
         const col = Math.floor(x / step);
         setPageIndex(Math.max(0, Math.min(columns * Math.floor(col / columns), lastLeaf)));
       } else {
@@ -996,7 +996,12 @@ export default function ReaderPage() {
     const widthByColumn = new Map<number, number>();
     const rects = Array.from(el.getClientRects());
     for (const r of rects.length ? rects : [el.getBoundingClientRect()]) {
-      const c = Math.floor((r.left - origin) / step);
+      // Measure from the fragment's CENTRE, not its left edge. Text starts a
+      // pixel or two before the column box — column k begins at k*step - 2 —
+      // so flooring the left edge returned k - 1 for every column past the
+      // first, and the reader believed an off-page line was still showing
+      // (owner diagnosis, 2026-08-31).
+      const c = Math.floor((r.left + r.width / 2 - origin) / step);
       widthByColumn.set(c, (widthByColumn.get(c) ?? 0) + r.width);
     }
     let column = 0;

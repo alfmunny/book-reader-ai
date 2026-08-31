@@ -108,13 +108,13 @@ export default function UploadPage() {
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <h1 className="font-serif text-lg font-semibold text-ink">Upload a Book</h1>
+      <header className="border-b border-amber-200 bg-white/60 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center gap-3">
+          <h1 className="font-serif text-xl font-bold text-ink">Upload a Book</h1>
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
         {/* Quota error */}
         {quotaFetchError && (

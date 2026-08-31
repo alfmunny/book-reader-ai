@@ -110,10 +110,10 @@ export default function NotesOverviewPage() {
 
   return (
     <main id="main-content" className="min-h-screen bg-parchment">
-      <header className="border-b border-amber-200 bg-white/60 backdrop-blur px-4 md:px-6 py-3 md:py-4 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto flex items-center gap-4">
+      <header className="border-b border-amber-200 bg-white/60 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center gap-4">
           <div className="flex-1">
-            <h1 className="text-xl font-serif font-bold text-ink">Your Notes</h1>
+            <h1 className="font-serif text-xl font-bold text-ink">Your Notes</h1>
           </div>
           {!loading && (
             <div className="flex items-center gap-1.5 shrink-0" aria-label="Notes summary">
@@ -131,7 +131,7 @@ export default function NotesOverviewPage() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-4">
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-4">
         {/* Search */}
         <input
           aria-label="Search notes by book"

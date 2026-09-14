@@ -1041,6 +1041,37 @@ async def set_book_published(book_id: int, published: bool) -> bool:
     return True
 
 
+async def list_all_books_admin() -> list[dict]:
+    """Every book, uploads included, with owner attribution — admin only.
+
+    The public listing excludes uploads because their titles are private to
+    their owner; that privacy rule is about other READERS. The admin panel is
+    moderation: an upload nobody can see cannot be deleted or blocked
+    (owner, 2026-08-31). Newest first, by the date the book was added.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """SELECT b.id, b.title, b.authors, b.languages, b.subjects,
+                      b.download_count, b.cover, b.cached_at, b.source,
+                      b.owner_user_id, u.email AS owner_email, u.name AS owner_name
+               FROM books b
+               LEFT JOIN users u ON u.id = b.owner_user_id
+               ORDER BY b.cached_at DESC"""
+        ) as cursor:
+            rows = await cursor.fetchall()
+    books = []
+    for row in rows:
+        b = dict(row)
+        for key in ("authors", "languages", "subjects"):
+            try:
+                b[key] = json.loads(b[key]) if b[key] else []
+            except (TypeError, json.JSONDecodeError):
+                b[key] = []
+        books.append(b)
+    return books
+
+
 async def list_cached_books() -> list[dict]:
     """Return publicly available cached books (Gutenberg only, without text field).
 

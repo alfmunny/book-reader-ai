@@ -1,3 +1,4 @@
+import pytest
 """
 Shared fixtures for router/integration tests.
 
@@ -148,3 +149,49 @@ def insert_private_book():
             )
             await db.commit()
     return _impl
+
+
+@pytest.fixture(autouse=True)
+def batch_delegates_to_paragraph():
+    """Chapter runs batch consecutive paragraphs into one call for context
+    (owner, 2026-08-31). Tests patch translate_paragraph — the primitive they
+    have always patched — so here the batch path delegates to it, one item at a
+    time, instead of reaching the network.
+
+    The router's batching still runs: planning, ordering and the per-paragraph
+    upserts are all exercised. Only the transport is stubbed. The real
+    translate_batch, its prompt and its alignment check are covered directly in
+    test_user_translate.py.
+    """
+    from unittest.mock import patch
+    from services import user_translate
+
+    async def _delegate(provider, api_key, items, source_language, target_language, style_prompt=None):
+        out, model = [], "test-model"
+        for _, text in items:
+            translated, model = await user_translate.translate_paragraph(
+                provider, api_key, text, source_language, target_language, style_prompt,
+            )
+            out.append(translated)
+        return out, model
+
+    with patch("services.user_translate.translate_batch", new=_delegate):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def contextual_single_delegates_to_paragraph():
+    """Same transport stub as the batch fixture, for the single-paragraph
+    path: the context plumbing runs, only the network call is replaced."""
+    from unittest.mock import patch
+    from services import user_translate
+
+    async def _delegate(provider, api_key, paragraphs, index,
+                        source_language, target_language, style_prompt=None):
+        return await user_translate.translate_paragraph(
+            provider, api_key, paragraphs[index],
+            source_language, target_language, style_prompt,
+        )
+
+    with patch("services.user_translate.translate_paragraph_in_context", new=_delegate):
+        yield

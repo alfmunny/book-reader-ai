@@ -7,6 +7,9 @@ import {
   confirmChapters,
   saveDraftChapterMeta,
   saveDraftChapterStructure,
+  suggestChapterSplit,
+  updateBookMeta,
+  getBookMeta,
   getFrozenSplit,
   saveFrozenSplit,
   DraftChapter,
@@ -27,16 +30,53 @@ export default function ChapterEditorPage() {
   const router = useRouter();
 
   const [chapters, setChapters] = useState<AuditChapter[] | null>(null);
+  // An AI proposal is held here until the reader accepts it. book_parser only
+  // recognises Latin-script headings, so a book that marks its chapters any
+  // other way — 第一章, 序章 — arrives as a single chapter (#2789).
+  const [proposal, setProposal] = useState<{ title: string; text: string }[] | null>(null);
+  const [rule, setRule] = useState<{ pattern?: string; notes?: string; paragraphs?: string } | null>(null);
+  const [requirements, setRequirements] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [finishing, setFinishing] = useState(false);
   // A confirmed book has no drafts left; its split is corrected in place instead.
   const [confirmed, setConfirmed] = useState(false);
   const [blocked, setBlocked] = useState<string | null>(null);
+  // The book's own name is a parser guess — usually the file's first line —
+  // and this page had no way to correct it (owner, 2026-08-31).
+  const [bookTitle, setBookTitle] = useState("");
+  const [titleDraft, setTitleDraft] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleBusy, setTitleBusy] = useState(false);
 
   useEffect(() => {
     document.title = "Review chapters — Book Reader AI";
   }, []);
+
+  useEffect(() => {
+    if (!bookId) return;
+    getBookMeta(Number(bookId))
+      .then((b) => { setBookTitle(b.title); setTitleDraft(b.title); })
+      .catch(() => { /* the heading simply stays generic */ });
+  }, [bookId]);
+
+  async function saveTitle() {
+    const next = titleDraft.trim();
+    if (!next || next === bookTitle) { setEditingTitle(false); setTitleDraft(bookTitle); return; }
+    setTitleBusy(true);
+    try {
+      const r = await updateBookMeta(Number(bookId), { title: next });
+      setBookTitle(r.title);
+      setTitleDraft(r.title);
+      setEditingTitle(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not rename the book.");
+    } finally {
+      setTitleBusy(false);
+    }
+  }
 
   const load = useCallback(() => {
     if (!bookId) return;
@@ -107,6 +147,36 @@ export default function ChapterEditorPage() {
       ),
     [bookId],
   );
+
+  async function askForSplit() {
+    setSuggestError(null);
+    setSuggesting(true);
+    try {
+      const r = await suggestChapterSplit(Number(bookId), requirements);
+      setProposal(r.chapters);
+      setRule({
+        pattern: r.rule?.heading_pattern,
+        notes: r.notes,
+        paragraphs: r.rule?.paragraph_mode,
+      });
+    } catch (e) {
+      // The 422 carries why there was nothing to propose — worth showing.
+      setSuggestError(e instanceof Error && e.message ? e.message : "Could not suggest a split.");
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  async function applyProposal() {
+    if (!proposal) return;
+    const next: AuditChapter[] = proposal.map((c) => ({ ...c, reviewed: false }));
+    setChapters(next);
+    setProposal(null);
+    setRule(null);
+    // Same endpoint a manual split or merge uses — the proposal is a draft
+    // like any other, and still has to be confirmed.
+    await saveStructure(next);
+  }
 
   async function finish(next: AuditChapter[]) {
     setError(null);
@@ -182,6 +252,40 @@ export default function ChapterEditorPage() {
               <ArrowLeftIcon className="w-4 h-4 inline" aria-hidden="true" /> Bookshelf
             </Link>
             <h1 className="font-serif text-lg font-semibold text-ink">Review chapters</h1>
+            {bookTitle && !editingTitle && (
+              <button
+                onClick={() => setEditingTitle(true)}
+                data-testid="edit-book-title"
+                title="Rename this book"
+                className="text-sm text-stone-600 hover:text-amber-800 truncate max-w-[16rem] min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+              >
+                {bookTitle} ✎
+              </button>
+            )}
+            {editingTitle && (
+              <span className="flex items-center gap-1.5">
+                <input
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveTitle();
+                    if (e.key === "Escape") { setEditingTitle(false); setTitleDraft(bookTitle); }
+                  }}
+                  aria-label="Book title"
+                  maxLength={300}
+                  autoFocus
+                  className="text-sm border border-amber-300 rounded px-2 py-1 w-56 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                <button
+                  onClick={saveTitle}
+                  disabled={titleBusy}
+                  data-testid="save-book-title"
+                  className="text-xs px-2 py-1 min-h-[44px] md:min-h-0 rounded bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  {titleBusy ? "…" : "Save"}
+                </button>
+              </span>
+            )}
           </div>
           <p className="text-xs text-stone-600 m-0">
             {confirmed
@@ -196,6 +300,88 @@ export default function ChapterEditorPage() {
           <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
             <AlertCircleIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
             {blocked}
+          </div>
+        )}
+
+        {chapters && !confirmed && (
+          <div className="rounded-lg border border-amber-200 bg-white px-4 py-3 space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-ink m-0">Chapters in the wrong place?</p>
+                <p className="text-xs text-stone-600 m-0 mt-0.5">
+                  Headings that are not English — 第一章, глава, فصل — are not detected
+                  automatically. The opening of the book is read to work out what a
+                  heading looks like here; the rule is then applied to the whole text.
+                </p>
+              </div>
+              <button
+                onClick={askForSplit}
+                disabled={suggesting}
+                data-testid="suggest-split-btn"
+                className="shrink-0 text-sm px-3 py-2 md:py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                {suggesting ? "Reading the book…" : "Suggest a split"}
+              </button>
+            </div>
+
+            <input
+              value={requirements}
+              onChange={(e) => setRequirements(e.target.value)}
+              maxLength={600}
+              data-testid="split-requirements"
+              aria-label="Anything the opening does not show"
+              placeholder="Optional: how this book marks paragraphs, headings to ignore…"
+              className="w-full text-xs border border-amber-300 rounded px-2.5 py-2 md:py-1.5 min-h-[44px] md:min-h-0 focus:outline-none focus:ring-2 focus:ring-amber-400 placeholder:text-stone-600"
+            />
+
+            {suggestError && (
+              <p role="alert" className="text-xs text-red-700 m-0">{suggestError}</p>
+            )}
+
+            {proposal && (
+              <div data-testid="split-proposal" className="rounded-lg border border-amber-300 bg-amber-50/60 px-3 py-2.5">
+                <p className="text-xs text-stone-700 m-0 mb-2">
+                  {proposal.length} chapter{proposal.length === 1 ? "" : "s"} proposed. Nothing has
+                  changed yet.
+                </p>
+                {rule?.notes && (
+                  <p className="text-xs text-stone-600 m-0 mb-1.5">{rule.notes}</p>
+                )}
+                {rule?.paragraphs && rule.paragraphs !== "blank-line" && (
+                  <p className="text-[11px] text-stone-600 m-0 mb-1" data-testid="split-paragraph-mode">
+                    Paragraphs: {rule.paragraphs === "indent"
+                      ? "each indented line starts one"
+                      : "one per line"} — reflowed so the translation lines up.
+                  </p>
+                )}
+                {rule?.pattern && (
+                  <p className="text-[11px] text-stone-600 m-0 mb-2" data-testid="split-rule">
+                    Rule: <code className="font-mono bg-white/70 px-1 rounded">{rule.pattern}</code>
+                  </p>
+                )}
+                <ol className="text-xs text-ink m-0 mb-2.5 pl-5 max-h-40 overflow-y-auto space-y-0.5">
+                  {proposal.map((c, i) => (
+                    <li key={i} className="truncate" lang="und">{c.title}</li>
+                  ))}
+                </ol>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={applyProposal}
+                    data-testid="apply-split-btn"
+                    className="text-xs px-3 py-2 md:py-1.5 min-h-[44px] md:min-h-0 rounded-lg bg-amber-700 text-white hover:bg-amber-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Use this split
+                  </button>
+                  <button
+                    onClick={() => setProposal(null)}
+                    data-testid="dismiss-split-btn"
+                    className="text-xs px-3 py-2 md:py-1.5 min-h-[44px] md:min-h-0 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    Keep current split
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

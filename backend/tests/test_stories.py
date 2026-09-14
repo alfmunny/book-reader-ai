@@ -313,22 +313,37 @@ async def test_editorial_comment_unknown_book_404(client):
     assert resp.status_code == 404
 
 
-# ── Posted paragraphs are protected from retranslation (owner, 2026-08-31) ──
+# ── Posted paragraphs retranslate like any other (owner, 2026-08-31) ─────────
 
-async def test_paragraph_retranslate_refused_when_posted(client, test_user):
+async def test_paragraph_retranslate_works_when_posted(client, test_user):
+    """This was a 409 demanding the post be made private first. A story stores
+    no text — it joins to the paragraph and shows whatever it currently says —
+    so the refusal protected nothing, and on a public version (which posts
+    every paragraph) it blocked single-paragraph retranslation entirely."""
+    from unittest.mock import AsyncMock, patch
     from services.auth import encrypt_api_key
     from services.db import set_user_deepseek_key
     await set_user_deepseek_key(test_user["id"], encrypt_api_key("k"))
     sid = await _translated_session(client)
     await _share_translation(client, sid, start=0, end=0)
-    resp = await client.post(f"/api/translation-sessions/{sid}/translate", json={
-        "book_id": 1, "chapter_index": 0, "scope": 0,
-    })
-    assert resp.status_code == 409
-    assert "make it private" in resp.json()["detail"]
+    with patch("services.user_translate.translate_paragraph",
+               new=AsyncMock(return_value=("重译后", "deepseek-v4-flash"))):
+        resp = await client.post(f"/api/translation-sessions/{sid}/translate", json={
+            "book_id": 1, "chapter_index": 0, "scope": 0,
+        })
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["paragraphs"]["0"]["text"] == "重译后"
 
 
-async def test_force_chapter_run_keeps_posted_paragraphs(client, test_user):
+async def test_force_chapter_run_redoes_posted_paragraphs_too(client, test_user):
+    """A forced retranslate covers posted paragraphs.
+
+    They were excluded, to stop a machine pass rewriting a public post. But a
+    story stores no text — it joins to the paragraph and shows whatever it
+    currently says — so nothing was being protected, while a public version
+    (which posts every paragraph as it translates) could never be retranslated
+    at all (owner, 2026-08-31).
+    """
     from unittest.mock import AsyncMock, patch
     from services.auth import encrypt_api_key
     from services.db import set_user_deepseek_key
@@ -342,7 +357,8 @@ async def test_force_chapter_run_keeps_posted_paragraphs(client, test_user):
             "book_id": 1, "chapter_index": 0, "scope": "chapter", "force": True,
         })
         assert resp.status_code == 200
-        assert resp.json()["run"]["total"] == 1, resp.json()
+        # both paragraphs, the posted one included
+        assert resp.json()["run"]["total"] == 2, resp.json()
         # Wait for the background run to finish
         run = None
         for _ in range(100):
@@ -353,7 +369,7 @@ async def test_force_chapter_run_keeps_posted_paragraphs(client, test_user):
             import asyncio as _a; await _a.sleep(0.05)
     assert not (run or {}).get("error"), run
     paras = (await client.get(f"/api/translation-sessions/{sid}/chapters/0")).json()["paragraphs"]
-    assert paras["0"]["text"] == "太阳依着古老的方式轰腾。" if False else paras["0"]["text"] == "太阳依着古老的方式轰鸣。"  # posted → untouched
+    assert paras["0"]["text"] == "机器重译"  # posted → redone, and the post follows it
     assert paras["1"]["text"] == "机器重译"  # unposted machine paragraph → redone
 
 

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import aiosqlite
 import logging
 import os
 from typing import AsyncIterator
@@ -16,6 +17,7 @@ from services.db import (
     list_audited_books,
 )
 from services.splitter import build_chapters
+from services import db as db_module
 from services.auth import get_current_user, get_optional_user, decrypt_api_key, check_book_access, require_tier, require_book_quota, TIER_RANK
 
 logger = logging.getLogger(__name__)
@@ -49,6 +51,30 @@ async def catalog_books():
     session has reviewed the split and written the freeze record.
     """
     return await list_audited_books()
+
+
+class ExistsRequest(BaseModel):
+    ids: list[int] = Field(..., max_length=100)
+
+
+@router.post("/exists")
+async def books_exist(req: ExistsRequest, user: dict = Depends(get_current_user)):
+    """Which of these ids still exist — one call for the whole shelf.
+
+    The bookshelf's recent list lives in localStorage, where a server-side
+    delete cannot reach: a book removed in the admin panel stayed on the shelf
+    as a ghost that 404s when opened (owner, 2026-08-31). The shelf reconciles
+    against this instead of guessing.
+    """
+    if not req.ids:
+        return {"existing": []}
+    placeholders = ",".join("?" for _ in req.ids)
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        async with db.execute(
+            f"SELECT id FROM books WHERE id IN ({placeholders})", req.ids
+        ) as cur:
+            rows = await cur.fetchall()
+    return {"existing": [r[0] for r in rows]}
 
 
 @router.get("/cached")

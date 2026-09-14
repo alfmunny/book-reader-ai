@@ -133,7 +133,10 @@ async def get_books(_admin: dict = Depends(_require_admin)):
     - `queue`: map of `target_language → {pending, running, done, failed, ...}`
       so the UI can show progress bars / status badges live.
     """
-    books = await list_cached_books()
+    # Uploads included: moderation needs to see everything. The public
+    # listing's privacy rule protects uploads from other READERS, not from
+    # the admin who may need to delete one (owner, 2026-08-31).
+    books = await db_module.list_all_books_admin()
 
     async with aiosqlite.connect(db_module.DB_PATH) as db:
         # Translation stats grouped per (book, language)

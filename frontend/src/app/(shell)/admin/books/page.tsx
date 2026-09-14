@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { adminFetch } from "@/lib/adminFetch";
+import { deleteUploadedBook } from "@/lib/api";
 import SeedPopularButton from "@/components/SeedPopularButton";
 import PendingPublishPanel from "@/components/PendingPublishPanel";
 import { fuzzyMatchAny } from "@/lib/fuzzyMatch";
@@ -31,6 +32,12 @@ interface Book {
   published?: boolean;
   audited_by?: string | null;
   frozen_at?: string | null;
+  /** 'upload' for reader uploads — shown and moderatable here even though the
+   *  public listing hides them (their privacy is from other readers, not from
+   *  moderation). */
+  source?: string | null;
+  owner_email?: string | null;
+  owner_name?: string | null;
 }
 interface TranslationEntry {
   book_id: number;
@@ -397,6 +404,7 @@ export default function BooksPage() {
       <ul role="list" aria-label="Books" className="bg-white rounded-xl border border-amber-200 divide-y divide-amber-100 overflow-hidden list-none p-0 m-0">
         {books
           .filter((b) => matchesAudit(b) && fuzzyMatchAny(searchQuery, [b.title, ...(b.authors || []), b.id]))
+          .sort((a, b) => (b.cached_at || "").localeCompare(a.cached_at || ""))
           .map((b) => {
           const isExpanded = expandedBookId === b.id;
           const translatedLangs = Object.keys(b.translations || {});
@@ -423,6 +431,43 @@ export default function BooksPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-ink text-sm truncate" title={b.title}>{b.title}</span>
+                    {b.source === "upload" && (
+                      <>
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-800 shrink-0"
+                          data-testid={`upload-chip-${b.id}`}
+                          title={b.owner_email || undefined}
+                        >
+                          upload · {b.owner_name || b.owner_email || "unknown"}
+                        </span>
+                        <button
+                          onClick={() => {
+                            // An admin delete is someone ELSE's book and all
+                            // their notes on it — spelled out via the page's
+                            // inline confirmation banner, never a blocking
+                            // dialog (#1897).
+                            setPendingConfirm({
+                              message:
+                                `Delete "${b.title}" uploaded by ${b.owner_name || b.owner_email || "unknown"}? ` +
+                                "Their translations, notes and posts on it go too. This cannot be undone.",
+                              fn: async () => {
+                                try {
+                                  await deleteUploadedBook(b.id);
+                                  setBooks((prev) => prev.filter((x) => x.id !== b.id));
+                                } catch (e) {
+                                  setActError(e instanceof Error ? e.message : "Could not delete the book.");
+                                }
+                              },
+                            });
+                          }}
+                          data-testid={`delete-upload-${b.id}`}
+                          aria-label={`Delete upload ${b.title}`}
+                          className="text-xs px-1.5 py-0.5 rounded border border-red-200 text-red-700 hover:bg-red-50 shrink-0 min-h-[44px] md:min-h-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                     {b.active && (
                       <span
                         className="text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 animate-pulse"

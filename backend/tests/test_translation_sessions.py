@@ -534,3 +534,59 @@ async def test_version_description_round_trips_and_reaches_the_community_list(cl
     rows, _ = await list_published_sessions(1, exclude_user_id=other["id"])
     mine = next(r for r in rows if r["id"] == created["id"])
     assert mine["description"] == "改了简介"
+
+
+async def test_force_retranslates_a_public_version_whose_paragraphs_are_all_posted(client, test_user):
+    """A public version posts each paragraph as it is translated. Excluding
+    posted paragraphs from a forced run therefore excluded every one of them,
+    and "Retranslate this chapter" did nothing at all (owner, 2026-08-31).
+
+    Nothing is lost by rewriting them: a story stores no text, it joins to the
+    paragraph and shows whatever it currently says.
+    """
+    from services.db import (
+        create_translation_session, upsert_session_paragraph, create_story,
+        get_session_paragraphs,
+    )
+    await set_user_deepseek_key(test_user["id"], encrypt_api_key("sk-ds"))
+    sess = await create_translation_session(
+        test_user["id"], 1, "公開版", "zh", "deepseek", status="public"
+    )
+    await upsert_session_paragraph(sess["id"], 0, 0, "旧訳", "deepseek", "m")
+    await create_story(test_user["id"], {
+        "kind": "translation", "book_id": 1, "chapter_index": 0,
+        "session_id": sess["id"], "paragraph_start": 0, "paragraph_end": 0,
+    })
+
+    import asyncio
+    from routers.translation_sessions import _chapter_runs
+
+    with patch("services.user_translate.translate_paragraph",
+               AsyncMock(return_value=("新訳", "model-x"))):
+        resp = await client.post(
+            f"/api/translation-sessions/{sess['id']}/translate",
+            json={"chapter_index": 0, "scope": "chapter", "force": True},
+        )
+        assert resp.status_code == 200, resp.text
+        # The run must have work to do — the bug was total == 0.
+        assert resp.json()["run"]["total"] >= 1
+        # Drain it here: the run is a background task, and letting it outlive
+        # this patch sends the next test's paragraphs to the real provider.
+        run = _chapter_runs[(sess["id"], 0)]
+        for _ in range(200):
+            if run["finished"]:
+                break
+            await asyncio.sleep(0.01)
+        assert run["finished"], "background run did not settle"
+
+
+def test_force_still_holds_back_what_the_reader_edited():
+    """Edits survive a forced retranslate. Asserted on the source: the run is a
+    background task that outlives the test's patch context, so driving it over
+    HTTP reaches the real provider and hangs."""
+    import pathlib
+    src = pathlib.Path("routers/translation_sessions.py").read_text()
+    force = src[src.index("if req.force:"):src.index("# Default fill run")]
+    assert 'edited_by_user' in force
+    # …and posted paragraphs are no longer excluded, which was the bug
+    assert "posted" not in force

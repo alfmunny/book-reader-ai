@@ -1177,3 +1177,128 @@ async def test_upload_accepts_uppercase_epub_extension(client, test_user, filena
         f"got {resp.status_code}: {resp.text}"
     )
     assert resp.json()["format"] == "epub"
+
+
+# ── AI split proposal (#2789 follow-up) ───────────────────────────────────────
+
+async def test_suggest_split_proposes_without_changing_the_draft(client, test_user):
+    """The proposal is advisory: the reader applies it through the existing
+    draft endpoint, so it lands on the same review screen as every upload."""
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    before = (await client.get(f"/api/books/{book_id}/chapters/draft")).json()["chapters"]
+
+    proposal = {
+        "chapters": [{"title": "第一章", "text": "本文。\n続き。"}],
+        "language": "ja", "notes": "ok",
+        "rule": {"heading_pattern": "第[一二三]章", "require_unindented": True},
+    }
+    with patch("services.split_advisor.suggest_split_from_rule", AsyncMock(return_value=proposal)):
+        resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["chapters"][0]["title"] == "第一章"
+
+    after = (await client.get(f"/api/books/{book_id}/chapters/draft")).json()["chapters"]
+    assert [c["title"] for c in after] == [c["title"] for c in before]
+
+
+async def test_suggest_split_reports_when_it_has_nothing_to_offer(client, test_user):
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    empty = {"chapters": [], "language": None, "notes": "No candidate headings found."}
+    with patch("services.split_advisor.suggest_split_from_rule", AsyncMock(return_value=empty)):
+        resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
+    assert resp.status_code == 422
+    assert "No candidate headings" in resp.json()["detail"]
+
+
+async def test_suggest_split_refuses_someone_elses_book(client, test_user):
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    other = await get_or_create_user(google_id="g-split", email="split@e.com", name="S", picture="")
+    await set_user_role(other["id"], "user")
+
+    async def _other():
+        return other
+    app.dependency_overrides[get_current_user] = _other
+    try:
+        resp = await client.post(f"/api/books/{book_id}/chapters/suggest")
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: test_user
+    assert resp.status_code in (403, 404)
+
+
+# ── Book title and author are editable (owner, 2026-08-31) ───────────────────
+
+async def test_book_meta_can_be_corrected(client, test_user):
+    """The parser guesses the title from the file's first line; the review
+    page had no way to fix a wrong guess."""
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    resp = await client.patch(f"/api/books/{book_id}/meta", json={
+        "title": "不夜城", "author": "馳星周",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "不夜城"
+    assert resp.json()["authors"] == ["馳星周"]
+
+    # blank author clears it; blank title is refused rather than stored
+    resp = await client.patch(f"/api/books/{book_id}/meta", json={"author": "  "})
+    assert resp.json()["authors"] == []
+    assert (await client.patch(f"/api/books/{book_id}/meta", json={})).status_code == 400
+
+
+async def test_book_meta_refused_for_someone_elses_upload(client, test_user):
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    other = await get_or_create_user(google_id="g-meta", email="m@e.com", name="M", picture="")
+    await set_user_role(other["id"], "user")
+
+    async def _other():
+        return other
+    app.dependency_overrides[get_current_user] = _other
+    try:
+        resp = await client.patch(f"/api/books/{book_id}/meta", json={"title": "X"})
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: test_user
+    assert resp.status_code in (403, 404)
+
+
+# ── Delete removes everything, and the shelf can tell (owner, 2026-08-31) ────
+
+async def test_books_exist_reports_only_survivors(client, test_user):
+    """The shelf's recent list lives in localStorage; it reconciles against
+    this endpoint, since a server delete cannot reach the client."""
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    resp = await client.post("/api/books/exists", json={"ids": [book_id, 999999123]})
+    assert resp.json()["existing"] == [book_id]
+
+    await client.delete(f"/api/books/upload/{book_id}")
+    resp = await client.post("/api/books/exists", json={"ids": [book_id]})
+    assert resp.json()["existing"] == []
+
+
+async def test_delete_takes_phase2_rows_with_the_book(client, test_user):
+    """The delete predates phase 2 and FK enforcement is off, so versions,
+    posts, notes and the freeze row used to leak."""
+    import aiosqlite
+    import services.db as db_module
+    from services.db import create_translation_session, upsert_session_paragraph, create_story
+
+    book_id = (await client.post("/api/books/upload", files=_txt_upload())).json()["book_id"]
+    sess = await create_translation_session(test_user["id"], book_id, "版", "zh", "deepseek")
+    await upsert_session_paragraph(sess["id"], 0, 0, "译", "deepseek", "m")
+    story = await create_story(test_user["id"], {
+        "kind": "translation", "book_id": book_id, "chapter_index": 0,
+        "session_id": sess["id"], "paragraph_start": 0, "paragraph_end": 0,
+    })
+    assert story
+
+    assert (await client.delete(f"/api/books/upload/{book_id}")).status_code == 200
+
+    async with aiosqlite.connect(db_module.DB_PATH) as db:
+        for table, where in [
+            ("translation_sessions", f"book_id={book_id}"),
+            ("translation_session_paragraphs", f"session_id={sess['id']}"),
+            ("stories", f"book_id={book_id}"),
+            ("book_freeze", f"book_id={book_id}"),
+        ]:
+            async with db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}") as cur:
+                n = (await cur.fetchone())[0]
+            assert n == 0, f"{table} leaked {n} rows"

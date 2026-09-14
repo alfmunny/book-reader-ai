@@ -39,6 +39,8 @@ jest.mock("@/lib/api", () => ({
   getMe: (...args: unknown[]) => mockGetMe(...args),
   searchBooks: (...args: unknown[]) => mockSearchBooks(...args),
   getReadingProgress: (...args: unknown[]) => mockGetReadingProgress(...args),
+  // echo: every locally-seeded book still exists unless a test says otherwise
+  booksExist: (ids: number[]) => Promise.resolve({ existing: ids }),
   getUserStats: (...args: unknown[]) => mockGetUserStats(...args),
 }));
 

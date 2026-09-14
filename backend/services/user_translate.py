@@ -6,6 +6,8 @@ no server key, no cross-provider fallback (never bill a user's key on a
 model they didn't pick; same rule as the insight chat).
 """
 
+import re
+
 import anthropic
 import httpx
 
@@ -28,7 +30,22 @@ def _system(style_prompt: str | None) -> str:
 
 
 def _prompt(text: str, source_language: str, target_language: str) -> str:
-    return f"Translate from {source_language} to {target_language}:\n\n{text}"
+    """Name the languages and state the target twice.
+
+    This read "Translate from en to zh:" — the target appeared once, as a bare
+    code, and it was the only thing telling the model what to produce. Given a
+    Japanese paragraph under a wrong source code, models answered in English
+    (owner, 2026-08-31).
+    """
+    from services.wiktionary import _LANG_NAMES
+
+    src = _LANG_NAMES.get(source_language, source_language)
+    dst = _LANG_NAMES.get(target_language, target_language)
+    return (
+        f"Translate the following {src} text into {dst}.\n"
+        f"Write your answer in {dst} only — do not answer in {src} or any other language.\n\n"
+        f"{text}"
+    )
 
 
 async def _deepseek_call(api_key: str, system: str, prompt: str, max_tokens: int) -> str:
@@ -103,3 +120,209 @@ async def translate_paragraph(
         return result, DEEPSEEK_MODEL
 
     raise ValueError(f"Unknown translation provider: {provider}")
+
+
+# ── Batched translation ──────────────────────────────────────────────────────
+# Each paragraph used to be its own API call, so every paragraph was translated
+# as though it were the whole document: pronouns lost their referents, names and
+# register drifted between neighbours, and a paragraph opening with "彼は" had
+# nothing to say who "he" was. Translating consecutive paragraphs together gives
+# the model the context a translator actually needs (owner, 2026-08-31).
+#
+# Alignment is the constraint: one translation must come back per paragraph, in
+# order, because paragraph_index is what the reader, the notes and the posts all
+# anchor to. Numbered markers make that checkable, and a batch that fails the
+# check falls back to one call per paragraph rather than guessing.
+
+MAX_BATCH_CHARS = 1800
+MAX_BATCH_PARAGRAPHS = 8
+_MARKER = re.compile(r"<<<\s*(\d+)\s*>>>")
+
+
+def plan_batches(
+    indices: list[int], paragraphs: list[str],
+    max_chars: int = MAX_BATCH_CHARS, max_paragraphs: int = MAX_BATCH_PARAGRAPHS,
+) -> list[list[int]]:
+    """Group CONSECUTIVE paragraph indices into batches.
+
+    Only consecutive ones: context is the point, and a gap means the paragraphs
+    between were skipped (already translated, or edited by hand).
+    """
+    batches: list[list[int]] = []
+    current: list[int] = []
+    size = 0
+    for i in indices:
+        para_len = len(paragraphs[i])
+        broken = bool(current) and i != current[-1] + 1
+        too_big = current and (size + para_len > max_chars or len(current) >= max_paragraphs)
+        if broken or too_big:
+            batches.append(current)
+            current, size = [], 0
+        current.append(i)
+        size += para_len
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _batch_prompt(items: list[tuple[int, str]], source_language: str, target_language: str) -> str:
+    from services.wiktionary import _LANG_NAMES
+
+    src = _LANG_NAMES.get(source_language, source_language)
+    dst = _LANG_NAMES.get(target_language, target_language)
+    body = "\n".join(f"<<<{n}>>>\n{text}" for n, text in items)
+    return (
+        f"Translate the following {src} text into {dst}.\n"
+        f"Write your answer in {dst} only — do not answer in {src} or any other language.\n"
+        f"The text is split into numbered blocks. Reproduce every marker exactly as "
+        f"given, in the same order, with that block's translation under it. Do not "
+        f"merge blocks, do not split them, do not add or drop a marker.\n\n{body}"
+    )
+
+
+def parse_batch(raw: str, expected: list[int]) -> list[str] | None:
+    """Split a batched answer back into one translation per marker.
+
+    None when the answer does not line up — the caller then retranslates that
+    batch one paragraph at a time rather than storing a guess.
+    """
+    parts = _MARKER.split(raw)
+    if len(parts) < 3:
+        return None
+    found: dict[int, str] = {}
+    # split() yields [before, n1, text1, n2, text2, ...]
+    for marker, text in zip(parts[1::2], parts[2::2]):
+        try:
+            found[int(marker)] = text.strip()
+        except ValueError:
+            return None
+    if sorted(found) != sorted(expected):
+        return None
+    if any(not found[n] for n in expected):
+        return None
+    return [found[n] for n in expected]
+
+
+async def translate_batch(
+    provider: str, api_key: str, items: list[tuple[int, str]],
+    source_language: str, target_language: str, style_prompt: str | None = None,
+) -> tuple[list[str], str]:
+    """Translate consecutive paragraphs in one call. Raises if they do not
+    come back aligned, so the caller can fall back."""
+    prompt = _batch_prompt(items, source_language, target_language)
+    system = _system(style_prompt)
+    numbers = [n for n, _ in items]
+    budget = min(20000, 800 + sum(len(t) for _, t in items) * 4)
+
+    if provider == "claude":
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        message = await client.messages.create(
+            model=CLAUDE_MODEL, max_tokens=budget,
+            output_config={"effort": "low"},
+            system=system, messages=[{"role": "user", "content": prompt}],
+        )
+        if message.stop_reason == "refusal":
+            raise RuntimeError("Claude declined to translate this passage")
+        raw = next((b.text for b in message.content if b.type == "text"), "")
+        model = CLAUDE_MODEL
+    else:
+        raw = await _deepseek_call(api_key, system, prompt, budget)
+        model = DEEPSEEK_MODEL
+
+    parsed = parse_batch(raw or "", numbers)
+    if parsed is None:
+        raise ValueError("batched translation did not come back aligned")
+    return parsed, model
+
+
+# ── Single paragraph, with context ──────────────────────────────────────────
+# "Translate this paragraph" is an intent about what to STORE, not about what
+# the model should see. A lone paragraph — often one line of dialogue — gives
+# a translator nothing: who is speaking, what register, what came before. The
+# neighbours ride along as read-only context; only the target is translated,
+# returned and stored (owner design discussion, 2026-08-31).
+
+CONTEXT_BEFORE = 3
+CONTEXT_AFTER = 1
+MAX_CONTEXT_CHARS = 1200
+# Context scales INVERSELY with the paragraph (owner refinement, 2026-08-31):
+# a one-line reply needs its scene; a paragraph that is already a scene brings
+# its own context, and shipping neighbours with it is spend without gain.
+SELF_SUFFICIENT_CHARS = 800
+FULL_CONTEXT_CHARS = 150
+
+
+def _context_budget(target_len: int) -> int:
+    """How much surrounding text this paragraph deserves.
+
+    Full budget below FULL_CONTEXT_CHARS, none at SELF_SUFFICIENT_CHARS and
+    beyond, sliding linearly between — no cliff where one more character
+    suddenly halves the context.
+    """
+    if target_len >= SELF_SUFFICIENT_CHARS:
+        return 0
+    if target_len <= FULL_CONTEXT_CHARS:
+        return MAX_CONTEXT_CHARS
+    span = SELF_SUFFICIENT_CHARS - FULL_CONTEXT_CHARS
+    return int(MAX_CONTEXT_CHARS * (SELF_SUFFICIENT_CHARS - target_len) / span)
+
+
+def context_window(paragraphs: list[str], index: int) -> tuple[str, str]:
+    """(text before, text after) around `index`, sized to what the target
+    actually needs and bounded so a huge neighbour cannot crowd it out."""
+    budget = _context_budget(len(paragraphs[index]))
+    if budget == 0:
+        return "", ""
+    before = "\n\n".join(paragraphs[max(0, index - CONTEXT_BEFORE) : index])
+    after = "\n\n".join(paragraphs[index + 1 : index + 1 + CONTEXT_AFTER])
+    return before[-budget:], after[:budget]
+
+
+async def translate_paragraph_in_context(
+    provider: str, api_key: str, paragraphs: list[str], index: int,
+    source_language: str, target_language: str, style_prompt: str | None = None,
+) -> tuple[str, str]:
+    """Translate paragraphs[index] with its neighbours visible as context."""
+    before, after = context_window(paragraphs, index)
+    if not before and not after:
+        return await translate_paragraph(
+            provider, api_key, paragraphs[index],
+            source_language, target_language, style_prompt,
+        )
+
+    from services.wiktionary import _LANG_NAMES
+
+    src = _LANG_NAMES.get(source_language, source_language)
+    dst = _LANG_NAMES.get(target_language, target_language)
+    parts = [
+        f"Translate ONLY the text between <<<translate>>> and <<<end>>> from {src} into {dst}.",
+        f"Write your answer in {dst} only, and return nothing but that translation — "
+        "no context, no markers, no commentary.",
+        "The surrounding text is context to translate consistently with; do not translate it.",
+    ]
+    if before:
+        parts.append(f"\n[context before]\n{before}")
+    parts.append(f"\n<<<translate>>>\n{paragraphs[index]}\n<<<end>>>")
+    if after:
+        parts.append(f"\n[context after]\n{after}")
+    prompt = "\n".join(parts)
+    system = _system(style_prompt)
+    budget = min(8000, 400 + len(paragraphs[index]) * 4)
+
+    if provider == "claude":
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        message = await client.messages.create(
+            model=CLAUDE_MODEL, max_tokens=budget,
+            output_config={"effort": "low"},
+            system=system, messages=[{"role": "user", "content": prompt}],
+        )
+        if message.stop_reason == "refusal":
+            raise RuntimeError("Claude declined to translate this passage")
+        result = next((b.text for b in message.content if b.type == "text"), "")
+        model = CLAUDE_MODEL
+    else:
+        result = await _deepseek_call(api_key, system, prompt, budget)
+        model = DEEPSEEK_MODEL
+    if not (result or "").strip():
+        raise RuntimeError("empty translation")
+    return result.strip(), model

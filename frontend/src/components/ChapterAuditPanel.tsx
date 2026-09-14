@@ -99,6 +99,19 @@ export default function ChapterAuditPanel({
     if (nowReviewed && cur < chs.length - 1) setCur(cur + 1);
   }
 
+  function markAllReviewed() {
+    // One tick for the rest (owner, 2026-08-31): when the split is visibly
+    // right, forty individual clicks verify nothing. Flagged chapters are NOT
+    // swept up — a flag is the panel saying "look at this one", and bulk
+    // approval must not silence it unseen.
+    const next = chs.map((c) =>
+      c.reviewed || flagsFor(c, median).length > 0 ? c : { ...c, reviewed: true },
+    );
+    setChs(next);
+    latest.current = next;
+    queueMetaSave();
+  }
+
   function splitAt(paraIndex: number) {
     const paras = paragraphsOf(current.text);
     const head = paras.slice(0, paraIndex).join("\n\n");
@@ -162,6 +175,15 @@ export default function ChapterAuditPanel({
         <span className="text-xs text-stone-600">
           <b className="text-ink font-semibold tabular-nums">{reviewedCount}</b>/<span className="tabular-nums">{chs.length}</span> reviewed
         </span>
+        {reviewedCount < chs.length && (
+          <button
+            onClick={markAllReviewed}
+            data-testid="mark-rest-reviewed"
+            className="text-xs px-2 py-1 min-h-[44px] md:min-h-0 rounded border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            Mark the rest reviewed
+          </button>
+        )}
         <span
           role="progressbar"
           aria-label="Review progress"
